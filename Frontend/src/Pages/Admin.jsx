@@ -1,10 +1,11 @@
 import { useAuth } from "../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
-import axios from "axios";
 import BusinessSettings from "../Components/BusinessSettings";
 import CategorySettings from "../Components/CategorySettings";
 import ToppingGroupsManager from '../Components/ToppingGroupsManager';
+import { API_ENDPOINTS } from "../config";
+import api from "../services/api";
 
 export default function Admin() {
   const { isAuthenticated, logout } = useAuth();
@@ -34,9 +35,9 @@ export default function Admin() {
     const fetchData = async () => {
       try {
         const [productsRes, categoriesRes, toppingGroupsRes] = await Promise.all([
-          axios.get("http://localhost:5000/api/products"),
-          axios.get("http://localhost:5000/api/categories"),
-          axios.get("http://localhost:5000/api/topping-groups")
+          api.get("/products"),
+          api.get("/categories"),
+          api.get("/topping-groups")
         ]);
         setProducts(productsRes.data);
         setCategories(categoriesRes.data);
@@ -51,7 +52,7 @@ export default function Admin() {
     fetchData();
 
     // Configurar SSE
-    const eventSource = new EventSource('http://localhost:5000/api/events');
+    const eventSource = new EventSource(`${API_ENDPOINTS.EVENTS}`);
 
     eventSource.onmessage = (event) => {
       try {
@@ -88,10 +89,10 @@ export default function Admin() {
     e.preventDefault();
     try {
       if (editingId) {
-        await axios.put(`http://localhost:5000/api/products/${editingId}`, form);
+        await api.put(`/products/${editingId}`, form);
         setEditingId(null);
       } else {
-        await axios.post("http://localhost:5000/api/products", form);
+        await api.post("/products", form);
       }
       setForm({ name: "", description: "", price: "", category: "", image: "", toppingGroups: [] });
     } catch (error) {
@@ -111,7 +112,7 @@ export default function Admin() {
   const handleDelete = async (id) => {
     if (window.confirm("¿Eliminar este producto?")) {
       try {
-        await axios.delete(`http://localhost:5000/api/products/${id}`);
+        await api.delete(`/products/${id}`);
       } catch (error) {
         console.error("Error al eliminar producto:", error);
       }

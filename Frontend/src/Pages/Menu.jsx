@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import ProductCard from "../Components/ProductCard";
 import BusinessHeader from "../Components/BusinessHeader";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
+import { API_ENDPOINTS } from "../config";
+import api from "../services/api";
 
 export default function Menu() {
   const [products, setProducts] = useState([]);
@@ -30,8 +31,8 @@ export default function Menu() {
     const fetchData = async () => {
       try {
         const [productsRes, categoriesRes] = await Promise.all([
-          axios.get("http://localhost:5000/api/products"),
-          axios.get("http://localhost:5000/api/categories")
+          api.get("/products"),
+          api.get("/categories")
         ]);
         setProducts(productsRes.data);
         setCategories(categoriesRes.data);
@@ -45,7 +46,7 @@ export default function Menu() {
     fetchData();
 
     // Replace WebSocket with SSE
-    const eventSource = new EventSource('http://localhost:5000/api/events');
+    const eventSource = new EventSource(`${API_ENDPOINTS.EVENTS}`);
 
     eventSource.onmessage = (event) => {
       try {
