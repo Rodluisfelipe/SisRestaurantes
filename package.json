@@ -2,8 +2,8 @@
     "name": "sisrestaurantes",
     "version": "1.0.0",
     "scripts": {
-      "start": "node Backend/server.js",
-      "build": "echo 'Build completed'"
+      "start": "cd Backend && npm install && node server.js",
+      "build": "cd Backend && npm install"
     },
     "engines": {
       "node": ">=14.0.0"
