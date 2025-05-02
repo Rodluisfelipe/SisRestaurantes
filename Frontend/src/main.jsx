@@ -1,10 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { RouterProvider, createBrowserRouter } from "react-router-dom";
-import App from "./App";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App.jsx";
 import "./index.css";
 import { AuthProvider } from "./Context/AuthContext";
 import ErrorBoundary from "./Components/ErrorBoundary";
+
+// Importar el servicio API para inicializar la configuración global
+import "./services/api.js";
 
 // Creamos un componente Root que contendrá el AuthProvider
 const Root = () => {
@@ -15,22 +18,10 @@ const Root = () => {
   );
 };
 
-// Configuración del router con las nuevas flags y manejo de errores
-const router = createBrowserRouter([
-  {
-    path: '/*',
-    element: <Root />,
-    errorElement: <ErrorBoundary />
-  }
-], {
-  future: {
-    v7_startTransition: true,
-    v7_relativeSplatPath: true
-  }
-});
-
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <BrowserRouter>
+      <Root />
+    </BrowserRouter>
   </React.StrictMode>
 );
