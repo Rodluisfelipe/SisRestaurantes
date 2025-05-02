@@ -3,6 +3,10 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 
+// Crear la aplicación Express PRIMERO
+const app = express();
+
+// Luego configurar CORS
 app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = ['https://goburger.wuaze.com', 'http://localhost:5173'];
