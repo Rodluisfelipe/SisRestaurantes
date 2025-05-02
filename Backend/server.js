@@ -64,7 +64,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "¡Algo salió mal!", error: err.message });
 });
 
-mongoose.connect(process.env.MONGO_URI)
+// MongoDB connection string
+const MONGO_URI = "mongodb+srv://pipe95141007:<Pipe9514.>@cluster0.hp7leo2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+
+mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
     const port = process.env.PORT || 5000;
