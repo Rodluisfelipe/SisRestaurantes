@@ -7,7 +7,7 @@ const app = express();
 
 // Configurar CORS para permitir SSE
 app.use(cors({
-  origin: 'http://localhost:5173', // URL de tu frontend
+  origin: 'https://goburger.wuaze.com/admin,https://goburger.wuaze.com', // URL de tu frontend
   credentials: true
 }));
 app.use(express.json());

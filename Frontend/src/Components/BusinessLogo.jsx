@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import api from '../services/api';
 
 function BusinessLogo() {
   const [logo, setLogo] = useState("");
 
   useEffect(() => {
-    axios.get("http://localhost:5000/api/business-config")
+    api.get("/business-config")
       .then(res => setLogo(res.data.logo))
       .catch(err => console.error("Error al obtener el logo:", err));
   }, []);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const BusinessSettings = () => {
   const initialSettings = {
@@ -29,7 +29,7 @@ const BusinessSettings = () => {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/business-config');
+      const response = await api.get('/business-config');
       if (response.data) {
         // Asegurarse de que todos los campos necesarios existan
         const data = {
@@ -85,7 +85,7 @@ const BusinessSettings = () => {
 
       console.log('Datos a enviar:', dataToSend);
       
-      const response = await axios.put('http://localhost:5000/api/business-config', dataToSend);
+      const response = await api.put('/business-config', dataToSend);
       console.log('Respuesta del servidor:', response.data);
       
       // Actualizar el estado con los datos recibidos
@@ -125,7 +125,7 @@ const BusinessSettings = () => {
       // Si el documento actual no tiene isOpen (undefined), arreglar el esquema primero
       if (settings.isOpen === undefined) {
         console.log("El campo isOpen no existe, arreglando esquema...");
-        await axios.post('http://localhost:5000/api/business-config/fix-schema');
+        await api.post('/business-config/fix-schema');
         await fetchSettings(); // Recargar con el esquema actualizado
         setSuccessMessage("Esquema actualizado. Intente cambiar el estado nuevamente.");
         setTimeout(() => setSuccessMessage(''), 3000);
@@ -142,7 +142,7 @@ const BusinessSettings = () => {
       
       console.log('Datos a enviar para cambiar estado:', dataToSend);
       
-      const response = await axios.put('http://localhost:5000/api/business-config', dataToSend);
+      const response = await api.put('/business-config', dataToSend);
       console.log('Respuesta del servidor:', response.data);
       
       // Verificar que el estado se guardó correctamente

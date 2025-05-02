@@ -20,7 +20,7 @@ const BusinessHeader = () => {
   useEffect(() => {
     const fetchBusinessConfig = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/business-config');
+        const response = await axios.get('/business-config');
         console.log('Datos recibidos en BusinessHeader:', response.data);
         if (response.data) {
           setBusinessConfig(prevConfig => ({

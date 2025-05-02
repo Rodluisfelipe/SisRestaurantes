@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const BusinessSettingsAdmin = () => {
   const [settings, setSettings] = useState({
@@ -16,7 +16,7 @@ const BusinessSettingsAdmin = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/business-settings');
+        const response = await api.get('/business-settings');
         if (response.data) {
           setSettings(response.data);
         }
@@ -31,7 +31,7 @@ const BusinessSettingsAdmin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.put('http://localhost:5000/api/business-settings', settings);
+      await api.put('/business-settings', settings);
       alert('Settings updated successfully!');
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -53,7 +53,7 @@ const BusinessSettingsAdmin = () => {
 
   const toggleSocialMediaVisibility = async (platform) => {
     try {
-      await axios.patch(`http://localhost:5000/api/business-settings/social-media/${platform}/visibility`);
+      await api.patch(`/business-settings/social-media/${platform}/visibility`);
       const newSocialMedia = settings.socialMedia.map(sm =>
         sm.platform === platform ? { ...sm, isVisible: !sm.isVisible } : sm
       );
@@ -65,7 +65,7 @@ const BusinessSettingsAdmin = () => {
 
   const toggleInterestButtonVisibility = async (index) => {
     try {
-      await axios.patch(`http://localhost:5000/api/business-settings/interest-buttons/${index}/visibility`);
+      await api.patch(`/business-settings/interest-buttons/${index}/visibility`);
       const newButtons = [...settings.interestButtons];
       newButtons[index] = { ...newButtons[index], isVisible: !newButtons[index].isVisible };
       setSettings({ ...settings, interestButtons: newButtons });

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 function ToppingGroupsManager() {
   const [toppingGroups, setToppingGroups] = useState([]);
@@ -18,7 +18,7 @@ function ToppingGroupsManager() {
 
   const fetchToppingGroups = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/topping-groups');
+      const response = await api.get('/topping-groups');
       setToppingGroups(response.data);
     } catch (error) {
       console.error('Error al cargar los grupos de toppings:', error);
@@ -29,9 +29,9 @@ function ToppingGroupsManager() {
     e.preventDefault();
     try {
       if (isEditing) {
-        await axios.put(`http://localhost:5000/api/topping-groups/${currentGroup._id}`, currentGroup);
+        await api.put(`/topping-groups/${currentGroup._id}`, currentGroup);
       } else {
-        await axios.post('http://localhost:5000/api/topping-groups', currentGroup);
+        await api.post('/topping-groups', currentGroup);
       }
       fetchToppingGroups();
       resetForm();
@@ -80,7 +80,7 @@ function ToppingGroupsManager() {
   const handleDelete = async (id) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este grupo?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/topping-groups/${id}`);
+        await api.delete(`/topping-groups/${id}`);
         fetchToppingGroups();
       } catch (error) {
         console.error('Error al eliminar el grupo:', error);

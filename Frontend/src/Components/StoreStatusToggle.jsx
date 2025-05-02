@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const StoreStatusToggle = ({ initialIsOpen, onStatusChange }) => {
   const [isOpen, setIsOpen] = useState(initialIsOpen);
@@ -15,9 +15,7 @@ const StoreStatusToggle = ({ initialIsOpen, onStatusChange }) => {
       
       // Usar la ruta principal para actualizar el estado del negocio
       // Enviando solo la información necesaria para evitar perder datos existentes
-      const response = await axios.put('http://localhost:5000/api/business-config', {
-        isOpen: newStatus
-      });
+      const response = await api.put('/business-config', { isOpen: newStatus });
       
       console.log('Respuesta al cambiar estado:', response.data);
       
