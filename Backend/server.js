@@ -65,8 +65,7 @@ app.use((err, req, res, next) => {
 });
 
 // MongoDB connection string
-const MONGO_URI = "mongodb+srv://pipe95141007:<Pipe9514.>@cluster0.hp7leo2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-
+const MONGO_URI = "mongodb+srv://pipe95141007:Pipe9514.@cluster0.hp7leo2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
