@@ -1,0 +1,11 @@
+{
+    "name": "sisrestaurantes",
+    "version": "1.0.0",
+    "scripts": {
+      "start": "node Backend/server.js",
+      "build": "echo 'Build completed'"
+    },
+    "engines": {
+      "node": ">=14.0.0"
+    }
+  }
