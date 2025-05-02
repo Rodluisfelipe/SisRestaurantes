@@ -3,11 +3,16 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
 
-const app = express();
-
-// Configurar CORS para permitir SSE
 app.use(cors({
-  origin: 'https://goburger.wuaze.com/admin,https://goburger.wuaze.com', // URL de tu frontend
+  origin: function(origin, callback) {
+    const allowedOrigins = ['https://goburger.wuaze.com', 'http://localhost:5173'];
+    // Si no hay origen (como en solicitudes curl o desde Postman) o el origen está en la lista, permite
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());

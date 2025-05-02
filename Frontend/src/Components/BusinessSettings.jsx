@@ -23,40 +23,39 @@ const BusinessSettings = () => {
   const [statusLoading, setStatusLoading] = useState(false);
 
   useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const fetchSettings = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/business-config');
-      if (response.data) {
-        // Asegurarse de que todos los campos necesarios existan
-        const data = {
-          ...initialSettings,
-          ...response.data,
-          coverImage: response.data.coverImage || '',
-          isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
-          socialMedia: {
-            ...initialSettings.socialMedia,
-            ...(response.data.socialMedia || {})
-          },
-          extraLink: {
-            ...initialSettings.extraLink,
-            ...(response.data.extraLink || {})
-          }
-        };
-        console.log('Datos cargados:', data);
-        setSettings(data);
-        setPreviewLogo(response.data?.logo || '');
+    const fetchBusinessConfig = async () => {
+      try {
+        const response = await api.get('/business-config');
+        if (response.data) {
+          // Asegurarse de que todos los campos necesarios existan
+          const data = {
+            ...initialSettings,
+            ...response.data,
+            coverImage: response.data.coverImage || '',
+            isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
+            socialMedia: {
+              ...initialSettings.socialMedia,
+              ...(response.data.socialMedia || {})
+            },
+            extraLink: {
+              ...initialSettings.extraLink,
+              ...(response.data.extraLink || {})
+            }
+          };
+          console.log('Datos cargados:', data);
+          setSettings(data);
+          setPreviewLogo(response.data?.logo || '');
+        }
+      } catch (error) {
+        console.error('Error al cargar la configuración:', error);
+        setError('Error al cargar la configuración');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error al cargar la configuración:', error);
-      setError('Error al cargar la configuración');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchBusinessConfig();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -126,7 +125,7 @@ const BusinessSettings = () => {
       if (settings.isOpen === undefined) {
         console.log("El campo isOpen no existe, arreglando esquema...");
         await api.post('/business-config/fix-schema');
-        await fetchSettings(); // Recargar con el esquema actualizado
+        await fetchBusinessConfig(); // Recargar con el esquema actualizado
         setSuccessMessage("Esquema actualizado. Intente cambiar el estado nuevamente.");
         setTimeout(() => setSuccessMessage(''), 3000);
         return;
