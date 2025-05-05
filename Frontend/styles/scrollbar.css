@@ -1,0 +1,21 @@
+/* Scrollbar moderno y minimalista */
+
+/* Para navegadores basados en Webkit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: #222;
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #e5e7eb;
+  border-radius: 8px;
+}
+
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #222 #e5e7eb;
+} 

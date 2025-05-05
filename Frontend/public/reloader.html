@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Redirigiendo...</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background-color: #f5f5f5;
+    }
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .container {
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="loader"></div>
+    <p>Redirigiendo al panel de administración...</p>
+  </div>
+  
+  <script>
+    // Función para obtener parámetros de la URL
+    function getUrlParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param);
+    }
+    
+    // Verificar si hay un token de acceso
+    const hasToken = Boolean(localStorage.getItem('accessToken'));
+    const businessSlug = localStorage.getItem('businessSlug');
+    const userStr = localStorage.getItem('user');
+    
+    // Si hay token, redirigir al admin
+    if (hasToken) {
+      let redirectUrl = '/login';
+      
+      if (businessSlug) {
+        redirectUrl = `/${businessSlug}/admin`;
+      } else if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          if (user && user.businessId) {
+            redirectUrl = `/${user.businessId}/admin`;
+          }
+        } catch (e) {
+          console.error('Error parsing user data:', e);
+        }
+      }
+      
+      console.log('Redirigiendo a:', redirectUrl);
+      // Esperar un segundo y redirigir
+      setTimeout(() => {
+        window.location.href = redirectUrl;
+      }, 1000);
+    } else {
+      // Si no hay token, ir al login
+      window.location.href = '/login';
+    }
+  </script>
+</body>
+</html> 

@@ -1,11 +1,37 @@
-import { useState, useEffect } from "react";
+// @charset UTF-8
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import ProductCard from "../Components/ProductCard";
+import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
 import { API_ENDPOINTS } from "../config";
 import api from "../services/api";
+import { useBusinessConfig } from "../Context/BusinessContext";
+import '../../styles/scrollbar.css';
+import { socket } from '../services/api';
+import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObjectId';
+
+/**
+ * Página principal del Menú para clientes
+ *
+ * Funcionalidad:
+ * - Muestra productos organizados por categorías
+ * - Permite agregar productos al carrito
+ * - Gestiona selección de opciones adicionales (toppings)
+ * - Muestra resumen del carrito y posibilita crear pedidos
+ * - Se actualiza en tiempo real mediante Server-Sent Events
+ */
+
+const getCategoryOrder = () => {
+  try {
+    const savedOrder = localStorage.getItem('categoryOrderSettings');
+    return savedOrder ? JSON.parse(savedOrder) : {};
+  } catch (error) {
+    console.error('Error al obtener orden de categorías:', error);
+    return {};
+  }
+};
 
 export default function Menu() {
   const [products, setProducts] = useState([]);
@@ -25,38 +51,80 @@ export default function Menu() {
     return savedOrderInfo ? JSON.parse(savedOrderInfo) : null;
   });
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
-  const navigate = useNavigate();
+  const { businessConfig } = useBusinessConfig();
+  const { businessId } = useBusinessConfig();
 
   useEffect(() => {
+    console.log('Menu - businessId:', businessId, 'type:', typeof businessId);
+    console.log('Menu - businessConfig:', businessConfig);
+  }, [businessId, businessConfig]);
+
+  useEffect(() => {
+    if (businessConfig?.businessName) {
+      document.title = businessConfig.businessName;
+    }
+    if (businessConfig?.logo) {
+      let favicon = document.querySelector("link[rel='icon']") || document.createElement('link');
+      favicon.rel = 'icon';
+      favicon.type = 'image/png';
+      favicon.href = businessConfig.logo;
+      document.head.appendChild(favicon);
+    }
+  }, [businessConfig.businessName, businessConfig.logo]);
+
+  useEffect(() => {
+    // Usar isValidBusinessIdentifier en lugar de isValidObjectId para aceptar tanto slugs como ObjectIDs
+    const isValid = isValidBusinessIdentifier(businessId);
+    console.log('Menu - businessId es válido:', isValid, businessId);
+    
+    if (!isValid) {
+      console.log('Menu - businessId no es válido, no se cargarán datos');
+      return;
+    }
+    
+    setLoading(true);
     const fetchData = async () => {
       try {
+        console.log('Menu - Cargando datos para businessId:', businessId);
         const [productsRes, categoriesRes] = await Promise.all([
-          api.get("/products"),
-          api.get("/categories")
+          api.get(`/products?businessId=${businessId}`),
+          api.get(`/categories?businessId=${businessId}`)
         ]);
+        console.log('Menu - Datos recibidos:', {
+          products: productsRes.data.length,
+          categories: categoriesRes.data.length
+        });
         setProducts(productsRes.data);
         setCategories(categoriesRes.data);
-        setLoading(false);
       } catch (err) {
         console.error("Error al obtener datos:", err);
+      } finally {
         setLoading(false);
       }
     };
-
     fetchData();
 
-    // Replace WebSocket with SSE
+    // Comentar temporalmente los SSE hasta que el backend los soporte
+    /*
     const eventSource = new EventSource(`${API_ENDPOINTS.EVENTS}`);
 
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log('Evento recibido:', data.type);
+        
         switch (data.type) {
           case 'products_update':
+            console.log('Actualizando productos:', data.data.length);
             setProducts(data.data);
             break;
           case 'categories_update':
-            setCategories(data.data);
+            console.log('Actualizando categorías:', data.data.length);
+            setCategories(data.data.categories || data.data);
+            break;
+          case 'business_config_update':
+            console.log('Actualizando configuración del negocio:', data.data);
+            setBusinessConfig(data.data);
             break;
           default:
             break;
@@ -74,7 +142,45 @@ export default function Menu() {
     return () => {
       eventSource.close();
     };
-  }, []);
+    */
+  }, [businessId]);
+
+  useEffect(() => {
+    // Usar isValidBusinessIdentifier en lugar de isValidObjectId
+    const isValid = isValidBusinessIdentifier(businessId);
+    if (!isValid) {
+      console.log('Menu - businessId no es válido para socket:', businessId);
+      return;
+    }
+    
+    if (!socket.connected) {
+      socket.connect();
+    }
+    socket.emit('joinBusiness', businessId);
+    console.log('Socket joinBusiness:', businessId);
+    socket.on('products_update', (data) => {
+      if (data.type === 'created') {
+        setProducts((prev) => [...prev, data.product]);
+      } else if (data.type === 'deleted') {
+        setProducts((prev) => prev.filter(p => p._id !== data.productId));
+      }
+      // Puedes agregar lógica para 'updated' si lo implementas en backend
+    });
+    socket.on('categories_update', (data) => {
+      if (data.type === 'created') {
+        setCategories((prev) => [...prev, data.category]);
+      } else if (data.type === 'updated') {
+        setCategories((prev) => prev.map(cat => cat._id === data.category._id ? data.category : cat));
+      } else if (data.type === 'deleted') {
+        setCategories((prev) => prev.filter(cat => cat._id !== data.categoryId));
+      }
+    });
+    return () => {
+      socket.emit('leaveBusiness', businessId);
+      socket.off('products_update');
+      socket.off('categories_update');
+    };
+  }, [businessId]);
 
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
@@ -88,43 +194,57 @@ export default function Menu() {
 
   const addToCart = (product) => {
     setCart(prevCart => {
-      // Crear una clave única para el producto que incluya los toppings seleccionados
-      const productKey = product._id + JSON.stringify(product.selectedToppings || {});
+      // Crear un identificador único para el producto basado en su ID y toppings
+      const toppingsString = JSON.stringify(product.selectedToppings || {});
+      const uniqueId = `${product._id}-${toppingsString.replace(/[{}",:]/g, '')}`;
       
-      // Buscar si existe un producto idéntico (mismo ID y mismos toppings)
-      const existingItemIndex = prevCart.findIndex(item => 
-        item._id === product._id && 
-        JSON.stringify(item.selectedToppings || {}) === JSON.stringify(product.selectedToppings || {})
-      );
+      // Buscar si existe un producto idéntico (mismo ID único)
+      const existingItemIndex = prevCart.findIndex(item => item.uniqueId === uniqueId);
 
       if (existingItemIndex >= 0) {
         // Si existe, incrementar la cantidad
         const newCart = [...prevCart];
         newCart[existingItemIndex] = {
           ...newCart[existingItemIndex],
-          quantity: newCart[existingItemIndex].quantity + 1
+          quantity: (newCart[existingItemIndex].quantity || 0) + 1
         };
         return newCart;
       }
 
-      // Si no existe, agregar como nuevo item
-      return [...prevCart, { ...product, quantity: 1 }];
+      // Si no existe, agregar como nuevo item con ID único
+      return [...prevCart, { 
+        ...product, 
+        uniqueId, 
+        quantity: 1 
+      }];
     });
   };
-
-  const updateQuantity = (productId, newQuantity) => {
-    if (newQuantity < 1) return;
+  const updateQuantity = (uniqueId, newQuantity) => {
+    if (newQuantity <= 0) {
+      removeFromCart(uniqueId);
+      return;
+    }
+    
     setCart(prevCart =>
       prevCart.map(item =>
-        item._id === productId
+        item.uniqueId === uniqueId
           ? { ...item, quantity: newQuantity }
           : item
       )
     );
+    
+    // Actualizar localStorage
+    localStorage.setItem('cart', JSON.stringify(cart));
   };
 
-  const removeFromCart = (productId) => {
-    setCart(prevCart => prevCart.filter(item => item._id !== productId));
+  const removeFromCart = (uniqueId) => {
+    const updatedCart = cart.filter(item => item.uniqueId !== uniqueId);
+    setCart(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    
+    if (updatedCart.length === 0) {
+      setShowCartSummary(false);
+    }
   };
 
   // Calcular totales
@@ -150,35 +270,101 @@ export default function Menu() {
       return '';
     }
 
-    let message = `*Nuevo Pedido*\n`;
+    // Obtener el nombre del negocio del business config
+    const businessName = businessConfig?.businessName || 'Mi Restaurante';
     
-    // Agregar información del cliente
-    message += `\n*Cliente:* ${orderInfo.customerName}`;
-    
-    if (orderInfo.orderType === 'inSite') {
-      message += `\n*Tipo de Pedido:* En Sitio`;
-      message += `\n*Mesa:* ${orderInfo.tableNumber}`;
-    } else if (orderInfo.orderType === 'delivery') {
-      message += `\n*Tipo de Pedido:* A Domicilio`;
-      message += `\n*Teléfono:* ${orderInfo.phone}`;
-      message += `\n*Dirección:* ${orderInfo.address}`;
-    }
-
-    // Agregar detalle de productos
-    message += `\n\n*Detalle del Pedido:*\n`;
-    cart.forEach(item => {
-      message += `\n${item.quantity}x ${item.name} ($${(item.finalPrice || item.price).toFixed(2)} c/u)`;
-      if (item.selectedToppings) {
-        Object.values(item.selectedToppings).forEach(group => {
-          message += `\n  ${group.groupName}: ${group.options.map(opt => 
-            `${opt.name}${opt.price > 0 ? ` (+$${opt.price.toFixed(2)})` : ''}`
-          ).join(', ')}`;
-        });
-      }
-      message += `\nSubtotal: $${((item.finalPrice || item.price) * item.quantity).toFixed(2)}`;
+    // Obtener fecha y hora actual en formato legible (12 horas)
+    const now = new Date();
+    const fecha = now.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    const hora = now.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     });
 
-    message += `\n\n*Total: $${totalAmount.toFixed(2)}*`;
+    // Crear el mensaje con buen formato pero sin emojis
+    let message = `**** PEDIDO - ${businessName} ****\n`;
+    message += `------------------------\n`;
+    message += `*Fecha:* ${fecha}\n`;
+    message += `*Hora:* ${hora}\n`;
+    message += `------------------------\n\n`;
+    
+    // Agregar información del cliente
+    message += `*** DATOS DEL CLIENTE ***\n`;
+    message += `*Nombre:* ${orderInfo.customerName}\n`;
+    
+    if (orderInfo.orderType === 'inSite') {
+      message += `*Tipo de Pedido:* En Sitio\n`;
+      message += `*Mesa:* ${orderInfo.tableNumber}\n`;
+    } else if (orderInfo.orderType === 'delivery') {
+      message += `*Tipo de Pedido:* A Domicilio\n`;
+      message += `*Teléfono:* ${orderInfo.phone}\n`;
+      message += `*Dirección:* ${orderInfo.address}\n`;
+    }
+    message += `------------------------\n\n`;
+
+    // Agregar detalle de productos
+    message += `*** DETALLE DEL PEDIDO ***\n`;
+    
+    cart.forEach((item, index) => {
+      message += `\n${index + 1}. ${item.quantity}x ${item.name}\n`;
+      message += `   Precio unitario: $${(item.finalPrice || item.price).toFixed(2)}\n`;
+      
+      // Verificar si hay toppings seleccionados y es un array
+      if (item.selectedToppings && Array.isArray(item.selectedToppings) && item.selectedToppings.length > 0) {
+        message += `   *Adicionales:*\n`;
+        
+        // Iterar sobre cada grupo de toppings seleccionado
+        item.selectedToppings.forEach(topping => {
+          const basePrice = Number(topping.basePrice || 0);
+          
+          // Mostrar el grupo y su precio base si existe
+          message += `   • ${topping.groupName}`;
+          if (basePrice > 0) {
+            message += ` (Base: $${basePrice.toFixed(2)})`;
+          }
+          message += `:\n`;
+          
+          // Mostrar la opción principal si existe
+          if (topping.optionName) {
+            message += `     - ${topping.optionName}`;
+            if (topping.price > 0) {
+              message += ` (+$${topping.price.toFixed(2)})`;
+            }
+            message += `\n`;
+          }
+          
+          // Mostrar opciones de subgrupos si existen
+          if (topping.subGroups && Array.isArray(topping.subGroups) && topping.subGroups.length > 0) {
+            topping.subGroups.forEach(subItem => {
+              message += `     - ${subItem.subGroupTitle}: ${subItem.optionName}`;
+              if (subItem.price > 0) {
+                message += ` (+$${subItem.price.toFixed(2)})`;
+              }
+              message += `\n`;
+            });
+          }
+        });
+      }
+      
+      message += `   *Subtotal:* $${((item.finalPrice || item.price) * item.quantity).toFixed(2)}\n`;
+      message += `   ------------------------\n`;
+    });
+
+    // Agregar totales
+    message += `\n*** RESUMEN ***\n`;
+    message += `*Productos:* ${cart.length}\n`;
+    message += `*Cantidad total:* ${cart.reduce((sum, item) => sum + item.quantity, 0)} items\n`;
+    message += `*TOTAL A PAGAR:* $${totalAmount.toFixed(2)}\n`;
+    message += `------------------------\n`;
+    
+    // Agregar un mensaje de agradecimiento y datos del negocio
+    message += `\n¡Gracias por tu pedido en ${businessName}!\n`;
+    message += `Tu orden será procesada inmediatamente.`;
     
     return encodeURIComponent(message);
   };
@@ -205,17 +391,52 @@ export default function Menu() {
       return;
     }
 
-    window.open(`https://wa.me/?text=${createWhatsAppMessage()}`);
+    // Usar el número configurado en el panel de administración, o usar la API predeterminada sin número
+    const whatsappNumber = businessConfig?.whatsappNumber 
+      ? `https://wa.me/${businessConfig.whatsappNumber}?text=${createWhatsAppMessage()}` 
+      : `https://wa.me/?text=${createWhatsAppMessage()}`;
+
+    window.open(whatsappNumber);
+    
     // Limpiar solo el carrito después de enviar
     setCart([]);
     setShowCartSummary(false);
     localStorage.removeItem('cart');
   };
 
+  const getSortedCategories = (categories) => {
+    const savedOrder = localStorage.getItem('categoryOrder');
+    console.log("Menu: Retrieved category order from localStorage:", savedOrder);
+    
+    if (!savedOrder) {
+      return [...categories].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
+    }
+    
+    try {
+      const orderMap = JSON.parse(savedOrder);
+      console.log("Menu: Parsed order map:", orderMap);
+      
+      return [...categories].sort((a, b) => {
+        const orderA = orderMap[a._id] !== undefined ? orderMap[a._id] : 999;
+        const orderB = orderMap[b._id] !== undefined ? orderMap[b._id] : 999;
+        return orderA - orderB;
+      });
+    } catch (err) {
+      console.error("Menu: Error parsing category order:", err);
+      return [...categories].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex justify-center items-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50">
+        <div className="relative flex flex-col items-center">
+          {/* Spinner animado negro, minimalista */}
+          <div className="w-16 h-16 flex items-center justify-center mb-4">
+            <span className="inline-block w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></span>
+          </div>
+          <div className="mt-2 text-lg font-semibold text-gray-700 tracking-wide animate-pulse">Cargando...</div>
+        </div>
       </div>
     );
   }
@@ -235,7 +456,18 @@ export default function Menu() {
         updateOrderInfo={updateOrderInfo}
         createWhatsAppMessage={createWhatsAppMessage}
         onOrder={handleOrder}
+        businessConfig={businessConfig}
       />
+    );
+  }
+
+  if (businessConfig && businessConfig.isActive === false) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <img src={businessConfig.logo || 'https://placehold.co/150x150?text=Logo'} alt="Logo" className="w-32 h-32 mb-6 rounded-full object-cover border-4 border-blue-200" />
+        <h1 className="text-2xl font-bold text-gray-700 mb-2">Menú desactivado</h1>
+        <p className="text-gray-600 text-center max-w-md">Este negocio se encuentra temporalmente desactivado. Por favor, contacte al administrador para más información.</p>
+      </div>
     );
   }
 
@@ -244,34 +476,42 @@ export default function Menu() {
       <BusinessHeader />
       
       <div className="container mx-auto px-4 py-1">
-        {categories.map(category => {
-          const categoryProducts = products.filter(product => product.category === category._id);
-          if (categoryProducts.length === 0) return null;
+        {categories
+          .sort((a, b) => {
+            // Obtener el orden guardado
+            const orderMap = getCategoryOrder();
+            const orderA = orderMap[a._id] !== undefined ? orderMap[a._id] : 999;
+            const orderB = orderMap[b._id] !== undefined ? orderMap[b._id] : 999;
+            return orderA - orderB;
+          })
+          .map(category => {
+            const categoryProducts = products.filter(product => product.category === category._id);
+            if (categoryProducts.length === 0) return null;
 
-          return (
-            <div key={category._id} className="mb-8">
-              <div className="relative flex items-center mb-4">
-                <div className="flex-grow border-t border-gray-300"></div>
-                <h2 className="flex-shrink-0 px-4 text-xl font-bold text-gray-800">
-                  {category.name}
-                </h2>
-                <div className="flex-grow border-t border-gray-300"></div>
+            return (
+              <div key={category._id} className="mb-8">
+                <div className="relative flex items-center mb-4">
+                  <div className="flex-grow border-t border-gray-300"></div>
+                  <h2 className="flex-shrink-0 px-4 text-xl font-bold text-gray-800">
+                    {category.name}
+                  </h2>
+                  <div className="flex-grow border-t border-gray-300"></div>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 scrollbar-thin scrollbar-thumb-gray-900 scrollbar-track-gray-200">
+                  {categoryProducts.map(product => (
+                    <ProductCard 
+                      key={product._id} 
+                      product={product} 
+                      addToCart={addToCart}
+                      onToppingsOpen={() => setIsSelectingToppings(true)}
+                      onToppingsClose={() => setIsSelectingToppings(false)}
+                    />
+                  ))}
+                </div>
               </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {categoryProducts.map(product => (
-                  <ProductCard 
-                    key={product._id} 
-                    product={product} 
-                    addToCart={addToCart}
-                    onToppingsOpen={() => setIsSelectingToppings(true)}
-                    onToppingsClose={() => setIsSelectingToppings(false)}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
       </div>
 
       {/* Barra fija inferior del carrito - ahora con visibilidad condicional */}
@@ -284,7 +524,8 @@ export default function Menu() {
             </div>
             <button
               onClick={() => setShowCartSummary(true)}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-300"
+              style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+              className="px-6 py-2 rounded-lg transition-colors duration-300"
             >
               Ver Carrito
             </button>

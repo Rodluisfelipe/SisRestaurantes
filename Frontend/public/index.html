@@ -1,0 +1,47 @@
+<!-- Agregar justo después de <head> pero antes de cualquier otro script -->
+<script>
+  // SUPERGUARD - Intercepta cualquier intento de redirección al login
+  (function() {
+    // Verificar si hay token
+    const hasToken = Boolean(localStorage.getItem('accessToken'));
+    if (hasToken) {
+      // Si estamos en login pero hay token, intentar redirigir
+      if (window.location.pathname === '/login' || window.location.pathname.endsWith('/login')) {
+        // Buscar el slug o businessId
+        const businessSlug = localStorage.getItem('businessSlug');
+        const userStr = localStorage.getItem('user');
+        
+        let redirectUrl = null;
+        if (businessSlug) {
+          redirectUrl = `/${businessSlug}/admin`;
+        } else if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            if (user && user.businessId) {
+              redirectUrl = `/${user.businessId}/admin`;
+            }
+          } catch (e) {}
+        }
+        
+        // Si tenemos URL para redirigir y estamos en login, redirigir
+        if (redirectUrl) {
+          console.log('SUPERGUARD: Interceptando redirección al login, redirigiendo a:', redirectUrl);
+          window.location.href = redirectUrl;
+        }
+      }
+      
+      // Verificar también si venimos de una redirección forzada
+      const lastAdminUrl = sessionStorage.getItem('lastAdminUrl');
+      if (lastAdminUrl) {
+        const fromReload = sessionStorage.getItem('isFromReload');
+        if (fromReload) {
+          console.log('SUPERGUARD: Detectada recarga desde admin, redirigiendo a:', lastAdminUrl);
+          // Limpiar bandera
+          sessionStorage.removeItem('isFromReload');
+          window.location.href = lastAdminUrl;
+        }
+      }
+    }
+  })();
+</script>
+<!-- Fin del script SuperGuard --> 

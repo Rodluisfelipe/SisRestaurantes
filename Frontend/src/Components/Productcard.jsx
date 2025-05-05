@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import ProductToppingsSelector from './ProductToppingsSelector';
+import { useBusinessConfig } from "../Context/BusinessContext";
 
 function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
   const [showToppings, setShowToppings] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const { businessConfig } = useBusinessConfig();
 
   const handleAddToCart = (productWithToppings) => {
     addToCart(productWithToppings);
@@ -11,13 +14,16 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
   };
 
   const handleShowToppings = () => {
+    setHasError(false); // Resetear error al abrir
     setShowToppings(true);
     onToppingsOpen();
+    document.body.classList.add('modal-open');
   };
 
   const handleCloseToppings = () => {
     setShowToppings(false);
     onToppingsClose();
+    document.body.classList.remove('modal-open');
   };
 
   return (
@@ -46,8 +52,12 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
             <h2 className="text-base font-semibold text-gray-800 truncate">
               {product.name}
             </h2>
-            <span className="text-sm font-bold text-blue-600">
-              ${product.price}
+            <span className="text-sm font-bold text-black">
+              {(() => {
+                const price = Number(product.price);
+                const options = { minimumFractionDigits: 0, maximumFractionDigits: 1 };
+                return price.toLocaleString('es-CO', options);
+              })()}
             </span>
           </div>
 
@@ -59,7 +69,8 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
                 handleAddToCart(product);
               }
             }}
-            className="w-8 h-8 flex-shrink-0 flex items-center justify-center bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors duration-300"
+            style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+            className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300"
             aria-label="Agregar al carrito"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -70,14 +81,71 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
       </div>
 
       {showToppings && (
+        <div onClick={(e) => e.stopPropagation()} className="debugging-wrapper">
         <ProductToppingsSelector
-          product={product}
-          onAddToCart={handleAddToCart}
-          onClose={handleCloseToppings}
+            product={{
+              ...product,
+              toppingGroups: Array.isArray(product.toppingGroups) ? product.toppingGroups : []
+            }}
+            onAddToCart={(p) => {
+              console.log('onAddToCart llamado desde ProductCard', p);
+              handleAddToCart(p);
+            }}
+            onClose={() => {
+              console.log('onClose llamado desde ProductCard');
+              handleCloseToppings();
+            }}
         />
+        </div>
+      )}
+      
+      {hasError && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md mx-4">
+            <h3 className="text-xl font-bold text-red-600 mb-4">Error</h3>
+            <p className="mb-4">
+              Ha ocurrido un problema al cargar las opciones del producto. Por favor, intenta de nuevo.
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={handleCloseToppings}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
+}
+
+// Componente ErrorBoundary para capturar errores en componentes hijos
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error en componente:", error, errorInfo);
+    if (this.props.onError) {
+      this.props.onError(error);
+    }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return null; // No renderizar nada, el componente padre mostrará el error
+    }
+
+    return this.props.children;
+  }
 }
 
 export default ProductCard;

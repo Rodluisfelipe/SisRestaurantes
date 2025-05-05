@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import api from '../services/api';
+import React, { useState } from 'react';
+import { useBusinessConfig } from '../Context/BusinessContext';
 
 function OrderTypeSelector({ onComplete }) {
   const [orderInfo, setOrderInfo] = useState(() => {
@@ -10,25 +10,7 @@ function OrderTypeSelector({ onComplete }) {
     };
   });
 
-  const [businessConfig, setBusinessConfig] = useState({
-    businessName: '',
-    logo: ''
-  });
-
-  useEffect(() => {
-    const fetchBusinessConfig = async () => {
-      try {
-        const response = await api.get('/business-config');
-        if (response.data) {
-          setBusinessConfig(response.data);
-        }
-      } catch (error) {
-        console.error('Error fetching business config:', error);
-      }
-    };
-
-    fetchBusinessConfig();
-  }, []);
+  const { businessConfig } = useBusinessConfig();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -38,7 +20,7 @@ function OrderTypeSelector({ onComplete }) {
     }
   };
 
-  const defaultLogo = 'https://via.placeholder.com/150?text=Logo';
+  const defaultLogo = 'https://placehold.co/150x150?text=Logo';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -78,7 +60,8 @@ function OrderTypeSelector({ onComplete }) {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300"
+            style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+            className="w-full py-3 rounded-lg transition-colors duration-300"
           >
             Ver Menú
           </button>

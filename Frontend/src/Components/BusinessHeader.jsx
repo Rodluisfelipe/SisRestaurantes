@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../services/api';
+import { useBusinessConfig } from '../Context/BusinessContext';
+import { socket } from '../services/api';
 
 const BusinessHeader = () => {
   const [businessConfig, setBusinessConfig] = useState({
@@ -16,13 +18,13 @@ const BusinessHeader = () => {
   });
   const [logoError, setLogoError] = useState(false);
   const [coverError, setCoverError] = useState(false);
+  const { businessId } = useBusinessConfig();
 
   useEffect(() => {
     const fetchBusinessConfig = async () => {
       try {
-        const response = await axios.get('/business-config');
-        console.log('Datos recibidos en BusinessHeader:', response.data);
-        if (response.data) {
+        const response = await api.get(`/business-config?businessId=${businessId}`);
+        if (response.data && typeof response.data === 'object') {
           setBusinessConfig(prevConfig => ({
             ...prevConfig,
             ...response.data,
@@ -44,15 +46,39 @@ const BusinessHeader = () => {
         console.error('Error fetching business config:', error);
       }
     };
-
     fetchBusinessConfig();
-    
-    // Actualizar el estado cada minuto
-    const intervalId = setInterval(fetchBusinessConfig, 60000);
-    return () => clearInterval(intervalId);
-  }, []);
+    // --- WebSocket: Conexión y listeners ---
+    socket.connect();
+    socket.emit('joinBusiness', businessId);
+    socket.on('business_config_update', (data) => {
+      setBusinessConfig(prevConfig => ({
+        ...prevConfig,
+        ...data,
+        coverImage: data.coverImage || '',
+        isOpen: data.isOpen !== undefined ? data.isOpen : true,
+        socialMedia: {
+          facebook: { url: '', isVisible: false, ...data?.socialMedia?.facebook },
+          instagram: { url: '', isVisible: false, ...data?.socialMedia?.instagram },
+          tiktok: { url: '', isVisible: false, ...data?.socialMedia?.tiktok }
+        },
+        extraLink: {
+          url: '',
+          isVisible: false,
+          ...data?.extraLink
+        }
+      }));
+    });
+    return () => {
+      socket.emit('leaveBusiness', businessId);
+      socket.off('business_config_update');
+      socket.disconnect();
+    };
+    // Reducir la frecuencia de actualización a cada 5 minutos
+    // const intervalId = setInterval(fetchBusinessConfig, 5 * 60 * 1000);
+    // return () => clearInterval(intervalId);
+  }, [businessId]);
 
-  const defaultLogo = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB2aWV3Qm94PSIwIDAgMTAwIDEwMCI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiNlNWU3ZWIiLz48dGV4dCB4PSI1MCIgeT0iNTAiIGRvbWluYW50LWJhc2VsaW5lPSJtaWRkbGUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtc2l6ZT0iMjAiIGZpbGw9IiM5Y2EzYWYiPkxvZ288L3RleHQ+PC9zdmc+';
+  const defaultLogo = 'https://placehold.co/150x150?text=Logo';
   const defaultCover = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgODAwIDIwMCI+PHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNlNWU3ZWIiLz48L3N2Zz4=';
 
   console.log('Estado del negocio:', businessConfig.isOpen ? 'Abierto' : 'Cerrado');

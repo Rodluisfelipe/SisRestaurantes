@@ -1,86 +1,91 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config();
+const eventsRouter = require("./Routes/events");
+const http = require("http");
+
+// Cargar variables de entorno - ESTO DEBE IR PRIMERO
+require('dotenv').config({ path: process.env.NODE_ENV === 'development' ? './env.development' : './.env' });
+
+/**
+ * Servidor principal de la aplicación
+ * 
+ * Este archivo configura:
+ * - El servidor Express
+ * - La conexión con MongoDB
+ * - CORS para permitir solicitudes desde el frontend
+ * - Server-Sent Events (SSE) para actualizaciones en tiempo real
+ * - Las rutas de la API
+ */
 
 // Crear la aplicación Express PRIMERO
 const app = express();
+const server = http.createServer(app);
 
-// Luego configurar CORS
+// Inicializar socket.io
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  }
+});
+
+// Exponer io globalmente para usarlo en otros módulos
+app.set('io', io);
+
+// Inicializar lógica de sockets
+require('./services/socketService').initSocket(io);
+
+// Usar las variables de entorno
+const MONGO_URI = process.env.MONGODB_URI;
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+// Configurar CORS con los orígenes permitidos
 app.use(cors({
-  origin: function(origin, callback) {
-    const allowedOrigins = ['https://goburger.wuaze.com', 'http://localhost:5173'];
-    // Si no hay origen (como en solicitudes curl o desde Postman) o el origen está en la lista, permite
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('No permitido por CORS'));
-    }
-  },
-  credentials: true
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
-// Almacenar las conexiones SSE
-const clients = new Set();
+// Rutas API
+app.use("/api/products", require("./Routes/products"));
+app.use("/api/business-config", require("./Routes/businessConfig"));
+app.use("/api/categories", require("./Routes/categories"));
+app.use("/api/topping-groups", require("./Routes/toppingGroups"));
+app.use("/api/auth", require("./Routes/auth"));
+  
+// Ruta específica para SSE
+app.use("/events", eventsRouter);
 
-// Middleware para SSE
-app.get('/api/events', (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-
-  // Enviar un evento inicial para mantener la conexión
-  res.write('data: {"type":"connected"}\n\n');
-
-  // Agregar cliente a la lista
-  clients.add(res);
-
-  // Eliminar cliente cuando se cierra la conexión
-  req.on('close', () => {
-    clients.delete(res);
-  });
-});
-
-// Función para emitir eventos a todos los clientes
-const emitEvent = (eventType, data) => {
-  const eventData = JSON.stringify({ type: eventType, data });
-  clients.forEach(client => {
-    client.write(`data: ${eventData}\n\n`);
-  });
-};
-
-// Agregar emitEvent al objeto req para uso en las rutas
-app.use((req, res, next) => {
-  req.emitEvent = emitEvent;
-  console.log(`${req.method} ${req.path}`);
-  next();
-});
-
-const productRoutes = require("./Routes/products");
-const businessConfigRoutes = require("./Routes/businessConfig");
-const categoryRoutes = require("./Routes/categories");
-const toppingGroupRoutes = require("./Routes/toppingGroups");
-
-app.use("/api/products", productRoutes);
-app.use("/api/business-config", businessConfigRoutes);
-app.use("/api/categories", categoryRoutes);
-app.use("/api/topping-groups", toppingGroupRoutes);
-
-// Manejo de errores global
+// Manejo de errores
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ message: "¡Algo salió mal!", error: err.message });
+  console.error('Error:', err.stack);
+  res.status(500).json({ 
+    message: "Error interno del servidor",
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
 });
 
-// MongoDB connection string
-const MONGO_URI = "mongodb+srv://pipe95141007:Pipe9514.@cluster0.hp7leo2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
     const port = process.env.PORT || 5000;
-    app.listen(port, () =>
+    server.listen(port, () =>
       console.log(`Server running on port ${port}`)
     );
+
+    // Manejar cierre graceful del servidor
+    process.on('SIGTERM', () => {
+      console.log('SIGTERM recibido. Cerrando servidor...');
+      server.close(() => {
+        console.log('Servidor cerrado.');
+        process.exit(0);
+      });
+    });
   })
   .catch((err) => console.error("Error de conexión a MongoDB:", err));

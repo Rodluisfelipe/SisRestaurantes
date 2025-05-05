@@ -1,67 +1,71 @@
 const express = require("express");
 const router = express.Router();
 const BusinessConfig = require("../Models/BusinessConfig");
+const eventService = require('../services/eventService');
+const { emitToBusiness } = require("../services/socketService");
+const { findBusinessByIdentifier } = require("../utils/businessHelper");
 
 // Obtener la configuración
 router.get("/", async (req, res) => {
-  try {
-    const config = await BusinessConfig.getConfig();
-    res.json(config);
-  } catch (error) {
-    console.error("Error al obtener la configuración:", error);
-    res.status(500).json({ message: "Error al obtener la configuración" });
-  }
+    const { businessId } = req.query;
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId requerido" });
+    }
+    
+    try {
+      // Buscar por _id o slug usando el helper
+      const config = await findBusinessByIdentifier(businessId);
+      
+      if (!config) {
+        return res.status(404).json({ 
+          message: 'Negocio no encontrado', 
+          detail: `No se encontró un negocio con el identificador '${businessId}'` 
+        });
+      }
+      
+      res.json(config);
+    } catch (error) {
+      console.error(`Error al obtener la configuración del negocio ${businessId}:`, error);
+      res.status(500).json({ 
+        message: 'Error al obtener la configuración del negocio',
+        error: error.message 
+      });
+    }
 });
 
 // Actualizar la configuración
 router.put("/", async (req, res) => {
-  try {
-    console.log('Datos recibidos para actualización:', req.body);
+    const { businessId, ...updateData } = req.body;
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId es requerido" });
+    }
     
-    const updateData = {
-      businessName: req.body.businessName,
-      logo: req.body.logo,
-      coverImage: req.body.coverImage,
-      isOpen: req.body.isOpen !== undefined ? req.body.isOpen : true,
-      socialMedia: {
-        facebook: {
-          url: req.body.socialMedia?.facebook?.url || "",
-          isVisible: req.body.socialMedia?.facebook?.isVisible || false
-        },
-        instagram: {
-          url: req.body.socialMedia?.instagram?.url || "",
-          isVisible: req.body.socialMedia?.instagram?.isVisible || false
-        },
-        tiktok: {
-          url: req.body.socialMedia?.tiktok?.url || "",
-          isVisible: req.body.socialMedia?.tiktok?.isVisible || false
-        }
-      },
-      extraLink: {
-        url: req.body.extraLink?.url || "",
-        isVisible: req.body.extraLink?.isVisible || false
+    try {
+      // Buscar por _id o slug usando el helper
+      const business = await findBusinessByIdentifier(businessId);
+      
+      if (!business) {
+        return res.status(404).json({ 
+          message: 'Negocio no encontrado',
+          detail: `No se encontró un negocio con el identificador '${businessId}'`
+        });
       }
-    };
-
-    console.log('Datos a actualizar:', updateData);
-
-    const config = await BusinessConfig.findOneAndUpdate(
-      {},
-      updateData,
-      { 
-        new: true,
-        upsert: true,
-        runValidators: true,
-        setDefaultsOnInsert: true
-      }
-    );
-
-    console.log('Configuración actualizada:', config);
-    res.json(config);
-  } catch (error) {
-    console.error("Error al actualizar la configuración:", error);
-    res.status(500).json({ message: "Error al actualizar la configuración" });
-  }
+      
+      // Actualizar usando el _id encontrado
+      const config = await BusinessConfig.findByIdAndUpdate(
+        business._id,
+        updateData,
+        { new: true }
+      );
+      
+      res.json(config);
+    } catch (error) {
+      console.error(`Error al actualizar la configuración del negocio ${businessId}:`, error);
+      res.status(500).json({ 
+        message: 'Error al actualizar la configuración del negocio',
+        error: error.message 
+      });
+    }
 });
 
 // Ruta específica para actualizar solo el estado del negocio (para actualizaciones rápidas)
@@ -83,6 +87,108 @@ router.put("/status", async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar el estado del negocio:", error);
     res.status(500).json({ message: "Error al actualizar el estado del negocio" });
+  }
+});
+
+// Ruta específica para actualizar/reparar el esquema
+router.post("/fix-schema", async (req, res) => {
+  try {
+    // Buscar la configuración existente
+    let config = await BusinessConfig.findOne();
+    
+    if (!config) {
+      // Si no existe, crear una nueva con todos los campos
+      config = await BusinessConfig.create({
+        businessName: "Mi Restaurante",
+        logo: "",
+        coverImage: "",
+        isOpen: true,
+        whatsappNumber: "",
+        socialMedia: {
+          facebook: { url: "", isVisible: false },
+          instagram: { url: "", isVisible: false },
+          tiktok: { url: "", isVisible: false }
+        },
+        extraLink: { url: "", isVisible: false }
+      });
+    } else {
+      // Si existe pero no tiene el campo whatsappNumber, actualizarlo
+      if (config.whatsappNumber === undefined) {
+        config = await BusinessConfig.findOneAndUpdate(
+          {},
+          { $set: { whatsappNumber: "" } },
+          { new: true }
+        );
+      }
+    }
+    
+    console.log("Esquema actualizado:", config);
+    res.json(config);
+  } catch (error) {
+    console.error("Error al reparar el esquema:", error);
+    res.status(500).json({ message: "Error al reparar el esquema" });
+  }
+});
+
+// Endpoint para actualizar isActive (activar/desactivar negocio desde superadmin)
+router.put("/active", async (req, res) => {
+    const { businessId, isActive } = req.body;
+    if (!businessId || typeof isActive !== 'boolean') {
+      return res.status(400).json({ message: "businessId y isActive son requeridos" });
+    }
+    
+    try {
+      // Buscar por _id o slug usando el helper
+      const business = await findBusinessByIdentifier(businessId);
+      
+      if (!business) {
+        return res.status(404).json({ message: 'Negocio no encontrado' });
+      }
+      
+      // Actualizar usando el _id encontrado
+      const config = await BusinessConfig.findByIdAndUpdate(
+        business._id,
+        { isActive },
+        { new: true }
+      );
+      
+      // Emitir evento de WebSocket a los clientes del negocio
+      emitToBusiness(business._id.toString(), "business_status_update", { isActive });
+      
+      res.json(config);
+    } catch (error) {
+      console.error(`Error al actualizar el estado activo del negocio ${businessId}:`, error);
+      res.status(500).json({ 
+        message: 'Error al actualizar el estado activo del negocio',
+        error: error.message 
+      });
+    }
+});
+
+// Obtener negocio por slug
+router.get("/by-slug/:slug", async (req, res) => {
+  const { slug } = req.params;
+  if (!slug) {
+    return res.status(400).json({ message: "slug requerido" });
+  }
+  
+  try {
+    const config = await BusinessConfig.findOne({ slug });
+    
+    if (!config) {
+      return res.status(404).json({ 
+        message: 'Negocio no encontrado',
+        detail: `No se encontró un negocio con el slug '${slug}'`
+      });
+    }
+    
+    res.json(config);
+  } catch (error) {
+    console.error(`Error al obtener la configuración del negocio con slug ${slug}:`, error);
+    res.status(500).json({ 
+      message: 'Error al obtener la configuración del negocio',
+      error: error.message 
+    });
   }
 });
 

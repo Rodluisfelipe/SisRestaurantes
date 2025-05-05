@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities; 
+
+body.modal-open {
+  overflow: hidden;
+}
+
+.modal-backdrop {
+  z-index: 40;
+}
+
+.modal-content {
+  z-index: 50;
+} 

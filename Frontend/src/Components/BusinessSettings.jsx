@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useBusinessConfig } from '../Context/BusinessContext';
+import { socket } from '../services/api';
 
 const BusinessSettings = () => {
   const initialSettings = {
@@ -7,6 +9,7 @@ const BusinessSettings = () => {
     logo: '',
     coverImage: '',
     isOpen: true,
+    whatsappNumber: '',
     socialMedia: {
       facebook: { url: '', isVisible: true },
       instagram: { url: '', isVisible: true },
@@ -21,41 +24,64 @@ const BusinessSettings = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [previewLogo, setPreviewLogo] = useState('');
   const [statusLoading, setStatusLoading] = useState(false);
+  const { businessId } = useBusinessConfig();
+  const [isEditingLogo, setIsEditingLogo] = useState(false);
+
+  const fetchBusinessConfig = async () => {
+    try {
+      const response = await api.get(`/business-config?businessId=${businessId}`);
+      if (response.data) {
+        const data = {
+          ...initialSettings,
+          ...response.data,
+          coverImage: response.data.coverImage || '',
+          isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
+          whatsappNumber: response.data.whatsappNumber || '',
+          socialMedia: {
+            ...initialSettings.socialMedia,
+            ...(response.data.socialMedia || {})
+          },
+          extraLink: {
+            ...initialSettings.extraLink,
+            ...(response.data.extraLink || {})
+          }
+        };
+        console.log('Datos cargados:', data);
+        if (!isEditingLogo) setSettings(data);
+        if (!isEditingLogo) setPreviewLogo(response.data?.logo || '');
+      }
+    } catch (error) {
+      console.error('Error al cargar la configuración:', error);
+      setError('Error al cargar la configuración');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchBusinessConfig = async () => {
-      try {
-        const response = await api.get('/business-config');
-        if (response.data) {
-          // Asegurarse de que todos los campos necesarios existan
-          const data = {
-            ...initialSettings,
-            ...response.data,
-            coverImage: response.data.coverImage || '',
-            isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
-            socialMedia: {
-              ...initialSettings.socialMedia,
-              ...(response.data.socialMedia || {})
-            },
-            extraLink: {
-              ...initialSettings.extraLink,
-              ...(response.data.extraLink || {})
-            }
-          };
-          console.log('Datos cargados:', data);
-          setSettings(data);
-          setPreviewLogo(response.data?.logo || '');
-        }
-      } catch (error) {
-        console.error('Error al cargar la configuración:', error);
-        setError('Error al cargar la configuración');
-      } finally {
-        setLoading(false);
-      }
+    fetchBusinessConfig();
+    socket.connect();
+    socket.emit('joinBusiness', businessId);
+
+    // Debounce para evitar bucles si el backend emite muchos eventos
+    let debounceTimeout = null;
+    const handler = (data) => {
+      if (debounceTimeout) clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(() => {
+        if (!isEditingLogo) setSettings(prev => ({ ...prev, ...data }));
+        if (!isEditingLogo) setPreviewLogo(data.logo || '');
+      }, 300);
     };
 
-    fetchBusinessConfig();
-  }, []);
+    socket.on('business_config_update', handler);
+
+    return () => {
+      socket.emit('leaveBusiness', businessId);
+      socket.off('business_config_update', handler);
+      socket.disconnect();
+      if (debounceTimeout) clearTimeout(debounceTimeout);
+    };
+  }, [businessId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -72,20 +98,35 @@ const BusinessSettings = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Crear una copia profunda del estado actual
-      const dataToSend = JSON.parse(JSON.stringify({
-        businessName: settings.businessName,
-        logo: settings.logo,
-        coverImage: settings.coverImage,
-        isOpen: settings.isOpen,
-        socialMedia: settings.socialMedia,
-        extraLink: settings.extraLink
-      }));
-
-      console.log('Datos a enviar:', dataToSend);
-      
+      const dataToSend = {
+        businessId,
+        businessName: settings.businessName || "Mi Restaurante",
+        logo: settings.logo || "",
+        coverImage: settings.coverImage || "",
+        isOpen: settings.isOpen !== undefined ? settings.isOpen : true,
+        whatsappNumber: settings.whatsappNumber || "",
+        socialMedia: {
+          facebook: {
+            url: settings.socialMedia?.facebook?.url || "",
+            isVisible: settings.socialMedia?.facebook?.isVisible || false
+          },
+          instagram: {
+            url: settings.socialMedia?.instagram?.url || "",
+            isVisible: settings.socialMedia?.instagram?.isVisible || false
+          },
+          tiktok: {
+            url: settings.socialMedia?.tiktok?.url || "",
+            isVisible: settings.socialMedia?.tiktok?.isVisible || false
+          }
+        },
+        extraLink: {
+          url: settings.extraLink?.url || "",
+          isVisible: settings.extraLink?.isVisible || false
+        }
+      };
       const response = await api.put('/business-config', dataToSend);
       console.log('Respuesta del servidor:', response.data);
+      console.log('WhatsApp number recibido:', response.data.whatsappNumber);
       
       // Actualizar el estado con los datos recibidos
       setSettings(prevSettings => ({
@@ -93,8 +134,8 @@ const BusinessSettings = () => {
         ...response.data
       }));
       
-      setSuccessMessage('Configuración actualizada correctamente');
-      setTimeout(() => setSuccessMessage(''), 3000);
+      setSuccessMessage(`Configuración actualizada correctamente. WhatsApp: ${response.data.whatsappNumber || 'no configurado'}`);
+      setTimeout(() => setSuccessMessage(''), 5000);
     } catch (error) {
       console.error('Error al actualizar la configuración:', error);
       setError('Error al actualizar la configuración');
@@ -136,7 +177,8 @@ const BusinessSettings = () => {
       // Guardar directamente todo el objeto con el nuevo estado
       const dataToSend = {
         ...settings,
-        isOpen: newStatus
+        isOpen: newStatus,
+        businessId
       };
       
       console.log('Datos a enviar para cambiar estado:', dataToSend);
@@ -169,6 +211,34 @@ const BusinessSettings = () => {
     }
   };
 
+  const handleFixSchema = async () => {
+    try {
+      setLoading(true);
+      await api.post('/business-config/fix-schema');
+      // Recargar los datos
+      const response = await api.get('/business-config');
+      if (response.data) {
+        // Actualizar el estado con los datos recibidos
+        const data = {
+          ...initialSettings,
+          ...response.data,
+          whatsappNumber: response.data.whatsappNumber || '',
+        };
+        setSettings(data);
+        setSuccessMessage('Esquema reparado correctamente');
+      }
+    } catch (error) {
+      console.error('Error al reparar el esquema:', error);
+      setError('Error al reparar el esquema');
+    } finally {
+      setLoading(false);
+      setTimeout(() => {
+        setSuccessMessage('');
+        setError(null);
+      }, 3000);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-4">Cargando configuración...</div>;
   }
@@ -198,11 +268,36 @@ const BusinessSettings = () => {
             </label>
             <input
               type="text"
+              name="businessName"
               value={settings.businessName}
-              onChange={(e) => setSettings({ ...settings, businessName: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              onChange={handleChange}
+              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
               required
             />
+          </div>
+          
+          {/* Número de WhatsApp */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Número de WhatsApp para Pedidos
+            </label>
+            <div className="mt-1 flex rounded-md shadow-sm">
+              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500">
+                +
+              </span>
+              <input
+                type="text"
+                name="whatsappNumber"
+                value={settings.whatsappNumber}
+                onChange={handleChange}
+                placeholder="Ejemplo: 573101234567 (sin espacios ni guiones)"
+                className="flex-1 min-w-0 block w-full p-2 border border-gray-300 rounded-none rounded-r-md"
+              />
+            </div>
+            <p className="mt-1 text-sm text-gray-500">
+              Introduce el número en formato internacional sin + (ej: 573101234567).
+              Este número recibirá los pedidos realizados desde el menú.
+            </p>
           </div>
 
           <div>
@@ -213,6 +308,8 @@ const BusinessSettings = () => {
               type="url"
               value={settings.logo}
               onChange={(e) => setSettings({ ...settings, logo: e.target.value })}
+              onFocus={() => setIsEditingLogo(true)}
+              onBlur={() => setIsEditingLogo(false)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
@@ -366,12 +463,20 @@ const BusinessSettings = () => {
           </div>
         </div>
 
-        <div className="flex justify-end">
+        <div className="pt-4 flex gap-3">
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Guardar Cambios
+          </button>
+          
+          <button
+            type="button"
+            onClick={handleFixSchema}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Reparar Configuración
           </button>
         </div>
       </form>
@@ -389,7 +494,7 @@ const BusinessSettings = () => {
                 alt="Vista previa del logo"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/150?text=Logo';
+                  e.target.src = 'https://placehold.co/150x150?text=Logo';
                 }}
               />
             </div>
