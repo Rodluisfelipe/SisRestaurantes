@@ -1,12 +1,18 @@
 @echo off
-echo === INICIANDO MODO DESARROLLO ===
+echo Iniciando servicios de SisRestaurantes...
 
-echo === Iniciando Backend ===
+echo.
+echo 1) Iniciando Backend...
 start cmd /k "cd Backend && npm run dev"
 
-echo === Iniciando Frontend ===
+echo.
+echo 2) Iniciando Frontend...
 start cmd /k "cd Frontend && npm run dev"
 
-echo === Servidor Backend: http://localhost:5000 ===
-echo === Servidor Frontend: http://localhost:5173 ===
-echo === Presiona Ctrl+C en cada ventana para detener los servidores ===
+echo.
+echo Servicios iniciados! Accede a:
+echo - Frontend: http://localhost:3000
+echo - Backend: http://localhost:5000
+echo.
+echo Presiona cualquier tecla para cerrar esta ventana.
+pause > nul

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useBusinessConfig } from "../Context/BusinessContext";
 
 function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig }) {
@@ -10,6 +10,13 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   });
   const [tableNumber, setTableNumber] = useState(orderInfo?.tableNumber || '');
   const { businessConfig } = useBusinessConfig();
+  
+  // Determinar si el pedido viene de un QR de mesa
+  const isFromTableQR = Boolean(tableNumber);
+  
+  // Comprobar si el usuario eligió inicialmente "En sitio" o "Para llevar" desde el QR de mesa
+  const initialOrderTypeSelected = isFromTableQR && 
+    (orderInfo.orderType === 'inSite' || orderInfo.orderType === 'takeaway');
 
   // Calcular totales correctamente
   const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
@@ -48,22 +55,68 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     return sum + totalItemPrice;
   }, 0);
 
-  const handleDeliverySubmit = () => {
-    if (!deliveryInfo.phone || !deliveryInfo.address) {
+  // Use useEffect to synchronize deliveryInfo with orderInfo
+  useEffect(() => {
+    // Only update if orderInfo changes from external sources
+    if (orderInfo?.phone || orderInfo?.address) {
+      setDeliveryInfo({
+        phone: orderInfo.phone || '',
+        address: orderInfo.address || ''
+      });
+    }
+  }, [orderInfo?.phone, orderInfo?.address]);
+
+  // Add a ref to track if form is being submitted to prevent double submission
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDeliverySubmit = (e) => {
+    // Prevent default form submission if called from a form
+    if (e && e.preventDefault) {
+      e.preventDefault();
+    }
+    
+    // Prevent multiple submissions
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
+    // Trim input values to check if they're empty after whitespace removal
+    const trimmedPhone = deliveryInfo.phone.trim();
+    const trimmedAddress = deliveryInfo.address.trim();
+    
+    if (!trimmedPhone || !trimmedAddress) {
       alert('Por favor completa todos los campos');
+      setIsSubmitting(false);
       return;
     }
     
     const updatedOrderInfo = {
       ...orderInfo,
       orderType: 'delivery',
-      phone: deliveryInfo.phone,
-      address: deliveryInfo.address,
+      phone: trimmedPhone,
+      address: trimmedAddress,
       customerName: orderInfo.customerName
     };
+    
+    // Update order info before closing modal and triggering order submission
     updateOrderInfo(updatedOrderInfo);
     closeOrderModal();
-    onOrder();
+    
+    // Small delay to ensure state is fully updated before order submission
+    setTimeout(() => {
+      onOrder();
+      setIsSubmitting(false);
+    }, 100);
+  };
+
+  // Update input handlers to use functional state updates to prevent stale state issues
+  const handlePhoneChange = (e) => {
+    const phone = e.target.value;
+    setDeliveryInfo(prev => ({...prev, phone}));
+  };
+  
+  const handleAddressChange = (e) => {
+    const address = e.target.value;
+    setDeliveryInfo(prev => ({...prev, address}));
   };
 
   const handleTableSubmit = () => {
@@ -81,9 +134,29 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     closeOrderModal();
     onOrder();
   };
+  
+  // Función para enviar directamente cuando ya se seleccionó un tipo de pedido desde QR de mesa
+  const handleDirectSubmit = () => {
+    // Si viene de QR mesa y ya eligió En Sitio o Para llevar, usamos esa información
+    const updatedOrderInfo = {
+      ...orderInfo
+    };
+    
+    updateOrderInfo(updatedOrderInfo);
+    onOrder();
+  };
 
   const openOrderModal = (type) => {
     setOrderType(type);
+    
+    // Reset delivery info with the latest data from orderInfo
+    if (type === 'delivery') {
+      setDeliveryInfo({
+        phone: orderInfo?.phone || '',
+        address: orderInfo?.address || ''
+      });
+    }
+    
     setShowOrderModal(true);
     document.body.classList.add('modal-open'); // Prevenir scroll en el body
   };
@@ -127,7 +200,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-opacity-50 transition-shadow"
                   style={{ focusRing: businessConfig.theme.buttonColor }}
                   required
+                  // Deshabilitar input si viene de QR de mesa
+                  disabled={isFromTableQR}
+                  // Agregar estilo visual si está deshabilitado
+                  readOnly={isFromTableQR}
                 />
+                {isFromTableQR && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    El número de mesa no se puede cambiar cuando escaneas desde la mesa
+                  </p>
+                )}
               </div>
               <button
                 onClick={handleTableSubmit}
@@ -138,41 +220,46 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               </button>
             </div>
           ) : (
-            <div className="space-y-5">
+            <form onSubmit={handleDeliverySubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="phone-input">
                   Teléfono
                 </label>
                 <input
+                  id="phone-input"
                   type="tel"
                   value={deliveryInfo.phone}
-                  onChange={(e) => setDeliveryInfo({...deliveryInfo, phone: e.target.value})}
+                  onChange={handlePhoneChange}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-opacity-50 transition-shadow"
                   style={{ focusRing: businessConfig.theme.buttonColor }}
                   required
+                  autoComplete="tel"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="address-input">
                   Dirección
                 </label>
                 <textarea
+                  id="address-input"
                   value={deliveryInfo.address}
-                  onChange={(e) => setDeliveryInfo({...deliveryInfo, address: e.target.value})}
+                  onChange={handleAddressChange}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-opacity-50 transition-shadow"
                   style={{ focusRing: businessConfig.theme.buttonColor }}
                   rows="3"
                   required
+                  autoComplete="street-address"
                 />
               </div>
               <button
-                onClick={handleDeliverySubmit}
+                type="submit"
                 style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
                 className="w-full py-3 rounded-lg transition-colors duration-300 font-medium shadow-sm hover:shadow"
+                disabled={isSubmitting}
               >
-                Confirmar Pedido
+                {isSubmitting ? 'Procesando...' : 'Confirmar Pedido'}
               </button>
-            </div>
+            </form>
           )}
         </div>
       </div>
@@ -358,29 +445,75 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 </span>
               </div>
 
+              {/* Mostrar información de la mesa si hay tableNumber */}
+              {isFromTableQR && (
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
+                  <p className="text-blue-700 font-medium">Mesa: {tableNumber}</p>
+                </div>
+              )}
+
               {/* Order type buttons */}
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  onClick={() => openOrderModal('inSite')}
-                  style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                  className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                  En Sitio
-                </button>
-                <button
-                  onClick={() => openOrderModal('delivery')}
-                  style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                  className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  A Domicilio
-                </button>
+              <div className={initialOrderTypeSelected ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-2 gap-4'}>
+                {initialOrderTypeSelected && orderInfo.orderType === 'inSite' ? (
+                  <button
+                    onClick={handleDirectSubmit}
+                    style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+                    className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Confirmar Pedido en Mesa {tableNumber}
+                  </button>
+                ) : initialOrderTypeSelected && orderInfo.orderType === 'takeaway' ? (
+                  <button
+                    onClick={handleDirectSubmit}
+                    style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+                    className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                    Confirmar Pedido Para Llevar
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => openOrderModal('inSite')}
+                      style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+                      className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                      </svg>
+                      En Sitio
+                    </button>
+                    {!isFromTableQR ? (
+                      <button
+                        onClick={() => openOrderModal('delivery')}
+                        style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+                        className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        A Domicilio
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => openOrderModal('takeaway')}
+                        style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+                        className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                        Para Llevar
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
             </div>
           )}

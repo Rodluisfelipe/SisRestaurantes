@@ -34,6 +34,19 @@ const getCategoryOrder = () => {
   }
 };
 
+// Función para verificar si la sesión actual es válida (no ha expirado)
+const isValidSession = () => {
+  const sessionStartTime = localStorage.getItem('sessionStartTime');
+  if (!sessionStartTime) return false;
+  
+  // Máximo tiempo de sesión: 3 horas (10800000 ms)
+  const MAX_SESSION_TIME = 3 * 60 * 60 * 1000;
+  const currentTime = Date.now();
+  const sessionAge = currentTime - parseInt(sessionStartTime);
+  
+  return sessionAge < MAX_SESSION_TIME;
+};
+
 export default function Menu() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -54,6 +67,35 @@ export default function Menu() {
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
   const { businessConfig } = useBusinessConfig();
   const { businessId } = useBusinessConfig();
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  
+  // Get table number from URL parameters if available
+  const [tableNumber, setTableNumber] = useState(() => {
+    const path = window.location.pathname;
+    const matches = path.match(/\/mesa\/(\w+)/);
+    
+    if (matches && matches[1]) {
+      // Save table number to localStorage for this session
+      localStorage.setItem('currentTable', matches[1]);
+      return matches[1];
+    }
+    
+    // Si no está en la URL, verificar en localStorage (solo si la sesión es válida)
+    if (isValidSession()) {
+      return localStorage.getItem('currentTable') || null;
+    }
+    
+    // Si la sesión expiró, limpiar localStorage
+    localStorage.removeItem('currentTable');
+    localStorage.removeItem('orderInfo');
+    localStorage.removeItem('sessionStartTime');
+    return null;
+  });
+  
+  // Use table number as a dependency for some effects
+  useEffect(() => {
+    console.log('Current table number:', tableNumber);
+  }, [tableNumber]);
 
   useEffect(() => {
     console.log('Menu - businessId:', businessId, 'type:', typeof businessId);
@@ -289,6 +331,12 @@ export default function Menu() {
   const handleOrderTypeComplete = (info) => {
     setOrderInfo(info);
     setShowOrderTypeSelector(false);
+    
+    // Asegurarse de que si hay tableNumber, se guarde correctamente
+    if (info.tableNumber) {
+      localStorage.setItem('currentTable', info.tableNumber);
+      setTableNumber(info.tableNumber);
+    }
   };
 
   const updateOrderInfo = (newInfo) => {
@@ -377,39 +425,98 @@ export default function Menu() {
     return encodeURIComponent(message);
   };
 
-  const handleOrder = () => {
-    // Validar que tengamos toda la información necesaria
-    if (!orderInfo || !orderInfo.customerName) {
-      alert('Error: No hay información del cliente');
-      return;
-    }
-
-    if (!orderInfo.orderType) {
-      alert('Por favor selecciona el tipo de pedido (Delivery o En Sitio)');
-      return;
-    }
-
-    if (orderInfo.orderType === 'delivery' && (!orderInfo.phone || !orderInfo.address)) {
-      alert('Por favor completa la información de entrega');
-      return;
-    }
-
-    if (orderInfo.orderType === 'inSite' && !orderInfo.tableNumber) {
-      alert('Por favor ingresa el número de mesa');
-      return;
-    }
-
-    // Usar el número configurado en el panel de administración, o usar la API predeterminada sin número
-    const whatsappNumber = businessConfig?.whatsappNumber 
-      ? `https://wa.me/${businessConfig.whatsappNumber}?text=${createWhatsAppMessage()}` 
-      : `https://wa.me/?text=${createWhatsAppMessage()}`;
-
-    window.open(whatsappNumber);
+  const handleOrder = async () => {
+    // Prevent multiple submissions
+    if (isSubmittingOrder) return;
+    setIsSubmittingOrder(true);
     
-    // Limpiar solo el carrito después de enviar
-    setCart([]);
-    setShowCartSummary(false);
-    localStorage.removeItem('cart');
+    try {
+      // Validar que tengamos toda la información necesaria
+      if (!orderInfo || !orderInfo.customerName) {
+        alert('Error: No hay información del cliente');
+        setIsSubmittingOrder(false);
+        return;
+      }
+
+      if (!orderInfo.orderType) {
+        alert('Por favor selecciona el tipo de pedido (Delivery o En Sitio)');
+        setIsSubmittingOrder(false);
+        return;
+      }
+
+      // Validar datos de entrega para pedidos a domicilio
+      if (orderInfo.orderType === 'delivery') {
+        const phone = orderInfo.phone ? orderInfo.phone.trim() : '';
+        const address = orderInfo.address ? orderInfo.address.trim() : '';
+        
+        if (!phone || !address) {
+          alert('Por favor completa la información de entrega');
+          setIsSubmittingOrder(false);
+          return;
+        }
+        
+        // Actualizar orderInfo con valores sin espacios en blanco extra
+        orderInfo.phone = phone;
+        orderInfo.address = address;
+      }
+
+      // Validar número de mesa para pedidos en sitio
+      if (orderInfo.orderType === 'inSite' && !orderInfo.tableNumber) {
+        alert('Por favor ingresa el número de mesa');
+        setIsSubmittingOrder(false);
+        return;
+      }
+
+      // Preparar los datos del pedido para la API
+      const orderData = {
+        businessId: businessId,
+        customerName: orderInfo.customerName,
+        orderType: orderInfo.orderType,
+        tableNumber: orderInfo.tableNumber || '',
+        phone: orderInfo.phone || '',
+        address: orderInfo.address || '',
+        items: cart.map(item => ({
+          productId: item._id,
+          name: item.name,
+          price: item.finalPrice || item.price,
+          quantity: item.quantity || 1,
+          selectedToppings: item.selectedToppings || []
+        })),
+        totalAmount: totalAmount
+      };
+
+      console.log('Creating order for business:', businessId);
+      console.log('Order data:', orderData);
+
+      // Para pedidos a domicilio enviar WhatsApp además de guardar en API
+      if (orderInfo.orderType === 'delivery') {
+        // Usar el número configurado en el panel de administración, o usar la API predeterminada sin número
+        const whatsappNumber = businessConfig?.whatsappNumber 
+          ? `https://wa.me/${businessConfig.whatsappNumber}?text=${createWhatsAppMessage()}` 
+          : `https://wa.me/?text=${createWhatsAppMessage()}`;
+
+        window.open(whatsappNumber);
+      }
+      
+      // Guardar el pedido en la base de datos en todos los casos
+      const response = await api.post('/orders', orderData);
+      console.log('Pedido creado:', response.data);
+      
+      // Mostrar confirmación
+      alert(`¡Gracias por tu pedido! ${orderInfo.orderType === 'delivery' 
+        ? 'Te contactaremos pronto para coordinar la entrega.' 
+        : 'Tu pedido ha sido enviado al restaurante.'}`);
+      
+      // Limpiar el carrito después de enviar
+      setCart([]);
+      setShowCartSummary(false);
+      localStorage.removeItem('cart');
+    } catch (error) {
+      console.error('Error al crear el pedido:', error);
+      alert('Hubo un problema al procesar tu pedido. Por favor intenta nuevamente.');
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
 
   const getSortedCategories = (categories) => {
@@ -450,7 +557,7 @@ export default function Menu() {
   }
 
   if (showOrderTypeSelector) {
-    return <OrderTypeSelector onComplete={handleOrderTypeComplete} />;
+    return <OrderTypeSelector onComplete={handleOrderTypeComplete} initialTableNumber={tableNumber} />;
   }
 
   if (showCartSummary) {

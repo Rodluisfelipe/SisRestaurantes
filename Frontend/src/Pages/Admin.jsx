@@ -13,6 +13,8 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import ChangePassword from "../Components/ChangePassword";
 import { socket } from '../services/api';
 import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObjectId';
+import TableSettings from "../Components/TableSettings";
+import OrdersDashboard from "../Components/OrdersDashboard";
 
 // Componente de Modal de Confirmación para edición
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) => {
@@ -787,8 +789,10 @@ export default function Admin() {
               { name: 'Información', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', tab: 'settings' },
               { name: 'Categorías', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v2', tab: 'categories' },
               { name: 'Toppings', icon: 'M12 6v6l4 2', tab: 'toppings' },
+              { name: 'Mesas', icon: 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', tab: 'tables' },
               { name: 'Personalización', icon: 'M12 4v16m8-8H4', tab: 'theme' },
               { name: 'Cambiar contraseña', icon: 'M12 11c0-1.104.896-2 2-2s2 .896 2 2v2a2 2 0 01-2 2h-4a2 2 0 01-2-2v-2c0-1.104.896-2 2-2s2 .896 2 2', tab: 'change-password' },
+              { name: 'Pedidos', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', tab: 'orders' },
             ].map(({ name, icon, tab }) => (
               <button
                 key={tab}
@@ -841,8 +845,10 @@ export default function Admin() {
       {activeTab === 'settings' && <BusinessSettings />}
       {activeTab === 'categories' && <CategorySettings categories={categories} />}
       {activeTab === 'toppings' && <ToppingGroupsManager />}
+      {activeTab === 'tables' && <TableSettings />}
       {activeTab === 'theme' && <ThemeSettings />}
       {activeTab === 'change-password' && <ChangePassword />}
+      {activeTab === 'orders' && <OrdersDashboard />}
       {activeTab === 'products' && (
         <>
               <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 mb-8">

@@ -58,6 +58,8 @@ app.use("/api/business-config", require("./Routes/businessConfig"));
 app.use("/api/categories", require("./Routes/categories"));
 app.use("/api/topping-groups", require("./Routes/toppingGroups"));
 app.use("/api/auth", require("./Routes/auth"));
+app.use("/api/tables", require("./Routes/tables"));
+app.use("/api/orders", require("./Routes/orders"));
   
 // Ruta específica para SSE
 app.use("/events", eventsRouter);

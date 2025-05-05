@@ -53,6 +53,14 @@ function App() {
             </BusinessProviderWrapper>
           }
         />
+        <Route
+          path="/:businessId/mesa/:tableNumber"
+          element={
+            <BusinessProviderWrapper>
+              <Menu />
+            </BusinessProviderWrapper>
+          }
+        />
           <Route 
           path=":businessId/admin/*"
             element={
