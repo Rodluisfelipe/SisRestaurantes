@@ -9,6 +9,8 @@ const BusinessSettingsAdmin = () => {
     logo: '',
     coverImage: '',
     productUrl: { url: '', isVisible: true },
+    address: '',
+    googleMapsUrl: '',
     socialMedia: {
       facebook: { url: '', isVisible: true },
       instagram: { url: '', isVisible: true },
@@ -69,9 +71,60 @@ const BusinessSettingsAdmin = () => {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put('/business-settings', settings);
+      // Asegurar que todos los campos estén incluidos en la petición
+      const dataToSend = {
+        businessId,
+        businessName: settings.businessName || "Mi Restaurante",
+        logo: settings.logo || "",
+        coverImage: settings.coverImage || "",
+        isOpen: settings.isOpen !== undefined ? settings.isOpen : true,
+        whatsappNumber: settings.whatsappNumber || "",
+        address: settings.address || "",
+        googleMapsUrl: settings.googleMapsUrl || "",
+        socialMedia: {
+          facebook: {
+            url: settings.socialMedia?.facebook?.url || "",
+            isVisible: settings.socialMedia?.facebook?.isVisible || false
+          },
+          instagram: {
+            url: settings.socialMedia?.instagram?.url || "",
+            isVisible: settings.socialMedia?.instagram?.isVisible || false
+          },
+          tiktok: {
+            url: settings.socialMedia?.tiktok?.url || "",
+            isVisible: settings.socialMedia?.tiktok?.isVisible || false
+          }
+        },
+        extraLink: {
+          url: settings.extraLink?.url || "",
+          isVisible: settings.extraLink?.isVisible || false
+        },
+        productUrl: {
+          url: settings.productUrl?.url || "",
+          isVisible: settings.productUrl?.isVisible || false
+        }
+      };
+
+      console.log('Datos a enviar:', dataToSend);
+      
+      // Usar la ruta correcta para la API
+      const response = await api.put('/business-config', dataToSend);
+      console.log('Configuración actualizada:', response.data);
+      console.log('Dirección guardada:', response.data.address);
+      console.log('URL de Google Maps guardada:', response.data.googleMapsUrl);
+      
+      // Actualizar el estado con los datos recibidos
+      setSettings(prevSettings => ({
+        ...prevSettings,
+        ...response.data,
+        // Asegurarse de que los nuevos campos estén presentes incluso si no vienen en la respuesta
+        address: response.data.address || prevSettings.address || "",
+        googleMapsUrl: response.data.googleMapsUrl || prevSettings.googleMapsUrl || ""
+      }));
+      
       showNotification('success', '¡Configuración actualizada correctamente!');
     } catch (error) {
+      console.error('Error al actualizar la configuración:', error);
       showNotification('error', 'Error al actualizar la configuración');
     } finally {
       setSaving(false);
@@ -175,6 +228,45 @@ const BusinessSettingsAdmin = () => {
                 <p className="mt-1 text-sm text-gray-500">
                   Ingresa la URL donde se puede encontrar más información sobre el producto
                 </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Dirección del Negocio
+            </label>
+            <input
+              type="text"
+              value={settings.address || ''}
+              onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+              className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+              placeholder="Ej: Calle Principal #123, Ciudad"
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Ingresa la dirección física de tu negocio
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              URL de Google Maps
+            </label>
+            <div className="flex-1 relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg className="h-5 w-5 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                </svg>
+              </div>
+              <input
+                type="url"
+                value={settings.googleMapsUrl || ''}
+                onChange={(e) => setSettings({ ...settings, googleMapsUrl: e.target.value })}
+                className="w-full pl-10 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                placeholder="https://maps.google.com/?q=..."
+              />
+            </div>
+            <p className="mt-1 text-sm text-gray-500">
+              Ingresa el enlace de Google Maps a la ubicación de tu negocio
+            </p>
           </div>
 
               <div>

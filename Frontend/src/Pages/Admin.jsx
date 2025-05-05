@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import BusinessSettings from "../Components/BusinessSettings";
 import CategorySettings from "../Components/CategorySettings";
 import ToppingGroupsManager from '../Components/ToppingGroupsManager';
+import ProductFormToppingSelector from '../Components/ProductFormToppingSelector';
 import { API_ENDPOINTS } from "../config";
 import api from "../services/api";
 import ProductToppingSelector from '../Components/ProductToppingSelector';
@@ -342,10 +343,22 @@ export default function Admin() {
         api.get(`/categories?businessId=${businessId}`),
         api.get(`/topping-groups?businessId=${businessId}`)
       ]);
+      
+      // Log detallado de los datos cargados para debugging
+      console.log('Productos cargados:', productsRes.data.length);
+      console.log('Categorías cargadas:', categoriesRes.data.length);
+      console.log('Grupos de toppings cargados:', toppingGroupsRes.data.length);
+      
+      // Log detallado de los grupos de toppings
+      console.log('Detalle de grupos de toppings:', toppingGroupsRes.data.map(group => ({
+        id: group._id,
+        name: group.name,
+        options: group.options ? group.options.length : 0
+      })));
+      
       setProducts(productsRes.data);
       setCategories(categoriesRes.data);
       setToppingGroups(toppingGroupsRes.data);
-      console.log('Estado de toppingGroups actualizado:', toppingGroupsRes.data);
     } catch (err) {
       console.error("Error al obtener datos:", err);
     } finally {
@@ -515,14 +528,16 @@ export default function Admin() {
       formData.append('image', form.image);
     }
     
-    // Agregar los toppingGroups
+    // Procesar los toppingGroups - necesitamos enviar array de IDs
+    let toppingGroupIds = [];
     if (form.toppingGroups && form.toppingGroups.length > 0) {
-      // Si son objetos completos, extraer solo los IDs
-      const toppingIds = form.toppingGroups.map(tg => typeof tg === 'object' ? tg._id : tg);
-      formData.append('toppingGroups', JSON.stringify(toppingIds));
-    } else {
-      formData.append('toppingGroups', JSON.stringify([]));
+      toppingGroupIds = form.toppingGroups.map(tg => {
+        return typeof tg === 'object' && tg._id ? tg._id : tg;
+      });
     }
+    
+    console.log('Grupos de toppings a enviar (IDs):', toppingGroupIds);
+    formData.append('toppingGroups', JSON.stringify(toppingGroupIds));
 
     // Agregar businessId
     formData.append('businessId', businessId);
@@ -558,16 +573,21 @@ export default function Admin() {
   const confirmEdit = async () => {
     try {
       // Asegurémonos de que los datos se envíen correctamente
+      // Procesar los toppingGroups - necesitamos enviar array de IDs
+      let toppingGroupIds = [];
+      if (form.toppingGroups && form.toppingGroups.length > 0) {
+        toppingGroupIds = form.toppingGroups.map(tg => {
+          return typeof tg === 'object' && tg._id ? tg._id : tg;
+        });
+      }
+      
       const formToSend = {
         name: form.name,
         description: form.description,
         price: Number(form.price),
         category: form.category,
         image: form.image,
-        // ESTE ES EL PUNTO CRÍTICO - asegurar formato correcto
-        toppingGroups: form.toppingGroups.map(tg => 
-          typeof tg === 'object' ? tg._id : tg
-        ),
+        toppingGroups: toppingGroupIds,
         businessId,
       };
       
@@ -583,17 +603,17 @@ export default function Admin() {
         setProducts(prevProducts => 
           prevProducts.map(product => 
             product._id === editingId 
-              ? {...response.data, toppingGroups: formToSend.toppingGroups}
+              ? {...response.data, toppingGroups: toppingGroupIds}
               : product
           )
         );
       } else {
         // Si el backend devuelve los toppingGroups, usar la respuesta tal cual
-      setProducts(prevProducts => 
-        prevProducts.map(product => 
-          product._id === editingId ? response.data : product
-        )
-      );
+        setProducts(prevProducts => 
+          prevProducts.map(product => 
+            product._id === editingId ? response.data : product
+          )
+        );
       }
       
       // Limpiar el formulario y cerrar el modal
@@ -613,23 +633,34 @@ export default function Admin() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleToppingGroupsChange = (selectedGroups) => {
+    console.log('Grupos de toppings seleccionados:', selectedGroups);
+    setForm({ ...form, toppingGroups: selectedGroups });
+  };
+
   const handleEdit = (product) => {
     console.log('Producto a editar:', product);
     console.log('Toppings del producto:', product.toppingGroups);
     
-    // Extraer solo los IDs de los toppingGroups
-    let toppingGroupIds = [];
+    // Procesar los toppingGroups para uso en el formulario
+    let processedToppingGroups = [];
     
-    if (product.toppingGroups && product.toppingGroups.length > 0) {
-      toppingGroupIds = product.toppingGroups.map(tg => {
-        if (typeof tg === 'object' && tg._id) {
-          return tg._id;
-        }
-        return tg;
-      });
+    if (product.toppingGroups && Array.isArray(product.toppingGroups)) {
+      // Si ya son objetos completos, usarlos directamente
+      if (product.toppingGroups.length > 0 && typeof product.toppingGroups[0] === 'object' && product.toppingGroups[0]._id) {
+        processedToppingGroups = product.toppingGroups;
+      } 
+      // Si solo son IDs, buscar los objetos completos en la lista de toppingGroups
+      else {
+        processedToppingGroups = product.toppingGroups.map(toppingId => {
+          // Buscar el grupo completo por ID
+          const fullGroup = toppingGroups.find(group => group._id === toppingId);
+          return fullGroup || toppingId; // Si no se encuentra, devolver el ID
+        }).filter(group => group); // Filtrar valores nulos o undefined
+      }
     }
     
-    console.log('IDs de toppingGroups extraídos:', toppingGroupIds);
+    console.log('Grupos de toppings procesados para el formulario:', processedToppingGroups);
     
     setEditingId(product._id);
     setEditingProduct(product);
@@ -639,7 +670,7 @@ export default function Admin() {
       price: product.price.toString(),
       category: product.category || "",
       image: product.image || "",
-      toppingGroups: toppingGroupIds
+      toppingGroups: processedToppingGroups
     });
   };
 
@@ -912,6 +943,22 @@ export default function Admin() {
                 </div>
               </div>
         </div>
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Grupos de Toppings
+                  </label>
+                  {toppingGroups.length > 0 ? (
+                    <ProductFormToppingSelector 
+                      toppingGroups={toppingGroups} 
+                      selectedToppings={form.toppingGroups} 
+                      onChange={handleToppingGroupsChange}
+                    />
+                  ) : (
+                    <div className="bg-yellow-50 border rounded-md p-3 text-yellow-700">
+                      <p>No hay grupos de toppings disponibles. Puedes crear grupos en la sección "Toppings".</p>
+                    </div>
+                  )}
+                </div>
                 <div className="mt-6 flex items-center justify-end gap-3">
               {editingId && (
                 <button
@@ -960,24 +1007,46 @@ export default function Admin() {
                       <div className="p-4">
                         <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
                         <p className="mt-1 text-sm text-gray-500 line-clamp-2">{product.description}</p>
+                        
+                        {/* Mostrar grupos de toppings asociados */}
+                        {product.toppingGroups && product.toppingGroups.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs font-medium text-gray-600">Grupos de toppings:</p>
+                            <div className="flex flex-wrap mt-1 gap-1">
+                              {product.toppingGroups.map((toppingId, idx) => {
+                                // Buscar nombre del grupo por ID
+                                const toppingName = toppingGroups.find(t => 
+                                  t._id === (typeof toppingId === 'object' ? toppingId._id : toppingId)
+                                )?.name || 'Grupo desconocido';
+                                
+                                return (
+                                  <span key={idx} className="inline-flex text-xs bg-indigo-100 text-indigo-800 rounded-full px-2 py-0.5">
+                                    {toppingName}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="mt-4 flex items-center justify-between">
                           <span className="text-xl font-bold text-blue-600">${product.price}</span>
                           <div className="flex space-x-2">
-              <button
-                    onClick={() => handleEdit(product)}
-                              className="inline-flex items-center p-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm">
-                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-              </button>
-              <button
-                    onClick={() => handleDelete(product)}
-                              className="inline-flex items-center p-2 border border-gray-300 rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm">
-                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              </button>
+                <button
+                              onClick={() => handleEdit(product)}
+                                className="inline-flex items-center p-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                              </button>
+                <button
+                              onClick={() => handleDelete(product)}
+                                className="inline-flex items-center p-2 border border-gray-300 rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
                           </div>
                         </div>
-            </div>
-          </div>
-        ))}
+                      </div>
+                    </div>
+                ))}
                 </div>
       </div>
         </>

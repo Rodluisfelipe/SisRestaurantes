@@ -40,6 +40,14 @@ const businessConfigSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  address: {
+    type: String,
+    default: ""
+  },
+  googleMapsUrl: {
+    type: String,
+    default: ""
+  },
   socialMedia: {
     facebook: socialMediaItemSchema,
     instagram: socialMediaItemSchema,
@@ -69,6 +77,8 @@ businessConfigSchema.statics.getConfig = async function() {
       coverImage: "",
       isOpen: true,
       whatsappNumber: "",
+      address: "",
+      googleMapsUrl: "",
       socialMedia: {
         facebook: { url: "", isVisible: false },
         instagram: { url: "", isVisible: false },

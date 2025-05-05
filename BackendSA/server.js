@@ -20,6 +20,7 @@ app.use(express.json());
 
 // Rutas
 app.use('/api/superadmin', require('./Routes/superadmin'));
+app.use('/api/superadmin/auth', require('./Routes/auth'));
 
 // Manejo de errores
 app.use((err, req, res, next) => {

@@ -9,6 +9,9 @@ const BusinessHeader = () => {
     logo: '',
     coverImage: '',
     isOpen: true,
+    whatsappNumber: '',
+    address: '',
+    googleMapsUrl: '',
     socialMedia: {
       facebook: { url: '', isVisible: true },
       instagram: { url: '', isVisible: true },
@@ -25,11 +28,15 @@ const BusinessHeader = () => {
       try {
         const response = await api.get(`/business-config?businessId=${businessId}`);
         if (response.data && typeof response.data === 'object') {
+          console.log("Datos recibidos del servidor:", response.data);
           setBusinessConfig(prevConfig => ({
             ...prevConfig,
             ...response.data,
             coverImage: response.data.coverImage || '',
             isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
+            whatsappNumber: response.data.whatsappNumber || '',
+            address: response.data.address || '',
+            googleMapsUrl: response.data.googleMapsUrl || '',
             socialMedia: {
               facebook: { url: '', isVisible: false, ...response.data?.socialMedia?.facebook },
               instagram: { url: '', isVisible: false, ...response.data?.socialMedia?.instagram },
@@ -41,6 +48,8 @@ const BusinessHeader = () => {
               ...response.data?.extraLink
             }
           }));
+          console.log("Dirección cargada:", response.data.address);
+          console.log("URL de Google Maps cargada:", response.data.googleMapsUrl);
         }
       } catch (error) {
         console.error('Error fetching business config:', error);
@@ -51,11 +60,15 @@ const BusinessHeader = () => {
     socket.connect();
     socket.emit('joinBusiness', businessId);
     socket.on('business_config_update', (data) => {
+      console.log("Actualización recibida por WebSocket:", data);
       setBusinessConfig(prevConfig => ({
         ...prevConfig,
         ...data,
         coverImage: data.coverImage || '',
         isOpen: data.isOpen !== undefined ? data.isOpen : true,
+        whatsappNumber: data.whatsappNumber || '',
+        address: data.address || '',
+        googleMapsUrl: data.googleMapsUrl || '',
         socialMedia: {
           facebook: { url: '', isVisible: false, ...data?.socialMedia?.facebook },
           instagram: { url: '', isVisible: false, ...data?.socialMedia?.instagram },
@@ -131,10 +144,25 @@ const BusinessHeader = () => {
       </div>
 
       {/* Content Container */}
-      <div className="pt-20  bg-white">
-        <h1 className="text-3xl font-bold text-gray-800 mb-4">
+      <div className="pt-20 pb-3 bg-white flex flex-col items-center">
+        <h1 className="text-3xl font-bold text-gray-800 mb-0.5">
           {businessConfig.businessName || 'Mi Restaurante'}
         </h1>
+        
+        {/* Address that links to Google Maps */}
+        {businessConfig?.address && (
+          <a 
+            href={businessConfig?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center text-gray-700 text-base mb-1 hover:text-blue-600 transition-colors"
+          >
+            <svg className="w-5 h-5 mr-1 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <span className="font-medium">{businessConfig.address}</span>
+          </a>
+        )}
         
         {/* Social Media Icons */}
         <div className="flex justify-center items-center gap-4">

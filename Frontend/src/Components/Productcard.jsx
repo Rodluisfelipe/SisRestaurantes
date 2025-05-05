@@ -26,6 +26,12 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
     document.body.classList.remove('modal-open');
   };
 
+  const handleError = (error) => {
+    console.error("Error en ProductCard:", error);
+    setHasError(true);
+    setShowToppings(false);
+  };
+
   return (
     <>
       <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
@@ -63,11 +69,8 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
 
           <button
             onClick={() => {
-              if (product.toppingGroups && product.toppingGroups.length > 0) {
-                handleShowToppings();
-              } else {
-                handleAddToCart(product);
-              }
+              // Siempre mostrar el modal de toppings, incluso si no hay opciones
+              handleShowToppings();
             }}
             style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
             className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300"
@@ -82,20 +85,18 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
 
       {showToppings && (
         <div onClick={(e) => e.stopPropagation()} className="debugging-wrapper">
-        <ProductToppingsSelector
+          <ProductToppingsSelector
             product={{
               ...product,
               toppingGroups: Array.isArray(product.toppingGroups) ? product.toppingGroups : []
             }}
             onAddToCart={(p) => {
-              console.log('onAddToCart llamado desde ProductCard', p);
               handleAddToCart(p);
             }}
             onClose={() => {
-              console.log('onClose llamado desde ProductCard');
               handleCloseToppings();
             }}
-        />
+          />
         </div>
       )}
       

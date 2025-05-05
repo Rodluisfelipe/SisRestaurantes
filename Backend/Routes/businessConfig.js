@@ -41,6 +41,8 @@ router.put("/", async (req, res) => {
     }
     
     try {
+      console.log('Datos recibidos para actualizar:', updateData);
+      
       // Buscar por _id o slug usando el helper
       const business = await findBusinessByIdentifier(businessId);
       
@@ -51,6 +53,15 @@ router.put("/", async (req, res) => {
         });
       }
       
+      // Asegurarse de que los campos address y googleMapsUrl están presentes
+      if (updateData.address === undefined) {
+        updateData.address = "";
+      }
+      
+      if (updateData.googleMapsUrl === undefined) {
+        updateData.googleMapsUrl = "";
+      }
+      
       // Actualizar usando el _id encontrado
       const config = await BusinessConfig.findByIdAndUpdate(
         business._id,
@@ -58,6 +69,7 @@ router.put("/", async (req, res) => {
         { new: true }
       );
       
+      console.log('Configuración actualizada:', config);
       res.json(config);
     } catch (error) {
       console.error(`Error al actualizar la configuración del negocio ${businessId}:`, error);
@@ -104,6 +116,8 @@ router.post("/fix-schema", async (req, res) => {
         coverImage: "",
         isOpen: true,
         whatsappNumber: "",
+        address: "",
+        googleMapsUrl: "",
         socialMedia: {
           facebook: { url: "", isVisible: false },
           instagram: { url: "", isVisible: false },
@@ -112,11 +126,25 @@ router.post("/fix-schema", async (req, res) => {
         extraLink: { url: "", isVisible: false }
       });
     } else {
-      // Si existe pero no tiene el campo whatsappNumber, actualizarlo
+      // Si existe pero no tiene alguno de los campos, actualizarlo
+      const updates = {};
+      
       if (config.whatsappNumber === undefined) {
+        updates.whatsappNumber = "";
+      }
+      
+      if (config.address === undefined) {
+        updates.address = "";
+      }
+      
+      if (config.googleMapsUrl === undefined) {
+        updates.googleMapsUrl = "";
+      }
+      
+      if (Object.keys(updates).length > 0) {
         config = await BusinessConfig.findOneAndUpdate(
           {},
-          { $set: { whatsappNumber: "" } },
+          { $set: updates },
           { new: true }
         );
       }

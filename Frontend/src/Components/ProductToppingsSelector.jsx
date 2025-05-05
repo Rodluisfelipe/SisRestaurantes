@@ -8,13 +8,15 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   const [extraTotal, setExtraTotal] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState({});
   const [error, setError] = useState(null);
+  const [quantity, setQuantity] = useState(1);
   
   const { businessConfig } = useBusinessConfig();
   
-  // Asegurarnos de que no haya grupos duplicados
-  const uniqueToppingGroups = product.toppingGroups ? 
-    Array.from(new Set(product.toppingGroups.map(g => g._id)))
-      .map(id => product.toppingGroups.find(g => g._id === id))
+  // Asegurarnos de que no haya grupos duplicados y que toppingGroups sea un array
+  const uniqueToppingGroups = Array.isArray(product.toppingGroups) 
+    ? Array.from(new Set(product.toppingGroups.map(g => g?._id)))
+        .map(id => product.toppingGroups.find(g => g?._id === id))
+        .filter(g => g) // Filtrar elementos nulos o undefined
     : [];
 
   console.log('Grupos de toppings disponibles:', uniqueToppingGroups.map(g => ({
@@ -33,20 +35,23 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   useEffect(() => {
     console.log('ProductToppingsSelector montado');
     
-    // Validar que product y toppingGroups existan
+    // Validar que product exista
     if (!product) {
       console.error('El producto es undefined o null');
       setError('Producto no válido');
       return;
     }
     
-    if (!Array.isArray(product.toppingGroups)) {
-      console.error('toppingGroups no es un array:', product.toppingGroups);
-      setError('Grupo de toppings no válido');
-      return;
+    // Expande todos los grupos por defecto si hay pocos
+    if (uniqueToppingGroups.length > 0 && uniqueToppingGroups.length <= 3) {
+      const initialExpandedState = {};
+      uniqueToppingGroups.forEach(group => {
+        if (group && group._id) {
+          initialExpandedState[group._id] = true;
+        }
+      });
+      setExpandedGroups(initialExpandedState);
     }
-    
-    console.log('Producto válido con toppingGroups:', product.toppingGroups.length);
     
     try {
       // Inicializar estado con toppings previamente seleccionados
@@ -92,7 +97,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     } catch (error) {
       handleError(error);
     }
-  }, [selectedToppings]);
+  }, [selectedToppings, quantity]);
 
   const calculateTotal = () => {
     // Inicializar totales
@@ -151,20 +156,14 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
       }
     });
     
-    console.log(`Total de precios base: $${basePriceTotal}`);
-    console.log(`Total de precios de opciones: $${optionsPriceTotal}`);
-    
     // Calcular el total extra (bases + opciones)
     const extraTotal = basePriceTotal + optionsPriceTotal;
     setExtraTotal(extraTotal);
     
-    // Calcular el precio total (precio del producto + extras)
-    const finalTotal = Number(product.price || 0) + extraTotal;
+    // Calcular el precio total (precio del producto + extras) * cantidad
+    const finalTotal = (Number(product.price || 0) + extraTotal) * quantity;
     setTotalPrice(finalTotal);
     setDisplayTotal(finalTotal);
-    
-    // IMPORTANTE: Ya no llamamos automáticamente a prepareSelectedToppingsData
-    // o a onAddToCart aquí, lo haremos solo cuando el usuario haga clic en el botón
   };
 
   const handleOptionChange = (groupId, optionId, isSubGroup = false, subGroupId = null, isSingleChoice = false) => {
@@ -256,161 +255,123 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     return count;
   };
 
-  const handleAddToCart = () => {
-    // Esta función solo se ejecutará cuando el usuario haga clic en "Agregar al carrito"
-    
-    // Preparar los datos seleccionados
-    const selectedToppingsDetails = [];
+  const prepareSelectedToppingsData = () => {
+    const result = [];
     
     uniqueToppingGroups.forEach(group => {
-      if (!group) return;
+      if (!group || !group._id) return;
       
-      const groupId = group._id;
-      const basePrice = Number(group.basePrice || 0);
-      const mainSelections = selectedToppings[groupId] || [];
+      const groupSelections = selectedToppings[group._id] || [];
+      const hasMainSelections = groupSelections.length > 0;
       
-      // Recopilar selecciones de subgrupos
-      const subGroupSelectionsData = [];
+      // Verificar selecciones de subgrupos
+      const subGroupSelections = [];
       let hasSubGroupSelections = false;
       
       if (Array.isArray(group.subGroups)) {
         group.subGroups.forEach(subGroup => {
-          if (!subGroup || !subGroup._id) return;
-          
-          const subGroupKey = `${groupId}_${subGroup._id}`;
-          const subGroupSelections = selectedToppings[subGroupKey] || [];
-          
-          subGroupSelections.forEach(optionId => {
-            const option = (Array.isArray(subGroup.options) ? 
-              subGroup.options.find(opt => opt && opt._id === optionId) : null);
+          if (subGroup && subGroup._id) {
+            const subGroupKey = `${group._id}_${subGroup._id}`;
+            const selections = selectedToppings[subGroupKey] || [];
             
-            if (option) {
+            if (selections.length > 0) {
               hasSubGroupSelections = true;
-              subGroupSelectionsData.push({
-                subGroupId: subGroup._id,
-                subGroupTitle: subGroup.title || 'Sin título',
-                optionId,
-                optionName: option.name || 'Sin nombre',
-                price: Number(option.price || 0)
+              
+              selections.forEach(optionId => {
+                const option = subGroup.options?.find(o => o._id === optionId);
+                subGroupSelections.push({
+                  subGroupId: subGroup._id,
+                  subGroupName: subGroup.name || 'Desconocido',
+                  optionId,
+                  optionName: option?.name || 'Desconocida',
+                  price: option?.price || 0
+                });
               });
             }
-          });
+          }
         });
       }
       
-      // Procesar selecciones del grupo principal
-      if (mainSelections.length > 0) {
-        mainSelections.forEach(optionId => {
-          const option = (Array.isArray(group.options) ? 
-            group.options.find(opt => opt && opt._id === optionId) : null);
-          
-          if (option) {
-            selectedToppingsDetails.push({
-              groupId,
-              groupName: group.name || 'Sin nombre',
-              basePrice: basePrice,
+      // Solo agregar el grupo si hay alguna selección
+      if (hasMainSelections || hasSubGroupSelections) {
+        const groupData = {
+          groupId: group._id,
+          groupName: group.name || 'Desconocido',
+          basePrice: group.basePrice || 0
+        };
+        
+        // Agregar opciones principales seleccionadas
+        if (hasMainSelections) {
+          groupData.options = groupSelections.map(optionId => {
+            const option = group.options?.find(o => o._id === optionId);
+            return {
               optionId,
-              optionName: option.name || 'Sin nombre',
-              price: Number(option.price || 0),
-              // Si hay selecciones en subgrupos, incluirlas
-              subGroups: hasSubGroupSelections ? subGroupSelectionsData : []
-            });
-          }
-        });
-      } 
-      // Si solo hay selecciones en subgrupos (no en el grupo principal)
-      else if (hasSubGroupSelections) {
-        selectedToppingsDetails.push({
-          groupId,
-          groupName: group.name || 'Sin nombre',
-          basePrice: basePrice,
-          subGroups: subGroupSelectionsData
-        });
+              optionName: option?.name || 'Desconocida',
+              price: option?.price || 0
+            };
+          });
+        }
+        
+        // Agregar subgrupos si hay selecciones
+        if (hasSubGroupSelections) {
+          groupData.subGroups = subGroupSelections;
+        }
+        
+        result.push(groupData);
       }
     });
     
-    console.log('Datos de toppings enviados al carrito:', selectedToppingsDetails);
-    
-    // Ahora sí llamamos a onAddToCart con los datos preparados
-    onAddToCart({
-      ...product,
-      selectedToppings: selectedToppingsDetails,
-      finalPrice: totalPrice
-    });
+    return result;
   };
 
-  // Capturar clics en el modal para evitar propagación
+  const handleError = (error) => {
+    console.error('Error en ProductToppingsSelector:', error);
+    setError('Ha ocurrido un error al procesar las opciones');
+  };
+
+  const handleAddToCart = () => {
+    try {
+      // Preparar los datos para añadir al carrito
+      const selectedToppingsData = prepareSelectedToppingsData();
+      
+      // Crear un objeto con los datos del producto y sus opciones seleccionadas
+      const productToAdd = {
+        ...product,
+        selectedToppings: selectedToppingsData,
+        quantity: quantity,
+        totalPrice: totalPrice
+      };
+      
+      // Llamar a la función de callback
+      onAddToCart(productToAdd);
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
   const handleModalClick = (e) => {
+    // Prevenir que los clics en el modal se propaguen y cierren el modal
     e.stopPropagation();
   };
 
-  // Función de seguridad para manejar eventos
-  const handleAction = (action) => (e) => {
-    // Evitar propagación y comportamiento por defecto
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-    console.log(`Acción: ${action}`);
-    
-    // Ejemplo de llamada segura a onAddToCart
-    if (action === 'addToCart') {
-      try {
-        onAddToCart(product);
-      } catch (err) {
-        console.error('Error al agregar al carrito:', err);
-        setError('Error al agregar al carrito');
-      }
-    }
-    
-    // Ejemplo de llamada segura a onClose
-    if (action === 'close') {
-      try {
-    onClose();
-      } catch (err) {
-        console.error('Error al cerrar:', err);
-        setError('Error al cerrar');
-      }
-    }
-  };
-
-  // Si hay un error, mostrar un mensaje
-  if (error) {
+  // Renderizar el modal con los toppings
   return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-4">
-          <h3 className="text-xl font-bold text-red-600 mb-2">Error</h3>
-          <p className="mb-4">{error}</p>
-          <button
-            onClick={handleAction('close')}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-          >
-            Cerrar
-          </button>
-        </div>
-            </div>
-    );
-  }
-
-  // Si no hay grupos de toppings, no mostrar nada
-  if (uniqueToppingGroups.length === 0) {
-    return null;
-  }
-
-  console.log("Datos enviados a ProductToppingsSelector:", { 
-    toppingGroups: uniqueToppingGroups,
-    initialToppings: selectedToppings
-  });
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-900 scrollbar-track-gray-200">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={handleModalClick}>
-        {/* Encabezado */}
-        <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center z-10">
-          <h2 className="text-xl font-bold">{product.name}</h2>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col"
+        onClick={handleModalClick}
+      >
+        {/* Encabezado del modal */}
+        <div className="sticky top-0 z-10 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
+          <h2 className="text-xl font-bold text-gray-800 truncate">
+            {product.name}
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="rounded-full p-1 hover:bg-gray-100 text-gray-500"
             aria-label="Cerrar"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -419,197 +380,287 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
           </button>
         </div>
 
-        {/* Imagen y descripción del producto */}
-        <div className="border-b">
+        {/* Cuerpo del modal - Scrolleable */}
+        <div className="overflow-y-auto flex-1 p-4">
           {/* Imagen del producto */}
           {product.image && (
-            <div className="w-full h-48 relative">
-              <img 
-                src={product.image} 
+            <div className="relative w-full h-40 mb-4 rounded-lg overflow-hidden">
+              <img
+                src={product.image}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
             </div>
           )}
-          
+
           {/* Descripción del producto */}
-          <div className="p-4">
-            <p className="text-gray-600">{product.description}</p>
-            <p className="text-lg font-bold text-black mt-2">${Number(product.price || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</p>
+          {product.description && (
+            <div className="mb-4">
+              <p className="text-gray-600">{product.description}</p>
+            </div>
+          )}
+
+          {/* Control de cantidad */}
+          <div className="mb-4 flex items-center justify-between">
+            <span className="text-gray-700 font-medium">Cantidad:</span>
+            <div className="flex items-center border rounded-lg overflow-hidden">
+              <button
+                onClick={() => quantity > 1 && setQuantity(quantity - 1)}
+                className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700"
+              >
+                -
+              </button>
+              <span className="px-4 py-1 font-medium">{quantity}</span>
+              <button
+                onClick={() => setQuantity(quantity + 1)}
+                className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700"
+              >
+                +
+              </button>
+            </div>
           </div>
-        </div>
-        
-        {/* Contenido - Grupos de Toppings */}
-        <div className="p-4 scrollbar-thin scrollbar-thumb-gray-900 scrollbar-track-gray-200">
-          <h3 className="text-lg font-semibold mb-4">Personaliza tu pedido</h3>
-                
-                <div className="space-y-2">
-            {uniqueToppingGroups.map((group) => (
-              group && group._id ? (
-                <div key={group._id} className="border border-gray-200 rounded-lg overflow-hidden">
-                  {/* Cabecera del grupo (siempre visible) */}
-                  <div 
-                    className="bg-gray-50 p-3 flex justify-between items-center cursor-pointer hover:bg-gray-100"
-                    onClick={() => toggleGroup(group._id)}
+
+          {/* Lista de grupos de toppings */}
+          {uniqueToppingGroups.length > 0 ? (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Personalizar producto</h3>
+              
+              {uniqueToppingGroups.map((group, index) => (
+                group && group._id ? (
+                  <div
+                    key={group._id}
+                    className="border rounded-lg overflow-hidden"
                   >
-                    <div className="flex items-center">
-                      <h3 className="font-medium text-gray-800">{group.name || "Sin nombre"}</h3>
+                    {/* Encabezado del grupo (acordeón) */}
+                    <div
+                      onClick={() => toggleGroup(group._id)}
+                      className={`flex items-center justify-between p-3 cursor-pointer ${
+                        expandedGroups[group._id] ? 'bg-blue-50 border-b' : 'bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex-1">
+                        <div className="flex justify-between">
+                          <div>
+                            <h4 className="font-medium">{group.name}</h4>
+                            {group.description && (
+                              <p className="text-sm text-gray-600">{group.description}</p>
+                            )}
+                          </div>
+                          
+                          {/* Indicador de selecciones */}
+                          {countSelections(group) > 0 && (
+                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                              {countSelections(group)} {countSelections(group) === 1 ? 'selección' : 'selecciones'}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="text-xs mt-1 flex flex-wrap gap-2">
+                          {group.isRequired && (
+                            <span className="bg-red-100 text-red-800 px-1.5 py-0.5 rounded">
+                              Obligatorio
+                            </span>
+                          )}
+                          
+                          {group.isMultipleChoice ? (
+                            <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+                              Selección múltiple
+                            </span>
+                          ) : (
+                            <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">
+                              Selección única
+                            </span>
+                          )}
+                          
+                          {Number(group.basePrice) > 0 && (
+                            <span className="bg-green-100 text-green-800 px-1.5 py-0.5 rounded">
+                              +${group.basePrice}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       
-                      {/* Badge para mostrar cantidad de selecciones */}
-                      {countSelections(group) > 0 && (
-                        <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded-full">
-                          {countSelections(group)}
-                        </span>
-                      )}
-                      
-                      {/* Badge para precio base si existe */}
-                      {(Number(group.basePrice || 0) > 0) && (
-                        <span className="ml-2 text-sm text-gray-600">
-                          +{Number(group.basePrice || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
-                        </span>
-                      )}
-                      
-                      {/* Badge para requerido */}
-                      {group.isRequired && (
-                        <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full">
-                          Requerido
-                        </span>
-                      )}
+                      <div className="flex items-center">
+                        {/* Botón para limpiar selecciones */}
+                        {countSelections(group) > 0 && (
+                          <button
+                            onClick={(e) => clearGroupSelections(group._id, e)}
+                            className="mr-2 p-1 hover:bg-gray-200 rounded-full text-gray-500"
+                            aria-label="Limpiar selecciones"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                        
+                        {/* Flecha indicadora */}
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className={`h-5 w-5 transform transition-transform ${expandedGroups[group._id] ? 'rotate-180' : ''}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
                     </div>
                     
-                    <div className="flex items-center">
-                      {/* Botón para limpiar selecciones - Solo visible si hay selecciones */}
-                      {countSelections(group) > 0 && (
-                        <button
-                          onClick={(e) => clearGroupSelections(group._id, e)}
-                          className="mr-2 text-gray-500 hover:text-red-500"
-                          title="Limpiar selecciones"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3H4" />
-                          </svg>
-                        </button>
-                      )}
-                      
-                      {/* Icono de expansión */}
-                      <svg 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        className={`h-5 w-5 transition-transform ${expandedGroups[group._id] ? 'transform rotate-180' : ''}`} 
-                        fill="none" 
-                        viewBox="0 0 24 24" 
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  </div>
-                  
-                  {/* Contenido del grupo (visible solo si está expandido) */}
-                  {expandedGroups[group._id] && (
-                    <div className="p-3 border-t border-gray-200">
-                      {group.description && (
-                        <p className="text-sm text-gray-600 mb-3">{group.description}</p>
-                      )}
-                      
-                      {/* Opciones del grupo principal */}
-                      {Array.isArray(group.options) && group.options.length > 0 && (
-                        <div className="mb-3">
-                          {group.options.map((option) => (
-                            option && option._id ? (
-                              <div key={option._id} className="flex items-center mb-1 py-1">
-                      <input
-                        type={group.isMultipleChoice ? "checkbox" : "radio"}
-                                  id={`option-${option._id}`}
-                        name={`group-${group._id}`}
-                                  checked={(selectedToppings[group._id] || []).includes(option._id)}
-                                  onChange={() => handleOptionChange(group._id, option._id)}
-                                  className="mr-2"
-                                />
-                                <label htmlFor={`option-${option._id}`} className="flex justify-between w-full text-sm">
-                                  <span>{option.name || "Sin nombre"}</span>
-                                  {Number(option.price || 0) > 0 && <span className="text-black">{Number(option.price || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span>}
-                                </label>
-                              </div>
-                            ) : null
-                          ))}
-                        </div>
-                      )}
-                      
-                      {/* Subgrupos */}
-                      {Array.isArray(group.subGroups) && group.subGroups.length > 0 && (
-                        <div className="space-y-3">
-                          {group.subGroups.map((subGroup) => (
-                            subGroup && subGroup._id ? (
-                              <div key={subGroup._id} className="pl-2 border-l-2 border-gray-200">
-                                <div className="flex items-center">
-                                  <h4 className="font-medium text-sm mb-1">{subGroup.title || "Sin título"}</h4>
-                                  {/* Badge para indicar si es obligatorio */}
-                                  {subGroup.isRequired && (
-                                    <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-800 text-xs rounded-full">
-                                      Requerido
-                                    </span>
+                    {/* Contenido del grupo (opciones) */}
+                    {expandedGroups[group._id] && (
+                      <div className="p-3">
+                        {/* Opciones principales */}
+                        {Array.isArray(group.options) && group.options.length > 0 && (
+                          <div className="space-y-2">
+                            {group.options.map(option => (
+                              option && option._id ? (
+                                <div
+                                  key={option._id}
+                                  onClick={() => handleOptionChange(group._id, option._id)}
+                                  className={`flex items-center justify-between p-2 rounded cursor-pointer ${
+                                    (selectedToppings[group._id] || []).includes(option._id)
+                                      ? 'bg-blue-50 border border-blue-200'
+                                      : 'hover:bg-gray-50 border border-gray-100'
+                                  }`}
+                                >
+                                  <div className="flex items-center">
+                                    {group.isMultipleChoice ? (
+                                      <input
+                                        type="checkbox"
+                                        checked={(selectedToppings[group._id] || []).includes(option._id)}
+                                        onChange={() => {}}
+                                        className="mr-2 h-4 w-4 text-blue-600 rounded"
+                                      />
+                                    ) : (
+                                      <input
+                                        type="radio"
+                                        checked={(selectedToppings[group._id] || []).includes(option._id)}
+                                        onChange={() => {}}
+                                        className="mr-2 h-4 w-4 text-blue-600"
+                                      />
+                                    )}
+                                    <span>{option.name || 'Opción'}</span>
+                                  </div>
+                                  
+                                  {Number(option.price) > 0 && (
+                                    <span className="text-gray-700">+${option.price}</span>
                                   )}
                                 </div>
-                                
-                                {Array.isArray(subGroup.options) && subGroup.options.map((option) => (
-                                  option && option._id ? (
-                                    <div key={option._id} className="flex items-center mb-1 ml-2 py-1">
-                                      <input
-                                        type={subGroup.isMultipleChoice ? "checkbox" : "radio"}
-                                        id={`suboption-${subGroup._id}-${option._id}`}
-                                        name={`subgroup-${group._id}-${subGroup._id}`}
-                                        checked={(selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id)}
-                                        onChange={() => handleOptionChange(group._id, option._id, true, subGroup._id)}
-                                        className="mr-2"
-                                      />
-                                      <label 
-                                        htmlFor={`suboption-${subGroup._id}-${option._id}`} 
-                                        className="flex justify-between w-full text-sm"
-                                      >
-                                        <span>{option.name || "Sin nombre"}</span>
-                                        {Number(option.price || 0) > 0 && <span className="text-black">{Number(option.price || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span>}
-                    </label>
-                                    </div>
-                                  ) : null
-                                ))}
-                              </div>
-                            ) : null
-                  ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : null
-            ))}
-          </div>
-        </div>
-        
-        {/* Pie */}
-        <div className="sticky bottom-0 bg-white p-4 border-t shadow-md z-10">
-          <div className="flex justify-between items-center mb-2">
-            <span className="font-medium">Precio base:</span>
-            <span>${Number(product.price || 0).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span>
-          </div>
-          
-          {extraTotal > 0 && (
-            <div className="flex justify-between items-center mb-2">
-              <span className="font-medium">Extras:</span>
-              <span>${Number(extraTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span>
+                              ) : null
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Subgrupos */}
+                        {Array.isArray(group.subGroups) && group.subGroups.length > 0 && (
+                          <div className="mt-4 space-y-4">
+                            {group.subGroups.map(subGroup => (
+                              subGroup && subGroup._id ? (
+                                <div key={subGroup._id} className="pl-3 border-l-2 border-gray-200">
+                                  <h5 className="font-medium mb-2">{subGroup.name}</h5>
+                                  
+                                  {/* Opciones del subgrupo */}
+                                  <div className="space-y-2">
+                                    {Array.isArray(subGroup.options) && subGroup.options.map(option => (
+                                      option && option._id ? (
+                                        <div
+                                          key={option._id}
+                                          onClick={() => handleOptionChange(
+                                            group._id,
+                                            option._id,
+                                            true,
+                                            subGroup._id,
+                                            !subGroup.isMultipleChoice
+                                          )}
+                                          className={`flex items-center justify-between p-2 rounded cursor-pointer ${
+                                            (selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id)
+                                              ? 'bg-blue-50 border border-blue-200'
+                                              : 'hover:bg-gray-50 border border-gray-100'
+                                          }`}
+                                        >
+                                          <div className="flex items-center">
+                                            {subGroup.isMultipleChoice ? (
+                                              <input
+                                                type="checkbox"
+                                                checked={(selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id)}
+                                                onChange={() => {}}
+                                                className="mr-2 h-4 w-4 text-blue-600 rounded"
+                                              />
+                                            ) : (
+                                              <input
+                                                type="radio"
+                                                checked={(selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id)}
+                                                onChange={() => {}}
+                                                className="mr-2 h-4 w-4 text-blue-600"
+                                              />
+                                            )}
+                                            <span>{option.name || 'Opción'}</span>
+                                          </div>
+                                          
+                                          {Number(option.price) > 0 && (
+                                            <span className="text-gray-700">+${option.price}</span>
+                                          )}
+                                        </div>
+                                      ) : null
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : null
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : null
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-4 px-2 text-center rounded-lg bg-blue-50 border border-blue-100">
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-12 w-12 text-blue-500 mb-3" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+              <p className="text-blue-700 font-medium mb-3">Este producto no requiere personalización adicional.</p>
+              <p className="text-gray-600 text-sm">Puedes ajustar la cantidad y agregarlo directamente al carrito.</p>
             </div>
           )}
           
-          <div className="flex justify-between items-center mb-4 text-lg font-bold">
-            <span>Total:</span>
-            <span>${Number(displayTotal).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</span>
+          {/* Mostrar error si hay */}
+          {error && (
+            <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md">
+              <p className="font-medium">Error</p>
+              <p>{error}</p>
             </div>
-            
-            <button
+          )}
+        </div>
+        
+        {/* Pie del modal con precio y botón */}
+        <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-gray-700 font-medium">Precio total:</span>
+            <span className="text-xl font-bold" style={{ color: businessConfig.theme?.primaryColor || '#3B82F6' }}>
+              ${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
+            </span>
+          </div>
+          
+          <button
             onClick={handleAddToCart}
-            style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }} className="w-full py-3 rounded-md transition-colors"
-            >
+            className="w-full py-3 rounded-lg font-semibold text-white flex items-center justify-center"
+            style={{ backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6', color: businessConfig.theme?.buttonTextColor || 'white' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3z" />
+              <path d="M16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+            </svg>
             Agregar al carrito
-            </button>
+          </button>
         </div>
       </div>
     </div>

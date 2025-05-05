@@ -10,6 +10,8 @@ const BusinessSettings = () => {
     coverImage: '',
     isOpen: true,
     whatsappNumber: '',
+    address: '',
+    googleMapsUrl: '',
     socialMedia: {
       facebook: { url: '', isVisible: true },
       instagram: { url: '', isVisible: true },
@@ -37,6 +39,8 @@ const BusinessSettings = () => {
           coverImage: response.data.coverImage || '',
           isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
           whatsappNumber: response.data.whatsappNumber || '',
+          address: response.data.address || '',
+          googleMapsUrl: response.data.googleMapsUrl || '',
           socialMedia: {
             ...initialSettings.socialMedia,
             ...(response.data.socialMedia || {})
@@ -105,6 +109,8 @@ const BusinessSettings = () => {
         coverImage: settings.coverImage || "",
         isOpen: settings.isOpen !== undefined ? settings.isOpen : true,
         whatsappNumber: settings.whatsappNumber || "",
+        address: settings.address || "",
+        googleMapsUrl: settings.googleMapsUrl || "",
         socialMedia: {
           facebook: {
             url: settings.socialMedia?.facebook?.url || "",
@@ -124,14 +130,21 @@ const BusinessSettings = () => {
           isVisible: settings.extraLink?.isVisible || false
         }
       };
+      console.log('Datos a enviar:', dataToSend);
+      
       const response = await api.put('/business-config', dataToSend);
       console.log('Respuesta del servidor:', response.data);
       console.log('WhatsApp number recibido:', response.data.whatsappNumber);
+      console.log('Dirección recibida:', response.data.address);
+      console.log('URL de Google Maps recibida:', response.data.googleMapsUrl);
       
       // Actualizar el estado con los datos recibidos
       setSettings(prevSettings => ({
         ...prevSettings,
-        ...response.data
+        ...response.data,
+        // Asegurarse de que los nuevos campos estén presentes incluso si no vienen en la respuesta
+        address: response.data.address || prevSettings.address || "",
+        googleMapsUrl: response.data.googleMapsUrl || prevSettings.googleMapsUrl || ""
       }));
       
       setSuccessMessage(`Configuración actualizada correctamente. WhatsApp: ${response.data.whatsappNumber || 'no configurado'}`);
@@ -260,102 +273,113 @@ const BusinessSettings = () => {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Información básica */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Nombre del Negocio
-            </label>
-            <input
-              type="text"
-              name="businessName"
-              value={settings.businessName}
-              onChange={handleChange}
-              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
-              required
-            />
-          </div>
-          
-          {/* Número de WhatsApp */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Número de WhatsApp para Pedidos
-            </label>
-            <div className="mt-1 flex rounded-md shadow-sm">
-              <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-gray-300 bg-gray-50 text-gray-500">
-                +
-              </span>
+        {/* Información básica del negocio */}
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold text-gray-700 mb-3">Información básica</h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Nombre del negocio</label>
+              <input
+                type="text"
+                name="businessName"
+                value={settings.businessName}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">URL del Logo</label>
+              <input
+                type="url"
+                name="logo"
+                value={settings.logo}
+                onChange={handleChange}
+                onFocus={() => setIsEditingLogo(true)}
+                onBlur={() => setIsEditingLogo(false)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="URL de la imagen del logo"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">URL de la Imagen de Portada</label>
+              <input
+                type="text"
+                name="coverImage"
+                value={settings.coverImage}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="URL de la imagen de portada"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Número de WhatsApp</label>
               <input
                 type="text"
                 name="whatsappNumber"
                 value={settings.whatsappNumber}
                 onChange={handleChange}
-                placeholder="Ejemplo: 573101234567 (sin espacios ni guiones)"
-                className="flex-1 min-w-0 block w-full p-2 border border-gray-300 rounded-none rounded-r-md"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Ej: +1234567890"
               />
             </div>
-            <p className="mt-1 text-sm text-gray-500">
-              Introduce el número en formato internacional sin + (ej: 573101234567).
-              Este número recibirá los pedidos realizados desde el menú.
-            </p>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Dirección</label>
+              <input
+                type="text"
+                name="address"
+                value={settings.address}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Ej: Calle Principal #123, Ciudad"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">URL de Google Maps</label>
+              <input
+                type="text"
+                name="googleMapsUrl"
+                value={settings.googleMapsUrl}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder="Ej: https://maps.google.com/?q=..."
+              />
+              <p className="text-xs text-gray-500 mt-1">Ingresa el enlace de la ubicación del negocio en Google Maps</p>
+            </div>
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              URL del Logo
-            </label>
-            <input
-              type="url"
-              value={settings.logo}
-              onChange={(e) => setSettings({ ...settings, logo: e.target.value })}
-              onFocus={() => setIsEditingLogo(true)}
-              onBlur={() => setIsEditingLogo(false)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              URL de la Imagen de Portada
-            </label>
-            <input
-              type="text"
-              name="coverImage"
-              value={settings.coverImage}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="URL de la imagen de portada"
-            />
-          </div>
-
-          {/* Estado del negocio */}
-          <div className="p-4 border rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Estado del Negocio:</span>
-              <div className="flex items-center space-x-2">
-                <span className={`text-sm font-medium ${settings.isOpen ? 'text-green-600' : 'text-red-600'}`}>
-                  {settings.isOpen ? 'Abierto' : 'Cerrado'}
-                </span>
-                <button
-                  type="button"  // Importante: type="button" para que no envíe el formulario
-                  onClick={handleStoreStatusToggle}
-                  disabled={statusLoading}
-                  className={`px-4 py-2 rounded-md text-white font-medium ${
-                    statusLoading 
-                      ? 'bg-gray-400' 
-                      : settings.isOpen 
-                        ? 'bg-red-500 hover:bg-red-600' 
-                        : 'bg-green-500 hover:bg-green-600'
-                  }`}
-                >
-                  {statusLoading 
-                    ? 'Actualizando...' 
+        {/* Estado del negocio */}
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-gray-700">Estado del Negocio:</span>
+            <div className="flex items-center space-x-2">
+              <span className={`text-sm font-medium ${settings.isOpen ? 'text-green-600' : 'text-red-600'}`}>
+                {settings.isOpen ? 'Abierto' : 'Cerrado'}
+              </span>
+              <button
+                type="button"  // Importante: type="button" para que no envíe el formulario
+                onClick={handleStoreStatusToggle}
+                disabled={statusLoading}
+                className={`px-4 py-2 rounded-md text-white font-medium ${
+                  statusLoading 
+                    ? 'bg-gray-400' 
                     : settings.isOpen 
-                      ? 'Cerrar Negocio' 
-                      : 'Abrir Negocio'
-                  }
-                </button>
-              </div>
+                      ? 'bg-red-500 hover:bg-red-600' 
+                      : 'bg-green-500 hover:bg-green-600'
+                }`}
+              >
+                {statusLoading 
+                  ? 'Actualizando...' 
+                  : settings.isOpen 
+                    ? 'Cerrar Negocio' 
+                    : 'Abrir Negocio'
+                }
+              </button>
             </div>
           </div>
         </div>

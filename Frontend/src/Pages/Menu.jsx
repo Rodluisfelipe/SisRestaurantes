@@ -5,6 +5,7 @@ import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
+import FilterableMenu from "../Components/FilterableMenu";
 import { API_ENDPOINTS } from "../config";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -247,12 +248,43 @@ export default function Menu() {
     }
   };
 
-  // Calcular totales
-  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = cart.reduce((sum, item) => {
-    const itemPrice = item.finalPrice || item.price;
-    return sum + (itemPrice * item.quantity);
-  }, 0);
+  // Calculación correcta del total incluyendo toppings
+  const calculateItemPrice = (item) => {
+    // Precio base del producto
+    let totalPrice = parseFloat(item.finalPrice || item.price || 0);
+    
+    // Sumar precio de toppings si existen
+    if (item.selectedToppings && item.selectedToppings.length > 0) {
+      item.selectedToppings.forEach(topping => {
+        // Añadir precio base del grupo si existe
+        if (topping.basePrice) {
+          totalPrice += parseFloat(topping.basePrice);
+        }
+        
+        // Añadir precio de la opción seleccionada
+        if (topping.price) {
+          totalPrice += parseFloat(topping.price);
+        }
+        
+        // Añadir precios de subgrupos si existen
+        if (topping.subGroups && topping.subGroups.length > 0) {
+          topping.subGroups.forEach(subItem => {
+            if (subItem.price) {
+              totalPrice += parseFloat(subItem.price);
+            }
+          });
+        }
+      });
+    }
+    
+    return totalPrice * (item.quantity || 1);
+  };
+
+  // Calcular total de items en el carrito
+  const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
+  
+  // Calcular monto total incluyendo toppings
+  const totalAmount = cart.reduce((sum, item) => sum + calculateItemPrice(item), 0);
 
   const handleOrderTypeComplete = (info) => {
     setOrderInfo(info);
@@ -265,45 +297,21 @@ export default function Menu() {
   };
 
   const createWhatsAppMessage = () => {
-    if (!orderInfo || !orderInfo.customerName) {
-      console.error('No hay información del cliente');
-      return '';
-    }
-
-    // Obtener el nombre del negocio del business config
-    const businessName = businessConfig?.businessName || 'Mi Restaurante';
+    const businessName = businessConfig?.businessName || 'Nuestro Negocio';
+    let message = "";
     
-    // Obtener fecha y hora actual en formato legible (12 horas)
-    const now = new Date();
-    const fecha = now.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-    const hora = now.toLocaleTimeString('es-ES', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-
-    // Crear el mensaje con buen formato pero sin emojis
-    let message = `**** PEDIDO - ${businessName} ****\n`;
-    message += `------------------------\n`;
-    message += `*Fecha:* ${fecha}\n`;
-    message += `*Hora:* ${hora}\n`;
-    message += `------------------------\n\n`;
-    
-    // Agregar información del cliente
+    // Información del cliente
     message += `*** DATOS DEL CLIENTE ***\n`;
-    message += `*Nombre:* ${orderInfo.customerName}\n`;
+    message += `*Nombre:* ${orderInfo.customerName || 'Cliente'}\n`;
     
-    if (orderInfo.orderType === 'inSite') {
-      message += `*Tipo de Pedido:* En Sitio\n`;
-      message += `*Mesa:* ${orderInfo.tableNumber}\n`;
-    } else if (orderInfo.orderType === 'delivery') {
-      message += `*Tipo de Pedido:* A Domicilio\n`;
-      message += `*Teléfono:* ${orderInfo.phone}\n`;
-      message += `*Dirección:* ${orderInfo.address}\n`;
+    // Información del pedido según tipo
+    if (orderInfo.orderType === 'delivery') {
+      message += `*Tipo de pedido:* A Domicilio\n`;
+      message += `*Teléfono:* ${orderInfo.phone || 'No proporcionado'}\n`;
+      message += `*Dirección:* ${orderInfo.address || 'No proporcionada'}\n`;
+    } else if (orderInfo.orderType === 'inSite') {
+      message += `*Tipo de pedido:* En Sitio\n`;
+      message += `*Mesa #:* ${orderInfo.tableNumber || 'No especificada'}\n`;
     }
     message += `------------------------\n\n`;
 
@@ -351,14 +359,14 @@ export default function Menu() {
         });
       }
       
-      message += `   *Subtotal:* $${((item.finalPrice || item.price) * item.quantity).toFixed(2)}\n`;
+      message += `   *Subtotal:* $${calculateItemPrice(item).toFixed(2)}\n`;
       message += `   ------------------------\n`;
     });
 
     // Agregar totales
     message += `\n*** RESUMEN ***\n`;
     message += `*Productos:* ${cart.length}\n`;
-    message += `*Cantidad total:* ${cart.reduce((sum, item) => sum + item.quantity, 0)} items\n`;
+    message += `*Cantidad total:* ${totalItems} items\n`;
     message += `*TOTAL A PAGAR:* $${totalAmount.toFixed(2)}\n`;
     message += `------------------------\n`;
     
@@ -475,44 +483,13 @@ export default function Menu() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <BusinessHeader />
       
-      <div className="container mx-auto px-4 py-1">
-        {categories
-          .sort((a, b) => {
-            // Obtener el orden guardado
-            const orderMap = getCategoryOrder();
-            const orderA = orderMap[a._id] !== undefined ? orderMap[a._id] : 999;
-            const orderB = orderMap[b._id] !== undefined ? orderMap[b._id] : 999;
-            return orderA - orderB;
-          })
-          .map(category => {
-            const categoryProducts = products.filter(product => product.category === category._id);
-            if (categoryProducts.length === 0) return null;
-
-            return (
-              <div key={category._id} className="mb-8">
-                <div className="relative flex items-center mb-4">
-                  <div className="flex-grow border-t border-gray-300"></div>
-                  <h2 className="flex-shrink-0 px-4 text-xl font-bold text-gray-800">
-                    {category.name}
-                  </h2>
-                  <div className="flex-grow border-t border-gray-300"></div>
-                </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 scrollbar-thin scrollbar-thumb-gray-900 scrollbar-track-gray-200">
-                  {categoryProducts.map(product => (
-                    <ProductCard 
-                      key={product._id} 
-                      product={product} 
-                      addToCart={addToCart}
-                      onToppingsOpen={() => setIsSelectingToppings(true)}
-                      onToppingsClose={() => setIsSelectingToppings(false)}
-                    />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-      </div>
+      <FilterableMenu 
+        products={products}
+        categories={categories}
+        addToCart={addToCart}
+        onToppingsOpen={() => setIsSelectingToppings(true)}
+        onToppingsClose={() => setIsSelectingToppings(false)}
+      />
 
       {/* Barra fija inferior del carrito - ahora con visibilidad condicional */}
       {cart.length > 0 && !isSelectingToppings && !showCartSummary && (
