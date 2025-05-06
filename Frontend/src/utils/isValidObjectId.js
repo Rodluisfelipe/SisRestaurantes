@@ -7,10 +7,10 @@ export function isValidObjectId(id) {
 // This function checks if a string is a valid business identifier (either ObjectId or slug)
 export function isValidBusinessIdentifier(id) {
   if (!id) return false;
-  // Accept both ObjectId (24 chars hex) and slugs (text with hyphens)
+  // Accept both ObjectId (24 chars hex) and slugs (text with hyphens or underscores)
   return typeof id === 'string' && (
     /^[0-9a-fA-F]{24}$/.test(id) || // ObjectId format
-    /^[a-z0-9-]+$/i.test(id)         // slug format (letters, numbers, hyphens)
+    /^[a-z0-9-_]+$/i.test(id)         // slug format (letters, numbers, hyphens, underscores)
   );
 }
 

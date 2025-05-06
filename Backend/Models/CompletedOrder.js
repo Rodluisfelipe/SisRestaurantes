@@ -1,12 +1,13 @@
 const mongoose = require("mongoose");
 
 /**
- * Model for orders in the restaurant system
+ * Model for completed orders in the restaurant system
  * 
- * Handles different types of orders: in-site (table), takeaway, and delivery
- * Tracks order status through the fulfillment process
+ * This model stores orders that have been completed.
+ * It has the same structure as the Order model but with additional
+ * fields for reporting and analytics.
  */
-const orderSchema = new mongoose.Schema({
+const completedOrderSchema = new mongoose.Schema({
   // Business reference
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -41,14 +42,7 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'inProgress', 'completed'],
-    default: 'pending'
-  },
-  
-  // Flag to indicate if the order has been sent to kitchen
-  sentToKitchen: {
-    type: Boolean,
-    default: false
+    default: 'completed'
   },
   
   // Table information (for in-site orders)
@@ -106,18 +100,34 @@ const orderSchema = new mongoose.Schema({
   // Timestamps
   createdAt: {
     type: Date,
-    default: Date.now
+    required: true
   },
-  updatedAt: {
+  completedAt: {
     type: Date,
     default: Date.now
+  },
+  
+  // Additional fields for reporting
+  reportDate: {
+    type: Date,
+    default: function() {
+      // Set to the start of the current day (midnight)
+      const date = new Date();
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+  },
+  
+  // Flag to indicate if this order has been included in a report
+  includedInReport: {
+    type: Boolean,
+    default: false
   }
 });
 
-// Index for faster queries
-orderSchema.index({ businessId: 1, createdAt: -1 });
-orderSchema.index({ businessId: 1, status: 1 });
-orderSchema.index({ businessId: 1, tableNumber: 1 });
-orderSchema.index({ businessId: 1, sentToKitchen: 1 });
+// Indexes for faster queries
+completedOrderSchema.index({ businessId: 1, completedAt: -1 });
+completedOrderSchema.index({ businessId: 1, reportDate: 1 });
+completedOrderSchema.index({ businessId: 1, includedInReport: 1 });
 
-module.exports = mongoose.models.Order || mongoose.model("Order", orderSchema); 
+module.exports = mongoose.models.CompletedOrder || mongoose.model("CompletedOrder", completedOrderSchema); 

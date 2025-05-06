@@ -3,6 +3,7 @@ import { useAuth } from "./Context/AuthContext";
 import Menu from "./Pages/Menu";
 import Admin from "./Pages/Admin";
 import Login from "./Pages/Login";
+import Kitchen from "./Pages/Kitchen";
 import { BusinessProvider, useBusinessConfig } from './Context/BusinessContext';
 import { AuthProvider } from './Context/AuthContext';
 import { useEffect } from "react";
@@ -69,6 +70,16 @@ function App() {
                 <Admin />
               </ProtectedRoute>
             </BusinessProviderWrapper>
+            } 
+          />
+          <Route 
+            path=":businessId/kitchen"
+            element={
+              <BusinessProviderWrapper>
+                <ProtectedRoute>
+                  <Kitchen />
+                </ProtectedRoute>
+              </BusinessProviderWrapper>
             } 
           />
           <Route path="/login" element={<Login />} />

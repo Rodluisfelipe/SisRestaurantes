@@ -1,17 +1,20 @@
 // @charset UTF-8
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from "react-router-dom";
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
-import { API_ENDPOINTS } from "../config";
+import OrderConfirmationModal from "../Components/OrderConfirmationModal";
+import CartBar from "../Components/CartBar";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
 import { socket } from '../services/api';
-import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObjectId';
+import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
+import * as SessionManager from '../utils/sessionManager';
+import { calculateItemPrice, calculateTotalAmount, calculateTotalItems, createWhatsAppMessage } from '../utils/orderUtils';
+import logger from '../utils/logger';
 
 /**
  * Página principal del Menú para clientes
@@ -24,12 +27,13 @@ import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObje
  * - Se actualiza en tiempo real mediante Server-Sent Events
  */
 
+// Función para obtener el orden de las categorías
 const getCategoryOrder = () => {
   try {
     const savedOrder = localStorage.getItem('categoryOrderSettings');
     return savedOrder ? JSON.parse(savedOrder) : {};
   } catch (error) {
-    console.error('Error al obtener orden de categorías:', error);
+    logger.error('Error al obtener orden de categorías:', error);
     return {};
   }
 };
@@ -48,58 +52,186 @@ const isValidSession = () => {
 };
 
 export default function Menu() {
+  // Determinar el modo actual basado en la URL
+  const isQRMode = SessionManager.isQRMode();
+  
+  // Obtener el número de mesa directamente de la URL (solo en modo QR)
+  const tableFromUrl = SessionManager.getTableNumberFromURL();
+
+  // Determinar si debe mostrar el selector de tipo de pedido
+  const shouldShowOrderTypeSelector = () => {
+    // Si ya hay información de pedido guardada con nombre de cliente, no mostrar el selector
+    const savedOrderInfo = SessionManager.getFromSession('orderInfo');
+    if (savedOrderInfo && savedOrderInfo.customerName) {
+      logger.info('Hay información de cliente guardada, no mostrar selector inicial');
+      return false;
+    }
+    
+    // En modo QR, mostrar selector incluso si hay información para validar mesa
+    if (isQRMode) {
+      logger.info('Modo QR: mostrar selector inicial para confirmar mesa', tableFromUrl);
+      return true;
+    }
+    
+    // En modo normal, verificar si hay nombre de cliente guardado
+    const savedName = SessionManager.getSavedCustomerName();
+    if (savedName && savedName.trim() !== '') {
+      logger.info('Hay nombre de cliente guardado en localStorage, no mostrar selector inicial');
+      
+      // Crear información básica con el nombre guardado
+      const basicInfo = {
+        customerName: savedName,
+        orderType: '',
+        tableNumber: ''
+      };
+      
+      // Guardar esta información básica y continuar sin mostrar selector
+      setOrderInfo(basicInfo);
+      SessionManager.saveOrderInfo(basicInfo);
+      
+      return false;
+    }
+    
+    // Si no hay información de cliente, mostrar el selector para pedir nombre
+    logger.info('No hay información de cliente, mostrar selector inicial para pedir nombre');
+    return true;
+  };
+  
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem('cart');
-    return savedCart ? JSON.parse(savedCart) : [];
+    return SessionManager.getFromSession('cart', []);
   });
+  
   const [loading, setLoading] = useState(true);
   const [showCartSummary, setShowCartSummary] = useState(false);
   const [showOrderTypeSelector, setShowOrderTypeSelector] = useState(() => {
-    const savedOrderInfo = localStorage.getItem('orderInfo');
-    return !savedOrderInfo;
+    return shouldShowOrderTypeSelector();
   });
-  const [orderInfo, setOrderInfo] = useState(() => {
-    const savedOrderInfo = localStorage.getItem('orderInfo');
-    return savedOrderInfo ? JSON.parse(savedOrderInfo) : null;
-  });
+  
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
   const { businessConfig } = useBusinessConfig();
   const { businessId } = useBusinessConfig();
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [showOrderConfirmationModal, setShowOrderConfirmationModal] = useState(false);
+  const [orderConfirmationDetails, setOrderConfirmationDetails] = useState({
+    type: '',
+    message: ''
+  });
   
-  // Get table number from URL parameters if available
-  const [tableNumber, setTableNumber] = useState(() => {
-    const path = window.location.pathname;
-    const matches = path.match(/\/mesa\/(\w+)/);
+  // Initialize orderInfo with the appropriate storage
+  const [orderInfo, setOrderInfo] = useState(() => {
+    // Obtener información guardada de la sesión
+    const savedOrderInfo = SessionManager.loadOrderInfo();
     
-    if (matches && matches[1]) {
-      // Save table number to localStorage for this session
-      localStorage.setItem('currentTable', matches[1]);
-      return matches[1];
+    if (savedOrderInfo) {
+      // Si hay información guardada, usarla
+      // En modo QR, asegurarse de usar el número de mesa de la URL
+      if (isQRMode && tableFromUrl) {
+        return { ...savedOrderInfo, tableNumber: tableFromUrl };
+      }
+      return savedOrderInfo;
     }
     
-    // Si no está en la URL, verificar en localStorage (solo si la sesión es válida)
-    if (isValidSession()) {
-      return localStorage.getItem('currentTable') || null;
+    // Si no hay información guardada, crear base según modo
+    if (isQRMode) {
+      return {
+        customerName: '',
+        orderType: '',
+        tableNumber: tableFromUrl || ''
+      };
+    } else {
+      return {
+        customerName: SessionManager.getSavedCustomerName(),
+        orderType: '',
+        // En modo normal, no inicializar con número de mesa
+        tableNumber: ''
+      };
     }
-    
-    // Si la sesión expiró, limpiar localStorage
-    localStorage.removeItem('currentTable');
-    localStorage.removeItem('orderInfo');
-    localStorage.removeItem('sessionStartTime');
-    return null;
   });
   
   // Use table number as a dependency for some effects
   useEffect(() => {
-    console.log('Current table number:', tableNumber);
-  }, [tableNumber]);
+    logger.info('Current table number:', tableFromUrl);
+  }, [tableFromUrl]);
+
+  // Si la sesión expiró o no viene de QR, limpiar localStorage de QR
+  useEffect(() => {
+    if (isQRMode && !tableFromUrl) {
+      localStorage.removeItem('tableQR_currentTable');
+      localStorage.removeItem('isTableQRSession'); 
+      localStorage.removeItem('tableQR_orderInfo');
+    }
+  }, [isQRMode, tableFromUrl]);
+
+  // Guardar carrito en la sesión
+  useEffect(() => {
+    SessionManager.saveToSession('cart', cart);
+  }, [cart]);
+
+  // Guardar orderInfo en la sesión
+  useEffect(() => {
+    if (orderInfo) {
+      SessionManager.saveToSession('orderInfo', orderInfo);
+    }
+  }, [orderInfo]);
+
+  // Si la sesión expiró o no viene de QR, limpiar datos obsoletos
+  useEffect(() => {
+    // Al montar el componente, limpiar cualquier sesión obsoleta
+    if (!isQRMode) {
+      // Si estamos en modo normal, limpiar cualquier dato QR que pudiera haber
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.startsWith('qr_session_')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    }
+  }, [isQRMode]);
+
+  // Listener para eventos de storage entre pestañas
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      // Solo procesamos eventos de sessionStorage
+      if (!event.storageArea || event.storageArea !== sessionStorage) return;
+      
+      const prefix = SessionManager.getPrefix();
+      
+      // Si el evento es para nuestra sesión actual
+      if (event.key && event.key.startsWith(prefix)) {
+        const actualKey = event.key.replace(prefix, '');
+        
+        if (actualKey === 'cart') {
+          try {
+            const newCart = event.newValue ? JSON.parse(event.newValue) : [];
+            setCart(newCart);
+          } catch (error) {
+            logger.error('Error parsing cart from sessionStorage:', error);
+          }
+        }
+        
+        if (actualKey === 'orderInfo') {
+          try {
+            const newOrderInfo = JSON.parse(event.newValue);
+            setOrderInfo(newOrderInfo);
+          } catch (error) {
+            logger.error('Error parsing orderInfo from sessionStorage:', error);
+          }
+        }
+      }
+    };
+    
+    // Añadir listener para sessionStorage
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   useEffect(() => {
-    console.log('Menu - businessId:', businessId, 'type:', typeof businessId);
-    console.log('Menu - businessConfig:', businessConfig);
+    logger.info('Menu - businessId:', businessId, 'type:', typeof businessId);
+    logger.info('Menu - businessConfig:', businessConfig);
   }, [businessId, businessConfig]);
 
   useEffect(() => {
@@ -118,29 +250,29 @@ export default function Menu() {
   useEffect(() => {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId para aceptar tanto slugs como ObjectIDs
     const isValid = isValidBusinessIdentifier(businessId);
-    console.log('Menu - businessId es válido:', isValid, businessId);
+    logger.info('Menu - businessId es válido:', isValid, businessId);
     
     if (!isValid) {
-      console.log('Menu - businessId no es válido, no se cargarán datos');
+      logger.info('Menu - businessId no es válido, no se cargarán datos');
       return;
     }
     
     setLoading(true);
     const fetchData = async () => {
       try {
-        console.log('Menu - Cargando datos para businessId:', businessId);
+        logger.info('Menu - Cargando datos para businessId:', businessId);
         const [productsRes, categoriesRes] = await Promise.all([
           api.get(`/products?businessId=${businessId}`),
           api.get(`/categories?businessId=${businessId}`)
         ]);
-        console.log('Menu - Datos recibidos:', {
+        logger.info('Menu - Datos recibidos:', {
           products: productsRes.data.length,
           categories: categoriesRes.data.length
         });
         setProducts(productsRes.data);
         setCategories(categoriesRes.data);
       } catch (err) {
-        console.error("Error al obtener datos:", err);
+        logger.error("Error al obtener datos:", err);
       } finally {
         setLoading(false);
       }
@@ -154,31 +286,31 @@ export default function Menu() {
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log('Evento recibido:', data.type);
+        logger.info('Evento recibido:', data.type);
         
         switch (data.type) {
           case 'products_update':
-            console.log('Actualizando productos:', data.data.length);
+            logger.info('Actualizando productos:', data.data.length);
             setProducts(data.data);
             break;
           case 'categories_update':
-            console.log('Actualizando categorías:', data.data.length);
+            logger.info('Actualizando categorías:', data.data.length);
             setCategories(data.data.categories || data.data);
             break;
           case 'business_config_update':
-            console.log('Actualizando configuración del negocio:', data.data);
+            logger.info('Actualizando configuración del negocio:', data.data);
             setBusinessConfig(data.data);
             break;
           default:
             break;
         }
       } catch (error) {
-        console.error('Error procesando evento:', error);
+        logger.error('Error procesando evento:', error);
       }
     };
 
     eventSource.onerror = (error) => {
-      console.error('Error en la conexión SSE:', error);
+      logger.error('Error en la conexión SSE:', error);
       eventSource.close();
     };
 
@@ -192,7 +324,7 @@ export default function Menu() {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId
     const isValid = isValidBusinessIdentifier(businessId);
     if (!isValid) {
-      console.log('Menu - businessId no es válido para socket:', businessId);
+      logger.info('Menu - businessId no es válido para socket:', businessId);
       return;
     }
     
@@ -200,7 +332,7 @@ export default function Menu() {
       socket.connect();
     }
     socket.emit('joinBusiness', businessId);
-    console.log('Socket joinBusiness:', businessId);
+    logger.info('Socket joinBusiness:', businessId);
     socket.on('products_update', (data) => {
       if (data.type === 'created') {
         setProducts((prev) => [...prev, data.product]);
@@ -225,27 +357,13 @@ export default function Menu() {
     };
   }, [businessId]);
 
-  useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
-  }, [cart]);
-
-  useEffect(() => {
-    if (orderInfo) {
-      localStorage.setItem('orderInfo', JSON.stringify(orderInfo));
-    }
-  }, [orderInfo]);
-
   const addToCart = (product) => {
     setCart(prevCart => {
-      // Crear un identificador único para el producto basado en su ID y toppings
       const toppingsString = JSON.stringify(product.selectedToppings || {});
       const uniqueId = `${product._id}-${toppingsString.replace(/[{}",:]/g, '')}`;
-      
-      // Buscar si existe un producto idéntico (mismo ID único)
       const existingItemIndex = prevCart.findIndex(item => item.uniqueId === uniqueId);
 
       if (existingItemIndex >= 0) {
-        // Si existe, incrementar la cantidad
         const newCart = [...prevCart];
         newCart[existingItemIndex] = {
           ...newCart[existingItemIndex],
@@ -254,7 +372,6 @@ export default function Menu() {
         return newCart;
       }
 
-      // Si no existe, agregar como nuevo item con ID único
       return [...prevCart, { 
         ...product, 
         uniqueId, 
@@ -322,6 +439,11 @@ export default function Menu() {
     return totalPrice * (item.quantity || 1);
   };
 
+  // Función para calcular el total del carrito
+  const calculateTotalAmount = () => {
+    return cart.reduce((sum, item) => sum + calculateItemPrice(item), 0);
+  };
+
   // Calcular total de items en el carrito
   const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
   
@@ -329,199 +451,171 @@ export default function Menu() {
   const totalAmount = cart.reduce((sum, item) => sum + calculateItemPrice(item), 0);
 
   const handleOrderTypeComplete = (info) => {
+    logger.info('Datos recibidos del selector de tipo:', info);
+    
+    // Asegurar que tengamos al menos un nombre de cliente
+    if (!info.customerName) {
+      logger.warn('No se recibió nombre de cliente en handleOrderTypeComplete');
+      info.customerName = 'Cliente';
+    }
+    
+    // En modo QR, verificar que haya tipo de pedido
+    if (isQRMode && !info.orderType) {
+      logger.warn('No se recibió tipo de pedido en modo QR en handleOrderTypeComplete');
+    }
+    
+    // En modo normal, mantener orderType vacío
+    if (!isQRMode && info.orderType) {
+      logger.info('Tipo de pedido recibido en modo normal, pero se manejará en CartSummary:', info.orderType);
+    }
+    
+    // En modo normal, asegurar que no haya número de mesa para tipos que no sean inSite
+    if (!isQRMode && info.orderType !== 'inSite') {
+      info.tableNumber = '';
+    }
+    
+    // Guardar la información actualizada
     setOrderInfo(info);
     setShowOrderTypeSelector(false);
     
-    // Asegurarse de que si hay tableNumber, se guarde correctamente
-    if (info.tableNumber) {
-      localStorage.setItem('currentTable', info.tableNumber);
-      setTableNumber(info.tableNumber);
-    }
+    // Usar la nueva función que maneja correctamente el almacenamiento
+    SessionManager.saveOrderInfo(info);
+    
+    logger.info('Información actualizada del pedido:', info);
   };
 
   const updateOrderInfo = (newInfo) => {
     setOrderInfo(newInfo);
-    localStorage.setItem('orderInfo', JSON.stringify(newInfo));
+    
+    // Usar la nueva función que maneja correctamente el almacenamiento
+    SessionManager.saveOrderInfo(newInfo);
   };
 
-  const createWhatsAppMessage = () => {
-    const businessName = businessConfig?.businessName || 'Nuestro Negocio';
-    let message = "";
-    
-    // Información del cliente
-    message += `*** DATOS DEL CLIENTE ***\n`;
-    message += `*Nombre:* ${orderInfo.customerName || 'Cliente'}\n`;
-    
-    // Información del pedido según tipo
-    if (orderInfo.orderType === 'delivery') {
-      message += `*Tipo de pedido:* A Domicilio\n`;
-      message += `*Teléfono:* ${orderInfo.phone || 'No proporcionado'}\n`;
-      message += `*Dirección:* ${orderInfo.address || 'No proporcionada'}\n`;
-    } else if (orderInfo.orderType === 'inSite') {
-      message += `*Tipo de pedido:* En Sitio\n`;
-      message += `*Mesa #:* ${orderInfo.tableNumber || 'No especificada'}\n`;
-    }
-    message += `------------------------\n\n`;
-
-    // Agregar detalle de productos
-    message += `*** DETALLE DEL PEDIDO ***\n`;
-    
-    cart.forEach((item, index) => {
-      message += `\n${index + 1}. ${item.quantity}x ${item.name}\n`;
-      message += `   Precio unitario: $${(item.finalPrice || item.price).toFixed(2)}\n`;
+  const handleOrder = async (directOrderInfo) => {
+    try {
+      logger.info('===== INICIANDO PROCESAMIENTO DE PEDIDO =====');
+      logger.info('Estado del pedido en orderInfo:', orderInfo);
+      logger.info('Estado del pedido recibido directamente:', directOrderInfo);
       
-      // Verificar si hay toppings seleccionados y es un array
-      if (item.selectedToppings && Array.isArray(item.selectedToppings) && item.selectedToppings.length > 0) {
-        message += `   *Adicionales:*\n`;
-        
-        // Iterar sobre cada grupo de toppings seleccionado
-        item.selectedToppings.forEach(topping => {
-          const basePrice = Number(topping.basePrice || 0);
-          
-          // Mostrar el grupo y su precio base si existe
-          message += `   • ${topping.groupName}`;
-          if (basePrice > 0) {
-            message += ` (Base: $${basePrice.toFixed(2)})`;
-          }
-          message += `:\n`;
-          
-          // Mostrar la opción principal si existe
-          if (topping.optionName) {
-            message += `     - ${topping.optionName}`;
-            if (topping.price > 0) {
-              message += ` (+$${topping.price.toFixed(2)})`;
-            }
-            message += `\n`;
-          }
-          
-          // Mostrar opciones de subgrupos si existen
-          if (topping.subGroups && Array.isArray(topping.subGroups) && topping.subGroups.length > 0) {
-            topping.subGroups.forEach(subItem => {
-              message += `     - ${subItem.subGroupTitle}: ${subItem.optionName}`;
-              if (subItem.price > 0) {
-                message += ` (+$${subItem.price.toFixed(2)})`;
-              }
-              message += `\n`;
-            });
-          }
-        });
+      // Prevenir múltiples envíos
+      if (isSubmittingOrder) {
+        logger.info('Ya hay un envío en proceso, ignorando');
+        return;
       }
       
-      message += `   *Subtotal:* $${calculateItemPrice(item).toFixed(2)}\n`;
-      message += `   ------------------------\n`;
-    });
-
-    // Agregar totales
-    message += `\n*** RESUMEN ***\n`;
-    message += `*Productos:* ${cart.length}\n`;
-    message += `*Cantidad total:* ${totalItems} items\n`;
-    message += `*TOTAL A PAGAR:* $${totalAmount.toFixed(2)}\n`;
-    message += `------------------------\n`;
-    
-    // Agregar un mensaje de agradecimiento y datos del negocio
-    message += `\n¡Gracias por tu pedido en ${businessName}!\n`;
-    message += `Tu orden será procesada inmediatamente.`;
-    
-    return encodeURIComponent(message);
-  };
-
-  const handleOrder = async () => {
-    // Prevent multiple submissions
-    if (isSubmittingOrder) return;
     setIsSubmittingOrder(true);
     
-    try {
-      // Validar que tengamos toda la información necesaria
-      if (!orderInfo || !orderInfo.customerName) {
-        alert('Error: No hay información del cliente');
+      // Validar que haya productos en el carrito
+      if (cart.length === 0) {
+        logger.error('Error: Carrito vacío');
+        alert('No hay productos en el carrito');
         setIsSubmittingOrder(false);
         return;
       }
 
-      if (!orderInfo.orderType) {
-        alert('Por favor selecciona el tipo de pedido (Delivery o En Sitio)');
+      // Usar la información directa si está disponible, si no usar orderInfo
+      const finalOrderInfo = directOrderInfo || orderInfo;
+      logger.info('Información final a usar:', finalOrderInfo);
+
+      // Validar nombre del cliente
+      if (!finalOrderInfo?.customerName) {
+        logger.error('Error: Falta nombre del cliente');
+        // Si no hay nombre de cliente, mostrar selector solo para nombre
+        setShowOrderTypeSelector(true);
         setIsSubmittingOrder(false);
         return;
       }
 
-      // Validar datos de entrega para pedidos a domicilio
-      if (orderInfo.orderType === 'delivery') {
-        const phone = orderInfo.phone ? orderInfo.phone.trim() : '';
-        const address = orderInfo.address ? orderInfo.address.trim() : '';
+      // Verificar el tipo de pedido
+      if (!finalOrderInfo?.orderType) {
+        logger.error('Tipo de pedido no especificado');
         
-        if (!phone || !address) {
-          alert('Por favor completa la información de entrega');
+        // En modo normal, mostrar CartSummary para seleccionar tipo
+        if (!isQRMode) {
+          logger.info('Modo normal: mostrando CartSummary para seleccionar tipo');
+          setShowCartSummary(true);
+          setIsSubmittingOrder(false);
+          return;
+        } else {
+          // En modo QR, requerir tipo
+          logger.error('Error: Modo QR sin tipo de pedido');
+          alert('Por favor selecciona el tipo de pedido');
           setIsSubmittingOrder(false);
           return;
         }
-        
-        // Actualizar orderInfo con valores sin espacios en blanco extra
-        orderInfo.phone = phone;
-        orderInfo.address = address;
       }
 
-      // Validar número de mesa para pedidos en sitio
-      if (orderInfo.orderType === 'inSite' && !orderInfo.tableNumber) {
-        alert('Por favor ingresa el número de mesa');
+      // Verificar mesa para pedidos en sitio
+      if (finalOrderInfo.orderType === 'inSite') {
+        const currentTable = finalOrderInfo.tableNumber ? finalOrderInfo.tableNumber.trim() : '';
+        
+        logger.info('Verificando mesa para pedido en sitio:', currentTable);
+        
+        if (!currentTable) {
+          // Si no hay mesa, actuar según el modo
+          if (isQRMode && tableFromUrl) {
+            // En QR, usar la mesa de la URL
+            logger.info('Usando mesa de URL en modo QR:', tableFromUrl);
+            finalOrderInfo.tableNumber = tableFromUrl;
+          } else {
+            // En modo normal, pedir la mesa
+            logger.info('Pedido en sitio sin mesa en modo normal: mostrando modal');
+            setShowCartSummary(true);
+            setIsSubmittingOrder(false);
+            return;
+          }
+        } else {
+          logger.info(`*** MESA ESPECIFICADA: ${currentTable} - PROCESANDO PEDIDO EN SITIO ***`);
+        }
+      }
+      
+      // Llegamos aquí con toda la información necesaria
+      logger.info('Información completa, procediendo a enviar el pedido:', finalOrderInfo);
+      
+      // Calcular total del pedido
+      const totalAmount = calculateTotalAmount();
+      
+      // Realizar últimas validaciones
+      if (finalOrderInfo.orderType === 'inSite' && !finalOrderInfo.tableNumber) {
+        logger.error('Error: Intento de enviar pedido en sitio sin número de mesa');
+        alert('Error: Falta el número de mesa');
         setIsSubmittingOrder(false);
         return;
       }
 
-      // Preparar los datos del pedido para la API
-      const orderData = {
-        businessId: businessId,
-        customerName: orderInfo.customerName,
-        orderType: orderInfo.orderType,
-        tableNumber: orderInfo.tableNumber || '',
-        phone: orderInfo.phone || '',
-        address: orderInfo.address || '',
-        items: cart.map(item => ({
-          productId: item._id,
-          name: item.name,
-          price: item.finalPrice || item.price,
-          quantity: item.quantity || 1,
-          selectedToppings: item.selectedToppings || []
-        })),
-        totalAmount: totalAmount
-      };
-
-      console.log('Creating order for business:', businessId);
-      console.log('Order data:', orderData);
-
-      // Para pedidos a domicilio enviar WhatsApp además de guardar en API
-      if (orderInfo.orderType === 'delivery') {
-        // Usar el número configurado en el panel de administración, o usar la API predeterminada sin número
-        const whatsappNumber = businessConfig?.whatsappNumber 
-          ? `https://wa.me/${businessConfig.whatsappNumber}?text=${createWhatsAppMessage()}` 
-          : `https://wa.me/?text=${createWhatsAppMessage()}`;
-
-        window.open(whatsappNumber);
+      logger.info('*** INFORMACIÓN FINAL VALIDADA ANTES DE ENVÍO: ***', finalOrderInfo);
+      
+      // Ejecutar el envío con toda la información correcta
+      logger.info('*** EJECUTANDO ENVÍO FINAL DEL PEDIDO ***');
+      const response = await executeOrderSubmission(finalOrderInfo, cart, totalAmount);
+      
+      // Asegurar que el estado de envío se resetee, ya sea exitoso o no
+      if (response) {
+        logger.info('*** PEDIDO ENVIADO CORRECTAMENTE ***');
+      } else {
+        logger.error('*** FALLO EN EL ENVÍO DEL PEDIDO ***');
       }
       
-      // Guardar el pedido en la base de datos en todos los casos
-      const response = await api.post('/orders', orderData);
-      console.log('Pedido creado:', response.data);
+      setTimeout(() => {
+        logger.info('Reseteando estado de envío después de completar/fallar la orden');
+        setIsSubmittingOrder(false);
+      }, 500);
       
-      // Mostrar confirmación
-      alert(`¡Gracias por tu pedido! ${orderInfo.orderType === 'delivery' 
-        ? 'Te contactaremos pronto para coordinar la entrega.' 
-        : 'Tu pedido ha sido enviado al restaurante.'}`);
-      
-      // Limpiar el carrito después de enviar
-      setCart([]);
-      setShowCartSummary(false);
-      localStorage.removeItem('cart');
     } catch (error) {
-      console.error('Error al crear el pedido:', error);
-      alert('Hubo un problema al procesar tu pedido. Por favor intenta nuevamente.');
-    } finally {
+      logger.error('Error general en handleOrder:', error);
+      alert('Error al procesar el pedido. Por favor intenta nuevamente.');
       setIsSubmittingOrder(false);
+    } finally {
+      // Asegurar que el estado siempre se resetee al finalizar
+      setTimeout(() => {
+      setIsSubmittingOrder(false);
+      }, 500);
     }
   };
 
   const getSortedCategories = (categories) => {
     const savedOrder = localStorage.getItem('categoryOrder');
-    console.log("Menu: Retrieved category order from localStorage:", savedOrder);
+    logger.info("Menu: Retrieved category order from localStorage:", savedOrder);
     
     if (!savedOrder) {
       return [...categories].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
@@ -529,7 +623,7 @@ export default function Menu() {
     
     try {
       const orderMap = JSON.parse(savedOrder);
-      console.log("Menu: Parsed order map:", orderMap);
+      logger.info("Menu: Parsed order map:", orderMap);
       
       return [...categories].sort((a, b) => {
         const orderA = orderMap[a._id] !== undefined ? orderMap[a._id] : 999;
@@ -537,8 +631,99 @@ export default function Menu() {
         return orderA - orderB;
       });
     } catch (err) {
-      console.error("Menu: Error parsing category order:", err);
+      logger.error("Menu: Error parsing category order:", err);
       return [...categories].sort((a, b) => (a.displayOrder || 999) - (b.displayOrder || 999));
+    }
+  };
+
+  // Función que ejecuta todo el proceso de envío del pedido
+  const executeOrderSubmission = async (orderDetails, cartItems, totalAmount) => {
+    logger.info('Ejecutando envío de pedido con detalles:', orderDetails);
+    
+    try {
+      // Crear estructura de datos específica para enviar al backend
+      const orderData = {
+        businessId: businessId,
+        customerName: orderDetails.customerName,
+        orderType: orderDetails.orderType,
+        tableNumber: orderDetails.tableNumber || '', // Solo para el envío
+        phone: orderDetails.phone || '',
+        address: orderDetails.address || '',
+        items: cartItems.map(item => ({
+          productId: item._id,
+          name: item.name,
+          price: item.finalPrice || item.price,
+          quantity: item.quantity || 1,
+          selectedToppings: item.selectedToppings || []
+        })),
+        totalAmount
+      };
+
+      logger.info('Datos finales del pedido a enviar:', orderData);
+
+      // Para pedidos a domicilio enviar WhatsApp además de guardar en API
+      if (orderDetails.orderType === 'delivery') {
+        // Usar el número configurado en el panel de administración
+        const whatsappNumber = businessConfig?.whatsappNumber 
+          ? `https://wa.me/${businessConfig.whatsappNumber}?text=${createWhatsAppMessage(orderDetails, cartItems, totalAmount)}` 
+          : `https://wa.me/?text=${createWhatsAppMessage(orderDetails, cartItems, totalAmount)}`;
+
+        window.open(whatsappNumber);
+      }
+      
+      // Guardar el pedido en la base de datos
+      logger.info('Enviando datos del pedido a la API:', orderData);
+      const response = await api.post('/orders', orderData);
+      logger.info('Pedido creado exitosamente:', response.data);
+      
+      // Limpiar cualquier ID de pedido anterior y guardar el nuevo
+      sessionStorage.removeItem('lastOrderId');
+      sessionStorage.setItem('lastOrderId', response.data._id);
+      
+      // Guardar el número de orden para mostrar en el modal de confirmación
+      sessionStorage.setItem('lastOrderNumber', response.data.orderNumber);
+      logger.info('Número de orden guardado:', response.data.orderNumber);
+      
+      // Configurar mensaje específico según tipo de pedido
+      let confirmMessage = '¡Gracias por tu pedido!';
+      if (orderDetails.orderType === 'delivery') {
+        confirmMessage = '¡Gracias por tu pedido! Te contactaremos pronto para coordinar la entrega.';
+      } else if (orderDetails.orderType === 'inSite') {
+        confirmMessage = `¡Gracias por tu pedido! Tu orden será servida en la Mesa ${orderDetails.tableNumber}.`;
+      } else if (orderDetails.orderType === 'takeaway') {
+        confirmMessage = '¡Gracias por tu pedido! Tu orden estará lista para recoger en breve.';
+      }
+      
+      // Mostrar modal de confirmación
+      setOrderConfirmationDetails({
+        type: orderDetails.orderType,
+        message: confirmMessage
+      });
+      
+      // Activar modal de confirmación
+      setShowOrderConfirmationModal(true);
+      
+      // Limpiar el carrito después de enviar
+      setCart([]);
+      setShowCartSummary(false);
+      
+      // Limpiar localStorage y guardar tipo de pedido completado
+      localStorage.removeItem('cart');
+      localStorage.setItem('lastCompletedOrderType', orderDetails.orderType);
+      
+      // Notificar a otras pestañas que se completó un pedido
+      localStorage.setItem('orderCompleted', 'true');
+      
+      // Eliminar la notificación después de un segundo
+      setTimeout(() => {
+        localStorage.removeItem('orderCompleted');
+      }, 1000);
+      
+      return true; // Indicar éxito
+    } catch (error) {
+      logger.error('Error al crear pedido en la API:', error);
+      alert(`Error al procesar el pedido en el servidor: ${error.message || 'Error desconocido'}`);
+      return false; // Indicar fallo
     }
   };
 
@@ -546,7 +731,6 @@ export default function Menu() {
     return (
       <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50">
         <div className="relative flex flex-col items-center">
-          {/* Spinner animado negro, minimalista */}
           <div className="w-16 h-16 flex items-center justify-center mb-4">
             <span className="inline-block w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></span>
           </div>
@@ -557,7 +741,7 @@ export default function Menu() {
   }
 
   if (showOrderTypeSelector) {
-    return <OrderTypeSelector onComplete={handleOrderTypeComplete} initialTableNumber={tableNumber} />;
+    return <OrderTypeSelector onComplete={handleOrderTypeComplete} initialTableNumber={tableFromUrl} />;
   }
 
   if (showCartSummary) {
@@ -572,6 +756,7 @@ export default function Menu() {
         createWhatsAppMessage={createWhatsAppMessage}
         onOrder={handleOrder}
         businessConfig={businessConfig}
+        isSubmittingOrder={isSubmittingOrder}
       />
     );
   }
@@ -598,24 +783,27 @@ export default function Menu() {
         onToppingsClose={() => setIsSelectingToppings(false)}
       />
 
-      {/* Barra fija inferior del carrito - ahora con visibilidad condicional */}
-      {cart.length > 0 && !isSelectingToppings && !showCartSummary && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
-          <div className="container mx-auto flex items-center justify-between">
-            <div>
-              <span className="text-gray-600">{totalItems} productos</span>
-              <p className="font-bold text-lg">${totalAmount.toFixed(2)}</p>
-            </div>
-            <button
-              onClick={() => setShowCartSummary(true)}
-              style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-              className="px-6 py-2 rounded-lg transition-colors duration-300"
-            >
-              Ver Carrito
-            </button>
-          </div>
-        </div>
-      )}
+      <CartBar 
+        cart={cart}
+        totalItems={totalItems}
+        totalAmount={totalAmount}
+        onShowCart={() => setShowCartSummary(true)}
+        businessConfig={businessConfig}
+        isSelectingToppings={isSelectingToppings}
+        showCartSummary={showCartSummary}
+      />
+      
+      <OrderConfirmationModal 
+        show={showOrderConfirmationModal}
+        onClose={() => setShowOrderConfirmationModal(false)}
+        orderInfo={orderInfo}
+        orderConfirmationDetails={orderConfirmationDetails}
+        businessConfig={businessConfig}
+        businessId={businessId}
+        setOrderInfo={setOrderInfo}
+        setCart={setCart}
+        setShowCartSummary={setShowCartSummary}
+      />
     </div>
   );
 } 

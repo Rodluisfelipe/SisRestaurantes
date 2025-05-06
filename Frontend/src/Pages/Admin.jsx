@@ -15,6 +15,7 @@ import { socket } from '../services/api';
 import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import TableSettings from "../Components/TableSettings";
 import OrdersDashboard from "../Components/OrdersDashboard";
+import CompletedOrdersSummary from "../Components/CompletedOrdersSummary";
 
 // Componente de Modal de Confirmación para edición
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) => {
@@ -292,17 +293,20 @@ export default function Admin() {
       return;
     }
 
-    // Verificar si el businessId es válido - ahora acepta slugs
-    const isValid = isValidBusinessIdentifier(businessId);
+    // Verificar si el businessId es válido o es un slug válido
+    const isValidId = isValidBusinessIdentifier(businessId);
+    const isValidSlug = typeof businessId === 'string' && businessId.length > 0 && businessId !== 'undefined';
+    
     console.log('Admin - BusinessId validation:', {
       businessId,
       type: typeof businessId,
-      isValid,
+      isValidId,
+      isValidSlug,
       redirectionCount: redirectionCountRef.current
     });
     
     // Si no hay businessId o no es un formato aceptable, redirigir
-    if (!isValid && redirectionCountRef.current < 2) {
+    if (!isValidId && !isValidSlug && redirectionCountRef.current < 2) {
       redirectionCountRef.current += 1;
       console.log(`Redirigiendo a home debido a businessId inválido. Redirección #${redirectionCountRef.current}`);
       navigate("/", { replace: true });
@@ -765,11 +769,20 @@ export default function Admin() {
         </div>
       )}
       
-      {/* Header mejorado - ajustar top padding si hay banner de superadmin */}
-      <header className={`fixed top-0 left-0 w-full h-16 bg-white shadow z-50 flex items-center justify-between px-6 border-b border-gray-200 ${isSuperAdminMode ? 'mt-7' : ''}`}>
+      {/* Header mejorado con botón de menú móvil */}
+      <header className={`fixed top-0 left-0 w-full h-16 bg-white shadow z-50 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200 ${isSuperAdminMode ? 'mt-7' : ''}`}>
         <div className="flex items-center space-x-3">
+          {/* Botón de menú móvil */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 rounded-md text-gray-600 hover:bg-gray-100 lg:hidden"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+            </svg>
+          </button>
           <img src={businessConfig.logo || '/logo.png'} alt="Logo" className="h-10 w-10 rounded-full object-cover border border-gray-200" />
-          <span className="text-lg font-bold text-gray-800">{businessConfig.businessName || 'Panel Admin'}</span>
+          <span className="text-lg font-bold text-gray-800 hidden sm:inline">{businessConfig.businessName || 'Panel Admin'}</span>
         </div>
         {isSuperAdminMode ? (
           <button onClick={() => window.close()} className="px-4 py-2 bg-yellow-500 text-yellow-900 rounded-lg hover:bg-yellow-600 transition-colors">
@@ -780,9 +793,9 @@ export default function Admin() {
         )}
       </header>
 
-      {/* Navegación lateral responsive */}
-      <nav className={`fixed w-64 h-full bg-gradient-to-b from-white to-gray-50 shadow-xl pt-20 transition-transform duration-300 ease-in-out transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 z-40 border-r border-gray-200 ${isSuperAdminMode ? 'mt-7' : ''}`}>
-        <div className="px-4 py-6">
+      {/* Navegación lateral mejorada */}
+      <nav className={`fixed w-64 h-full bg-gradient-to-b from-white to-gray-50 shadow-xl pt-16 transition-transform duration-300 ease-in-out transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 z-40 border-r border-gray-200 ${isSuperAdminMode ? 'mt-7' : ''}`}>
+        <div className="px-4 py-6 h-full overflow-y-auto">
           <div className="space-y-2">
             {[
               { name: 'Productos', icon: 'M4 6h16M4 10h16M4 14h16M4 18h16', tab: 'products' },
@@ -793,14 +806,20 @@ export default function Admin() {
               { name: 'Personalización', icon: 'M12 4v16m8-8H4', tab: 'theme' },
               { name: 'Cambiar contraseña', icon: 'M12 11c0-1.104.896-2 2-2s2 .896 2 2v2a2 2 0 01-2 2h-4a2 2 0 01-2-2v-2c0-1.104.896-2 2-2s2 .896 2 2', tab: 'change-password' },
               { name: 'Pedidos', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', tab: 'orders' },
+              { name: 'Resumen de Pedidos', icon: 'M12 12a1 1 0 011-1h.01a1 1 0 110 2H13a1 1 0 01-1-1z', tab: 'completed_orders' },
             ].map(({ name, icon, tab }) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center w-full px-4 py-2 rounded-lg transition-colors duration-200 ${activeTab === tab ? 'bg-blue-100 text-blue-700 font-semibold shadow' : 'text-gray-700 hover:bg-gray-100'}`}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setIsMobileMenuOpen(false); // Cerrar menú en móviles al seleccionar
+                }}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-colors duration-200 ${activeTab === tab ? 'bg-blue-100 text-blue-700 font-semibold shadow' : 'text-gray-700 hover:bg-gray-100'}`}
               >
-                <svg className="h-5 w-5 mr-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d={icon} /></svg>
-                {name}
+                <svg className="h-5 w-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
+                </svg>
+                <span className="truncate">{name}</span>
               </button>
             ))}
           </div>
@@ -816,72 +835,71 @@ export default function Admin() {
       )}
 
       {/* Contenido principal responsive */}
-      <main className={`pt-20 ${isMobileMenuOpen ? 'pl-64' : 'pl-0'} lg:pl-64 transition-all duration-300 ${isSuperAdminMode ? 'mt-7' : ''}`}>
+      <main className={`pt-16 ${isMobileMenuOpen ? 'lg:pl-64' : 'lg:pl-64'} transition-all duration-300 ${isSuperAdminMode ? 'mt-7' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Banner de mensaje de éxito */}
-      {successMessage && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50">
-          {successMessage}
-        </div>
-      )}
-      
-      {/* Modal de confirmación de edición */}
-      <ConfirmationModal
-        isOpen={showConfirmModal}
-        onClose={cancelEdit}
-        onConfirm={confirmEdit}
-        product={editingProduct || {}}
-        formData={form}
-      />
-      
-      {/* Modal de confirmación de eliminación */}
-      <DeleteConfirmationModal
-        isOpen={showDeleteModal}
-        onClose={cancelDelete}
-        onConfirm={confirmDelete}
-        product={productToDelete || {}}
-      />
+          {/* Banner de mensaje de éxito */}
+          {successMessage && (
+            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50">
+              {successMessage}
+            </div>
+          )}
+          
+          {/* Modal de confirmación de edición */}
+          <ConfirmationModal
+            isOpen={showConfirmModal}
+            onClose={cancelEdit}
+            onConfirm={confirmEdit}
+            product={editingProduct || {}}
+            formData={form}
+          />
+          
+          {/* Modal de confirmación de eliminación */}
+          <DeleteConfirmationModal
+            isOpen={showDeleteModal}
+            onClose={cancelDelete}
+            onConfirm={confirmDelete}
+            product={productToDelete || {}}
+          />
 
-      {activeTab === 'settings' && <BusinessSettings />}
-      {activeTab === 'categories' && <CategorySettings categories={categories} />}
-      {activeTab === 'toppings' && <ToppingGroupsManager />}
-      {activeTab === 'tables' && <TableSettings />}
-      {activeTab === 'theme' && <ThemeSettings />}
-      {activeTab === 'change-password' && <ChangePassword />}
-      {activeTab === 'orders' && <OrdersDashboard />}
-      {activeTab === 'products' && (
-        <>
-              <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6 mb-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {activeTab === 'settings' && <BusinessSettings />}
+          {activeTab === 'categories' && <CategorySettings categories={categories} />}
+          {activeTab === 'toppings' && <ToppingGroupsManager />}
+          {activeTab === 'tables' && <TableSettings />}
+          {activeTab === 'theme' && <ThemeSettings />}
+          {activeTab === 'change-password' && <ChangePassword />}
+          {activeTab === 'orders' && <OrdersDashboard />}
+          {activeTab === 'completed_orders' && <CompletedOrdersSummary />}
+          {activeTab === 'products' && (
+            <>
+              <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Nombre del Producto
                       </label>
-          <input
-            name="name"
-            value={form.name}
-            onChange={handleChange}
+                      <input
+                        name="name"
+                        value={form.name}
+                        onChange={handleChange}
                         className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                         placeholder="Ej: Pizza Margherita"
-            required
-          />
-                  {form.name === '' && <p className="text-red-500 text-xs mt-1">El nombre es obligatorio.</p>}
+                        required
+                      />
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Descripción
                       </label>
                       <textarea
-            name="description"
-            value={form.description}
-            onChange={handleChange}
+                        name="description"
+                        value={form.description}
+                        onChange={handleChange}
                         rows="3"
                         className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                         placeholder="Describe tu producto..."
-            required
-          />
-                  {form.description === '' && <p className="text-red-500 text-xs mt-1">La descripción es obligatoria.</p>}
+                        required
+                      />
                     </div>
                   </div>
                   <div className="space-y-4">
@@ -893,62 +911,60 @@ export default function Admin() {
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <span className="text-gray-500 sm:text-sm">$</span>
                         </div>
-          <input
+                        <input
                           type="number"
-            name="price"
-            value={form.price}
-            onChange={handleChange}
+                          name="price"
+                          value={form.price}
+                          onChange={handleChange}
                           className="w-full pl-7 rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
                           placeholder="0.00"
-            required
-                      min="1"
-          />
+                          required
+                          min="1"
+                        />
                       </div>
-                  {(form.price === '' || Number(form.price) <= 0) && <p className="text-red-500 text-xs mt-1">El precio es obligatorio y debe ser mayor a 0.</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Categoría
                       </label>
-              <select
-            name="category"
-            value={form.category}
-            onChange={handleChange}
+                      <select
+                        name="category"
+                        value={form.category}
+                        onChange={handleChange}
                         className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-            required
-              >
+                        required
+                      >
                         <option value="">Seleccionar categoría</option>
-                {categories.map(cat => (
-                  <option key={cat._id} value={cat._id}>
-                    {cat.name}
-                  </option>
-                ))}
-              </select>
-                  {form.category === '' && <p className="text-red-500 text-xs mt-1">La categoría es obligatoria.</p>}
+                        {categories.map(cat => (
+                          <option key={cat._id} value={cat._id}>
+                            {cat.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                    URL de la imagen
+                        URL de la imagen
                       </label>
-                  <div className="flex items-center space-x-2">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 14.828a4 4 0 01-5.656 0l-4-4a4 4 0 015.656-5.656l1.415 1.414a2 2 0 102.828 2.828l1.415 1.414a4 4 0 010 5.656z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a1 1 0 011 1v6a1 1 0 01-1 1H9a1 1 0 01-1-1v-6a1 1 0 011-1h6z" />
-                          </svg>
-          <input
-                              type="text"
-            name="image"
-            value={form.image}
-            onChange={handleChange}
-                      className="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                      placeholder="https://ejemplo.com/imagen-del-producto.jpg"
-                      required
+                      <div className="flex items-center space-x-2">
+                        <svg className="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 14.828a4 4 0 01-5.656 0l-4-4a4 4 0 015.656-5.656l1.415 1.414a2 2 0 102.828 2.828l1.415 1.414a4 4 0 010 5.656z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a1 1 0 011 1v6a1 1 0 01-1 1H9a1 1 0 01-1-1v-6a1 1 0 011-1h6z" />
+                        </svg>
+                        <input
+                          type="text"
+                          name="image"
+                          value={form.image}
+                          onChange={handleChange}
+                          className="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                          placeholder="https://ejemplo.com/imagen-del-producto.jpg"
+                          required
                         />
+                      </div>
+                    </div>
                   </div>
-                  {form.image === '' && <p className="text-red-500 text-xs mt-1">La URL de la imagen es obligatoria.</p>}
                 </div>
-              </div>
-        </div>
+                
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Grupos de Toppings
@@ -965,32 +981,30 @@ export default function Admin() {
                     </div>
                   )}
                 </div>
-                <div className="mt-6 flex items-center justify-end gap-3">
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                >
-                  Cancelar
-                </button>
-              )}
+                
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-3">
+                  {editingId && (
+                    <button
+                      type="button"
+                      onClick={cancelEdit}
+                      className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                    >
+                      Cancelar
+                    </button>
+                  )}
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 shadow-md"
+                    className="w-full sm:w-auto px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 shadow-md"
                   >
                     {editingId ? "Actualizar" : "Crear"} Producto
                   </button>
-            </div>
-      </form>
-          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-6 rounded">
-            <strong>¡Aviso!</strong> Los productos sin categoría asignada <b>no se mostrarán</b> en el menú público.
-          </div>
-          <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-            {products.map(product => (
+                </div>
+              </form>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                  {products.map(product => (
                     <div key={product._id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden border border-gray-100">
-                      <div className="relative h-48">
+                      <div className="relative h-48 sm:h-40 lg:h-48">
                         {product.image ? (
                           <img 
                             src={product.image} 
@@ -1007,11 +1021,11 @@ export default function Admin() {
                         <div className="absolute top-2 right-2">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                             {categories.find(c => c._id === product.category)?.name || 'Sin categoría'}
-                              </span>
+                          </span>
                         </div>
                       </div>
                       <div className="p-4">
-                        <h3 className="text-lg font-medium text-gray-900">{product.name}</h3>
+                        <h3 className="text-lg font-medium text-gray-900 line-clamp-1">{product.name}</h3>
                         <p className="mt-1 text-sm text-gray-500 line-clamp-2">{product.description}</p>
                         
                         {/* Mostrar grupos de toppings asociados */}
@@ -1020,7 +1034,6 @@ export default function Admin() {
                             <p className="text-xs font-medium text-gray-600">Grupos de toppings:</p>
                             <div className="flex flex-wrap mt-1 gap-1">
                               {product.toppingGroups.map((toppingId, idx) => {
-                                // Buscar nombre del grupo por ID
                                 const toppingName = toppingGroups.find(t => 
                                   t._id === (typeof toppingId === 'object' ? toppingId._id : toppingId)
                                 )?.name || 'Grupo desconocido';
@@ -1038,25 +1051,37 @@ export default function Admin() {
                         <div className="mt-4 flex items-center justify-between">
                           <span className="text-xl font-bold text-blue-600">${product.price}</span>
                           <div className="flex space-x-2">
-                <button
-                              onClick={() => handleEdit(product)}
-                                className="inline-flex items-center p-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm">
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                              </button>
-                <button
-                              onClick={() => handleDelete(product)}
-                                className="inline-flex items-center p-2 border border-gray-300 rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm">
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                              </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEdit(product);
+                              }}
+                              className="inline-flex items-center p-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm"
+                            >
+                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(product);
+                              }}
+                              className="inline-flex items-center p-2 border border-gray-300 rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm"
+                            >
+                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
                       </div>
                     </div>
-                ))}
+                  ))}
                 </div>
-      </div>
-        </>
-      )}
+              </div>
+            </>
+          )}
         </div>
       </main>
     </div>
