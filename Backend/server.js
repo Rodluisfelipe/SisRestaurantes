@@ -3,9 +3,25 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const eventsRouter = require("./Routes/events");
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 
-// Cargar variables de entorno - ESTO DEBE IR PRIMERO
-require('dotenv').config({ path: process.env.NODE_ENV === 'development' ? './env.development' : './.env' });
+// Cargar configuración desde config.json
+let config;
+try {
+  const configPath = path.join(__dirname, '../config.json');
+  const configData = fs.readFileSync(configPath, 'utf8');
+  config = JSON.parse(configData);
+  console.log("Configuración cargada correctamente desde config.json");
+} catch (error) {
+  console.error("Error al cargar config.json:", error);
+  config = {
+    mongodb_uri: "mongodb://localhost:27017/restaurante",
+    backend_url: "http://localhost:5000/api",
+    frontend_url: "http://localhost:5173"
+  };
+  console.log("Usando configuración por defecto");
+}
 
 /**
  * Servidor principal de la aplicación
@@ -38,11 +54,9 @@ app.set('io', io);
 // Inicializar lógica de sockets
 require('./services/socketService').initSocket(io);
 
-// Usar las variables de entorno
-const MONGO_URI = process.env.MONGODB_URI;
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+// Usar la configuración
+const MONGO_URI = config.mongodb_uri;
+const ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173', config.frontend_url].filter(Boolean);
 
 // Configurar CORS con los orígenes permitidos
 app.use(cors({

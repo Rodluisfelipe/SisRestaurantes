@@ -715,6 +715,11 @@ export default function Admin() {
     setProductToDelete(null);
   };
 
+  // Navegar al POS
+  const handleGoToPOS = () => {
+    navigate(`/${businessId}/pos`);
+  };
+
   // Forzar cambio de contraseña si mustChangePassword es true
   if (user && user.mustChangePassword) {
     return (
@@ -784,13 +789,29 @@ export default function Admin() {
           <img src={businessConfig.logo || '/logo.png'} alt="Logo" className="h-10 w-10 rounded-full object-cover border border-gray-200" />
           <span className="text-lg font-bold text-gray-800 hidden sm:inline">{businessConfig.businessName || 'Panel Admin'}</span>
         </div>
-        {isSuperAdminMode ? (
-          <button onClick={() => window.close()} className="px-4 py-2 bg-yellow-500 text-yellow-900 rounded-lg hover:bg-yellow-600 transition-colors">
-            Cerrar Vista
-          </button>
-        ) : (
-          <button onClick={logout} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">Salir</button>
-        )}
+        
+        <div className="flex space-x-3">
+          {/* Botón POS */}
+          {!isSuperAdminMode && (
+            <button 
+              onClick={handleGoToPOS}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              POS
+            </button>
+          )}
+          
+          {isSuperAdminMode ? (
+            <button onClick={() => window.close()} className="px-4 py-2 bg-yellow-500 text-yellow-900 rounded-lg hover:bg-yellow-600 transition-colors">
+              Cerrar Vista
+            </button>
+          ) : (
+            <button onClick={logout} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">Salir</button>
+          )}
+        </div>
       </header>
 
       {/* Navegación lateral mejorada */}

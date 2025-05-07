@@ -4,6 +4,7 @@ import Menu from "./Pages/Menu";
 import Admin from "./Pages/Admin";
 import Login from "./Pages/Login";
 import Kitchen from "./Pages/Kitchen";
+import POS from "./Pages/POS";
 import { BusinessProvider, useBusinessConfig } from './Context/BusinessContext';
 import { AuthProvider } from './Context/AuthContext';
 import { useEffect } from "react";
@@ -78,6 +79,16 @@ function App() {
               <BusinessProviderWrapper>
                 <ProtectedRoute>
                   <Kitchen />
+                </ProtectedRoute>
+              </BusinessProviderWrapper>
+            } 
+          />
+          <Route 
+            path=":businessId/pos"
+            element={
+              <BusinessProviderWrapper>
+                <ProtectedRoute>
+                  <POS />
                 </ProtectedRoute>
               </BusinessProviderWrapper>
             } 

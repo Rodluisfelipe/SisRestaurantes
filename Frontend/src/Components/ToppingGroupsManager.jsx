@@ -196,6 +196,22 @@ function ToppingGroupsManager() {
     }
   };
 
+  if (error) {
+    return (
+      <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
+        {error}
+      </div>
+    );
+  }
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <span className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></span>
+        <span className="text-gray-600 text-lg font-semibold animate-pulse">Cargando grupos de toppings...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-4">
       <h2 className="text-2xl font-bold mb-6">Gestión de Toppings</h2>
@@ -441,7 +457,9 @@ function ToppingGroupsManager() {
       <div className="space-y-4">
             <h3 className="text-xl font-semibold">Grupos de Toppings</h3>
             {toppingGroups.length === 0 ? (
-              <p className="text-gray-500">No hay grupos de toppings disponibles.</p>
+              <div className="text-center text-gray-400 py-8 text-lg">
+                No hay grupos de toppings disponibles.
+              </div>
             ) : (
               toppingGroups.map((group) => (
           <div key={group._id} className="bg-white p-4 rounded-lg shadow-sm">
@@ -532,4 +550,4 @@ function ToppingGroupsManager() {
   );
 }
 
-export default ToppingGroupsManager; 
+export default ToppingGroupsManager;

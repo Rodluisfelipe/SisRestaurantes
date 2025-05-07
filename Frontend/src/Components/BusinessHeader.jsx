@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/api';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const BusinessHeader = () => {
   const [businessConfig, setBusinessConfig] = useState({
@@ -22,6 +23,11 @@ const BusinessHeader = () => {
   const [logoError, setLogoError] = useState(false);
   const [coverError, setCoverError] = useState(false);
   const { businessId } = useBusinessConfig();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Determinar si estamos en la ruta de administración
+  const isAdminRoute = location.pathname.includes('/admin');
 
   useEffect(() => {
     const fetchBusinessConfig = async () => {
@@ -96,6 +102,11 @@ const BusinessHeader = () => {
 
   console.log('Estado del negocio:', businessConfig.isOpen ? 'Abierto' : 'Cerrado');
 
+  // Navegar al POS
+  const handleGoToPOS = () => {
+    navigate(`/${businessId}/pos`);
+  };
+
   return (
     <div className="w-full text-center relative">
       {/* Cover Image Container */}
@@ -111,6 +122,22 @@ const BusinessHeader = () => {
             }
           }}
         />
+        
+        {/* POS Button - Solo visible en la ruta de administración */}
+        {isAdminRoute && (
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20">
+            <button
+              onClick={handleGoToPOS}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md shadow-md hover:bg-blue-700 transition-colors flex items-center"
+              title="Punto de Venta"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              POS
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Status Indicator */}

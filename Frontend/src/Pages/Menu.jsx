@@ -781,6 +781,7 @@ export default function Menu() {
         addToCart={addToCart}
         onToppingsOpen={() => setIsSelectingToppings(true)}
         onToppingsClose={() => setIsSelectingToppings(false)}
+        isAdmin={false}
       />
 
       <CartBar 

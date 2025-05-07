@@ -15,13 +15,15 @@ import { useBusinessConfig } from '../Context/BusinessContext';
  * @param {Function} props.addToCart Function to add a product to cart
  * @param {Function} props.onToppingsOpen Function called when toppings selector opens
  * @param {Function} props.onToppingsClose Function called when toppings selector closes
+ * @param {Boolean} props.isAdmin Whether the component is being used in admin mode
  */
 const FilterableMenu = ({ 
   products, 
   categories, 
   addToCart, 
   onToppingsOpen, 
-  onToppingsClose 
+  onToppingsClose,
+  isAdmin = false // Default to false so we don't show admin buttons in customer menu
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -318,6 +320,37 @@ const FilterableMenu = ({
         </div>
       </div>
 
+      {/* Barra superior con acciones rápidas y feedback visual - Solo mostrar en modo admin */}
+      {isAdmin && (
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+          <div className="flex-1 flex gap-2">
+            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold shadow hover:bg-blue-700 transition-colors" title="Nuevo producto">
+              <svg className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+              Nuevo producto
+            </button>
+            <button className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg font-semibold shadow hover:bg-gray-200 transition-colors" title="Acciones masivas">
+              <svg className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              Acciones masivas
+            </button>
+          </div>
+          <div className="flex gap-2 items-center">
+            <span className="text-gray-500 text-sm">{filteredProducts.length} productos</span>
+            <button onClick={clearSearch} className="text-blue-600 hover:underline text-sm">Limpiar búsqueda</button>
+          </div>
+        </div>
+      )}
+
+      {/* Siempre mostrar esta información sobre productos filtrados cuando no está en modo admin */}
+      {!isAdmin && filteredProducts.length > 0 && (
+        <div className="flex justify-end mb-4">
+          <div className="flex gap-2 items-center">
+            {searchTerm && (
+              <button onClick={clearSearch} className="text-blue-600 hover:underline text-sm">Limpiar búsqueda</button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Category Filter Tabs */}
       <div className="mb-6 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         <div className="flex space-x-2 pb-2">
@@ -569,12 +602,46 @@ const FilterableMenu = ({
         </div>
       )}
 
+      {/* Tarjeta de producto rediseñada (en grid) */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {filteredProducts.map(product => (
+            <div key={product._id} className="relative group bg-white rounded-xl shadow-lg border border-gray-100 hover:shadow-2xl transition-all overflow-hidden">
+              <div className="h-40 w-full bg-gray-100 flex items-center justify-center">
+                {product.image ? (
+                  <img src={product.image} alt={product.name} className="object-cover w-full h-full" />
+                ) : (
+                  <svg className="h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                )}
+                {/* Acciones rápidas */}
+                <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button className="bg-white p-2 rounded-full shadow hover:bg-blue-100" title="Editar"><svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>
+                  <button className="bg-white p-2 rounded-full shadow hover:bg-red-100" title="Eliminar"><svg className="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
+                </div>
+              </div>
+              <div className="p-4 flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-bold text-lg truncate" title={product.name}>{product.name}</h3>
+                  <span className="text-blue-600 font-bold text-base">${Number(product.price).toLocaleString('es-CO')}</span>
+                </div>
+                <p className="text-gray-500 text-sm line-clamp-2">{product.description}</p>
+                <div className="flex gap-2 mt-2">
+                  <span className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">{categories.find(c => c._id === product.category)?.name || 'Sin categoría'}</span>
+                  {product.featured && <span className="bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded text-xs">Destacado</span>}
+                </div>
+                <button onClick={() => handleShowToppings(product)} style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }} className="mt-3 w-full py-2 rounded-lg font-semibold shadow hover:shadow-md transition-colors">Agregar al carrito</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Empty state when no products match the filter */}
       {filteredProducts.length === 0 && (
-        <div className="text-center py-8">
+        <div className="flex flex-col items-center justify-center py-16">
           <svg 
             xmlns="http://www.w3.org/2000/svg" 
-            className="h-12 w-12 mx-auto text-gray-400 mb-3" 
+            className="h-16 w-16 text-gray-300 mb-4" 
             fill="none" 
             viewBox="0 0 24 24" 
             stroke="currentColor"
@@ -586,19 +653,8 @@ const FilterableMenu = ({
               d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
             />
           </svg>
-          <p className="text-gray-600">
-            {searchTerm 
-              ? `No se encontraron productos para "${searchTerm}"${activeCategory !== 'all' ? ' en esta categoría' : ''}.` 
-              : 'No hay productos disponibles en esta categoría.'}
-          </p>
-          {searchTerm && (
-            <button
-              onClick={clearSearch}
-              className="mt-2 text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              Limpiar búsqueda
-            </button>
-          )}
+          <p className="text-gray-500 text-lg">No hay productos para mostrar.</p>
+          <button onClick={clearSearch} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Limpiar búsqueda</button>
         </div>
       )}
 
@@ -619,4 +675,4 @@ const FilterableMenu = ({
   );
 };
 
-export default FilterableMenu; 
+export default FilterableMenu;

@@ -22,6 +22,7 @@ function CompletedOrdersSummary() {
   const [searchTerm, setSearchTerm] = useState('');
   const [generatingReport, setGeneratingReport] = useState(false);
   const [showNoOrdersModal, setShowNoOrdersModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   // Fetch completed orders for today
   const fetchCompletedOrders = async () => {
@@ -310,7 +311,7 @@ function CompletedOrdersSummary() {
       if (response.data.stats) {
         setStats(response.data.stats);
       }
-      alert('Cierre del día generado correctamente.');
+      setSuccessMessage('Cierre del día generado correctamente.');
     } catch (err) {
       console.error('Error generating daily closing report:', err);
       let errorMessage = 'Error al generar el reporte de cierre diario';
@@ -324,15 +325,34 @@ function CompletedOrdersSummary() {
       } else if (err.request) {
         errorMessage = 'No se recibió respuesta del servidor. Verifica tu conexión.';
       }
-      alert(errorMessage);
+      setError(errorMessage);
     } finally {
       setGeneratingReport(false);
     }
   };
 
   // Renderizado del componente
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <span className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></span>
+        <span className="text-gray-600 text-lg font-semibold animate-pulse">Cargando pedidos completados...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
+          {error}
+        </div>
+      )}
+      {successMessage && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
+          {successMessage}
+        </div>
+      )}
       {/* Filtros y estadísticas */}
       <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -482,6 +502,12 @@ function CompletedOrdersSummary() {
         </div>
       </div>
 
+      {completedOrders.length === 0 && (
+        <div className="text-center text-gray-400 py-8 text-lg">
+          No hay pedidos completados aún.
+        </div>
+      )}
+
       {/* Modal de detalles del pedido */}
       {selectedOrder && (
         <OrderDetailsModal />
@@ -538,4 +564,4 @@ function calculateAveragePreparationTime(orders) {
   return `${avgMinutes}m`;
 }
 
-export default CompletedOrdersSummary; 
+export default CompletedOrdersSummary;

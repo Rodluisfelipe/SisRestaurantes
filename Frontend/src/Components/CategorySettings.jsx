@@ -217,8 +217,14 @@ const CategorySettings = () => {
     }
   };
 
+  // Loader visual mejorado
   if (loading) {
-    return <div className="text-center py-4">Cargando categorías...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <span className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></span>
+        <span className="text-gray-600 text-lg font-semibold animate-pulse">Cargando categorías...</span>
+      </div>
+    );
   }
 
   return (
@@ -226,13 +232,13 @@ const CategorySettings = () => {
       <h2 className="text-xl font-bold text-gray-800 mb-4">Gestión de Categorías</h2>
       
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
           {error}
         </div>
       )}
       
       {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
           {successMessage}
         </div>
       )}
@@ -302,7 +308,7 @@ const CategorySettings = () => {
       ) : (
         <>
           {/* Formulario para nueva categoría */}
-          <form onSubmit={handleSubmit} className="mb-6">
+          <form onSubmit={handleSubmit} className="mb-6 bg-gray-50 rounded-lg p-4 shadow-sm">
             <div className="space-y-4">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -313,8 +319,10 @@ const CategorySettings = () => {
                   id="name"
                   value={newCategory.name}
                   onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                  className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   required
+                  maxLength={32}
+                  placeholder="Ej: Pizzas"
                 />
               </div>
               <div>
@@ -325,13 +333,15 @@ const CategorySettings = () => {
                   id="description"
                   value={newCategory.description}
                   onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                  className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
                   rows="2"
+                  maxLength={80}
+                  placeholder="Describe la categoría..."
                 />
               </div>
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors duration-300"
+                className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors duration-300 font-semibold text-base shadow-md"
               >
                 Crear Categoría
               </button>
@@ -342,6 +352,11 @@ const CategorySettings = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-700">Categorías Existentes</h3>
             <div className="grid gap-4">
+              {categories.length === 0 && (
+                <div className="text-center text-gray-400 py-8 text-lg">
+                  No hay categorías registradas aún.
+                </div>
+              )}
               {categories.map((category, index) => {
                 // Obtener el orden guardado para esta categoría
                 const orderMap = getSavedOrder();
@@ -350,10 +365,10 @@ const CategorySettings = () => {
                 return (
                   <div
                     key={category._id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    className="flex items-center justify-between p-4 bg-white rounded-lg shadow border border-gray-100 hover:shadow-lg transition-shadow duration-200 group"
                   >
                     <div>
-                      <h4 className="font-medium text-gray-800">{category.name}</h4>
+                      <h4 className="font-medium text-gray-800 text-lg">{category.name}</h4>
                       {category.description && (
                         <p className="text-sm text-gray-600">{category.description}</p>
                       )}
@@ -361,8 +376,10 @@ const CategorySettings = () => {
                     </div>
                     <button
                       onClick={() => handleDelete(category._id)}
-                      className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors duration-300"
+                      className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors duration-300 flex items-center gap-1 opacity-80 group-hover:opacity-100"
+                      title="Eliminar categoría"
                     >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                       Eliminar
                     </button>
                   </div>
@@ -382,4 +399,4 @@ const CategorySettings = () => {
   );
 };
 
-export default CategorySettings; 
+export default CategorySettings;

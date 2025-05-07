@@ -7,7 +7,7 @@ start /min cmd /k "cd Backend &&  npm run dev"
 
 echo.
 echo 2) Iniciando Frontend...
-start /min cmd /k "cd Frontend && npm run dev"
+start /min cmd /k "cd Frontend && set PORT=5173 && npm run dev"
 echo.
 echo 3) Iniciando Backend...
 start /min cmd /k "cd BackendSA  && npm run start"

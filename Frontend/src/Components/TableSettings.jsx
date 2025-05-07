@@ -223,7 +223,7 @@ const TableSettings = () => {
   // Error display
   if (error) {
     return (
-      <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-red-700">
+      <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
         <p>{error}</p>
         <button 
           onClick={() => setError(null)} 
@@ -234,12 +234,11 @@ const TableSettings = () => {
       </div>
     );
   }
-  
-  // Loading indicator
   if (loading && tables.length === 0) {
     return (
-      <div className="flex justify-center items-center h-60">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex flex-col items-center justify-center py-12">
+        <span className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></span>
+        <span className="text-gray-600 text-lg font-semibold animate-pulse">Cargando mesas...</span>
       </div>
     );
   }
@@ -259,11 +258,11 @@ const TableSettings = () => {
       
       {/* Table list */}
       {tables.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No hay mesas registradas</p>
+        <div className="text-center py-8 bg-gray-50 rounded-lg text-gray-400 text-lg">
+          No hay mesas registradas
           <button
             onClick={handleAddClick}
-            className="mt-3 text-blue-600 hover:text-blue-800 hover:underline"
+            className="mt-3 text-blue-600 hover:text-blue-800 hover:underline block"
           >
             Agregar una mesa
           </button>
@@ -526,4 +525,4 @@ const TableSettings = () => {
   );
 };
 
-export default TableSettings; 
+export default TableSettings;

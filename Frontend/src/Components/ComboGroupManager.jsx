@@ -11,17 +11,24 @@ export default function ComboGroupManager() {
     subGroups: []
   });
   const [showComboForm, setShowComboForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     loadComboGroups();
   }, []);
 
   const loadComboGroups = async () => {
+    setLoading(true);
     try {
       const response = await axios.get(`${API_ENDPOINTS.COMBO_GROUPS}`);
       setComboGroups(response.data);
     } catch (error) {
       console.error('Error al cargar combos:', error);
+      setError('Error al cargar combos');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -65,8 +72,10 @@ export default function ComboGroupManager() {
     try {
       if (currentCombo._id) {
         await axios.patch(`${API_ENDPOINTS.COMBO_GROUPS}/${currentCombo._id}`, currentCombo);
+        setSuccessMessage('Combo actualizado exitosamente');
       } else {
         await axios.post(API_ENDPOINTS.COMBO_GROUPS, currentCombo);
+        setSuccessMessage('Combo creado exitosamente');
       }
       loadComboGroups();
       setShowComboForm(false);
@@ -78,11 +87,31 @@ export default function ComboGroupManager() {
       });
     } catch (error) {
       console.error('Error al guardar combo:', error);
+      setError('Error al guardar combo');
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <span className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></span>
+        <span className="text-gray-600 text-lg font-semibold animate-pulse">Cargando combos...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4">
+      {error && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
+          {error}
+        </div>
+      )}
+      {successMessage && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
+          {successMessage}
+        </div>
+      )}
       <div className="flex justify-between mb-4">
         <h2 className="text-2xl font-bold">Gestión de Combos</h2>
         <button
@@ -257,6 +286,11 @@ export default function ComboGroupManager() {
 
       {/* Lista de Combos Existentes */}
       <div className="mt-8">
+        {comboGroups.length === 0 && (
+          <div className="text-center text-gray-400 py-8 text-lg">
+            No hay combos registrados aún.
+          </div>
+        )}
         {comboGroups.map(combo => (
           <div key={combo._id} className="border p-4 rounded mb-4">
             <div className="flex justify-between items-center">
@@ -314,4 +348,4 @@ export default function ComboGroupManager() {
       </div>
     </div>
   );
-} 
+}

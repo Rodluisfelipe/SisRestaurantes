@@ -367,15 +367,15 @@ function OrdersDashboard() {
   
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-full p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-800"></div>
+      <div className="flex flex-col items-center justify-center py-12">
+        <span className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></span>
+        <span className="text-gray-600 text-lg font-semibold animate-pulse">Cargando pedidos...</span>
       </div>
     );
   }
-  
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+      <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
         <p>{error}</p>
         <button 
           onClick={fetchOrders} 
@@ -952,4 +952,4 @@ function OrdersDashboard() {
   );
 }
 
-export default OrdersDashboard; 
+export default OrdersDashboard;

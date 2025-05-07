@@ -253,55 +253,69 @@ const BusinessSettings = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-4">Cargando configuración...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <span className="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></span>
+        <span className="text-gray-600 text-lg font-semibold animate-pulse">Cargando configuración...</span>
+      </div>
+    );
   }
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Configuración del Negocio</h2>
-      
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
           {error}
         </div>
       )}
-      
       {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg z-50 animate-fade-in">
           {successMessage}
         </div>
       )}
-
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Información básica del negocio */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-3">Información básica</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Nombre del negocio</label>
-              <input
-                type="text"
-                name="businessName"
-                value={settings.businessName}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">URL del Logo</label>
-              <input
-                type="url"
-                name="logo"
-                value={settings.logo}
-                onChange={handleChange}
-                onFocus={() => setIsEditingLogo(true)}
-                onBlur={() => setIsEditingLogo(false)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="URL de la imagen del logo"
-              />
-            </div>
-            
+        {/* Información básica del negocio en tarjetas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+          {/* Tarjeta: Nombre y Logo */}
+          <div className="bg-gray-50 rounded-lg p-6 shadow flex flex-col items-center justify-center">
+            <label className="block text-sm font-medium text-gray-600 mb-1 w-full text-left">Nombre del negocio</label>
+            <input
+              type="text"
+              name="businessName"
+              value={settings.businessName}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 mb-4"
+            />
+            <label className="block text-sm font-medium text-gray-600 mb-1 w-full text-left">URL del Logo</label>
+            <input
+              type="url"
+              name="logo"
+              value={settings.logo}
+              onChange={handleChange}
+              onFocus={() => setIsEditingLogo(true)}
+              onBlur={() => setIsEditingLogo(false)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 mb-2"
+              placeholder="URL de la imagen del logo"
+            />
+            {previewLogo && (
+              <div className="w-full flex flex-col items-center mt-2">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Vista previa del logo</label>
+                <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg bg-white">
+                  <img
+                    src={previewLogo}
+                    alt="Vista previa del logo"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.src = 'https://placehold.co/150x150?text=Logo';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Tarjeta: Portada y contacto */}
+          <div className="bg-gray-50 rounded-lg p-6 shadow flex flex-col justify-between h-full">
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">URL de la Imagen de Portada</label>
               <input
@@ -309,36 +323,27 @@ const BusinessSettings = () => {
                 name="coverImage"
                 value={settings.coverImage}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 mb-4"
                 placeholder="URL de la imagen de portada"
               />
-            </div>
-            
-            <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Número de WhatsApp</label>
               <input
                 type="text"
                 name="whatsappNumber"
                 value={settings.whatsappNumber}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 mb-4"
                 placeholder="Ej: +1234567890"
               />
-            </div>
-            
-            <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Dirección</label>
               <input
                 type="text"
                 name="address"
                 value={settings.address}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 mb-4"
                 placeholder="Ej: Calle Principal #123, Ciudad"
               />
-            </div>
-            
-            <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">URL de Google Maps</label>
               <input
                 type="text"
@@ -352,42 +357,26 @@ const BusinessSettings = () => {
             </div>
           </div>
         </div>
-
         {/* Estado del negocio */}
-        <div className="p-4 border rounded-lg">
+        <div className="p-4 border rounded-lg mb-6">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-gray-700">Estado del Negocio:</span>
             <div className="flex items-center space-x-2">
-              <span className={`text-sm font-medium ${settings.isOpen ? 'text-green-600' : 'text-red-600'}`}>
-                {settings.isOpen ? 'Abierto' : 'Cerrado'}
-              </span>
+              <span className={`text-sm font-medium ${settings.isOpen ? 'text-green-600' : 'text-red-600'}`}>{settings.isOpen ? 'Abierto' : 'Cerrado'}</span>
               <button
-                type="button"  // Importante: type="button" para que no envíe el formulario
+                type="button"
                 onClick={handleStoreStatusToggle}
                 disabled={statusLoading}
-                className={`px-4 py-2 rounded-md text-white font-medium ${
-                  statusLoading 
-                    ? 'bg-gray-400' 
-                    : settings.isOpen 
-                      ? 'bg-red-500 hover:bg-red-600' 
-                      : 'bg-green-500 hover:bg-green-600'
-                }`}
+                className={`px-4 py-2 rounded-md text-white font-medium ${statusLoading ? 'bg-gray-400' : settings.isOpen ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
               >
-                {statusLoading 
-                  ? 'Actualizando...' 
-                  : settings.isOpen 
-                    ? 'Cerrar Negocio' 
-                    : 'Abrir Negocio'
-                }
+                {statusLoading ? 'Actualizando...' : settings.isOpen ? 'Cerrar Negocio' : 'Abrir Negocio'}
               </button>
             </div>
           </div>
         </div>
-
-        {/* Redes Sociales */}
+        {/* Redes Sociales y Enlace Extra */}
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Redes Sociales</h3>
-          
           {/* Facebook */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Facebook</label>
@@ -402,15 +391,12 @@ const BusinessSettings = () => {
               <button
                 type="button"
                 onClick={() => handleSocialMediaChange('facebook', 'isVisible', !settings.socialMedia.facebook.isVisible)}
-                className={`px-4 py-2 rounded-md ${
-                  settings.socialMedia.facebook.isVisible ? 'bg-green-500' : 'bg-gray-500'
-                } text-white`}
+                className={`px-4 py-2 rounded-md ${settings.socialMedia.facebook.isVisible ? 'bg-green-500' : 'bg-gray-500'} text-white`}
               >
                 {settings.socialMedia.facebook.isVisible ? 'Visible' : 'Oculto'}
               </button>
             </div>
           </div>
-
           {/* Instagram */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Instagram</label>
@@ -425,15 +411,12 @@ const BusinessSettings = () => {
               <button
                 type="button"
                 onClick={() => handleSocialMediaChange('instagram', 'isVisible', !settings.socialMedia.instagram.isVisible)}
-                className={`px-4 py-2 rounded-md ${
-                  settings.socialMedia.instagram.isVisible ? 'bg-green-500' : 'bg-gray-500'
-                } text-white`}
+                className={`px-4 py-2 rounded-md ${settings.socialMedia.instagram.isVisible ? 'bg-green-500' : 'bg-gray-500'} text-white`}
               >
                 {settings.socialMedia.instagram.isVisible ? 'Visible' : 'Oculto'}
               </button>
             </div>
           </div>
-
           {/* TikTok */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">TikTok</label>
@@ -448,15 +431,12 @@ const BusinessSettings = () => {
               <button
                 type="button"
                 onClick={() => handleSocialMediaChange('tiktok', 'isVisible', !settings.socialMedia.tiktok.isVisible)}
-                className={`px-4 py-2 rounded-md ${
-                  settings.socialMedia.tiktok.isVisible ? 'bg-green-500' : 'bg-gray-500'
-                } text-white`}
+                className={`px-4 py-2 rounded-md ${settings.socialMedia.tiktok.isVisible ? 'bg-green-500' : 'bg-gray-500'} text-white`}
               >
                 {settings.socialMedia.tiktok.isVisible ? 'Visible' : 'Oculto'}
               </button>
             </div>
           </div>
-
           {/* Enlace Extra */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">Enlace Extra</label>
@@ -477,56 +457,31 @@ const BusinessSettings = () => {
                   ...settings,
                   extraLink: { ...settings.extraLink, isVisible: !settings.extraLink.isVisible }
                 })}
-                className={`px-4 py-2 rounded-md ${
-                  settings.extraLink.isVisible ? 'bg-green-500' : 'bg-gray-500'
-                } text-white`}
+                className={`px-4 py-2 rounded-md ${settings.extraLink.isVisible ? 'bg-green-500' : 'bg-gray-500'} text-white`}
               >
                 {settings.extraLink.isVisible ? 'Visible' : 'Oculto'}
               </button>
             </div>
           </div>
         </div>
-
         <div className="pt-4 flex gap-3">
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-semibold shadow-md"
           >
             Guardar Cambios
           </button>
-          
           <button
             type="button"
             onClick={handleFixSchema}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 font-semibold shadow-md"
           >
             Reparar Configuración
           </button>
         </div>
       </form>
-
-      {/* Preview del logo */}
-      {previewLogo && (
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Vista previa del logo
-          </label>
-          <div className="flex justify-center">
-            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg">
-              <img
-                src={previewLogo}
-                alt="Vista previa del logo"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = 'https://placehold.co/150x150?text=Logo';
-                }}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
-export default BusinessSettings; 
+export default BusinessSettings;
