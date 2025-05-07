@@ -20,6 +20,8 @@ function CompletedOrdersSummary() {
     }
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [showNoOrdersModal, setShowNoOrdersModal] = useState(false);
 
   // Fetch completed orders for today
   const fetchCompletedOrders = async () => {
@@ -294,23 +296,37 @@ function CompletedOrdersSummary() {
       : true
   );
 
-  // Función para generar reporte
-  const handleGenerateReport = async () => {
+  // Nueva función para cierre del día (basada en OrdersDashboard)
+  const generateDailyClosingReport = async () => {
     try {
-      const response = await api.post('/orders/daily-closing', { 
-        businessId: businessId
+      setGeneratingReport(true);
+      const currentPath = window.location.pathname;
+      const match = currentPath.match(/^\/([^/]+)/);
+      const businessSlug = match ? match[1] : businessId;
+      const response = await api.post('/orders/daily-closing', {
+        businessId: businessSlug || businessId
       });
-      
-      if (response.data) {
-        // Actualizar los datos con la respuesta
-        setCompletedOrders(response.data.orders || []);
-        if (response.data.stats) {
-          setStats(response.data.stats);
-        }
+      setCompletedOrders(response.data.orders || []);
+      if (response.data.stats) {
+        setStats(response.data.stats);
       }
+      alert('Cierre del día generado correctamente.');
     } catch (err) {
-      console.error('Error generating report:', err);
-      alert('Error al generar el reporte. Por favor intente nuevamente.');
+      console.error('Error generating daily closing report:', err);
+      let errorMessage = 'Error al generar el reporte de cierre diario';
+      if (err.response) {
+        if (err.response.status === 404) {
+          setShowNoOrdersModal(true);
+          return;
+        } else if (err.response.data && err.response.data.message) {
+          errorMessage = `Error: ${err.response.data.message}`;
+        }
+      } else if (err.request) {
+        errorMessage = 'No se recibió respuesta del servidor. Verifica tu conexión.';
+      }
+      alert(errorMessage);
+    } finally {
+      setGeneratingReport(false);
     }
   };
 
@@ -363,14 +379,25 @@ function CompletedOrdersSummary() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
+              {/* Botón de cierre del día reemplazando al de generar reporte */}
               <button
-                onClick={handleGenerateReport}
+                onClick={generateDailyClosingReport}
+                disabled={generatingReport}
                 className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
               >
-                <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Generar Reporte
+                {generatingReport ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <span>Generando...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span>Cierre del Día</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -458,6 +485,26 @@ function CompletedOrdersSummary() {
       {/* Modal de detalles del pedido */}
       {selectedOrder && (
         <OrderDetailsModal />
+      )}
+      {/* Modal de no hay pedidos completados */}
+      {showNoOrdersModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6 text-center">
+            <div className="mb-4">
+              <svg className="mx-auto h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No hay pedidos completados</h3>
+            <p className="text-gray-600 mb-6">No hay pedidos completados para generar el reporte de cierre del día.</p>
+            <button
+              onClick={() => setShowNoOrdersModal(false)}
+              className="w-full py-2 rounded-lg text-white font-medium bg-blue-600 hover:bg-blue-700 shadow-sm"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
