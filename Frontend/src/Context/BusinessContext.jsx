@@ -85,8 +85,14 @@ export function BusinessProvider({ children, businessId: propBusinessId }) {
               buttonColor: '#2563eb', 
               buttonTextColor: '#ffffff'
             };
+            
+            // Asegurarse de que isOpen se maneje correctamente
+            const isOpen = response.data.isOpen !== undefined ? response.data.isOpen : true;
+            console.log('BusinessProvider - Estado isOpen:', isOpen);
+            
             setBusinessConfig({
               ...response.data,
+              isOpen,
               theme
             });
           }
@@ -121,17 +127,21 @@ export function BusinessProvider({ children, businessId: propBusinessId }) {
       }
       socket.emit('joinBusiness', businessId);
       socket.on('business_config_update', (data) => {
+        console.log('BusinessProvider - WebSocket update received:', data);
         setBusinessConfig(prevConfig => ({
           ...prevConfig,
           ...data,
+          isOpen: data.isOpen !== undefined ? data.isOpen : prevConfig.isOpen,
           theme: data.theme || prevConfig.theme
         }));
       });
       socket.on('business_status_update', (data) => {
-          setBusinessConfig(prevConfig => ({
-            ...prevConfig,
-          isActive: data.isActive
-          }));
+        console.log('BusinessProvider - Status update received:', data);
+        setBusinessConfig(prevConfig => ({
+          ...prevConfig,
+          isActive: data.isActive,
+          isOpen: data.isOpen !== undefined ? data.isOpen : prevConfig.isOpen
+        }));
       });
       return () => {
         try {
