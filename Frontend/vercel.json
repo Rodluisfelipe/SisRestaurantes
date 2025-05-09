@@ -1,19 +1,28 @@
 {
   "rewrites": [
     {
-      "source": "/:businessId/:path*",
+      "source": "/:businessId/admin/:path*",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:businessId/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:businessId/kitchen",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:businessId/mesa/:tableNumber",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:businessId",
       "destination": "/index.html"
     },
     {
       "source": "/:path*",
       "destination": "/index.html"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/[^.]+",
-      "dest": "/",
-      "status": 200
     }
   ]
 } 
