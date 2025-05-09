@@ -10,17 +10,12 @@
  */
 
 // URL base de la API
-const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production';
-
-// Usar la URL de desarrollo o producción según corresponda
-export const API_URL = isProd 
-  ? 'https://sisrestaurantes.onrender.com/api'
-  : 'http://localhost:5000/api';
+const API_URL = 'https://sisrestaurantes.onrender.com/api';
 
 // URLs específicas
 export const API_ENDPOINTS = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'https://sisrestaurantes.onrender.com/api',
-  EVENTS: import.meta.env.VITE_EVENTS_URL || 'https://sisrestaurantes.onrender.com/events',
+  BASE_URL: 'https://sisrestaurantes.onrender.com/api',
+  EVENTS: 'https://sisrestaurantes.onrender.com/events',
   PRODUCTS: `${API_URL}/products`,
   CATEGORIES: `${API_URL}/categories`,
   TOPPING_GROUPS: `${API_URL}/topping-groups`,
