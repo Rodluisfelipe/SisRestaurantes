@@ -19,8 +19,8 @@ export const API_URL = isProd
 
 // URLs específicas
 export const API_ENDPOINTS = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-  EVENTS: import.meta.env.VITE_EVENTS_URL || 'http://localhost:5000/events',
+  BASE_URL: import.meta.env.VITE_API_URL || 'https://sisrestaurantes.onrender.com/api',
+  EVENTS: import.meta.env.VITE_EVENTS_URL || 'https://sisrestaurantes.onrender.com/events',
   PRODUCTS: `${API_URL}/products`,
   CATEGORIES: `${API_URL}/categories`,
   TOPPING_GROUPS: `${API_URL}/topping-groups`,
@@ -32,4 +32,4 @@ export const CACHE_CONFIG = {
   DURATION: 15 * 60 * 1000, // 15 minutos
   ENABLED: true,
   EXCLUDED_ROUTES: ['/business-config'] // Rutas que no deben ser cacheadas
-}; 
+};

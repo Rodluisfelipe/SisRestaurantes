@@ -52,6 +52,11 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Ruta raíz para mostrar estado del backend
+app.get('/', (req, res) => {
+  res.json({ message: 'API SisRestaurantes funcionando' });
+});
+
 // Rutas API
 app.use("/api/products", require("./Routes/products"));
 app.use("/api/business-config", require("./Routes/businessConfig"));
