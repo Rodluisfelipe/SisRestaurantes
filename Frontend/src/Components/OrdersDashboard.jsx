@@ -4,7 +4,7 @@ import { socket } from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useNavigate } from 'react-router-dom';
 import { generateDailyReportPDF } from './DailyReportPDF';
-import { jsPDF } from 'jspdf';
+import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 function OrdersDashboard() {
