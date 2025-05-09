@@ -15,7 +15,7 @@ const ProtectedRoute = ({ children }) => {
   const { businessId } = useParams();
   const location = useLocation();
   
-  if (loading) return null; // O un spinner si prefieres
+  if (loading) return null;
 
   // Si hay token en localStorage, consideramos que tiene sesión
   const hasToken = Boolean(localStorage.getItem('accessToken'));
@@ -75,34 +75,31 @@ function App() {
   return (
     <AuthProvider>
         <Routes>
-        <Route
-          path="/:businessId"
-          element={
-            <BusinessProviderWrapper>
-              <Menu />
-            </BusinessProviderWrapper>
-          }
-        />
-        <Route
-          path="/:businessId/mesa/:tableNumber"
-          element={
-            <BusinessProviderWrapper>
-              <Menu />
-            </BusinessProviderWrapper>
-          }
-        />
-          <Route 
-          path=":businessId/admin/*"
+          {/* Rutas específicas primero */}
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="/login" element={<Login />} />
+          
+          {/* Rutas con businessId */}
+          <Route
+            path="/:businessId/login"
             element={
-            <BusinessProviderWrapper>
-              <ProtectedRoute>
-                <Admin />
-              </ProtectedRoute>
-            </BusinessProviderWrapper>
+              <BusinessProviderWrapper>
+                <Login />
+              </BusinessProviderWrapper>
+            }
+          />
+          <Route 
+            path="/:businessId/admin/*"
+            element={
+              <BusinessProviderWrapper>
+                <ProtectedRoute>
+                  <Admin />
+                </ProtectedRoute>
+              </BusinessProviderWrapper>
             } 
           />
           <Route 
-            path=":businessId/kitchen"
+            path="/:businessId/kitchen"
             element={
               <BusinessProviderWrapper>
                 <ProtectedRoute>
@@ -111,16 +108,22 @@ function App() {
               </BusinessProviderWrapper>
             } 
           />
-          <Route path="/login" element={<Login />} />
           <Route
-            path=":businessId/login"
+            path="/:businessId/mesa/:tableNumber"
             element={
               <BusinessProviderWrapper>
-                <Login />
+                <Menu />
               </BusinessProviderWrapper>
             }
           />
-          <Route path="/" element={<RootRedirect />} />
+          <Route
+            path="/:businessId"
+            element={
+              <BusinessProviderWrapper>
+                <Menu />
+              </BusinessProviderWrapper>
+            }
+          />
         </Routes>
     </AuthProvider>
   );
