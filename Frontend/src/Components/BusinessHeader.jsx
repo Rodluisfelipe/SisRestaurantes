@@ -94,6 +94,11 @@ const BusinessHeader = () => {
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
   const defaultCover = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgODAwIDIwMCI+PHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNlNWU3ZWIiLz48L3N2Zz4=';
 
+  const isValidUrl = (url) => {
+    if (!url) return false;
+    return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:');
+  };
+
   console.log('Estado del negocio:', businessConfig.isOpen ? 'Abierto' : 'Cerrado');
 
   return (
@@ -101,7 +106,7 @@ const BusinessHeader = () => {
       {/* Cover Image Container */}
       <div className="w-full h-20 relative overflow-hidden bg-gray-100">
         <img 
-          src={businessConfig.coverImage || defaultCover}
+          src={isValidUrl(businessConfig.coverImage) ? businessConfig.coverImage : defaultCover}
           alt="Portada del negocio"
           className="w-full h-full object-cover"
           onError={(e) => {
@@ -130,7 +135,7 @@ const BusinessHeader = () => {
       <div className="absolute left-1/2 top-20 -translate-x-1/2 -translate-y-1/2 flex justify-center items-center">
         <div className="w-64 h-64 rounded-full overflow-hidden bg-transparent shadow-xl" style={{ width: '10rem', height: '10rem' }}>
           <img 
-            src={businessConfig.logo || defaultLogo}
+            src={isValidUrl(businessConfig.logo) ? businessConfig.logo : defaultLogo}
             alt="Logo del negocio"
             className="w-full h-full object-cover"
             onError={(e) => {

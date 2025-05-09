@@ -238,14 +238,23 @@ export default function Menu() {
     if (businessConfig?.businessName) {
       document.title = businessConfig.businessName;
     }
-    if (businessConfig?.logo) {
-      let favicon = document.querySelector("link[rel='icon']") || document.createElement('link');
-      favicon.rel = 'icon';
-      favicon.type = 'image/png';
-      favicon.href = businessConfig.logo;
-      document.head.appendChild(favicon);
+    
+    // Solo actualizar el favicon si hay un logo válido
+    if (businessConfig?.logo && businessConfig.logo.startsWith('http')) {
+      try {
+        let favicon = document.querySelector("link[rel='icon'][type='image/png']");
+        if (!favicon) {
+          favicon = document.createElement('link');
+          favicon.rel = 'icon';
+          favicon.type = 'image/png';
+          document.head.appendChild(favicon);
+        }
+        favicon.href = businessConfig.logo;
+      } catch (error) {
+        console.error('Error al actualizar el favicon:', error);
+      }
     }
-  }, [businessConfig.businessName, businessConfig.logo]);
+  }, [businessConfig?.businessName, businessConfig?.logo]);
 
   useEffect(() => {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId para aceptar tanto slugs como ObjectIDs
