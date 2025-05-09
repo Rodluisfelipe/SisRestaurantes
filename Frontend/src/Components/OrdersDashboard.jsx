@@ -4,7 +4,7 @@ import { socket } from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useNavigate } from 'react-router-dom';
 import { generateDailyReportPDF } from './DailyReportPDF';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
 function OrdersDashboard() {
@@ -756,30 +756,30 @@ function OrdersDashboard() {
           </button>
           
           {/* Controles de notificación */}
-        <div className="flex items-center">
-          {pendingNotifications.length > 0 && (
-            <div className="mr-4 bg-red-100 text-red-700 px-3 py-1 rounded-full flex items-center animate-pulse">
-              <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-              <span>{pendingNotifications.length} {pendingNotifications.length === 1 ? 'nuevo pedido' : 'nuevos pedidos'}</span>
-            </div>
-          )}
-          
-          <button 
-            onClick={toggleMute} 
-            className={`p-2 rounded-full ${isMuted ? 'bg-gray-200 text-gray-600' : 'bg-blue-100 text-blue-600'}`}
-            title={isMuted ? "Activar sonido" : "Silenciar"}
-          >
-            {isMuted ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-              </svg>
+          <div className="flex items-center">
+            {pendingNotifications.length > 0 && (
+              <div className="mr-4 bg-red-100 text-red-700 px-3 py-1 rounded-full flex items-center animate-pulse">
+                <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                <span>{pendingNotifications.length} {pendingNotifications.length === 1 ? 'nuevo pedido' : 'nuevos pedidos'}</span>
+              </div>
             )}
-          </button>
+            
+            <button 
+              onClick={toggleMute} 
+              className={`p-2 rounded-full ${isMuted ? 'bg-gray-200 text-gray-600' : 'bg-blue-100 text-blue-600'}`}
+              title={isMuted ? "Activar sonido" : "Silenciar"}
+            >
+              {isMuted ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
       </div>
@@ -807,7 +807,7 @@ function OrdersDashboard() {
               />
               <svg className="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
+              </svg>
             </div>
             
             <select
@@ -853,7 +853,7 @@ function OrdersDashboard() {
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
                       Pedido #{order.orderNumber}
-            </h3>
+                    </h3>
                     <p className="text-sm text-gray-600">
                       {order.customerName || 'Cliente sin nombre'}
                     </p>
@@ -890,10 +890,10 @@ function OrdersDashboard() {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                         Mesa {order.tableNumber}
                       </span>
-              )}
-            </div>
-          </div>
-          
+                    )}
+                  </div>
+                </div>
+                
                 <div className="mt-4 space-y-2">
                   {order.items.map((item, index) => (
                     <div key={index} className="flex items-center justify-between text-sm">
@@ -935,10 +935,10 @@ function OrdersDashboard() {
                     >
                       Cancelar Pedido
                     </button>
-              )}
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
           ))}
         </div>
       </div>
