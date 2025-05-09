@@ -2,7 +2,6 @@ services:
   - type: web
     name: sisrestaurantes-backend
     env: node
-    rootDir: Backend
     buildCommand: npm install
     startCommand: npm start
     envVars:
