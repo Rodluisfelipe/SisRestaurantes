@@ -7,6 +7,81 @@ import { generateDailyReportPDF } from './DailyReportPDF';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
+// Componente OrderCard
+const OrderCard = ({ order, onStatusChange, onSelect, isSelected, statusStyles, statusLabels, className }) => {
+  // Calcular tiempo transcurrido
+  const calculateTimeElapsed = (createdAt) => {
+    const orderTime = new Date(createdAt);
+    const now = new Date();
+    const diffMs = now - orderTime;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHrs = Math.floor(diffMins / 60);
+    
+    if (diffHrs > 0) {
+      return `${diffHrs}h ${diffMins % 60}m`;
+    }
+    return `${diffMins}m`;
+  };
+
+  const orderTypeEmojis = {
+    inSite: '🍽️',
+    takeaway: '🥡',
+    delivery: '🛵'
+  };
+
+  return (
+    <div 
+      className={`bg-white rounded-lg shadow p-4 cursor-pointer transition-all ${
+        isSelected ? 'ring-2 ring-blue-500' : 'hover:shadow-md'
+      } ${className}`}
+      onClick={() => onSelect(order)}
+    >
+      {/* Header */}
+      <div className="flex justify-between items-start mb-3">
+        <div>
+          <h3 className="font-medium text-gray-900">
+            Pedido #{order.orderNumber}
+          </h3>
+          <p className="text-sm text-gray-500">
+            {calculateTimeElapsed(order.createdAt)}
+          </p>
+        </div>
+        <span className="text-lg font-semibold">
+          ${Number(order.totalAmount).toFixed(2)}
+        </span>
+      </div>
+
+      {/* Cliente y Tipo */}
+      <div className="mb-3">
+        <p className="text-sm text-gray-600">
+          {orderTypeEmojis[order.orderType]} {order.customerName}
+          {order.tableNumber && ` - Mesa ${order.tableNumber}`}
+        </p>
+      </div>
+
+      {/* Items resumen */}
+      <div className="mb-3">
+        <p className="text-sm text-gray-600">
+          {order.items.length} items • {order.items.reduce((acc, item) => acc + item.quantity, 0)} productos
+        </p>
+      </div>
+
+      {/* Estado y Acciones */}
+      <div className="flex items-center justify-between">
+        <span className={`text-xs px-2 py-1 rounded-full ${statusStyles[order.status]}`}>
+          {statusLabels[order.status]}
+        </span>
+        
+        {order.sentToKitchen && (
+          <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">
+            En Cocina
+          </span>
+        )}
+      </div>
+    </div>
+  );
+};
+
 function OrdersDashboard() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
