@@ -4,10 +4,19 @@ export function getBusinessSlug() {
   const { hostname, pathname } = window.location;
   let slug = null;
 
-  // En Vercel: subdominio
-  // Ej: tacos.vercel.app
+  // En Vercel: usar el pathname
+  // Ej: tu-logo-aqui.vercel.app/tu-logo-aqui
   if (hostname.endsWith(".vercel.app")) {
-    slug = hostname.split(".")[0];
+    // Si estamos en la raíz, extraer el slug del hostname
+    if (pathname === "/") {
+      slug = hostname.split(".")[0];
+    } else {
+      // Si no, usar el pathname
+      const match = pathname.match(/^\/([^/]+)/);
+      if (match) {
+        slug = match[1];
+      }
+    }
   } else {
     // En local: ruta /<slug>
     // Ej: localhost:3000/tacos
@@ -17,7 +26,7 @@ export function getBusinessSlug() {
     }
   }
 
-  console.log('getBusinessSlug - Extracted slug:', slug, 'from pathname:', pathname);
+  console.log('getBusinessSlug - Extracted slug:', slug, 'from pathname:', pathname, 'hostname:', hostname);
   return slug;
 }
 

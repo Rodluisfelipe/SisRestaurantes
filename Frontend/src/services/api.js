@@ -45,18 +45,34 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para las respuestas
+// Variables para el manejo del refresh token
 let isRefreshing = false;
 let refreshSubscribers = [];
 
-function onRefreshed(token) {
-  refreshSubscribers.forEach((cb) => cb(token));
+// Función para procesar los subscribers después de refrescar el token
+const onRefreshed = (token) => {
+  refreshSubscribers.forEach(callback => callback(token));
   refreshSubscribers = [];
-}
+};
 
-function addRefreshSubscriber(cb) {
-  refreshSubscribers.push(cb);
-}
+// Función para agregar subscribers
+const addRefreshSubscriber = (callback) => {
+  refreshSubscribers.push(callback);
+};
+
+// Determinar la URL del WebSocket basada en el entorno
+const SOCKET_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://sisrestaurantes.onrender.com'  // URL de producción
+  : 'http://localhost:5000';                // URL de desarrollo
+
+// Instancia global de socket.io-client
+export const socket = io(SOCKET_URL, {
+  autoConnect: false, // Se conecta manualmente cuando se necesite
+  transports: ['websocket'],
+  reconnection: true,
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000
+});
 
 api.interceptors.response.use(
   (response) => {
@@ -90,13 +106,6 @@ api.interceptors.response.use(
         // Si falla el refresh, NO hacer logout forzado
         // Solo registramos el error, pero no cerramos sesión
         console.error('Error al refrescar el token:', refreshError);
-        // Ya no hacemos logout automático ni borramos tokens
-        /*
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        */
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -114,12 +123,6 @@ export const invalidateCache = (url, params = {}) => {
   const cacheKey = `${url}${JSON.stringify(params)}`;
   cache.delete(cacheKey);
 };
-
-// Instancia global de socket.io-client
-export const socket = io('http://localhost:5000', {
-  autoConnect: false, // Se conecta manualmente cuando se necesite
-  transports: ['websocket'],
-});
 
 // Obtener negocio por slug
 export async function getBusinessBySlug(slug) {

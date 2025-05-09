@@ -50,15 +50,17 @@ function RootRedirect() {
 
   useEffect(() => {
     const redirectToBusinessPage = async () => {
-      // Si ya estamos en una ruta específica, no hacer nada
+      // Si ya estamos en una ruta específica que no sea la raíz, no hacer nada
       if (location.pathname !== '/') return;
 
       // Intentar obtener el slug del negocio
       const slug = getBusinessSlug();
       
       if (slug) {
-        // Si tenemos un slug, redirigir al menú del negocio
-        navigate(`/${slug}`, { replace: true });
+        // Si tenemos un slug y no estamos ya en esa ruta, redirigir al menú del negocio
+        if (location.pathname !== `/${slug}`) {
+          navigate(`/${slug}`, { replace: true });
+        }
       } else {
         // Si no hay slug, redirigir al login general
         navigate('/login', { replace: true });
