@@ -7,6 +7,7 @@ import Kitchen from "./Pages/Kitchen";
 import { BusinessProvider, useBusinessConfig } from './Context/BusinessContext';
 import { AuthProvider } from './Context/AuthContext';
 import { useEffect } from "react";
+import { getBusinessSlug } from './utils/getBusinessId';
 
 // Componente protegido para rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
@@ -40,6 +41,34 @@ function BusinessProviderWrapper({ children }) {
   const { businessId } = useParams();
   console.log('BusinessProviderWrapper - businessId from URL:', businessId);
   return <BusinessProvider businessId={businessId}>{children}</BusinessProvider>;
+}
+
+// Componente para manejar la redirección inicial
+function RootRedirect() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const redirectToBusinessPage = async () => {
+      // Si ya estamos en una ruta específica, no hacer nada
+      if (location.pathname !== '/') return;
+
+      // Intentar obtener el slug del negocio
+      const slug = getBusinessSlug();
+      
+      if (slug) {
+        // Si tenemos un slug, redirigir al menú del negocio
+        navigate(`/${slug}`, { replace: true });
+      } else {
+        // Si no hay slug, redirigir al login general
+        navigate('/login', { replace: true });
+      }
+    };
+
+    redirectToBusinessPage();
+  }, [navigate, location]);
+
+  return null;
 }
 
 function App() {
@@ -91,7 +120,7 @@ function App() {
               </BusinessProviderWrapper>
             }
           />
-        <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/" element={<RootRedirect />} />
         </Routes>
     </AuthProvider>
   );
