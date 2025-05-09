@@ -67,11 +67,31 @@ const SOCKET_URL = process.env.NODE_ENV === 'production'
 
 // Instancia global de socket.io-client
 export const socket = io(SOCKET_URL, {
-  autoConnect: false, // Se conecta manualmente cuando se necesite
-  transports: ['websocket'],
+  autoConnect: true, // Cambiado a true para conectar automáticamente
+  transports: ['websocket', 'polling'], // Agregado polling como fallback
   reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 1000
+  reconnectionAttempts: Infinity, // Intentar reconectar indefinidamente
+  reconnectionDelay: 1000,
+  timeout: 20000, // Aumentado el timeout
+  forceNew: true,
+  withCredentials: true
+});
+
+// Manejadores de eventos del socket
+socket.on('connect_error', (error) => {
+  console.error('Socket connection error:', error);
+  // Intentar reconectar con polling si falla websocket
+  if (socket.io.opts.transports.indexOf('polling') === -1) {
+    socket.io.opts.transports = ['polling', 'websocket'];
+  }
+});
+
+socket.on('disconnect', (reason) => {
+  console.log('Socket disconnected:', reason);
+  if (reason === 'io server disconnect') {
+    // Reconectar manualmente si el servidor desconectó
+    socket.connect();
+  }
 });
 
 api.interceptors.response.use(

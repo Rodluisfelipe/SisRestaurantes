@@ -170,57 +170,83 @@ function OrdersDashboard() {
     
     console.log('Connecting to socket for business:', businessId);
     
-    // Connect to socket if not already connected
+    // Asegurarse de que el socket esté conectado
     if (!socket.connected) {
       socket.connect();
     }
     
-    // Join the business room
-    socket.emit('joinBusiness', businessId);
+    // Manejar reconexión
+    const handleReconnect = () => {
+      console.log('Socket reconnected - Refetching orders');
+      fetchOrders(); // Recargar pedidos al reconectar
+    };
     
-    // Listen for order events
+    // Manejar conexión inicial
+    const handleConnect = () => {
+      console.log('Socket connected - Joining business room');
+      socket.emit('joinBusiness', businessId);
+      fetchOrders(); // Cargar pedidos al conectar
+    };
+    
+    // Manejar desconexión
+    const handleDisconnect = () => {
+      console.log('Socket disconnected');
+    };
+    
+    // Registrar manejadores de eventos
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('reconnect', handleReconnect);
+    
+    // Manejar eventos de pedidos
     socket.on('order_created', (newOrder) => {
       console.log('New order received:', newOrder);
-      setOrders(prevOrders => [newOrder, ...prevOrders]);
-      
-      // Add to pending notifications if status is 'pending'
-      if (newOrder.status === 'pending') {
-        setPendingNotifications(prev => [...prev, newOrder._id]);
+      if (newOrder.businessId === businessId) {
+        setOrders(prevOrders => [newOrder, ...prevOrders]);
+        
+        // Agregar a notificaciones pendientes si es necesario
+        if (newOrder.status === 'pending') {
+          setPendingNotifications(prev => [...prev, newOrder._id]);
+        }
       }
     });
     
     socket.on('order_updated', (updatedOrder) => {
       console.log('Order updated:', updatedOrder);
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order._id === updatedOrder._id ? updatedOrder : order
-        )
-      );
-      
-      // Remove from pending notifications if status is changed from 'pending'
-      if (updatedOrder.status !== 'pending') {
-        setPendingNotifications(prev => prev.filter(id => id !== updatedOrder._id));
-      }
-      
-      // Update details if the selected order was updated
-      if (selectedOrder === updatedOrder._id) {
-        setOrderDetails(updatedOrder);
+      if (updatedOrder.businessId === businessId) {
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === updatedOrder._id ? updatedOrder : order
+          )
+        );
+        
+        // Actualizar notificaciones pendientes
+        if (updatedOrder.status !== 'pending') {
+          setPendingNotifications(prev => prev.filter(id => id !== updatedOrder._id));
+        }
+        
+        // Actualizar detalles si es el pedido seleccionado
+        if (selectedOrder === updatedOrder._id) {
+          setOrderDetails(updatedOrder);
+        }
       }
     });
     
     socket.on('order_deleted', (deletedOrder) => {
       console.log('Order deleted:', deletedOrder);
-      setOrders(prevOrders => 
-        prevOrders.filter(order => order._id !== deletedOrder._id)
-      );
-      
-      // Remove from pending notifications
-      setPendingNotifications(prev => prev.filter(id => id !== deletedOrder._id));
-      
-      // Close details if the deleted order was selected
-      if (selectedOrder === deletedOrder._id) {
-        setSelectedOrder(null);
-        setOrderDetails(null);
+      if (deletedOrder.businessId === businessId) {
+        setOrders(prevOrders => 
+          prevOrders.filter(order => order._id !== deletedOrder._id)
+        );
+        
+        // Limpiar notificaciones pendientes
+        setPendingNotifications(prev => prev.filter(id => id !== deletedOrder._id));
+        
+        // Cerrar detalles si es el pedido seleccionado
+        if (selectedOrder === deletedOrder._id) {
+          setSelectedOrder(null);
+          setOrderDetails(null);
+        }
       }
     });
     
@@ -229,11 +255,13 @@ function OrdersDashboard() {
     
     // Cleanup on unmount
     return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('reconnect', handleReconnect);
       socket.off('order_created');
       socket.off('order_updated');
       socket.off('order_deleted');
       socket.emit('leaveBusiness', businessId);
-      // Don't disconnect as other components might be using the socket
     };
   }, [businessId, selectedOrder]);
   
@@ -718,236 +746,214 @@ function OrdersDashboard() {
   };
   
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Pedidos en Tiempo Real</h2>
+    <div className="w-full">
+      {/* Header con controles */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div className="w-full md:w-auto">
+          <h2 className="text-2xl font-bold text-gray-800">Pedidos</h2>
+          <p className="text-sm text-gray-600">Gestiona los pedidos activos</p>
+        </div>
         
-        <div className="flex items-center gap-4">
-          {/* Botón para ir a la pantalla de cocina */}
-          <button 
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <button
             onClick={goToKitchenScreen}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+            className="flex items-center justify-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
-            </svg>
-            Ver Pantalla de Cocina
+            <span className="mr-2">🖥️</span>
+            Pantalla de Cocina
           </button>
           
-          {/* Botón para cierre diario */}
-          <button 
-            onClick={generateDailyClosingReport}
-            disabled={generatingReport}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
+          <button
+            onClick={toggleMute}
+            className="flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors w-full sm:w-auto"
           >
-            {generatingReport ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Generando...</span>
-              </>
-            ) : (
-              <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Cierre del Día</span>
-              </>
-            )}
+            {isMuted ? '🔇' : '🔊'} {isMuted ? 'Activar Sonido' : 'Silenciar'}
           </button>
-          
-          {/* Controles de notificación */}
-          <div className="flex items-center">
-            {pendingNotifications.length > 0 && (
-              <div className="mr-4 bg-red-100 text-red-700 px-3 py-1 rounded-full flex items-center animate-pulse">
-                <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
-                <span>{pendingNotifications.length} {pendingNotifications.length === 1 ? 'nuevo pedido' : 'nuevos pedidos'}</span>
-              </div>
-            )}
-            
-            <button 
-              onClick={toggleMute} 
-              className={`p-2 rounded-full ${isMuted ? 'bg-gray-200 text-gray-600' : 'bg-blue-100 text-blue-600'}`}
-              title={isMuted ? "Activar sonido" : "Silenciar"}
-            >
-              {isMuted ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                </svg>
-              )}
-            </button>
-          </div>
         </div>
       </div>
-      
-      {/* Hidden audio element for notifications */}
-      <audio 
-        ref={notificationAudioRef} 
-        src="/audio/new-order-notification.mp3" 
-        preload="auto"
-        muted={isMuted}
-      />
-      
-      {/* Contenedor principal con scroll horizontal en móviles */}
-      <div className="space-y-6">
-        {/* Filtros y búsqueda */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between bg-white p-4 rounded-lg shadow-sm">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Buscar pedido..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-64"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <svg className="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg py-2 px-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full sm:w-auto"
-            >
-              <option value="all">Todos los estados</option>
-              <option value="pending">Pendientes</option>
-              <option value="inProgress">En preparación</option>
-              <option value="completed">Completados</option>
-            </select>
+
+      {/* Grid de estados de pedidos */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* Columna de Pendientes */}
+        <div className="bg-white rounded-xl shadow-md p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-yellow-800">
+              Pendientes ({ordersByStatus.pending.length})
+            </h3>
           </div>
-          
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => setShowCompletedOrders(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors w-full sm:w-auto"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
-              <span>Ver Completados</span>
-            </button>
+          <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+            {ordersByStatus.pending.map(order => (
+              <OrderCard
+                key={order._id}
+                order={order}
+                onStatusChange={updateOrderStatus}
+                onSelect={() => showOrderDetails(order)}
+                isSelected={selectedOrder === order._id}
+                statusStyles={statusStyles}
+                statusLabels={statusLabels}
+                className="hover:shadow-lg transition-shadow"
+              />
+            ))}
+            {ordersByStatus.pending.length === 0 && (
+              <p className="text-center text-gray-500 py-4">No hay pedidos pendientes</p>
+            )}
           </div>
         </div>
 
-        {/* Grid de pedidos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredOrders.map(order => (
-            <div
-              key={order._id}
-              className={`bg-white rounded-lg shadow-sm overflow-hidden border-l-4 ${
-                order.status === 'pending'
-                  ? 'border-yellow-500'
-                  : order.status === 'inProgress'
-                  ? 'border-blue-500'
-                  : 'border-green-500'
-              }`}
-            >
-              <div className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Pedido #{order.orderNumber}
-                    </h3>
+        {/* Columna En Proceso */}
+        <div className="bg-white rounded-xl shadow-md p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-blue-800">
+              En Proceso ({ordersByStatus.inProgress.length})
+            </h3>
+          </div>
+          <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+            {ordersByStatus.inProgress.map(order => (
+              <OrderCard
+                key={order._id}
+                order={order}
+                onStatusChange={updateOrderStatus}
+                onSelect={() => showOrderDetails(order)}
+                isSelected={selectedOrder === order._id}
+                statusStyles={statusStyles}
+                statusLabels={statusLabels}
+                className="hover:shadow-lg transition-shadow"
+              />
+            ))}
+            {ordersByStatus.inProgress.length === 0 && (
+              <p className="text-center text-gray-500 py-4">No hay pedidos en proceso</p>
+            )}
+          </div>
+        </div>
+
+        {/* Columna Completados */}
+        <div className="bg-white rounded-xl shadow-md p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-green-800">
+              Completados ({ordersByStatus.completed.length})
+            </h3>
+          </div>
+          <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto">
+            {ordersByStatus.completed.map(order => (
+              <OrderCard
+                key={order._id}
+                order={order}
+                onStatusChange={updateOrderStatus}
+                onSelect={() => showOrderDetails(order)}
+                isSelected={selectedOrder === order._id}
+                statusStyles={statusStyles}
+                statusLabels={statusLabels}
+                className="hover:shadow-lg transition-shadow"
+              />
+            ))}
+            {ordersByStatus.completed.length === 0 && (
+              <p className="text-center text-gray-500 py-4">No hay pedidos completados</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Modal de Detalles del Pedido */}
+      {orderDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Detalles del Pedido
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    ID: {orderDetails._id}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOrderDetails(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Información del Cliente */}
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-2">Cliente</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
                     <p className="text-sm text-gray-600">
-                      {order.customerName || 'Cliente sin nombre'}
+                      Mesa: {orderDetails.tableNumber || 'N/A'}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Tipo: {
+                        {
+                          'inSite': 'En Sitio',
+                          'takeaway': 'Para Llevar',
+                          'delivery': 'A Domicilio'
+                        }[orderDetails.orderType]
+                      }
                     </p>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-lg font-bold text-blue-600">
-                      ${order.totalAmount}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(order.createdAt).toLocaleTimeString()}
-                    </span>
+                </div>
+
+                {/* Items del Pedido */}
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-2">Items</h4>
+                  <div className="space-y-3">
+                    {orderDetails.items.map((item, index) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-gray-800">{item.name}</p>
+                            <p className="text-sm text-gray-600">
+                              Cantidad: {item.quantity}
+                            </p>
+                            {item.notes && (
+                              <p className="text-sm text-gray-600">
+                                Notas: {item.notes}
+                              </p>
+                            )}
+                          </div>
+                          <p className="font-medium text-gray-800">
+                            ${item.price * item.quantity}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="mt-4">
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      order.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : order.status === 'inProgress'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-green-100 text-green-800'
-                    }`}>
-                      {order.status === 'pending'
-                        ? 'Pendiente'
-                        : order.status === 'inProgress'
-                        ? 'En preparación'
-                        : 'Completado'}
-                    </span>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      {order.orderType === 'delivery' ? 'Delivery' : 'En sitio'}
-                    </span>
-                    {order.tableNumber && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        Mesa {order.tableNumber}
-                      </span>
-                    )}
+                {/* Total */}
+                <div className="border-t pt-4">
+                  <div className="flex justify-between items-center">
+                    <p className="font-semibold text-gray-800">Total</p>
+                    <p className="font-bold text-xl text-gray-900">
+                      ${orderDetails.total}
+                    </p>
                   </div>
                 </div>
-                
-                <div className="mt-4 space-y-2">
-                  {order.items.map((item, index) => (
-                    <div key={index} className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-gray-900">
-                        {item.quantity}x {item.name}
-                      </span>
-                      <span className="text-gray-600">${item.price * item.quantity}</span>
-                    </div>
-                  ))}
-                </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
+                {/* Acciones */}
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+                  {orderDetails.status !== 'completed' && (
+                    <button
+                      onClick={() => updateOrderStatus(orderDetails._id, 'completed')}
+                      className="w-full sm:w-auto px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      Marcar como Completado
+                    </button>
+                  )}
                   <button
-                    onClick={() => showOrderDetails(order)}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    onClick={() => setOrderDetails(null)}
+                    className="w-full sm:w-auto px-6 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
                   >
-                    Ver Detalles
+                    Cerrar
                   </button>
-                  {order.status === 'pending' && (
-                    <button
-                      onClick={() => updateOrderStatus(order._id, 'inProgress')}
-                      className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    >
-                      Iniciar Preparación
-                    </button>
-                  )}
-                  {order.status === 'inProgress' && (
-                    <button
-                      onClick={() => updateOrderStatus(order._id, 'completed')}
-                      className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                    >
-                      Completar Pedido
-                    </button>
-                  )}
-                  {order.status === 'pending' && (
-                    <button
-                      onClick={() => cancelOrder(order._id)}
-                      className="flex-1 sm:flex-none inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    >
-                      Cancelar Pedido
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      </div>
-      
-      {/* Report modal */}
-      {showReportModal && <ReportModal />}
-      
-      {/* Order details modal */}
-      {selectedOrder && <OrderDetailsModal />}
+      )}
     </div>
   );
 }
