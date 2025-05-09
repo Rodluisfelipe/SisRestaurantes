@@ -1,5 +1,0 @@
-{
-  "backend_url": "https://sisrestaurantes.onrender.com/api",
-  "frontend_url": "https://goburger.wuaze.com",
-  "mongodb_uri": "mongodb+srv://pipe95141007:Pipe9514.@cluster0.hp7leo2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-}
