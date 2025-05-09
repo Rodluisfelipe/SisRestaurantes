@@ -13,6 +13,14 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
-    outDir: 'dist'
+    outDir: 'dist',
+    rollupOptions: {
+      external: ['jspdf'],
+      output: {
+        globals: {
+          jspdf: 'jspdf'
+        }
+      }
+    }
   }
 })
