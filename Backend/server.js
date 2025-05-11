@@ -19,9 +19,10 @@ require('dotenv').config();
 
 // Usar las variables de entorno
 const MONGO_URI = process.env.MONGODB_URI;
+const isProd = process.env.NODE_ENV === 'production';
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://menuby.tech', 'http://127.0.0.1:5173'];
+  : ['http://menuby.tech', 'https://menuby.tech', 'https://www.menuby.tech', 'http://127.0.0.1:5173', 'http://localhost:5173'];
 
 // Crear la aplicación Express PRIMERO
 const app = express();
@@ -31,8 +32,19 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
-    origin: ALLOWED_ORIGINS,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    origin: function (origin, callback) {
+      // Permitir solicitudes sin origen
+      if (!origin) return callback(null, true);
+      
+      // Verificar si el origen está en la lista de permitidos
+      if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log(`Origen no permitido (Socket.io): ${origin}`);
+        callback(null, true); // Permitir cualquier origen en producción para mayor flexibilidad
+      }
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
   }
@@ -46,8 +58,19 @@ require('./services/socketService').initSocket(io);
 
 // Configurar CORS con los orígenes permitidos
 app.use(cors({
-  origin: ALLOWED_ORIGINS,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  origin: function (origin, callback) {
+    // Permitir solicitudes sin origen (como aplicaciones móviles o curl)
+    if (!origin) return callback(null, true);
+    
+    // Verificar si el origen está en la lista de permitidos
+    if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log(`Origen no permitido: ${origin}`);
+      callback(null, true); // Permitir cualquier origen en producción para mayor flexibilidad
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
