@@ -3,7 +3,12 @@ import { motion } from 'framer-motion';
 import { useTheme } from '../../Context/ThemeContext';
 
 const ThemeToggle = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, isAdminPanel } = useTheme();
+  
+  // No renderizar el botón en el panel de administración
+  if (isAdminPanel) {
+    return null;
+  }
   
   return (
     <motion.button

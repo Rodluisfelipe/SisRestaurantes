@@ -1,5 +1,4 @@
 /* Importar helpers para responsive */
-@import './styles/responsive-helpers.css';
 
 @tailwind base;
 @tailwind components;

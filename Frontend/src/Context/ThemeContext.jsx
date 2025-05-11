@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 // Define theme color schemes
 export const themes = {
@@ -30,16 +31,34 @@ const ThemeContext = createContext();
 
 // Create a provider component
 export function ThemeProvider({ children }) {
-  // Check if there's a saved theme preference in localStorage
+  const location = useLocation();
+  // Check if the current path is for admin panel
+  const isAdminPanel = location?.pathname?.includes('/admin');
+  
+  // Use light theme by default for admin panel, otherwise use saved theme or dark
   const savedTheme = localStorage.getItem('menuby-theme');
-  const [theme, setTheme] = useState(savedTheme === 'light' ? 'light' : 'dark');
+  const [theme, setTheme] = useState(
+    isAdminPanel ? 'light' : (savedTheme === 'light' ? 'light' : 'dark')
+  );
   
   // Toggle between light and dark mode
   const toggleTheme = () => {
+    // If in admin panel, don't allow toggling
+    if (isAdminPanel) return;
+    
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     localStorage.setItem('menuby-theme', newTheme);
   };
+  
+  // Update theme when path changes (to force light theme in admin)
+  useEffect(() => {
+    if (isAdminPanel && theme !== 'light') {
+      setTheme('light');
+    } else if (!isAdminPanel && savedTheme) {
+      setTheme(savedTheme === 'light' ? 'light' : 'dark');
+    }
+  }, [location, isAdminPanel]);
   
   // Add/remove theme-specific classes to the body
   useEffect(() => {
@@ -53,15 +72,18 @@ export function ThemeProvider({ children }) {
       bodyClasses.remove('dark-theme');
     }
     
-    // Save theme preference
-    localStorage.setItem('menuby-theme', theme);
-  }, [theme]);
+    // Save theme preference (but only if not in admin panel)
+    if (!isAdminPanel) {
+      localStorage.setItem('menuby-theme', theme);
+    }
+  }, [theme, isAdminPanel]);
   
   // Context value to be provided
   const value = {
     theme,
     colors: themes[theme],
-    toggleTheme
+    toggleTheme,
+    isAdminPanel
   };
   
   return (

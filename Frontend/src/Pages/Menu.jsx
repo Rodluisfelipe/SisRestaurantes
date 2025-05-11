@@ -742,8 +742,8 @@ export default function Menu() {
   // Si el negocio no está activo, mostrar mensaje
   if (!isBusinessActive && businessId) {
     return (
-      <div className="min-h-screen bg-[#051C2C] flex flex-col items-center justify-center text-white p-4">
-        <div className="bg-[#333F50]/80 rounded-xl p-8 max-w-md w-full text-center border border-[#333F50]">
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center text-[#1F2937] p-4">
+        <div className="bg-white rounded-xl p-8 max-w-md w-full text-center border border-[#DCE4F5] shadow-lg">
           <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-[#3A7AFF]/10 mb-4">
             <svg 
               xmlns="http://www.w3.org/2000/svg" 
@@ -761,7 +761,7 @@ export default function Menu() {
             </svg>
           </div>
           <h2 className="text-xl font-bold mb-3">Este restaurante no está disponible</h2>
-          <p className="text-[#D1D9FF] mb-6">El restaurante "{businessConfig?.businessName || 'solicitado'}" no está activo en este momento. Por favor, vuelve más tarde.</p>
+          <p className="text-[#6C7A92] mb-6">El restaurante "{businessConfig?.businessName || 'solicitado'}" no está activo en este momento. Por favor, vuelve más tarde.</p>
           <button 
             onClick={() => navigate('/')}
             className="px-4 py-2 bg-[#3A7AFF] text-white rounded-lg hover:bg-[#3A7AFF]/90 w-full"
@@ -775,12 +775,12 @@ export default function Menu() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-gray-50">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-white">
         <div className="relative flex flex-col items-center">
           <div className="w-16 h-16 flex items-center justify-center mb-4">
-            <span className="inline-block w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></span>
+            <span className="inline-block w-12 h-12 border-4 border-[#3A7AFF] border-t-transparent rounded-full animate-spin"></span>
           </div>
-          <div className="mt-2 text-lg font-semibold text-gray-700 tracking-wide animate-pulse">Cargando...</div>
+          <div className="mt-2 text-lg font-semibold text-[#1F2937] tracking-wide animate-pulse">Cargando...</div>
         </div>
       </div>
     );

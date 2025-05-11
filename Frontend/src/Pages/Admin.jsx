@@ -796,7 +796,7 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#051C2C]">
+    <div className="min-h-screen bg-[#F4F7FB]">
       {/* SuperAdmin Banner */}
       {isSuperAdminMode && (
         <div className="fixed top-0 left-0 w-full bg-yellow-500 text-yellow-900 py-1 px-4 text-center font-semibold z-[60] flex items-center justify-center">
@@ -808,7 +808,7 @@ export default function Admin() {
       )}
       
       {/* Header */}
-      <header className={`fixed top-0 left-0 w-full bg-[#333F50] shadow-lg z-50 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[#333F50]/80 ${isSuperAdminMode ? 'mt-7' : ''}`}>
+      <header className={`fixed top-0 left-0 w-full bg-white shadow-lg z-50 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[#DCE4F5] ${isSuperAdminMode ? 'mt-7' : ''}`}>
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -818,14 +818,14 @@ export default function Admin() {
           {/* Botón de menú móvil */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-md text-[#D1D9FF] hover:bg-[#051C2C]/30 lg:hidden transition-colors"
+            className="p-2 rounded-md text-[#6C7A92] hover:bg-[#F4F7FB]/30 lg:hidden transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
             </svg>
           </button>
           <img src={businessConfig.logo || '/logo.png'} alt="Logo" className="h-10 w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
-          <span className="text-lg font-bold text-white tracking-wide hidden sm:inline">{businessConfig.businessName || 'Panel Admin'}</span>
+          <span className="text-lg font-bold text-[#1F2937] tracking-wide hidden sm:inline">{businessConfig.businessName || 'Panel Admin'}</span>
         </motion.div>
         {isSuperAdminMode ? (
           <motion.button 
@@ -854,7 +854,7 @@ export default function Admin() {
       </header>
 
       {/* Navegación lateral */}
-      <nav className={`fixed w-64 h-full bg-[#333F50]/90 shadow-xl pt-16 transition-transform duration-300 ease-in-out transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 z-40 border-r border-[#333F50] ${isSuperAdminMode ? 'mt-7' : ''}`}>
+      <nav className={`fixed w-64 h-full bg-white shadow-xl pt-16 transition-transform duration-300 ease-in-out transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 z-40 border-r border-[#DCE4F5] ${isSuperAdminMode ? 'mt-7' : ''}`}>
         <div className="px-4 py-6 h-full overflow-y-auto">
           <div className="space-y-2">
             {[
@@ -880,7 +880,7 @@ export default function Admin() {
                 className={`flex items-center w-full px-4 py-3 rounded-lg transition-colors duration-200 ${
                   activeTab === tab 
                     ? 'bg-[#3A7AFF]/20 text-[#3A7AFF] font-semibold border border-[#3A7AFF]/20' 
-                    : 'text-[#D1D9FF] hover:bg-[#051C2C]/30'
+                    : 'text-[#6C7A92] hover:bg-[#F4F7FB]/30'
                 }`}
               >
                 <svg className="h-5 w-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -947,25 +947,25 @@ export default function Admin() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 onSubmit={handleSubmit} 
-                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 sm:p-6 mb-8 border border-[#333F50]"
+                className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-8 border border-[#DCE4F5]"
               >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
+                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                         Nombre del Producto
                       </label>
                       <input
                         name="name"
                         value={form.name}
                         onChange={handleChange}
-                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white placeholder-[#A5B9FF]/70 px-3 py-2.5"
+                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] placeholder-gray-400 px-3 py-2.5"
                         placeholder="Ej: Pizza Margherita"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
+                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                         Descripción
                       </label>
                       <textarea
@@ -973,12 +973,12 @@ export default function Admin() {
                         value={form.description}
                         onChange={handleChange}
                         rows="3"
-                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white placeholder-[#A5B9FF]/70 px-3 py-2.5"
+                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] placeholder-gray-400 px-3 py-2.5"
                         placeholder="Descripción detallada del producto"
                       ></textarea>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
+                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                         Precio
                       </label>
                         <input
@@ -988,20 +988,20 @@ export default function Admin() {
                         step="0.01"
                           value={form.price}
                           onChange={handleChange}
-                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white placeholder-[#A5B9FF]/70 px-3 py-2.5"
+                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] placeholder-gray-400 px-3 py-2.5"
                           placeholder="0.00"
                           required
                         />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
+                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                         Categoría
                       </label>
                       <select
                         name="category"
                         value={form.category}
                         onChange={handleChange}
-                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white px-3 py-2.5"
+                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] px-3 py-2.5"
                       >
                         <option value="">Sin categoría</option>
                         {categories.map(category => (
@@ -1014,19 +1014,19 @@ export default function Admin() {
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
+                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                         URL de la imagen
                       </label>
                         <input
                           name="image"
                           value={form.image}
                           onChange={handleChange}
-                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white placeholder-[#A5B9FF]/70 px-3 py-2.5"
+                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] placeholder-gray-400 px-3 py-2.5"
                         placeholder="https://ejemplo.com/imagen.jpg"
                         />
                       </div>
                     <div>
-                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
+                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                     Grupos de Toppings
                   </label>
                     <ProductFormToppingSelector 
@@ -1037,8 +1037,8 @@ export default function Admin() {
                     </div>
                     {form.image && (
                       <div className="mt-2">
-                        <p className="text-sm text-[#D1D9FF] mb-1">Vista previa:</p>
-                        <div className="relative w-32 h-32 border border-[#333F50] rounded-lg overflow-hidden bg-[#051C2C]/50">
+                        <p className="text-sm text-[#6C7A92] mb-1">Vista previa:</p>
+                        <div className="relative w-32 h-32 border border-[#DCE4F5] rounded-lg overflow-hidden bg-gray-50">
                           <img
                             src={form.image}
                             alt="Vista previa"
@@ -1047,7 +1047,7 @@ export default function Admin() {
                               e.target.src = 'https://placehold.co/100x100?text=Error';
                             }}
                           />
-                </div>
+                        </div>
                       </div>
                     )}
                     <div className="flex items-end justify-end space-x-2 pt-6">
@@ -1055,7 +1055,7 @@ export default function Admin() {
                     <button
                       type="button"
                       onClick={cancelEdit}
-                          className="px-4 py-2 rounded-lg font-medium border border-[#333F50] bg-[#333F50]/50 text-[#A5B9FF] hover:bg-[#051C2C]/30 transition-colors"
+                          className="px-4 py-2 rounded-lg font-medium border border-[#DCE4F5] bg-gray-50 text-[#6C7A92] hover:bg-gray-100 transition-colors"
                     >
                       Cancelar
                     </button>
@@ -1075,16 +1075,16 @@ export default function Admin() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 sm:p-6 border border-[#333F50]"
+                className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-[#DCE4F5]"
               >
                 <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                  <h3 className="text-xl font-bold text-white">Productos</h3>
-                  <p className="text-sm text-[#D1D9FF]">Total: {products.length} productos</p>
+                  <h3 className="text-xl font-bold text-[#1F2937]">Productos</h3>
+                  <p className="text-sm text-[#6C7A92]">Total: {products.length} productos</p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-separate border-spacing-y-2">
                     <thead>
-                      <tr className="text-[#D1D9FF]">
+                      <tr className="text-[#6C7A92]">
                         <th className="p-3 text-left">Producto</th>
                         <th className="p-3 text-left">Categoría</th>
                         <th className="p-3 text-right">Precio</th>
@@ -1099,11 +1099,11 @@ export default function Admin() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.2, delay: idx * 0.03 }}
-                            className="transition-colors bg-[#051C2C]/60 hover:bg-[#051C2C] border-b border-[#333F50]/30"
+                            className="transition-colors bg-gray-50 hover:bg-gray-100 border-b border-[#DCE4F5]"
                           >
                             <td className="p-3">
                               <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-[#333F50]/50 border border-[#333F50]">
+                                <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-white border border-[#DCE4F5]">
                         {product.image ? (
                           <img 
                             src={product.image} 
@@ -1114,23 +1114,23 @@ export default function Admin() {
                                       }}
                           />
                         ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-[#333F50]">
-                                      <svg className="w-6 h-6 text-[#A5B9FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
                         )}
                         </div>
                                 <div>
-                                  <p className="font-semibold text-white">{product.name}</p>
+                                  <p className="font-semibold text-[#1F2937]">{product.name}</p>
                                   {product.description && (
-                                    <p className="text-xs text-[#A5B9FF] line-clamp-1">{product.description}</p>
+                                    <p className="text-xs text-[#6C7A92] line-clamp-1">{product.description}</p>
                                   )}
                       </div>
                             </div>
                             </td>
-                            <td className="p-3 text-[#D1D9FF]">{product.categoryName || "Sin categoría"}</td>
-                            <td className="p-3 text-right font-medium text-white">${product.price}</td>
+                            <td className="p-3 text-[#6C7A92]">{product.categoryName || "Sin categoría"}</td>
+                            <td className="p-3 text-right font-medium text-[#1F2937]">${product.price}</td>
                             <td className="p-3 text-right">
                               <div className="flex justify-end space-x-2">
                             <button
@@ -1157,7 +1157,7 @@ export default function Admin() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="4" className="p-4 text-center text-[#D1D9FF]">
+                          <td colSpan="4" className="p-4 text-center text-[#6C7A92]">
                             No hay productos disponibles. Agrega uno usando el formulario de arriba.
                           </td>
                         </tr>

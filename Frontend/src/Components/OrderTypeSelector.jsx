@@ -110,8 +110,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg max-w-md w-full p-6">
+    <div className="fixed inset-0 bg-white bg-opacity-90 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl border border-[#DCE4F5]">
         <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center">
           Bienvenid@ a {businessConfig.businessName || 'nuestro restaurante'}
         </h2>
@@ -134,14 +134,14 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         {!isQRMode && (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                 ¿Cuál es tu nombre?
               </label>
               <input
                 type="text"
                 value={orderInfo.customerName}
                 onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                className="w-full p-2 border border-[#DCE4F5] rounded-md focus:ring-2 focus:ring-[#3A7AFF] text-[#1F2937]"
                 placeholder="Ingresa tu nombre"
                 required
                 autoFocus
@@ -150,7 +150,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             <button
               type="submit"
               style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-              className="w-full py-3 rounded-lg transition-colors duration-300"
+              className="w-full py-3 rounded-lg transition-colors duration-300 shadow-md hover:shadow-lg"
             >
               Continuar
             </button>
@@ -163,14 +163,14 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             {!showOrderTypes ? (
               // First step: Ask for customer name
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                   Tu nombre
                 </label>
                 <input
                   type="text"
                   value={orderInfo.customerName}
                   onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 border border-[#DCE4F5] rounded-md focus:ring-2 focus:ring-[#3A7AFF] text-[#1F2937]"
                   placeholder="Ingresa tu nombre"
                   required
                 />
@@ -181,10 +181,10 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                 {initialTableNumber ? (
                   // Si es un QR de mesa, mostrar opciones limitadas
                   <div>
-                    <p className="text-gray-700 text-center mb-4">
+                    <p className="text-[#1F2937] text-center mb-4">
                       Hola {orderInfo.customerName}, estás en la mesa {initialTableNumber}.
                     </p>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-[#6C7A92] mb-1">
                       Tipo de pedido
                     </label>
                     <div className="flex flex-col space-y-2">
@@ -193,8 +193,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                         onClick={() => handleOrderTypeChange('inSite')}
                         className={`w-full py-3 rounded-lg flex items-center justify-center transition-colors duration-300 ${
                           orderInfo.orderType === 'inSite'
-                            ? 'bg-blue-100 border-blue-500 border text-blue-700'
-                            : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-[#3A7AFF]/20 border-[#3A7AFF] border text-[#3A7AFF]'
+                            : 'bg-gray-50 border border-[#DCE4F5] text-[#6C7A92] hover:bg-gray-100'
                         }`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -207,8 +207,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                         onClick={() => handleOrderTypeChange('takeaway')}
                         className={`w-full py-3 rounded-lg flex items-center justify-center transition-colors duration-300 ${
                           orderInfo.orderType === 'takeaway'
-                            ? 'bg-blue-100 border-blue-500 border text-blue-700'
-                            : 'bg-gray-100 border border-gray-300 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-[#3A7AFF]/20 border-[#3A7AFF] border text-[#3A7AFF]'
+                            : 'bg-gray-50 border border-[#DCE4F5] text-[#6C7A92] hover:bg-gray-100'
                         }`}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -225,7 +225,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             <button
               type="submit"
               style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-              className="w-full py-3 rounded-lg transition-colors duration-300"
+              className="w-full py-3 rounded-lg transition-colors duration-300 shadow-md hover:shadow-lg"
             >
               {!showOrderTypes ? 'Continuar' : 'Ver Menú'}
             </button>

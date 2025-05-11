@@ -210,6 +210,13 @@ export const getSavedCustomerName = () => {
   return getFromLocalStorage('customerName', '');
 };
 
+// Función para guardar el nombre del cliente en localStorage
+export const saveCustomerName = (name) => {
+  if (name && typeof name === 'string') {
+    saveToLocalStorage('customerName', name);
+  }
+};
+
 // Alias para compatibilidad
 export const getFromSession = (key, defaultValue = null) => {
   return getFromSessionStorage(key, defaultValue);
