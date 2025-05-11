@@ -21,7 +21,7 @@ require('dotenv').config();
 const MONGO_URI = process.env.MONGODB_URI;
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:5173', 'http://127.0.0.1:5173'];
+  : ['http://menuby.tech', 'http://127.0.0.1:5173'];
 
 // Crear la aplicación Express PRIMERO
 const app = express();
