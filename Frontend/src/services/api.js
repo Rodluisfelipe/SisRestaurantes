@@ -14,7 +14,7 @@ import { io } from 'socket.io-client';
 
 // Crear una instancia de axios con configuración básica
 const api = axios.create({
-  baseURL: 'https://sisrestaurantes.onrender.com/api',
+  baseURL: API_ENDPOINTS.BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
