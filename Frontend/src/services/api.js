@@ -19,7 +19,9 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
   // Agregar timeout
-  timeout: 5000
+  timeout: 5000,
+  // Incluir credenciales en solicitudes cross-origin
+  withCredentials: true
 });
 
 // Implementar un cache simple usando Map

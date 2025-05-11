@@ -7,6 +7,7 @@ import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
 import OrderConfirmationModal from "../Components/OrderConfirmationModal";
 import CartBar from "../Components/CartBar";
+// import SpecialOffers from "../Components/SpecialOffers"; // Este componente no existe, se comenta para evitar errores
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
@@ -15,6 +16,8 @@ import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import * as SessionManager from '../utils/sessionManager';
 import { calculateItemPrice, calculateTotalAmount, calculateTotalItems, createWhatsAppMessage } from '../utils/orderUtils';
 import logger from '../utils/logger';
+import { useParams, useNavigate } from 'react-router-dom';
+import NotFound from './NotFound';
 
 /**
  * Página principal del Menú para clientes
@@ -30,8 +33,8 @@ import logger from '../utils/logger';
 // Función para obtener el orden de las categorías
 const getCategoryOrder = () => {
   try {
-    const savedOrder = localStorage.getItem('categoryOrderSettings');
-    return savedOrder ? JSON.parse(savedOrder) : {};
+    const savedOrder = SessionManager.getFromLocalStorage('categoryOrderSettings');
+    return savedOrder ? savedOrder : {};
   } catch (error) {
     logger.error('Error al obtener orden de categorías:', error);
     return {};
@@ -40,7 +43,7 @@ const getCategoryOrder = () => {
 
 // Función para verificar si la sesión actual es válida (no ha expirado)
 const isValidSession = () => {
-  const sessionStartTime = localStorage.getItem('sessionStartTime');
+  const sessionStartTime = SessionManager.getFromLocalStorage('sessionStartTime');
   if (!sessionStartTime) return false;
   
   // Máximo tiempo de sesión: 3 horas (10800000 ms)
@@ -52,51 +55,10 @@ const isValidSession = () => {
 };
 
 export default function Menu() {
-  // Determinar el modo actual basado en la URL
-  const isQRMode = SessionManager.isQRMode();
-  
-  // Obtener el número de mesa directamente de la URL (solo en modo QR)
-  const tableFromUrl = SessionManager.getTableNumberFromURL();
+  const { tableNumber: tableFromUrl } = useParams();
+  const isQRMode = !!tableFromUrl;
+  const navigate = useNavigate();
 
-  // Determinar si debe mostrar el selector de tipo de pedido
-  const shouldShowOrderTypeSelector = () => {
-    // Si ya hay información de pedido guardada con nombre de cliente, no mostrar el selector
-    const savedOrderInfo = SessionManager.getFromSession('orderInfo');
-    if (savedOrderInfo && savedOrderInfo.customerName) {
-      logger.info('Hay información de cliente guardada, no mostrar selector inicial');
-      return false;
-    }
-    
-    // En modo QR, mostrar selector incluso si hay información para validar mesa
-    if (isQRMode) {
-      logger.info('Modo QR: mostrar selector inicial para confirmar mesa', tableFromUrl);
-      return true;
-    }
-    
-    // En modo normal, verificar si hay nombre de cliente guardado
-    const savedName = SessionManager.getSavedCustomerName();
-    if (savedName && savedName.trim() !== '') {
-      logger.info('Hay nombre de cliente guardado en localStorage, no mostrar selector inicial');
-      
-      // Crear información básica con el nombre guardado
-      const basicInfo = {
-        customerName: savedName,
-        orderType: '',
-        tableNumber: ''
-      };
-      
-      // Guardar esta información básica y continuar sin mostrar selector
-      setOrderInfo(basicInfo);
-      SessionManager.saveOrderInfo(basicInfo);
-      
-      return false;
-    }
-    
-    // Si no hay información de cliente, mostrar el selector para pedir nombre
-    logger.info('No hay información de cliente, mostrar selector inicial para pedir nombre');
-    return true;
-  };
-  
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [cart, setCart] = useState(() => {
@@ -105,19 +67,15 @@ export default function Menu() {
   
   const [loading, setLoading] = useState(true);
   const [showCartSummary, setShowCartSummary] = useState(false);
-  const [showOrderTypeSelector, setShowOrderTypeSelector] = useState(() => {
-    return shouldShowOrderTypeSelector();
-  });
-  
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
-  const { businessConfig } = useBusinessConfig();
-  const { businessId } = useBusinessConfig();
+  const { businessConfig, businessId, error: businessError } = useBusinessConfig();
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [showOrderConfirmationModal, setShowOrderConfirmationModal] = useState(false);
   const [orderConfirmationDetails, setOrderConfirmationDetails] = useState({
     type: '',
     message: ''
   });
+  const [businessNotFound, setBusinessNotFound] = useState(false);
   
   // Initialize orderInfo with the appropriate storage
   const [orderInfo, setOrderInfo] = useState(() => {
@@ -141,15 +99,58 @@ export default function Menu() {
         tableNumber: tableFromUrl || ''
       };
     } else {
+      // En modo normal, usar nombre guardado si existe
+      const savedName = SessionManager.getSavedCustomerName();
       return {
-        customerName: SessionManager.getSavedCustomerName(),
+        customerName: savedName || '',
         orderType: '',
-        // En modo normal, no inicializar con número de mesa
         tableNumber: ''
       };
     }
   });
-  
+
+  // Determinar si debe mostrar el selector de tipo de pedido
+  const shouldShowOrderTypeSelector = () => {
+    // Si ya hay información de pedido guardada con nombre de cliente, no mostrar el selector
+    const savedOrderInfo = SessionManager.getFromSession('orderInfo');
+    if (savedOrderInfo && savedOrderInfo.customerName) {
+      logger.info('Hay información de cliente guardada, no mostrar selector inicial');
+      return false;
+    }
+    
+    // En modo QR, mostrar selector incluso si hay información para validar mesa
+    if (isQRMode) {
+      logger.info('Modo QR: mostrar selector inicial para confirmar mesa', tableFromUrl);
+      return true;
+    }
+    
+    // En modo normal, verificar si hay nombre de cliente guardado y si ya está en orderInfo
+    const savedName = SessionManager.getSavedCustomerName();
+    if (savedName && savedName.trim() !== '') {
+      logger.info('Hay nombre de cliente guardado en localStorage, no mostrar selector inicial');
+      
+      // El nombre ya debería estar en orderInfo por la inicialización del estado
+      // No necesitamos setOrderInfo aquí, evitando el problema de inicialización
+      
+      return false;
+    }
+    
+    // Si no hay información de cliente, mostrar el selector para pedir nombre
+    logger.info('No hay información de cliente, mostrar selector inicial para pedir nombre');
+    return true;
+  };
+
+  const [showOrderTypeSelector, setShowOrderTypeSelector] = useState(() => {
+    return shouldShowOrderTypeSelector();
+  });
+
+  // Effect para guardar orderInfo cuando se actualice
+  useEffect(() => {
+    if (orderInfo && orderInfo.customerName) {
+      SessionManager.saveToSession('orderInfo', orderInfo);
+    }
+  }, [orderInfo]);
+
   // Use table number as a dependency for some effects
   useEffect(() => {
     logger.info('Current table number:', tableFromUrl);
@@ -158,9 +159,9 @@ export default function Menu() {
   // Si la sesión expiró o no viene de QR, limpiar localStorage de QR
   useEffect(() => {
     if (isQRMode && !tableFromUrl) {
-      localStorage.removeItem('tableQR_currentTable');
-      localStorage.removeItem('isTableQRSession'); 
-      localStorage.removeItem('tableQR_orderInfo');
+      SessionManager.removeFromLocalStorage('tableQR_currentTable');
+      SessionManager.removeFromLocalStorage('isTableQRSession');
+      SessionManager.removeFromLocalStorage('tableQR_orderInfo');
     }
   }, [isQRMode, tableFromUrl]);
 
@@ -168,13 +169,6 @@ export default function Menu() {
   useEffect(() => {
     SessionManager.saveToSession('cart', cart);
   }, [cart]);
-
-  // Guardar orderInfo en la sesión
-  useEffect(() => {
-    if (orderInfo) {
-      SessionManager.saveToSession('orderInfo', orderInfo);
-    }
-  }, [orderInfo]);
 
   // Si la sesión expiró o no viene de QR, limpiar datos obsoletos
   useEffect(() => {
@@ -246,6 +240,18 @@ export default function Menu() {
       document.head.appendChild(favicon);
     }
   }, [businessConfig.businessName, businessConfig.logo]);
+
+  useEffect(() => {
+    // Verificar si hay un error con el businessId o si no se encontró el negocio
+    if (businessError) {
+      logger.error('Menu - Error cargando negocio:', businessError);
+      
+      // Si es un error 404, mostrar NotFound
+      if (businessError.response && businessError.response.status === 404) {
+        setBusinessNotFound(true);
+      }
+    }
+  }, [businessError]);
 
   useEffect(() => {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId para aceptar tanto slugs como ObjectIDs
@@ -393,14 +399,12 @@ export default function Menu() {
       )
     );
     
-    // Actualizar localStorage
-    localStorage.setItem('cart', JSON.stringify(cart));
+    // Cart se guardará automáticamente con el efecto useEffect
   };
 
   const removeFromCart = (uniqueId) => {
     const updatedCart = cart.filter(item => item.uniqueId !== uniqueId);
     setCart(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
     
     if (updatedCart.length === 0) {
       setShowCartSummary(false);
@@ -614,7 +618,7 @@ export default function Menu() {
   };
 
   const getSortedCategories = (categories) => {
-    const savedOrder = localStorage.getItem('categoryOrder');
+    const savedOrder = SessionManager.getFromLocalStorage('categoryOrder');
     logger.info("Menu: Retrieved category order from localStorage:", savedOrder);
     
     if (!savedOrder) {
@@ -622,7 +626,7 @@ export default function Menu() {
     }
     
     try {
-      const orderMap = JSON.parse(savedOrder);
+      const orderMap = savedOrder;
       logger.info("Menu: Parsed order map:", orderMap);
       
       return [...categories].sort((a, b) => {
@@ -708,15 +712,15 @@ export default function Menu() {
       setShowCartSummary(false);
       
       // Limpiar localStorage y guardar tipo de pedido completado
-      localStorage.removeItem('cart');
-      localStorage.setItem('lastCompletedOrderType', orderDetails.orderType);
+      SessionManager.removeFromLocalStorage('cart');
+      SessionManager.saveToLocalStorage('lastCompletedOrderType', orderDetails.orderType);
       
       // Notificar a otras pestañas que se completó un pedido
-      localStorage.setItem('orderCompleted', 'true');
+      SessionManager.saveToLocalStorage('orderCompleted', 'true');
       
       // Eliminar la notificación después de un segundo
       setTimeout(() => {
-        localStorage.removeItem('orderCompleted');
+        SessionManager.removeFromLocalStorage('orderCompleted');
       }, 1000);
       
       return true; // Indicar éxito
@@ -726,6 +730,48 @@ export default function Menu() {
       return false; // Indicar fallo
     }
   };
+
+  // Si el negocio no se encuentra, mostrar NotFound
+  if (businessNotFound) {
+    return <NotFound />;
+  }
+
+  // Verificar si el negocio está activo
+  const isBusinessActive = businessConfig?.isActive !== false;
+  
+  // Si el negocio no está activo, mostrar mensaje
+  if (!isBusinessActive && businessId) {
+    return (
+      <div className="min-h-screen bg-[#051C2C] flex flex-col items-center justify-center text-white p-4">
+        <div className="bg-[#333F50]/80 rounded-xl p-8 max-w-md w-full text-center border border-[#333F50]">
+          <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-[#3A7AFF]/10 mb-4">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-8 w-8 text-[#3A7AFF]" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" 
+              />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold mb-3">Este restaurante no está disponible</h2>
+          <p className="text-[#D1D9FF] mb-6">El restaurante "{businessConfig?.businessName || 'solicitado'}" no está activo en este momento. Por favor, vuelve más tarde.</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-[#3A7AFF] text-white rounded-lg hover:bg-[#3A7AFF]/90 w-full"
+          >
+            Volver al inicio
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -758,16 +804,6 @@ export default function Menu() {
         businessConfig={businessConfig}
         isSubmittingOrder={isSubmittingOrder}
       />
-    );
-  }
-
-  if (businessConfig && businessConfig.isActive === false) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <img src={businessConfig.logo || 'https://placehold.co/150x150?text=Logo'} alt="Logo" className="w-32 h-32 mb-6 rounded-full object-cover border-4 border-blue-200" />
-        <h1 className="text-2xl font-bold text-gray-700 mb-2">Menú desactivado</h1>
-        <p className="text-gray-600 text-center max-w-md">Este negocio se encuentra temporalmente desactivado. Por favor, contacte al administrador para más información.</p>
-      </div>
     );
   }
 

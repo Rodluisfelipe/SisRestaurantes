@@ -16,71 +16,80 @@ import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObje
 import TableSettings from "../Components/TableSettings";
 import OrdersDashboard from "../Components/OrdersDashboard";
 import CompletedOrdersSummary from "../Components/CompletedOrdersSummary";
+import { motion } from "framer-motion";
 
 // Componente de Modal de Confirmación para edición
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Confirmar Cambios</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-[#333F50]/95 rounded-2xl shadow-2xl p-6 max-w-md w-full border border-[#333F50]"
+      >
+        <h2 className="text-xl font-bold text-white mb-6 flex items-center">
+          <svg className="w-6 h-6 text-[#3A7AFF] mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Confirmar Cambios
+        </h2>
         
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-gray-600 font-medium">Nombre:</p>
+            <p className="text-[#D1D9FF] font-medium">Nombre:</p>
             <div className="flex items-center">
-              <p className={`${product.name !== formData.name ? 'line-through text-red-500' : 'text-gray-900'} mr-2`}>
+              <p className={`${product.name !== formData.name ? 'line-through text-red-400' : 'text-white'} mr-2`}>
                 {product.name}
               </p>
               {product.name !== formData.name && (
-                <p className="text-green-600">{formData.name}</p>
+                <p className="text-[#5FF9B4]">{formData.name}</p>
               )}
             </div>
           </div>
           
           <div className="flex items-center justify-between">
-            <p className="text-gray-600 font-medium">Descripción:</p>
+            <p className="text-[#D1D9FF] font-medium">Descripción:</p>
             <div className="flex items-center">
-              <p className={`${product.description !== formData.description ? 'line-through text-red-500' : 'text-gray-900'} mr-2`}>
-                {product.description}
+              <p className={`${product.description !== formData.description ? 'line-through text-red-400' : 'text-white'} mr-2`}>
+                {product.description || "Sin descripción"}
               </p>
               {product.description !== formData.description && (
-                <p className="text-green-600">{formData.description}</p>
+                <p className="text-[#5FF9B4]">{formData.description || "Sin descripción"}</p>
               )}
             </div>
           </div>
           
           <div className="flex items-center justify-between">
-            <p className="text-gray-600 font-medium">Precio:</p>
+            <p className="text-[#D1D9FF] font-medium">Precio:</p>
             <div className="flex items-center">
-              <p className={`${product.price !== formData.price ? 'line-through text-red-500' : 'text-gray-900'} mr-2`}>
+              <p className={`${product.price !== formData.price ? 'line-through text-red-400' : 'text-white'} mr-2`}>
                 ${product.price}
               </p>
               {product.price !== formData.price && (
-                <p className="text-green-600">${formData.price}</p>
+                <p className="text-[#5FF9B4]">${formData.price}</p>
               )}
             </div>
           </div>
-          
-          {/* Otros campos como categoría e imagen pueden mostrarse de manera similar */}
         </div>
         
         <div className="flex justify-end space-x-3 mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+            className="px-4 py-2 rounded-lg text-white bg-[#333F50] hover:bg-[#333F50]/80 transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 rounded-lg text-white bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 transition-colors"
           >
             Confirmar Cambios
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
@@ -90,49 +99,54 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, product }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <div className="flex items-center mb-4 text-red-600">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-[#333F50]/95 rounded-2xl shadow-2xl p-6 max-w-md w-full border border-[#333F50]"
+      >
+        <div className="flex items-center mb-4 text-red-400">
+          <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h2 className="text-xl font-bold">Eliminar Producto</h2>
+          <h2 className="text-xl font-bold text-white">Eliminar Producto</h2>
         </div>
         
-        <p className="text-gray-700 mb-6">
-          ¿Estás seguro de que deseas eliminar el producto <span className="font-bold">{product.name}</span>? Esta acción no se puede deshacer.
+        <p className="text-[#D1D9FF] mb-6">
+          ¿Estás seguro de que deseas eliminar el producto <span className="font-bold text-white">{product.name}</span>? Esta acción no se puede deshacer.
         </p>
         
-        <div className="bg-gray-100 p-4 rounded-lg mb-6">
+        <div className="bg-[#051C2C]/30 p-4 rounded-lg mb-6 border border-[#333F50]">
           <div className="flex">
-            <p className="text-gray-600 w-32">Nombre:</p>
-            <p className="text-gray-900 font-medium">{product.name}</p>
+            <p className="text-[#A5B9FF] w-32">Nombre:</p>
+            <p className="text-white font-medium">{product.name}</p>
           </div>
           <div className="flex mt-2">
-            <p className="text-gray-600 w-32">Precio:</p>
-            <p className="text-gray-900 font-medium">${product.price}</p>
+            <p className="text-[#A5B9FF] w-32">Precio:</p>
+            <p className="text-white font-medium">${product.price}</p>
           </div>
           <div className="flex mt-2">
-            <p className="text-gray-600 w-32">Categoría:</p>
-            <p className="text-gray-900 font-medium">{product.categoryName || "Sin categoría"}</p>
+            <p className="text-[#A5B9FF] w-32">Categoría:</p>
+            <p className="text-white font-medium">{product.categoryName || "Sin categoría"}</p>
           </div>
         </div>
         
         <div className="flex justify-end space-x-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+            className="px-4 py-2 rounded-lg text-white bg-[#333F50] hover:bg-[#333F50]/80 transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+            className="px-4 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition-colors"
           >
             Eliminar Producto
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
@@ -718,13 +732,35 @@ export default function Admin() {
   // Forzar cambio de contraseña si mustChangePassword es true
   if (user && user.mustChangePassword) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-8">
-          <h2 className="text-xl font-bold text-center mb-4 text-indigo-700">Debes cambiar tu contraseña</h2>
-          <p className="text-gray-600 text-center mb-6">Por seguridad, debes establecer una nueva contraseña antes de continuar.</p>
+      <div className="min-h-screen bg-[#051C2C] flex items-center justify-center py-8 px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-md w-full bg-[#333F50]/80 rounded-2xl shadow-xl overflow-hidden border border-[#333F50] p-8"
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-center mb-6"
+          >
+            <h2 className="text-2xl font-bold text-white">Cambiar contraseña</h2>
+            <p className="mt-2 text-sm text-[#D1D9FF]">
+              Por seguridad, debes establecer una nueva contraseña antes de continuar.
+            </p>
+          </motion.div>
           <ChangePassword forceNoOldPassword />
-          <button onClick={logout} className="mt-6 w-full bg-red-500 text-white py-2 rounded-lg hover:bg-red-600 transition-colors">Salir</button>
-        </div>
+          <motion.button 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            onClick={logout} 
+            className="mt-6 w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition-colors font-medium"
+          >
+            Salir
+          </motion.button>
+        </motion.div>
       </div>
     );
   }
@@ -735,13 +771,15 @@ export default function Admin() {
 
   if (dataLoading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex flex-col justify-center items-center min-h-screen bg-[#051C2C]">
         <div className="relative flex flex-col items-center">
-          {/* Spinner animado negro, minimalista */}
           <div className="w-16 h-16 flex items-center justify-center mb-4">
-            <span className="inline-block w-12 h-12 border-4 border-black border-t-transparent rounded-full animate-spin"></span>
+            <svg className="animate-spin h-12 w-12 text-[#3A7AFF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
           </div>
-          <div className="mt-2 text-lg font-semibold text-gray-700 tracking-wide animate-pulse">Cargando...</div>
+          <div className="mt-2 text-lg font-semibold text-white tracking-wide animate-pulse">Cargando...</div>
         </div>
       </div>
     );
@@ -749,16 +787,16 @@ export default function Admin() {
 
   if (businessConfig && businessConfig.isActive === false) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <img src={businessConfig.logo || 'https://placehold.co/150x150?text=Logo'} alt="Logo" className="w-32 h-32 mb-6 rounded-full object-cover border-4 border-blue-200" />
-        <h1 className="text-2xl font-bold text-gray-700 mb-2">Panel desactivado</h1>
-        <p className="text-gray-600 text-center max-w-md">Este negocio ha sido desactivado. Por favor, contacte al administrador para reactivar su acceso.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#051C2C]">
+        <img src={businessConfig.logo || 'https://placehold.co/150x150?text=Logo'} alt="Logo" className="w-32 h-32 mb-6 rounded-full object-cover border-4 border-[#333F50]" />
+        <h1 className="text-2xl font-bold text-white mb-2">Panel desactivado</h1>
+        <p className="text-[#D1D9FF] text-center max-w-md">Este negocio ha sido desactivado. Por favor, contacte al administrador para reactivar su acceso.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-[#051C2C]">
       {/* SuperAdmin Banner */}
       {isSuperAdminMode && (
         <div className="fixed top-0 left-0 w-full bg-yellow-500 text-yellow-900 py-1 px-4 text-center font-semibold z-[60] flex items-center justify-center">
@@ -769,32 +807,54 @@ export default function Admin() {
         </div>
       )}
       
-      {/* Header mejorado con botón de menú móvil */}
-      <header className={`fixed top-0 left-0 w-full h-16 bg-white shadow z-50 flex items-center justify-between px-4 sm:px-6 border-b border-gray-200 ${isSuperAdminMode ? 'mt-7' : ''}`}>
-        <div className="flex items-center space-x-3">
+      {/* Header */}
+      <header className={`fixed top-0 left-0 w-full bg-[#333F50] shadow-lg z-50 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[#333F50]/80 ${isSuperAdminMode ? 'mt-7' : ''}`}>
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="flex items-center space-x-3"
+        >
           {/* Botón de menú móvil */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-md text-gray-600 hover:bg-gray-100 lg:hidden"
+            className="p-2 rounded-md text-[#D1D9FF] hover:bg-[#051C2C]/30 lg:hidden transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
             </svg>
           </button>
-          <img src={businessConfig.logo || '/logo.png'} alt="Logo" className="h-10 w-10 rounded-full object-cover border border-gray-200" />
-          <span className="text-lg font-bold text-gray-800 hidden sm:inline">{businessConfig.businessName || 'Panel Admin'}</span>
-        </div>
+          <img src={businessConfig.logo || '/logo.png'} alt="Logo" className="h-10 w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
+          <span className="text-lg font-bold text-white tracking-wide hidden sm:inline">{businessConfig.businessName || 'Panel Admin'}</span>
+        </motion.div>
         {isSuperAdminMode ? (
-          <button onClick={() => window.close()} className="px-4 py-2 bg-yellow-500 text-yellow-900 rounded-lg hover:bg-yellow-600 transition-colors">
+          <motion.button 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            onClick={() => window.close()} 
+            className="px-4 py-2 bg-yellow-500 text-yellow-900 rounded-lg hover:bg-yellow-600 transition-colors font-semibold shadow-md"
+          >
             Cerrar Vista
-          </button>
+          </motion.button>
         ) : (
-          <button onClick={logout} className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors">Salir</button>
+          <motion.button 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            onClick={logout} 
+            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold shadow-md"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+            </svg>
+            Salir
+          </motion.button>
         )}
       </header>
 
-      {/* Navegación lateral mejorada */}
-      <nav className={`fixed w-64 h-full bg-gradient-to-b from-white to-gray-50 shadow-xl pt-16 transition-transform duration-300 ease-in-out transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 z-40 border-r border-gray-200 ${isSuperAdminMode ? 'mt-7' : ''}`}>
+      {/* Navegación lateral */}
+      <nav className={`fixed w-64 h-full bg-[#333F50]/90 shadow-xl pt-16 transition-transform duration-300 ease-in-out transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 z-40 border-r border-[#333F50] ${isSuperAdminMode ? 'mt-7' : ''}`}>
         <div className="px-4 py-6 h-full overflow-y-auto">
           <div className="space-y-2">
             {[
@@ -808,19 +868,26 @@ export default function Admin() {
               { name: 'Pedidos', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', tab: 'orders' },
               { name: 'Resumen de Pedidos', icon: 'M12 12a1 1 0 011-1h.01a1 1 0 110 2H13a1 1 0 01-1-1z', tab: 'completed_orders' },
             ].map(({ name, icon, tab }) => (
-              <button
+              <motion.button
                 key={tab}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 * ["products", "settings", "categories", "toppings", "tables", "theme", "change-password", "orders", "completed_orders"].indexOf(tab) }}
                 onClick={() => {
                   setActiveTab(tab);
-                  setIsMobileMenuOpen(false); // Cerrar menú en móviles al seleccionar
+                  setIsMobileMenuOpen(false);
                 }}
-                className={`flex items-center w-full px-4 py-3 rounded-lg transition-colors duration-200 ${activeTab === tab ? 'bg-blue-100 text-blue-700 font-semibold shadow' : 'text-gray-700 hover:bg-gray-100'}`}
+                className={`flex items-center w-full px-4 py-3 rounded-lg transition-colors duration-200 ${
+                  activeTab === tab 
+                    ? 'bg-[#3A7AFF]/20 text-[#3A7AFF] font-semibold border border-[#3A7AFF]/20' 
+                    : 'text-[#D1D9FF] hover:bg-[#051C2C]/30'
+                }`}
               >
                 <svg className="h-5 w-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
                 </svg>
                 <span className="truncate">{name}</span>
-              </button>
+              </motion.button>
             ))}
           </div>
         </div>
@@ -839,9 +906,13 @@ export default function Admin() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Banner de mensaje de éxito */}
           {successMessage && (
-            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50">
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="fixed top-20 left-1/2 transform -translate-x-1/2 p-3 bg-green-500/20 text-green-300 text-sm rounded-lg border border-green-500/30 z-50"
+            >
               {successMessage}
-            </div>
+            </motion.div>
           )}
           
           {/* Modal de confirmación de edición */}
@@ -871,24 +942,30 @@ export default function Admin() {
           {activeTab === 'completed_orders' && <CompletedOrdersSummary />}
           {activeTab === 'products' && (
             <>
-              <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-8">
+              <motion.form 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                onSubmit={handleSubmit} 
+                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 sm:p-6 mb-8 border border-[#333F50]"
+              >
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
                         Nombre del Producto
                       </label>
                       <input
                         name="name"
                         value={form.name}
                         onChange={handleChange}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white placeholder-[#A5B9FF]/70 px-3 py-2.5"
                         placeholder="Ej: Pizza Margherita"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
                         Descripción
                       </label>
                       <textarea
@@ -896,190 +973,199 @@ export default function Admin() {
                         value={form.description}
                         onChange={handleChange}
                         rows="3"
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                        placeholder="Describe tu producto..."
-                        required
-                      />
+                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white placeholder-[#A5B9FF]/70 px-3 py-2.5"
+                        placeholder="Descripción detallada del producto"
+                      ></textarea>
                     </div>
-                  </div>
-                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
                         Precio
                       </label>
-                      <div className="relative rounded-lg shadow-sm">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 sm:text-sm">$</span>
-                        </div>
                         <input
-                          type="number"
                           name="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
                           value={form.price}
                           onChange={handleChange}
-                          className="w-full pl-7 rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white placeholder-[#A5B9FF]/70 px-3 py-2.5"
                           placeholder="0.00"
                           required
-                          min="1"
                         />
-                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
                         Categoría
                       </label>
                       <select
                         name="category"
                         value={form.category}
                         onChange={handleChange}
-                        className="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                        required
+                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white px-3 py-2.5"
                       >
-                        <option value="">Seleccionar categoría</option>
-                        {categories.map(cat => (
-                          <option key={cat._id} value={cat._id}>
-                            {cat.name}
+                        <option value="">Sin categoría</option>
+                        {categories.map(category => (
+                          <option key={category._id} value={category._id}>
+                            {category.name}
                           </option>
                         ))}
                       </select>
                     </div>
+                  </div>
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
                         URL de la imagen
                       </label>
-                      <div className="flex items-center space-x-2">
-                        <svg className="h-5 w-5 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 14.828a4 4 0 01-5.656 0l-4-4a4 4 0 015.656-5.656l1.415 1.414a2 2 0 102.828 2.828l1.415 1.414a4 4 0 010 5.656z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a1 1 0 011 1v6a1 1 0 01-1 1H9a1 1 0 01-1-1v-6a1 1 0 011-1h6z" />
-                        </svg>
                         <input
-                          type="text"
                           name="image"
                           value={form.image}
                           onChange={handleChange}
-                          className="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
-                          placeholder="https://ejemplo.com/imagen-del-producto.jpg"
-                          required
+                        className="w-full rounded-lg border border-[#333F50] bg-[#333F50]/50 shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white placeholder-[#A5B9FF]/70 px-3 py-2.5"
+                        placeholder="https://ejemplo.com/imagen.jpg"
                         />
                       </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <div>
+                      <label className="block text-sm font-medium text-[#D1D9FF] mb-1">
                     Grupos de Toppings
                   </label>
-                  {toppingGroups.length > 0 ? (
                     <ProductFormToppingSelector 
                       toppingGroups={toppingGroups} 
-                      selectedToppings={form.toppingGroups} 
+                        selectedGroups={form.toppingGroups} 
                       onChange={handleToppingGroupsChange}
                     />
-                  ) : (
-                    <div className="bg-yellow-50 border rounded-md p-3 text-yellow-700">
-                      <p>No hay grupos de toppings disponibles. Puedes crear grupos en la sección "Toppings".</p>
                     </div>
-                  )}
+                    {form.image && (
+                      <div className="mt-2">
+                        <p className="text-sm text-[#D1D9FF] mb-1">Vista previa:</p>
+                        <div className="relative w-32 h-32 border border-[#333F50] rounded-lg overflow-hidden bg-[#051C2C]/50">
+                          <img
+                            src={form.image}
+                            alt="Vista previa"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.src = 'https://placehold.co/100x100?text=Error';
+                            }}
+                          />
                 </div>
-                
-                <div className="mt-6 flex flex-col sm:flex-row items-center justify-end gap-3">
+                      </div>
+                    )}
+                    <div className="flex items-end justify-end space-x-2 pt-6">
                   {editingId && (
                     <button
                       type="button"
                       onClick={cancelEdit}
-                      className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                          className="px-4 py-2 rounded-lg font-medium border border-[#333F50] bg-[#333F50]/50 text-[#A5B9FF] hover:bg-[#051C2C]/30 transition-colors"
                     >
                       Cancelar
                     </button>
                   )}
                   <button
                     type="submit"
-                    className="w-full sm:w-auto px-4 py-2 rounded-lg font-semibold bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200 shadow-md"
+                        className="px-4 py-2 rounded-lg text-white font-medium bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 transition-colors shadow-lg hover:shadow-[#3A7AFF]/20"
                   >
-                    {editingId ? "Actualizar" : "Crear"} Producto
+                        {editingId ? "Guardar Cambios" : "Agregar Producto"}
                   </button>
                 </div>
-              </form>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                  {products.map(product => (
-                    <div key={product._id} className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-200 overflow-hidden border border-gray-100">
-                      <div className="relative h-48 sm:h-40 lg:h-48">
+                  </div>
+                </div>
+              </motion.form>
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 sm:p-6 border border-[#333F50]"
+              >
+                <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                  <h3 className="text-xl font-bold text-white">Productos</h3>
+                  <p className="text-sm text-[#D1D9FF]">Total: {products.length} productos</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-separate border-spacing-y-2">
+                    <thead>
+                      <tr className="text-[#D1D9FF]">
+                        <th className="p-3 text-left">Producto</th>
+                        <th className="p-3 text-left">Categoría</th>
+                        <th className="p-3 text-right">Precio</th>
+                        <th className="p-3 text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.length > 0 ? (
+                        products.map((product, idx) => (
+                          <motion.tr 
+                            key={product._id} 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: idx * 0.03 }}
+                            className="transition-colors bg-[#051C2C]/60 hover:bg-[#051C2C] border-b border-[#333F50]/30"
+                          >
+                            <td className="p-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-[#333F50]/50 border border-[#333F50]">
                         {product.image ? (
                           <img 
                             src={product.image} 
                             alt={product.name}
                             className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.target.src = 'https://placehold.co/100x100?text=Error';
+                                      }}
                           />
                         ) : (
-                          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                            <svg className="h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div className="w-full h-full flex items-center justify-center bg-[#333F50]">
+                                      <svg className="w-6 h-6 text-[#A5B9FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
                         )}
-                        <div className="absolute top-2 right-2">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {categories.find(c => c._id === product.category)?.name || 'Sin categoría'}
-                          </span>
                         </div>
+                                <div>
+                                  <p className="font-semibold text-white">{product.name}</p>
+                                  {product.description && (
+                                    <p className="text-xs text-[#A5B9FF] line-clamp-1">{product.description}</p>
+                                  )}
                       </div>
-                      <div className="p-4">
-                        <h3 className="text-lg font-medium text-gray-900 line-clamp-1">{product.name}</h3>
-                        <p className="mt-1 text-sm text-gray-500 line-clamp-2">{product.description}</p>
-                        
-                        {/* Mostrar grupos de toppings asociados */}
-                        {product.toppingGroups && product.toppingGroups.length > 0 && (
-                          <div className="mt-2">
-                            <p className="text-xs font-medium text-gray-600">Grupos de toppings:</p>
-                            <div className="flex flex-wrap mt-1 gap-1">
-                              {product.toppingGroups.map((toppingId, idx) => {
-                                const toppingName = toppingGroups.find(t => 
-                                  t._id === (typeof toppingId === 'object' ? toppingId._id : toppingId)
-                                )?.name || 'Grupo desconocido';
-                                
-                                return (
-                                  <span key={idx} className="inline-flex text-xs bg-indigo-100 text-indigo-800 rounded-full px-2 py-0.5">
-                                    {toppingName}
-                                  </span>
-                                );
-                              })}
                             </div>
-                          </div>
-                        )}
-                        
-                        <div className="mt-4 flex items-center justify-between">
-                          <span className="text-xl font-bold text-blue-600">${product.price}</span>
-                          <div className="flex space-x-2">
+                            </td>
+                            <td className="p-3 text-[#D1D9FF]">{product.categoryName || "Sin categoría"}</td>
+                            <td className="p-3 text-right font-medium text-white">${product.price}</td>
+                            <td className="p-3 text-right">
+                              <div className="flex justify-end space-x-2">
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEdit(product);
-                              }}
-                              className="inline-flex items-center p-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-sm"
-                            >
-                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  onClick={() => handleEdit(product)}
+                                  className="p-1.5 rounded-lg text-[#3A7AFF] hover:bg-[#3A7AFF]/10 transition-colors"
+                                  title="Editar"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                               </svg>
                             </button>
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDelete(product);
-                              }}
-                              className="inline-flex items-center p-2 border border-gray-300 rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 shadow-sm"
-                            >
-                              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  onClick={() => handleDelete(product)}
+                                  className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                                  title="Eliminar"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                               </svg>
                             </button>
                           </div>
+                            </td>
+                          </motion.tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="p-4 text-center text-[#D1D9FF]">
+                            No hay productos disponibles. Agrega uno usando el formulario de arriba.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              </motion.div>
             </>
           )}
         </div>

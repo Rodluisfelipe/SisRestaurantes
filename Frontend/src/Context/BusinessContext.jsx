@@ -22,7 +22,7 @@ export function useBusinessConfig() {
   return context;
 }
 
-export function BusinessProvider({ children, businessId: propBusinessId }) {
+export function BusinessProvider({ children, businessId: propBusinessId, onError, onLoaded }) {
   const [businessId, setBusinessId] = useState(propBusinessId || null);
   const [businessConfig, setBusinessConfig] = useState({
     businessName: 'Mi Restaurante',
@@ -63,6 +63,17 @@ export function BusinessProvider({ children, businessId: propBusinessId }) {
         if (!id || !isValidBusinessIdentifier(id)) {
           console.log('BusinessProvider - ID inválido o nulo:', id);
           setLoading(false);
+          
+          // Si hay una función onError, notificar del error
+          if (onError && typeof onError === 'function') {
+            onError({ message: 'ID de negocio inválido', type: 'INVALID_ID' });
+          }
+          
+          // Notificar que la carga ha terminado
+          if (onLoaded && typeof onLoaded === 'function') {
+            onLoaded();
+          }
+          
           return;
         }
         
@@ -93,17 +104,31 @@ export function BusinessProvider({ children, businessId: propBusinessId }) {
         } catch (error) {
           console.error('Error al cargar la configuración:', error);
           setError(error.message || 'Error desconocido al cargar la configuración');
-          // No actualizar businessConfig aquí, mantener los valores por defecto
+          
+          // Si hay una función onError, notificar del error
+          if (onError && typeof onError === 'function') {
+            onError(error);
+          }
         }
       } catch (error) {
         console.error('Error al obtener el business ID:', error);
         setError(error.message || 'Error desconocido al obtener el business ID');
+        
+        // Si hay una función onError, notificar del error
+        if (onError && typeof onError === 'function') {
+          onError(error);
+        }
       } finally {
         setLoading(false);
+        
+        // Notificar que la carga ha terminado
+        if (onLoaded && typeof onLoaded === 'function') {
+          onLoaded();
+        }
       }
     }
     fetchBusiness();
-  }, [propBusinessId]);
+  }, [propBusinessId, onError, onLoaded]);
 
   // Update businessId if prop changes
   useEffect(() => {

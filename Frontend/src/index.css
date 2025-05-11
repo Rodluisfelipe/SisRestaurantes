@@ -1,6 +1,80 @@
+/* Importar helpers para responsive */
+@import './styles/responsive-helpers.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities; 
+
+/* Add theme-related variables and styles to the top of the file */
+:root {
+  /* Common variables */
+  --transition-duration: 300ms;
+
+  /* Dark theme colors */
+  --dark-main-bg: #051C2C;
+  --dark-primary-button: #3A7AFF;
+  --dark-text-primary: #FFFFFF;
+  --dark-text-secondary: #D1D9FF;
+  --dark-secondary-sections: #A5B9FF;
+  --dark-secondary-button: #5FF9B4;
+  --dark-panels: #333F50;
+  --dark-footer: #333F50;
+  --dark-borders: #333F50;
+
+  /* Light theme colors */
+  --light-main-bg: #F4F7FB;
+  --light-primary-button: #3A7AFF;
+  --light-text-primary: #1F2937;
+  --light-text-secondary: #6C7A92;
+  --light-secondary-sections: #FFFFFF;
+  --light-secondary-button: #5FF9B4;
+  --light-panels: #FFFFFF;
+  --light-footer: #E5EAF5;
+  --light-borders: #DCE4F5;
+}
+
+/* Dark theme class */
+.dark-theme {
+  --main-bg: var(--dark-main-bg);
+  --primary-button: var(--dark-primary-button);
+  --text-primary: var(--dark-text-primary);
+  --text-secondary: var(--dark-text-secondary);
+  --secondary-sections: var(--dark-secondary-sections);
+  --secondary-button: var(--dark-secondary-button);
+  --panels: var(--dark-panels);
+  --footer: var(--dark-footer);
+  --borders: var(--dark-borders);
+}
+
+/* Light theme class */
+.light-theme {
+  --main-bg: var(--light-main-bg);
+  --primary-button: var(--light-primary-button);
+  --text-primary: var(--light-text-primary);
+  --text-secondary: var(--light-text-secondary);
+  --secondary-sections: var(--light-secondary-sections);
+  --secondary-button: var(--light-secondary-button);
+  --panels: var(--light-panels);
+  --footer: var(--light-footer);
+  --borders: var(--light-borders);
+}
+
+/* Apply smooth transitions for theme switching */
+body {
+  transition: background-color var(--transition-duration) ease,
+    color var(--transition-duration) ease;
+}
+
+/* Set default body background based on theme */
+body.dark-theme {
+  background-color: var(--dark-main-bg);
+  color: var(--dark-text-primary);
+}
+
+body.light-theme {
+  background-color: var(--light-main-bg);
+  color: var(--light-text-primary);
+}
 
 body.modal-open {
   overflow: hidden;
@@ -12,4 +86,45 @@ body.modal-open {
 
 .modal-content {
   z-index: 50;
+}
+
+/* Estilos globales */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Animaciones personalizadas */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Clases de utilidad para animaciones */
+.animate-fade-in {
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s infinite ease-in-out;
 } 

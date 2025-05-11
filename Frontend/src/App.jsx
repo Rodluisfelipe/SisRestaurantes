@@ -1,12 +1,22 @@
-import { Routes, Route, Navigate, useParams, useLocation, useNavigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "./Context/AuthContext";
+import { useState } from "react";
 import Menu from "./Pages/Menu";
 import Admin from "./Pages/Admin";
 import Login from "./Pages/Login";
 import Kitchen from "./Pages/Kitchen";
-import { BusinessProvider, useBusinessConfig } from './Context/BusinessContext';
+import SuperAdminDashboard from "./Pages/SuperAdmin/SuperAdminDashboard";
+import { BusinessProvider } from './Context/BusinessContext';
 import { AuthProvider } from './Context/AuthContext';
-import { useEffect } from "react";
+import LandingHome from "./Pages/Landing/Home";
+import LandingLogin from "./Pages/Landing/Login";
+import LandingRegister from "./Pages/Landing/Register";
+import LandingFeatures from "./Pages/Landing/Features";
+import LandingContact from "./Pages/Landing/Contact";
+import LandingPricing from "./Pages/Landing/Pricing";
+import LandingLayout from "./Layouts/LandingLayout";
+import NotFound from "./Pages/NotFound";
+import TableValidator from "./Components/TableValidator";
 
 // Componente protegido para rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
@@ -36,34 +46,88 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
+// Componente que verifica si un negocio existe
 function BusinessProviderWrapper({ children }) {
   const { businessId } = useParams();
+  const [businessNotFound, setBusinessNotFound] = useState(false);
+  const [loading, setLoading] = useState(true);
+  
   console.log('BusinessProviderWrapper - businessId from URL:', businessId);
-  return <BusinessProvider businessId={businessId}>{children}</BusinessProvider>;
+  
+  // Si el negocio no existe, mostrar la página NotFound
+  if (businessNotFound) {
+    return <NotFound />;
+  }
+  
+  return (
+    <BusinessProvider 
+      businessId={businessId}
+      onError={(error) => {
+        console.error('BusinessProviderWrapper - Error detectado:', error);
+        
+        // Si es un error 404 o no se pudo encontrar el negocio, mostrar NotFound
+        if (error?.response?.status === 404 || 
+            error?.type === 'INVALID_ID' || 
+            (error?.message && error?.message.includes('not found'))) {
+          console.log('BusinessProviderWrapper - Negocio no encontrado, mostrando NotFound');
+          setBusinessNotFound(true);
+        }
+        
+        setLoading(false);
+      }}
+      onLoaded={() => {
+        setLoading(false);
+      }}
+    >
+      {loading ? (
+        <div className="min-h-screen bg-[#051C2C] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3A7AFF]"></div>
+        </div>
+      ) : children}
+    </BusinessProvider>
+  );
 }
+
+// Lista de rutas reservadas que no deben tratarse como IDs de negocio
+const RESERVED_PATHS = ['login', 'register', 'features', 'contact', 'pricing', 'about', 'terms'];
 
 function App() {
   return (
     <AuthProvider>
         <Routes>
-        <Route
-          path="/:businessId"
-          element={
-            <BusinessProviderWrapper>
-              <Menu />
-            </BusinessProviderWrapper>
-          }
-        />
+        {/* Rutas de administración - SuperAdmin */}
+        <Route path="/superadmin/*" element={<SuperAdminDashboard />} />
+        <Route path="/reset-password/:token" element={<SuperAdminDashboard />} />
+        
+        {/* Rutas de la Landing Page con layout compartido - IMPORTANTE: Deben ir ANTES de las rutas de negocio */}
+        <Route element={<LandingLayout />}>
+          <Route path="/" element={<LandingHome />} />
+          <Route path="/login" element={<LandingLogin />} />
+          <Route path="/register" element={<LandingRegister />} />
+          <Route path="/features" element={<LandingFeatures />} />
+          <Route path="/contact" element={<LandingContact />} />
+          <Route path="/pricing" element={<LandingPricing />} /> 
+          <Route path="/about" element={<LandingHome />} /> 
+          <Route path="/terms" element={<LandingHome />} /> 
+        </Route>
+        
+        {/* Ruta de login para app móvil */}
+        <Route path="/app-login" element={<Login />} />
+        
+        {/* Rutas específicas de negocios */}
         <Route
           path="/:businessId/mesa/:tableNumber"
           element={
             <BusinessProviderWrapper>
-              <Menu />
+              <TableValidator>
+                <Menu />
+              </TableValidator>
             </BusinessProviderWrapper>
           }
         />
+        
           <Route 
-          path=":businessId/admin/*"
+          path="/:businessId/admin/*"
             element={
             <BusinessProviderWrapper>
               <ProtectedRoute>
@@ -72,8 +136,9 @@ function App() {
             </BusinessProviderWrapper>
             } 
           />
+        
           <Route 
-            path=":businessId/kitchen"
+          path="/:businessId/kitchen"
             element={
               <BusinessProviderWrapper>
                 <ProtectedRoute>
@@ -82,16 +147,28 @@ function App() {
               </BusinessProviderWrapper>
             } 
           />
-          <Route path="/login" element={<Login />} />
+        
           <Route
-            path=":businessId/login"
+          path="/:businessId/login"
             element={
               <BusinessProviderWrapper>
                 <Login />
               </BusinessProviderWrapper>
             }
           />
-        <Route path="/" element={<Navigate to="/login" />} />
+        
+        {/* Ruta genérica para ID de negocio - IMPORTANTE: debe ir después de las rutas específicas */}
+        <Route
+          path="/:businessId/*"
+          element={
+            <BusinessProviderWrapper>
+              <Menu />
+            </BusinessProviderWrapper>
+          }
+        />
+        
+        {/* Ruta para páginas no encontradas */}
+        <Route path="*" element={<NotFound />} />
         </Routes>
     </AuthProvider>
   );

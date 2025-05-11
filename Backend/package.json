@@ -1,24 +1,28 @@
 {
-  "name": "backend",
+  "name": "backend-unificado",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "cross-env NODE_ENV=development node -r dotenv/config server.js dotenv_config_path=.env.development"
+    "dev": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Backend unificado que combina el Backend original con BackendSA",
   "dependencies": {
-    "axios-cache-adapter": "^2.7.3",
+    "axios": "^1.9.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.14.1"
+    "mongoose": "^8.14.1",
+    "nodemailer": "^7.0.2",
+    "socket.io": "^4.6.1"
   },
   "devDependencies": {
     "cross-env": "^7.0.3"

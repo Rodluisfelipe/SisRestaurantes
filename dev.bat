@@ -1,25 +1,29 @@
 @echo off
-echo Iniciando servicios de SisRestaurantes...
+echo Iniciando servicios de SisRestaurantes (Sistema Unificado)...
 
 echo.
-echo 1) Iniciando Backend...
-start /min cmd /k "cd Backend &&  npm run dev"
+echo Instalando dependencias del Backend...
+cd Backend && npm install --force
+cd ..
 
 echo.
-echo 2) Iniciando Frontend...
-start /min cmd /k "cd Frontend && npm run dev"
-echo.
-echo 3) Iniciando Backend...
-start /min cmd /k "cd BackendSA  && npm run start"
+echo Instalando dependencias del Frontend...
+cd Frontend && npm install --force
+cd ..
 
 echo.
-echo 4) Iniciando Frontend...
-start /min cmd /k "cd FrontendSA && set PORT=5174 && npm run dev"
+echo 1) Iniciando Backend Unificado...
+start /min cmd /k "cd Backend && node server.js"
+
+echo.
+echo 2) Iniciando Frontend Unificado...
+start /min cmd /k "cd Frontend && npx vite"
 
 echo.
 echo Servicios iniciados! Accede a:
-echo - Frontend: http://localhost:3000
+echo - Frontend: http://localhost:5173
 echo - Backend: http://localhost:5000
+echo - Panel SuperAdmin: http://localhost:5173/superadmin
 echo.
 echo Presiona cualquier tecla para cerrar esta ventana.
 pause > nul

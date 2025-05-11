@@ -15,12 +15,24 @@ function initSocket(io) {
       }
     });
 
+    // Unirse a un canal específico para superadmin
+    socket.on('joinSuperAdmin', () => {
+      socket.join('superadmin-channel');
+      console.log(`Socket ${socket.id} se unió al canal de superadmin`);
+    });
+
     // Salir de un room
     socket.on('leaveBusiness', (businessId) => {
       if (businessId) {
         socket.leave(businessId);
         console.log(`Socket ${socket.id} salió del negocio ${businessId}`);
       }
+    });
+
+    // Salir del canal de superadmin
+    socket.on('leaveSuperAdmin', () => {
+      socket.leave('superadmin-channel');
+      console.log(`Socket ${socket.id} salió del canal de superadmin`);
     });
 
     socket.on('disconnect', () => {
@@ -60,7 +72,16 @@ async function emitToBusiness(businessId, event, data) {
   }
 }
 
+// Para el superadmin, necesitamos emitir un evento global de actualización de negocios
+function emitBusinessesUpdate() {
+  if (ioInstance) {
+    ioInstance.to('superadmin-channel').emit('businesses-updated');
+    console.log('Emitido evento de actualización de negocios a superadmins');
+  }
+}
+
 module.exports = {
   initSocket,
-  emitToBusiness
+  emitToBusiness,
+  emitBusinessesUpdate
 }; 

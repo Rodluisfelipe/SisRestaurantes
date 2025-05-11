@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Admin = require('../Models/Admin');
+const BusinessConfig = require('../Models/BusinessConfig');
 const { generateToken, generateRefreshToken, verifyToken, verifyRefreshToken } = require('../config/jwt');
 const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -10,6 +11,114 @@ const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
   max: 5, // 5 intentos
   message: { message: 'Demasiados intentos de inicio de sesión. Intente nuevamente en 15 minutos.' }
+});
+
+// Ruta de registro de negocio
+router.post('/register', async (req, res) => {
+  try {
+    const { name, businessName, email, password } = req.body;
+
+    // Validaciones básicas
+    if (!name || !businessName || !email || !password) {
+      return res.status(400).json({ message: 'Todos los campos son obligatorios' });
+    }
+
+    // Verificar si el email ya está registrado como username
+    const existingAdmin = await Admin.findOne({ username: email });
+    if (existingAdmin) {
+      return res.status(400).json({ message: 'Este correo ya está registrado' });
+    }
+
+    // Generar un slug basado en el nombre del negocio
+    let slug = businessName.toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    // Verificar si el slug ya existe y modificarlo si es necesario
+    let slugExists = true;
+    let counter = 1;
+    let newSlug = slug;
+    
+    while (slugExists) {
+      const existingBusiness = await BusinessConfig.findOne({ slug: newSlug });
+      if (existingBusiness) {
+        newSlug = `${slug}-${counter}`;
+        counter++;
+      } else {
+        slugExists = false;
+        slug = newSlug;
+      }
+    }
+
+    // Crear la configuración del negocio
+    const businessConfig = new BusinessConfig({
+      slug,
+      businessName,
+      isActive: true
+    });
+
+    // Guardar la configuración del negocio
+    await businessConfig.save();
+
+    // Crear el usuario administrador
+    const admin = new Admin({
+      username: email,
+      password,
+      businessId: businessConfig._id,
+      mustChangePassword: false,
+      role: 'admin'
+    });
+
+    // Guardar el usuario administrador
+    await admin.save();
+
+    // Generar tokens para el inicio de sesión automático
+    const token = generateToken(admin._id);
+    const refreshToken = generateRefreshToken(admin._id);
+    admin.refreshToken = refreshToken;
+    await admin.save();
+
+    res.status(201).json({
+      message: 'Negocio registrado con éxito',
+      business: {
+        id: businessConfig._id,
+        slug,
+        businessName
+      },
+      user: {
+        id: admin._id,
+        username: admin.username,
+        businessId: admin.businessId
+      },
+      token,
+      refreshToken
+    });
+  } catch (error) {
+    console.error('Error al registrar negocio:', error);
+    res.status(500).json({ message: 'Error en el servidor al registrar el negocio' });
+  }
+});
+
+// Verificar disponibilidad de email
+router.post('/check-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email es requerido' });
+    }
+    
+    const existingAdmin = await Admin.findOne({ username: email });
+    
+    res.json({
+      available: !existingAdmin
+    });
+  } catch (error) {
+    console.error('Error al verificar email:', error);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
 });
 
 // Ruta de login
@@ -47,7 +156,8 @@ router.post('/login', async (req, res) => {
         username: admin.username,
         lastLogin: admin.lastLogin,
         mustChangePassword: admin.mustChangePassword,
-        businessId: admin.businessId
+        businessId: admin.businessId,
+        role: admin.role
       }
     });
   } catch (error) {
@@ -150,7 +260,20 @@ router.get('/me', authMiddleware, async (req, res) => {
     if (!admin) {
       return res.status(401).json({ message: 'Usuario no encontrado' });
     }
-    res.json({ user: admin });
+    
+    // Asegurarse de incluir todos los campos necesarios
+    const userData = {
+      id: admin._id,
+      username: admin.username,
+      lastLogin: admin.lastLogin,
+      mustChangePassword: admin.mustChangePassword,
+      businessId: admin.businessId,
+      role: admin.role,
+      createdAt: admin.createdAt,
+      updatedAt: admin.updatedAt
+    };
+    
+    res.json({ user: userData });
   } catch (error) {
     res.status(401).json({ message: 'Token inválido' });
   }

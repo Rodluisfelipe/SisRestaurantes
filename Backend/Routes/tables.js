@@ -96,6 +96,68 @@ router.get("/", async (req, res) => {
   }
 });
 
+// Validate if a table exists by tableNumber
+router.get("/validate", async (req, res) => {
+  try {
+    const { businessId, tableNumber } = req.query;
+    
+    if (!businessId || !tableNumber) {
+      return res.status(400).json({ message: "BusinessId and tableNumber are required" });
+    }
+    
+    console.log(`Validating table number ${tableNumber} for business: ${businessId}`);
+    
+    // Buscar el negocio primero si no es un ObjectId válido
+    let finalBusinessId = businessId;
+    if (!isValidObjectId(businessId)) {
+      console.log(`Looking up business with slug: "${businessId}"`);
+      const business = await BusinessConfig.findOne({ slug: businessId });
+      if (business) {
+        finalBusinessId = business._id;
+        console.log(`Found business with ID: ${finalBusinessId} for slug: ${businessId}`);
+      } else {
+        console.log(`No business found with slug: "${businessId}"`);
+        return res.status(404).json({ 
+          message: "Business not found",
+          exists: false 
+        });
+      }
+    }
+    
+    // Check if table exists - make sure we're comparing strings
+    // El tableNumber no es un ObjectId, es simplemente un número de mesa (string o número)
+    console.log(`Searching for table with businessId: ${finalBusinessId}, tableNumber: ${tableNumber}`);
+    const table = await Table.findOne({ 
+      businessId: finalBusinessId, 
+      tableNumber: tableNumber.toString().trim() 
+    });
+    
+    if (!table) {
+      console.log(`Table ${tableNumber} not found for business: ${finalBusinessId}`);
+      // For debugging, log all tables for this business
+      const allTables = await Table.find({ businessId: finalBusinessId });
+      console.log(`Available tables for business ${finalBusinessId}:`, 
+        allTables.map(t => ({ id: t._id, number: t.tableNumber })));
+      
+      return res.status(404).json({ 
+        message: "Table not found",
+        exists: false 
+      });
+    }
+    
+    console.log(`Table ${tableNumber} found for business: ${finalBusinessId}`, table);
+    res.status(200).json({ 
+      message: "Table found",
+      exists: true,
+      table
+    });
+    
+  } catch (error) {
+    console.error("Error validating table:", error);
+    res.status(500).json({ message: "Error validating table", error: error.message });
+  }
+});
+
 // Get a single table by ID
 router.get("/:id", async (req, res) => {
   try {

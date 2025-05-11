@@ -27,6 +27,11 @@ const adminSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',
     required: true
+  },
+  role: {
+    type: String,
+    enum: ['admin', 'manager', 'staff'],
+    default: 'admin'
   }
 }, { timestamps: true });
 

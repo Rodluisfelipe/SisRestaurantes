@@ -20,7 +20,6 @@ const BusinessHeader = () => {
     extraLink: { url: '', isVisible: true }
   });
   const [logoError, setLogoError] = useState(false);
-  const [coverError, setCoverError] = useState(false);
   const { businessId } = useBusinessConfig();
 
   useEffect(() => {
@@ -92,29 +91,13 @@ const BusinessHeader = () => {
   }, [businessId]);
 
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
-  const defaultCover = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iMjAwIiB2aWV3Qm94PSIwIDAgODAwIDIwMCI+PHJlY3Qgd2lkdGg9IjgwMCIgaGVpZ2h0PSIyMDAiIGZpbGw9IiNlNWU3ZWIiLz48L3N2Zz4=';
 
   console.log('Estado del negocio:', businessConfig.isOpen ? 'Abierto' : 'Cerrado');
 
   return (
-    <div className="w-full text-center relative">
-      {/* Cover Image Container */}
-      <div className="w-full h-20 relative overflow-hidden bg-gray-100">
-        <img 
-          src={businessConfig.coverImage || defaultCover}
-          alt="Portada del negocio"
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            if (!coverError) {
-              setCoverError(true);
-              e.target.src = defaultCover;
-            }
-          }}
-        />
-      </div>
-
+    <div className="w-full text-center relative bg-white pt-4">
       {/* Status Indicator */}
-      <div className="absolute left-2 top-30 -translate-y-1/2 z-20">
+      <div className="absolute left-2 top-4 z-20">
         <div 
           className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
             businessConfig.isOpen 
@@ -126,9 +109,9 @@ const BusinessHeader = () => {
         </div>
       </div>
 
-      {/* Logo Container */}
-      <div className="absolute left-1/2 top-20 -translate-x-1/2 -translate-y-1/2 flex justify-center items-center">
-        <div className="w-64 h-64 rounded-full overflow-hidden bg-transparent shadow-xl" style={{ width: '10rem', height: '10rem' }}>
+      {/* Logo Container - Centered at the top now */}
+      <div className="flex justify-center items-center mb-3">
+        <div className="rounded-full overflow-hidden bg-transparent shadow-xl w-24 h-24 sm:w-32 sm:h-32">
           <img 
             src={businessConfig.logo || defaultLogo}
             alt="Logo del negocio"
@@ -144,7 +127,7 @@ const BusinessHeader = () => {
       </div>
 
       {/* Content Container */}
-      <div className="pt-20 pb-3 bg-white flex flex-col items-center">
+      <div className="pb-3 bg-white flex flex-col items-center">
         <h1 className="text-3xl font-bold text-gray-800 mb-0.5">
           {businessConfig.businessName || 'Mi Restaurante'}
         </h1>

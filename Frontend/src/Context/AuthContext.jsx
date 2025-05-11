@@ -90,6 +90,17 @@ export function AuthProvider({ children }) {
   // Validar token al montar
   useEffect(() => {
     const checkAuth = async () => {
+      // Detectar rutas especiales donde no necesitamos verificar token
+      const isSuperAdminRoute = location.pathname.startsWith('/superadmin');
+      const isResetPasswordRoute = location.pathname.startsWith('/reset-password');
+      
+      // Si estamos en rutas especiales, no necesitamos verificar token de usuario normal
+      if (isSuperAdminRoute || isResetPasswordRoute) {
+        console.log(`Ruta especial detectada (${isSuperAdminRoute ? 'superadmin' : 'reset-password'}) - omitiendo verificación de token regular`);
+        setLoading(false);
+        return;
+      }
+
       // Check for URL parameters first
       const searchParams = new URLSearchParams(location.search);
       const saTokenParam = searchParams.get('satoken');
