@@ -53,14 +53,14 @@ const Home = () => {
       description: "Permite a tus clientes ordenar directamente desde sus dispositivos"
     },
     {
-      icon: "💰",
-      title: "Gestión de pagos",
-      description: "Procesa pagos de forma segura y eficiente con múltiples opciones"
-    },
-    {
       icon: "🔍",
       title: "Personalización completa",
       description: "Adapta el sistema completamente a las necesidades específicas de tu restaurante"
+    },
+    {
+      icon: "💰",
+      title: "Gestión de pagos (PROXIMAMENTE)",
+      description: "Procesa pagos de forma segura y eficiente con múltiples opciones"
     }
   ];
 
@@ -68,7 +68,7 @@ const Home = () => {
     { value: '98%', label: 'Satisfacción de clientes' },
     { value: '+50%', label: 'Eficiencia operativa' },
     { value: '-30%', label: 'Reducción de errores' },
-    { value: '+125', label: 'Restaurantes activos' }
+    { value: '+3', label: 'Restaurantes activos' }
   ];
 
   const stepsData = [
@@ -266,7 +266,7 @@ const Home = () => {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="text-lg sm:text-xl md:text-2xl mb-8 sm:mb-10 font-light text-[#D1D9FF] max-w-2xl mx-auto"
             >
-              Únete a los cientos de restaurantes que han mejorado su operación con Menuby
+              Únete a los restaurantes que han mejorado su operación con Menuby
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}

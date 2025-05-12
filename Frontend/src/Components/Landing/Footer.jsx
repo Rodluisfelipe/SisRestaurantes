@@ -46,10 +46,10 @@ const Footer = () => {
   ];
 
   const socialLinks = [
-    { name: 'Facebook', icon: 'facebook', url: '#' },
-    { name: 'Twitter', icon: 'twitter', url: '#' },
-    { name: 'Instagram', icon: 'instagram', url: '#' },
-    { name: 'LinkedIn', icon: 'linkedin', url: '#' }
+    { name: 'Facebook', icon: 'facebook', url: 'https://www.instagram.com/menubyco?igsh=MWEwYWIyaGt3bHBhbQ==' },
+    { name: 'Twitter', icon: 'twitter', url: 'https://www.instagram.com/menubyco?igsh=MWEwYWIyaGt3bHBhbQ==' },
+    { name: 'Instagram', icon: 'instagram', url: 'https://www.instagram.com/menubyco?igsh=MWEwYWIyaGt3bHBhbQ==' },
+    { name: 'LinkedIn', icon: 'linkedin', url: 'https://www.instagram.com/menubyco?igsh=MWEwYWIyaGt3bHBhbQ==' }
   ];
 
   // Iconos sociales
@@ -114,7 +114,7 @@ const Footer = () => {
                 Menuby
               </Link>
               <p className={`mt-2 text-xs sm:text-sm ${isDark ? 'text-[#A5B9FF]' : 'text-[#6C7A92]'} max-w-md`}>
-                Transformando la experiencia gastronómica con tecnología innovadora para restaurantes de todo tipo y tamaño.
+                Menuby © 2025 — Tu menú digital siempre disponible. Sin comisiones, sin complicaciones. Hecho con pasión en Colombia.
               </p>
             </div>
             <div className="flex space-x-4">

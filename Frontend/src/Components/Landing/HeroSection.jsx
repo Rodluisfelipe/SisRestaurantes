@@ -5,8 +5,8 @@ import { useTheme } from '../../Context/ThemeContext';
 
 const HeroSection = ({ 
   title = "Menuby: Transformando la experiencia gastronómica",
-  description = "Sistema de gestión integral para restaurantes que eleva la eficiencia y mejora la satisfacción del cliente",
-  primaryButtonText = "Comenzar ahora",
+  description = "Tu menú digital, sin costos. Configura tu carta, agrega fotos, combos y recibe pedidos directo al celular, gratis y sin descargas.",
+  primaryButtonText = "Crear Menú",
   primaryButtonLink = "/register",
   secondaryButtonText = "Iniciar sesión",
   secondaryButtonLink = "/login",

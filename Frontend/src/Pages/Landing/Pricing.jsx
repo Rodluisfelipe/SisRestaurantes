@@ -29,7 +29,7 @@ const PricingToggle = ({ isYearly, setIsYearly }) => {
       </span>
       {isYearly && (
         <div className="ml-2 sm:ml-3 bg-[#5FF9B4]/20 text-[#5FF9B4] text-xs font-semibold px-2 py-1 rounded-full">
-          Ahorra 20%
+          Gratis por tiempo limitado
         </div>
       )}
     </div>
@@ -133,29 +133,12 @@ const Pricing = () => {
   const { theme } = useTheme();
   
   const plans = [
+  
     {
-      name: "Básico",
-      description: "Perfecto para negocios pequeños",
-      monthlyPrice: "29",
-      yearlyPrice: "279",
-      features: [
-        "Hasta 3 usuarios",
-        "Gestión de pedidos",
-        "Catálogo de productos",
-        "Interfaz para cocina",
-        "Soporte por email"
-      ],
-      notIncluded: [
-        "Analíticas avanzadas",
-        "Integraciones personalizadas",
-        "Soporte 24/7"
-      ]
-    },
-    {
-      name: "Pro",
+      name: "Pro (PROXIMAMENTE)",
       description: "Ideal para restaurantes en crecimiento",
-      monthlyPrice: "79",
-      yearlyPrice: "759",
+      monthlyPrice: "0",
+      yearlyPrice: "0",
       features: [
         "Hasta 10 usuarios",
         "Todas las características de Básico",
@@ -170,10 +153,26 @@ const Pricing = () => {
       ]
     },
     {
-      name: "Enterprise",
+      name: "Básico",
+      description: "Perfecto para negocios pequeños",
+      monthlyPrice: "0",
+      yearlyPrice: "0",
+      features: [
+        
+        "Gestión de pedidos",
+        "Menu de productos",
+        "Interfaz para cocina",
+        "Soporte por email"
+      ],
+      notIncluded: [
+        
+      ]
+    },
+    {
+      name: "Enterprise (PROXIMAMENTE)",
       description: "Para cadenas de restaurantes",
-      monthlyPrice: "149",
-      yearlyPrice: "1,429",
+      monthlyPrice: "0",
+      yearlyPrice: "0",
       features: [
         "Usuarios ilimitados",
         "Todas las características de Pro",

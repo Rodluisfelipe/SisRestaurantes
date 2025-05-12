@@ -284,8 +284,8 @@ const Contact = () => {
                   <div className="ml-4">
                     <h4 className="text-lg font-medium text-gray-900">Ubicación</h4>
                     <p className="text-gray-600">
-                      Calle Principal #123<br />
-                      Bogotá, Colombia
+                      <br />
+                      Cajica , Colombia
                     </p>
                   </div>
                 </div>

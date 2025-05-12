@@ -26,7 +26,7 @@ const Features = () => {
         icon: '👨‍🍳'
       },
       {
-        title: 'Gestión de inventario',
+        title: 'Gestión de inventario (PROXIMAMENTE)',
         description: 'Seguimiento automatizado de ingredientes y suministros para evitar quiebres de stock y reducir desperdicios.',
         icon: '📦'
       },
@@ -43,17 +43,17 @@ const Features = () => {
         icon: '📱'
       },
       {
-        title: 'Sistema de fidelización',
+        title: 'Sistema de fidelización (PROXIMAMENTE)',
         description: 'Recompensa a tus clientes frecuentes con puntos, descuentos y promociones personalizadas.',
         icon: '🎁'
       },
       {
-        title: 'Feedback en tiempo real',
+        title: 'Feedback en tiempo real (PROXIMAMENTE)',
         description: 'Recibe opiniones inmediatas de tus clientes para mejorar continuamente tu servicio.',
         icon: '💬'
       },
       {
-        title: 'Reservaciones online',
+        title: 'Reservaciones online (PROXIMAMENTE)',
         description: 'Sistema integrado de reservas que se sincroniza automáticamente con tu capacidad y horarios.',
         icon: '📅'
       }
@@ -70,24 +70,24 @@ const Features = () => {
         icon: '💰'
       },
       {
-        title: 'Análisis de comportamiento',
+        title: 'Análisis de comportamiento (PROXIMAMENTE)',
         description: 'Comprende mejor a tus clientes con datos sobre sus preferencias y patrones de compra.',
         icon: '🔍'
       },
       {
-        title: 'Predicciones de demanda',
+        title: 'Predicciones de demanda (PROXIMAMENTE)',
         description: 'Anticipa períodos de alta demanda para optimizar tu personal y abastecimiento.',
         icon: '🔮'
       }
     ],
     management: [
       {
-        title: 'Gestión de empleados',
+        title: 'Gestión de empleados (PROXIMAMENTE)',
         description: 'Administra horarios, roles y permisos de tu personal desde una interfaz centralizada.',
         icon: '👥'
       },
       {
-        title: 'Múltiples ubicaciones',
+        title: 'Múltiples ubicaciones (PROXIMAMENTE)',
         description: 'Controla todas tus sucursales desde una única plataforma con configuraciones específicas para cada local.',
         icon: '🏙️'
       },
@@ -97,7 +97,7 @@ const Features = () => {
         icon: '📊'
       },
       {
-        title: 'Integración con proveedores',
+        title: 'Integración con proveedores (PROXIMAMENTE)',
         description: 'Conecta directamente con tus proveedores para automatizar pedidos y reabastecimiento.',
         icon: '🤝'
       }
@@ -196,18 +196,8 @@ const Features = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
             {[
-              'Procesadores de pago',
-              'Servicios de entrega',
-              'Contabilidad',
-              'CRM',
-              'POS',
-              'Marketing por email',
-              'Redes sociales',
-              'Proveedores',
-              'Servicios en la nube',
-              'Aplicaciones móviles',
-              'Impresoras térmicas',
-              'Sistemas de inventario'
+              'Whatsapp',
+              'Redes sociales'
             ].map((integration, index) => (
               <motion.div
                 key={index}
@@ -246,7 +236,7 @@ const Features = () => {
                 href="/register"
                 className={`bg-[#5FF9B4] ${theme === 'dark' ? 'text-[#051C2C]' : 'text-[#1F2937]'} font-bold py-3 px-8 rounded-full inline-block hover:bg-[#5FF9B4]/90 hover:shadow-lg hover:shadow-[#5FF9B4]/20 transition duration-300`}
               >
-                Comenzar prueba gratuita
+                Comenzar gratis ahora
               </a>
             </motion.div>
           </motion.div>
