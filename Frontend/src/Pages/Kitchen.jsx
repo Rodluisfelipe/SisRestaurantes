@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
-import { socket } from '../services/api';
+import { socket } from '../services/socket';
 import { useBusinessConfig } from '../Context/BusinessContext';
 
 function Kitchen() {

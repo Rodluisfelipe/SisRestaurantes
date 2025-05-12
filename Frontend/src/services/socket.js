@@ -7,7 +7,8 @@ import { io } from 'socket.io-client';
 // Determinar si estamos en producción
 const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production';
 
-// Configurar Socket.io para conectarse al backend
+// Configurar Socket.io para conectarse al backend con la URL correcta
+// Usamos la URL completa en producción, o la URL relativa en desarrollo
 export const socket = io(isProd ? 'https://sisrestaurantes.onrender.com' : '/', {
   autoConnect: false,
   reconnection: true,

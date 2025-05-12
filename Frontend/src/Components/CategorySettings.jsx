@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
 import { useParams } from 'react-router-dom';
-import { socket } from '../services/api';
+import { socket } from '../services/socket';
 
 const LOCAL_STORAGE_KEY = 'categoryOrderSettings';
 

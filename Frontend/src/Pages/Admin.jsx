@@ -11,7 +11,7 @@ import { useAuth } from "../Context/AuthContext";
 import ThemeSettings from '../Components/ThemeSettings';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import ChangePassword from "../Components/ChangePassword";
-import { socket } from '../services/api';
+import { socket } from '../services/socket';
 import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import TableSettings from "../Components/TableSettings";
 import OrdersDashboard from "../Components/OrdersDashboard";

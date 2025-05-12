@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
-import { socket } from '../services/api';
+import { socket } from '../services/socket';
 
 const BusinessHeader = () => {
   const [businessConfig, setBusinessConfig] = useState({

@@ -11,7 +11,7 @@ import CartBar from "../Components/CartBar";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
-import { socket } from '../services/api';
+import { socket } from '../services/socket';
 import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import * as SessionManager from '../utils/sessionManager';
 import { calculateItemPrice, calculateTotalAmount, calculateTotalItems, createWhatsAppMessage } from '../utils/orderUtils';

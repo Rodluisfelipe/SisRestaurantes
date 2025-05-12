@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api, { socket } from '../services/api';
+import api from '../services/api';
+import { socket } from '../services/socket';
 import { getBusinessIdFromSlug } from '../utils/getBusinessId';
 import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
 
