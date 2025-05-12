@@ -1,6 +1,10 @@
+import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "./Context/AuthContext";
 import { useState } from "react";
+
+// Lazy load components
+const HealthCheckLazy = lazy(() => import('./Pages/HealthCheck'));
 import Menu from "./Pages/Menu";
 import Admin from "./Pages/Admin";
 import Login from "./Pages/Login";
@@ -110,6 +114,13 @@ function App() {
           <Route path="/about" element={<LandingHome />} /> 
           <Route path="/terms" element={<LandingHome />} /> 
         </Route>
+        
+        {/* Health check endpoint para Uptime Robot */}
+        <Route path="/health" element={
+          <Suspense fallback={<div>Loading...</div>}>
+            <HealthCheckLazy />
+          </Suspense>
+        } />
         
         {/* Ruta de login para app móvil */}
         <Route path="/app-login" element={<Login />} />

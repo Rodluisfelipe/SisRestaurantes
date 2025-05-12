@@ -84,6 +84,7 @@ app.use("/api/topping-groups", require("./Routes/toppingGroups"));
 app.use("/api/auth", require("./Routes/auth"));
 app.use("/api/tables", require("./Routes/tables"));
 app.use("/api/orders", require("./Routes/orders"));
+app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot
 
 // Rutas específicas para superadmin (integradas desde BackendSA)
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
