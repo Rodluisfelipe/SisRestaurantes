@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { API_ENDPOINTS, CACHE_CONFIG } from '../config';
-// Importamos el socket desde el servicio dedicado
-import socket from './socketService';
+// Importamos el socket desde el servicio de socket
+import { socket } from './socket';
 
 /**
  * Servicio centralizado para comunicación con el backend
@@ -118,8 +118,7 @@ export const invalidateCache = (url, params = {}) => {
   cache.delete(cacheKey);
 };
 
-// Instancia global de socket.io-client - importamos desde socket.js para evitar duplicidades
-import socket from './socket';
+// Instancia global de socket.io-client ya importada arriba
 
 // Obtener negocio por slug
 export async function getBusinessBySlug(slug) {
