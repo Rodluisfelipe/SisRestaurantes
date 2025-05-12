@@ -14,17 +14,20 @@ function SuperAdminDashboard() {
   const [refresh, setRefresh] = useState(0);
   const [authView, setAuthView] = useState('login'); // 'login' | 'forgot' | 'change'
   const params = useParams();
-  const token = params.token; // Extraer token de los parámetros de ruta
+  // Extraer token de parámetros y búsqueda de URL de forma segura
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const token = params.token || queryParams.get('token');
   const [resetToken, setResetToken] = useState(token || null);
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Log de depuración para verificar token
   useEffect(() => {
     console.log("Detectado token en URL:", token);
     console.log("Parámetros detectados:", params);
     console.log("Ruta actual:", location.pathname);
-  }, [token, params, location.pathname]);
+    console.log("Search params:", location.search);
+  }, [token, params, location.pathname, location.search]);
 
   useEffect(() => {
     // Mantener sesión si hay token

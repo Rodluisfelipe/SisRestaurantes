@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { API_ENDPOINTS, CACHE_CONFIG } from '../config';
-import { io } from 'socket.io-client';
+// Importamos el socket desde el servicio dedicado
+import socket from './socketService';
 
 /**
  * Servicio centralizado para comunicación con el backend
@@ -117,11 +118,8 @@ export const invalidateCache = (url, params = {}) => {
   cache.delete(cacheKey);
 };
 
-// Instancia global de socket.io-client
-export const socket = io('https://sisrestaurantes.onrender.com', {
-  autoConnect: false, // Se conecta manualmente cuando se necesite
-  transports: ['websocket'],
-});
+// Instancia global de socket.io-client - importamos desde socket.js para evitar duplicidades
+import socket from './socket';
 
 // Obtener negocio por slug
 export async function getBusinessBySlug(slug) {

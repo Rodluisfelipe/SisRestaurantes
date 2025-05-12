@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
 
 // Configurar Socket.io para conectarse al backend
-export const socket = io('/', {
+const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production';
+export const socket = io(isProd ? 'https://sisrestaurantes.onrender.com' : '/', {
   autoConnect: false,
   transports: ['websocket'],
   path: '/socket.io'
