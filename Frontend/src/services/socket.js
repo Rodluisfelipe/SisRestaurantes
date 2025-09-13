@@ -17,7 +17,7 @@ const getSocketUrl = () => {
   
   // Fallback a detección automática
   return isProd 
-    ? 'http://157.245.125.216' // Digital Ocean backend
+    ? 'https://157-245-125-216.nip.io' // Digital Ocean backend con SSL
     : 'http://localhost:5000';
 };
 

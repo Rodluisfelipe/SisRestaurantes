@@ -21,7 +21,7 @@ const getApiUrl = () => {
   
   // Fallback a detección automática
   return isProd 
-    ? 'http://157.245.125.216/api' // Digital Ocean backend
+    ? 'https://157-245-125-216.nip.io/api' // Digital Ocean backend con SSL
     : 'http://localhost:5000/api';
 };
 
