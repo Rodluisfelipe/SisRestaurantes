@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -6,15 +7,8 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 /**
  * FilterableMenu Component
  * 
- * A component for displaying products with category filtering, search capabilities,
- * and view toggle options.
- * 
- * @param {Object} props Component props
- * @param {Array} props.products Array of product objects
- * @param {Array} props.categories Array of category objects
- * @param {Function} props.addToCart Function to add a product to cart
- * @param {Function} props.onToppingsOpen Function called when toppings selector opens
- * @param {Function} props.onToppingsClose Function called when toppings selector closes
+ * A modern component for displaying products with category filtering, search capabilities,
+ * and view toggle options with premium animations.
  */
 const FilterableMenu = ({ 
   products, 
@@ -26,12 +20,35 @@ const FilterableMenu = ({
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
-  const [selectedProduct, setSelectedProduct] = useState(null); // Track product for toppings selection
-  const [showToppings, setShowToppings] = useState(false); // Control toppings modal visibility
+  const [viewMode, setViewMode] = useState('grid');
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [showToppings, setShowToppings] = useState(false);
   const { businessConfig } = useBusinessConfig();
 
-  // Get category order from localStorage to maintain consistent ordering
+  // Animation variants for stagger effect
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100
+      }
+    }
+  };
+
+  // Get category order from localStorage
   const getCategoryOrder = () => {
     try {
       const savedOrder = localStorage.getItem('categoryOrderSettings');
@@ -53,50 +70,54 @@ const FilterableMenu = ({
     });
   };
 
-  // Update filtered products when products, categories, active category, or search term changes
+  // Get emoji for category based on name
+  const getCategoryEmoji = (categoryName) => {
+    const name = categoryName.toLowerCase();
+    if (name.includes('hamburguesa') || name.includes('burger')) return '🍔';
+    if (name.includes('pizza')) return '🍕';
+    if (name.includes('bebida') || name.includes('drink')) return '🥤';
+    if (name.includes('postre') || name.includes('dessert')) return '🍰';
+    if (name.includes('ensalada') || name.includes('salad')) return '🥗';
+    if (name.includes('combo') || name.includes('meal')) return '🍽️';
+    if (name.includes('pollo') || name.includes('chicken')) return '🍗';
+    if (name.includes('papas') || name.includes('fries')) return '🍟';
+    if (name.includes('sandwich')) return '🥪';
+    if (name.includes('taco')) return '🌮';
+    if (name.includes('hot dog')) return '🌭';
+    return '🍽️'; // Default food emoji
+  };
+
+  // Filter products based on search and category
   useEffect(() => {
-    let result = [...products];
-    
-    // Apply category filter
-    if (activeCategory !== 'all') {
-      result = result.filter(product => product.category === activeCategory);
-    }
-    
-    // Apply search filter (case insensitive)
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase().trim();
-      result = result.filter(product => 
-        product.name.toLowerCase().includes(term) || 
-        (product.description && product.description.toLowerCase().includes(term))
+    let filtered = products;
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
-    
-    setFilteredProducts(result);
-  }, [products, categories, activeCategory, searchTerm]);
 
-  // Create sorted category list with counts
-  const categoriesWithCounts = getSortedCategories(categories).map(category => {
-    const count = products.filter(product => product.category === category._id).length;
-    return { ...category, count };
-  });
+    // Filter by category
+    if (activeCategory !== 'all') {
+      filtered = filtered.filter(product => product.category === activeCategory);
+    }
 
-  // Only display categories that have products
-  const categoriesWithProducts = categoriesWithCounts.filter(category => category.count > 0);
+    setFilteredProducts(filtered);
+  }, [products, searchTerm, activeCategory]);
 
-  // Calculate total product count for "All" category
-  const totalProductCount = products.length;
-
-  // Handle search input change
+  // Handle search input
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  // Clear search input
+  // Clear search
   const clearSearch = () => {
     setSearchTerm('');
   };
 
-  // Toggle view mode between grid and list
+  // Toggle view mode
   const toggleViewMode = (mode) => {
     setViewMode(mode);
   };
@@ -123,497 +144,413 @@ const FilterableMenu = ({
     handleCloseToppings();
   };
 
-  // Custom list view for product display
-  const ProductListItem = ({ product }) => {
-    return (
-      <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 flex">
-        {/* Imagen del producto */}
-        <div className="w-24 h-24 relative flex-shrink-0">
-          {product.image ? (
-            <img 
-              src={product.image} 
-              alt={product.name}
-              className="w-full h-full object-cover rounded-l-lg"
-            />
-          ) : (
-            <div className="w-full h-full bg-gray-200 rounded-l-lg flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-          )}
-        </div>
+  // Get sorted categories
+  const sortedCategories = getSortedCategories(categories);
 
-        {/* Información del producto */}
-        <div className="p-3 flex-1 flex flex-col justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-800">
-              {product.name}
-            </h2>
-            {product.description && (
-              <p className="text-xs text-gray-600 line-clamp-2 mt-1">{product.description}</p>
-            )}
-          </div>
-          <div className="flex justify-between items-center mt-2">
-            <span className="text-sm font-bold text-black">
-              {(() => {
-                const price = Number(product.price);
-                const options = { minimumFractionDigits: 0, maximumFractionDigits: 1 };
-                return price.toLocaleString('es-CO', options);
-              })()}
-            </span>
-            <button
-              onClick={() => {
-                // Siempre mostrar el modal de toppings, incluso si no hay opciones
-                handleShowToppings(product);
-              }}
-              style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300"
-              aria-label="Agregar al carrito"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  // Get categories with product counts
+  const categoriesWithProducts = sortedCategories.map(category => ({
+    ...category,
+    count: products.filter(product => product.category === category._id).length
+  })).filter(category => category.count > 0);
+
+  // Total product count
+  const totalProductCount = products.length;
   
   return (
-    <div className="container mx-auto px-4 py-1">
-      {/* Search and View Options Bar */}
-      <div className="mb-4">
-        {/* Search Bar with integrated view toggles */}
+    <div className="container mx-auto px-2 sm:px-4 lg:px-6 py-1">
+      {/* Modern Search and View Options Bar */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 sm:mb-6 lg:mb-8"
+      >
+        {/* Enhanced Search Bar */}
         <div className="relative flex w-full">
+          <motion.div 
+            className="relative flex-1"
+            whileHover={{ scale: 1.01 }}
+            transition={{ type: "spring", stiffness: 300 }}
+          >
           <input
             type="text"
-            placeholder="Buscar productos..."
+              placeholder="🔍 Buscar productos..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full px-4 py-2 pl-10 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          {/* Search icon */}
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-5 w-5 text-gray-400" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              stroke="currentColor"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
-              />
-            </svg>
+              className="w-full px-3 sm:px-6 py-3 sm:py-4 pl-10 sm:pl-14 pr-20 sm:pr-32 bg-white border-2 border-slate-200 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-4 transition-all duration-300 text-sm sm:text-base text-slate-700 placeholder-slate-400 shadow-lg backdrop-blur-sm"
+              style={{
+                '--tw-ring-color': `${businessConfig?.theme?.buttonColor || '#f97316'}20`,
+                borderColor: searchTerm ? (businessConfig?.theme?.buttonColor || '#f97316') : undefined
+              }}
+            />
+            {/* Enhanced Search icon */}
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 sm:pl-5 pointer-events-none">
+              <motion.div
+                animate={{ rotate: searchTerm ? 360 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <span className="text-lg sm:text-2xl">🔍</span>
+              </motion.div>
           </div>
           
-          {/* View Toggle Buttons (positioned at the end of the search bar) */}
-          <div className="absolute inset-y-0 right-0 flex items-center pr-1">
-            {/* Clear button (only show if there's text) */}
+            {/* Clear button */}
+            <AnimatePresence>
             {searchTerm && (
-              <button 
+                <motion.button 
+                  initial={{ opacity: 0, scale: 0 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0 }}
                 onClick={clearSearch}
-                className="mx-1 text-gray-400 hover:text-gray-600"
-                aria-label="Clear search"
-              >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-5 w-5" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
+                  className="absolute inset-y-0 right-16 sm:right-24 flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 my-auto text-slate-400 rounded-full transition-all duration-200"
+                  style={{
+                    '--hover-color': businessConfig?.theme?.buttonColor || '#f97316',
+                    '--hover-bg': `${businessConfig?.theme?.buttonColor || '#f97316'}10`
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.color = businessConfig?.theme?.buttonColor || '#f97316';
+                    e.target.style.backgroundColor = `${businessConfig?.theme?.buttonColor || '#f97316'}10`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.color = '#94a3b8';
+                    e.target.style.backgroundColor = 'transparent';
+                  }}
+                  aria-label="Limpiar búsqueda"
                 >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M6 18L18 6M6 6l12 12" 
-                  />
-                </svg>
-              </button>
-            )}
+                  <span className="text-sm sm:text-lg">✖️</span>
+                </motion.button>
+              )}
+            </AnimatePresence>
             
-            {/* Divider */}
-            <div className="h-6 w-px bg-gray-300 mx-1"></div>
-            
-            {/* Grid View Button */}
-            <button
+            {/* Modern View Mode Toggle */}
+            <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3">
+              <div className="flex bg-gradient-to-r from-slate-100 to-slate-200 rounded-lg sm:rounded-xl p-0.5 sm:p-1 shadow-inner">
+                <motion.button
               onClick={() => toggleViewMode('grid')}
-              className={`p-1 rounded-md mx-1 ${
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg transition-all duration-200 ${
                 viewMode === 'grid' 
-                  ? 'text-blue-600' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-              style={
-                viewMode === 'grid' 
-                  ? { color: businessConfig?.theme?.buttonColor || '#3B82F6' }
-                  : { color: 'rgba(156, 163, 175, 1)', 
-                      ':hover': { color: businessConfig?.theme?.buttonColor || '#3B82F6' } 
+                      ? 'text-white shadow-lg' 
+                      : 'text-slate-600 hover:bg-white/50'
+                  }`}
+                  style={{
+                    backgroundColor: viewMode === 'grid' ? (businessConfig?.theme?.buttonColor || '#f97316') : 'transparent',
+                    color: viewMode === 'grid' ? (businessConfig?.theme?.buttonTextColor || '#ffffff') : undefined
+                  }}
+                  onMouseEnter={(e) => {
+                    if (viewMode !== 'grid') {
+                      e.target.style.color = businessConfig?.theme?.buttonColor || '#f97316';
                     }
-              }
-              aria-label="Grid View"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-5 w-5" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" 
-                />
-              </svg>
-            </button>
-            
-            {/* List View Button */}
-            <button
+                  }}
+                  onMouseLeave={(e) => {
+                    if (viewMode !== 'grid') {
+                      e.target.style.color = '#475569';
+                    }
+                  }}
+                  aria-label="Vista en cuadrícula"
+                >
+                  <span className="text-sm sm:text-lg">⚏</span>
+                </motion.button>
+                <motion.button
               onClick={() => toggleViewMode('list')}
-              className={`p-1 rounded-md mx-1 ${
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg transition-all duration-200 ${
                 viewMode === 'list' 
-                  ? 'text-blue-600' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-              style={
-                viewMode === 'list' 
-                  ? { color: businessConfig?.theme?.buttonColor || '#3B82F6' }
-                  : { color: 'rgba(156, 163, 175, 1)' }
-              }
-              onMouseOver={(e) => {
+                      ? 'text-white shadow-lg' 
+                      : 'text-slate-600 hover:bg-white/50'
+                  }`}
+                  style={{
+                    backgroundColor: viewMode === 'list' ? (businessConfig?.theme?.buttonColor || '#f97316') : 'transparent',
+                    color: viewMode === 'list' ? (businessConfig?.theme?.buttonTextColor || '#ffffff') : undefined
+                  }}
+                  onMouseEnter={(e) => {
                 if (viewMode !== 'list') {
-                  e.currentTarget.style.color = businessConfig?.theme?.buttonColor || '#3B82F6';
+                      e.target.style.color = businessConfig?.theme?.buttonColor || '#f97316';
                 }
               }}
-              onMouseOut={(e) => {
+                  onMouseLeave={(e) => {
                 if (viewMode !== 'list') {
-                  e.currentTarget.style.color = 'rgba(156, 163, 175, 1)';
-                }
-              }}
-              aria-label="List View"
-            >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-5 w-5" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M4 6h16M4 12h16M4 18h16" 
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Category Filter Tabs */}
-      <div className="mb-6 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-        <div className="flex space-x-2 pb-2">
-          {/* "All" category tab */}
-          <button
-            onClick={() => setActiveCategory('all')}
-            className={`px-4 py-2 rounded-md whitespace-nowrap transition-colors ${
-              activeCategory === 'all'
-                ? `bg-${businessConfig?.theme?.buttonColor || 'blue-600'} text-${businessConfig?.theme?.buttonTextColor || 'white'}`
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            }`}
-            style={
-              activeCategory === 'all'
-                ? {
-                    backgroundColor: businessConfig?.theme?.buttonColor || '#3B82F6',
-                    color: businessConfig?.theme?.buttonTextColor || '#FFFFFF'
-                  }
-                : {
-                    ':hover': { 
-                      backgroundColor: `${businessConfig?.theme?.buttonColor}33` || 'rgba(209, 213, 219, 1)'
+                      e.target.style.color = '#475569';
                     }
-                  }
-            }
-            onMouseOver={(e) => {
+                  }}
+                  aria-label="Vista en lista"
+                >
+                  <span className="text-sm sm:text-lg">☰</span>
+                </motion.button>
+              </div>
+          </div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Modern Category Filter Pills */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-4 sm:mb-6 lg:mb-8 overflow-x-auto scrollbar-thin scrollbar-thumb-orange-300 scrollbar-track-orange-100"
+      >
+        <div className="flex space-x-2 sm:space-x-3 pb-2 px-1 min-w-max">
+          {/* "All" category pill */}
+          <motion.button
+            onClick={() => setActiveCategory('all')}
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            className={`px-3 sm:px-6 py-2 sm:py-3 rounded-full whitespace-nowrap font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 shadow-lg backdrop-blur-sm ${
+              activeCategory === 'all'
+                ? 'text-white'
+                : 'bg-white/80 text-slate-700 hover:bg-white hover:shadow-xl border-2 border-slate-200'
+            }`}
+            style={{
+              backgroundColor: activeCategory === 'all' ? (businessConfig?.theme?.buttonColor || '#f97316') : undefined,
+              color: activeCategory === 'all' ? (businessConfig?.theme?.buttonTextColor || '#ffffff') : undefined,
+              boxShadow: activeCategory === 'all' ? `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25` : undefined
+            }}
+            onMouseEnter={(e) => {
               if (activeCategory !== 'all') {
-                e.currentTarget.style.backgroundColor = `${businessConfig?.theme?.buttonColor}33` || 'rgba(209, 213, 219, 1)';
+                e.target.style.borderColor = businessConfig?.theme?.buttonColor || '#f97316';
               }
             }}
-            onMouseOut={(e) => {
+            onMouseLeave={(e) => {
               if (activeCategory !== 'all') {
-                e.currentTarget.style.backgroundColor = 'rgba(229, 231, 235, 1)';
+                e.target.style.borderColor = '#e2e8f0';
               }
             }}
           >
+            <span className="mr-1 sm:mr-2 text-sm sm:text-base">🍽️</span>
             Todos ({totalProductCount})
-          </button>
-          
-          {/* Category tabs */}
-          {categoriesWithProducts.map(category => (
-            <button
+          </motion.button>
+
+          {/* Category pills */}
+          {categoriesWithProducts.map((category, index) => (
+            <motion.button
               key={category._id}
               onClick={() => setActiveCategory(category._id)}
-              className={`px-4 py-2 rounded-md whitespace-nowrap transition-colors ${
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 + (index * 0.05) }}
+              className={`px-3 sm:px-6 py-2 sm:py-3 rounded-full whitespace-nowrap font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 shadow-lg backdrop-blur-sm ${
                 activeCategory === category._id
-                  ? `bg-${businessConfig?.theme?.buttonColor || 'blue-600'} text-${businessConfig?.theme?.buttonTextColor || 'white'}`
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'text-white'
+                  : 'bg-white/80 text-slate-700 hover:bg-white hover:shadow-xl border-2 border-slate-200'
               }`}
-              style={
-                activeCategory === category._id
-                  ? {
-                      backgroundColor: businessConfig?.theme?.buttonColor || '#3B82F6',
-                      color: businessConfig?.theme?.buttonTextColor || '#FFFFFF'
-                    }
-                  : {}
-              }
-              onMouseOver={(e) => {
+              style={{
+                backgroundColor: activeCategory === category._id ? (businessConfig?.theme?.buttonColor || '#f97316') : undefined,
+                color: activeCategory === category._id ? (businessConfig?.theme?.buttonTextColor || '#ffffff') : undefined,
+                boxShadow: activeCategory === category._id ? `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25` : undefined
+              }}
+              onMouseEnter={(e) => {
                 if (activeCategory !== category._id) {
-                  e.currentTarget.style.backgroundColor = `${businessConfig?.theme?.buttonColor}33` || 'rgba(209, 213, 219, 1)';
+                  e.target.style.borderColor = businessConfig?.theme?.buttonColor || '#f97316';
                 }
               }}
-              onMouseOut={(e) => {
+              onMouseLeave={(e) => {
                 if (activeCategory !== category._id) {
-                  e.currentTarget.style.backgroundColor = 'rgba(229, 231, 235, 1)';
+                  e.target.style.borderColor = '#e2e8f0';
                 }
               }}
             >
+              <span className="mr-1 sm:mr-2 text-sm sm:text-base">{getCategoryEmoji(category.name)}</span>
               {category.name} ({category.count})
-            </button>
+            </motion.button>
           ))}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Products display - conditionally rendered based on viewMode */}
+      {/* Modern Products Display */}
+      <AnimatePresence mode="wait">
       {viewMode === 'grid' ? (
-        <div>
+          <motion.div
+            key="grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
           {activeCategory === 'all' ? (
-            // When "All" is selected, group products by category
-            categoriesWithProducts.map(category => {
+              // When "All" is selected, group products by category with animations
+              categoriesWithProducts.map((category, categoryIndex) => {
               const categoryProducts = filteredProducts.filter(product => product.category === category._id);
               
               // Only render category if it has products after filtering
               if (categoryProducts.length === 0) return null;
               
               return (
-                <div key={category._id} className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-3 border-b pb-2">{category.name}</h2>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {categoryProducts.map(product => (
-                      <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
-                        {/* Imagen del producto */}
-                        <div className="w-full h-32 relative">
-                          {product.image ? (
-                            <img 
-                              src={product.image} 
-                              alt={product.name}
-                              className="w-full h-full object-cover rounded-t-lg"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 rounded-t-lg flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Información del producto y botón */}
-                        <div className="p-3 flex justify-between items-center">
-                          <div className="flex-1 min-w-0 mr-2">
-                            <h2 className="text-base font-semibold text-gray-800 truncate">
-                              {product.name}
-                            </h2>
-                            <span className="text-sm font-bold text-black">
-                              {(() => {
-                                const price = Number(product.price);
-                                const options = { minimumFractionDigits: 0, maximumFractionDigits: 1 };
-                                return price.toLocaleString('es-CO', options);
-                              })()}
-                            </span>
-                          </div>
-
-                          <button
-                            onClick={() => {
-                              // Siempre mostrar el modal de toppings, incluso si no hay opciones
-                              handleShowToppings(product);
-                            }}
-                            style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                            className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300"
-                            aria-label="Agregar al carrito"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                            </svg>
-                          </button>
-                        </div>
+                  <motion.div 
+                    key={category._id} 
+                    className="mb-6 sm:mb-8 lg:mb-12"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: categoryIndex * 0.1 }}
+                  >
+                    <motion.div 
+                      className="flex items-center mb-4 sm:mb-6"
+                      whileHover={{ x: 10 }}
+                    >
+                      <div 
+                        className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mr-3 sm:mr-4 shadow-lg"
+                        style={{
+                          backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
+                        }}
+                      >
+                        <span className="text-sm sm:text-xl">{getCategoryEmoji(category.name)}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                      <h2 className="text-lg sm:text-2xl font-bold text-slate-800">{category.name}</h2>
+                      <div 
+                        className="flex-1 h-px ml-4"
+                        style={{
+                          background: `linear-gradient(to right, ${businessConfig?.theme?.buttonColor || '#f97316'}40, transparent)`
+                        }}
+                      ></div>
+                    </motion.div>
+                    <motion.div 
+                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6"
+                      variants={containerVariants}
+                      initial="hidden"
+                      animate="visible"
+                    >
+                      {categoryProducts.map((product, productIndex) => (
+                        <ProductCard
+                          key={product._id}
+                          product={product}
+                          addToCart={addToCart}
+                          onToppingsOpen={onToppingsOpen}
+                          onToppingsClose={onToppingsClose}
+                        />
+                      ))}
+                    </motion.div>
+                  </motion.div>
               );
             })
           ) : (
-            // When a specific category is selected, show its products with the category title
-            <div>
-              {/* Display selected category title */}
-              {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => (
-                <h2 key={category._id} className="text-xl font-semibold text-gray-800 mb-3 border-b pb-2">{category.name}</h2>
-              ))}
-              
-              {/* Display products in grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                {filteredProducts.map(product => (
-                  <div key={product._id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
-                    {/* Imagen del producto */}
-                    <div className="w-full h-32 relative">
+              // When a specific category is selected
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                {/* Category Header */}
+                {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => (
+                  <motion.div 
+                    key={category._id}
+                    className="flex items-center mb-4 sm:mb-6"
+                    whileHover={{ x: 10 }}
+                  >
+                    <div 
+                      className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mr-3 sm:mr-4 shadow-lg"
+                      style={{
+                        backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
+                      }}
+                    >
+                      <span className="text-sm sm:text-xl">{getCategoryEmoji(category.name)}</span>
+                    </div>
+                    <h2 className="text-lg sm:text-2xl font-bold text-slate-800">{category.name}</h2>
+                    <div 
+                      className="flex-1 h-px ml-4"
+                      style={{
+                        background: `linear-gradient(to right, ${businessConfig?.theme?.buttonColor || '#f97316'}40, transparent)`
+                      }}
+                    ></div>
+                  </motion.div>
+                ))}
+                
+                <motion.div 
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6"
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                >
+                  {filteredProducts.map((product, index) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      addToCart={addToCart}
+                      onToppingsOpen={onToppingsOpen}
+                      onToppingsClose={onToppingsClose}
+                    />
+                  ))}
+                </motion.div>
+              </motion.div>
+            )}
+          </motion.div>
+        ) : (
+          // List View
+          <motion.div
+            key="list"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="space-y-2 sm:space-y-4"
+          >
+            {filteredProducts.map((product, index) => (
+              <motion.div
+                key={product._id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200/50 flex overflow-hidden"
+              >
+                {/* Product Image */}
+                <div className="w-16 h-16 sm:w-24 sm:h-24 relative flex-shrink-0">
                       {product.image ? (
                         <img 
                           src={product.image} 
                           alt={product.name}
-                          className="w-full h-full object-cover rounded-t-lg"
+                      className="w-full h-full object-contain"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gray-200 rounded-t-lg flex items-center justify-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                    <div className="w-full h-full bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center">
+                      <span className="text-lg sm:text-2xl opacity-60">🍽️</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Información del producto y botón */}
-                    <div className="p-3 flex justify-between items-center">
-                      <div className="flex-1 min-w-0 mr-2">
-                        <h2 className="text-base font-semibold text-gray-800 truncate">
-                          {product.name}
-                        </h2>
-                        <span className="text-sm font-bold text-black">
-                          {(() => {
-                            const price = Number(product.price);
-                            const options = { minimumFractionDigits: 0, maximumFractionDigits: 1 };
-                            return price.toLocaleString('es-CO', options);
-                          })()}
+                {/* Product Info */}
+                <div className="p-3 sm:p-4 flex-1 flex justify-between items-center">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-1 leading-tight">{product.name}</h3>
+                    {product.description && (
+                      <p className="text-xs sm:text-sm text-slate-600 line-clamp-1 mb-1 sm:mb-2 hidden sm:block">{product.description}</p>
+                    )}
+                    <span 
+                      className="text-base sm:text-xl font-bold"
+                      style={{
+                        color: businessConfig?.theme?.buttonColor || '#f97316'
+                      }}
+                    >
+                      ${Number(product.price).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          // Siempre mostrar el modal de toppings, incluso si no hay opciones
-                          handleShowToppings(product);
-                        }}
-                        style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                        className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300"
+                  <motion.button
+                    onClick={() => handleShowToppings(product)}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="w-8 h-8 sm:w-10 sm:h-10 text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg ml-2 sm:ml-4 flex-shrink-0"
+                    style={{
+                      backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                      color: businessConfig?.theme?.buttonTextColor || '#ffffff'
+                    }}
                         aria-label="Agregar al carrito"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div>
-          {activeCategory === 'all' ? (
-            // When "All" is selected, group products by category in list view
-            categoriesWithProducts.map(category => {
-              const categoryProducts = filteredProducts.filter(product => product.category === category._id);
-              
-              // Only render category if it has products after filtering
-              if (categoryProducts.length === 0) return null;
-              
-              return (
-                <div key={category._id} className="mb-8">
-                  <h2 className="text-xl font-semibold text-gray-800 mb-3 border-b pb-2">{category.name}</h2>
-                  <div className="flex flex-col space-y-3">
-                    {categoryProducts.map(product => (
-                      <ProductListItem
-                        key={product._id}
-                        product={product}
-                      />
-                    ))}
-                  </div>
+                    <span className="text-sm sm:text-lg">➕</span>
+                  </motion.button>
                 </div>
-              );
-            })
-          ) : (
-            // When a specific category is selected in list view
-            <div>
-              {/* Display selected category title */}
-              {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => (
-                <h2 key={category._id} className="text-xl font-semibold text-gray-800 mb-3 border-b pb-2">{category.name}</h2>
-              ))}
-              
-              {/* Display products in list */}
-              <div className="flex flex-col space-y-3 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
-                {filteredProducts.map(product => (
-                  <ProductListItem
-                    key={product._id}
-                    product={product}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Empty state when no products match the filter */}
-      {filteredProducts.length === 0 && (
-        <div className="text-center py-8">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            className="h-12 w-12 mx-auto text-gray-400 mb-3" 
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor"
-          >
-            <path 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              strokeWidth={2} 
-              d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
-            />
-          </svg>
-          <p className="text-gray-600">
-            {searchTerm 
-              ? `No se encontraron productos para "${searchTerm}"${activeCategory !== 'all' ? ' en esta categoría' : ''}.` 
-              : 'No hay productos disponibles en esta categoría.'}
-          </p>
-          {searchTerm && (
-            <button
-              onClick={clearSearch}
-              className="mt-2 text-blue-600 hover:text-blue-800 hover:underline"
-            >
-              Limpiar búsqueda
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Toppings Selector Modal (shared between grid and list views) */}
+      {/* Toppings Selector Modal */}
       {showToppings && selectedProduct && (
-        <div onClick={(e) => e.stopPropagation()} className="debugging-wrapper">
           <ProductToppingsSelector
-            product={{
-              ...selectedProduct,
-              toppingGroups: Array.isArray(selectedProduct.toppingGroups) ? selectedProduct.toppingGroups : []
-            }}
+          product={selectedProduct}
             onAddToCart={handleAddToCartWithToppings}
             onClose={handleCloseToppings}
           />
-        </div>
       )}
     </div>
   );

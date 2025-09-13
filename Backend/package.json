@@ -5,7 +5,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "nodemon server.js",
+    "docker:build": "docker build -t sisrestaurantes-backend .",
+    "docker:run": "docker run -p 5000:5000 --env-file .env sisrestaurantes-backend",
+    "docker:compose": "docker-compose up -d"
   },
   "keywords": [],
   "author": "",

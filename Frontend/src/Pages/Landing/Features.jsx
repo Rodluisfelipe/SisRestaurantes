@@ -16,90 +16,154 @@ const Features = () => {
   const features = {
     operations: [
       {
-        title: 'Gestión de pedidos simplificada',
-        description: 'Recibe, organiza y procesa pedidos sin complicaciones, reduciendo errores y mejorando la eficiencia.',
-        icon: '📋'
+        title: 'Gestión de pedidos en tiempo real',
+        description: 'Sistema completo de pedidos con seguimiento desde la recepción hasta la entrega. Notificaciones automáticas y estados actualizados.',
+        icon: '📋',
+        highlights: ['Pedidos en mesa', 'Para llevar', 'Delivery', 'Notificaciones sonoras']
       },
       {
-        title: 'Interfaz para cocina',
-        description: 'Panel intuitivo para el personal de cocina que muestra pedidos en tiempo real con tiempos de preparación.',
-        icon: '👨‍🍳'
+        title: 'Interfaz profesional para cocina',
+        description: 'Dashboard especializado para cocina con vista de pedidos activos, tiempos de preparación y control de estados.',
+        icon: '👨‍🍳',
+        highlights: ['Vista en tiempo real', 'Control de estados', 'Tiempos de preparación', 'Organización automática']
       },
       {
-        title: 'Gestión de inventario (PROXIMAMENTE)',
-        description: 'Seguimiento automatizado de ingredientes y suministros para evitar quiebres de stock y reducir desperdicios.',
-        icon: '📦'
+        title: 'Sistema de mesas inteligente',
+        description: 'Gestión completa de mesas con códigos QR únicos para cada mesa y validación automática.',
+        icon: '🪑',
+        highlights: ['Códigos QR únicos', 'Validación automática', 'Gestión de capacidad', 'Estados de mesa']
       },
       {
-        title: 'Personalización de menús',
-        description: 'Adapta fácilmente tus menús según la temporada, disponibilidad o eventos especiales.',
-        icon: '🍽️'
+        title: 'Menús dinámicos y personalizables',
+        description: 'Crea y gestiona menús completamente personalizables con categorías, productos y opciones de ingredientes.',
+        icon: '🍽️',
+        highlights: ['Categorías ilimitadas', 'Productos personalizables', 'Ingredientes extras', 'Precios dinámicos']
+      },
+      {
+        title: 'Sistema de toppings avanzado',
+        description: 'Configura grupos de ingredientes con opciones múltiples, precios adicionales y subgrupos organizados.',
+        icon: '🧄',
+        highlights: ['Grupos de ingredientes', 'Opciones múltiples', 'Precios personalizados', 'Subgrupos organizados']
+      },
+      {
+        title: 'Multi-negocio (Multi-tenant)',
+        description: 'Una sola instalación puede manejar múltiples restaurantes con configuraciones independientes.',
+        icon: '🏢',
+        highlights: ['Múltiples restaurantes', 'Configuración independiente', 'Administración centralizada', 'Escalabilidad']
       }
     ],
     customer: [
       {
-        title: 'Pedidos móviles',
-        description: 'Permite a tus clientes hacer pedidos desde sus dispositivos sin necesidad de descargar aplicaciones.',
-        icon: '📱'
+        title: 'Experiencia móvil sin app',
+        description: 'Tus clientes pueden ordenar directamente desde sus teléfonos escaneando el código QR de la mesa, sin descargar aplicaciones.',
+        icon: '📱',
+        highlights: ['Sin descargas', 'Acceso por QR', 'Responsive design', 'Experiencia nativa']
       },
       {
-        title: 'Sistema de fidelización (PROXIMAMENTE)',
-        description: 'Recompensa a tus clientes frecuentes con puntos, descuentos y promociones personalizadas.',
-        icon: '🎁'
+        title: 'Carrito de compras inteligente',
+        description: 'Sistema de carrito avanzado con personalización de productos, cálculo automático de precios y resumen detallado.',
+        icon: '🛒',
+        highlights: ['Personalización completa', 'Cálculo automático', 'Resumen detallado', 'Guardado temporal']
       },
       {
-        title: 'Feedback en tiempo real (PROXIMAMENTE)',
-        description: 'Recibe opiniones inmediatas de tus clientes para mejorar continuamente tu servicio.',
-        icon: '💬'
+        title: 'Selector de tipo de pedido',
+        description: 'Los clientes pueden elegir entre comer en el restaurante, llevar o delivery con información específica para cada tipo.',
+        icon: '🎯',
+        highlights: ['En mesa', 'Para llevar', 'Delivery', 'Información específica']
       },
       {
-        title: 'Reservaciones online (PROXIMAMENTE)',
-        description: 'Sistema integrado de reservas que se sincroniza automáticamente con tu capacidad y horarios.',
-        icon: '📅'
+        title: 'Interfaz moderna y accesible',
+        description: 'Diseño moderno, intuitivo y accesible que funciona perfectamente en cualquier dispositivo móvil.',
+        icon: '✨',
+        highlights: ['Diseño moderno', 'Totalmente responsive', 'Accesible', 'Carga rápida']
+      },
+      {
+        title: 'Confirmación de pedidos',
+        description: 'Sistema de confirmación con detalles completos del pedido, tiempo estimado y seguimiento en tiempo real.',
+        icon: '✅',
+        highlights: ['Confirmación detallada', 'Tiempo estimado', 'Seguimiento en vivo', 'Notificaciones']
+      },
+      {
+        title: 'Personalización de marca',
+        description: 'Cada restaurante puede personalizar completamente su menú digital con logo, colores y estilo único.',
+        icon: '🎨',
+        highlights: ['Logo personalizado', 'Colores de marca', 'Temas personalizables', 'Identidad única']
       }
     ],
     analytics: [
       {
-        title: 'Dashboards en tiempo real',
-        description: 'Visualiza el rendimiento de tu restaurante con métricas actualizadas constantemente.',
-        icon: '📈'
+        title: 'Dashboard de pedidos en vivo',
+        description: 'Visualiza todos los pedidos activos en tiempo real con estados, tiempos y detalles completos.',
+        icon: '📈',
+        highlights: ['Pedidos en vivo', 'Estados actualizados', 'Tiempos de preparación', 'Métricas en tiempo real']
       },
       {
-        title: 'Informes de ventas',
-        description: 'Reportes detallados de ventas por período, categoría, producto y método de pago.',
-        icon: '💰'
+        title: 'Reportes de ventas diarios',
+        description: 'Genera reportes detallados de ventas con estadísticas por tipo de pedido, productos más vendidos y totales.',
+        icon: '💰',
+        highlights: ['Reportes PDF', 'Ventas por tipo', 'Productos populares', 'Estadísticas detalladas']
       },
       {
-        title: 'Análisis de comportamiento (PROXIMAMENTE)',
-        description: 'Comprende mejor a tus clientes con datos sobre sus preferencias y patrones de compra.',
-        icon: '🔍'
+        title: 'Historial de pedidos completados',
+        description: 'Accede al historial completo de pedidos con búsqueda, filtros y exportación de datos.',
+        icon: '📊',
+        highlights: ['Historial completo', 'Búsqueda avanzada', 'Filtros múltiples', 'Exportación de datos']
       },
       {
-        title: 'Predicciones de demanda (PROXIMAMENTE)',
-        description: 'Anticipa períodos de alta demanda para optimizar tu personal y abastecimiento.',
-        icon: '🔮'
+        title: 'Métricas de rendimiento',
+        description: 'Analiza el rendimiento de tu restaurante con estadísticas de eficiencia, tiempos promedio y productividad.',
+        icon: '⚡',
+        highlights: ['Tiempo promedio', 'Eficiencia operativa', 'Productividad', 'Análisis de tendencias']
+      },
+      {
+        title: 'Notificaciones inteligentes',
+        description: 'Recibe notificaciones automáticas por nuevos pedidos con sonidos personalizables y alertas visuales.',
+        icon: '🔔',
+        highlights: ['Notificaciones sonoras', 'Alertas visuales', 'Configuración personalizable', 'Múltiples dispositivos']
+      },
+      {
+        title: 'Análisis de productos',
+        description: 'Comprende qué productos son más populares, en qué horarios y con qué combinaciones de ingredientes.',
+        icon: '🔍',
+        highlights: ['Productos populares', 'Análisis temporal', 'Combinaciones exitosas', 'Insights de negocio']
       }
     ],
     management: [
       {
-        title: 'Gestión de empleados (PROXIMAMENTE)',
-        description: 'Administra horarios, roles y permisos de tu personal desde una interfaz centralizada.',
-        icon: '👥'
+        title: 'Panel de administración completo',
+        description: 'Interfaz administrativa completa para gestionar todos los aspectos de tu restaurante desde un solo lugar.',
+        icon: '⚙️',
+        highlights: ['Gestión centralizada', 'Interfaz intuitiva', 'Configuración avanzada', 'Control total']
       },
       {
-        title: 'Múltiples ubicaciones (PROXIMAMENTE)',
-        description: 'Controla todas tus sucursales desde una única plataforma con configuraciones específicas para cada local.',
-        icon: '🏙️'
+        title: 'Gestión de productos y categorías',
+        description: 'Crea, edita y organiza productos con categorías, precios, descripciones e imágenes de manera sencilla.',
+        icon: '📝',
+        highlights: ['CRUD completo', 'Categorías organizadas', 'Imágenes de productos', 'Precios dinámicos']
       },
       {
-        title: 'Reportes financieros',
-        description: 'Genera automáticamente informes de ingresos, gastos y ganancias para períodos específicos.',
-        icon: '📊'
+        title: 'Configuración de negocio',
+        description: 'Personaliza completamente tu restaurante: nombre, logo, colores, información de contacto y redes sociales.',
+        icon: '🏢',
+        highlights: ['Personalización completa', 'Logo y colores', 'Información de contacto', 'Redes sociales']
       },
       {
-        title: 'Integración con proveedores (PROXIMAMENTE)',
-        description: 'Conecta directamente con tus proveedores para automatizar pedidos y reabastecimiento.',
-        icon: '🤝'
+        title: 'Gestión de mesas y QR',
+        description: 'Administra las mesas de tu restaurante y genera códigos QR únicos para cada mesa automáticamente.',
+        icon: '🪑',
+        highlights: ['Gestión de mesas', 'QR automáticos', 'Capacidad configurable', 'Estados en tiempo real']
+      },
+      {
+        title: 'Sistema de autenticación',
+        description: 'Control de acceso seguro con diferentes niveles de permisos para administradores y personal.',
+        icon: '🔐',
+        highlights: ['Acceso seguro', 'Múltiples usuarios', 'Roles y permisos', 'Cambio de contraseñas']
+      },
+      {
+        title: 'SuperAdmin para múltiples negocios',
+        description: 'Panel de super administración para gestionar múltiples restaurantes desde una sola cuenta.',
+        icon: '👑',
+        highlights: ['Múltiples restaurantes', 'Gestión centralizada', 'Creación de negocios', 'Administración global']
       }
     ]
   };
@@ -171,7 +235,21 @@ const Features = () => {
               <div className="p-8">
                 <div className="text-4xl mb-4">{feature.icon}</div>
                 <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>{feature.title}</h3>
-                <p className={theme === 'dark' ? 'text-[#A5B9FF]' : 'text-[#6C7A92]'}>{feature.description}</p>
+                <p className={`${theme === 'dark' ? 'text-[#A5B9FF]' : 'text-[#6C7A92]'} mb-4`}>{feature.description}</p>
+                {feature.highlights && (
+                  <div className="space-y-2">
+                    {feature.highlights.map((highlight, idx) => (
+                      <div key={idx} className="flex items-center">
+                        <svg className="w-4 h-4 text-[#5FF9B4] mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className={`text-sm ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
+                          {highlight}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}

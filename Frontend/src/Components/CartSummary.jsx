@@ -298,10 +298,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
     const handleInputChange = (e) => {
       const { name, value } = e.target;
-      setFormState(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      
+      // Si es el campo de número de mesa, solo permitir números
+      if (name === 'tableNumber') {
+        // Filtrar solo números
+        const numericValue = value.replace(/[^0-9]/g, '');
+        setFormState(prev => ({
+          ...prev,
+          [name]: numericValue
+        }));
+      } else {
+        setFormState(prev => ({
+          ...prev,
+          [name]: value
+        }));
+      }
     };
 
     const handleSubmit = async (e) => {
@@ -401,12 +412,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   Número de Mesa
                 </label>
                 <input
-                  type="text"
+                  type="number"
                   name="tableNumber"
                   value={formState.tableNumber}
                   onChange={handleInputChange}
                   className="w-full p-3 border rounded-md"
                   placeholder="Ej: 5"
+                  min="1"
+                  max="999"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   required
                   autoFocus
                 />
@@ -499,12 +514,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   };
 
   const handleTableNumberChange = (e) => {
-    const newValue = e.target.value;
-    setTableNumber(newValue);
+    const value = e.target.value;
+    // Filtrar solo números
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setTableNumber(numericValue);
     // También actualizamos orderInfo para mantener sincronizados los estados
     updateOrderInfo({
       ...orderInfo,
-      tableNumber: newValue
+      tableNumber: numericValue
     });
   };
 

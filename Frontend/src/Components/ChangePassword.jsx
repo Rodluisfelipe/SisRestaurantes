@@ -1,6 +1,6 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
-import { motion } from "framer-motion";
 
 export default function ChangePassword({ forceNoOldPassword = false }) {
   const [oldPassword, setOldPassword] = useState("");
@@ -45,159 +45,180 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="max-w-md mx-auto space-y-4 p-6 bg-[#333F50]/80 rounded-2xl shadow-xl border border-[#333F50]"
-    >
+    <div className="space-y-8">
+      {/* Modern Header */}
       {!forceNoOldPassword && (
-        <motion.h2 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-xl font-bold text-white mb-4"
-        >
-          Cambiar contraseña
-        </motion.h2>
-      )}
-
-      {error && (
         <motion.div 
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 bg-red-500/20 text-red-300 text-sm rounded-lg border border-red-500/30"
+          className="text-center"
         >
-          {error}
+          <div className="w-16 h-16 bg-gradient-to-r from-red-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
+            <span className="text-2xl">🔐</span>
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">Cambiar Contraseña</h2>
+          <p className="text-slate-600">Actualiza tu contraseña de acceso</p>
         </motion.div>
       )}
 
-      {message && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-3 bg-green-500/20 text-green-300 text-sm rounded-lg border border-green-500/30"
-        >
-          {message}
-        </motion.div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {!forceNoOldPassword && (
+      {/* Messages */}
+      <AnimatePresence>
+        {error && (
           <motion.div
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
+            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            className="p-4 rounded-2xl border-2 bg-red-50 border-red-200 text-red-800 flex items-center space-x-3"
           >
-            <label htmlFor="oldPassword" className="block text-sm font-medium text-[#D1D9FF] mb-1">
-              Contraseña actual
-            </label>
-            <div className="mt-1 relative">
-          <input
-                id="oldPassword"
-            type="password"
-            value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
-            required
-                className="appearance-none block w-full px-3 py-2.5 border border-[#333F50] bg-[#333F50]/50 rounded-lg shadow-sm placeholder-[#A5B9FF]/70 focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white text-sm pl-10"
-                placeholder="••••••••"
-              />
-              <svg 
-                className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#A5B9FF]" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-        </div>
+            <span className="text-xl">❌</span>
+            <span className="font-medium">{error}</span>
           </motion.div>
         )}
-        
-        <motion.div
-          initial={{ x: -20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
+
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -20 }}
+            className="p-4 rounded-2xl border-2 bg-green-50 border-green-200 text-green-800 flex items-center space-x-3"
+          >
+            <span className="text-xl">✅</span>
+            <span className="font-medium">{message}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.form 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        onSubmit={handleSubmit} 
+        className="space-y-8"
+      >
+        {/* Password Change Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
         >
-          <label htmlFor="newPassword" className="block text-sm font-medium text-[#D1D9FF] mb-1">
-            Nueva contraseña
-          </label>
-          <div className="mt-1 relative">
-        <input
-              id="newPassword"
-          type="password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          required
-              className="appearance-none block w-full px-3 py-2.5 border border-[#333F50] bg-[#333F50]/50 rounded-lg shadow-sm placeholder-[#A5B9FF]/70 focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white text-sm pl-10"
-              placeholder="••••••••"
-            />
-            <svg 
-              className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#A5B9FF]" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+              <span className="text-xl">🔑</span>
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Cambiar contraseña</h3>
+            <p className="text-slate-600">Introduce tu contraseña actual y la nueva contraseña</p>
+          </div>
+
+          <div className="space-y-6">
+            {/* Current Password */}
+            {!forceNoOldPassword && (
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="space-y-2"
+              >
+                <div className="flex items-center space-x-2 mb-3">
+                  <span className="text-xl">🔒</span>
+                  <label htmlFor="oldPassword" className="text-lg font-semibold text-slate-900">
+                    Contraseña actual
+                  </label>
+                </div>
+                
+                <div className="relative">
+                  <input
+                    id="oldPassword"
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 pl-12 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white text-slate-700"
+                  />
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔐</span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* New Password */}
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="space-y-2"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-            </svg>
-      </div>
-        </motion.div>
-        
-        <motion.div
-          initial={{ x: -20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-[#D1D9FF] mb-1">
-            Confirmar nueva contraseña
-          </label>
-          <div className="mt-1 relative">
-        <input
-              id="confirmPassword"
-          type="password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          required
-              className="appearance-none block w-full px-3 py-2.5 border border-[#333F50] bg-[#333F50]/50 rounded-lg shadow-sm placeholder-[#A5B9FF]/70 focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-white text-sm pl-10"
-              placeholder="••••••••"
-            />
-            <svg 
-              className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#A5B9FF]" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+              <div className="flex items-center space-x-2 mb-3">
+                <span className="text-xl">🔑</span>
+                <label htmlFor="newPassword" className="text-lg font-semibold text-slate-900">
+                  Nueva contraseña
+                </label>
+              </div>
+              
+              <div className="relative">
+                <input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 pl-12 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white text-slate-700"
+                />
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">✨</span>
+              </div>
+            </motion.div>
+
+            {/* Confirm Password */}
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="space-y-2"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-            </svg>
-      </div>
+              <div className="flex items-center space-x-2 mb-3">
+                <span className="text-xl">🔄</span>
+                <label htmlFor="confirmPassword" className="text-lg font-semibold text-slate-900">
+                  Confirmar nueva contraseña
+                </label>
+              </div>
+              
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 pl-12 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white text-slate-700"
+                />
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">✅</span>
+              </div>
+            </motion.div>
+          </div>
         </motion.div>
 
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="pt-2"
-        >
-      <button
-        type="submit"
-        disabled={loading}
-            className={`w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white 
-              ${loading 
-                ? 'bg-[#3A7AFF]/50 cursor-not-allowed' 
-                : 'bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3A7AFF]/50 hover:shadow-lg hover:shadow-[#3A7AFF]/20'
-              } transition-all duration-300`}
+        {/* Action Button */}
+        <div className="flex justify-center pt-4">
+          <motion.button
+            type="submit"
+            disabled={loading}
+            whileHover={{ scale: loading ? 1 : 1.02 }}
+            whileTap={{ scale: loading ? 1 : 0.98 }}
+            className={`px-12 py-4 bg-gradient-to-r from-red-500 to-orange-600 text-white rounded-2xl font-semibold shadow-xl transition-all duration-200 flex items-center space-x-3 ${
+              loading ? 'opacity-50 cursor-not-allowed' : 'hover:from-red-600 hover:to-orange-700'
+            }`}
           >
-            {loading ? (
-              <div className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Actualizando...
-              </div>
-            ) : 'Cambiar contraseña'}
-      </button>
-        </motion.div>
-    </form>
-    </motion.div>
+            <span className="text-xl">
+              {loading ? '⏳' : '🔐'}
+            </span>
+            <span>
+              {loading ? 'Actualizando...' : 'Cambiar contraseña'}
+            </span>
+          </motion.button>
+        </div>
+      </motion.form>
+    </div>
   );
 }

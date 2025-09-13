@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
@@ -257,148 +258,257 @@ const BusinessSettings = () => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Configuración del Negocio</h2>
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <span className="text-2xl">⚙️</span>
+        </div>
+        <h2 className="text-3xl font-bold text-slate-900 mb-2">Configuración del Negocio</h2>
+        <p className="text-slate-600">Información y configuración general de tu restaurante</p>
+      </motion.div>
       
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {successMessage}
-        </div>
-      )}
+      {/* Messages */}
+      <AnimatePresence>
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
+          >
+            <span className="text-xl">❌</span>
+            <span className="font-medium">{error}</span>
+          </motion.div>
+        )}
+        
+        {successMessage && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-green-50 border-2 border-green-200 text-green-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
+          >
+            <span className="text-xl">✅</span>
+            <span className="font-medium">{successMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Información básica del negocio */}
-        <div className="mb-6">
-          <h3 className="text-lg font-semibold text-gray-700 mb-3">Información básica</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Nombre del negocio</label>
-              <input
-                type="text"
-                name="businessName"
-                value={settings.businessName}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
+      <motion.form 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        onSubmit={handleSubmit} 
+        className="space-y-8"
+      >
+        {/* Basic Information Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
+        >
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+              <span className="text-xl">🏢</span>
             </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">URL del Logo</label>
-              <input
-                type="url"
-                name="logo"
-                value={settings.logo}
-                onChange={handleChange}
-                onFocus={() => setIsEditingLogo(true)}
-                onBlur={() => setIsEditingLogo(false)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="URL de la imagen del logo"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">URL de la Imagen de Portada</label>
-              <input
-                type="text"
-                name="coverImage"
-                value={settings.coverImage}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="URL de la imagen de portada"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Número de WhatsApp</label>
-              <input
-                type="text"
-                name="whatsappNumber"
-                value={settings.whatsappNumber}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Ej: +1234567890"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Dirección</label>
-              <input
-                type="text"
-                name="address"
-                value={settings.address}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Ej: Calle Principal #123, Ciudad"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">URL de Google Maps</label>
-              <input
-                type="text"
-                name="googleMapsUrl"
-                value={settings.googleMapsUrl}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="Ej: https://maps.google.com/?q=..."
-              />
-              <p className="text-xs text-gray-500 mt-1">Ingresa el enlace de la ubicación del negocio en Google Maps</p>
-            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Información Básica</h3>
+            <p className="text-slate-600">Configura los datos principales de tu negocio</p>
           </div>
-        </div>
-
-        {/* Estado del negocio */}
-        <div className="p-4 border rounded-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Estado del Negocio:</span>
-            <div className="flex items-center space-x-2">
-              <span className={`text-sm font-medium ${settings.isOpen ? 'text-green-600' : 'text-red-600'}`}>
-                {settings.isOpen ? 'Abierto' : 'Cerrado'}
-              </span>
-              <button
-                type="button"  // Importante: type="button" para que no envíe el formulario
-                onClick={handleStoreStatusToggle}
-                disabled={statusLoading}
-                className={`px-4 py-2 rounded-md text-white font-medium ${
-                  statusLoading 
-                    ? 'bg-gray-400' 
-                    : settings.isOpen 
-                      ? 'bg-red-500 hover:bg-red-600' 
-                      : 'bg-green-500 hover:bg-green-600'
-                }`}
-              >
-                {statusLoading 
-                  ? 'Actualizando...' 
-                  : settings.isOpen 
-                    ? 'Cerrar Negocio' 
-                    : 'Abrir Negocio'
-                }
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Redes Sociales */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Redes Sociales</h3>
           
-          {/* Facebook */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Facebook</label>
-            <div className="flex gap-4">
-              <input
-                type="url"
-                value={settings.socialMedia.facebook.url}
-                onChange={(e) => handleSocialMediaChange('facebook', 'url', e.target.value)}
-                placeholder="URL de Facebook"
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column */}
+            <div className="space-y-6">
+              {/* Business Name */}
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">🏪</span>
+                  Nombre del Negocio
+                </label>
+                <input
+                  type="text"
+                  name="businessName"
+                  value={settings.businessName}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
+                  placeholder="Ej: GO BURGER"
+                />
+              </div>
+
+              {/* Logo URL */}
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">🖼️</span>
+                  URL del Logo
+                </label>
+                <input
+                  type="url"
+                  name="logo"
+                  value={settings.logo}
+                  onChange={handleChange}
+                  onFocus={() => setIsEditingLogo(true)}
+                  onBlur={() => setIsEditingLogo(false)}
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  placeholder="https://ejemplo.com/logo.png"
+                />
+              </div>
+
+              {/* Cover Image URL */}
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">🌄</span>
+                  URL de la Imagen de Portada
+                </label>
+                <input
+                  type="text"
+                  name="coverImage"
+                  value={settings.coverImage}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  placeholder="https://ejemplo.com/portada.jpg"
+                />
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* WhatsApp Number */}
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">📱</span>
+                  Número de WhatsApp
+                </label>
+                <input
+                  type="text"
+                  name="whatsappNumber"
+                  value={settings.whatsappNumber}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-green-500/20 focus:border-green-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  placeholder="Ej: +1234567890"
+                />
+              </div>
+
+              {/* Address */}
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">📍</span>
+                  Dirección
+                </label>
+                <input
+                  type="text"
+                  name="address"
+                  value={settings.address}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  placeholder="Ej: Calle Principal #123, Ciudad"
+                />
+              </div>
+
+              {/* Google Maps URL */}
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">🗺️</span>
+                  URL de Google Maps
+                </label>
+                <input
+                  type="text"
+                  name="googleMapsUrl"
+                  value={settings.googleMapsUrl}
+                  onChange={handleChange}
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  placeholder="https://maps.google.com/?q=..."
+                />
+                <p className="mt-2 text-sm text-slate-500 flex items-center">
+                  <span className="mr-1">💡</span>
+                  Ingresa el enlace de la ubicación del negocio en Google Maps
+                </p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Business Status Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
+        >
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+              <span className="text-xl">{settings.isOpen ? '🟢' : '🔴'}</span>
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Estado del Negocio</h3>
+            <p className="text-slate-600">Controla si tu negocio está abierto o cerrado</p>
+          </div>
+
+          <div className="flex items-center justify-center space-x-6">
+            <div className="text-center">
+              <div className={`w-4 h-4 rounded-full mx-auto mb-2 ${settings.isOpen ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <span className={`text-lg font-bold ${settings.isOpen ? 'text-green-600' : 'text-red-600'}`}>
+                {settings.isOpen ? '🟢 Abierto' : '🔴 Cerrado'}
+              </span>
+            </div>
+            
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleStoreStatusToggle}
+              disabled={statusLoading}
+              className={`px-8 py-4 rounded-2xl text-white font-semibold shadow-xl transition-all duration-200 ${
+                statusLoading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : settings.isOpen 
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700' 
+                    : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
+              }`}
+            >
+              {statusLoading 
+                ? '⏳ Actualizando...' 
+                : settings.isOpen 
+                  ? '🔴 Cerrar Negocio' 
+                  : '🟢 Abrir Negocio'
+              }
+            </motion.button>
+          </div>
+        </motion.div>
+
+        {/* Social Media Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
+        >
+          <div className="text-center mb-8">
+            <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+              <span className="text-xl">📱</span>
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Redes Sociales</h3>
+            <p className="text-slate-600">Conecta tus redes sociales con tu negocio</p>
+          </div>
+          
+          <div className="space-y-6">
+            {/* Facebook */}
+            <div className="group">
+              <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                <span className="mr-2">📘</span>
+                Facebook
+              </label>
+              <div className="flex gap-4">
+                <input
+                  type="url"
+                  value={settings.socialMedia.facebook.url}
+                  onChange={(e) => handleSocialMediaChange('facebook', 'url', e.target.value)}
+                  placeholder="https://facebook.com/tu-negocio"
+                  className="flex-1 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                />
               <button
                 type="button"
                 onClick={() => handleSocialMediaChange('facebook', 'isVisible', !settings.socialMedia.facebook.isVisible)}
@@ -411,119 +521,157 @@ const BusinessSettings = () => {
             </div>
           </div>
 
-          {/* Instagram */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Instagram</label>
-            <div className="flex gap-4">
-              <input
-                type="url"
-                value={settings.socialMedia.instagram.url}
-                onChange={(e) => handleSocialMediaChange('instagram', 'url', e.target.value)}
-                placeholder="URL de Instagram"
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => handleSocialMediaChange('instagram', 'isVisible', !settings.socialMedia.instagram.isVisible)}
-                className={`px-4 py-2 rounded-md ${
-                  settings.socialMedia.instagram.isVisible ? 'bg-green-500' : 'bg-gray-500'
-                } text-white`}
-              >
-                {settings.socialMedia.instagram.isVisible ? 'Visible' : 'Oculto'}
-              </button>
+            {/* Instagram */}
+            <div className="group">
+              <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                <span className="mr-2">📸</span>
+                Instagram
+              </label>
+              <div className="flex gap-4">
+                <input
+                  type="url"
+                  value={settings.socialMedia.instagram.url}
+                  onChange={(e) => handleSocialMediaChange('instagram', 'url', e.target.value)}
+                  placeholder="https://instagram.com/tu-negocio"
+                  className="flex-1 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                />
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleSocialMediaChange('instagram', 'isVisible', !settings.socialMedia.instagram.isVisible)}
+                  className={`px-6 py-4 rounded-2xl font-semibold transition-all duration-200 ${
+                    settings.socialMedia.instagram.isVisible 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' 
+                      : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg'
+                  }`}
+                >
+                  {settings.socialMedia.instagram.isVisible ? '👁️ Visible' : '🙈 Oculto'}
+                </motion.button>
+              </div>
+            </div>
+
+            {/* TikTok */}
+            <div className="group">
+              <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                <span className="mr-2">🎵</span>
+                TikTok
+              </label>
+              <div className="flex gap-4">
+                <input
+                  type="url"
+                  value={settings.socialMedia.tiktok.url}
+                  onChange={(e) => handleSocialMediaChange('tiktok', 'url', e.target.value)}
+                  placeholder="https://tiktok.com/@tu-negocio"
+                  className="flex-1 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                />
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => handleSocialMediaChange('tiktok', 'isVisible', !settings.socialMedia.tiktok.isVisible)}
+                  className={`px-6 py-4 rounded-2xl font-semibold transition-all duration-200 ${
+                    settings.socialMedia.tiktok.isVisible 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' 
+                      : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg'
+                  }`}
+                >
+                  {settings.socialMedia.tiktok.isVisible ? '👁️ Visible' : '🙈 Oculto'}
+                </motion.button>
+              </div>
+            </div>
+
+            {/* Enlace Extra */}
+            <div className="group">
+              <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                <span className="mr-2">🔗</span>
+                Enlace Extra
+              </label>
+              <div className="flex gap-4">
+                <input
+                  type="url"
+                  value={settings.extraLink.url}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    extraLink: { ...settings.extraLink, url: e.target.value }
+                  })}
+                  placeholder="https://tu-sitio-web.com"
+                  className="flex-1 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                />
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSettings({
+                    ...settings,
+                    extraLink: { ...settings.extraLink, isVisible: !settings.extraLink.isVisible }
+                  })}
+                  className={`px-6 py-4 rounded-2xl font-semibold transition-all duration-200 ${
+                    settings.extraLink.isVisible 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' 
+                      : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg'
+                  }`}
+                >
+                  {settings.extraLink.isVisible ? '👁️ Visible' : '🙈 Oculto'}
+                </motion.button>
+              </div>
             </div>
           </div>
+        </motion.div>
 
-          {/* TikTok */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">TikTok</label>
-            <div className="flex gap-4">
-              <input
-                type="url"
-                value={settings.socialMedia.tiktok.url}
-                onChange={(e) => handleSocialMediaChange('tiktok', 'url', e.target.value)}
-                placeholder="URL de TikTok"
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => handleSocialMediaChange('tiktok', 'isVisible', !settings.socialMedia.tiktok.isVisible)}
-                className={`px-4 py-2 rounded-md ${
-                  settings.socialMedia.tiktok.isVisible ? 'bg-green-500' : 'bg-gray-500'
-                } text-white`}
-              >
-                {settings.socialMedia.tiktok.isVisible ? 'Visible' : 'Oculto'}
-              </button>
-            </div>
-          </div>
-
-          {/* Enlace Extra */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Enlace Extra</label>
-            <div className="flex gap-4">
-              <input
-                type="url"
-                value={settings.extraLink.url}
-                onChange={(e) => setSettings({
-                  ...settings,
-                  extraLink: { ...settings.extraLink, url: e.target.value }
-                })}
-                placeholder="URL del enlace extra"
-                className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={() => setSettings({
-                  ...settings,
-                  extraLink: { ...settings.extraLink, isVisible: !settings.extraLink.isVisible }
-                })}
-                className={`px-4 py-2 rounded-md ${
-                  settings.extraLink.isVisible ? 'bg-green-500' : 'bg-gray-500'
-                } text-white`}
-              >
-                {settings.extraLink.isVisible ? 'Visible' : 'Oculto'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-4 flex gap-3">
-          <button
+        {/* Action Buttons */}
+        <div className="flex justify-center space-x-4 pt-8">
+          <motion.button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 font-semibold shadow-xl flex items-center space-x-2"
           >
-            Guardar Cambios
-          </button>
+            <span>💾</span>
+            <span>Guardar Cambios</span>
+          </motion.button>
           
-          <button
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleFixSchema}
-            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            className="px-8 py-4 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-lg"
           >
-            Reparar Configuración
-          </button>
+            <span>🔧</span>
+            <span>Reparar Configuración</span>
+          </motion.button>
         </div>
-      </form>
+      </motion.form>
 
-      {/* Preview del logo */}
+      {/* Modern Logo Preview */}
       {previewLogo && (
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Vista previa del logo
-          </label>
-          <div className="flex justify-center">
-            <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-blue-500 shadow-lg">
-              <img
-                src={previewLogo}
-                alt="Vista previa del logo"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = 'https://placehold.co/150x150?text=Logo';
-                }}
-              />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
+        >
+          <div className="text-center">
+            <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <span className="text-xl">👁️</span>
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Vista Previa del Logo</h3>
+            <p className="text-slate-600 mb-6">Así se verá tu logo en el sistema</p>
+            
+            <div className="flex justify-center">
+              <div className="w-32 h-32 rounded-2xl overflow-hidden border-4 border-gradient-to-r from-blue-500 to-purple-600 shadow-2xl bg-white p-2">
+                <img
+                  src={previewLogo}
+                  alt="Vista previa del logo"
+                  className="w-full h-full object-cover rounded-xl"
+                  onError={(e) => {
+                    e.target.src = 'https://placehold.co/150x150?text=🏪';
+                  }}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );

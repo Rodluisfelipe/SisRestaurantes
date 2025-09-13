@@ -14,9 +14,10 @@ import ChangePassword from "../Components/ChangePassword";
 import { socket } from '../services/socket';
 import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import TableSettings from "../Components/TableSettings";
-import OrdersDashboard from "../Components/OrdersDashboard";
+import ModernOrdersDashboard from "../Components/ModernOrdersDashboard";
 import CompletedOrdersSummary from "../Components/CompletedOrdersSummary";
-import { motion } from "framer-motion";
+import ModernAdminSidebar from "../Components/ModernAdminSidebar";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Componente de Modal de Confirmación para edición
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) => {
@@ -151,7 +152,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, product }) => {
   );
 };
 
-export default function Admin() {
+function Admin() {
   const { isAuthenticated, logout, user, login, loading } = useAuth();
   const { businessConfig } = useBusinessConfig();
   const navigate = useNavigate();
@@ -178,6 +179,7 @@ export default function Admin() {
   const [successMessage, setSuccessMessage] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sseEnabled, setSseEnabled] = useState(false);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const redirectionCountRef = useRef(0);
   const initialRenderRef = useRef(true);
   
@@ -796,191 +798,182 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F7FB]">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* SuperAdmin Banner */}
       {isSuperAdminMode && (
-        <div className="fixed top-0 left-0 w-full bg-yellow-500 text-yellow-900 py-1 px-4 text-center font-semibold z-[60] flex items-center justify-center">
+        <motion.div 
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="fixed top-0 left-0 w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white py-3 px-4 text-center font-semibold z-[60] flex items-center justify-center shadow-lg"
+        >
           <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           Modo SuperAdmin - Visualización del panel de administración
-        </div>
+        </motion.div>
       )}
       
-      {/* Header */}
-      <header className={`fixed top-0 left-0 w-full bg-white shadow-lg z-50 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-[#DCE4F5] ${isSuperAdminMode ? 'mt-7' : ''}`}>
+      <div className="flex">
+        {/* Modern Sidebar */}
+        <ModernAdminSidebar 
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          businessConfig={businessConfig}
+          handleLogout={logout}
+          pendingOrdersCount={pendingOrdersCount}
+        />
+
+        {/* Main Content Area */}
+        <div className="flex-1 ml-0">
+          {/* Top Header */}
         <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex items-center space-x-3"
-        >
-          {/* Botón de menú móvil */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-md text-[#6C7A92] hover:bg-[#F4F7FB]/30 lg:hidden transition-colors"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40 ${isSuperAdminMode ? 'mt-12' : ''}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isMobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-            </svg>
-          </button>
-          <img src={businessConfig.logo || '/logo.png'} alt="Logo" className="h-10 w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
-          <span className="text-lg font-bold text-[#1F2937] tracking-wide hidden sm:inline">{businessConfig.businessName || 'Panel Admin'}</span>
-        </motion.div>
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-900 capitalize">
+                    {activeTab === 'products' && 'Gestión de Productos'}
+                    {activeTab === 'orders' && 'Panel de Pedidos'}
+                    {activeTab === 'categories' && 'Gestión de Categorías'}
+                    {activeTab === 'toppings' && 'Gestión de Extras'}
+                    {activeTab === 'tables' && 'Configuración de Mesas'}
+                    {activeTab === 'theme' && 'Personalización de Tema'}
+                    {activeTab === 'business' && 'Configuración del Negocio'}
+                    {activeTab === 'change-password' && 'Cambiar Contraseña'}
+                    {activeTab === 'completed_orders' && 'Pedidos Completados'}
+                  </h1>
+                  <p className="text-slate-600 mt-1">
+                    {activeTab === 'products' && 'Administra tu menú y productos'}
+                    {activeTab === 'orders' && 'Gestiona pedidos en tiempo real'}
+                    {activeTab === 'categories' && 'Organiza tu menú por categorías'}
+                    {activeTab === 'toppings' && 'Configura extras y complementos'}
+                    {activeTab === 'tables' && 'Administra mesas y códigos QR'}
+                    {activeTab === 'theme' && 'Personaliza la apariencia de tu restaurante'}
+                    {activeTab === 'business' && 'Información y configuración general'}
+                    {activeTab === 'change-password' && 'Actualiza tu contraseña de acceso'}
+                    {activeTab === 'completed_orders' && 'Historial y resumen de pedidos'}
+                  </p>
+                </div>
+                
         {isSuperAdminMode ? (
           <motion.button 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
             onClick={() => window.close()} 
-            className="px-4 py-2 bg-yellow-500 text-yellow-900 rounded-lg hover:bg-yellow-600 transition-colors font-semibold shadow-md"
+                    className="px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all duration-200 font-semibold shadow-lg flex items-center space-x-2"
           >
-            Cerrar Vista
-          </motion.button>
-        ) : (
-          <motion.button 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            onClick={logout} 
-            className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold shadow-md"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Salir
+                    <span>Cerrar Vista</span>
           </motion.button>
-        )}
-      </header>
-
-      {/* Navegación lateral */}
-      <nav className={`fixed w-64 h-full bg-white shadow-xl pt-16 transition-transform duration-300 ease-in-out transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 z-40 border-r border-[#DCE4F5] ${isSuperAdminMode ? 'mt-7' : ''}`}>
-        <div className="px-4 py-6 h-full overflow-y-auto">
-          <div className="space-y-2">
-            {[
-              { name: 'Productos', icon: 'M4 6h16M4 10h16M4 14h16M4 18h16', tab: 'products' },
-              { name: 'Información', icon: 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z', tab: 'settings' },
-              { name: 'Categorías', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v2', tab: 'categories' },
-              { name: 'Toppings', icon: 'M12 6v6l4 2', tab: 'toppings' },
-              { name: 'Mesas', icon: 'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', tab: 'tables' },
-              { name: 'Personalización', icon: 'M12 4v16m8-8H4', tab: 'theme' },
-              { name: 'Cambiar contraseña', icon: 'M12 11c0-1.104.896-2 2-2s2 .896 2 2v2a2 2 0 01-2 2h-4a2 2 0 01-2-2v-2c0-1.104.896-2 2-2s2 .896 2 2', tab: 'change-password' },
-              { name: 'Pedidos', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', tab: 'orders' },
-              { name: 'Resumen de Pedidos', icon: 'M12 12a1 1 0 011-1h.01a1 1 0 110 2H13a1 1 0 01-1-1z', tab: 'completed_orders' },
-            ].map(({ name, icon, tab }) => (
-              <motion.button
-                key={tab}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * ["products", "settings", "categories", "toppings", "tables", "theme", "change-password", "orders", "completed_orders"].indexOf(tab) }}
-                onClick={() => {
-                  setActiveTab(tab);
-                  setIsMobileMenuOpen(false);
-                }}
-                className={`flex items-center w-full px-4 py-3 rounded-lg transition-colors duration-200 ${
-                  activeTab === tab 
-                    ? 'bg-[#3A7AFF]/20 text-[#3A7AFF] font-semibold border border-[#3A7AFF]/20' 
-                    : 'text-[#6C7A92] hover:bg-[#F4F7FB]/30'
-                }`}
-              >
-                <svg className="h-5 w-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
-                </svg>
-                <span className="truncate">{name}</span>
-              </motion.button>
-            ))}
+                ) : null}
           </div>
         </div>
-      </nav>
+          </motion.div>
 
-      {/* Overlay para cerrar el menú en móvil */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      {/* Contenido principal responsive */}
-      <main className={`pt-16 ${isMobileMenuOpen ? 'lg:pl-64' : 'lg:pl-64'} transition-all duration-300 ${isSuperAdminMode ? 'mt-7' : ''}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Banner de mensaje de éxito */}
-          {successMessage && (
+          {/* Content Container */}
+          <div className="p-6">
+            <AnimatePresence mode="wait">
             <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="fixed top-20 left-1/2 transform -translate-x-1/2 p-3 bg-green-500/20 text-green-300 text-sm rounded-lg border border-green-500/30 z-50"
-            >
-              {successMessage}
-            </motion.div>
-          )}
-          
-          {/* Modal de confirmación de edición */}
-          <ConfirmationModal
-            isOpen={showConfirmModal}
-            onClose={cancelEdit}
-            onConfirm={confirmEdit}
-            product={editingProduct || {}}
-            formData={form}
-          />
-          
-          {/* Modal de confirmación de eliminación */}
-          <DeleteConfirmationModal
-            isOpen={showDeleteModal}
-            onClose={cancelDelete}
-            onConfirm={confirmDelete}
-            product={productToDelete || {}}
-          />
-
-          {activeTab === 'settings' && <BusinessSettings />}
+                key={activeTab}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="w-full"
+              >
+                {/* Render Components Based on Active Tab */}
+                {activeTab === 'business' && <BusinessSettings />}
           {activeTab === 'categories' && <CategorySettings categories={categories} />}
           {activeTab === 'toppings' && <ToppingGroupsManager />}
           {activeTab === 'tables' && <TableSettings />}
           {activeTab === 'theme' && <ThemeSettings />}
           {activeTab === 'change-password' && <ChangePassword />}
-          {activeTab === 'orders' && <OrdersDashboard />}
+                {activeTab === 'orders' && <ModernOrdersDashboard />}
           {activeTab === 'completed_orders' && <CompletedOrdersSummary />}
+                
+                {/* Products Management */}
           {activeTab === 'products' && (
-            <>
-              <motion.form 
+                  <div className="space-y-6">
+                    {/* Modern Product Form */}
+              <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                onSubmit={handleSubmit} 
-                className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 mb-8 border border-[#DCE4F5]"
+                      className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50 backdrop-blur-sm"
               >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
+                        {/* Form Header */}
+                        <div className="mb-8 text-center">
+                          <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                            <span className="text-2xl">🍔</span>
+                          </div>
+                          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                            {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+                          </h2>
+                          <p className="text-slate-600">
+                            {editingProduct ? 'Actualiza la información del producto' : 'Agrega un nuevo producto a tu menú'}
+                          </p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-8">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Left Column */}
+                            <div className="space-y-6">
+                              {/* Product Name */}
+                              <div className="group">
+                                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                  <span className="mr-2">🏷️</span>
                         Nombre del Producto
                       </label>
+                                <div className="relative">
                       <input
                         name="name"
                         value={form.name}
                         onChange={handleChange}
-                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] placeholder-gray-400 px-3 py-2.5"
-                        placeholder="Ej: Pizza Margherita"
+                                    className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
+                                    placeholder="Ej: Hamburguesa Clásica"
                         required
                       />
+                                  <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                                    <span className="text-slate-400">✨</span>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
+                                </div>
+                              </div>
+
+                              {/* Description */}
+                              <div className="group">
+                                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                  <span className="mr-2">📝</span>
                         Descripción
                       </label>
                       <textarea
                         name="description"
                         value={form.description}
                         onChange={handleChange}
-                        rows="3"
-                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] placeholder-gray-400 px-3 py-2.5"
-                        placeholder="Descripción detallada del producto"
+                                  rows="4"
+                                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300 resize-none"
+                                  placeholder="Describe tu producto de manera atractiva..."
                       ></textarea>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
+
+                              {/* Price and Category Row */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Price */}
+                                <div className="group">
+                                  <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                    <span className="mr-2">💰</span>
                         Precio
                       </label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-4">
+                                      <span className="text-slate-500 font-medium">$</span>
+                                    </div>
                         <input
                           name="price"
                         type="number"
@@ -988,20 +981,24 @@ export default function Admin() {
                         step="0.01"
                           value={form.price}
                           onChange={handleChange}
-                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] placeholder-gray-400 px-3 py-2.5"
+                                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-12 pr-6 py-4 text-lg font-semibold transition-all duration-200 group-hover:border-slate-300"
                           placeholder="0.00"
                           required
                         />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
+                                </div>
+
+                                {/* Category */}
+                                <div className="group">
+                                  <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                    <span className="mr-2">📂</span>
                         Categoría
                       </label>
                       <select
                         name="category"
                         value={form.category}
                         onChange={handleChange}
-                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] px-3 py-2.5"
+                                    className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
                       >
                         <option value="">Sin categoría</option>
                         {categories.map(category => (
@@ -1012,164 +1009,214 @@ export default function Admin() {
                       </select>
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
-                        URL de la imagen
+                            </div>
+
+                            {/* Right Column */}
+                            <div className="space-y-6">
+                              {/* Image URL */}
+                              <div className="group">
+                                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                  <span className="mr-2">🖼️</span>
+                                  Imagen del Producto
                       </label>
                         <input
                           name="image"
                           value={form.image}
                           onChange={handleChange}
-                        className="w-full rounded-lg border border-[#DCE4F5] bg-white shadow-sm focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-[#1F2937] placeholder-gray-400 px-3 py-2.5"
+                                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
                         placeholder="https://ejemplo.com/imagen.jpg"
                         />
                       </div>
-                    <div>
-                      <label className="block text-sm font-medium text-[#6C7A92] mb-1">
-                    Grupos de Toppings
-                  </label>
-                    <ProductFormToppingSelector 
-                      toppingGroups={toppingGroups} 
-                        selectedGroups={form.toppingGroups} 
-                      onChange={handleToppingGroupsChange}
-                    />
-                    </div>
+
+                              {/* Image Preview */}
                     {form.image && (
-                      <div className="mt-2">
-                        <p className="text-sm text-[#6C7A92] mb-1">Vista previa:</p>
-                        <div className="relative w-32 h-32 border border-[#DCE4F5] rounded-lg overflow-hidden bg-gray-50">
+                                <motion.div 
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  className="group"
+                                >
+                                  <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                    <span className="mr-2">👀</span>
+                                    Vista Previa
+                                  </label>
+                                  <div className="relative w-full h-48 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 shadow-lg">
                           <img
                             src={form.image}
                             alt="Vista previa"
-                            className="w-full h-full object-cover"
+                                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                             onError={(e) => {
-                              e.target.src = 'https://placehold.co/100x100?text=Error';
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
                             }}
                           />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                    <div style={{ display: 'none' }} className="w-full h-full flex items-center justify-center">
+                                      <span className="text-4xl">🖼️</span>
                         </div>
                       </div>
-                    )}
-                    <div className="flex items-end justify-end space-x-2 pt-6">
-                  {editingId && (
-                    <button
+                                </motion.div>
+                              )}
+
+                              {/* Toppings */}
+                              <div className="group">
+                                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                  <span className="mr-2">🧀</span>
+                                  Extras Disponibles
+                                </label>
+                                <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-slate-200 p-4">
+                                  <ProductFormToppingSelector 
+                                    toppingGroups={toppingGroups} 
+                                    selectedGroups={form.toppingGroups} 
+                                    onChange={handleToppingGroupsChange}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex justify-center space-x-4 pt-8 border-t border-slate-200">
+                            {editingProduct && (
+                              <motion.button
                       type="button"
-                      onClick={cancelEdit}
-                          className="px-4 py-2 rounded-lg font-medium border border-[#DCE4F5] bg-gray-50 text-[#6C7A92] hover:bg-gray-100 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                  )}
-                  <button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => {
+                                  setEditingProduct(null);
+                                  setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [] });
+                                }}
+                                className="px-8 py-4 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-lg"
+                              >
+                                <span>❌</span>
+                                <span>Cancelar</span>
+                              </motion.button>
+                            )}
+                            <motion.button
                     type="submit"
-                        className="px-4 py-2 rounded-lg text-white font-medium bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 transition-colors shadow-lg hover:shadow-[#3A7AFF]/20"
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 font-semibold shadow-xl flex items-center space-x-2"
                   >
-                        {editingId ? "Guardar Cambios" : "Agregar Producto"}
-                  </button>
+                              <span>{editingProduct ? '✏️' : '✨'}</span>
+                              <span>{editingProduct ? 'Actualizar Producto' : 'Crear Producto'}</span>
+                            </motion.button>
                 </div>
-                  </div>
-                </div>
-              </motion.form>
+                        </form>
+              </motion.div>
               
+                    {/* Modern Products Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                      {products.map((product, index) => (
               <motion.div 
+                          key={product._id} 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 border border-[#DCE4F5]"
-              >
-                <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                  <h3 className="text-xl font-bold text-[#1F2937]">Productos</h3>
-                  <p className="text-sm text-[#6C7A92]">Total: {products.length} productos</p>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-separate border-spacing-y-2">
-                    <thead>
-                      <tr className="text-[#6C7A92]">
-                        <th className="p-3 text-left">Producto</th>
-                        <th className="p-3 text-left">Categoría</th>
-                        <th className="p-3 text-right">Precio</th>
-                        <th className="p-3 text-right">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.length > 0 ? (
-                        products.map((product, idx) => (
-                          <motion.tr 
-                            key={product._id} 
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.2, delay: idx * 0.03 }}
-                            className="transition-colors bg-gray-50 hover:bg-gray-100 border-b border-[#DCE4F5]"
-                          >
-                            <td className="p-3">
-                              <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-white border border-[#DCE4F5]">
-                        {product.image ? (
-                          <img 
-                            src={product.image} 
+                          transition={{ delay: index * 0.1 }}
+                          whileHover={{ y: -8, transition: { duration: 0.2 } }}
+                          className="group bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl border border-slate-200/50 overflow-hidden hover:shadow-2xl transition-all duration-300"
+                        >
+                          {/* Product Image */}
+                          <div className="relative overflow-hidden">
+                            <img 
+                              src={product.image || 'https://placehold.co/400x300?text=🍔'} 
                             alt={product.name}
-                            className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        e.target.src = 'https://placehold.co/100x100?text=Error';
-                                      }}
-                          />
-                        ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                                      <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
+                              className="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-110"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                            
+                            {/* Price Badge */}
+                            <div className="absolute top-4 left-4">
+                              <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full font-bold shadow-lg">
+                                <span className="text-lg">${product.price}</span>
                           </div>
-                        )}
                         </div>
-                                <div>
-                                  <p className="font-semibold text-[#1F2937]">{product.name}</p>
-                                  {product.description && (
-                                    <p className="text-xs text-[#6C7A92] line-clamp-1">{product.description}</p>
+
+                            {/* Category Badge */}
+                            {product.category && (
+                              <div className="absolute top-4 right-4">
+                                <span className="bg-white/90 backdrop-blur-sm text-slate-700 px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
+                                  📂 {categories.find(c => c._id === product.category)?.name || 'Sin categoría'}
+                                </span>
+                              </div>
                                   )}
                       </div>
+
+                          {/* Product Info */}
+                          <div className="p-6">
+                            <div className="mb-4">
+                              <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition-colors">
+                                {product.name}
+                              </h3>
+                              <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed">
+                                {product.description}
+                              </p>
                             </div>
-                            </td>
-                            <td className="p-3 text-[#6C7A92]">{product.categoryName || "Sin categoría"}</td>
-                            <td className="p-3 text-right font-medium text-[#1F2937]">${product.price}</td>
-                            <td className="p-3 text-right">
-                              <div className="flex justify-end space-x-2">
-                            <button
-                                  onClick={() => handleEdit(product)}
-                                  className="p-1.5 rounded-lg text-[#3A7AFF] hover:bg-[#3A7AFF]/10 transition-colors"
-                                  title="Editar"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button
-                                  onClick={() => handleDelete(product)}
-                                  className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
-                                  title="Eliminar"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
+
+                            {/* Action Buttons */}
+                            <div className="flex space-x-3">
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => editProduct(product)}
+                                className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-3 rounded-2xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
+                              >
+                                <span>✏️</span>
+                                <span>Editar</span>
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => deleteProduct(product._id)}
+                                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3 rounded-2xl font-semibold hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
+                              >
+                                <span>🗑️</span>
+                                <span>Eliminar</span>
+                              </motion.button>
                           </div>
-                            </td>
-                          </motion.tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="4" className="p-4 text-center text-[#6C7A92]">
-                            No hay productos disponibles. Agrega uno usando el formulario de arriba.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
                         </div>
+
+                          {/* Hover Effect Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
               </motion.div>
-            </>
+                      ))}
+                    </div>
+                  </div>
           )}
+                
+              </motion.div>
+            </AnimatePresence>
         </div>
-      </main>
+        </div>
+      </div>
+
+      {/* Success Message Banner */}
+          {successMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="fixed top-20 left-1/2 transform -translate-x-1/2 p-3 bg-green-500/20 text-green-300 text-sm rounded-lg border border-green-500/30 z-50"
+            >
+              {successMessage}
+            </motion.div>
+          )}
+          
+      {/* Modals */}
+          <ConfirmationModal
+            isOpen={showConfirmModal}
+            onClose={cancelEdit}
+            onConfirm={confirmEdit}
+            product={editingProduct || {}}
+            formData={form}
+          />
+          
+          <DeleteConfirmationModal
+            isOpen={showDeleteModal}
+            onClose={cancelDelete}
+            onConfirm={confirmDelete}
+            product={productToDelete || {}}
+          />
     </div>
   );
 }
+
+export default Admin;

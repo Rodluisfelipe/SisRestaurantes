@@ -1,5 +1,8 @@
 @echo off
-REM Script para mantener vivo el servidor mediante peticiones periódicas
+REM Script para mantener vivo el servidor mediant
+
+
+e peticiones periódicas
 REM Guardar este archivo como keep-alive.bat y programarlo para ejecutarse cada 20-25 minutos
 
 echo [%date% %time%] Iniciando ping al backend...

@@ -9,6 +9,7 @@ import Menu from "./Pages/Menu";
 import Admin from "./Pages/Admin";
 import Login from "./Pages/Login";
 import Kitchen from "./Pages/Kitchen";
+import CustomerOrderDisplay from "./Components/CustomerOrderDisplay";
 import SuperAdminDashboard from "./Pages/SuperAdmin/SuperAdminDashboard";
 import { BusinessProvider } from './Context/BusinessContext';
 import { AuthProvider } from './Context/AuthContext';
@@ -157,6 +158,16 @@ function App() {
                 </ProtectedRoute>
               </BusinessProviderWrapper>
             } 
+          />
+          
+          {/* Customer Order Display - Public route for customers to track their orders */}
+          <Route 
+            path="/:businessId/orders"
+            element={
+              <BusinessProviderWrapper>
+                <CustomerOrderDisplay />
+              </BusinessProviderWrapper>
+            }
           />
         
           <Route

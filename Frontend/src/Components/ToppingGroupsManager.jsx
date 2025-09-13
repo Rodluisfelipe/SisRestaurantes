@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
@@ -197,51 +198,103 @@ function ToppingGroupsManager() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h2 className="text-2xl font-bold mb-6">Gestión de Toppings</h2>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
-          {error}
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <span className="text-2xl">🧀</span>
         </div>
-      )}
+        <h2 className="text-3xl font-bold text-slate-900 mb-2">Gestión de Extras</h2>
+        <p className="text-slate-600">Configura grupos de extras y complementos para tus productos</p>
+      </motion.div>
+
+      {/* Messages */}
+      <AnimatePresence>
+        {error && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
+          >
+            <span className="text-xl">❌</span>
+            <span className="font-medium">{error}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {loading ? (
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent"></div>
         </div>
       ) : (
         <>
-      {/* Formulario */}
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-sm mb-6">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Nombre del grupo</label>
+          {/* Modern Form */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
+          >
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <span className="text-2xl">{isEditing ? '✏️' : '✨'}</span>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">
+                {isEditing ? 'Editar Grupo de Extras' : 'Nuevo Grupo de Extras'}
+              </h3>
+              <p className="text-slate-600">
+                {isEditing ? 'Actualiza la información del grupo' : 'Crea un nuevo grupo de extras para tus productos'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  {/* Group Name */}
+                  <div className="group">
+                    <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                      <span className="mr-2">🏷️</span>
+                      Nombre del Grupo
+                    </label>
             <input
               type="text"
               value={currentGroup.name}
               onChange={(e) => setCurrentGroup({ ...currentGroup, name: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
+                      placeholder="Ej: Quesos, Salsas, Vegetales..."
               required
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Descripción</label>
+                  {/* Description */}
+                  <div className="group">
+                    <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                      <span className="mr-2">📝</span>
+                      Descripción
+                    </label>
             <input
               type="text"
               value={currentGroup.description}
               onChange={(e) => setCurrentGroup({ ...currentGroup, description: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                      placeholder="Descripción opcional del grupo..."
             />
           </div>
 
-              {/* Precio base del grupo */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Precio Base</label>
-                <div className="relative mt-1 rounded-md shadow-sm">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">$</span>
+                  {/* Base Price */}
+                  <div className="group">
+                    <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                      <span className="mr-2">💰</span>
+                      Precio Base
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 flex items-center pl-4">
+                        <span className="text-slate-500 font-medium">$</span>
                   </div>
                   <input
                     type="number"
@@ -252,78 +305,150 @@ function ToppingGroupsManager() {
                       ...currentGroup,
                       basePrice: e.target.value === '' ? 0 : parseFloat(e.target.value)
                     })}
-                    className="pl-7 block w-full rounded-md border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-12 pr-6 py-4 text-lg font-semibold transition-all duration-200 group-hover:border-slate-300"
                     placeholder="0.00"
                   />
-                </div>
-                <p className="mt-1 text-xs text-gray-500">Este precio se aplicará al seleccionar cualquier opción de este grupo</p>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-500 flex items-center">
+                      <span className="mr-1">💡</span>
+                      Este precio se aplicará al seleccionar cualquier opción de este grupo
+                    </p>
+                  </div>
           </div>
 
-          <div className="flex gap-4">
-            <div className="flex items-center">
+                {/* Right Column */}
+                <div className="space-y-6">
+                  {/* Options */}
+                  <div className="bg-slate-50 rounded-2xl p-6 border-2 border-slate-200">
+                    <h4 className="flex items-center text-lg font-bold text-slate-900 mb-4">
+                      <span className="mr-2">⚙️</span>
+                      Configuración
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      <div className="flex items-center p-4 bg-white rounded-2xl border border-slate-200 hover:border-blue-300 transition-colors">
               <input
                 type="checkbox"
                 checked={currentGroup.isMultipleChoice}
                 onChange={(e) => setCurrentGroup({ ...currentGroup, isMultipleChoice: e.target.checked })}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label className="ml-2 text-sm text-gray-700">Selección múltiple</label>
+                          className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                        <div className="ml-4">
+                          <label className="text-sm font-semibold text-slate-900">Selección múltiple</label>
+                          <p className="text-xs text-slate-500">Permite elegir varias opciones del grupo</p>
+                        </div>
+                        <span className="ml-auto text-xl">📋</span>
             </div>
 
-            <div className="flex items-center">
+                      <div className="flex items-center p-4 bg-white rounded-2xl border border-slate-200 hover:border-red-300 transition-colors">
               <input
                 type="checkbox"
                 checked={currentGroup.isRequired}
                 onChange={(e) => setCurrentGroup({ ...currentGroup, isRequired: e.target.checked })}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <label className="ml-2 text-sm text-gray-700">Obligatorio</label>
+                          className="w-5 h-5 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                        />
+                        <div className="ml-4">
+                          <label className="text-sm font-semibold text-slate-900">Obligatorio</label>
+                          <p className="text-xs text-slate-500">El cliente debe elegir al menos una opción</p>
+                        </div>
+                        <span className="ml-auto text-xl">⚠️</span>
+                      </div>
+                    </div>
+                  </div>
             </div>
           </div>
 
-              {/* Opciones principales */}
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">Opciones</label>
-            {currentGroup.options.map((option, index) => (
-              <div key={index} className="flex gap-2">
-                <input
-                  type="text"
-                  value={option.name}
-                  onChange={(e) => handleOptionChange(index, 'name', e.target.value)}
-                  placeholder="Nombre de la opción"
-                  className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
-                <input
-                  type="number"
-                  value={option.price}
-                      onChange={(e) => handleOptionChange(index, 'price', e.target.value)}
-                  placeholder="Precio"
-                  className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                />
-                <button
-                  type="button"
-                  onClick={() => handleDeleteOption(index)}
-                  className="p-2 text-red-600 hover:text-red-800"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
+              {/* Modern Options Section */}
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border-2 border-blue-200">
+                  <h4 className="flex items-center text-lg font-bold text-slate-900 mb-4">
+                    <span className="mr-2">🍟</span>
+                    Opciones del Grupo
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    {currentGroup.options.length === 0 ? (
+                      <div className="text-center py-8 bg-white rounded-2xl border-2 border-dashed border-blue-300">
+                        <span className="text-3xl mb-2 block">🍽️</span>
+                        <p className="text-slate-600">No hay opciones agregadas</p>
+                        <p className="text-sm text-slate-500">Agrega opciones para este grupo de extras</p>
+                      </div>
+                    ) : (
+                      currentGroup.options.map((option, index) => (
+                        <motion.div 
+                          key={index}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: index * 0.1 }}
+                          className="flex gap-3 p-4 bg-white rounded-2xl border border-slate-200 hover:border-blue-300 transition-colors group"
+                        >
+                          <div className="flex-1">
+                            <input
+                              type="text"
+                              value={option.name}
+                              onChange={(e) => handleOptionChange(index, 'name', e.target.value)}
+                              placeholder="Ej: Queso Cheddar, Salsa BBQ..."
+                              className="w-full rounded-xl border-2 border-slate-200 bg-white/80 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-4 py-3 transition-all duration-200"
+                            />
+                          </div>
+                          <div className="w-32">
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                                <span className="text-slate-500 text-sm">$</span>
+                              </div>
+                              <input
+                                type="number"
+                                value={option.price}
+                                onChange={(e) => handleOptionChange(index, 'price', e.target.value)}
+                                placeholder="0.00"
+                                className="w-full rounded-xl border-2 border-slate-200 bg-white/80 shadow-sm focus:ring-4 focus:ring-green-500/20 focus:border-green-500 text-slate-900 placeholder-slate-400 pl-8 pr-3 py-3 font-semibold transition-all duration-200"
+                              />
+                            </div>
+                          </div>
+                          <motion.button
+                            type="button"
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleDeleteOption(index)}
+                            className="w-12 h-12 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors flex items-center justify-center"
+                          >
+                            <span className="text-lg">🗑️</span>
+                          </motion.button>
+                        </motion.div>
+                      ))
+                    )}
+                    
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleAddOption}
+                      className="w-full py-4 border-2 border-dashed border-blue-300 text-blue-600 rounded-2xl hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 font-semibold flex items-center justify-center space-x-2"
+                    >
+                      <span className="text-xl">➕</span>
+                      <span>Agregar Opción</span>
+                    </motion.button>
+                  </div>
+                </div>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={handleAddOption}
-              className="mt-2 px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              + Agregar opción
-            </button>
-          </div>
 
-              {/* Subgrupos */}
-              <div className="border-t pt-4 mt-4">
-                <h3 className="font-medium text-lg mb-2">Subgrupos</h3>
-                {currentGroup.subGroups.map((subGroup, subGroupIndex) => (
+              {/* Modern Subgroups Section */}
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-purple-200">
+                  <h4 className="flex items-center text-lg font-bold text-slate-900 mb-4">
+                    <span className="mr-2">🎯</span>
+                    Subgrupos
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    {currentGroup.subGroups.length === 0 ? (
+                      <div className="text-center py-8 bg-white rounded-2xl border-2 border-dashed border-purple-300">
+                        <span className="text-3xl mb-2 block">📋</span>
+                        <p className="text-slate-600">No hay subgrupos creados</p>
+                        <p className="text-sm text-slate-500">Los subgrupos te permiten organizar mejor las opciones</p>
+                      </div>
+                    ) : (
+                      currentGroup.subGroups.map((subGroup, subGroupIndex) => (
                   <div key={`subgroup-${subGroupIndex}`} className="bg-gray-50 p-4 rounded-lg mb-4">
                     <div className="flex justify-between items-center mb-2">
                       <input
@@ -407,125 +532,209 @@ function ToppingGroupsManager() {
                       </button>
                     </div>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={handleAddSubGroup}
-                  className="mt-2 px-4 py-2 border border-blue-300 rounded-md text-sm font-medium text-blue-600 hover:bg-blue-50"
-                >
-                  + Agregar subgrupo
-            </button>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              type="submit"
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            >
-              {isEditing ? 'Actualizar' : 'Crear'} Grupo
-            </button>
-            {isEditing && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-            )}
-          </div>
-        </div>
-      </form>
-
-          {/* Lista de grupos existentes */}
-      <div className="space-y-4">
-            <h3 className="text-xl font-semibold">Grupos de Toppings</h3>
-            {toppingGroups.length === 0 ? (
-              <p className="text-gray-500">No hay grupos de toppings disponibles.</p>
-            ) : (
-              toppingGroups.map((group) => (
-          <div key={group._id} className="bg-white p-4 rounded-lg shadow-sm">
-            <div className="flex justify-between items-start">
-              <div>
-                      <h4 className="font-medium">
-                        {group.name}
-                        {group.basePrice > 0 && ` • Precio base: $${group.basePrice.toFixed(2)}`}
-                      </h4>
-                      <p className="text-sm text-gray-600">{group.description}</p>
-                      
-                      {/* Características del grupo */}
-                      <div className="flex gap-2 text-xs mt-1">
-                        <span className={`px-2 py-0.5 rounded-full ${group.isMultipleChoice ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {group.isMultipleChoice ? 'Selección múltiple' : 'Selección única'}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded-full ${group.isRequired ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
-                          {group.isRequired ? 'Obligatorio' : 'Opcional'}
-                        </span>
-                      </div>
-                      
-                      {/* Opciones principales */}
-                      <div className="mt-2">
-                        <p className="text-sm font-medium">Opciones principales:</p>
-                        <ul className="pl-4 text-sm">
-                          {group.options.map((option, index) => (
-                            <li key={index} className="flex justify-between">
-                              <span>{option.name}</span>
-                              <span>${option.price.toFixed(2)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      {/* Subgrupos */}
-                      {group.subGroups && group.subGroups.length > 0 && (
-                        <div className="mt-3">
-                          <p className="text-sm font-medium">Subgrupos:</p>
-                          {group.subGroups.map((subGroup, index) => (
-                            <div key={`subgroup-${index}`} className="ml-2 mt-1 pl-2 border-l-2 border-gray-200">
-                              <p className="text-sm font-medium">
-                                {subGroup.title}
-                                <span className="text-xs ml-2">
-                                  {subGroup.isMultipleChoice ? '(Múltiple)' : '(Única)'}
-                                  {subGroup.isRequired ? ', Obligatorio' : ''}
-                                </span>
-                              </p>
-                              <ul className="pl-4 text-sm">
-                                {subGroup.options && subGroup.options.map((option, idx) => (
-                                  <li key={`suboption-${idx}`} className="flex justify-between">
-                                    <span>{option.name}</span>
-                                    <span>${option.price.toFixed(2)}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          ))}
-                </div>
-                      )}
-              </div>
+                      ))
+                    )}
                     
-                    <div className="flex space-x-2">
-                <button
-                  onClick={() => handleEdit(group)}
-                        className="p-2 text-blue-600 hover:text-blue-800"
-                >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                </button>
-                <button
-                  onClick={() => handleDelete(group._id)}
-                        className="p-2 text-red-600 hover:text-red-800"
-                >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                </button>
+                    <motion.button
+                      type="button"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleAddSubGroup}
+                      className="w-full py-4 border-2 border-dashed border-purple-300 text-purple-600 rounded-2xl hover:border-purple-400 hover:bg-purple-50 transition-all duration-200 font-semibold flex items-center justify-center space-x-2"
+                    >
+                      <span className="text-xl">➕</span>
+                      <span>Agregar Subgrupo</span>
+                    </motion.button>
+                  </div>
+                </div>
               </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4 pt-8 border-t border-slate-200">
+                {isEditing && (
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={resetForm}
+                    className="px-8 py-4 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-lg"
+                  >
+                    <span>❌</span>
+                    <span>Cancelar</span>
+                  </motion.button>
+                )}
+                <motion.button
+                  type="submit"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 font-semibold shadow-xl flex items-center space-x-2"
+                >
+                  <span>{isEditing ? '✏️' : '✨'}</span>
+                  <span>{isEditing ? 'Actualizar' : 'Crear'} Grupo</span>
+                </motion.button>
+              </div>
+            </form>
+          </motion.div>
+
+          {/* Modern Groups List */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="space-y-6"
+          >
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">Grupos de Extras Existentes</h3>
+              <p className="text-slate-600">Gestiona tus grupos de extras configurados</p>
             </div>
-            </div>
-              ))
+            
+            {toppingGroups.length === 0 ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-12 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border-2 border-dashed border-slate-300"
+              >
+                <span className="text-4xl mb-4 block">🧀</span>
+                <h4 className="text-xl font-semibold text-slate-700 mb-2">No hay grupos de extras</h4>
+                <p className="text-slate-500">Crea tu primer grupo para organizar los extras de tus productos</p>
+              </motion.div>
+            ) : (
+              <div className="grid gap-6">
+                {toppingGroups.map((group, index) => (
+                  <motion.div
+                    key={group._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                    className="group bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-lg border border-slate-200/50 overflow-hidden hover:shadow-xl transition-all duration-300"
+                  >
+                    <div className="p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
+                            <span className="text-xl">🧀</span>
+                          </div>
+                          <div>
+                            <h4 className="text-xl font-bold text-slate-900 group-hover:text-orange-600 transition-colors">
+                              {group.name}
+                            </h4>
+                            {group.basePrice > 0 && (
+                              <div className="flex items-center space-x-1 mt-1">
+                                <span className="text-sm text-green-600 font-semibold">💰 Precio base:</span>
+                                <span className="text-sm font-bold text-green-700">${group.basePrice.toFixed(2)}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex space-x-2">
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleEdit(group)}
+                            className="w-10 h-10 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-colors flex items-center justify-center"
+                          >
+                            <span className="text-lg">✏️</span>
+                          </motion.button>
+                          <motion.button
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => handleDelete(group._id)}
+                            className="w-10 h-10 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors flex items-center justify-center"
+                          >
+                            <span className="text-lg">🗑️</span>
+                          </motion.button>
+                        </div>
+                      </div>
+
+                      {group.description && (
+                        <p className="text-slate-600 mb-4 leading-relaxed">{group.description}</p>
+                      )}
+                      
+                      {/* Configuration Badges */}
+                      <div className="flex gap-2 mb-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          group.isMultipleChoice 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          {group.isMultipleChoice ? '📋 Selección múltiple' : '🎯 Selección única'}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          group.isRequired 
+                            ? 'bg-red-100 text-red-800' 
+                            : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          {group.isRequired ? '⚠️ Obligatorio' : '🔄 Opcional'}
+                        </span>
+                      </div>
+                      
+                      {/* Main Options */}
+                      {group.options && group.options.length > 0 && (
+                        <div className="mb-4">
+                          <h5 className="text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                            <span className="mr-1">🍟</span>
+                            Opciones principales:
+                          </h5>
+                          <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
+                            {group.options.map((option, idx) => (
+                              <div key={idx} className="flex justify-between items-center py-1">
+                                <span className="text-sm text-slate-700">{option.name}</span>
+                                <span className="text-sm font-semibold text-green-600">${option.price.toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Subgroups */}
+                      {group.subGroups && group.subGroups.length > 0 && (
+                        <div>
+                          <h5 className="text-sm font-semibold text-slate-700 mb-2 flex items-center">
+                            <span className="mr-1">🎯</span>
+                            Subgrupos:
+                          </h5>
+                          <div className="space-y-3">
+                            {group.subGroups.map((subGroup, idx) => (
+                              <div key={`subgroup-${idx}`} className="bg-purple-50 rounded-2xl p-4 border-l-4 border-purple-400">
+                                <div className="flex items-center justify-between mb-2">
+                                  <h6 className="font-medium text-slate-900">{subGroup.title}</h6>
+                                  <div className="flex space-x-1">
+                                    <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                                      {subGroup.isMultipleChoice ? 'Múltiple' : 'Única'}
+                                    </span>
+                                    {subGroup.isRequired && (
+                                      <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">
+                                        Obligatorio
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {subGroup.options && subGroup.options.length > 0 && (
+                                  <div className="space-y-1">
+                                    {subGroup.options.map((option, optIdx) => (
+                                      <div key={`suboption-${optIdx}`} className="flex justify-between items-center py-1 text-sm">
+                                        <span className="text-slate-600">• {option.name}</span>
+                                        <span className="font-semibold text-green-600">${option.price.toFixed(2)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Hover Effect Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                  </motion.div>
+                ))}
+              </div>
             )}
-          </div>
+          </motion.div>
         </>
       )}
     </div>

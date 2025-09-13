@@ -1,41 +1,56 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
 
 const LOCAL_STORAGE_KEY = 'categoryOrderSettings';
 
-// Modal de confirmación para eliminar categoría
+// Modern Delete Category Modal
 const DeleteCategoryModal = ({ isOpen, onClose, onConfirm, category }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
-        <div className="flex items-center mb-4 text-red-600">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <h2 className="text-xl font-bold">Eliminar Categoría</h2>
+    <AnimatePresence>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+        <motion.div 
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl"
+        >
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">🗑️</span>
         </div>
-        <p className="text-gray-700 mb-6">
-          ¿Estás seguro de que deseas eliminar la categoría <span className="font-bold">{category?.name}</span>? Esta acción no se puede deshacer.
-        </p>
-        <div className="flex justify-end space-x-3">
-          <button
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">Eliminar Categoría</h2>
+            <p className="text-slate-600">
+              ¿Estás seguro de que deseas eliminar la categoría{' '}
+              <span className="font-bold text-red-600">{category?.name}</span>?{' '}
+              Esta acción no se puede deshacer.
+            </p>
+          </div>
+          
+          <div className="flex space-x-4">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+              className="flex-1 px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold"
           >
             Cancelar
-          </button>
-          <button
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold shadow-lg"
           >
-            Eliminar Categoría
-          </button>
+              Eliminar
+            </motion.button>
         </div>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
 };
 
@@ -222,154 +237,271 @@ const CategorySettings = () => {
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-      <h2 className="text-xl font-bold text-gray-800 mb-4">Gestión de Categorías</h2>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <span className="text-2xl">📂</span>
         </div>
+        <h2 className="text-3xl font-bold text-slate-900 mb-2">Gestión de Categorías</h2>
+        <p className="text-slate-600">Organiza tu menú por categorías para una mejor experiencia</p>
+      </motion.div>
+      
+      {/* Messages */}
+      <AnimatePresence>
+      {error && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
+          >
+            <span className="text-xl">❌</span>
+            <span className="font-medium">{error}</span>
+          </motion.div>
       )}
       
       {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {successMessage}
-        </div>
-      )}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="bg-green-50 border-2 border-green-200 text-green-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
+          >
+            <span className="text-xl">✅</span>
+            <span className="font-medium">{successMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Ordenar/Reordenar Toggle */}
-      <div className="mb-4 flex justify-end">
+      {/* Sort Mode Toggle */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex justify-end"
+      >
         {sortMode ? (
-          <div className="space-x-2">
-            <button
+          <div className="flex space-x-3">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={saveOrder}
               disabled={saveLoading}
-              className={`px-4 py-2 ${saveLoading ? 'bg-gray-400' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg`}
+              className={`px-6 py-3 ${saveLoading ? 'bg-gray-400' : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'} text-white rounded-2xl font-semibold shadow-lg flex items-center space-x-2 transition-all duration-200`}
             >
-              {saveLoading ? 'Guardando...' : 'Guardar Orden'}
-            </button>
-            <button
+              <span>{saveLoading ? '⏳' : '💾'}</span>
+              <span>{saveLoading ? 'Guardando...' : 'Guardar Orden'}</span>
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setSortMode(false)}
               disabled={saveLoading}
-              className="px-4 py-2 bg-gray-300 text-gray-800 rounded-lg hover:bg-gray-400"
+              className="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 font-semibold transition-all duration-200"
             >
               Cancelar
-            </button>
+            </motion.button>
           </div>
         ) : (
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => setSortMode(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl hover:from-blue-600 hover:to-purple-700 font-semibold shadow-lg flex items-center space-x-2 transition-all duration-200"
           >
-            Reordenar Categorías
-          </button>
+            <span>🔄</span>
+            <span>Reordenar Categorías</span>
+          </motion.button>
         )}
-      </div>
+      </motion.div>
 
       {sortMode ? (
-        <div className="mb-6">
-          <p className="text-sm text-gray-600 mb-2">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-8 border border-blue-200"
+        >
+          <div className="text-center mb-6">
+            <span className="text-3xl mb-2 block">🔄</span>
+            <h3 className="text-xl font-bold text-slate-900 mb-2">Reordenar Categorías</h3>
+            <p className="text-slate-600">
             Arrastra y suelta las categorías para cambiar su orden de aparición en el menú
           </p>
-          <div className="space-y-2">
+          </div>
+          
+          <div className="space-y-3">
             {categories.map((category, index) => (
-              <div
+              <motion.div
                 key={category._id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
                 draggable
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className="p-4 bg-gray-50 rounded-lg border-2 border-blue-200 cursor-move"
+                className="p-6 bg-white rounded-2xl border-2 border-blue-200 cursor-move hover:border-blue-300 hover:shadow-lg transition-all duration-200 group"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium text-gray-800">{category.name}</h4>
+                    <h4 className="font-bold text-slate-900 text-lg">{category.name}</h4>
                     {category.description && (
-                      <p className="text-sm text-gray-600">{category.description}</p>
+                      <p className="text-slate-600 mt-1">{category.description}</p>
                     )}
-                    <p className="text-xs text-gray-400">Orden: {index + 1}</p>
+                    <p className="text-sm text-blue-600 font-medium mt-2">Orden: {index + 1}</p>
                   </div>
-                  <div className="text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-                    </svg>
+                  <div className="text-blue-400 group-hover:text-blue-600 transition-colors">
+                    <span className="text-2xl">⋮⋮</span>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       ) : (
         <>
-          {/* Formulario para nueva categoría */}
-          <form onSubmit={handleSubmit} className="mb-6">
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+          {/* Modern Category Form */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
+          >
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <span className="text-2xl">✨</span>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">Nueva Categoría</h3>
+              <p className="text-slate-600">Crea una nueva categoría para organizar tus productos</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">🏷️</span>
                   Nombre de la Categoría
                 </label>
                 <input
                   type="text"
-                  id="name"
                   value={newCategory.name}
                   onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                  className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
+                  placeholder="Ej: Hamburguesas, Bebidas, Postres..."
                   required
                 />
               </div>
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+              
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">📝</span>
                   Descripción
                 </label>
                 <textarea
-                  id="description"
                   value={newCategory.description}
                   onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                  className="w-full border border-gray-200 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows="2"
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300 resize-none"
+                  rows="3"
+                  placeholder="Descripción opcional de la categoría..."
                 />
               </div>
-              <button
+              
+              <motion.button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors duration-300"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full bg-gradient-to-r from-green-500 to-blue-600 text-white py-4 rounded-2xl hover:from-green-600 hover:to-blue-700 transition-all duration-200 font-semibold shadow-xl flex items-center justify-center space-x-2"
               >
-                Crear Categoría
-              </button>
-            </div>
-          </form>
+                <span>✨</span>
+                <span>Crear Categoría</span>
+              </motion.button>
+            </form>
+          </motion.div>
 
-          {/* Lista de categorías */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700">Categorías Existentes</h3>
-            <div className="grid gap-4">
+          {/* Modern Categories List */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="space-y-6"
+          >
+            <div className="text-center">
+              <h3 className="text-2xl font-bold text-slate-900 mb-2">Categorías Existentes</h3>
+              <p className="text-slate-600">Gestiona las categorías de tu menú</p>
+            </div>
+            
+            {categories.length === 0 ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-12 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border-2 border-dashed border-slate-300"
+              >
+                <span className="text-4xl mb-4 block">📂</span>
+                <h4 className="text-xl font-semibold text-slate-700 mb-2">No hay categorías</h4>
+                <p className="text-slate-500">Crea tu primera categoría para organizar tu menú</p>
+              </motion.div>
+            ) : (
+              <div className="grid gap-6">
               {categories.map((category, index) => {
                 // Obtener el orden guardado para esta categoría
                 const orderMap = getSavedOrder();
                 const displayOrder = orderMap[category._id] !== undefined ? orderMap[category._id] + 1 : 'No definido';
                 
                 return (
-                  <div
+                    <motion.div
                     key={category._id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div>
-                      <h4 className="font-medium text-gray-800">{category.name}</h4>
-                      {category.description && (
-                        <p className="text-sm text-gray-600">{category.description}</p>
-                      )}
-                      <p className="text-xs text-gray-400">Orden: {displayOrder}</p>
-                    </div>
-                    <button
-                      onClick={() => handleDelete(category._id)}
-                      className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors duration-300"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                      className="group bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-lg border border-slate-200/50 overflow-hidden hover:shadow-xl transition-all duration-300"
                     >
-                      Eliminar
-                    </button>
+                      <div className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-3">
+                              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <span className="text-xl">📂</span>
+                              </div>
+                    <div>
+                                <h4 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                                  {category.name}
+                                </h4>
+                                <p className="text-sm text-blue-600 font-medium">
+                                  Orden: {displayOrder}
+                                </p>
+                              </div>
+                            </div>
+                            
+                      {category.description && (
+                              <p className="text-slate-600 leading-relaxed">
+                                {category.description}
+                              </p>
+                      )}
+                    </div>
+                          
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                      onClick={() => handleDelete(category._id)}
+                            className="ml-4 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold shadow-lg flex items-center space-x-2"
+                          >
+                            <span>🗑️</span>
+                            <span>Eliminar</span>
+                          </motion.button>
+                        </div>
                   </div>
+                      
+                      {/* Hover Effect Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                    </motion.div>
                 );
               })}
             </div>
-          </div>
+            )}
+          </motion.div>
         </>
       )}
       <DeleteCategoryModal

@@ -3,7 +3,8 @@ const router = express.Router();
 const Product = require("../Models/Product");
 const { emitToBusiness } = require("../services/socketService");
 const mongoose = require("mongoose");
-const { findBusinessByIdentifier, createBusinessFilter } = require("../utils/businessHelper");
+const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
+const logger = require("../utils/logger");
 
 /**
  * API de Productos
@@ -17,7 +18,7 @@ const { findBusinessByIdentifier, createBusinessFilter } = require("../utils/bus
 
 // Función auxiliar para obtener todos los productos con sus relaciones
 const getAllProducts = async () => {
-  console.log('[Products] Obteniendo todos los productos con sus relaciones');
+  logger.debug('Getting all products with relations');
   const products = await Product.find()
     .populate({
       path: 'toppingGroups',
@@ -25,10 +26,7 @@ const getAllProducts = async () => {
       select: 'name description isMultipleChoice isRequired options basePrice subGroups'
     });
   
-  console.log('[Products] Productos encontrados:', products.length);
-  console.log('[Products] Ejemplo de toppingGroups en el primer producto:', 
-    products[0]?.toppingGroups);
-  
+  logger.debug(`Found ${products.length} products`);
   return products;
 };
 
@@ -36,10 +34,10 @@ const getAllProducts = async () => {
 const emitProductsUpdate = async (req) => {
   try {
     const products = await getAllProducts();
-    console.log(`Emitiendo actualización de productos (${products.length} productos)`);
+    logger.info(`Emitting products update (${products.length} products)`);
     req.emitEvent('products_update', products);
   } catch (error) {
-    console.error('Error al emitir actualización de productos:', error);
+    logger.error('Error emitting products update', error);
   }
 };
 
@@ -51,7 +49,7 @@ router.get("/", async (req, res) => {
     // Crear filtro basado en businessId o slug
     const filter = await createBusinessFilter(businessId);
     
-    console.log('Buscando productos con filtro:', filter);
+    logger.debug('Searching products with filter', filter);
     
     const products = await Product.find(filter)
       .populate({
@@ -60,10 +58,10 @@ router.get("/", async (req, res) => {
         select: 'name description isMultipleChoice isRequired options basePrice subGroups'
       });
     
-    console.log(`Encontrados ${products.length} productos`);
+    logger.info(`Found ${products.length} products for business ${businessId}`);
     res.json(products);
   } catch (error) {
-    console.error("Error al obtener productos:", error);
+    logger.error("Error getting products", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -94,18 +92,16 @@ router.post("/", async (req, res) => {
       productData.toppingGroups = JSON.parse(productData.toppingGroups);
     }
     
-    // Manejar businessId si viene como slug
+    // Manejar businessId si viene como slug usando la utilidad centralizada
     if (productData.businessId && typeof productData.businessId === 'string') {
-      // Buscar el businessId real
-      const business = await findBusinessByIdentifier(productData.businessId);
-      if (business) {
-        productData.businessId = business._id;
-      } else {
+      const businessResult = await validateAndResolveBusinessId(productData.businessId);
+      if (!businessResult.success) {
         return res.status(404).json({ 
-          message: 'Negocio no encontrado',
-          detail: `No se encontró un negocio con el identificador '${productData.businessId}'`
+          message: 'Business not found',
+          detail: businessResult.error
         });
       }
+      productData.businessId = businessResult.businessId;
     }
     
     const newProduct = new Product(productData);
@@ -122,10 +118,11 @@ router.post("/", async (req, res) => {
     // Emitir evento de actualización por WebSocket
     emitToBusiness(newProduct.businessId?.toString(), "products_update", { type: "created", product: populatedProduct });
     
+    logger.info(`Created new product: ${newProduct.name} for business ${productData.businessId}`);
     res.json(populatedProduct);
   } catch (error) {
-    console.error("Error al crear producto:", error);
-    res.status(500).json({ message: "Error al crear el producto" });
+    logger.error("Error creating product", error);
+    res.status(500).json({ message: "Error creating product" });
   }
 });
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
@@ -332,34 +333,84 @@ function CompletedOrdersSummary() {
 
   // Renderizado del componente
   return (
-    <div className="space-y-6">
-      {/* Filtros y estadísticas */}
-      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-blue-700">Total de Pedidos</h3>
-            <p className="text-3xl font-bold text-blue-800 mt-2">{completedOrders.length}</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-green-700">Ventas Totales</h3>
-            <p className="text-3xl font-bold text-green-800 mt-2">
-              ${completedOrders.reduce((sum, order) => sum + order.totalAmount, 0).toFixed(2)}
-            </p>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-purple-700">Promedio por Pedido</h3>
-            <p className="text-3xl font-bold text-purple-800 mt-2">
-              ${(completedOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (completedOrders.length || 1)).toFixed(2)}
-            </p>
-          </div>
-          <div className="bg-yellow-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-yellow-700">Productos Vendidos</h3>
-            <p className="text-3xl font-bold text-yellow-800 mt-2">
-              {completedOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)}
-            </p>
-          </div>
+    <div className="space-y-8">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center"
+      >
+        <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+          <span className="text-2xl">✅</span>
         </div>
-      </div>
+        <h2 className="text-3xl font-bold text-slate-900 mb-2">Pedidos Completados</h2>
+        <p className="text-slate-600">Historial y resumen de pedidos del día</p>
+      </motion.div>
+
+      {/* Modern Stats Cards */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
+      >
+        <motion.div 
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-3xl text-white shadow-xl"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold opacity-90">Total de Pedidos</h3>
+              <p className="text-3xl font-bold mt-2">{completedOrders.length}</p>
+            </div>
+            <span className="text-3xl opacity-80">📋</span>
+          </div>
+        </motion.div>
+        
+        <motion.div 
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 rounded-3xl text-white shadow-xl"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-3xl font-bold mt-2">
+                ${completedOrders.reduce((sum, order) => sum + order.totalAmount, 0).toFixed(2)}
+              </p>
+            </div>
+            <span className="text-3xl opacity-80">💰</span>
+          </div>
+        </motion.div>
+        
+        <motion.div 
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-3xl text-white shadow-xl"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold opacity-90">Promedio por Pedido</h3>
+              <p className="text-3xl font-bold mt-2">
+                ${(completedOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (completedOrders.length || 1)).toFixed(2)}
+              </p>
+            </div>
+            <span className="text-3xl opacity-80">📊</span>
+          </div>
+        </motion.div>
+        
+        <motion.div 
+          whileHover={{ y: -4, transition: { duration: 0.2 } }}
+          className="bg-gradient-to-br from-orange-500 to-red-500 p-6 rounded-3xl text-white shadow-xl"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold opacity-90">Productos Vendidos</h3>
+              <p className="text-3xl font-bold mt-2">
+                {completedOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)}
+              </p>
+            </div>
+            <span className="text-3xl opacity-80">🍔</span>
+          </div>
+        </motion.div>
+      </motion.div>
 
       {/* Tabla de pedidos completados */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">

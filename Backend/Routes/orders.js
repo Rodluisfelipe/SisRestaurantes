@@ -4,8 +4,9 @@ const mongoose = require("mongoose");
 const Order = require("../Models/Order");
 const CompletedOrder = require("../Models/CompletedOrder");
 const { ObjectId } = require("mongoose").Types;
-const { isValidObjectId } = mongoose;
 const socketService = require("../services/socketService");
+const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
+const logger = require("../utils/logger");
 
 // Helper function to get order number
 const generateOrderNumber = async (businessId) => {
@@ -38,25 +39,8 @@ router.get("/", async (req, res) => {
       return res.status(400).json({ message: "Business ID is required" });
     }
     
-    // Prepare filter
-    const filter = {};
-    
-    // Handle the businessId, which could be an ObjectId or a slug
-    if (isValidObjectId(businessId)) {
-      // If it's a valid ObjectId, use it directly
-      filter.businessId = businessId;
-    } else {
-      // If it's a slug, we need to first find the corresponding business config
-      // to get its ObjectId
-      const BusinessConfig = require('../Models/BusinessConfig');
-      const business = await BusinessConfig.findOne({ slug: businessId });
-      
-      if (!business) {
-        return res.status(404).json({ message: "Business not found" });
-      }
-      
-      filter.businessId = business._id;
-    }
+    // Use the centralized business validation
+    const filter = await createBusinessFilter(businessId);
     
     // Add optional filters
     if (status) filter.status = status;
@@ -65,9 +49,10 @@ router.get("/", async (req, res) => {
     // Get orders sorted by creation date (newest first)
     const orders = await Order.find(filter).sort({ createdAt: -1 });
     
+    logger.info(`Retrieved ${orders.length} orders for business ${businessId}`);
     res.json(orders);
   } catch (error) {
-    console.error("Error fetching orders:", error);
+    logger.error("Error fetching orders", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -81,23 +66,13 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
     
-    // Handle the businessId, which could be an ObjectId or a slug
-    let businessObjectId;
-    
-    if (isValidObjectId(businessId)) {
-      // If it's a valid ObjectId, use it directly
-      businessObjectId = businessId;
-    } else {
-      // If it's a slug, find the corresponding business to get its ObjectId
-      const BusinessConfig = require('../Models/BusinessConfig');
-      const business = await BusinessConfig.findOne({ slug: businessId });
-      
-      if (!business) {
-        return res.status(404).json({ message: "Business not found" });
-      }
-      
-      businessObjectId = business._id;
+    // Use centralized business validation
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) {
+      return res.status(404).json({ message: businessResult.error });
     }
+    
+    const businessObjectId = businessResult.businessId;
     
     // Generate order number
     const orderNumber = await generateOrderNumber(businessObjectId);
@@ -123,9 +98,10 @@ router.post("/", async (req, res) => {
     // Emit socket event
     socketService.emitToBusiness(businessObjectId.toString(), "order_created", savedOrder);
     
+    logger.info(`Created new order ${orderNumber} for business ${businessId}`);
     res.status(201).json(savedOrder);
   } catch (error) {
-    console.error("Error creating order:", error);
+    logger.error("Error creating order", error);
     res.status(500).json({ message: error.message });
   }
 });

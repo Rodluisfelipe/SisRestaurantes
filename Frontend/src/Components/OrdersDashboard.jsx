@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useSpring } from 'framer-motion';
 import api from '../services/api';
 import { socket } from '../services/socket';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useNavigate } from 'react-router-dom';
 import { generateDailyReportPDF } from './DailyReportPDF';
+import { TIME_INTERVALS, SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -48,7 +50,7 @@ function OrdersDashboard() {
       setOrders(response.data);
       
       // Check for pending orders that need notification
-      const pendingOrders = response.data.filter(order => order.status === 'pending');
+      const pendingOrders = response.data.filter(order => order.status === ORDER_STATUS.PENDING);
       if (pendingOrders.length > 0) {
         setPendingNotifications(pendingOrders.map(order => order._id));
       }
@@ -84,7 +86,7 @@ function OrdersDashboard() {
       playSound();
       
       // Set interval to play sound every 5 seconds
-      notificationIntervalRef.current = setInterval(playSound, 5000);
+      notificationIntervalRef.current = setInterval(playSound, TIME_INTERVALS.NOTIFICATION_SOUND);
     }
     
     // Cleanup on unmount or when pendingNotifications changes
@@ -179,17 +181,17 @@ function OrdersDashboard() {
     socket.emit('joinBusiness', businessId);
     
     // Listen for order events
-    socket.on('order_created', (newOrder) => {
+    socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
       console.log('New order received:', newOrder);
       setOrders(prevOrders => [newOrder, ...prevOrders]);
       
       // Add to pending notifications if status is 'pending'
-      if (newOrder.status === 'pending') {
+      if (newOrder.status === ORDER_STATUS.PENDING) {
         setPendingNotifications(prev => [...prev, newOrder._id]);
       }
     });
     
-    socket.on('order_updated', (updatedOrder) => {
+    socket.on(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
       console.log('Order updated:', updatedOrder);
       setOrders(prevOrders => 
         prevOrders.map(order => 
@@ -198,7 +200,7 @@ function OrdersDashboard() {
       );
       
       // Remove from pending notifications if status is changed from 'pending'
-      if (updatedOrder.status !== 'pending') {
+      if (updatedOrder.status !== ORDER_STATUS.PENDING) {
         setPendingNotifications(prev => prev.filter(id => id !== updatedOrder._id));
       }
       

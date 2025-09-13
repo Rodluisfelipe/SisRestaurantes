@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import ProductToppingsSelector from './ProductToppingsSelector';
+import ErrorBoundary from './ErrorBoundary';
 import { useBusinessConfig } from "../Context/BusinessContext";
 
 function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
@@ -34,54 +36,108 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100">
-        {/* Imagen del producto */}
-        <div className="w-full h-32 relative">
+      <motion.div 
+        whileHover={{ y: -8, scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/50 overflow-hidden backdrop-blur-sm"
+      >
+        {/* Premium Product Image */}
+        <div className="relative w-full h-40 overflow-hidden">
           {product.image ? (
-            <img 
+            <motion.img 
               src={product.image} 
               alt={product.name}
-              className="w-full h-full object-cover rounded-t-lg"
+              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+              whileHover={{ scale: 1.1 }}
             />
           ) : (
-            <div className="w-full h-full bg-gray-200 rounded-t-lg flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
+            <div 
+              className="w-full h-full flex items-center justify-center"
+              style={{
+                background: `linear-gradient(135deg, ${businessConfig?.theme?.buttonColor || '#f97316'}20, ${businessConfig?.theme?.buttonColor || '#f97316'}10)`
+              }}
+            >
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <span className="text-4xl opacity-60">🍽️</span>
+              </motion.div>
             </div>
           )}
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
         </div>
 
-        {/* Información del producto y botón */}
-        <div className="p-3 flex justify-between items-center">
-          <div className="flex-1 min-w-0 mr-2">
-            <h2 className="text-base font-semibold text-gray-800 truncate">
+        {/* Premium Product Info */}
+        <div className="p-3 sm:p-6">
+          <div className="mb-3 sm:mb-4">
+            <h3 
+              className="text-sm sm:text-lg font-bold text-slate-800 mb-2 transition-colors duration-300 leading-tight"
+              style={{
+                '--hover-color': businessConfig?.theme?.buttonColor || '#f97316'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.color = businessConfig?.theme?.buttonColor || '#f97316';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.color = '#1e293b';
+              }}
+            >
               {product.name}
-            </h2>
-            <span className="text-sm font-bold text-black">
-              {(() => {
-                const price = Number(product.price);
-                const options = { minimumFractionDigits: 0, maximumFractionDigits: 1 };
-                return price.toLocaleString('es-CO', options);
-              })()}
-            </span>
+            </h3>
+            {product.description && (
+              <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 mb-2 sm:mb-3 leading-tight">
+                {product.description}
+              </p>
+            )}
           </div>
-
-          <button
-            onClick={() => {
-              // Siempre mostrar el modal de toppings, incluso si no hay opciones
-              handleShowToppings();
-            }}
-            style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-            className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full transition-colors duration-300"
-            aria-label="Agregar al carrito"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-          </button>
+          
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <span 
+                className="text-lg sm:text-2xl font-bold"
+                style={{
+                  color: businessConfig?.theme?.buttonColor || '#f97316'
+                }}
+              >
+                ${(() => {
+                  const price = Number(product.price);
+                  const options = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
+                  return price.toLocaleString('es-CO', options);
+                })()}
+              </span>
+            </div>
+            
+            <motion.button
+              onClick={handleShowToppings}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="w-10 h-10 sm:w-12 sm:h-12 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300"
+              style={{
+                backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                color: businessConfig?.theme?.buttonTextColor || '#ffffff',
+                boxShadow: `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.boxShadow = `0 15px 35px ${businessConfig?.theme?.buttonColor || '#f97316'}35`;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.boxShadow = `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`;
+              }}
+              aria-label="Agregar al carrito"
+            >
+              <motion.span 
+                className="text-lg sm:text-xl"
+                whileHover={{ rotate: 180 }}
+                transition={{ duration: 0.3 }}
+              >
+                ➕
+              </motion.span>
+            </motion.button>
+          </div>
         </div>
-      </div>
+      </motion.div>
 
       {showToppings && (
         <div onClick={(e) => e.stopPropagation()} className="debugging-wrapper">
@@ -122,32 +178,6 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
   );
 }
 
-// Componente ErrorBoundary para capturar errores en componentes hijos
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("Error en componente:", error, errorInfo);
-    if (this.props.onError) {
-      this.props.onError(error);
-    }
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return null; // No renderizar nada, el componente padre mostrará el error
-    }
-
-    return this.props.children;
-  }
-}
 
 export default ProductCard;
   

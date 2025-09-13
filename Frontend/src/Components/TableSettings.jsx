@@ -88,10 +88,21 @@ const TableSettings = () => {
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    // Si es el campo de número de mesa, solo permitir números
+    if (name === 'tableNumber') {
+      // Filtrar solo números
+      const numericValue = value.replace(/[^0-9]/g, '');
+      setFormData({
+        ...formData,
+        [name]: numericValue
+      });
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
   
   // Create new table
@@ -345,11 +356,15 @@ const TableSettings = () => {
                     Número de Mesa *
                   </label>
                   <input
-                    type="text"
+                    type="number"
                     name="tableNumber"
                     value={formData.tableNumber}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="1"
+                    max="999"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     required
                   />
                 </div>
@@ -416,11 +431,15 @@ const TableSettings = () => {
                     Número de Mesa *
                   </label>
                   <input
-                    type="text"
+                    type="number"
                     name="tableNumber"
                     value={formData.tableNumber}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="1"
+                    max="999"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     required
                   />
                 </div>

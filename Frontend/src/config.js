@@ -12,10 +12,20 @@
 // URL base de la API
 const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production';
 
-// Usar la URL de desarrollo o producción según corresponda
-export const API_URL = isProd 
-  ? 'https://sisrestaurantes.onrender.com/api'
-  : 'http://localhost:5000/api';
+// Función para obtener la URL de la API
+const getApiUrl = () => {
+  // Prioridad: Variable de entorno > Detección automática
+  if (import.meta.env.VITE_API_URL) {
+    return `${import.meta.env.VITE_API_URL}/api`;
+  }
+  
+  // Fallback a detección automática
+  return isProd 
+    ? 'http://157.245.125.216/api' // Digital Ocean backend
+    : 'http://localhost:5000/api';
+};
+
+export const API_URL = getApiUrl();
 
 // URLs específicas
 export const API_ENDPOINTS = {

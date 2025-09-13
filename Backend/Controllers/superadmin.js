@@ -2,18 +2,23 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const Admin = require('../Models/Admin');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
+const { DEFAULTS, ERROR_MESSAGES, HTTP_STATUS } = require('../utils/constants');
+const logger = require('../utils/logger');
 
 // Crear nuevo negocio y admin
 exports.crearNegocio = async (req, res) => {
   try {
     const { businessName, logo, whatsappNumber, adminUsername, slug } = req.body;
     if (!slug) {
-      return res.status(400).json({ message: 'El slug es requerido' });
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Slug is required' });
     }
+    
     // 1. Crear negocio
     const business = await BusinessConfig.create({ businessName, logo, whatsappNumber, slug });
+    logger.info(`Created new business: ${businessName} with slug: ${slug}`);
+    
     // 2. Crear admin con contraseña por defecto
-    const defaultPassword = 'admin123'; // Puedes cambiar esto
+    const defaultPassword = DEFAULTS.ADMIN_PASSWORD;
     const admin = new Admin({
       username: adminUsername,
       password: defaultPassword,
@@ -28,22 +33,31 @@ exports.crearNegocio = async (req, res) => {
       io.emit('businesses-updated');
     }
     
-    res.status(201).json({
+    res.status(HTTP_STATUS.CREATED).json({
       business,
       admin: { username: admin.username, password: defaultPassword }
     });
   } catch (error) {
-    console.error('Error al crear negocio:', error);
+    logger.error('Error creating business', error);
+    
     // Manejo de errores de duplicado
     if (error.code === 11000) {
       if (error.keyPattern && error.keyPattern.slug) {
-        return res.status(400).json({ message: 'El slug ya está en uso. Usa uno diferente.' });
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
+          message: 'Slug already in use. Please use a different one.' 
+        });
       }
       if (error.keyPattern && error.keyPattern.username) {
-        return res.status(400).json({ message: 'El usuario admin ya existe. Usa otro nombre de usuario.' });
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
+          message: 'Admin username already exists. Please use a different username.' 
+        });
       }
     }
-    res.status(500).json({ message: 'Error al crear negocio', error: error.message });
+    
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ 
+      message: 'Error creating business', 
+      error: error.message 
+    });
   }
 };
 

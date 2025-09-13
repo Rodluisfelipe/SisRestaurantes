@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
 import HeroSection from '../../Components/Landing/HeroSection';
+import TechStack from '../../Components/Landing/TechStack';
+import UseCases from '../../Components/Landing/UseCases';
 
 const Home = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -192,6 +194,9 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Tech Stack Section */}
+      <TechStack />
+
       {/* How It Works Section */}
       <section className="py-16 sm:py-20 bg-[#051C2C] relative overflow-hidden">
         <motion.div 
@@ -243,6 +248,9 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Use Cases and Testimonials */}
+      <UseCases />
+
       {/* CTA Section */}
       <section ref={ctaRef} className="py-16 sm:py-20 bg-[#051C2C] relative overflow-hidden">
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
@@ -282,10 +290,10 @@ const Home = () => {
                 whileTap={{ scale: 0.95 }}
               >
                 <Link
-                  to="/register"
+                  to="/contact"
                   className="bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 text-white py-3 sm:py-4 px-6 sm:px-10 rounded-lg font-bold inline-block transition-all duration-300 w-full sm:w-auto"
                 >
-                  Empezar ahora
+                  Solicitar información
                 </Link>
               </motion.div>
               <motion.div
@@ -293,10 +301,10 @@ const Home = () => {
                 whileTap={{ scale: 0.95 }}
               >
                 <Link
-                  to="/contact"
+                  to="/register"
                   className="bg-transparent border-2 border-[#A5B9FF]/30 hover:border-[#5FF9B4]/60 hover:text-[#5FF9B4] text-white py-3 sm:py-4 px-6 sm:px-10 rounded-lg font-bold inline-block transition-all duration-300 w-full sm:w-auto"
                 >
-                  Contactar ventas
+                  Ver demo
                 </Link>
               </motion.div>
             </motion.div>
