@@ -12,10 +12,10 @@
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http: https: ws: wss:; connect-src 'self' http://157.245.125.216 https://157.245.125.216 ws://157.245.125.216 wss://157.245.125.216"
-        }
+                 {
+                   "key": "Content-Security-Policy",
+                   "value": "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: http: https: ws: wss:; connect-src 'self' https://157-245-125-216.nip.io ws://157-245-125-216.nip.io wss://157-245-125-216.nip.io"
+                 }
       ]
     }
   ]
