@@ -29,8 +29,8 @@ export const API_URL = getApiUrl();
 
 // URLs específicas
 export const API_ENDPOINTS = {
-  BASE_URL: import.meta.env.VITE_API_URL || (isProd ? 'https://sisrestaurantes.onrender.com/api' : 'http://localhost:5000/api'),
-  EVENTS: import.meta.env.VITE_EVENTS_URL || (isProd ? 'https://sisrestaurantes.onrender.com/events' : 'http://localhost:5000/events'),
+  BASE_URL: API_URL,
+  EVENTS: import.meta.env.VITE_EVENTS_URL || (isProd ? `${import.meta.env.VITE_API_URL || 'https://157-245-125-216.nip.io'}/events` : 'http://localhost:5000/events'),
   PRODUCTS: `${API_URL}/products`,
   CATEGORIES: `${API_URL}/categories`,
   TOPPING_GROUPS: `${API_URL}/topping-groups`,
