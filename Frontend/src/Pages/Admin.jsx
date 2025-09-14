@@ -713,6 +713,27 @@ function Admin() {
     }
   };
 
+  // Función para editar producto
+  const editProduct = (product) => {
+    setEditingProduct(product);
+    setForm({
+      name: product.name,
+      description: product.description,
+      price: product.price.toString(),
+      category: product.category,
+      image: product.image,
+      toppingGroups: product.toppingGroups || []
+    });
+  };
+
+  // Función para eliminar producto (alias de handleDelete)
+  const deleteProduct = (productId) => {
+    const product = products.find(p => p._id === productId);
+    if (product) {
+      handleDelete(product);
+    }
+  };
+
   const cancelEdit = () => {
     setForm({
       name: '',
@@ -1104,80 +1125,83 @@ function Admin() {
                         </form>
               </motion.div>
               
-                    {/* Modern Products Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    {/* Modern Products Grid - Responsive Optimized */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6 lg:gap-8">
                       {products.map((product, index) => (
-              <motion.div 
+                        <motion.div 
                           key={product._id} 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.1 }}
                           whileHover={{ y: -8, transition: { duration: 0.2 } }}
-                          className="group bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl border border-slate-200/50 overflow-hidden hover:shadow-2xl transition-all duration-300"
+                          className="group bg-gradient-to-br from-white to-slate-50 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-200/50 overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col h-full"
                         >
                           {/* Product Image */}
-                          <div className="relative overflow-hidden">
+                          <div className="relative overflow-hidden flex-shrink-0">
                             <img 
                               src={product.image || 'https://placehold.co/400x300?text=🍔'} 
-                            alt={product.name}
-                              className="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-110"
+                              alt={product.name}
+                              className="w-full h-40 sm:h-48 lg:h-56 object-cover transition-transform duration-500 group-hover:scale-110"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                             
                             {/* Price Badge */}
-                            <div className="absolute top-4 left-4">
-                              <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2 rounded-full font-bold shadow-lg">
-                                <span className="text-lg">${product.price}</span>
-                          </div>
-                        </div>
+                            <div className="absolute top-2 sm:top-4 left-2 sm:left-4">
+                              <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-full font-bold shadow-lg">
+                                <span className="text-sm sm:text-base lg:text-lg">${product.price}</span>
+                              </div>
+                            </div>
 
                             {/* Category Badge */}
                             {product.category && (
-                              <div className="absolute top-4 right-4">
-                                <span className="bg-white/90 backdrop-blur-sm text-slate-700 px-3 py-1 rounded-full text-xs font-semibold shadow-lg">
-                                  📂 {categories.find(c => c._id === product.category)?.name || 'Sin categoría'}
+                              <div className="absolute top-2 sm:top-4 right-2 sm:right-4">
+                                <span className="bg-white/90 backdrop-blur-sm text-slate-700 px-2 sm:px-3 py-1 rounded-full text-xs font-semibold shadow-lg max-w-[120px] truncate">
+                                  📂 <span className="hidden sm:inline">{categories.find(c => c._id === product.category)?.name || 'Sin categoría'}</span>
+                                  <span className="sm:hidden">{(categories.find(c => c._id === product.category)?.name || 'Sin categoría').substring(0, 8)}</span>
                                 </span>
                               </div>
-                                  )}
-                      </div>
+                            )}
+                          </div>
 
                           {/* Product Info */}
-                          <div className="p-6">
-                            <div className="mb-4">
-                              <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-orange-600 transition-colors">
+                          <div className="p-3 sm:p-4 lg:p-6 flex-grow flex flex-col">
+                            <div className="mb-3 sm:mb-4 flex-grow">
+                              <h3 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 mb-1 sm:mb-2 group-hover:text-orange-600 transition-colors line-clamp-2">
                                 {product.name}
                               </h3>
-                              <p className="text-sm text-slate-600 line-clamp-3 leading-relaxed">
+                              <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 sm:line-clamp-3 leading-relaxed">
                                 {product.description}
                               </p>
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex space-x-3">
+                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-auto">
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => editProduct(product)}
-                                className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-3 rounded-2xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
+                                className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl font-semibold hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg flex items-center justify-center space-x-1 sm:space-x-2 text-sm sm:text-base"
                               >
                                 <span>✏️</span>
-                                <span>Editar</span>
+                                <span className="hidden sm:inline">Editar</span>
+                                <span className="sm:hidden">Edit</span>
                               </motion.button>
                               <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => deleteProduct(product._id)}
-                                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3 rounded-2xl font-semibold hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg flex items-center justify-center space-x-2"
+                                className="flex-1 bg-gradient-to-r from-red-500 to-red-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-xl sm:rounded-2xl font-semibold hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-lg flex items-center justify-center space-x-1 sm:space-x-2 text-sm sm:text-base"
                               >
                                 <span>🗑️</span>
-                                <span>Eliminar</span>
+                                <span className="hidden sm:inline">Eliminar</span>
+                                <span className="sm:hidden">Del</span>
                               </motion.button>
+                            </div>
                           </div>
-                        </div>
 
                           {/* Hover Effect Overlay */}
                           <div className="absolute inset-0 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-              </motion.div>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
