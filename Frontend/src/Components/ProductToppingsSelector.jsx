@@ -443,7 +443,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                       <div className="flex-1">
                         <div className="flex justify-between">
                           <div>
-                            <h4 className="font-medium">{group.name}</h4>
+                            <h4 className="font-medium text-gray-800">{group.name}</h4>
                             {group.description && (
                               <p className="text-sm text-gray-600">{group.description}</p>
                             )}
@@ -542,7 +542,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                         className="mr-2 h-4 w-4 text-blue-600"
                                       />
                                     )}
-                                    <span>{option.name || 'Opción'}</span>
+                                    <span className="text-gray-800">{option.name || 'Opción'}</span>
                                   </div>
                                   
                                   {Number(option.price) > 0 && (
@@ -560,7 +560,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                             {group.subGroups.map(subGroup => (
                               subGroup && subGroup._id ? (
                                 <div key={subGroup._id} className="pl-3 border-l-2 border-gray-200">
-                                  <h5 className="font-medium mb-2">{subGroup.title}</h5>
+                                  <h5 className="font-medium mb-2 text-gray-800">{subGroup.title}</h5>
                                   
                                   {/* Opciones del subgrupo */}
                                   <div className="space-y-2">
@@ -597,7 +597,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                                 className="mr-2 h-4 w-4 text-blue-600"
                                               />
                                             )}
-                                            <span>{option.name || 'Opción'}</span>
+                                            <span className="text-gray-800">{option.name || 'Opción'}</span>
                                           </div>
                                           
                                           {Number(option.price) > 0 && (

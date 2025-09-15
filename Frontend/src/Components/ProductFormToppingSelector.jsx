@@ -51,7 +51,7 @@ function ProductFormToppingSelector({ toppingGroups, selectedToppings = [], onCh
                 className="mt-1 mr-2"
               />
               <label htmlFor={`topping-${group._id}`} className="cursor-pointer flex-1">
-                <div className="font-medium">{group.name}</div>
+                <div className="font-medium text-gray-800">{group.name}</div>
                 {group.description && (
                   <div className="text-sm text-gray-600">{group.description}</div>
                 )}
