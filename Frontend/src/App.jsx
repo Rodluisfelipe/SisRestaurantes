@@ -20,8 +20,11 @@ import LandingFeatures from "./Pages/Landing/Features";
 import LandingContact from "./Pages/Landing/Contact";
 import LandingPricing from "./Pages/Landing/Pricing";
 import LandingLayout from "./Layouts/LandingLayout";
+import CatalogLayout from "./Layouts/CatalogLayout";
 import NotFound from "./Pages/NotFound";
 import TableValidator from "./Components/TableValidator";
+import MenuByCatalog from "./Pages/Catalog/MenuByCatalog";
+import RestaurantDetail from "./Pages/Catalog/RestaurantDetail";
 
 // Componente protegido para rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
@@ -104,6 +107,12 @@ function App() {
         <Route path="/superadmin/*" element={<SuperAdminDashboard />} />
         <Route path="/reset-password/:token" element={<SuperAdminDashboard />} />
         
+        {/* Rutas del Catálogo MenuBy */}
+        <Route element={<CatalogLayout />}>
+          <Route path="/catalog" element={<MenuByCatalog />} />
+          <Route path="/catalog/restaurant/:restaurantId" element={<RestaurantDetail />} />
+        </Route>
+
         {/* Rutas de la Landing Page con layout compartido - IMPORTANTE: Deben ir ANTES de las rutas de negocio */}
         <Route element={<LandingLayout />}>
           <Route path="/" element={<LandingHome />} />

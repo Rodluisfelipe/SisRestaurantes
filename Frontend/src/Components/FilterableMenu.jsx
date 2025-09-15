@@ -70,21 +70,10 @@ const FilterableMenu = ({
     });
   };
 
-  // Get emoji for category based on name
-  const getCategoryEmoji = (categoryName) => {
-    const name = categoryName.toLowerCase();
-    if (name.includes('hamburguesa') || name.includes('burger')) return '🍔';
-    if (name.includes('pizza')) return '🍕';
-    if (name.includes('bebida') || name.includes('drink')) return '🥤';
-    if (name.includes('postre') || name.includes('dessert')) return '🍰';
-    if (name.includes('ensalada') || name.includes('salad')) return '🥗';
-    if (name.includes('combo') || name.includes('meal')) return '🍽️';
-    if (name.includes('pollo') || name.includes('chicken')) return '🍗';
-    if (name.includes('papas') || name.includes('fries')) return '🍟';
-    if (name.includes('sandwich')) return '🥪';
-    if (name.includes('taco')) return '🌮';
-    if (name.includes('hot dog')) return '🌭';
-    return '🍽️'; // Default food emoji
+  // Get icon for category based on name (professional style without emojis)
+  const getCategoryIcon = (categoryName) => {
+    // Return empty string to remove all emojis for professional look
+    return '';
   };
 
   // Filter products based on search and category
@@ -173,7 +162,7 @@ const FilterableMenu = ({
           >
           <input
             type="text"
-              placeholder="🔍 Buscar productos..."
+              placeholder="Buscar productos..."
             value={searchTerm}
             onChange={handleSearchChange}
               className="w-full px-3 sm:px-6 py-3 sm:py-4 pl-10 sm:pl-14 pr-20 sm:pr-32 bg-white border-2 border-slate-200 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-4 transition-all duration-300 text-sm sm:text-base text-slate-700 placeholder-slate-400 shadow-lg backdrop-blur-sm"
@@ -188,7 +177,15 @@ const FilterableMenu = ({
                 animate={{ rotate: searchTerm ? 360 : 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <span className="text-lg sm:text-2xl">🔍</span>
+                <svg 
+                  className="w-5 h-5 sm:w-6 sm:h-6" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                  style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </motion.div>
           </div>
           
@@ -215,7 +212,9 @@ const FilterableMenu = ({
                   }}
                   aria-label="Limpiar búsqueda"
                 >
-                  <span className="text-sm sm:text-lg">✖️</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </motion.button>
               )}
             </AnimatePresence>
@@ -275,7 +274,7 @@ const FilterableMenu = ({
                   }}
                   aria-label="Vista en lista"
                 >
-                  <span className="text-sm sm:text-lg">☰</span>
+                  <span className="text-sm sm:text-lg">⚏</span>
                 </motion.button>
               </div>
           </div>
@@ -317,7 +316,6 @@ const FilterableMenu = ({
               }
             }}
           >
-            <span className="mr-1 sm:mr-2 text-sm sm:text-base">🍽️</span>
             Todos ({totalProductCount})
           </motion.button>
 
@@ -352,7 +350,6 @@ const FilterableMenu = ({
                 }
               }}
             >
-              <span className="mr-1 sm:mr-2 text-sm sm:text-base">{getCategoryEmoji(category.name)}</span>
               {category.name} ({category.count})
             </motion.button>
           ))}
@@ -390,12 +387,11 @@ const FilterableMenu = ({
                       whileHover={{ x: 10 }}
                     >
                       <div 
-                        className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mr-3 sm:mr-4 shadow-lg"
+                        className="w-2 h-8 sm:h-12 rounded-lg mr-3 sm:mr-4 shadow-lg"
                         style={{
                           backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
                         }}
                       >
-                        <span className="text-sm sm:text-xl">{getCategoryEmoji(category.name)}</span>
                       </div>
                       <h2 className="text-lg sm:text-2xl font-bold text-slate-800">{category.name}</h2>
                       <div 
@@ -406,7 +402,7 @@ const FilterableMenu = ({
                       ></div>
                     </motion.div>
                     <motion.div 
-                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6"
+                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-8"
                       variants={containerVariants}
                       initial="hidden"
                       animate="visible"
@@ -456,7 +452,7 @@ const FilterableMenu = ({
                 ))}
                 
                 <motion.div 
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6"
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-8"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"

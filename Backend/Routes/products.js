@@ -136,13 +136,12 @@ router.put("/:id", async (req, res) => {
     console.log('Datos recibidos:', req.body);
     console.log('ToppingGroups recibidos:', toppingGroups);
     
-    // Manejar businessId si viene como slug
+    // Manejar businessId si viene como slug usando la utilidad centralizada
     let finalBusinessId = businessId;
-    if (businessId && typeof businessId === 'string' && !mongoose.Types.ObjectId.isValid(businessId)) {
-      // Buscar el businessId real
-      const business = await findBusinessByIdentifier(businessId);
-      if (business) {
-        finalBusinessId = business._id;
+    if (businessId && typeof businessId === 'string') {
+      const businessResult = await validateAndResolveBusinessId(businessId);
+      if (businessResult.success) {
+        finalBusinessId = businessResult.businessId;
       }
     }
     

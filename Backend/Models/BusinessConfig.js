@@ -64,6 +64,15 @@ const businessConfigSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  // Campos para el catálogo por ubicación
+  department: {
+    type: String,
+    default: ""
+  },
+  city: {
+    type: String,
+    default: ""
   }
 }, { timestamps: true }); // Agregar timestamps para debugging
 

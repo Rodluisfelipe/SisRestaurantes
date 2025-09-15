@@ -436,7 +436,6 @@ function ToppingGroupsManager() {
               <div className="space-y-6">
                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-purple-200">
                   <h4 className="flex items-center text-lg font-bold text-slate-900 mb-4">
-                    <span className="mr-2">🎯</span>
                     Subgrupos
                   </h4>
                   
@@ -659,7 +658,7 @@ function ToppingGroupsManager() {
                             ? 'bg-blue-100 text-blue-800' 
                             : 'bg-slate-100 text-slate-800'
                         }`}>
-                          {group.isMultipleChoice ? '📋 Selección múltiple' : '🎯 Selección única'}
+                          {group.isMultipleChoice ? 'Selección múltiple' : 'Selección única'}
                         </span>
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                           group.isRequired 
@@ -692,7 +691,6 @@ function ToppingGroupsManager() {
                       {group.subGroups && group.subGroups.length > 0 && (
                         <div>
                           <h5 className="text-sm font-semibold text-slate-700 mb-2 flex items-center">
-                            <span className="mr-1">🎯</span>
                             Subgrupos:
                           </h5>
                           <div className="space-y-3">

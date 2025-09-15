@@ -88,6 +88,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     // Registrar cuando el componente se desmonta
     return () => {
       console.log('ProductToppingsSelector desmontado');
+      // Asegurar que el scroll se restaure si el componente se desmonta
+      document.body.classList.remove('modal-open');
     };
   }, []);
 
@@ -281,7 +283,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                 const option = subGroup.options?.find(o => o._id === optionId);
                 subGroupSelections.push({
                   subGroupId: subGroup._id,
-                  subGroupName: subGroup.name || 'Desconocido',
+                  subGroupName: subGroup.title || 'Desconocido',
                   optionId,
                   optionName: option?.name || 'Desconocida',
                   price: option?.price || 0
@@ -384,11 +386,11 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
         <div className="overflow-y-auto flex-1 p-4">
           {/* Imagen del producto */}
           {product.image && (
-            <div className="relative w-full h-40 mb-4 rounded-lg overflow-hidden">
+            <div className="relative w-full h-40 mb-4 rounded-lg overflow-hidden bg-white">
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
             </div>
           )}
@@ -558,7 +560,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                             {group.subGroups.map(subGroup => (
                               subGroup && subGroup._id ? (
                                 <div key={subGroup._id} className="pl-3 border-l-2 border-gray-200">
-                                  <h5 className="font-medium mb-2">{subGroup.name}</h5>
+                                  <h5 className="font-medium mb-2">{subGroup.title}</h5>
                                   
                                   {/* Opciones del subgrupo */}
                                   <div className="space-y-2">

@@ -75,7 +75,7 @@ router.post('/register', async (req, res) => {
     await admin.save();
 
     // Generar tokens para el inicio de sesión automático
-    const token = generateToken(admin._id);
+    const token = generateToken(admin._id, businessConfig._id);
     const refreshToken = generateRefreshToken(admin._id);
     admin.refreshToken = refreshToken;
     await admin.save();
@@ -143,7 +143,7 @@ router.post('/login', async (req, res) => {
     admin.lastLogin = new Date();
 
     // Generar tokens
-    const token = generateToken(admin._id);
+    const token = generateToken(admin._id, admin.businessId);
     const refreshToken = generateRefreshToken(admin._id);
     admin.refreshToken = refreshToken;
     await admin.save();
@@ -207,7 +207,7 @@ router.post('/refresh', async (req, res) => {
       return res.status(401).json({ message: 'Refresh token inválido' });
     }
     // Generar nuevo access token
-    const token = generateToken(admin._id);
+    const token = generateToken(admin._id, admin.businessId);
     res.json({ token });
   } catch (error) {
     res.status(500).json({ message: 'Error al refrescar el token' });

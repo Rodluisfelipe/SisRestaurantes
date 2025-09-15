@@ -5,6 +5,7 @@ import CreateBusinessModal from "./CreateBusinessModal";
 import ForgotPasswordSuperAdmin from "./ForgotPasswordSuperAdmin";
 import ResetPasswordSuperAdmin from "./ResetPasswordSuperAdmin";
 import ChangePasswordSuperAdmin from "./ChangePasswordSuperAdmin";
+import SuperAdminBannerManagement from "../../Components/Catalog/SuperAdminBannerManagement";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -13,6 +14,7 @@ function SuperAdminDashboard() {
   const [showCreate, setShowCreate] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [authView, setAuthView] = useState('login'); // 'login' | 'forgot' | 'change'
+  const [currentView, setCurrentView] = useState('businesses'); // 'businesses' | 'banners'
   const params = useParams();
   // Extraer token de parámetros y búsqueda de URL de forma segura
   const location = useLocation();
@@ -92,10 +94,40 @@ function SuperAdminDashboard() {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="flex items-center space-x-3"
+          className="flex items-center space-x-6"
         >
-          <img src="/logo.png" alt="Menuby" className="h-10 w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
-          <span className="text-lg font-bold text-white tracking-wide">Panel SuperAdmin</span>
+          <div className="flex items-center space-x-3">
+            <img src="/logo.png" alt="Menuby" className="h-10 w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
+            <span className="text-lg font-bold text-white tracking-wide">Panel SuperAdmin</span>
+          </div>
+          
+          {/* Navigation Tabs */}
+          <div className="flex space-x-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setCurrentView('businesses')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                currentView === 'businesses'
+                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+              }`}
+            >
+              🏢 Negocios
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setCurrentView('banners')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                currentView === 'banners'
+                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+              }`}
+            >
+              📢 Banners
+            </motion.button>
+          </div>
         </motion.div>
         <div className="flex items-center gap-3">
           <motion.button
@@ -132,38 +164,71 @@ function SuperAdminDashboard() {
           transition={{ duration: 0.6 }}
           className="w-full max-w-6xl"
         >
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-            <motion.h1 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-2xl font-bold text-white drop-shadow"
-            >
-              Negocios registrados
-            </motion.h1>
-            <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="px-4 py-2.5 bg-[#3A7AFF] text-white rounded-lg shadow-lg hover:bg-[#3A7AFF]/90 transition-colors font-semibold flex items-center gap-2 hover:shadow-[#3A7AFF]/20"
-              onClick={() => setShowCreate(true)}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              Crear nuevo negocio
-            </motion.button>
-          </div>
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
-          >
-            <BusinessTable
-              refreshTrigger={refresh}
-            />
-          </motion.div>
+          {currentView === 'businesses' ? (
+            <>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                <motion.h1 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-2xl font-bold text-white drop-shadow"
+                >
+                  Negocios registrados
+                </motion.h1>
+                <motion.button
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="px-4 py-2.5 bg-[#3A7AFF] text-white rounded-lg shadow-lg hover:bg-[#3A7AFF]/90 transition-colors font-semibold flex items-center gap-2 hover:shadow-[#3A7AFF]/20"
+                  onClick={() => setShowCreate(true)}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  Crear nuevo negocio
+                </motion.button>
+              </div>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
+              >
+                <BusinessTable
+                  refreshTrigger={refresh}
+                />
+              </motion.div>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                <motion.h1 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-2xl font-bold text-white drop-shadow"
+                >
+                  Gestión de Banners
+                </motion.h1>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="text-white/80 text-sm"
+                >
+                  Aprueba o rechaza banners promocionales
+                </motion.div>
+              </div>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
+              >
+                <SuperAdminBannerManagement />
+              </motion.div>
+            </>
+          )}
         </motion.div>
         <CreateBusinessModal
           isOpen={showCreate}

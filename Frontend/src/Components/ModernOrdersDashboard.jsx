@@ -456,9 +456,12 @@ function ModernOrdersDashboard() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={goToKitchenScreen}
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-3 lg:px-4 py-2 rounded-lg font-medium flex items-center space-x-1 lg:space-x-2 shadow-lg"
+                className="text-white px-3 lg:px-4 py-2 rounded-lg font-medium flex items-center space-x-1 lg:space-x-2 shadow-lg"
+                style={{
+                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                  color: businessConfig?.theme?.buttonTextColor || '#ffffff'
+                }}
               >
-                <span className="text-base">👨‍🍳</span>
                 <span className="hidden sm:inline">Cocina</span>
               </motion.button>
 
@@ -472,7 +475,11 @@ function ModernOrdersDashboard() {
                   const businessSlug = match ? match[1] : '';
                   window.open(`/${businessSlug}/orders`, '_blank');
                 }}
-                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-3 lg:px-4 py-2 rounded-lg font-medium flex items-center space-x-1 lg:space-x-2 shadow-lg"
+                className="text-white px-3 lg:px-4 py-2 rounded-lg font-medium flex items-center space-x-1 lg:space-x-2 shadow-lg"
+                style={{
+                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                  color: businessConfig?.theme?.buttonTextColor || '#ffffff'
+                }}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />

@@ -9,8 +9,10 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     { id: 'toppings', label: 'Extras', icon: '🧀' },
     { id: 'tables', label: 'Mesas', icon: '🪑' },
     { id: 'completed_orders', label: 'Pedidos Completados', icon: '✅' },
+    { id: 'catalog', label: 'Catálogo', icon: '📢' },
     { id: 'business', label: 'Configuración', icon: '⚙️' },
     { id: 'theme', label: 'Tema', icon: '🎨' },
+    { id: 'location', label: 'Ubicación', icon: '📍' },
     { id: 'change-password', label: 'Cambiar Contraseña', icon: '🔒' },
   ];
 

@@ -13,6 +13,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
     addToCart(productWithToppings);
     setShowToppings(false);
     onToppingsClose();
+    document.body.classList.remove('modal-open'); // ✅ Restaurar scroll
   };
 
   const handleShowToppings = () => {
@@ -42,13 +43,17 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
         className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/50 overflow-hidden backdrop-blur-sm"
       >
         {/* Premium Product Image */}
-        <div className="relative w-full h-40 overflow-hidden">
+        <div className="relative w-full h-44 overflow-hidden bg-white">
           {product.image ? (
             <motion.img 
               src={product.image} 
               alt={product.name}
               className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
               whileHover={{ scale: 1.1 }}
+              onError={(e) => {
+                // Si la imagen falla al cargar, ocultar y mostrar fallback
+                e.target.style.display = 'none';
+              }}
             />
           ) : (
             <div 
@@ -128,11 +133,11 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
               aria-label="Agregar al carrito"
             >
               <motion.span 
-                className="text-lg sm:text-xl"
-                whileHover={{ rotate: 180 }}
+                className="text-lg sm:text-xl font-bold"
+                whileHover={{ scale: 1.2 }}
                 transition={{ duration: 0.3 }}
               >
-                ➕
+                +
               </motion.span>
             </motion.button>
           </div>

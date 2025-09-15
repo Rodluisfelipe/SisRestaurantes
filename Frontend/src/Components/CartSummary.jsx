@@ -737,34 +737,69 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-40">
-      <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100 shadow-xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-40">
+      <div className="bg-white rounded-2xl max-w-lg w-full h-[85vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center z-10">
+        <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-6 flex justify-between items-center z-10 backdrop-blur-lg">
+          <div className="flex items-center space-x-3">
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+              style={{
+                backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
+              }}
+            >
+              <span className="text-white text-lg font-bold">🛒</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">Resumen del Pedido</h2>
+              <p className="text-sm text-slate-500">{totalItems} {totalItems === 1 ? 'producto' : 'productos'}</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-600 hover:text-gray-800 transition-colors p-1 rounded-full hover:bg-gray-100"
+            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <h2 className="text-xl font-bold text-gray-800">Resumen del Pedido</h2>
-          <div className="w-6"></div>
         </div>
 
-        {/* Cart Items */}
-        <div className="p-4">
+        {/* Cart Items - Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 pt-2 pb-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
           {cart.map((item) => (
-            <div key={item.uniqueId || item._id} className="flex flex-col py-4 border-b last:border-b-0">
+            <div key={item.uniqueId || item._id} className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 mb-4 last:mb-0 shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-200">
               <div className="flex justify-between items-start">
+                {/* Product image */}
+                <div className="w-16 h-16 mr-3 flex-shrink-0">
+                  <div className="relative w-full h-full rounded-lg overflow-hidden bg-white border border-slate-200">
+                    {item.image ? (
+                      <img 
+                        src={item.image} 
+                        alt={item.name}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                    ) : null}
+                    {/* Fallback cuando no hay imagen o falla la carga */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400 text-xs font-medium" style={{display: item.image ? 'none' : 'flex'}}>
+                      Sin imagen
+                    </div>
+                  </div>
+                </div>
+                
                 {/* Item details */}
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-800 text-base">{item.name}</h3>
                   
                   {/* Toppings */}
                   {item.selectedToppings && item.selectedToppings.length > 0 && (
-                    <div className="pl-4 text-xs text-gray-600 mt-1 space-y-1 border-l-2 border-gray-200">
+                    <div className="mt-3 p-3 bg-white rounded-lg border border-slate-200/50 shadow-sm">
+                      <p className="text-xs font-medium text-slate-600 mb-2">Personalizaciones:</p>
+                      <div className="space-y-1 text-xs text-slate-600">
                       {item.selectedToppings.map((topping, idx) => {
                         // Asegurar que basePrice sea un número o 0 - Movido fuera del JSX
                         const basePrice = Number(topping.basePrice || 0);
@@ -805,14 +840,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                           </div>
                         );
                       })}
+                      </div>
                     </div>
                   )}
                   
                   {/* Price information */}
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-black px-2 py-0.5 bg-gray-100 rounded-full">
-                      {(item.finalPrice || item.price || 0).toLocaleString('es-CO')} c/u
-                    </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span 
+                      className="text-sm font-semibold px-3 py-1 rounded-full shadow-sm"
+                      style={{
+                        backgroundColor: `${businessConfig?.theme?.buttonColor || '#f97316'}20`,
+                        color: businessConfig?.theme?.buttonColor || '#f97316'
+                      }}
+                    >
+                      ${(item.finalPrice || item.price || 0).toLocaleString('es-CO')} c/u
+                    </span>
                     <p className="text-sm font-medium" style={{ color: businessConfig.theme.buttonColor }}>
                       Subtotal: {calculateItemTotal(item).toLocaleString('es-CO')}
                     </p>
@@ -820,31 +862,39 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 </div>
 
                 {/* Quantity controls */}
-                <div className="flex items-center gap-1 ml-2">
-                  <button
-                    onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) - 1)}
-                    className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
-                    style={{ color: businessConfig.theme.buttonColor }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
-                    </svg>
-                  </button>
-                  <span className="w-8 text-center font-medium">{item.quantity || 0}</span>
-                  <button
-                    onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) + 1)}
-                    className="w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
-                    style={{ color: businessConfig.theme.buttonColor }}
+                <div className="flex flex-col items-end gap-2 ml-4">
+                  <div className="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm border border-slate-200">
+                    <button
+                      onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) - 1)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:shadow-sm"
+                      style={{
+                        backgroundColor: `${businessConfig?.theme?.buttonColor || '#f97316'}15`,
+                        color: businessConfig?.theme?.buttonColor || '#f97316'
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
+                      </svg>
+                    </button>
+                    <span className="w-8 text-center font-semibold text-slate-700">{item.quantity || 0}</span>
+                    <button
+                      onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) + 1)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:shadow-sm"
+                      style={{
+                        backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                        color: businessConfig?.theme?.buttonTextColor || '#ffffff'
+                      }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                     </svg>
                   </button>
+                  </div>
                   <button
                     onClick={() => removeFromCart(item.uniqueId || item._id)}
-                    className="ml-1 text-red-500 hover:text-red-600 transition-colors p-2"
+                    className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
@@ -855,38 +905,61 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
           {/* Empty cart state */}
           {cart.length === 0 && (
-            <div className="py-8 text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <p className="text-gray-500 mb-2">Tu carrito está vacío</p>
-              <button
-                onClick={onClose}
-                className="text-sm px-4 py-2 rounded-lg transition-colors duration-300"
-                style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-              >
-                Continuar comprando
-              </button>
+            <div className="flex-1 flex items-center justify-center py-8">
+              <div className="text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <p className="text-gray-500 mb-4">Tu carrito está vacío</p>
+                <button
+                  onClick={onClose}
+                  className="text-sm px-6 py-3 rounded-xl transition-colors duration-300 shadow-sm hover:shadow-md"
+                  style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+                >
+                  Continuar comprando
+                </button>
+              </div>
             </div>
           )}
 
-          {/* Total and action buttons */}
-          {cart.length > 0 && (
-            <div className="mt-6 space-y-6">
-              {/* Total amount */}
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                <span className="font-medium text-gray-800">Total ({totalItems} productos):</span>
-                <span className="font-bold text-xl" style={{ color: businessConfig.theme.buttonColor }}>
-                  {totalAmount.toLocaleString('es-CO')}
-                </span>
-              </div>
+        </div>
 
-              {/* Mostrar información de la mesa si hay tableNumber */}
-              {isFromTableQR && (
-                <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg">
-                  <p className="text-blue-700 font-medium">Mesa: {tableNumber}</p>
+        {/* Footer con total y botones - SIEMPRE VISIBLE */}
+        {cart.length > 0 && (
+          <div className="border-t border-slate-200/80 bg-white p-6 space-y-4 shadow-xl rounded-b-2xl flex-shrink-0">
+            {/* Total amount */}
+            <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border border-slate-200/50"
+                 style={{
+                   background: `linear-gradient(135deg, ${businessConfig?.theme?.buttonColor || '#f97316'}10, ${businessConfig?.theme?.buttonColor || '#f97316'}05)`
+                 }}>
+              <div>
+                <p className="text-sm text-slate-600">Total ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})</p>
+                <p className="text-2xl font-bold text-slate-800">${totalAmount.toLocaleString('es-CO')}</p>
+              </div>
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+                style={{
+                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
+                }}
+              >
+                <span className="text-white text-xl">💰</span>
+              </div>
+            </div>
+
+            {/* Mostrar información de la mesa si hay tableNumber */}
+            {isFromTableQR && (
+              <div className="flex items-center p-4 bg-blue-50 border border-blue-200 rounded-xl shadow-sm">
+                <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center mr-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
                 </div>
-              )}
+                <div>
+                  <p className="text-blue-800 font-semibold">Mesa {tableNumber}</p>
+                  <p className="text-blue-600 text-sm">Pedido en sitio</p>
+                </div>
+              </div>
+            )}
 
               {/* Order type buttons */}
               <div className={initialOrderTypeSelected ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-2 gap-4'}>
@@ -1004,8 +1077,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             </div>
           )}
         </div>
-      </div>
-      
+        
       {/* Order form modal - improve styling */}
       {showOrderModal && (
         <OrderFormModal />

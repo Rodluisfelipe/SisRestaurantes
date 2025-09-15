@@ -1,6 +1,6 @@
 const { verifyToken } = require('../config/jwt');
 
-const authMiddleware = async (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     
@@ -13,11 +13,27 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid token' });
     }
 
+    req.user = decoded;
     req.userId = decoded.id;
+    req.user.businessId = decoded.businessId;
     next();
   } catch (error) {
     res.status(401).json({ message: 'Authentication failed' });
   }
 };
 
-module.exports = authMiddleware; 
+const requireSuperAdmin = async (req, res, next) => {
+  try {
+    if (!req.user || req.user.role !== 'superadmin') {
+      return res.status(403).json({ message: 'SuperAdmin access required' });
+    }
+    next();
+  } catch (error) {
+    res.status(403).json({ message: 'Access denied' });
+  }
+};
+
+module.exports = {
+  authenticateToken,
+  requireSuperAdmin
+}; 

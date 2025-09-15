@@ -9,6 +9,10 @@ import api from "../services/api";
 import ProductToppingSelector from '../Components/ProductToppingSelector';
 import { useAuth } from "../Context/AuthContext";
 import ThemeSettings from '../Components/ThemeSettings';
+import LocationSettings from '../Components/LocationSettings';
+import BannerUpload from '../Components/Catalog/BannerUpload';
+import BannerApproval from '../Components/Catalog/BannerApproval';
+import RestaurantBannerView from '../Components/Catalog/RestaurantBannerView';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import ChangePassword from "../Components/ChangePassword";
 import { socket } from '../services/socket';
@@ -159,6 +163,7 @@ function Admin() {
   const location = useLocation();
   const { businessId } = useBusinessConfig();
   const [activeTab, setActiveTab] = useState('products');
+  const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [toppingGroups, setToppingGroups] = useState([]);
@@ -184,7 +189,7 @@ function Admin() {
   const initialRenderRef = useRef(true);
   
   // Check if user is a superadmin viewing in temporary mode
-  const isSuperAdminMode = user?.role === 'superadmin' || user?.username === 'superadmin_temp';
+  const isSuperAdminMode = user?.role === 'superadmin' || user?.username === 'superadmin_temp' || window.location.pathname.includes('/superadmin');
   
   // Handle SuperAdmin token from URL
   useEffect(() => {
@@ -715,6 +720,7 @@ function Admin() {
 
   // Función para editar producto
   const editProduct = (product) => {
+    setEditingId(product._id);  // ✅ Agregar esta línea que faltaba
     setEditingProduct(product);
     setForm({
       name: product.name,
@@ -862,6 +868,8 @@ function Admin() {
                     {activeTab === 'toppings' && 'Gestión de Extras'}
                     {activeTab === 'tables' && 'Configuración de Mesas'}
                     {activeTab === 'theme' && 'Personalización de Tema'}
+                    {activeTab === 'location' && 'Configuración de Ubicación'}
+                    {activeTab === 'catalog' && 'Gestión de Catálogo'}
                     {activeTab === 'business' && 'Configuración del Negocio'}
                     {activeTab === 'change-password' && 'Cambiar Contraseña'}
                     {activeTab === 'completed_orders' && 'Pedidos Completados'}
@@ -873,6 +881,8 @@ function Admin() {
                     {activeTab === 'toppings' && 'Configura extras y complementos'}
                     {activeTab === 'tables' && 'Administra mesas y códigos QR'}
                     {activeTab === 'theme' && 'Personaliza la apariencia de tu restaurante'}
+                    {activeTab === 'location' && 'Configura tu ubicación para el catálogo'}
+                    {activeTab === 'catalog' && 'Gestiona banners promocionales para el catálogo'}
                     {activeTab === 'business' && 'Información y configuración general'}
                     {activeTab === 'change-password' && 'Actualiza tu contraseña de acceso'}
                     {activeTab === 'completed_orders' && 'Historial y resumen de pedidos'}
@@ -915,6 +925,41 @@ function Admin() {
           {activeTab === 'toppings' && <ToppingGroupsManager />}
           {activeTab === 'tables' && <TableSettings />}
           {activeTab === 'theme' && <ThemeSettings />}
+          {activeTab === 'location' && <LocationSettings />}
+          {activeTab === 'catalog' && (
+            <div className="space-y-6">
+              {/* Tabs para alternar entre vistas */}
+              <div className="flex space-x-4 mb-6">
+                <button
+                  onClick={() => setActiveCatalogTab('upload')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    activeCatalogTab === 'upload' 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Subir Banners
+                </button>
+                <button
+                  onClick={() => setActiveCatalogTab('view')}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    activeCatalogTab === 'view' 
+                      ? 'bg-blue-500 text-white' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  Mis Banners
+                </button>
+              </div>
+              
+              {/* Contenido según la pestaña activa */}
+              {activeCatalogTab === 'upload' ? (
+                <BannerUpload />
+              ) : (
+                <RestaurantBannerView />
+              )}
+            </div>
+          )}
           {activeTab === 'change-password' && <ChangePassword />}
                 {activeTab === 'orders' && <ModernOrdersDashboard />}
           {activeTab === 'completed_orders' && <CompletedOrdersSummary />}

@@ -28,11 +28,14 @@ const CartBar = ({
             {/* Cart Info */}
             <div className="flex items-center space-x-4">
               <motion.div 
-                className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center shadow-lg"
+                className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg"
+                style={{
+                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
+                }}
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.5 }}
               >
-                <span className="text-xl text-white">🛍️</span>
+                <span className="text-xl text-white font-bold">🛒</span>
               </motion.div>
               
               <div>
@@ -44,7 +47,10 @@ const CartBar = ({
                   {totalItems} {totalItems === 1 ? 'producto' : 'productos'}
                 </motion.p>
                 <motion.p 
-                  className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent"
+                  className="text-2xl font-bold"
+                  style={{
+                    color: businessConfig?.theme?.buttonColor || '#f97316'
+                  }}
                   initial={{ x: -20 }}
                   animate={{ x: 0 }}
                   transition={{ delay: 0.1 }}
@@ -59,9 +65,12 @@ const CartBar = ({
               onClick={onShowCart}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center space-x-2"
+              className="px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center space-x-2"
+              style={{
+                backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                color: businessConfig?.theme?.buttonTextColor || '#ffffff'
+              }}
             >
-              <span className="text-lg">📋</span>
               <span>Ver Carrito</span>
               <motion.div
                 animate={{ x: [0, 5, 0] }}

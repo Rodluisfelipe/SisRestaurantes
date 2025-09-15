@@ -117,7 +117,6 @@ const ThemeSettings = () => {
             {/* Button Color */}
             <div className="space-y-4">
               <div className="flex items-center space-x-2 mb-3">
-                <span className="text-2xl">🎯</span>
                 <h4 className="text-lg font-semibold text-slate-900">Color de Botones</h4>
               </div>
               

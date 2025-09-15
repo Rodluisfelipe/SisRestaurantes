@@ -7,8 +7,12 @@ const JWT_EXPIRE = '24h';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_token_secreto_super_seguro';
 const JWT_REFRESH_EXPIRE = '7d';
 
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, JWT_SECRET, {
+const generateToken = (userId, businessId = null) => {
+  const payload = { id: userId };
+  if (businessId) {
+    payload.businessId = businessId;
+  }
+  return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRE
   });
 };

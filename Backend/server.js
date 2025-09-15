@@ -76,9 +76,38 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Servir archivos estáticos desde la carpeta uploads
+app.use('/uploads', express.static('uploads'));
+
+// Endpoint de prueba para verificar archivos
+app.get('/test-uploads', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  
+  try {
+    const uploadsDir = path.join(__dirname, 'uploads', 'banners');
+    const files = fs.readdirSync(uploadsDir);
+    
+    res.json({
+      success: true,
+      message: 'Archivos encontrados en uploads/banners',
+      files: files,
+      baseUrl: `${req.protocol}://${req.get('host')}/uploads/banners/`
+    });
+  } catch (error) {
+    res.json({
+      success: false,
+      message: 'Error al leer archivos',
+      error: error.message
+    });
+  }
+});
+
 // Rutas API original
 app.use("/api/products", require("./Routes/products"));
 app.use("/api/business-config", require("./Routes/businessConfig"));
+app.use("/api/businesses", require("./Routes/businesses")); // Catálogo de restaurantes
+app.use("/api/banners", require("./Routes/banners")); // Gestión de banners promocionales
 app.use("/api/categories", require("./Routes/categories"));
 app.use("/api/topping-groups", require("./Routes/toppingGroups"));
 app.use("/api/auth", require("./Routes/auth"));
