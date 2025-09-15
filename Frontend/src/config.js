@@ -21,7 +21,7 @@ const getApiUrl = () => {
   
   // Fallback a detección automática
   return isProd 
-    ? 'https://157-245-125-216.nip.io/api' // Digital Ocean backend con SSL
+    ? 'http://157.245.125.216/api' // Digital Ocean backend
     : 'http://localhost:5000/api';
 };
 
@@ -30,7 +30,7 @@ export const API_URL = getApiUrl();
 // URLs específicas
 export const API_ENDPOINTS = {
   BASE_URL: API_URL,
-  EVENTS: import.meta.env.VITE_EVENTS_URL || (isProd ? `${import.meta.env.VITE_API_URL || 'https://157-245-125-216.nip.io'}/events` : 'http://localhost:5000/events'),
+  EVENTS: import.meta.env.VITE_EVENTS_URL || (isProd ? `${import.meta.env.VITE_API_URL || 'http://157.245.125.216'}/events` : 'http://localhost:5000/events'),
   PRODUCTS: `${API_URL}/products`,
   CATEGORIES: `${API_URL}/categories`,
   TOPPING_GROUPS: `${API_URL}/topping-groups`,
