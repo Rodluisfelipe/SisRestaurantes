@@ -17,13 +17,8 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "@vite_api_url",
-    "VITE_APP_NAME": "@vite_app_name",
-    "VITE_APP_VERSION": "@vite_app_version"
-  },
-  "functions": {
-    "app/api/**/*.js": {
-      "runtime": "nodejs18.x"
-    }
+    "VITE_API_URL": "http://157.245.125.216",
+    "VITE_APP_NAME": "MenuBy",
+    "VITE_APP_VERSION": "1.0.0"
   }
 }
