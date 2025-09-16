@@ -10,9 +10,9 @@ const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'pro
 // Configurar Socket.io para conectarse al backend con la URL correcta
 // Usar variables de entorno para mayor flexibilidad
 const getSocketUrl = () => {
-  // Forzar siempre HTTP para evitar problemas de Mixed Content
+  // Usar HTTPS en producción para evitar Mixed Content
   if (isProd) {
-    return 'http://157.245.125.216'; // Digital Ocean backend - siempre HTTP
+    return 'https://157-245-125-216.nip.io'; // Digital Ocean backend - HTTPS
   }
   
   // Desarrollo local

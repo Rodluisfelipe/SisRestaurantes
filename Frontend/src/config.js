@@ -14,9 +14,9 @@ const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'pro
 
 // Función para obtener la URL de la API
 const getApiUrl = () => {
-  // Forzar siempre HTTP para evitar problemas de Mixed Content
+  // Usar HTTPS en producción para evitar Mixed Content
   if (isProd) {
-    return 'http://157.245.125.216/api'; // Digital Ocean backend - siempre HTTP
+    return 'https://157-245-125-216.nip.io/api'; // Digital Ocean backend - HTTPS
   }
   
   // Desarrollo local
@@ -28,7 +28,7 @@ export const API_URL = getApiUrl();
 // URLs específicas
 export const API_ENDPOINTS = {
   BASE_URL: API_URL,
-  EVENTS: isProd ? 'http://157.245.125.216/events' : 'http://localhost:5000/events',
+  EVENTS: isProd ? 'https://157-245-125-216.nip.io/events' : 'http://localhost:5000/events',
   PRODUCTS: `${API_URL}/products`,
   CATEGORIES: `${API_URL}/categories`,
   TOPPING_GROUPS: `${API_URL}/topping-groups`,
