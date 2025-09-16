@@ -16,7 +16,12 @@ const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'pro
 const getApiUrl = () => {
   // Prioridad: Variable de entorno > Detección automática
   if (import.meta.env.VITE_API_URL) {
-    return `${import.meta.env.VITE_API_URL}/api`;
+    let url = import.meta.env.VITE_API_URL;
+    // Forzar HTTP si Vercel convierte a HTTPS
+    if (url.startsWith('https://')) {
+      url = url.replace('https://', 'http://');
+    }
+    return `${url}/api`;
   }
   
   // Fallback a detección automática
@@ -30,7 +35,16 @@ export const API_URL = getApiUrl();
 // URLs específicas
 export const API_ENDPOINTS = {
   BASE_URL: API_URL,
-  EVENTS: import.meta.env.VITE_EVENTS_URL || (isProd ? `${import.meta.env.VITE_API_URL || 'http://157.245.125.216'}/events` : 'http://localhost:5000/events'),
+  EVENTS: (() => {
+    if (import.meta.env.VITE_EVENTS_URL) {
+      let url = import.meta.env.VITE_EVENTS_URL;
+      if (url.startsWith('https://')) {
+        url = url.replace('https://', 'http://');
+      }
+      return url;
+    }
+    return isProd ? `${import.meta.env.VITE_API_URL || 'http://157.245.125.216'}/events` : 'http://localhost:5000/events';
+  })(),
   PRODUCTS: `${API_URL}/products`,
   CATEGORIES: `${API_URL}/categories`,
   TOPPING_GROUPS: `${API_URL}/topping-groups`,

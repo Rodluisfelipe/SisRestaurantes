@@ -29,5 +29,10 @@
     "VITE_SOCKET_URL": "http://157.245.125.216",
     "VITE_APP_NAME": "MenuBy",
     "VITE_APP_VERSION": "1.0.0"
+  },
+  "functions": {
+    "app/api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
   }
 }

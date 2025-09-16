@@ -12,7 +12,12 @@ const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'pro
 const getSocketUrl = () => {
   // Prioridad: Variable de entorno > Detección automática
   if (import.meta.env.VITE_SOCKET_URL) {
-    return import.meta.env.VITE_SOCKET_URL;
+    let url = import.meta.env.VITE_SOCKET_URL;
+    // Forzar HTTP si Vercel convierte a HTTPS
+    if (url.startsWith('https://')) {
+      url = url.replace('https://', 'http://');
+    }
+    return url;
   }
   
   // Fallback a detección automática

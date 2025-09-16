@@ -4,6 +4,139 @@ import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
 
+// Función para obtener emoji basado en el nombre de la categoría
+const getCategoryEmoji = (categoryName) => {
+  if (!categoryName) return '🍽️';
+  
+  const name = categoryName.toLowerCase();
+  
+  // Mapeo de categorías comunes a emojis
+  const emojiMap = {
+    'bebidas': '🥤',
+    'bebida': '🥤',
+    'drinks': '🥤',
+    'bebidas frías': '🧊',
+    'bebidas calientes': '☕',
+    'café': '☕',
+    'coffee': '☕',
+    'postres': '🍰',
+    'postre': '🍰',
+    'dessert': '🍰',
+    'dulces': '🍭',
+    'entradas': '🥗',
+    'entrada': '🥗',
+    'appetizer': '🥗',
+    'ensaladas': '🥗',
+    'ensalada': '🥗',
+    'salad': '🥗',
+    'sopas': '🍲',
+    'sopa': '🍲',
+    'soup': '🍲',
+    'platos principales': '🍽️',
+    'plato principal': '🍽️',
+    'main course': '🍽️',
+    'carnes': '🥩',
+    'carne': '🥩',
+    'meat': '🥩',
+    'pescado': '🐟',
+    'pescados': '🐟',
+    'fish': '🐟',
+    'mariscos': '🦐',
+    'marisco': '🦐',
+    'seafood': '🦐',
+    'pollo': '🍗',
+    'pollo': '🍗',
+    'chicken': '🍗',
+    'pasta': '🍝',
+    'pastas': '🍝',
+    'pizza': '🍕',
+    'pizzas': '🍕',
+    'hamburguesas': '🍔',
+    'hamburguesa': '🍔',
+    'burger': '🍔',
+    'sandwiches': '🥪',
+    'sandwich': '🥪',
+    'tacos': '🌮',
+    'taco': '🌮',
+    'burritos': '🌯',
+    'burrito': '🌯',
+    'wraps': '🌯',
+    'wrap': '🌯',
+    'vegetariano': '🥬',
+    'vegetariana': '🥬',
+    'vegan': '🥬',
+    'vegano': '🥬',
+    'vegana': '🥬',
+    'desayunos': '🥞',
+    'desayuno': '🥞',
+    'breakfast': '🥞',
+    'almuerzos': '🍽️',
+    'almuerzo': '🍽️',
+    'lunch': '🍽️',
+    'cenas': '🌙',
+    'cena': '🌙',
+    'dinner': '🌙',
+    'especiales': '⭐',
+    'especial': '⭐',
+    'special': '⭐',
+    'promociones': '🎉',
+    'promoción': '🎉',
+    'promotion': '🎉',
+    'combo': '🍱',
+    'combos': '🍱',
+    'menú del día': '📅',
+    'menu del dia': '📅',
+    'daily menu': '📅',
+    'kids': '👶',
+    'niños': '👶',
+    'infantil': '👶',
+    'extras': '➕',
+    'adicionales': '➕',
+    'add-ons': '➕'
+  };
+  
+  // Buscar coincidencia exacta primero
+  if (emojiMap[name]) {
+    return emojiMap[name];
+  }
+  
+  // Buscar coincidencia parcial
+  for (const [key, emoji] of Object.entries(emojiMap)) {
+    if (name.includes(key) || key.includes(name)) {
+      return emoji;
+    }
+  }
+  
+  // Emoji por defecto basado en palabras clave
+  if (name.includes('bebida') || name.includes('drink')) return '🥤';
+  if (name.includes('postre') || name.includes('dessert')) return '🍰';
+  if (name.includes('entrada') || name.includes('appetizer')) return '🥗';
+  if (name.includes('sopa') || name.includes('soup')) return '🍲';
+  if (name.includes('carne') || name.includes('meat')) return '🥩';
+  if (name.includes('pescado') || name.includes('fish')) return '🐟';
+  if (name.includes('marisco') || name.includes('seafood')) return '🦐';
+  if (name.includes('pollo') || name.includes('chicken')) return '🍗';
+  if (name.includes('pasta')) return '🍝';
+  if (name.includes('pizza')) return '🍕';
+  if (name.includes('hamburguesa') || name.includes('burger')) return '🍔';
+  if (name.includes('sandwich')) return '🥪';
+  if (name.includes('taco')) return '🌮';
+  if (name.includes('burrito') || name.includes('wrap')) return '🌯';
+  if (name.includes('vegetar') || name.includes('vegan')) return '🥬';
+  if (name.includes('desayuno') || name.includes('breakfast')) return '🥞';
+  if (name.includes('almuerzo') || name.includes('lunch')) return '🍽️';
+  if (name.includes('cena') || name.includes('dinner')) return '🌙';
+  if (name.includes('especial') || name.includes('special')) return '⭐';
+  if (name.includes('promo') || name.includes('promotion')) return '🎉';
+  if (name.includes('combo')) return '🍱';
+  if (name.includes('menú') || name.includes('menu')) return '📅';
+  if (name.includes('niño') || name.includes('kids')) return '👶';
+  if (name.includes('extra') || name.includes('adicional')) return '➕';
+  
+  // Emoji por defecto
+  return '🍽️';
+};
+
 /**
  * FilterableMenu Component
  * 
@@ -61,6 +194,12 @@ const FilterableMenu = ({
 
   // Sort categories based on saved order
   const getSortedCategories = (categories) => {
+    // Validar que categories sea un array
+    if (!Array.isArray(categories)) {
+      console.warn('getSortedCategories: categories no es un array:', categories);
+      return [];
+    }
+    
     const orderMap = getCategoryOrder();
     
     return [...categories].sort((a, b) => {
@@ -139,11 +278,11 @@ const FilterableMenu = ({
   // Get categories with product counts
   const categoriesWithProducts = sortedCategories.map(category => ({
     ...category,
-    count: products.filter(product => product.category === category._id).length
+    count: Array.isArray(products) ? products.filter(product => product.category === category._id).length : 0
   })).filter(category => category.count > 0);
 
   // Total product count
-  const totalProductCount = products.length;
+  const totalProductCount = Array.isArray(products) ? products.length : 0;
   
   return (
     <div className="container mx-auto px-2 sm:px-4 lg:px-6 py-1">
