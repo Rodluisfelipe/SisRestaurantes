@@ -176,15 +176,15 @@ const TableSettings = () => {
     }
   };
   
-  // Generate QR code URL
-  const getQRCodeUrl = (table) => {
+  // Generate QR code URL for business menu
+  const getMenuQRCodeUrl = () => {
     const baseUrl = window.location.origin;
-    return `${baseUrl}/${businessId}/mesa/${table.tableNumber}`;
+    return `${baseUrl}/${businessId}`;
   };
   
-  // Show QR code modal
-  const handleShowQRCode = (table) => {
-    setShowQRCode(table);
+  // Show QR code modal for menu
+  const handleShowMenuQRCode = () => {
+    setShowQRCode({ tableNumber: 'MENU', tableName: 'Menú del Negocio' });
   };
   
   // Download QR code as PNG
@@ -216,7 +216,7 @@ const TableSettings = () => {
       // Download
       const downloadLink = document.createElement('a');
       downloadLink.href = pngUrl;
-      downloadLink.download = `mesa-${showQRCode.tableNumber}.png`;
+      downloadLink.download = `menu-qr-${businessId}.png`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
@@ -259,13 +259,24 @@ const TableSettings = () => {
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold text-gray-800">Administrar Mesas</h2>
-        <button
-          onClick={handleAddClick}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-        >
-          <FaPlus size={16} />
-          <span>Agregar Mesa</span>
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={handleShowMenuQRCode}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+            <span>QR del Menú</span>
+          </button>
+          <button
+            onClick={handleAddClick}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <FaPlus size={16} />
+            <span>Agregar Mesa</span>
+          </button>
+        </div>
       </div>
       
       {/* Table list */}
@@ -312,15 +323,6 @@ const TableSettings = () => {
                   </td>
                   <td className="py-4 px-4 whitespace-nowrap text-center text-sm font-medium">
                     <div className="flex justify-center space-x-2">
-                      <button
-                        onClick={() => handleShowQRCode(table)}
-                        className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 p-2 rounded-full"
-                        title="Ver código QR"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                        </svg>
-                      </button>
                       <button
                         onClick={() => handleEditClick(table)}
                         className="text-blue-600 hover:text-blue-900 bg-blue-50 p-2 rounded-full"
@@ -500,17 +502,17 @@ const TableSettings = () => {
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
             <div className="text-center">
               <h3 className="text-lg font-bold text-gray-800 mb-2">
-                QR para Mesa #{showQRCode.tableNumber}
+                QR del Menú del Negocio
               </h3>
               <p className="text-sm text-gray-600 mb-4">
-                {showQRCode.tableName || `Mesa ${showQRCode.tableNumber}`}
+                Los clientes pueden escanear este código para acceder al menú
               </p>
               
               <div className="flex justify-center mb-4">
                 <div className="p-3 bg-white border-2 border-gray-200 rounded-lg">
                   <QRCodeSVG
                     id="table-qr-code"
-                    value={getQRCodeUrl(showQRCode)}
+                    value={getMenuQRCodeUrl()}
                     size={200}
                     level="H"
                     includeMargin={true}
@@ -518,8 +520,8 @@ const TableSettings = () => {
                 </div>
               </div>
               
-              <p className="text-xs text-gray-500 mb-4">
-                URL: {getQRCodeUrl(showQRCode)}
+              <p className="text-xs text-gray-500 mb-4 break-all">
+                URL: {getMenuQRCodeUrl()}
               </p>
               
               <div className="flex justify-center space-x-3">
