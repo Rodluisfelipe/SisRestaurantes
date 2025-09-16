@@ -6,6 +6,7 @@ const CompletedOrder = require("../Models/CompletedOrder");
 const { ObjectId } = require("mongoose").Types;
 const socketService = require("../services/socketService");
 const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
+const { isValidObjectId } = require("../utils/validators");
 const logger = require("../utils/logger");
 
 // Helper function to get order number

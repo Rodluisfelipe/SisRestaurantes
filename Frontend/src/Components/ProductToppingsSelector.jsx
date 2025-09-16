@@ -282,9 +282,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
               selections.forEach(optionId => {
                 const option = subGroup.options?.find(o => o._id === optionId);
                 subGroupSelections.push({
-                  subGroupId: subGroup._id,
-                  subGroupName: subGroup.title || 'Desconocido',
-                  optionId,
+                  subGroupTitle: subGroup.title || 'Desconocido',
                   optionName: option?.name || 'Desconocida',
                   price: option?.price || 0
                 });
@@ -296,30 +294,28 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
       
       // Solo agregar el grupo si hay alguna selección
       if (hasMainSelections || hasSubGroupSelections) {
-        const groupData = {
-          groupId: group._id,
-          groupName: group.name || 'Desconocido',
-          basePrice: group.basePrice || 0
-        };
-        
-        // Agregar opciones principales seleccionadas
+        // Para cada opción principal seleccionada, crear un objeto de topping
         if (hasMainSelections) {
-          groupData.options = groupSelections.map(optionId => {
+          groupSelections.forEach(optionId => {
             const option = group.options?.find(o => o._id === optionId);
-            return {
-              optionId,
+            result.push({
+              groupName: group.name || 'Desconocido',
               optionName: option?.name || 'Desconocida',
-              price: option?.price || 0
-            };
+              price: option?.price || 0,
+              basePrice: group.basePrice || 0,
+              subGroups: hasSubGroupSelections ? subGroupSelections : []
+            });
+          });
+        } else if (hasSubGroupSelections) {
+          // Si solo hay subgrupos, crear un topping con el grupo base
+          result.push({
+            groupName: group.name || 'Desconocido',
+            optionName: '', // No hay opción principal
+            price: 0,
+            basePrice: group.basePrice || 0,
+            subGroups: subGroupSelections
           });
         }
-        
-        // Agregar subgrupos si hay selecciones
-        if (hasSubGroupSelections) {
-          groupData.subGroups = subGroupSelections;
-        }
-        
-        result.push(groupData);
       }
     });
     

@@ -8,6 +8,9 @@ import React from 'react';
  * @param {Function} onChange - Función llamada cuando cambia la selección
  */
 function ProductFormToppingSelector({ toppingGroups, selectedToppings = [], onChange }) {
+  // Asegurar que toppingGroups sea un array
+  const safeToppingGroups = Array.isArray(toppingGroups) ? toppingGroups : [];
+  
   // Función para manejar cambios en los checkboxes
   const handleToggleTopping = (group, isSelected) => {
     // Si está seleccionado, agregar al array
@@ -21,7 +24,7 @@ function ProductFormToppingSelector({ toppingGroups, selectedToppings = [], onCh
   };
   
   // Si no hay grupos de toppings disponibles
-  if (!toppingGroups || toppingGroups.length === 0) {
+  if (!safeToppingGroups || safeToppingGroups.length === 0) {
     return (
       <div className="p-3 bg-gray-50 border rounded-md">
         <p className="text-gray-500 text-sm italic">
@@ -34,7 +37,7 @@ function ProductFormToppingSelector({ toppingGroups, selectedToppings = [], onCh
   return (
     <div className="border rounded-md p-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        {toppingGroups.map(group => {
+        {safeToppingGroups.map(group => {
           // Verificar si este grupo ya está seleccionado
           const isSelected = selectedToppings.some(item => item._id === group._id);
           
