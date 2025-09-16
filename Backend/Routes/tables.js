@@ -271,16 +271,29 @@ router.delete("/:id", async (req, res) => {
     const { id } = req.params;
     const { businessId } = req.query;
     
+    console.log(`DELETE /tables/${id} with businessId: ${businessId}`);
+    
     if (!isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid table ID format" });
     }
     
+    // El middleware ya debería haber convertido el slug a ObjectId si es necesario
+    if (!isValidObjectId(businessId)) {
+      console.log(`Warning: businessId is still not a valid ObjectId after middleware: ${businessId}`);
+      return res.status(400).json({ 
+        message: "Invalid businessId format. The businessId might not have been properly converted from slug to ObjectId."
+      });
+    }
+    
+    console.log(`Attempting to delete table ${id} for business ${businessId}`);
     const result = await Table.findOneAndDelete({ _id: id, businessId });
     
     if (!result) {
+      console.log(`Table ${id} not found for business ${businessId}`);
       return res.status(404).json({ message: "Table not found" });
     }
     
+    console.log(`Table ${id} deleted successfully`);
     res.status(200).json({ message: "Table deleted successfully" });
   } catch (error) {
     console.error("Error deleting table:", error);

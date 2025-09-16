@@ -1,180 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import api from '../services/api';
+import React, { useState } from 'react';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { QRCodeSVG } from 'qrcode.react';
-import { FaDownload, FaEdit, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaDownload } from 'react-icons/fa';
 
 const TableSettings = () => {
-  const [tables, setTables] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
-  const [showQRCode, setShowQRCode] = useState(null);
-  const [currentTable, setCurrentTable] = useState(null);
-  const [formData, setFormData] = useState({
-    tableNumber: '',
-    tableName: '',
-    notes: ''
-  });
+  const [showQRCode, setShowQRCode] = useState(false);
   
-  const { businessId, businessConfig } = useBusinessConfig();
+  const { businessId } = useBusinessConfig();
   
-  // Log para depuración
-  useEffect(() => {
-    console.log('TableSettings - businessId recibido:', businessId);
-    console.log('TableSettings - businessConfig:', businessConfig);
-  }, [businessId, businessConfig]);
-  
-  // Fetch tables data
-  useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        console.log('TableSettings - Intentando cargar mesas con businessId:', businessId);
-        setLoading(true);
-        
-        // Log adicional para verificar el tipo y valor del businessId
-        console.log('TableSettings - Tipo de businessId:', typeof businessId);
-        console.log('TableSettings - ¿Es valor falsy?', !businessId);
-        
-        const response = await api.get(`/tables?businessId=${businessId}`);
-        console.log('TableSettings - Respuesta de API:', response.data);
-        
-        setTables(response.data);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching tables:', err);
-        console.error('Error details:', err.response?.data || 'No response data');
-        setError('Error al cargar las mesas. Por favor, intente nuevamente.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (businessId) {
-      console.log('TableSettings - Ejecutando fetchTables() con businessId:', businessId);
-      fetchTables();
-    } else {
-      console.log('TableSettings - No se ejecuta fetchTables() porque businessId es:', businessId);
-    }
-  }, [businessId]);
-  
-  // Reset form data
-  const resetForm = () => {
-    setFormData({
-      tableNumber: '',
-      tableName: '',
-      notes: ''
-    });
-  };
-  
-  // Open add form
-  const handleAddClick = () => {
-    resetForm();
-    setShowAddForm(true);
-  };
-  
-  // Open edit form
-  const handleEditClick = (table) => {
-    setCurrentTable(table);
-    setFormData({
-      tableNumber: table.tableNumber,
-      tableName: table.tableName || '',
-      notes: table.notes || ''
-    });
-    setShowEditForm(true);
-  };
-  
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Si es el campo de número de mesa, solo permitir números
-    if (name === 'tableNumber') {
-      // Filtrar solo números
-      const numericValue = value.replace(/[^0-9]/g, '');
-      setFormData({
-        ...formData,
-        [name]: numericValue
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
-    }
-  };
-  
-  // Create new table
-  const handleAddSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const response = await api.post('/tables', {
-        businessId,
-        tableNumber: formData.tableNumber,
-        tableName: formData.tableName,
-        notes: formData.notes
-      });
-      
-      setTables([...tables, response.data]);
-      setShowAddForm(false);
-      resetForm();
-    } catch (err) {
-      console.error('Error creating table:', err);
-      setError('Error al crear la mesa. Por favor, intente nuevamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Update table
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const response = await api.put(`/tables/${currentTable._id}`, {
-        businessId,
-        tableNumber: formData.tableNumber,
-        tableName: formData.tableName,
-        notes: formData.notes
-      });
-      
-      // Update tables array
-      setTables(tables.map(table => 
-        table._id === currentTable._id ? response.data : table
-      ));
-      
-      setShowEditForm(false);
-      resetForm();
-      setCurrentTable(null);
-    } catch (err) {
-      console.error('Error updating table:', err);
-      setError('Error al actualizar la mesa. Por favor, intente nuevamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Delete table
-  const handleDeleteClick = async (tableId) => {
-    if (!window.confirm('¿Está seguro que desea eliminar esta mesa?')) {
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      await api.delete(`/tables/${tableId}?businessId=${businessId}`);
-      
-      // Remove from tables array
-      setTables(tables.filter(table => table._id !== tableId));
-    } catch (err) {
-      console.error('Error deleting table:', err);
-      setError('Error al eliminar la mesa. Por favor, intente nuevamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
   
   // Generate QR code URL for business menu
   const getMenuQRCodeUrl = () => {
@@ -184,7 +17,7 @@ const TableSettings = () => {
   
   // Show QR code modal for menu
   const handleShowMenuQRCode = () => {
-    setShowQRCode({ tableNumber: 'MENU', tableName: 'Menú del Negocio' });
+    setShowQRCode(true);
   };
   
   // Download QR code as PNG
@@ -231,270 +64,45 @@ const TableSettings = () => {
     image.src = svgUrl;
   };
   
-  // Error display
-  if (error) {
-    return (
-      <div className="bg-red-50 p-4 rounded-lg border border-red-200 text-red-700">
-        <p>{error}</p>
-        <button 
-          onClick={() => setError(null)} 
-          className="mt-2 bg-red-100 text-red-800 px-3 py-1 rounded-lg hover:bg-red-200"
-        >
-          Cerrar
-        </button>
-      </div>
-    );
-  }
-  
-  // Loading indicator
-  if (loading && tables.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-60">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold text-gray-800">Administrar Mesas</h2>
-        <div className="flex space-x-3">
+      <div className="text-center">
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">Código QR del Menú</h2>
+        <p className="text-gray-600 mb-8">
+          Los clientes pueden escanear este código para acceder al menú de tu negocio
+        </p>
+        
+        <div className="flex justify-center mb-6">
+          <div className="p-4 bg-white border-2 border-gray-200 rounded-lg shadow-lg">
+            <QRCodeSVG
+              id="menu-qr-code"
+              value={getMenuQRCodeUrl()}
+              size={300}
+              level="H"
+              includeMargin={true}
+            />
+          </div>
+        </div>
+        
+        <div className="bg-gray-50 p-4 rounded-lg mb-6">
+          <p className="text-sm text-gray-600 mb-2">URL del menú:</p>
+          <p className="text-xs text-gray-500 break-all font-mono">
+            {getMenuQRCodeUrl()}
+          </p>
+        </div>
+        
+        <div className="flex justify-center space-x-4">
           <button
             onClick={handleShowMenuQRCode}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+            className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 flex items-center space-x-2 text-lg font-medium"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
             </svg>
-            <span>QR del Menú</span>
-          </button>
-          <button
-            onClick={handleAddClick}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <FaPlus size={16} />
-            <span>Agregar Mesa</span>
+            <span>Ver QR Completo</span>
           </button>
         </div>
       </div>
-      
-      {/* Table list */}
-      {tables.length === 0 ? (
-        <div className="text-center py-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No hay mesas registradas</p>
-          <button
-            onClick={handleAddClick}
-            className="mt-3 text-blue-600 hover:text-blue-800 hover:underline"
-          >
-            Agregar una mesa
-          </button>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Número
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Nombre
-                </th>
-                <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Notas
-                </th>
-                <th className="py-3 px-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {tables.map((table) => (
-                <tr key={table._id} className="hover:bg-gray-50">
-                  <td className="py-4 px-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {table.tableNumber}
-                  </td>
-                  <td className="py-4 px-4 whitespace-nowrap text-sm text-gray-500">
-                    {table.tableName || `Mesa ${table.tableNumber}`}
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-500 max-w-xs truncate">
-                    {table.notes || '-'}
-                  </td>
-                  <td className="py-4 px-4 whitespace-nowrap text-center text-sm font-medium">
-                    <div className="flex justify-center space-x-2">
-                      <button
-                        onClick={() => handleEditClick(table)}
-                        className="text-blue-600 hover:text-blue-900 bg-blue-50 p-2 rounded-full"
-                        title="Editar mesa"
-                      >
-                        <FaEdit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(table._id)}
-                        className="text-red-600 hover:text-red-900 bg-red-50 p-2 rounded-full"
-                        title="Eliminar mesa"
-                      >
-                        <FaTrash size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      
-      {/* Add Form Modal */}
-      {showAddForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Agregar Nueva Mesa</h3>
-            <form onSubmit={handleAddSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Número de Mesa *
-                  </label>
-                  <input
-                    type="number"
-                    name="tableNumber"
-                    value={formData.tableNumber}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    min="1"
-                    max="999"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre de Mesa
-                  </label>
-                  <input
-                    type="text"
-                    name="tableName"
-                    value={formData.tableName}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ej: Mesa VIP"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notas
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                    placeholder="Notas adicionales sobre esta mesa"
-                  ></textarea>
-                </div>
-                
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddForm(false)}
-                    className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                    disabled={loading}
-                  >
-                    {loading ? 'Guardando...' : 'Guardar'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {/* Edit Form Modal */}
-      {showEditForm && currentTable && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Editar Mesa #{currentTable.tableNumber}</h3>
-            <form onSubmit={handleEditSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Número de Mesa *
-                  </label>
-                  <input
-                    type="number"
-                    name="tableNumber"
-                    value={formData.tableNumber}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    min="1"
-                    max="999"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nombre de Mesa
-                  </label>
-                  <input
-                    type="text"
-                    name="tableName"
-                    value={formData.tableName}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ej: Mesa VIP"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notas
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                    placeholder="Notas adicionales sobre esta mesa"
-                  ></textarea>
-                </div>
-                
-                <div className="flex justify-end space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditForm(false)}
-                    className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                    disabled={loading}
-                  >
-                    {loading ? 'Guardando...' : 'Guardar'}
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       
       {/* QR Code Modal */}
       {showQRCode && (
@@ -533,7 +141,7 @@ const TableSettings = () => {
                   <span>Descargar</span>
                 </button>
                 <button
-                  onClick={() => setShowQRCode(null)}
+                  onClick={() => setShowQRCode(false)}
                   className="px-4 py-2 bg-gray-100 text-gray-800 rounded-md hover:bg-gray-200"
                 >
                   Cerrar
