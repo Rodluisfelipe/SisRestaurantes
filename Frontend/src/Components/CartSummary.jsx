@@ -416,7 +416,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   name="tableNumber"
                   value={formState.tableNumber}
                   onChange={handleInputChange}
-                  className="w-full p-3 border rounded-md"
+                  className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
                   placeholder="Ej: 5"
                   min="1"
                   max="999"
@@ -437,7 +437,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     name="phone"
                     value={formState.phone}
                     onChange={handleInputChange}
-                    className="w-full p-3 border rounded-md"
+                    className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
+                    placeholder="Ej: 3001234567"
                     required
                     autoFocus
                   />
@@ -450,7 +451,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     name="address"
                     value={formState.address}
                     onChange={handleInputChange}
-                    className="w-full p-3 border rounded-md"
+                    className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
+                    placeholder="Ej: Calle 123 #45-67, Barrio Centro"
                     rows="3"
                     required
                   />
@@ -876,7 +878,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
                       </svg>
                     </button>
-                    <span className="w-8 text-center font-semibold text-slate-700">{item.quantity || 0}</span>
+                    <span className="w-8 text-center font-semibold text-gray-800">{item.quantity || 0}</span>
                     <button
                       onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) + 1)}
                       className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:shadow-sm"

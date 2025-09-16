@@ -408,7 +408,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
               >
                 -
               </button>
-              <span className="px-4 py-1 font-medium">{quantity}</span>
+              <span className="px-4 py-1 font-medium text-gray-800">{quantity}</span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
                 className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700"
