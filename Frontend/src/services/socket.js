@@ -10,20 +10,13 @@ const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'pro
 // Configurar Socket.io para conectarse al backend con la URL correcta
 // Usar variables de entorno para mayor flexibilidad
 const getSocketUrl = () => {
-  // Prioridad: Variable de entorno > Detección automática
-  if (import.meta.env.VITE_SOCKET_URL) {
-    let url = import.meta.env.VITE_SOCKET_URL;
-    // Forzar HTTP si Vercel convierte a HTTPS
-    if (url.startsWith('https://')) {
-      url = url.replace('https://', 'http://');
-    }
-    return url;
+  // Forzar siempre HTTP para evitar problemas de Mixed Content
+  if (isProd) {
+    return 'http://157.245.125.216'; // Digital Ocean backend - siempre HTTP
   }
   
-  // Fallback a detección automática
-  return isProd 
-    ? 'http://157.245.125.216' // Digital Ocean backend
-    : 'http://localhost:5000';
+  // Desarrollo local
+  return 'http://localhost:5000';
 };
 
 const socketUrl = getSocketUrl();

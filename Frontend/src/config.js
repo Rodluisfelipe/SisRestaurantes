@@ -14,20 +14,13 @@ const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'pro
 
 // Función para obtener la URL de la API
 const getApiUrl = () => {
-  // Prioridad: Variable de entorno > Detección automática
-  if (import.meta.env.VITE_API_URL) {
-    let url = import.meta.env.VITE_API_URL;
-    // Forzar HTTP si Vercel convierte a HTTPS
-    if (url.startsWith('https://')) {
-      url = url.replace('https://', 'http://');
-    }
-    return `${url}/api`;
+  // Forzar siempre HTTP para evitar problemas de Mixed Content
+  if (isProd) {
+    return 'http://157.245.125.216/api'; // Digital Ocean backend - siempre HTTP
   }
   
-  // Fallback a detección automática
-  return isProd 
-    ? 'http://157.245.125.216/api' // Digital Ocean backend
-    : 'http://localhost:5000/api';
+  // Desarrollo local
+  return 'http://localhost:5000/api';
 };
 
 export const API_URL = getApiUrl();
@@ -35,16 +28,7 @@ export const API_URL = getApiUrl();
 // URLs específicas
 export const API_ENDPOINTS = {
   BASE_URL: API_URL,
-  EVENTS: (() => {
-    if (import.meta.env.VITE_EVENTS_URL) {
-      let url = import.meta.env.VITE_EVENTS_URL;
-      if (url.startsWith('https://')) {
-        url = url.replace('https://', 'http://');
-      }
-      return url;
-    }
-    return isProd ? `${import.meta.env.VITE_API_URL || 'http://157.245.125.216'}/events` : 'http://localhost:5000/events';
-  })(),
+  EVENTS: isProd ? 'http://157.245.125.216/events' : 'http://localhost:5000/events',
   PRODUCTS: `${API_URL}/products`,
   CATEGORIES: `${API_URL}/categories`,
   TOPPING_GROUPS: `${API_URL}/topping-groups`,
