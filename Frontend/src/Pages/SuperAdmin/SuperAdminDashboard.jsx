@@ -177,7 +177,7 @@ function SuperAdminDashboard() {
           transition={{ duration: 0.6 }}
           className="w-full max-w-6xl"
         >
-          {currentView === 'businesses' ? (
+          {currentView === 'businesses' && (
             <>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
                 <motion.h1 
@@ -212,7 +212,9 @@ function SuperAdminDashboard() {
                 />
               </motion.div>
             </>
-          ) : currentView === 'banners' ? (
+          )}
+          
+          {currentView === 'banners' && (
             <>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
                 <motion.h1 
@@ -241,7 +243,9 @@ function SuperAdminDashboard() {
                 <SuperAdminBannerManagement />
               </motion.div>
             </>
-          ) : currentView === 'subscriptions' ? (
+          )}
+          
+          {currentView === 'subscriptions' && (
             <>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
                 <motion.h1 
@@ -270,7 +274,7 @@ function SuperAdminDashboard() {
                 <SubscriptionManagement />
               </motion.div>
             </>
-          ) : null}
+          )}
         </motion.div>
         <CreateBusinessModal
           isOpen={showCreate}
