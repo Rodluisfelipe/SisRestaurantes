@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import axios from 'axios';
 import { FaCrown, FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaDollarSign } from 'react-icons/fa';
 import superadminApi from '../../services/superadminApi';
 
@@ -26,8 +27,13 @@ const SubscriptionManagement = () => {
     try {
       setLoading(true);
       const [subscriptionsRes, businessesRes] = await Promise.all([
-        superadminApi.get('/subscriptions'),
-        superadminApi.get('/businesses')
+        axios.get('/api/subscriptions', {
+          baseURL: import.meta.env.PROD ? 'https://157-245-125-216.nip.io' : 'http://localhost:5000',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}`
+          }
+        }),
+        superadminApi.get('/business')
       ]);
       
       setSubscriptions(subscriptionsRes.data.subscriptions || []);
@@ -78,9 +84,19 @@ const SubscriptionManagement = () => {
       };
 
       if (editingSubscription) {
-        await superadminApi.put(`/subscriptions/${editingSubscription._id}`, subscriptionData);
+        await axios.put(`/api/subscriptions/${editingSubscription._id}`, subscriptionData, {
+          baseURL: import.meta.env.PROD ? 'https://157-245-125-216.nip.io' : 'http://localhost:5000',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}`
+          }
+        });
       } else {
-        await superadminApi.post('/subscriptions', subscriptionData);
+        await axios.post('/api/subscriptions', subscriptionData, {
+          baseURL: import.meta.env.PROD ? 'https://157-245-125-216.nip.io' : 'http://localhost:5000',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}`
+          }
+        });
       }
       
       await loadData();
@@ -112,7 +128,12 @@ const SubscriptionManagement = () => {
 
     try {
       setLoading(true);
-      await superadminApi.delete(`/subscriptions/${subscriptionId}`);
+      await axios.delete(`/api/subscriptions/${subscriptionId}`, {
+        baseURL: import.meta.env.PROD ? 'https://157-245-125-216.nip.io' : 'http://localhost:5000',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('superadmin_token')}`
+        }
+      });
       await loadData();
     } catch (error) {
       console.error('Error deleting subscription:', error);
