@@ -6,6 +6,7 @@ import ForgotPasswordSuperAdmin from "./ForgotPasswordSuperAdmin";
 import ResetPasswordSuperAdmin from "./ResetPasswordSuperAdmin";
 import ChangePasswordSuperAdmin from "./ChangePasswordSuperAdmin";
 import SuperAdminBannerManagement from "../../Components/Catalog/SuperAdminBannerManagement";
+import SubscriptionManagement from "../../Components/SuperAdmin/SubscriptionManagement";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -14,7 +15,7 @@ function SuperAdminDashboard() {
   const [showCreate, setShowCreate] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [authView, setAuthView] = useState('login'); // 'login' | 'forgot' | 'change'
-  const [currentView, setCurrentView] = useState('businesses'); // 'businesses' | 'banners'
+  const [currentView, setCurrentView] = useState('businesses'); // 'businesses' | 'banners' | 'subscriptions'
   const params = useParams();
   // Extraer token de parámetros y búsqueda de URL de forma segura
   const location = useLocation();
@@ -127,6 +128,18 @@ function SuperAdminDashboard() {
             >
               📢 Banners
             </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setCurrentView('subscriptions')}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                currentView === 'subscriptions'
+                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+              }`}
+            >
+              👑 Suscripciones
+            </motion.button>
           </div>
         </motion.div>
         <div className="flex items-center gap-3">
@@ -226,6 +239,35 @@ function SuperAdminDashboard() {
                 className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
               >
                 <SuperAdminBannerManagement />
+              </motion.div>
+            </>
+          ) : currentView === 'subscriptions' ? (
+            <>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                <motion.h1 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-2xl font-bold text-white drop-shadow"
+                >
+                  Gestión de Suscripciones
+                </motion.h1>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="text-white/80 text-sm"
+                >
+                  Administra los planes de suscripción de los negocios
+                </motion.div>
+              </div>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
+              >
+                <SubscriptionManagement />
               </motion.div>
             </>
           )}

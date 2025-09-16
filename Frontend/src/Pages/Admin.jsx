@@ -21,6 +21,7 @@ import TableSettings from "../Components/TableSettings";
 import ModernOrdersDashboard from "../Components/ModernOrdersDashboard";
 import CompletedOrdersSummary from "../Components/CompletedOrdersSummary";
 import ModernAdminSidebar from "../Components/ModernAdminSidebar";
+import SubscriptionStatus from "../Components/SubscriptionStatus";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Componente de Modal de Confirmación para edición
@@ -910,6 +911,12 @@ function Admin() {
 
           {/* Content Container */}
           <div className="p-6">
+            {/* Subscription Status */}
+            {businessConfig && businessConfig._id && (
+              <div className="mb-6">
+                <SubscriptionStatus businessId={businessConfig._id} />
+              </div>
+            )}
             <AnimatePresence mode="wait">
             <motion.div 
                 key={activeTab}

@@ -119,6 +119,7 @@ app.use("/api/debug", require("./Routes/debug")); // Debug endpoints para Socket
 // Rutas específicas para superadmin (integradas desde BackendSA)
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
 app.use("/api/superadmin", require("./Routes/superadmin"));
+app.use("/api/subscriptions", require("./Routes/subscriptions"));
   
 // Ruta específica para SSE
 app.use("/events", require("./Routes/events"));
