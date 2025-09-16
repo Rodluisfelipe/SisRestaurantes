@@ -1186,7 +1186,7 @@ function Admin() {
                             <img 
                               src={product.image || 'https://placehold.co/400x300?text=🍔'} 
                               alt={product.name}
-                              className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
+                              className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent"></div>
                             
@@ -1213,7 +1213,7 @@ function Admin() {
                               <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
                                 {product.name}
                               </h3>
-                              <p className="text-sm text-gray-600 line-clamp-3 leading-relaxed">
+                              <p className="text-sm text-gray-600 leading-relaxed min-h-[60px]">
                                 {product.description}
                               </p>
                             </div>
@@ -1224,19 +1224,19 @@ function Admin() {
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => editProduct(product)}
-                                className="flex-1 bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-2 text-sm"
+                                className="flex-1 bg-blue-500 text-white px-3 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0"
                               >
                                 <span>✏️</span>
-                                <span>Editar</span>
+                                <span className="truncate">Editar</span>
                               </motion.button>
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => deleteProduct(product._id)}
-                                className="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-2 text-sm"
+                                className="flex-1 bg-red-500 text-white px-3 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0"
                               >
                                 <span>🗑️</span>
-                                <span>Eliminar</span>
+                                <span className="truncate">Eliminar</span>
                               </motion.button>
                             </div>
                           </div>
