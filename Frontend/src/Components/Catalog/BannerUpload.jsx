@@ -136,18 +136,21 @@ const BannerUpload = () => {
     setMessage({ text: '', type: '' });
 
     try {
-      // Si tenemos businessConfig, usar su ID (modo SuperAdmin)
+      // Determinar el contexto y businessId
       let businessId = null;
       let useSuperAdminEndpoint = false;
+      let token = localStorage.getItem('token');
       
-      if (businessConfig && businessConfig._id) {
+      // Verificar si estamos en modo SuperAdmin (tiene businessConfig del contexto)
+      const isSuperAdminMode = businessConfig && businessConfig._id;
+      
+      if (isSuperAdminMode) {
+        // Modo SuperAdmin: usar businessId del contexto
         businessId = businessConfig._id;
         useSuperAdminEndpoint = true;
         console.log('Usando businessId del contexto (modo SuperAdmin):', businessId);
       } else {
-        // Modo normal: requerir token
-        const token = localStorage.getItem('token');
-        
+        // Modo Admin normal: usar token de autenticación
         if (!token) {
           setMessage({
             text: 'No estás autenticado. Por favor, inicia sesión nuevamente.',
@@ -157,13 +160,19 @@ const BannerUpload = () => {
           return;
         }
 
-        // Intentar obtener businessId del token
+        // Obtener businessId del token
         try {
           const payload = JSON.parse(atob(token.split('.')[1]));
           businessId = payload.businessId;
-          console.log('Usando businessId del token:', businessId);
+          console.log('Usando businessId del token (modo Admin):', businessId);
         } catch (e) {
           console.log('Error decodificando token:', e);
+          setMessage({
+            text: 'Error al procesar la autenticación. Por favor, inicia sesión nuevamente.',
+            type: 'error'
+          });
+          setLoading(false);
+          return;
         }
       }
 
