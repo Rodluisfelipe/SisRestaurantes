@@ -65,7 +65,7 @@ exports.crearNegocio = async (req, res) => {
 exports.listarNegocios = async (req, res) => {
   try {
     const negocios = await BusinessConfig.find({}).lean();
-    res.json(negocios);
+    res.json({ businesses: negocios });
   } catch (error) {
     res.status(500).json({ message: 'Error al listar negocios', error: error.message });
   }

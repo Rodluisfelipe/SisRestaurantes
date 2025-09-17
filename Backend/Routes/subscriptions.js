@@ -1,12 +1,13 @@
+
 const express = require('express');
 const router = express.Router();
 const Subscription = require('../Models/Subscription');
 const BusinessConfig = require('../Models/BusinessConfig');
-const { requireSuperAdmin } = require('../Middleware/auth');
+const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const { isValidObjectId } = require('../utils/validators');
 
 // Middleware para verificar SuperAdmin
-router.use(requireSuperAdmin);
+router.use(protectSuperAdmin);
 
 // GET /api/subscriptions - Obtener todas las suscripciones
 router.get('/', async (req, res) => {

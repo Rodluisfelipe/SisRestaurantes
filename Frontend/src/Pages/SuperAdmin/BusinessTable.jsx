@@ -13,9 +13,10 @@ export default function BusinessTable({ refreshTrigger }) {
     setLoading(true);
     try {
       const data = await fetchBusinesses();
-      setBusinesses(data);
+      setBusinesses(data.businesses || []);
     } catch (err) {
       setMessage("Error al cargar negocios");
+      setBusinesses([]);
     } finally {
       setLoading(false);
     }
@@ -133,7 +134,7 @@ export default function BusinessTable({ refreshTrigger }) {
             </tr>
           </thead>
           <tbody>
-            {businesses.map((b, idx) => (
+            {(businesses || []).map((b, idx) => (
               <motion.tr 
                 key={b._id} 
                 initial={{ opacity: 0, y: 10 }}
