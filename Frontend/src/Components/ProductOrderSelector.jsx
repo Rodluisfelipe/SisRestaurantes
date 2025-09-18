@@ -107,6 +107,8 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
       await api.put('/products/reorder', { 
         businessId, 
         products: allOrderedProducts 
+      }, {
+        timeout: 15000 // 15 segundos de timeout
       });
 
       setSaveLoading(false);
