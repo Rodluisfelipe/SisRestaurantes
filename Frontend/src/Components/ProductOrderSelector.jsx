@@ -244,7 +244,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
       </AnimatePresence>
 
       {/* Products List by Category */}
-      <div className="space-y-6 max-h-96 overflow-y-auto">
+      <div className="space-y-4 max-h-[60vh] lg:max-h-[50vh] overflow-y-auto">
         {Object.keys(productsByCategory)
           .sort((a, b) => {
             // Ordenar categorías: uncategorized al final, resto por displayOrder
@@ -268,7 +268,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
               {/* Category Header */}
               <motion.div
                 whileHover={{ backgroundColor: '#f3f4f6' }}
-                className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200 cursor-pointer"
+                className="flex items-center justify-between p-3 lg:p-4 bg-gray-50 border-b border-gray-200 cursor-pointer"
                 onClick={() => toggleCategory(categoryId)}
               >
                 <div className="flex items-center space-x-3">
@@ -292,7 +292,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="p-4 space-y-3">
+                    <div className="p-3 lg:p-4 space-y-2 lg:space-y-3">
                       <AnimatePresence>
                         {categoryProducts.map((product, productIndex) => (
                           <motion.div
@@ -306,7 +306,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
                             onDragStart={(e) => handleDragStart(e, categoryId, productIndex)}
                             onDragOver={(e) => handleDragOver(e, categoryId, productIndex)}
                             onDragEnd={handleDragEnd}
-                            className={`flex items-center bg-white border border-gray-200 rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-all duration-150 ${
+                            className={`flex items-center bg-white border border-gray-200 rounded-lg p-2 lg:p-3 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-all duration-150 ${
                               draggedItem?.categoryId === categoryId && draggedItem?.productIndex === productIndex ? 'opacity-50' : ''
                             }`}
                           >
@@ -317,24 +317,24 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
                                 #{productIndex + 1}
                               </div>
                               
-                              <div className="flex items-center space-x-3 flex-grow min-w-0">
+                              <div className="flex items-center space-x-2 lg:space-x-3 flex-grow min-w-0">
                                 {product.image && (
                                   <img 
                                     src={product.image} 
                                     alt={product.name}
-                                    className="w-10 h-10 object-cover rounded-lg flex-shrink-0"
+                                    className="w-8 h-8 lg:w-10 lg:h-10 object-cover rounded-lg flex-shrink-0"
                                   />
                                 )}
                                 
                                 <div className="flex-grow min-w-0">
-                                  <h4 className="font-medium text-gray-800 truncate text-sm">{product.name}</h4>
+                                  <h4 className="font-medium text-gray-800 truncate text-xs lg:text-sm">{product.name}</h4>
                                   {product.description && (
                                     <p className="text-xs text-gray-600 truncate">{product.description}</p>
                                   )}
                                 </div>
                                 
-                                <div className="flex items-center space-x-2 flex-shrink-0">
-                                  <span className="font-semibold text-green-600 text-sm">
+                                <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
+                                  <span className="font-semibold text-green-600 text-xs lg:text-sm">
                                     ${product.price?.toLocaleString() || '0'}
                                   </span>
                                   

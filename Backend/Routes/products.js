@@ -210,7 +210,7 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Reorder products
-router.put("/reorder", async (req, res) => {
+router.put("/reorder", validateAndResolveBusinessId, async (req, res) => {
   try {
     const { businessId, products } = req.body;
     
