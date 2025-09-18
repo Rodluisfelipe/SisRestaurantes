@@ -40,84 +40,124 @@ export const calculateTotalItems = (cart) => {
   return cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
 };
 
-// Crear mensaje de WhatsApp
-export const createWhatsAppMessage = (orderInfo, cart, totalAmount, totalItems, businessConfig) => {
-  const businessName = businessConfig?.businessName || 'Nuestro Negocio';
-  let message = "";
-  
-  // Información del cliente
-  message += `*** DATOS DEL CLIENTE ***\n`;
-  message += `*Nombre:* ${orderInfo.customerName || 'Cliente'}\n`;
-  
-  // Información del pedido según tipo
-  if (orderInfo.orderType === 'delivery') {
-    message += `*Tipo de pedido:* A Domicilio\n`;
-    message += `*Teléfono:* ${orderInfo.phone || 'No proporcionado'}\n`;
-    message += `*Dirección:* ${orderInfo.address || 'No proporcionada'}\n`;
-  } else if (orderInfo.orderType === 'inSite') {
-    message += `*Tipo de pedido:* En Sitio\n`;
-    message += `*Mesa #:* ${orderInfo.tableNumber || 'No especificada'}\n`;
+// Función auxiliar para obtener el template personalizado
+const getCustomTemplate = async (businessId) => {
+  try {
+    const response = await fetch(`${import.meta.env.PROD ? 'https://157-245-125-216.nip.io' : 'http://localhost:5000'}/api/whatsapp-templates?businessId=${businessId}`);
+    if (response.ok) {
+      const data = await response.json();
+      return data.messageTemplate;
+    }
+  } catch (error) {
+    console.warn('Could not load custom WhatsApp template, using default');
   }
-  message += `------------------------\n\n`;
+  return null;
+};
 
-  // Agregar detalle de productos
-  message += `*** DETALLE DEL PEDIDO ***\n`;
+// Crear mensaje de WhatsApp con template personalizado
+export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalItems, businessConfig) => {
+  const businessName = businessConfig?.businessName || 'Nuestro Negocio';
+  const businessId = businessConfig?._id || businessConfig?.businessId;
   
+  // Intentar obtener el template personalizado
+  let template = await getCustomTemplate(businessId);
+  
+  // Si no hay template personalizado, usar el predeterminado
+  if (!template) {
+    template = `*** DATOS DEL CLIENTE ***
+{{customerInfo}}
+------------------------
+
+*** DETALLE DEL PEDIDO ***
+{{orderDetails}}
+
+*** RESUMEN ***
+{{orderSummary}}
+------------------------
+
+¡Gracias por tu pedido en {{businessName}}!
+Tu orden será procesada inmediatamente.
+
+{{timestamp}}`;
+  }
+
+  // Generar información del cliente
+  let customerInfo = `*Nombre:* ${orderInfo.customerName || 'Cliente'}\n`;
+  
+  if (orderInfo.orderType === 'delivery') {
+    customerInfo += `*Tipo de pedido:* A Domicilio\n`;
+    customerInfo += `*Teléfono:* ${orderInfo.phone || 'No proporcionado'}\n`;
+    customerInfo += `*Dirección:* ${orderInfo.address || 'No proporcionada'}\n`;
+  } else if (orderInfo.orderType === 'inSite') {
+    customerInfo += `*Tipo de pedido:* En Sitio\n`;
+    customerInfo += `*Mesa #:* ${orderInfo.tableNumber || 'No especificada'}\n`;
+  } else if (orderInfo.orderType === 'takeaway') {
+    customerInfo += `*Tipo de pedido:* Para Llevar\n`;
+  }
+
+  // Generar detalle de productos
+  let orderDetails = '';
   cart.forEach((item, index) => {
-    message += `\n${index + 1}. ${item.quantity}x ${item.name}\n`;
-    message += `   Precio unitario: $${(item.finalPrice || item.price).toFixed(2)}\n`;
+    orderDetails += `\n${index + 1}. ${item.quantity}x ${item.name}\n`;
+    orderDetails += `   Precio unitario: $${(item.finalPrice || item.price).toLocaleString()}\n`;
     
     // Verificar si hay toppings seleccionados y es un array
     if (item.selectedToppings && Array.isArray(item.selectedToppings) && item.selectedToppings.length > 0) {
-      message += `   *Adicionales:*\n`;
+      orderDetails += `   *Adicionales:*\n`;
       
       // Iterar sobre cada grupo de toppings seleccionado
       item.selectedToppings.forEach(topping => {
         const basePrice = Number(topping.basePrice || 0);
         
         // Mostrar el grupo y su precio base si existe
-        message += `   • ${topping.groupName}`;
+        orderDetails += `   • ${topping.groupName}`;
         if (basePrice > 0) {
-          message += ` (Base: $${basePrice.toFixed(2)})`;
+          orderDetails += ` (Base: $${basePrice.toLocaleString()})`;
         }
-        message += `:\n`;
+        orderDetails += `:\n`;
         
         // Mostrar la opción principal si existe
         if (topping.optionName) {
-          message += `     - ${topping.optionName}`;
+          orderDetails += `     - ${topping.optionName}`;
           if (topping.price > 0) {
-            message += ` (+$${topping.price.toFixed(2)})`;
+            orderDetails += ` (+$${topping.price.toLocaleString()})`;
           }
-          message += `\n`;
+          orderDetails += `\n`;
         }
         
         // Mostrar opciones de subgrupos si existen
         if (topping.subGroups && Array.isArray(topping.subGroups) && topping.subGroups.length > 0) {
           topping.subGroups.forEach(subItem => {
-            message += `     - ${subItem.subGroupTitle}: ${subItem.optionName}`;
+            orderDetails += `     - ${subItem.subGroupTitle}: ${subItem.optionName}`;
             if (subItem.price > 0) {
-              message += ` (+$${subItem.price.toFixed(2)})`;
+              orderDetails += ` (+$${subItem.price.toLocaleString()})`;
             }
-            message += `\n`;
+            orderDetails += `\n`;
           });
         }
       });
     }
     
-    message += `   *Subtotal:* $${calculateItemPrice(item).toFixed(2)}\n`;
-    message += `   ------------------------\n`;
+    orderDetails += `   *Subtotal:* $${calculateItemPrice(item).toLocaleString()}\n`;
+    orderDetails += `   ------------------------\n`;
   });
 
-  // Agregar totales
-  message += `\n*** RESUMEN ***\n`;
-  message += `*Productos:* ${cart.length}\n`;
-  message += `*Cantidad total:* ${totalItems} items\n`;
-  message += `*TOTAL A PAGAR:* $${totalAmount.toFixed(2)}\n`;
-  message += `------------------------\n`;
-  
-  // Agregar un mensaje de agradecimiento y datos del negocio
-  message += `\n¡Gracias por tu pedido en ${businessName}!\n`;
-  message += `Tu orden será procesada inmediatamente.`;
-  
+  // Generar resumen del pedido
+  const orderSummary = `*Productos:* ${cart.length}
+*Cantidad total:* ${totalItems} items
+*TOTAL A PAGAR:* $${totalAmount.toLocaleString()}`;
+
+  // Generar timestamp
+  const now = new Date();
+  const timestamp = `Fecha: ${now.toLocaleDateString('es-CO')} - ${now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}`;
+
+  // Reemplazar variables en el template
+  let message = template
+    .replace(/{{customerInfo}}/g, customerInfo.trim())
+    .replace(/{{orderDetails}}/g, orderDetails.trim())
+    .replace(/{{orderSummary}}/g, orderSummary)
+    .replace(/{{businessName}}/g, businessName)
+    .replace(/{{timestamp}}/g, timestamp);
+
   return encodeURIComponent(message);
 }; 

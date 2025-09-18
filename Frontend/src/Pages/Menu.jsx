@@ -680,10 +680,19 @@ export default function Menu() {
 
       // Para pedidos a domicilio enviar WhatsApp además de guardar en API
       if (orderDetails.orderType === 'delivery') {
+        // Crear el mensaje de WhatsApp usando el template personalizado
+        const whatsappMessage = await createWhatsAppMessage(
+          orderDetails, 
+          cartItems, 
+          totalAmount, 
+          calculateTotalItems(cartItems), 
+          businessConfig
+        );
+        
         // Usar el número configurado en el panel de administración
         const whatsappNumber = businessConfig?.whatsappNumber 
-          ? `https://wa.me/${businessConfig.whatsappNumber}?text=${createWhatsAppMessage(orderDetails, cartItems, totalAmount)}` 
-          : `https://wa.me/?text=${createWhatsAppMessage(orderDetails, cartItems, totalAmount)}`;
+          ? `https://wa.me/${businessConfig.whatsappNumber}?text=${whatsappMessage}` 
+          : `https://wa.me/?text=${whatsappMessage}`;
 
         window.open(whatsappNumber);
       }

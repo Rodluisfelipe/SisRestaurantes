@@ -6,6 +6,7 @@ import ToppingGroupsManager from '../Components/ToppingGroupsManager';
 import ProductFormToppingSelector from '../Components/ProductFormToppingSelector';
 import ProductToppingOrderSelector from '../Components/ProductToppingOrderSelector';
 import ProductOrderSelector from '../Components/ProductOrderSelector';
+import WhatsAppCustomizer from '../Components/WhatsAppCustomizer';
 import { API_ENDPOINTS } from "../config";
 import api from "../services/api";
 import ProductToppingSelector from '../Components/ProductToppingSelector';
@@ -896,6 +897,7 @@ function Admin() {
                     {activeTab === 'theme' && 'Personalización de Tema'}
                     {activeTab === 'location' && 'Configuración de Ubicación'}
                     {activeTab === 'catalog' && 'Gestión de Catálogo'}
+                    {activeTab === 'whatsapp' && 'Configuración WhatsApp'}
                     {activeTab === 'business' && 'Configuración del Negocio'}
                     {activeTab === 'change-password' && 'Cambiar Contraseña'}
                     {activeTab === 'completed_orders' && 'Pedidos Completados'}
@@ -910,6 +912,7 @@ function Admin() {
                     {activeTab === 'theme' && 'Personaliza la apariencia de tu restaurante'}
                     {activeTab === 'location' && 'Configura tu ubicación para el catálogo'}
                     {activeTab === 'catalog' && 'Gestiona banners promocionales para el catálogo'}
+                    {activeTab === 'whatsapp' && 'Personaliza el formato de mensajes WhatsApp'}
                     {activeTab === 'business' && 'Información y configuración general'}
                     {activeTab === 'change-password' && 'Actualiza tu contraseña de acceso'}
                     {activeTab === 'completed_orders' && 'Historial y resumen de pedidos'}
@@ -1351,6 +1354,18 @@ function Admin() {
                   setProducts(newOrderedProducts);
                 }}
               />
+            </motion.div>
+          )}
+
+          {/* WhatsApp Customizer */}
+          {activeTab === 'whatsapp' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
+            >
+              <WhatsAppCustomizer />
             </motion.div>
           )}
                 
