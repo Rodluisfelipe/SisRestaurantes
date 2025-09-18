@@ -1,38 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GripVertical, Save, RotateCcw } from 'lucide-react';
+import { GripVertical, Save, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../services/api';
 
-const ProductOrderSelector = ({ products = [], businessId, onOrderChange }) => {
+const ProductOrderSelector = ({ products = [], categories = [], businessId, onOrderChange }) => {
   const [orderedProducts, setOrderedProducts] = useState(products);
   const [draggedItem, setDraggedItem] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState(null);
   const [hasChanges, setHasChanges] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState({});
+  const [productsByCategory, setProductsByCategory] = useState({});
 
   useEffect(() => {
     setOrderedProducts(products);
     setHasChanges(false);
+    
+    // Agrupar productos por categoría
+    const grouped = {};
+    const uncategorized = [];
+    
+    products.forEach(product => {
+      if (product.category) {
+        const categoryId = typeof product.category === 'object' ? product.category._id : product.category;
+        if (!grouped[categoryId]) {
+          grouped[categoryId] = [];
+        }
+        grouped[categoryId].push(product);
+      } else {
+        uncategorized.push(product);
+      }
+    });
+    
+    // Si hay productos sin categoría, agregarlos
+    if (uncategorized.length > 0) {
+      grouped['uncategorized'] = uncategorized;
+    }
+    
+    setProductsByCategory(grouped);
+    
+    // Expandir todas las categorías por defecto
+    const initialExpanded = {};
+    Object.keys(grouped).forEach(categoryId => {
+      initialExpanded[categoryId] = true;
+    });
+    setExpandedCategories(initialExpanded);
   }, [products]);
 
-  const handleDragStart = (e, index) => {
-    setDraggedItem(index);
+  const handleDragStart = (e, categoryId, productIndex) => {
+    setDraggedItem({ categoryId, productIndex });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', e.target.parentNode);
   };
 
-  const handleDragOver = (e, index) => {
+  const handleDragOver = (e, categoryId, productIndex) => {
     e.preventDefault();
-    if (draggedItem === null || draggedItem === index) return;
+    if (!draggedItem || draggedItem.categoryId !== categoryId || draggedItem.productIndex === productIndex) return;
 
-    const items = [...orderedProducts];
-    const draggedItemContent = items[draggedItem];
-    items.splice(draggedItem, 1);
-    items.splice(index, 0, draggedItemContent);
+    const newProductsByCategory = { ...productsByCategory };
+    const categoryProducts = [...newProductsByCategory[categoryId]];
+    
+    const draggedProduct = categoryProducts[draggedItem.productIndex];
+    categoryProducts.splice(draggedItem.productIndex, 1);
+    categoryProducts.splice(productIndex, 0, draggedProduct);
 
-    setDraggedItem(index);
-    setOrderedProducts(items);
+    newProductsByCategory[categoryId] = categoryProducts;
+    setProductsByCategory(newProductsByCategory);
+    setDraggedItem({ categoryId, productIndex });
     setHasChanges(true);
   };
 
@@ -40,27 +75,51 @@ const ProductOrderSelector = ({ products = [], businessId, onOrderChange }) => {
     setDraggedItem(null);
   };
 
+  const toggleCategory = (categoryId) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryId]: !prev[categoryId]
+    }));
+  };
+
   const saveOrder = async () => {
     setSaveLoading(true);
     setError(null);
     try {
-      const orderedProductsData = orderedProducts.map((product, index) => ({
-        _id: product._id,
-        order: index
-      }));
+      // Reconstruir el array completo de productos con el nuevo orden
+      const allOrderedProducts = [];
+      let globalIndex = 0;
+      
+      // Procesar cada categoría en orden
+      Object.keys(productsByCategory).forEach(categoryId => {
+        const categoryProducts = productsByCategory[categoryId];
+        categoryProducts.forEach(product => {
+          allOrderedProducts.push({
+            _id: product._id,
+            order: globalIndex
+          });
+          globalIndex++;
+        });
+      });
 
       await api.put('/products/reorder', { 
         businessId, 
-        products: orderedProductsData 
+        products: allOrderedProducts 
       });
 
       setSaveLoading(false);
       setSuccessMessage('Orden de productos guardado correctamente');
       setHasChanges(false);
       
+      // Reconstruir el array completo para el componente padre
+      const reorderedProducts = [];
+      Object.keys(productsByCategory).forEach(categoryId => {
+        reorderedProducts.push(...productsByCategory[categoryId]);
+      });
+      
       // Notificar al componente padre del cambio
       if (onOrderChange) {
-        onOrderChange(orderedProducts);
+        onOrderChange(reorderedProducts);
       }
       
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -77,6 +136,35 @@ const ProductOrderSelector = ({ products = [], businessId, onOrderChange }) => {
     setHasChanges(false);
     setError(null);
     setSuccessMessage('');
+    
+    // Reagrupar productos por categoría con el orden original
+    const grouped = {};
+    const uncategorized = [];
+    
+    products.forEach(product => {
+      if (product.category) {
+        const categoryId = typeof product.category === 'object' ? product.category._id : product.category;
+        if (!grouped[categoryId]) {
+          grouped[categoryId] = [];
+        }
+        grouped[categoryId].push(product);
+      } else {
+        uncategorized.push(product);
+      }
+    });
+    
+    if (uncategorized.length > 0) {
+      grouped['uncategorized'] = uncategorized;
+    }
+    
+    setProductsByCategory(grouped);
+  };
+
+  const getCategoryName = (categoryId) => {
+    if (categoryId === 'uncategorized') return 'Sin Categoría';
+    
+    const category = categories.find(cat => cat._id === categoryId);
+    return category ? category.name : 'Categoría Desconocida';
   };
 
   if (orderedProducts.length === 0) {
@@ -153,64 +241,121 @@ const ProductOrderSelector = ({ products = [], businessId, onOrderChange }) => {
         )}
       </AnimatePresence>
 
-      {/* Products List */}
-      <div className="space-y-3 max-h-96 overflow-y-auto">
-        <AnimatePresence>
-          {orderedProducts.map((product, index) => (
-            <motion.div
-              key={product._id}
-              layout
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.2 }}
-              draggable
-              onDragStart={(e) => handleDragStart(e, index)}
-              onDragOver={(e) => handleDragOver(e, index)}
-              onDragEnd={handleDragEnd}
-              className={`flex items-center bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-100 transition-all duration-150 ${
-                draggedItem === index ? 'opacity-50' : ''
-              }`}
-            >
-              <GripVertical className="text-gray-400 mr-3 flex-shrink-0" size={20} />
+      {/* Products List by Category */}
+      <div className="space-y-6 max-h-96 overflow-y-auto">
+        {Object.keys(productsByCategory)
+          .sort((a, b) => {
+            // Ordenar categorías: uncategorized al final, resto por displayOrder
+            if (a === 'uncategorized') return 1;
+            if (b === 'uncategorized') return -1;
+            
+            const catA = categories.find(cat => cat._id === a);
+            const catB = categories.find(cat => cat._id === b);
+            
+            const orderA = catA?.displayOrder !== undefined ? catA.displayOrder : 999;
+            const orderB = catB?.displayOrder !== undefined ? catB.displayOrder : 999;
+            
+            return orderA - orderB;
+          })
+          .map(categoryId => {
+          const categoryProducts = productsByCategory[categoryId];
+          const isExpanded = expandedCategories[categoryId];
+          
+          return (
+            <div key={categoryId} className="border border-gray-200 rounded-lg overflow-hidden">
+              {/* Category Header */}
+              <motion.div
+                whileHover={{ backgroundColor: '#f3f4f6' }}
+                className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200 cursor-pointer"
+                onClick={() => toggleCategory(categoryId)}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="text-lg">
+                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                  </div>
+                  <h3 className="font-semibold text-gray-800">{getCategoryName(categoryId)}</h3>
+                  <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
+                    {categoryProducts.length} productos
+                  </span>
+                </div>
+              </motion.div>
               
-              <div className="flex items-center flex-grow min-w-0">
-                <div className="bg-blue-100 text-blue-800 font-semibold text-sm px-3 py-1 rounded-full mr-4 flex-shrink-0">
-                  #{index + 1}
-                </div>
-                
-                <div className="flex items-center space-x-4 flex-grow min-w-0">
-                  {product.image && (
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-                    />
-                  )}
-                  
-                  <div className="flex-grow min-w-0">
-                    <h4 className="font-medium text-gray-800 truncate">{product.name}</h4>
-                    <p className="text-sm text-gray-600 truncate">{product.description}</p>
-                  </div>
-                  
-                  <div className="flex items-center space-x-3 flex-shrink-0">
-                    <span className="font-semibold text-green-600">
-                      ${product.price?.toLocaleString() || '0'}
-                    </span>
-                    
-                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      product.active !== false 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {product.active !== false ? '🟢 Activo' : '🔴 Inactivo'}
+              {/* Category Products */}
+              <AnimatePresence>
+                {isExpanded && (
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: 'auto' }}
+                    exit={{ height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-4 space-y-3">
+                      <AnimatePresence>
+                        {categoryProducts.map((product, productIndex) => (
+                          <motion.div
+                            key={product._id}
+                            layout
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.2 }}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, categoryId, productIndex)}
+                            onDragOver={(e) => handleDragOver(e, categoryId, productIndex)}
+                            onDragEnd={handleDragEnd}
+                            className={`flex items-center bg-white border border-gray-200 rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-all duration-150 ${
+                              draggedItem?.categoryId === categoryId && draggedItem?.productIndex === productIndex ? 'opacity-50' : ''
+                            }`}
+                          >
+                            <GripVertical className="text-gray-400 mr-3 flex-shrink-0" size={16} />
+                            
+                            <div className="flex items-center flex-grow min-w-0">
+                              <div className="bg-blue-100 text-blue-800 font-semibold text-xs px-2 py-1 rounded-full mr-3 flex-shrink-0">
+                                #{productIndex + 1}
+                              </div>
+                              
+                              <div className="flex items-center space-x-3 flex-grow min-w-0">
+                                {product.image && (
+                                  <img 
+                                    src={product.image} 
+                                    alt={product.name}
+                                    className="w-10 h-10 object-cover rounded-lg flex-shrink-0"
+                                  />
+                                )}
+                                
+                                <div className="flex-grow min-w-0">
+                                  <h4 className="font-medium text-gray-800 truncate text-sm">{product.name}</h4>
+                                  {product.description && (
+                                    <p className="text-xs text-gray-600 truncate">{product.description}</p>
+                                  )}
+                                </div>
+                                
+                                <div className="flex items-center space-x-2 flex-shrink-0">
+                                  <span className="font-semibold text-green-600 text-sm">
+                                    ${product.price?.toLocaleString() || '0'}
+                                  </span>
+                                  
+                                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    product.active !== false 
+                                      ? 'bg-green-100 text-green-800' 
+                                      : 'bg-red-100 text-red-800'
+                                  }`}>
+                                    {product.active !== false ? '🟢' : '🔴'}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
       </div>
       
       {hasChanges && (

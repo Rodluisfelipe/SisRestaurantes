@@ -1345,6 +1345,7 @@ function Admin() {
             >
               <ProductOrderSelector 
                 products={products}
+                categories={categories}
                 businessId={businessId}
                 onOrderChange={(newOrderedProducts) => {
                   setProducts(newOrderedProducts);
