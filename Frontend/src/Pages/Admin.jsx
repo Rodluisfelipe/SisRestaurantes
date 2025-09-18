@@ -377,6 +377,8 @@ function Admin() {
       console.log('Productos cargados:', productsRes.data.length);
       console.log('Categorías cargadas:', categoriesRes.data.length);
       console.log('Grupos de toppings cargados:', toppingGroupsRes.data.length);
+      console.log('Tipo de productsRes.data:', typeof productsRes.data, productsRes.data);
+      console.log('Es array productsRes.data:', Array.isArray(productsRes.data));
       
       // Log detallado de los grupos de toppings
       console.log('Detalle de grupos de toppings:', toppingGroupsRes.data.map(group => ({
@@ -1216,7 +1218,12 @@ function Admin() {
               
                     {/* Modern Products Grid - Responsive Optimized */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                      {(products || []).map((product, index) => (
+                      {(() => {
+                        console.log('Render - Tipo de products:', typeof products, products);
+                        console.log('Render - Es array products:', Array.isArray(products));
+                        const safeProducts = Array.isArray(products) ? products : [];
+                        console.log('Render - safeProducts:', safeProducts);
+                        return safeProducts.map((product, index) => (
                         <motion.div 
                           key={product._id} 
                           initial={{ opacity: 0, y: 20 }}
@@ -1319,7 +1326,8 @@ function Admin() {
                             </div>
                           </div>
                         </motion.div>
-                      ))}
+                        ));
+                      })()}
                     </div>
                   </div>
           )}
