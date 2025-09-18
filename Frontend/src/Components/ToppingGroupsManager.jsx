@@ -187,6 +187,17 @@ function ToppingGroupsManager() {
     setIsEditing(true);
   };
 
+  const handleToggleOption = async (groupId, optionId) => {
+    try {
+      await api.patch(`/topping-groups/${groupId}/options/${optionId}/toggle`);
+      // Refrescar los grupos para mostrar el cambio
+      fetchToppingGroups();
+    } catch (error) {
+      console.error('Error toggling option:', error);
+      setError('Error al cambiar el estado de la opción');
+    }
+  };
+
   const handleDelete = async (groupId) => {
       try {
       await api.delete(`/topping-groups/${groupId}`);
@@ -678,9 +689,33 @@ function ToppingGroupsManager() {
                           </h5>
                           <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
                             {group.options.map((option, idx) => (
-                              <div key={idx} className="flex justify-between items-center py-1">
-                                <span className="text-sm text-slate-700">{option.name}</span>
-                                <span className="text-sm font-semibold text-green-600">${option.price.toFixed(2)}</span>
+                              <div key={idx} className={`flex justify-between items-center py-2 px-3 rounded-lg transition-all duration-200 ${
+                                option.active !== false ? 'bg-white border border-gray-200' : 'bg-red-50 border border-red-200 opacity-60'
+                              }`}>
+                                <div className="flex items-center space-x-2">
+                                  <span className={`text-sm ${option.active !== false ? 'text-slate-700' : 'text-red-600 line-through'}`}>
+                                    {option.name}
+                                  </span>
+                                  {option.active === false && (
+                                    <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Agotado</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className={`text-sm font-semibold ${option.active !== false ? 'text-green-600' : 'text-red-500'}`}>
+                                    ${option.price.toFixed(2)}
+                                  </span>
+                                  <button
+                                    onClick={() => handleToggleOption(group._id, option._id)}
+                                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+                                      option.active !== false 
+                                        ? 'bg-green-100 hover:bg-green-200 text-green-600' 
+                                        : 'bg-red-100 hover:bg-red-200 text-red-600'
+                                    }`}
+                                    title={option.active !== false ? 'Desactivar opción' : 'Activar opción'}
+                                  >
+                                    {option.active !== false ? '👁️' : '👁️‍🗨️'}
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -712,9 +747,33 @@ function ToppingGroupsManager() {
                                 {subGroup.options && subGroup.options.length > 0 && (
                                   <div className="space-y-1">
                                     {subGroup.options.map((option, optIdx) => (
-                                      <div key={`suboption-${optIdx}`} className="flex justify-between items-center py-1 text-sm">
-                                        <span className="text-slate-600">• {option.name}</span>
-                                        <span className="font-semibold text-green-600">${option.price.toFixed(2)}</span>
+                                      <div key={`suboption-${optIdx}`} className={`flex justify-between items-center py-2 px-3 rounded-lg transition-all duration-200 ${
+                                        option.active !== false ? 'bg-white border border-gray-200' : 'bg-red-50 border border-red-200 opacity-60'
+                                      }`}>
+                                        <div className="flex items-center space-x-2">
+                                          <span className={`text-sm ${option.active !== false ? 'text-slate-600' : 'text-red-600 line-through'}`}>
+                                            • {option.name}
+                                          </span>
+                                          {option.active === false && (
+                                            <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Agotado</span>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                          <span className={`text-sm font-semibold ${option.active !== false ? 'text-green-600' : 'text-red-500'}`}>
+                                            ${option.price.toFixed(2)}
+                                          </span>
+                                          <button
+                                            onClick={() => handleToggleOption(group._id, option._id)}
+                                            className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 text-xs ${
+                                              option.active !== false 
+                                                ? 'bg-green-100 hover:bg-green-200 text-green-600' 
+                                                : 'bg-red-100 hover:bg-red-200 text-red-600'
+                                            }`}
+                                            title={option.active !== false ? 'Desactivar opción' : 'Activar opción'}
+                                          >
+                                            {option.active !== false ? '👁️' : '👁️‍🗨️'}
+                                          </button>
+                                        </div>
                                       </div>
                                     ))}
                                   </div>

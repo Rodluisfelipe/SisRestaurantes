@@ -91,6 +91,46 @@ router.post("/", async (req, res) => {
   }
 });
 
+// Reordenar categorías (debe ir antes de /:id para evitar conflictos)
+router.put("/reorder", async (req, res) => {
+  try {
+    const { businessId, categories } = req.body;
+    
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId es requerido" });
+    }
+    
+    if (!categories || !Array.isArray(categories)) {
+      return res.status(400).json({ message: "Formato inválido" });
+    }
+    
+    console.log(`Reordenando categorías para negocio ${businessId}:`, categories);
+    
+    // Actualizar cada categoría con su nuevo orden
+    const updatePromises = categories.map(category => 
+      Category.findByIdAndUpdate(
+        category._id,
+        { displayOrder: category.order },
+        { new: true }
+      )
+    );
+    
+    await Promise.all(updatePromises);
+    
+    // Emitir evento de actualización por WebSocket
+    emitToBusiness(businessId, "categories_update", { 
+      type: "reordered", 
+      businessId,
+      message: "Orden de categorías actualizado" 
+    });
+    
+    res.json({ success: true, message: "Orden de categorías actualizado correctamente" });
+  } catch (error) {
+    console.error("Error al reordenar categorías:", error);
+    res.status(500).json({ message: "Error al reordenar las categorías" });
+  }
+});
+
 // Actualizar categoría (mejorado para manejar displayOrder)
 router.put("/:id", async (req, res) => {
   try {
@@ -174,44 +214,5 @@ router.post("/update-order", async (req, res) => {
   }
 });
 
-// Reordenar categorías (nuevo endpoint más simple)
-router.put("/reorder", async (req, res) => {
-  try {
-    const { businessId, categories } = req.body;
-    
-    if (!businessId) {
-      return res.status(400).json({ message: "businessId es requerido" });
-    }
-    
-    if (!categories || !Array.isArray(categories)) {
-      return res.status(400).json({ message: "Formato inválido" });
-    }
-    
-    console.log(`Reordenando categorías para negocio ${businessId}:`, categories);
-    
-    // Actualizar cada categoría con su nuevo orden
-    const updatePromises = categories.map(category => 
-      Category.findByIdAndUpdate(
-        category._id,
-        { displayOrder: category.order },
-        { new: true }
-      )
-    );
-    
-    await Promise.all(updatePromises);
-    
-    // Emitir evento de actualización por WebSocket
-    emitToBusiness(businessId, "categories_update", { 
-      type: "reordered", 
-      businessId,
-      message: "Orden de categorías actualizado" 
-    });
-    
-    res.json({ success: true, message: "Orden de categorías actualizado correctamente" });
-  } catch (error) {
-    console.error("Error al reordenar categorías:", error);
-    res.status(500).json({ message: "Error al reordenar las categorías" });
-  }
-});
 
 module.exports = router; 

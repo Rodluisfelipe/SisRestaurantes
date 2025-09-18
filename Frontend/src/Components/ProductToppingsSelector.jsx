@@ -527,9 +527,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                         {/* Opciones principales */}
                         {Array.isArray(group.options) && group.options.length > 0 && (
                           <div className="space-y-2">
-                            {group.options.map(option => (
-                              option && option._id ? (
-                                <div
+                            {group.options.filter(option => option && option._id && option.active !== false).map(option => (
+                              <div
                                   key={option._id}
                                   onClick={() => handleOptionChange(group._id, option._id)}
                                   className={`flex items-center justify-between p-2 rounded cursor-pointer ${
@@ -576,9 +575,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                   
                                   {/* Opciones del subgrupo */}
                                   <div className="space-y-2">
-                                    {Array.isArray(subGroup.options) && subGroup.options.map(option => (
-                                      option && option._id ? (
-                                        <div
+                                    {Array.isArray(subGroup.options) && subGroup.options.filter(option => option && option._id && option.active !== false).map(option => (
+                                      <div
                                           key={option._id}
                                           onClick={() => handleOptionChange(
                                             group._id,

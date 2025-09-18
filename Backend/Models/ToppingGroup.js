@@ -9,6 +9,10 @@ const toppingOptionSchema = new mongoose.Schema({
   price: {
     type: Number,
     default: 0
+  },
+  active: {
+    type: Boolean,
+    default: true
   }
 });
 

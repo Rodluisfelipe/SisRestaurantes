@@ -156,4 +156,61 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// Toggle active status of a specific option
+router.patch("/:groupId/options/:optionId/toggle", async (req, res) => {
+  try {
+    const { groupId, optionId } = req.params;
+    
+    console.log(`[ToppingGroups] Toggling option ${optionId} in group ${groupId}`);
+    
+    // Encontrar el grupo
+    const group = await ToppingGroup.findById(groupId);
+    if (!group) {
+      return res.status(404).json({ message: "Grupo de toppings no encontrado" });
+    }
+    
+    // Buscar la opción en las opciones principales
+    let optionFound = false;
+    group.options.forEach(option => {
+      if (option._id.toString() === optionId) {
+        option.active = !option.active;
+        optionFound = true;
+        console.log(`[ToppingGroups] Option ${option.name} toggled to ${option.active}`);
+      }
+    });
+    
+    // Si no se encontró en opciones principales, buscar en subgrupos
+    if (!optionFound) {
+      group.subGroups.forEach(subGroup => {
+        subGroup.options.forEach(option => {
+          if (option._id.toString() === optionId) {
+            option.active = !option.active;
+            optionFound = true;
+            console.log(`[ToppingGroups] Subgroup option ${option.name} toggled to ${option.active}`);
+          }
+        });
+      });
+    }
+    
+    if (!optionFound) {
+      return res.status(404).json({ message: "Opción no encontrada" });
+    }
+    
+    // Guardar los cambios
+    await group.save();
+    
+    // Emitir evento de actualización por WebSocket
+    emitToBusiness(group.businessId?.toString(), "topping_groups_update", { 
+      type: "option_toggled", 
+      groupId: group._id,
+      optionId 
+    });
+    
+    res.json({ success: true, message: "Estado de la opción actualizado", group });
+  } catch (error) {
+    console.error("Error toggling option:", error);
+    res.status(500).json({ message: "Error al cambiar el estado de la opción" });
+  }
+});
+
 module.exports = router; 
