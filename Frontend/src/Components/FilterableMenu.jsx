@@ -45,7 +45,6 @@ const getCategoryEmoji = (categoryName) => {
     'marisco': '🦐',
     'seafood': '🦐',
     'pollo': '🍗',
-    'pollo': '🍗',
     'chicken': '🍗',
     'pasta': '🍝',
     'pastas': '🍝',

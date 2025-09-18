@@ -560,7 +560,6 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                     <span className="text-gray-700">+${option.price}</span>
                                   )}
                                 </div>
-                              ) : null
                             ))}
                           </div>
                         )}
@@ -568,8 +567,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                         {/* Subgrupos */}
                         {Array.isArray(group.subGroups) && group.subGroups.length > 0 && (
                           <div className="mt-4 space-y-4">
-                            {group.subGroups.map(subGroup => (
-                              subGroup && subGroup._id ? (
+                            {group.subGroups.filter(subGroup => subGroup && subGroup._id).map(subGroup => (
                                 <div key={subGroup._id} className="pl-3 border-l-2 border-gray-200">
                                   <h5 className="font-medium mb-2 text-gray-800">{subGroup.title}</h5>
                                   
@@ -614,11 +612,9 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                             <span className="text-gray-700">+${option.price}</span>
                                           )}
                                         </div>
-                                      ) : null
                                     ))}
                                   </div>
                                 </div>
-                              ) : null
                             ))}
                           </div>
                         )}
