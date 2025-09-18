@@ -42,6 +42,10 @@ const ProductSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  displayOrder: {
+    type: Number,
+    default: 0
+  },
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',

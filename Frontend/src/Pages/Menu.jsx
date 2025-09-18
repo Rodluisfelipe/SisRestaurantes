@@ -18,6 +18,7 @@ import { calculateItemPrice, calculateTotalAmount, calculateTotalItems, createWh
 import logger from '../utils/logger';
 import { useParams, useNavigate } from 'react-router-dom';
 import NotFound from './NotFound';
+import useSEO from '../hooks/useSEO';
 
 /**
  * Página principal del Menú para clientes
@@ -107,6 +108,18 @@ export default function Menu() {
         tableNumber: ''
       };
     }
+  });
+
+  // SEO optimization
+  useSEO({
+    title: businessConfig?.businessName ? `${businessConfig.businessName} - Menú Digital` : 'Menú Digital',
+    description: businessConfig?.description || `Descubre el delicioso menú de ${businessConfig?.businessName || 'nuestro restaurante'}. Ordena online y disfruta de la mejor comida.`,
+    logo: businessConfig?.logo,
+    siteName: businessConfig?.businessName || 'Restaurante',
+    url: window.location.href,
+    type: 'restaurant',
+    keywords: `${businessConfig?.businessName || 'restaurante'}, menú digital, pedidos online, comida, delivery`,
+    image: businessConfig?.logo
   });
 
   // Determinar si debe mostrar el selector de tipo de pedido

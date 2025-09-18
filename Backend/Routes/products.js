@@ -56,7 +56,8 @@ router.get("/", async (req, res) => {
         path: 'toppingGroups',
         match: { active: true },
         select: 'name description isMultipleChoice isRequired options basePrice subGroups'
-      });
+      })
+      .sort({ displayOrder: 1, createdAt: 1 });
     
     logger.info(`Found ${products.length} products for business ${businessId}`);
     res.json(products);
@@ -205,6 +206,46 @@ router.delete("/:id", async (req, res) => {
   } catch (error) {
     console.error("Error al eliminar producto:", error);
     res.status(500).json({ message: "Error al eliminar el producto" });
+  }
+});
+
+// Reorder products
+router.put("/reorder", async (req, res) => {
+  try {
+    const { businessId, products } = req.body;
+    
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId es requerido" });
+    }
+    
+    if (!products || !Array.isArray(products)) {
+      return res.status(400).json({ message: "Formato inválido para products" });
+    }
+    
+    console.log(`[Products] Reordenando productos para negocio ${businessId}:`, products.length);
+    
+    // Actualizar el displayOrder de cada producto
+    const updatePromises = products.map(productData => 
+      Product.findByIdAndUpdate(
+        productData._id,
+        { displayOrder: productData.order },
+        { new: true }
+      )
+    );
+    
+    await Promise.all(updatePromises);
+    
+    // Emitir evento de actualización
+    emitToBusiness(businessId, "products_update", { 
+      type: "reordered", 
+      businessId,
+      message: "Orden de productos actualizado" 
+    });
+    
+    res.json({ success: true, message: "Orden de productos actualizado correctamente" });
+  } catch (error) {
+    console.error("[Products] Error al reordenar productos:", error);
+    res.status(500).json({ message: "Error al reordenar los productos" });
   }
 });
 

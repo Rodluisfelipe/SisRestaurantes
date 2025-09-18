@@ -25,6 +25,7 @@ import NotFound from "./Pages/NotFound";
 import TableValidator from "./Components/TableValidator";
 import MenuByCatalog from "./Pages/Catalog/MenuByCatalog";
 import RestaurantDetail from "./Pages/Catalog/RestaurantDetail";
+import DynamicManifest from "./Components/DynamicManifest";
 
 // Componente protegido para rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
@@ -87,6 +88,7 @@ function BusinessProviderWrapper({ children }) {
         setLoading(false);
       }}
     >
+      <DynamicManifest />
       {loading ? (
         <div className="min-h-screen bg-[#051C2C] flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3A7AFF]"></div>
@@ -102,7 +104,7 @@ const RESERVED_PATHS = ['login', 'register', 'features', 'contact', 'pricing', '
 function App() {
   return (
     <AuthProvider>
-        <Routes>
+      <Routes>
         {/* Rutas de administración - SuperAdmin */}
         <Route path="/superadmin/*" element={<SuperAdminDashboard />} />
         <Route path="/reset-password/:token" element={<SuperAdminDashboard />} />

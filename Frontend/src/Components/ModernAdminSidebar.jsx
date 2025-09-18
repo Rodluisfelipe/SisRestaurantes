@@ -5,6 +5,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
   const menuItems = [
     { id: 'orders', label: 'Pedidos', icon: '📋', badge: pendingOrdersCount },
     { id: 'products', label: 'Productos', icon: '🍔' },
+    { id: 'product-order', label: 'Orden Productos', icon: '🔄' },
     { id: 'categories', label: 'Categorías', icon: '📂' },
     { id: 'toppings', label: 'Extras', icon: '🧀' },
     { id: 'tables', label: 'Mesas', icon: '🪑' },

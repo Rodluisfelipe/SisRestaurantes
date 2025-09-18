@@ -5,6 +5,7 @@ import CategorySettings from "../Components/CategorySettings";
 import ToppingGroupsManager from '../Components/ToppingGroupsManager';
 import ProductFormToppingSelector from '../Components/ProductFormToppingSelector';
 import ProductToppingOrderSelector from '../Components/ProductToppingOrderSelector';
+import ProductOrderSelector from '../Components/ProductOrderSelector';
 import { API_ENDPOINTS } from "../config";
 import api from "../services/api";
 import ProductToppingSelector from '../Components/ProductToppingSelector';
@@ -887,6 +888,7 @@ function Admin() {
                 <div>
                   <h1 className="text-2xl font-bold text-slate-900 capitalize">
                     {activeTab === 'products' && 'Gestión de Productos'}
+                    {activeTab === 'product-order' && 'Orden de Productos'}
                     {activeTab === 'orders' && 'Panel de Pedidos'}
                     {activeTab === 'categories' && 'Gestión de Categorías'}
                     {activeTab === 'toppings' && 'Gestión de Extras'}
@@ -900,6 +902,7 @@ function Admin() {
                   </h1>
                   <p className="text-slate-600 mt-1">
                     {activeTab === 'products' && 'Administra tu menú y productos'}
+                    {activeTab === 'product-order' && 'Reordena cómo aparecen los productos en el menú'}
                     {activeTab === 'orders' && 'Gestiona pedidos en tiempo real'}
                     {activeTab === 'categories' && 'Organiza tu menú por categorías'}
                     {activeTab === 'toppings' && 'Configura extras y complementos'}
@@ -1330,6 +1333,24 @@ function Admin() {
                       })()}
                     </div>
                   </div>
+          )}
+
+          {/* Product Order Management */}
+          {activeTab === 'product-order' && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="space-y-6"
+            >
+              <ProductOrderSelector 
+                products={products}
+                businessId={businessId}
+                onOrderChange={(newOrderedProducts) => {
+                  setProducts(newOrderedProducts);
+                }}
+              />
+            </motion.div>
           )}
                 
               </motion.div>
