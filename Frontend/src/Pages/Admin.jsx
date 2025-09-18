@@ -385,9 +385,9 @@ function Admin() {
         options: group.options ? group.options.length : 0
       })));
       
-      setProducts(productsRes.data);
-      setCategories(categoriesRes.data);
-      setToppingGroups(toppingGroupsRes.data);
+      setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
+      setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+      setToppingGroups(Array.isArray(toppingGroupsRes.data) ? toppingGroupsRes.data : []);
     } catch (err) {
       console.error("Error al obtener datos:", err);
     } finally {
@@ -1216,7 +1216,7 @@ function Admin() {
               
                     {/* Modern Products Grid - Responsive Optimized */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                      {products.map((product, index) => (
+                      {(products || []).map((product, index) => (
                         <motion.div 
                           key={product._id} 
                           initial={{ opacity: 0, y: 20 }}
