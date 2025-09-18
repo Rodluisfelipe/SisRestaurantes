@@ -24,6 +24,11 @@ const businessConfigSchema = new mongoose.Schema({
     required: true,
     default: "Mi Restaurante"
   },
+  description: {
+    type: String,
+    default: "Deliciosa comida casera con ingredientes frescos y servicio de calidad.",
+    maxlength: 300
+  },
   logo: {
     type: String,
     default: ""

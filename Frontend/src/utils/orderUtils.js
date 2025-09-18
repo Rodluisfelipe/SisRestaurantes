@@ -159,5 +159,6 @@ Tu orden será procesada inmediatamente.
     .replace(/{{businessName}}/g, businessName)
     .replace(/{{timestamp}}/g, timestamp);
 
-  return encodeURIComponent(message);
+  // Usar encodeURIComponent con soporte para emojis
+  return encodeURIComponent(message).replace(/'/g, "%27");
 }; 

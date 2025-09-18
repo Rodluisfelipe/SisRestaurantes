@@ -689,12 +689,40 @@ export default function Menu() {
           businessConfig
         );
         
-        // Usar el número configurado en el panel de administración
-        const whatsappNumber = businessConfig?.whatsappNumber 
-          ? `https://wa.me/${businessConfig.whatsappNumber}?text=${whatsappMessage}` 
-          : `https://wa.me/?text=${whatsappMessage}`;
+        // Función para detectar si es móvil
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        
+        // Construir URL de WhatsApp según el dispositivo
+        let whatsappUrl;
+        if (businessConfig?.whatsappNumber) {
+          if (isMobile) {
+            // Para móviles, usar el protocolo whatsapp://
+            whatsappUrl = `whatsapp://send?phone=${businessConfig.whatsappNumber}&text=${whatsappMessage}`;
+          } else {
+            // Para desktop, usar wa.me
+            whatsappUrl = `https://wa.me/${businessConfig.whatsappNumber}?text=${whatsappMessage}`;
+          }
+        } else {
+          if (isMobile) {
+            // Sin número específico en móvil
+            whatsappUrl = `whatsapp://send?text=${whatsappMessage}`;
+          } else {
+            // Sin número específico en desktop
+            whatsappUrl = `https://wa.me/?text=${whatsappMessage}`;
+          }
+        }
 
-        window.open(whatsappNumber);
+        // Abrir WhatsApp
+        try {
+          window.location.href = whatsappUrl;
+        } catch (error) {
+          // Fallback si el protocolo whatsapp:// no funciona
+          console.warn('Error opening WhatsApp:', error);
+          const fallbackUrl = businessConfig?.whatsappNumber 
+            ? `https://wa.me/${businessConfig.whatsappNumber}?text=${whatsappMessage}` 
+            : `https://wa.me/?text=${whatsappMessage}`;
+          window.open(fallbackUrl, '_blank');
+        }
       }
       
       // Guardar el pedido en la base de datos

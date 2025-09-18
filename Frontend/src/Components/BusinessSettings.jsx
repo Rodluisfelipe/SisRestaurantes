@@ -7,6 +7,7 @@ import { socket } from '../services/socket';
 const BusinessSettings = () => {
   const initialSettings = {
     businessName: '',
+    description: '',
     logo: '',
     coverImage: '',
     isOpen: true,
@@ -37,6 +38,7 @@ const BusinessSettings = () => {
         const data = {
           ...initialSettings,
           ...response.data,
+          description: response.data.description || 'Deliciosa comida casera con ingredientes frescos y servicio de calidad.',
           coverImage: response.data.coverImage || '',
           isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
           whatsappNumber: response.data.whatsappNumber || '',
@@ -338,6 +340,26 @@ const BusinessSettings = () => {
                   className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
                   placeholder="Ej: GO BURGER"
                 />
+              </div>
+
+              {/* Description */}
+              <div className="group">
+                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                  <span className="mr-2">📝</span>
+                  Descripción del Negocio
+                </label>
+                <textarea
+                  name="description"
+                  value={settings.description}
+                  onChange={handleChange}
+                  rows={3}
+                  maxLength={300}
+                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-base transition-all duration-200 group-hover:border-slate-300 resize-none"
+                  placeholder="Ej: Deliciosa comida casera con ingredientes frescos y servicio de calidad. Especialistas en hamburguesas gourmet y comida rápida."
+                />
+                <div className="mt-2 text-xs text-slate-500 text-right">
+                  {settings.description.length}/300 caracteres
+                </div>
               </div>
 
               {/* Logo URL */}

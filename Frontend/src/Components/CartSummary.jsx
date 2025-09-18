@@ -799,49 +799,61 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   
                   {/* Toppings */}
                   {item.selectedToppings && item.selectedToppings.length > 0 && (
-                    <div className="mt-3 p-3 bg-white rounded-lg border border-slate-200/50 shadow-sm">
+                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-slate-200/50">
                       <p className="text-xs font-medium text-slate-600 mb-2">Personalizaciones:</p>
-                      <div className="space-y-1 text-xs text-slate-600">
-                      {item.selectedToppings.map((topping, idx) => {
-                        // Asegurar que basePrice sea un número o 0 - Movido fuera del JSX
-                        const basePrice = Number(topping.basePrice || 0);
-                        
-                        return (
-                          <div key={`${item.uniqueId || item._id}-topping-${idx}`} className="py-0.5">
-                            {/* Opción principal del grupo */}
-                            <div>
-                              {topping.optionName ? (
-                                <span className="flex flex-wrap items-center">
-                                  <span className="font-medium mr-1">{topping.groupName}</span>
-                                  {basePrice > 0 && <span className="text-gray-500 mr-1">(+{basePrice.toLocaleString('es-CO')})</span>}: 
-                                  <span className="ml-1">{topping.optionName}</span>
-                                  {topping.price > 0 && <span className="text-gray-500 ml-1">(+{topping.price.toLocaleString('es-CO')})</span>}
-                                </span>
-                              ) : (
-                                <span className="flex flex-wrap items-center">
-                                  <span className="font-medium">{topping.groupName}</span>
-                                  {basePrice > 0 && <span className="text-gray-500 ml-1">(+{basePrice.toLocaleString('es-CO')})</span>}
-                                </span>
+                      <div className="space-y-2 text-xs">
+                        {item.selectedToppings.map((topping, idx) => {
+                          const basePrice = Number(topping.basePrice || 0);
+                          
+                          return (
+                            <div key={`${item.uniqueId || item._id}-topping-${idx}`} className="space-y-1">
+                              {/* Opción principal del grupo */}
+                              <div className="block">
+                                {topping.optionName ? (
+                                  <div className="space-y-1">
+                                    <div className="flex items-center flex-wrap">
+                                      <span className="font-semibold text-blue-700 mr-1">{topping.groupName}</span>
+                                      {basePrice > 0 && (
+                                        <span className="text-green-600 text-xs">(+${basePrice.toLocaleString('es-CO')})</span>
+                                      )}
+                                      <span className="mx-1">:</span>
+                                    </div>
+                                    <div className="flex items-center flex-wrap ml-2">
+                                      <span className="text-gray-800">{topping.optionName}</span>
+                                      {topping.price > 0 && (
+                                        <span className="text-green-600 text-xs ml-1">(+${topping.price.toLocaleString('es-CO')})</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center flex-wrap">
+                                    <span className="font-semibold text-blue-700">{topping.groupName}</span>
+                                    {basePrice > 0 && (
+                                      <span className="text-green-600 text-xs ml-1">(+${basePrice.toLocaleString('es-CO')})</span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Subgrupos */}
+                              {topping.subGroups && topping.subGroups.length > 0 && (
+                                <div className="ml-3 pl-2 border-l-2 border-blue-200 space-y-1">
+                                  {topping.subGroups.map((subItem, subIdx) => (
+                                    <div key={`${item.uniqueId || item._id}-subtopping-${subIdx}`} className="block">
+                                      <div className="flex items-center flex-wrap">
+                                        <span className="font-medium text-orange-700 text-xs mr-1">{subItem.subGroupTitle}:</span>
+                                        <span className="text-gray-800 text-xs">{subItem.optionName}</span>
+                                        {subItem.price > 0 && (
+                                          <span className="text-green-600 text-xs ml-1">(+${subItem.price.toLocaleString('es-CO')})</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
                               )}
                             </div>
-                            
-                            {/* Subgrupos */}
-                            {topping.subGroups && topping.subGroups.length > 0 && (
-                              <div className="pl-3 mt-1 space-y-0.5 border-l border-gray-200">
-                                {topping.subGroups.map((subItem, subIdx) => (
-                                  <div key={`${item.uniqueId || item._id}-subtopping-${subIdx}`}>
-                                    <span className="flex flex-wrap items-center">
-                                      <span className="font-medium text-gray-700 mr-1">{subItem.subGroupTitle}:</span>
-                                      <span>{subItem.optionName}</span>
-                                      {subItem.price > 0 && <span className="text-gray-500 ml-1">(+{subItem.price.toLocaleString('es-CO')})</span>}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
