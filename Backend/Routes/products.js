@@ -208,4 +208,45 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+// Toggle active status of a product
+router.patch("/:id/toggle", async (req, res) => {
+  try {
+    const productId = req.params.id;
+    
+    console.log(`[Products] Toggling product ${productId}`);
+    
+    // Encontrar el producto
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+    
+    // Toggle del estado activo
+    product.active = !product.active;
+    await product.save();
+    
+    console.log(`[Products] Product ${product.name} toggled to ${product.active}`);
+    
+    // Emitir evento de actualización por WebSocket
+    emitToBusiness(product.businessId?.toString(), "products_update", { 
+      type: "toggled", 
+      productId: product._id,
+      active: product.active
+    });
+    
+    res.json({ 
+      success: true, 
+      message: `Producto ${product.active ? 'activado' : 'desactivado'} correctamente`,
+      product: {
+        _id: product._id,
+        name: product.name,
+        active: product.active
+      }
+    });
+  } catch (error) {
+    console.error("Error toggling product:", error);
+    res.status(500).json({ message: "Error al cambiar el estado del producto" });
+  }
+});
+
 module.exports = router;

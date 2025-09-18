@@ -720,6 +720,26 @@ function Admin() {
     }
   };
 
+  const handleToggleProduct = async (productId) => {
+    try {
+      const response = await api.patch(`/products/${productId}/toggle`);
+      
+      // Actualizar el estado local del producto
+      setProducts(prevProducts => 
+        prevProducts.map(product => 
+          product._id === productId 
+            ? { ...product, active: response.data.product.active }
+            : product
+        )
+      );
+      
+      showSuccessMessage(response.data.message);
+    } catch (error) {
+      console.error('Error al cambiar estado del producto:', error);
+      showSuccessMessage('Error al cambiar el estado del producto');
+    }
+  };
+
   // Función para editar producto
   const editProduct = (product) => {
     setEditingId(product._id);  // ✅ Agregar esta línea que faltaba
@@ -1203,7 +1223,11 @@ function Admin() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.1 }}
                           whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                          className="group bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full"
+                          className={`group rounded-xl shadow-lg border overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col h-full ${
+                            product.active !== false 
+                              ? 'bg-white border-gray-200' 
+                              : 'bg-red-50 border-red-200 opacity-75'
+                          }`}
                         >
                           {/* Product Image */}
                           <div className="relative overflow-hidden flex-shrink-0">
@@ -1221,14 +1245,28 @@ function Admin() {
                               </div>
                             </div>
 
-                            {/* Category Badge */}
-                            {product.category && (
-                              <div className="absolute top-3 right-3">
-                                <span className="bg-white/90 backdrop-blur-sm text-gray-700 px-2 py-1 rounded-full text-xs font-medium shadow-md max-w-[100px] truncate">
-                                  📂 {categories.find(c => c._id === product.category)?.name || 'Sin categoría'}
+                            {/* Status and Category Badges */}
+                            <div className="absolute top-3 right-3 flex flex-col gap-2">
+                              {/* Status Badge */}
+                              <div className="flex justify-end">
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold shadow-md ${
+                                  product.active !== false 
+                                    ? 'bg-green-500 text-white' 
+                                    : 'bg-red-500 text-white'
+                                }`}>
+                                  {product.active !== false ? '🟢 Activo' : '🔴 Inactivo'}
                                 </span>
                               </div>
-                            )}
+                              
+                              {/* Category Badge */}
+                              {product.category && (
+                                <div className="flex justify-end">
+                                  <span className="bg-white/90 backdrop-blur-sm text-gray-700 px-2 py-1 rounded-full text-xs font-medium shadow-md max-w-[100px] truncate">
+                                    📂 {categories.find(c => c._id === product.category)?.name || 'Sin categoría'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {/* Product Info */}
@@ -1243,21 +1281,37 @@ function Admin() {
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex gap-2 mt-auto">
+                            <div className="flex gap-1 mt-auto">
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => editProduct(product)}
-                                className="flex-1 bg-blue-500 text-white px-3 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0"
+                                className="flex-1 bg-blue-500 text-white px-2 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0"
                               >
                                 <span>✏️</span>
                                 <span className="truncate">Editar</span>
                               </motion.button>
+                              
+                              <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleToggleProduct(product._id)}
+                                className={`flex-1 px-2 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0 ${
+                                  product.active !== false
+                                    ? 'bg-orange-500 text-white hover:bg-orange-600'
+                                    : 'bg-green-500 text-white hover:bg-green-600'
+                                }`}
+                                title={product.active !== false ? 'Desactivar producto' : 'Activar producto'}
+                              >
+                                <span>{product.active !== false ? '👁️‍🗨️' : '👁️'}</span>
+                                <span className="truncate">{product.active !== false ? 'Apagar' : 'Encender'}</span>
+                              </motion.button>
+                              
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => deleteProduct(product._id)}
-                                className="flex-1 bg-red-500 text-white px-3 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0"
+                                className="flex-1 bg-red-500 text-white px-2 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0"
                               >
                                 <span>🗑️</span>
                                 <span className="truncate">Eliminar</span>

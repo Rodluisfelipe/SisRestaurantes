@@ -212,6 +212,9 @@ const FilterableMenu = ({
   useEffect(() => {
     let filtered = products;
 
+    // Filter only active products (hide inactive products from customers)
+    filtered = filtered.filter(product => product.active !== false);
+
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(product =>

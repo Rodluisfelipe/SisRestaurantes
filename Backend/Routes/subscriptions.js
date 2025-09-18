@@ -6,7 +6,66 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const { isValidObjectId } = require('../utils/validators');
 
-// Middleware para verificar SuperAdmin
+// GET /api/subscriptions/check/:businessId - Verificar estado de suscripción (para el admin regular)
+router.get('/check/:businessId', async (req, res) => {
+  try {
+    const { businessId } = req.params;
+    
+    if (!isValidObjectId(businessId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de negocio inválido'
+      });
+    }
+    
+    const subscription = await Subscription.findOne({ businessId })
+      .populate('businessId', 'businessName slug');
+    
+    if (!subscription) {
+      return res.status(200).json({
+        success: true,
+        hasSubscription: false,
+        message: 'No hay suscripción para este negocio'
+      });
+    }
+    
+    // Calcular días restantes
+    const now = new Date();
+    const isActive = subscription.isSubscriptionActive();
+    const isInGracePeriod = subscription.isInGracePeriod();
+    const daysRemaining = subscription.getDaysRemaining();
+    
+    res.json({
+      success: true,
+      hasSubscription: true,
+      subscription: {
+        _id: subscription._id,
+        planType: subscription.planType,
+        status: subscription.status,
+        paymentStatus: subscription.paymentStatus,
+        startDate: subscription.startDate,
+        endDate: subscription.endDate,
+        gracePeriodEnd: subscription.gracePeriodEnd,
+        price: subscription.price,
+        notes: subscription.notes,
+        isActive,
+        isInGracePeriod,
+        daysRemaining,
+        createdAt: subscription.createdAt,
+        updatedAt: subscription.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Error checking subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar la suscripción',
+      error: error.message
+    });
+  }
+});
+
+// Middleware para verificar SuperAdmin (aplica a todas las rutas siguientes)
 router.use(protectSuperAdmin);
 
 // GET /api/subscriptions - Obtener todas las suscripciones
@@ -238,51 +297,5 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// GET /api/subscriptions/check/:businessId - Verificar estado de suscripción (para el admin)
-router.get('/check/:businessId', async (req, res) => {
-  try {
-    const { businessId } = req.params;
-    
-    if (!isValidObjectId(businessId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'ID de negocio inválido'
-      });
-    }
-    
-    const subscription = await Subscription.findOne({ businessId })
-      .populate('businessId', 'businessName slug');
-    
-    if (!subscription) {
-      return res.status(200).json({
-        success: true,
-        hasSubscription: false,
-        message: 'No hay suscripción activa'
-      });
-    }
-    
-    const isActive = subscription.isSubscriptionActive();
-    const isInGracePeriod = subscription.isInGracePeriod();
-    const daysRemaining = subscription.getDaysRemaining();
-    
-    res.status(200).json({
-      success: true,
-      hasSubscription: true,
-      subscription: {
-        ...subscription.toObject(),
-        isActive,
-        isInGracePeriod,
-        daysRemaining
-      }
-    });
-  } catch (error) {
-    console.error('Error checking subscription:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al verificar la suscripción',
-      error: error.message
-    });
-  }
-});
 
 module.exports = router;
