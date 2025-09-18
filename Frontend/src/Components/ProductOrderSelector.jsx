@@ -69,10 +69,12 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
     setProductsByCategory(newProductsByCategory);
     setDraggedItem({ categoryId, productIndex });
     setHasChanges(true);
+    console.log('🔄 Cambios detectados en ProductOrderSelector');
   };
 
   const handleDragEnd = () => {
     setDraggedItem(null);
+    // No resetear hasChanges aquí, se mantiene true hasta que se guarde
   };
 
   const toggleCategory = (categoryId) => {
@@ -363,6 +365,13 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
           <p className="text-sm text-yellow-800">
             ⚠️ Tienes cambios sin guardar. Haz clic en "Guardar Orden" para aplicar los cambios.
           </p>
+        </div>
+      )}
+      
+      {/* Debug info */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-2 p-2 bg-gray-100 text-xs text-gray-600">
+          Debug: hasChanges = {hasChanges.toString()}
         </div>
       )}
     </div>
