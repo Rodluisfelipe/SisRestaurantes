@@ -207,23 +207,29 @@ const CategorySettings = () => {
     setError(null);
     
     try {
-      // Guardar el nuevo orden en localStorage
+      // Crear array de categorías con su nuevo orden
+      const orderedCategories = categories.map((category, index) => ({
+        _id: category._id,
+        order: index
+      }));
+      
+      // Enviar orden al backend
+      await api.put('/categories/reorder', { 
+        businessId, 
+        categories: orderedCategories 
+      });
+      
+      // También guardar en localStorage para compatibilidad con PC
       const orderMap = {};
       categories.forEach((category, index) => {
         orderMap[category._id] = index;
       });
+      saveOrderToStorage(orderMap);
       
-      if (saveOrderToStorage(orderMap)) {
-        // Simulamos un tiempo de guardado para mostrar el estado de carga
-        setTimeout(() => {
-          setSaveLoading(false);
-          setSuccessMessage('Orden de categorías guardado correctamente');
-          setSortMode(false);
-          setTimeout(() => setSuccessMessage(''), 3000);
-        }, 600);
-      } else {
-        throw new Error('No se pudo guardar el orden');
-      }
+      setSaveLoading(false);
+      setSuccessMessage('Orden de categorías guardado correctamente');
+      setSortMode(false);
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error al guardar el orden:', error);
       setError('Error al guardar el orden de categorías');

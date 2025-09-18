@@ -92,6 +92,14 @@ router.post("/", async (req, res) => {
       productData.toppingGroups = JSON.parse(productData.toppingGroups);
     }
     
+    // Procesar el orden de los toppings si viene en el request
+    if (productData.toppingGroups && Array.isArray(productData.toppingGroups)) {
+      productData.toppingGroupsOrder = productData.toppingGroups.map((toppingId, index) => ({
+        toppingGroupId: toppingId,
+        order: index
+      }));
+    }
+    
     // Manejar businessId si viene como slug usando la utilidad centralizada
     if (productData.businessId && typeof productData.businessId === 'string') {
       const businessResult = await validateAndResolveBusinessId(productData.businessId);
@@ -145,6 +153,15 @@ router.put("/:id", async (req, res) => {
       }
     }
     
+    // Procesar el orden de los toppings
+    let toppingGroupsOrder = [];
+    if (toppingGroups && Array.isArray(toppingGroups)) {
+      toppingGroupsOrder = toppingGroups.map((toppingId, index) => ({
+        toppingGroupId: toppingId,
+        order: index
+      }));
+    }
+
     const updatedProduct = await Product.findByIdAndUpdate(
       productId,
       { 
@@ -155,7 +172,8 @@ router.put("/:id", async (req, res) => {
         image,
         businessId: finalBusinessId,
         // Asegúrate de que toppingGroups se actualice correctamente
-        toppingGroups: toppingGroups || [] 
+        toppingGroups: toppingGroups || [],
+        toppingGroupsOrder: toppingGroupsOrder
       },
       { new: true }  // Para que devuelva el documento actualizado
     ).populate({

@@ -4,6 +4,7 @@ import BusinessSettings from "../Components/BusinessSettings";
 import CategorySettings from "../Components/CategorySettings";
 import ToppingGroupsManager from '../Components/ToppingGroupsManager';
 import ProductFormToppingSelector from '../Components/ProductFormToppingSelector';
+import ProductToppingOrderSelector from '../Components/ProductToppingOrderSelector';
 import { API_ENDPOINTS } from "../config";
 import api from "../services/api";
 import ProductToppingSelector from '../Components/ProductToppingSelector';
@@ -1139,11 +1140,27 @@ function Admin() {
                                 <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-slate-200 p-4">
                                   <ProductFormToppingSelector 
                                     toppingGroups={toppingGroups} 
-                                    selectedGroups={form.toppingGroups} 
+                                    selectedToppings={form.toppingGroups} 
                                     onChange={handleToppingGroupsChange}
                                   />
                                 </div>
                               </div>
+
+                              {/* Reordenamiento de Toppings */}
+                              {form.toppingGroups && form.toppingGroups.length > 0 && (
+                                <div className="group">
+                                  <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                    <span className="mr-2">🔄</span>
+                                    Orden de los Extras
+                                  </label>
+                                  <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-slate-200 p-4">
+                                    <ProductToppingOrderSelector 
+                                      selectedToppings={form.toppingGroups} 
+                                      onChange={handleToppingGroupsChange}
+                                    />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                           

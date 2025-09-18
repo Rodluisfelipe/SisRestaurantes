@@ -13,11 +13,27 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   const { businessConfig } = useBusinessConfig();
   
   // Asegurarnos de que no haya grupos duplicados y que toppingGroups sea un array
-  const uniqueToppingGroups = Array.isArray(product.toppingGroups) 
-    ? Array.from(new Set(product.toppingGroups.map(g => g?._id)))
-        .map(id => product.toppingGroups.find(g => g?._id === id))
-        .filter(g => g) // Filtrar elementos nulos o undefined
-    : [];
+  // Ordenar según el orden guardado en el backend
+  const getOrderedToppingGroups = () => {
+    if (!Array.isArray(product.toppingGroups)) return [];
+    
+    // Si hay orden guardado en el backend, usarlo
+    if (product.toppingGroupsOrder && Array.isArray(product.toppingGroupsOrder)) {
+      return product.toppingGroupsOrder
+        .sort((a, b) => a.order - b.order)
+        .map(orderItem => {
+          return product.toppingGroups.find(g => g?._id === orderItem.toppingGroupId);
+        })
+        .filter(g => g); // Filtrar elementos nulos o undefined
+    }
+    
+    // Si no hay orden guardado, usar el orden por defecto
+    return Array.from(new Set(product.toppingGroups.map(g => g?._id)))
+      .map(id => product.toppingGroups.find(g => g?._id === id))
+      .filter(g => g); // Filtrar elementos nulos o undefined
+  };
+
+  const uniqueToppingGroups = getOrderedToppingGroups();
 
   console.log('Grupos de toppings disponibles:', uniqueToppingGroups.map(g => ({
     name: g.name, 

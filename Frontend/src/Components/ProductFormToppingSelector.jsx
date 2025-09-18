@@ -44,17 +44,30 @@ function ProductFormToppingSelector({ toppingGroups, selectedToppings = [], onCh
           return (
             <div 
               key={group._id} 
-              className={`p-2 border rounded flex items-start ${isSelected ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'}`}
+              className={`p-3 border-2 rounded-lg flex items-start transition-all duration-200 ${
+                isSelected 
+                  ? 'bg-blue-100 border-blue-400 shadow-md' 
+                  : 'bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+              }`}
             >
               <input
                 type="checkbox"
                 id={`topping-${group._id}`}
                 checked={isSelected}
                 onChange={e => handleToggleTopping(group, e.target.checked)}
-                className="mt-1 mr-2"
+                className={`mt-1 mr-3 w-5 h-5 text-blue-600 border-2 rounded focus:ring-blue-500 focus:ring-2 ${
+                  isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-300'
+                }`}
               />
               <label htmlFor={`topping-${group._id}`} className="cursor-pointer flex-1">
-                <div className="font-medium text-gray-800">{group.name}</div>
+                <div className="flex items-center">
+                  <div className={`font-medium ${isSelected ? 'text-blue-800' : 'text-gray-800'}`}>
+                    {group.name}
+                  </div>
+                  {isSelected && (
+                    <span className="ml-2 text-blue-600 text-sm font-semibold">✓ Seleccionado</span>
+                  )}
+                </div>
                 {group.description && (
                   <div className="text-sm text-gray-600">{group.description}</div>
                 )}

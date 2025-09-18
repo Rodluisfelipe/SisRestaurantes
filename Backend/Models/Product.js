@@ -28,6 +28,16 @@ const ProductSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'ToppingGroup'
   }],
+  toppingGroupsOrder: [{
+    toppingGroupId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'ToppingGroup'
+    },
+    order: {
+      type: Number,
+      default: 0
+    }
+  }],
   active: {
     type: Boolean,
     default: true

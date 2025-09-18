@@ -17,7 +17,8 @@ router.get("/", async (req, res) => {
     let { businessId } = req.query;
     
     // Crear filtro basado en businessId o slug
-    const categories = await getAllCategories(businessId);
+    const filter = await createBusinessFilter(businessId);
+    const categories = await Category.find(filter).sort({ displayOrder: 1, createdAt: 1 });
     
     console.log(`Encontradas ${categories.length} categorías para el negocio ${businessId}`);
     res.json(categories);
@@ -170,6 +171,46 @@ router.post("/update-order", async (req, res) => {
   } catch (error) {
     console.error("Error al actualizar orden:", error);
     res.status(500).json({ message: "Error al actualizar el orden" });
+  }
+});
+
+// Reordenar categorías (nuevo endpoint más simple)
+router.put("/reorder", async (req, res) => {
+  try {
+    const { businessId, categories } = req.body;
+    
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId es requerido" });
+    }
+    
+    if (!categories || !Array.isArray(categories)) {
+      return res.status(400).json({ message: "Formato inválido" });
+    }
+    
+    console.log(`Reordenando categorías para negocio ${businessId}:`, categories);
+    
+    // Actualizar cada categoría con su nuevo orden
+    const updatePromises = categories.map(category => 
+      Category.findByIdAndUpdate(
+        category._id,
+        { displayOrder: category.order },
+        { new: true }
+      )
+    );
+    
+    await Promise.all(updatePromises);
+    
+    // Emitir evento de actualización por WebSocket
+    emitToBusiness(businessId, "categories_update", { 
+      type: "reordered", 
+      businessId,
+      message: "Orden de categorías actualizado" 
+    });
+    
+    res.json({ success: true, message: "Orden de categorías actualizado correctamente" });
+  } catch (error) {
+    console.error("Error al reordenar categorías:", error);
+    res.status(500).json({ message: "Error al reordenar las categorías" });
   }
 });
 

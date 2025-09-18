@@ -181,18 +181,7 @@ const FilterableMenu = ({
     }
   };
 
-  // Get category order from localStorage
-  const getCategoryOrder = () => {
-    try {
-      const savedOrder = localStorage.getItem('categoryOrderSettings');
-      return savedOrder ? JSON.parse(savedOrder) : {};
-    } catch (error) {
-      console.error('Error getting category order:', error);
-      return {};
-    }
-  };
-
-  // Sort categories based on saved order
+  // Sort categories based on displayOrder from backend
   const getSortedCategories = (categories) => {
     // Validar que categories sea un array
     if (!Array.isArray(categories)) {
@@ -200,11 +189,16 @@ const FilterableMenu = ({
       return [];
     }
     
-    const orderMap = getCategoryOrder();
-    
+    // Ordenar por displayOrder (del backend) y luego por fecha de creación
     return [...categories].sort((a, b) => {
-      const orderA = orderMap[a._id] !== undefined ? orderMap[a._id] : 999;
-      const orderB = orderMap[b._id] !== undefined ? orderMap[b._id] : 999;
+      const orderA = a.displayOrder !== undefined ? a.displayOrder : 999;
+      const orderB = b.displayOrder !== undefined ? b.displayOrder : 999;
+      
+      if (orderA === orderB) {
+        // Si tienen el mismo orden, ordenar por fecha de creación
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+      
       return orderA - orderB;
     });
   };
