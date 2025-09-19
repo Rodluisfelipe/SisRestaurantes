@@ -21,6 +21,13 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
     const grouped = {};
     const uncategorized = [];
     
+    // Validar que products sea un array antes de usar forEach
+    if (!Array.isArray(products)) {
+      console.warn('ProductOrderSelector: products no es un array:', products);
+      setProductsByCategory({});
+      return;
+    }
+    
     products.forEach(product => {
       if (product.category) {
         const categoryId = typeof product.category === 'object' ? product.category._id : product.category;
