@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GripVertical, Save, RotateCcw, ChevronDown, ChevronRight } from 'lucide-react';
+import { GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import api from '../services/api';
 
 const ProductOrderSelector = ({ products = [], categories = [], businessId, onOrderChange }) => {
@@ -72,9 +72,12 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
     console.log('🔄 Cambios detectados en ProductOrderSelector');
   };
 
-  const handleDragEnd = () => {
+  const handleDragEnd = async () => {
     setDraggedItem(null);
-    // No resetear hasChanges aquí, se mantiene true hasta que se guarde
+    // Auto-guardar inmediatamente después del drag and drop
+    if (hasChanges) {
+      await saveOrder();
+    }
   };
 
   const toggleCategory = (categoryId) => {
@@ -112,7 +115,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
       });
 
       setSaveLoading(false);
-      setSuccessMessage('Orden de productos guardado correctamente');
+      setSuccessMessage('✅ Orden guardado automáticamente');
       setHasChanges(false);
       
       // Reconstruir el array completo para el componente padre
@@ -135,34 +138,6 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
     }
   };
 
-  const resetOrder = () => {
-    setOrderedProducts(products);
-    setHasChanges(false);
-    setError(null);
-    setSuccessMessage('');
-    
-    // Reagrupar productos por categoría con el orden original
-    const grouped = {};
-    const uncategorized = [];
-    
-    products.forEach(product => {
-      if (product.category) {
-        const categoryId = typeof product.category === 'object' ? product.category._id : product.category;
-        if (!grouped[categoryId]) {
-          grouped[categoryId] = [];
-        }
-        grouped[categoryId].push(product);
-      } else {
-        uncategorized.push(product);
-      }
-    });
-    
-    if (uncategorized.length > 0) {
-      grouped['uncategorized'] = uncategorized;
-    }
-    
-    setProductsByCategory(grouped);
-  };
 
   const getCategoryName = (categoryId) => {
     if (categoryId === 'uncategorized') return 'Sin Categoría';
@@ -194,34 +169,21 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
           </p>
         </div>
         
-        {hasChanges && (
-          <div className="flex items-center space-x-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={resetOrder}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center space-x-2"
-            >
-              <RotateCcw size={16} />
-              <span>Restablecer</span>
-            </motion.button>
-            
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={saveOrder}
-              disabled={saveLoading}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center space-x-2"
-            >
-              <Save size={16} />
-              <span>{saveLoading ? 'Guardando...' : 'Guardar Orden'}</span>
-            </motion.button>
-          </div>
-        )}
       </div>
 
       {/* Messages */}
       <AnimatePresence>
+        {saveLoading && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="mb-4 p-3 bg-blue-100 text-blue-800 rounded-lg border border-blue-200"
+          >
+            💾 Guardando orden automáticamente...
+          </motion.div>
+        )}
+        
         {successMessage && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -362,13 +324,6 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
         })}
       </div>
       
-      {hasChanges && (
-        <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <p className="text-sm text-yellow-800">
-            ⚠️ Tienes cambios sin guardar. Haz clic en "Guardar Orden" para aplicar los cambios.
-          </p>
-        </div>
-      )}
       
       {/* Debug info */}
       {process.env.NODE_ENV === 'development' && (
