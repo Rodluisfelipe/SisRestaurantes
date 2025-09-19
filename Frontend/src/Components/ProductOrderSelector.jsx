@@ -164,14 +164,14 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800 flex items-center">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 w-full max-w-full">
+      <div className="flex items-center justify-between mb-4 lg:mb-6">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base lg:text-lg font-semibold text-gray-800 flex items-center">
             <span className="mr-2">🔄</span>
             Reordenar Productos
           </h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <p className="text-xs lg:text-sm text-gray-600 mt-1">
             Arrastra y suelta para cambiar el orden en que aparecen los productos en el menú
           </p>
         </div>
@@ -215,7 +215,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
       </AnimatePresence>
 
       {/* Products List by Category */}
-      <div className="space-y-4 max-h-[60vh] lg:max-h-[50vh] overflow-y-auto">
+      <div className="space-y-3 lg:space-y-4 max-h-[50vh] lg:max-h-[60vh] overflow-y-auto overflow-x-hidden w-full">
         {Object.keys(productsByCategory)
           .sort((a, b) => {
             // Ordenar categorías: uncategorized al final, resto por displayOrder
@@ -234,24 +234,24 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
           const categoryProducts = productsByCategory[categoryId];
           const isExpanded = expandedCategories[categoryId];
           
-          return (
-            <div key={categoryId} className="border border-gray-200 rounded-lg overflow-hidden">
-              {/* Category Header */}
-              <motion.div
-                whileHover={{ backgroundColor: '#f3f4f6' }}
-                className="flex items-center justify-between p-3 lg:p-4 bg-gray-50 border-b border-gray-200 cursor-pointer"
-                onClick={() => toggleCategory(categoryId)}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="text-lg">
-                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                  </div>
-                  <h3 className="font-semibold text-gray-800">{getCategoryName(categoryId)}</h3>
-                  <span className="bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
-                    {categoryProducts.length} productos
-                  </span>
-                </div>
-              </motion.div>
+           return (
+             <div key={categoryId} className="border border-gray-200 rounded-lg overflow-hidden w-full max-w-full">
+               {/* Category Header */}
+               <motion.div
+                 whileHover={{ backgroundColor: '#f3f4f6' }}
+                 className="flex items-center justify-between p-3 lg:p-4 bg-gray-50 border-b border-gray-200 cursor-pointer min-w-0"
+                 onClick={() => toggleCategory(categoryId)}
+               >
+                 <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
+                   <div className="text-base lg:text-lg flex-shrink-0">
+                     {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                   </div>
+                   <h3 className="font-semibold text-gray-800 text-sm lg:text-base truncate">{getCategoryName(categoryId)}</h3>
+                   <span className="bg-blue-100 text-blue-800 text-xs lg:text-sm px-2 py-1 rounded-full flex-shrink-0">
+                     {categoryProducts.length}
+                   </span>
+                 </div>
+               </motion.div>
               
               {/* Category Products */}
               <AnimatePresence>
@@ -263,63 +263,63 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="p-3 lg:p-4 space-y-2 lg:space-y-3">
-                      <AnimatePresence>
-                        {categoryProducts.map((product, productIndex) => (
-                          <motion.div
-                            key={product._id}
-                            layout
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.2 }}
-                            draggable
-                            onDragStart={(e) => handleDragStart(e, categoryId, productIndex)}
-                            onDragOver={(e) => handleDragOver(e, categoryId, productIndex)}
-                            onDragEnd={handleDragEnd}
-                            className={`flex items-center bg-white border border-gray-200 rounded-lg p-2 lg:p-3 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-all duration-150 ${
-                              draggedItem?.categoryId === categoryId && draggedItem?.productIndex === productIndex ? 'opacity-50' : ''
-                            }`}
-                          >
-                            <GripVertical className="text-gray-400 mr-3 flex-shrink-0" size={16} />
-                            
-                            <div className="flex items-center flex-grow min-w-0">
-                              <div className="bg-blue-100 text-blue-800 font-semibold text-xs px-2 py-1 rounded-full mr-3 flex-shrink-0">
-                                #{productIndex + 1}
-                              </div>
-                              
-                              <div className="flex items-center space-x-2 lg:space-x-3 flex-grow min-w-0">
-                                {product.image && (
-                                  <img 
-                                    src={product.image} 
-                                    alt={product.name}
-                                    className="w-8 h-8 lg:w-10 lg:h-10 object-cover rounded-lg flex-shrink-0"
-                                  />
-                                )}
-                                
-                                <div className="flex-grow min-w-0">
-                                  <h4 className="font-medium text-gray-800 truncate text-xs lg:text-sm">{product.name}</h4>
-                                  {product.description && (
-                                    <p className="text-xs text-gray-600 truncate">{product.description}</p>
-                                  )}
-                                </div>
-                                
-                                <div className="flex items-center space-x-1 lg:space-x-2 flex-shrink-0">
-                                  <span className="font-semibold text-green-600 text-xs lg:text-sm">
-                                    ${product.price?.toLocaleString() || '0'}
-                                  </span>
-                                  
-                                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    product.active !== false 
-                                      ? 'bg-green-100 text-green-800' 
-                                      : 'bg-red-100 text-red-800'
-                                  }`}>
-                                    {product.active !== false ? '🟢' : '🔴'}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </motion.div>
+                     <div className="p-3 lg:p-4 space-y-2 lg:space-y-3 w-full max-w-full">
+                       <AnimatePresence>
+                         {categoryProducts.map((product, productIndex) => (
+                           <motion.div
+                             key={product._id}
+                             layout
+                             initial={{ opacity: 0, y: 20 }}
+                             animate={{ opacity: 1, y: 0 }}
+                             exit={{ opacity: 0, x: -20 }}
+                             transition={{ duration: 0.2 }}
+                             draggable
+                             onDragStart={(e) => handleDragStart(e, categoryId, productIndex)}
+                             onDragOver={(e) => handleDragOver(e, categoryId, productIndex)}
+                             onDragEnd={handleDragEnd}
+                             className={`flex items-center bg-white border border-gray-200 rounded-lg p-2 lg:p-3 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-all duration-150 w-full max-w-full min-w-0 ${
+                               draggedItem?.categoryId === categoryId && draggedItem?.productIndex === productIndex ? 'opacity-50' : ''
+                             }`}
+                           >
+                             <GripVertical className="text-gray-400 mr-2 lg:mr-3 flex-shrink-0" size={14} />
+                             
+                             <div className="flex items-center flex-grow min-w-0 w-full max-w-full">
+                               <div className="bg-blue-100 text-blue-800 font-semibold text-xs px-1.5 lg:px-2 py-1 rounded-full mr-2 lg:mr-3 flex-shrink-0">
+                                 #{productIndex + 1}
+                               </div>
+                               
+                               <div className="flex items-center space-x-1 lg:space-x-3 flex-grow min-w-0 w-full max-w-full">
+                                 {product.image && (
+                                   <img 
+                                     src={product.image} 
+                                     alt={product.name}
+                                     className="w-6 h-6 lg:w-10 lg:h-10 object-cover rounded-lg flex-shrink-0"
+                                   />
+                                 )}
+                                 
+                                 <div className="flex-grow min-w-0 max-w-full">
+                                   <h4 className="font-medium text-gray-800 truncate text-xs lg:text-sm">{product.name}</h4>
+                                   {product.description && (
+                                     <p className="text-xs text-gray-600 truncate hidden lg:block">{product.description}</p>
+                                   )}
+                                 </div>
+                                 
+                                 <div className="flex items-center space-x-1 flex-shrink-0">
+                                   <span className="font-semibold text-green-600 text-xs lg:text-sm whitespace-nowrap">
+                                     ${product.price?.toLocaleString() || '0'}
+                                   </span>
+                                   
+                                   <div className={`px-1.5 lg:px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                                     product.active !== false 
+                                       ? 'bg-green-100 text-green-800' 
+                                       : 'bg-red-100 text-red-800'
+                                   }`}>
+                                     {product.active !== false ? '🟢' : '🔴'}
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+                           </motion.div>
                         ))}
                       </AnimatePresence>
                     </div>
