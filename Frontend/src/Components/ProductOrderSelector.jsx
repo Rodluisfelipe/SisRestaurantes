@@ -164,18 +164,17 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 w-full max-w-full">
-      <div className="flex items-center justify-between mb-4 lg:mb-6">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-base lg:text-lg font-semibold text-gray-800 flex items-center">
-            <span className="mr-2">🔄</span>
-            Reordenar Productos
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 w-full max-w-full overflow-hidden">
+      <div className="flex items-start mb-4 lg:mb-6 w-full">
+        <div className="w-full min-w-0">
+          <h3 className="text-base lg:text-lg font-semibold text-gray-800 flex items-center mb-2">
+            <span className="mr-2 flex-shrink-0">🔄</span>
+            <span className="truncate">Reordenar Productos</span>
           </h3>
-          <p className="text-xs lg:text-sm text-gray-600 mt-1">
+          <p className="text-xs lg:text-sm text-gray-600 leading-tight">
             Arrastra y suelta para cambiar el orden en que aparecen los productos en el menú
           </p>
         </div>
-        
       </div>
 
       {/* Messages */}
@@ -215,7 +214,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
       </AnimatePresence>
 
       {/* Products List by Category */}
-      <div className="space-y-3 lg:space-y-4 max-h-[50vh] lg:max-h-[60vh] overflow-y-auto overflow-x-hidden w-full">
+      <div className="space-y-3 lg:space-y-4 max-h-[50vh] lg:max-h-[60vh] overflow-y-auto overflow-x-hidden w-full max-w-full min-w-0">
         {Object.keys(productsByCategory)
           .sort((a, b) => {
             // Ordenar categorías: uncategorized al final, resto por displayOrder
@@ -277,44 +276,41 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
                              onDragStart={(e) => handleDragStart(e, categoryId, productIndex)}
                              onDragOver={(e) => handleDragOver(e, categoryId, productIndex)}
                              onDragEnd={handleDragEnd}
-                             className={`flex items-center bg-white border border-gray-200 rounded-lg p-2 lg:p-3 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-all duration-150 w-full max-w-full min-w-0 ${
+                             className={`flex items-center bg-white border border-gray-200 rounded-lg p-2 lg:p-3 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-all duration-150 w-full max-w-full min-w-0 overflow-hidden ${
                                draggedItem?.categoryId === categoryId && draggedItem?.productIndex === productIndex ? 'opacity-50' : ''
                              }`}
                            >
-                             <GripVertical className="text-gray-400 mr-2 lg:mr-3 flex-shrink-0" size={14} />
+                             <GripVertical className="text-gray-400 mr-1 lg:mr-2 flex-shrink-0" size={12} />
                              
-                             <div className="flex items-center flex-grow min-w-0 w-full max-w-full">
-                               <div className="bg-blue-100 text-blue-800 font-semibold text-xs px-1.5 lg:px-2 py-1 rounded-full mr-2 lg:mr-3 flex-shrink-0">
-                                 #{productIndex + 1}
+                             <div className="flex items-center flex-1 min-w-0 overflow-hidden">
+                               <div className="bg-blue-100 text-blue-800 font-semibold text-xs px-1 lg:px-1.5 py-0.5 rounded mr-1 lg:mr-2 flex-shrink-0 text-center min-w-[20px]">
+                                 {productIndex + 1}
                                </div>
                                
-                               <div className="flex items-center space-x-1 lg:space-x-3 flex-grow min-w-0 w-full max-w-full">
+                               <div className="flex items-center flex-1 min-w-0 overflow-hidden">
                                  {product.image && (
                                    <img 
                                      src={product.image} 
                                      alt={product.name}
-                                     className="w-6 h-6 lg:w-10 lg:h-10 object-cover rounded-lg flex-shrink-0"
+                                     className="w-5 h-5 lg:w-8 lg:h-8 object-cover rounded flex-shrink-0 mr-1 lg:mr-2"
                                    />
                                  )}
                                  
-                                 <div className="flex-grow min-w-0 max-w-full">
-                                   <h4 className="font-medium text-gray-800 truncate text-xs lg:text-sm">{product.name}</h4>
-                                   {product.description && (
-                                     <p className="text-xs text-gray-600 truncate hidden lg:block">{product.description}</p>
-                                   )}
+                                 <div className="flex-1 min-w-0 overflow-hidden mr-1 lg:mr-2">
+                                   <h4 className="font-medium text-gray-800 truncate text-xs lg:text-sm leading-tight">{product.name}</h4>
                                  </div>
                                  
-                                 <div className="flex items-center space-x-1 flex-shrink-0">
-                                   <span className="font-semibold text-green-600 text-xs lg:text-sm whitespace-nowrap">
-                                     ${product.price?.toLocaleString() || '0'}
+                                 <div className="flex items-center space-x-0.5 lg:space-x-1 flex-shrink-0">
+                                   <span className="font-semibold text-green-600 text-xs whitespace-nowrap">
+                                     ${(product.price || 0).toLocaleString()}
                                    </span>
                                    
-                                   <div className={`px-1.5 lg:px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${
+                                   <div className={`w-4 h-4 lg:w-5 lg:h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
                                      product.active !== false 
                                        ? 'bg-green-100 text-green-800' 
                                        : 'bg-red-100 text-red-800'
                                    }`}>
-                                     {product.active !== false ? '🟢' : '🔴'}
+                                     {product.active !== false ? '●' : '○'}
                                    </div>
                                  </div>
                                </div>
