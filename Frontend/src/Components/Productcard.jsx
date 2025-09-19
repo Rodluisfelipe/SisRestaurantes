@@ -38,9 +38,10 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
   return (
     <>
       <motion.div 
+        onClick={handleShowToppings}
         whileHover={{ y: -8, scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/50 overflow-hidden backdrop-blur-sm"
+        className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/50 overflow-hidden backdrop-blur-sm cursor-pointer"
       >
         {/* Premium Product Image */}
         <div className="relative w-full h-44 overflow-hidden bg-white">
@@ -115,10 +116,13 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
             </div>
             
             <motion.button
-              onClick={handleShowToppings}
+              onClick={(e) => {
+                e.stopPropagation(); // Evita que se propague al div padre
+                handleShowToppings();
+              }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="w-10 h-10 sm:w-12 sm:h-12 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-10 h-10 sm:w-12 sm:h-12 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 relative z-10"
               style={{
                 backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
                 color: businessConfig?.theme?.buttonTextColor || '#ffffff',

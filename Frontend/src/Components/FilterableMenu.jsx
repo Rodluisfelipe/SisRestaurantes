@@ -621,7 +621,8 @@ const FilterableMenu = ({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200/50 flex overflow-hidden"
+                onClick={() => handleShowToppings(product)}
+                className="bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200/50 flex overflow-hidden cursor-pointer"
               >
                 {/* Product Image */}
                 <div className="w-16 h-16 sm:w-24 sm:h-24 relative flex-shrink-0">
@@ -656,10 +657,13 @@ const FilterableMenu = ({
                       </div>
 
                   <motion.button
-                    onClick={() => handleShowToppings(product)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Evita que se propague al div padre
+                      handleShowToppings(product);
+                    }}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
-                    className="w-8 h-8 sm:w-10 sm:h-10 text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg ml-2 sm:ml-4 flex-shrink-0"
+                    className="w-8 h-8 sm:w-10 sm:h-10 text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg ml-2 sm:ml-4 flex-shrink-0 relative z-10"
                     style={{
                       backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
                       color: businessConfig?.theme?.buttonTextColor || '#ffffff'
