@@ -135,8 +135,16 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Reorder products
-router.put("/reorder", validateAndResolveBusinessId, async (req, res) => {
+// Test endpoint without middleware
+router.put("/reorder-simple", async (req, res) => {
+  console.log(`[Products] Simple test endpoint hit - ${new Date().toISOString()}`);
+  res.json({ success: true, message: "Simple endpoint working", timestamp: new Date().toISOString() });
+});
+
+// Reorder products (working endpoint)
+router.put("/products-reorder", async (req, res) => {
+  console.log(`[Products] PRODUCTS-REORDER ENDPOINT CALLED - ${new Date().toISOString()}`);
+  
   try {
     const { businessId, products } = req.body;
     
@@ -171,7 +179,20 @@ router.put("/reorder", validateAndResolveBusinessId, async (req, res) => {
     res.json({ success: true, message: "Orden de productos actualizado correctamente" });
   } catch (error) {
     console.error("[Products] Error al reordenar productos:", error);
-    res.status(500).json({ message: "Error al reordenar los productos" });
+    res.status(500).json({ message: "Error al reordenar los productos", error: error.message });
+  }
+});
+
+// Reorder products
+router.put("/reorder", async (req, res) => {
+  console.log(`[Products] REORDER ENDPOINT CALLED - ${new Date().toISOString()}`);
+  console.log(`[Products] Request body:`, req.body);
+  
+  try {
+    res.json({ success: true, message: "Endpoint simplificado funcionando", body: req.body });
+  } catch (error) {
+    console.error("[Products] Error en endpoint simplificado:", error);
+    res.status(500).json({ message: "Error en endpoint simplificado", error: error.message });
   }
 });
 

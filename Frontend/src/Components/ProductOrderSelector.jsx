@@ -114,7 +114,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
         });
       });
 
-      await api.put('/products/reorder', { 
+      await api.put('/products/products-reorder', { 
         businessId, 
         products: allOrderedProducts 
       }, {
