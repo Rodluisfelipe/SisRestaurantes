@@ -796,6 +796,13 @@ function ModernOrdersDashboard() {
                               </div>
                             )}
                             
+                            {order.orderType === 'delivery' && order.address && (
+                              <div className="flex items-start space-x-2">
+                                <span className="text-xs lg:text-sm flex-shrink-0 mt-0.5">🏠</span>
+                                <span className="text-xs lg:text-sm text-slate-600 leading-tight">{order.address}</span>
+                              </div>
+                            )}
+                            
                             <div className="flex items-center justify-between">
                               <span className="text-xs lg:text-sm text-slate-600">{order.items?.length || 0} productos</span>
                               <span className="text-base lg:text-lg font-bold text-slate-900">${order.totalAmount}</span>
@@ -981,6 +988,14 @@ function ModernOrdersDashboard() {
                         <span className="text-base">📍</span>
                         <span className="text-sm font-medium text-slate-700">Mesa:</span>
                         <span className="text-sm text-slate-900">{orderDetails.tableNumber}</span>
+                      </div>
+                    )}
+                    
+                    {orderDetails.orderType === 'delivery' && orderDetails.address && (
+                      <div className="flex items-start space-x-2">
+                        <span className="text-base">🏠</span>
+                        <span className="text-sm font-medium text-slate-700">Dirección:</span>
+                        <span className="text-sm text-slate-900 leading-relaxed">{orderDetails.address}</span>
                       </div>
                     )}
                   </div>
