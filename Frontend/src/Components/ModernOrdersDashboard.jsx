@@ -131,6 +131,31 @@ function ModernOrdersDashboard() {
     }
   };
 
+  // Initialize audio element
+  useEffect(() => {
+    if (notificationAudioRef.current) {
+      const audio = notificationAudioRef.current;
+      
+      // Preload the audio
+      audio.load();
+      
+      // Add event listeners for debugging
+      const onLoadStart = () => console.log('Audio loading started');
+      const onCanPlayThrough = () => console.log('Audio can play through');
+      const onError = (e) => console.error('Audio error during load:', e);
+      
+      audio.addEventListener('loadstart', onLoadStart);
+      audio.addEventListener('canplaythrough', onCanPlayThrough);
+      audio.addEventListener('error', onError);
+      
+      return () => {
+        audio.removeEventListener('loadstart', onLoadStart);
+        audio.removeEventListener('canplaythrough', onCanPlayThrough);
+        audio.removeEventListener('error', onError);
+      };
+    }
+  }, []);
+
   // Play notification sound for pending orders
   useEffect(() => {
     // Clear any existing interval
@@ -143,9 +168,70 @@ function ModernOrdersDashboard() {
       // Play sound and repeat until all notifications are handled
       const playSound = () => {
         if (notificationAudioRef.current) {
-          notificationAudioRef.current.play().catch(e => {
-            console.log('Error playing notification sound:', e);
-          });
+          const audio = notificationAudioRef.current;
+          
+          // Verificar si el audio está listo
+          if (audio.readyState >= 2) { // HAVE_CURRENT_DATA
+            audio.currentTime = 0; // Reiniciar desde el inicio
+            audio.play().catch(e => {
+              console.error('Error playing notification sound:', e);
+              console.error('Audio readyState:', audio.readyState);
+              console.error('Audio networkState:', audio.networkState);
+              console.error('Audio error:', audio.error);
+              
+              // Fallback: usar un beep del sistema
+              try {
+                // Crear un beep simple usando Web Audio API
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                console.log('Using fallback beep sound');
+              } catch (fallbackError) {
+                console.error('Fallback sound also failed:', fallbackError);
+              }
+            });
+          } else {
+            console.warn('Audio not ready yet, readyState:', audio.readyState);
+            // Intentar cargar el audio
+            audio.load();
+            
+            // Si después de intentar cargar sigue sin estar listo, usar fallback
+            setTimeout(() => {
+              if (audio.readyState < 2) {
+                console.warn('Audio still not ready, using fallback beep');
+                try {
+                  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                  const oscillator = audioContext.createOscillator();
+                  const gainNode = audioContext.createGain();
+                  
+                  oscillator.connect(gainNode);
+                  gainNode.connect(audioContext.destination);
+                  
+                  oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                  
+                  oscillator.start(audioContext.currentTime);
+                  oscillator.stop(audioContext.currentTime + 0.5);
+                } catch (fallbackError) {
+                  console.error('Fallback sound also failed:', fallbackError);
+                }
+              }
+            }, 1000);
+          }
+        } else {
+          console.warn('Audio ref not available');
         }
       };
       
@@ -399,9 +485,19 @@ function ModernOrdersDashboard() {
       {/* Audio element for notifications */}
       <audio 
         ref={notificationAudioRef} 
-        src="/audio/new-order-notification.mp3" 
         preload="auto"
-      />
+        onError={(e) => {
+          console.error('Audio loading error:', e);
+          console.error('Audio element:', e.target);
+          console.error('Audio src:', e.target.src);
+        }}
+        onCanPlay={() => {
+          console.log('Audio ready to play');
+        }}
+      >
+        <source src="/audio/new-order-notification.mp3" type="audio/mpeg" />
+        Tu navegador no soporta el elemento de audio.
+      </audio>
 
       {/* Header */}
       <motion.div
