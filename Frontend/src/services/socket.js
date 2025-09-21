@@ -1,193 +1,174 @@
 import { io } from 'socket.io-client';
+import { logSystem } from '../utils/systemLogger';
 
 /**
- * Configuración avanzada de Socket.io con reintentos y manejo de errores
+ * Configuración de Socket.io con sistema de logging centralizado
  */
 
 // Determinar si estamos en producción
 const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production';
+const isLocalDev = !isProd && window.location.hostname === 'localhost';
 
 // Configurar Socket.io para conectarse al backend con la URL correcta
-// Usar variables de entorno para mayor flexibilidad
 const getSocketUrl = () => {
-  // Usar HTTPS en producción para evitar Mixed Content
-  if (isProd) {
-    return 'https://157-245-125-216.nip.io'; // Digital Ocean backend - HTTPS
+  // En desarrollo local, no conectar WebSocket para evitar errores
+  if (isLocalDev) {
+    return null;
   }
   
-  // Desarrollo local
+  const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
+  if (envSocketUrl) {
+    return envSocketUrl;
+  }
+  
+  if (isProd) {
+    return 'https://157-245-125-216.nip.io';
+  }
+  
   return 'http://localhost:5000';
 };
 
 const socketUrl = getSocketUrl();
 
-console.log('🔧 Socket.IO configuración:', { isProd, socketUrl });
-
-export const socket = io(socketUrl, {
+// Crear socket solo si tenemos una URL válida
+export const socket = socketUrl ? io(socketUrl, {
   autoConnect: false,
   reconnection: true,
-  reconnectionAttempts: 10, // Más intentos
-  reconnectionDelay: 2000, // Delay inicial más largo
-  reconnectionDelayMax: 10000, // Máximo delay más largo
+  reconnectionAttempts: 5,
+  reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
   randomizationFactor: 0.3,
-  timeout: 30000, // Timeout más largo para conexiones lentas
-  transports: ['polling', 'websocket'], // Usar polling primero (más confiable)
+  timeout: 20000,
+  transports: ['polling'],
   path: '/socket.io',
-  forceNew: false, // Reutilizar conexiones existentes
-  upgrade: true, // Permitir upgrade a websocket después
-  rememberUpgrade: true // Recordar si websocket funciona
-});
+  forceNew: false,
+  upgrade: false,
+  rememberUpgrade: false
+}) : null;
 
-// Configurar eventos para logging y manejo de errores
-socket.on('connect', () => {
-  console.log('✅ Socket conectado con ID:', socket.id);
-});
+// Sistema de logging centralizado
+let systemStatus = {
+  socket: 'connecting',
+  lastError: null,
+  lastUpdate: new Date()
+};
 
-socket.on('connect_error', (error) => {
-  console.error('❌ Error al conectar socket:', error.message);
-  console.error('❌ Detalles del error:', {
-    type: error.type,
-    description: error.description,
-    context: error.context,
-    transport: error.transport
-  });
-});
-
-socket.on('disconnect', (reason) => {
-  console.log('🔌 Socket desconectado:', reason);
+// Función de logging centralizado
+let lastLoggedStatus = null;
+const logSystemStatus = () => {
+  const status = (systemStatus.socket === 'connected' || systemStatus.socket === 'local_dev') && !systemStatus.lastError ? 'OK' : 'ERROR';
+  const message = systemStatus.lastError || 'Sistema funcionando correctamente';
   
-  // Si la desconexión fue por un error, intentamos reconectar manualmente
-  if (reason === 'io server disconnect' || reason === 'transport close') {
-    console.log('🔄 Intentando reconexión manual...');
-    socket.connect();
+  // Solo loggear si el estado cambió
+  if (lastLoggedStatus !== status) {
+    logSystem(`${status}: ${message}`, status === 'ERROR' ? 'error' : 'info');
+    lastLoggedStatus = status;
   }
-});
+};
 
-// Listen for business join confirmation
-socket.on('businessJoined', (data) => {
-  if (data.success) {
-    console.log('✅ Confirmación: Unido al negocio', data.businessId);
-  } else {
-    console.error('❌ Error al unirse al negocio:', data.error);
-  }
-});
+// Configurar eventos para logging y manejo de errores solo si socket existe
+if (socket) {
+  socket.on('connect', () => {
+    systemStatus.socket = 'connected';
+    systemStatus.lastError = null;
+    systemStatus.lastUpdate = new Date();
+    logSystemStatus();
+  });
 
-// Listen for test events
-socket.on('test_event', (data) => {
-  console.log('🧪 Evento de prueba recibido:', data);
-});
+  socket.on('connect_error', (error) => {
+    systemStatus.socket = 'error';
+    systemStatus.lastError = `Error de conexión: ${error.message}`;
+    systemStatus.lastUpdate = new Date();
+    logSystemStatus();
+  });
 
-// Ping/pong for connection testing
-socket.on('pong', (data) => {
-  console.log('🏓 Pong recibido:', data);
-});
+  socket.on('disconnect', (reason) => {
+    systemStatus.socket = 'disconnected';
+    systemStatus.lastError = `Desconectado: ${reason}`;
+    systemStatus.lastUpdate = new Date();
+    logSystemStatus();
+    
+    if (reason === 'io server disconnect' || reason === 'transport close') {
+      socket.connect();
+    }
+  });
+
+  socket.on('businessJoined', (data) => {
+    if (data.success) {
+      systemStatus.socket = 'connected';
+      systemStatus.lastError = null;
+      systemStatus.lastUpdate = new Date();
+    } else {
+      systemStatus.lastError = `Error al unirse al negocio: ${data.error}`;
+      systemStatus.lastUpdate = new Date();
+    }
+    logSystemStatus();
+  });
+} else {
+  // En desarrollo local, marcar como OK sin WebSocket
+  systemStatus.socket = 'local_dev';
+  systemStatus.lastError = null;
+  systemStatus.lastUpdate = new Date();
+  logSystemStatus();
+}
 
 // Función para unirse a un canal de negocio específico
 export const joinBusiness = (businessId) => {
+  if (!socket) return; // No hacer nada en desarrollo local
+  
   if (!businessId) {
-    console.warn('⚠️ businessId no proporcionado para joinBusiness');
+    systemStatus.lastError = 'businessId no proporcionado';
+    systemStatus.lastUpdate = new Date();
+    logSystemStatus();
     return;
   }
 
   if (socket.connected) {
-    console.log(`🏢 Uniéndose al negocio ${businessId}...`);
     socket.emit('joinBusiness', businessId);
   } else {
-    // Intentar conectar primero y luego unirse
-    console.log(`🔌 Conectando socket para unirse al negocio ${businessId}...`);
-    
-    // Timeout para evitar conexiones colgadas
-    const connectTimeout = setTimeout(() => {
-      console.warn(`⏰ Timeout al conectar socket para ${businessId}`);
-      socket.disconnect();
-    }, 15000);
-    
     socket.connect();
-    
     socket.once('connect', () => {
-      clearTimeout(connectTimeout);
       socket.emit('joinBusiness', businessId);
-      console.log(`🏢 Socket conectado y uniéndose al negocio ${businessId}...`);
     });
-    
-    socket.once('connect_error', () => {
-      clearTimeout(connectTimeout);
-      console.error(`❌ Error al conectar para negocio ${businessId}`);
-    });
-  }
-};
-
-// Test ping function
-export const testPing = () => {
-  if (socket.connected) {
-    console.log('🏓 Enviando ping...');
-    socket.emit('ping');
-  } else {
-    console.log('❌ Socket no conectado para ping');
   }
 };
 
 // Función para unirse al canal de superadmin
 export const joinSuperAdmin = () => {
+  if (!socket) return; // No hacer nada en desarrollo local
+  
   if (socket.connected) {
     socket.emit('joinSuperAdmin');
-    console.log('Socket se unió al canal de superadmin');
   } else {
-    // Intentar conectar primero y luego unirse
     socket.connect();
     socket.once('connect', () => {
       socket.emit('joinSuperAdmin');
-      console.log('Socket conectado y unido al canal de superadmin');
     });
   }
 };
 
-// Función para salir de un canal de negocio
-export const leaveBusiness = (businessId) => {
-  if (businessId && socket.connected) {
-    socket.emit('leaveBusiness', businessId);
-    console.log(`Socket salió del negocio ${businessId}`);
-  }
-};
-
-// Función para salir del canal de superadmin
-export const leaveSuperAdmin = () => {
-  if (socket.connected) {
-    socket.emit('leaveSuperAdmin');
-    console.log('Socket salió del canal de superadmin');
-  }
-};
-
-// Función de diagnóstico para debugging
-export const socketDiagnostic = () => {
-  const diagnostic = {
-    connected: socket.connected,
-    id: socket.id,
-    transport: socket.io?.engine?.transport?.name,
-    url: socket.io?.uri,
-    options: {
-      autoConnect: socket.io?.opts?.autoConnect,
-      reconnection: socket.io?.opts?.reconnection,
-      reconnectionAttempts: socket.io?.opts?.reconnectionAttempts,
-      timeout: socket.io?.opts?.timeout,
-      transports: socket.io?.opts?.transports
-    },
-    environment: {
-      isProd: isProd,
-      userAgent: navigator.userAgent,
-      online: navigator.onLine
-    }
-  };
-  
-  console.log('🔍 Diagnóstico de Socket:', diagnostic);
-  return diagnostic;
-};
-
 // Función para forzar reconexión
 export const forceReconnect = () => {
-  console.log('🔄 Forzando reconexión de socket...');
+  if (!socket) return; // No hacer nada en desarrollo local
+  
   socket.disconnect();
   setTimeout(() => {
     socket.connect();
   }, 1000);
+};
+
+// Función para obtener el estado del sistema
+export const getSystemStatus = () => {
+  return {
+    ...systemStatus,
+    connected: socket ? socket.connected : false,
+    id: socket ? socket.id : null
+  };
+};
+
+// Función de diagnóstico
+export const socketDiagnostic = () => {
+  const status = getSystemStatus();
+  logSystemStatus();
+  return status;
 };

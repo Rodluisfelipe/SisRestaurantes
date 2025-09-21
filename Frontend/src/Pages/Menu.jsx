@@ -347,32 +347,39 @@ export default function Menu() {
       return;
     }
     
-    if (!socket.connected) {
+    if (socket && !socket.connected) {
       socket.connect();
     }
-    socket.emit('joinBusiness', businessId);
+    if (socket) {
+      socket.emit('joinBusiness', businessId);
+    }
     logger.info('Socket joinBusiness:', businessId);
-    socket.on('products_update', (data) => {
-      if (data.type === 'created') {
-        setProducts((prev) => [...prev, data.product]);
-      } else if (data.type === 'deleted') {
-        setProducts((prev) => prev.filter(p => p._id !== data.productId));
-      }
-      // Puedes agregar lógica para 'updated' si lo implementas en backend
-    });
-    socket.on('categories_update', (data) => {
-      if (data.type === 'created') {
-        setCategories((prev) => [...prev, data.category]);
-      } else if (data.type === 'updated') {
-        setCategories((prev) => prev.map(cat => cat._id === data.category._id ? data.category : cat));
-      } else if (data.type === 'deleted') {
-        setCategories((prev) => prev.filter(cat => cat._id !== data.categoryId));
-      }
-    });
+    if (socket) {
+      socket.on('products_update', (data) => {
+        if (data.type === 'created') {
+          setProducts((prev) => [...prev, data.product]);
+        } else if (data.type === 'deleted') {
+          setProducts((prev) => prev.filter(p => p._id !== data.productId));
+        }
+        // Puedes agregar lógica para 'updated' si lo implementas en backend
+      });
+      socket.on('categories_update', (data) => {
+        if (data.type === 'created') {
+          setCategories((prev) => [...prev, data.category]);
+        } else if (data.type === 'updated') {
+          setCategories((prev) => prev.map(cat => cat._id === data.category._id ? data.category : cat));
+        } else if (data.type === 'deleted') {
+          setCategories((prev) => prev.filter(cat => cat._id !== data.categoryId));
+        }
+      });
+    }
+    
     return () => {
-      socket.emit('leaveBusiness', businessId);
-      socket.off('products_update');
-      socket.off('categories_update');
+      if (socket) {
+        socket.emit('leaveBusiness', businessId);
+        socket.off('products_update');
+        socket.off('categories_update');
+      }
     };
   }, [businessId]);
 
@@ -508,7 +515,7 @@ export default function Menu() {
     SessionManager.saveOrderInfo(newInfo);
   };
 
-  const handleOrder = async (directOrderInfo) => {
+  const handleOrder = async (directOrderInfo, appliedCoupon) => {
     try {
       logger.info('===== INICIANDO PROCESAMIENTO DE PEDIDO =====');
       logger.info('Estado del pedido en orderInfo:', orderInfo);
@@ -604,7 +611,7 @@ export default function Menu() {
       
       // Ejecutar el envío con toda la información correcta
       logger.info('*** EJECUTANDO ENVÍO FINAL DEL PEDIDO ***');
-      const response = await executeOrderSubmission(finalOrderInfo, cart, totalAmount);
+      const response = await executeOrderSubmission(finalOrderInfo, cart, totalAmount, appliedCoupon);
       
       // Asegurar que el estado de envío se resetee, ya sea exitoso o no
       if (response) {
@@ -654,7 +661,7 @@ export default function Menu() {
   };
 
   // Función que ejecuta todo el proceso de envío del pedido
-  const executeOrderSubmission = async (orderDetails, cartItems, totalAmount) => {
+  const executeOrderSubmission = async (orderDetails, cartItems, totalAmount, appliedCoupon) => {
     logger.info('Ejecutando envío de pedido con detalles:', orderDetails);
     
     try {
@@ -673,7 +680,14 @@ export default function Menu() {
           quantity: item.quantity || 1,
           selectedToppings: item.selectedToppings || []
         })),
-        totalAmount
+        totalAmount,
+        // Información del cupón si está aplicado
+        ...(appliedCoupon && {
+          couponCode: appliedCoupon.coupon.code,
+          couponId: appliedCoupon.coupon._id,
+          discountAmount: appliedCoupon.discountAmount,
+          finalAmount: appliedCoupon.finalAmount
+        })
       };
 
       logger.info('Datos finales del pedido a enviar:', orderData);
@@ -686,7 +700,8 @@ export default function Menu() {
           cartItems, 
           totalAmount, 
           calculateTotalItems(cartItems), 
-          businessConfig
+          businessConfig,
+          appliedCoupon
         );
         
         // Función para detectar si es móvil
@@ -717,7 +732,7 @@ export default function Menu() {
           window.location.href = whatsappUrl;
         } catch (error) {
           // Fallback si el protocolo whatsapp:// no funciona
-          console.warn('Error opening WhatsApp:', error);
+          // Error silencioso
           const fallbackUrl = businessConfig?.whatsappNumber 
             ? `https://wa.me/${businessConfig.whatsappNumber}?text=${whatsappMessage}` 
             : `https://wa.me/?text=${whatsappMessage}`;

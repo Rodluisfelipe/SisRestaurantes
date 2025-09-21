@@ -58,11 +58,9 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           id = await getBusinessIdFromSlug();
         }
         
-        console.log('BusinessProvider - Using businessId:', id, 'Type:', typeof id);
         
         // Validar si el ID es válido (ahora acepta tanto ObjectID como slug)
         if (!id || !isValidBusinessIdentifier(id)) {
-          console.log('BusinessProvider - ID inválido o nulo:', id);
           setLoading(false);
           
           // Si hay una función onError, notificar del error
@@ -84,15 +82,12 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           // Si es un slug (no es un ObjectID hexadecimal), usar el endpoint by-slug
           let response;
           if (typeof id === 'string' && !/^[0-9a-fA-F]{24}$/.test(id)) {
-            console.log('BusinessProvider - Fetching by slug:', id);
             response = await api.get(`/business-config/by-slug/${id}`);
           } else {
-            console.log('BusinessProvider - Fetching by ID:', id);
             response = await api.get(`/business-config?businessId=${id}`);
           }
           
           if (response.data) {
-            console.log('BusinessProvider - Datos recibidos:', response.data);
             const theme = response.data.theme || { 
               buttonColor: '#2563eb', 
               buttonTextColor: '#ffffff'
@@ -103,7 +98,7 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
             });
           }
         } catch (error) {
-          console.error('Error al cargar la configuración:', error);
+          // Error silencioso - solo mostrar en desarrollo crítico
           setError(error.message || 'Error desconocido al cargar la configuración');
           
           // Si hay una función onError, notificar del error
@@ -112,7 +107,7 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           }
         }
       } catch (error) {
-        console.error('Error al obtener el business ID:', error);
+        // Error silencioso
         setError(error.message || 'Error desconocido al obtener el business ID');
         
         // Si hay una función onError, notificar del error
@@ -142,34 +137,41 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
     if (!businessId) return;
     // --- WebSocket: Conexión y listeners ---
     try {
-      if (!socket.connected) {
+      // Solo conectar WebSocket en producción
+      if (window.location.hostname !== 'localhost' && socket && !socket.connected) {
         socket.connect();
+        socket.emit('joinBusiness', businessId);
       }
-      socket.emit('joinBusiness', businessId);
-      socket.on('business_config_update', (data) => {
-        setBusinessConfig(prevConfig => ({
-          ...prevConfig,
-          ...data,
-          theme: data.theme || prevConfig.theme
-        }));
-      });
-      socket.on('business_status_update', (data) => {
+      
+      if (socket) {
+        socket.on('business_config_update', (data) => {
           setBusinessConfig(prevConfig => ({
             ...prevConfig,
-          isActive: data.isActive
+            ...data,
+            theme: data.theme || prevConfig.theme
           }));
-      });
+        });
+        socket.on('business_status_update', (data) => {
+            setBusinessConfig(prevConfig => ({
+              ...prevConfig,
+            isActive: data.isActive
+            }));
+        });
+      }
+      
       return () => {
         try {
-          socket.emit('leaveBusiness', businessId);
-          socket.off('business_config_update');
-          socket.off('business_status_update');
+          if (socket) {
+            socket.emit('leaveBusiness', businessId);
+            socket.off('business_config_update');
+            socket.off('business_status_update');
+          }
         } catch (e) {
-          console.error('Error al desconectar socket:', e);
+          // Error silencioso
         }
       };
     } catch (e) {
-      console.error('Error en la configuración de WebSocket:', e);
+      // Error silencioso
     }
     // --- Fin WebSocket ---
   }, [businessId]);
@@ -181,7 +183,7 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
       setBusinessConfig(response.data);
       return response.data;
     } catch (error) {
-      console.error('Error al actualizar la configuración:', error);
+      // Error silencioso
       throw error;
     }
   };

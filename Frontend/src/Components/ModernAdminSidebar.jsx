@@ -8,6 +8,8 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     { id: 'product-order', label: 'Orden Productos', icon: '🔄' },
     { id: 'categories', label: 'Categorías', icon: '📂' },
     { id: 'toppings', label: 'Extras', icon: '🧀' },
+    { id: 'customers', label: 'Clientes', icon: '👥' },
+    { id: 'coupons', label: 'Cupones', icon: '🎫' },
     { id: 'tables', label: 'Mesas', icon: '🪑' },
     { id: 'completed_orders', label: 'Pedidos Completados', icon: '✅' },
     { id: 'catalog', label: 'Catálogo', icon: '📢' },

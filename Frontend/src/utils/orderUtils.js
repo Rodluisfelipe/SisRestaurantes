@@ -55,7 +55,7 @@ const getCustomTemplate = async (businessId) => {
 };
 
 // Crear mensaje de WhatsApp con template personalizado
-export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalItems, businessConfig) => {
+export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalItems, businessConfig, appliedCoupon) => {
   const businessName = businessConfig?.businessName || 'Nuestro Negocio';
   const businessId = businessConfig?._id || businessConfig?.businessId;
   
@@ -143,9 +143,20 @@ Tu orden será procesada inmediatamente.
   });
 
   // Generar resumen del pedido
-  const orderSummary = `*Productos:* ${cart.length}
-*Cantidad total:* ${totalItems} items
+  let orderSummary = `*Productos:* ${cart.length}
+*Cantidad total:* ${totalItems} items`;
+
+  // Agregar información del cupón si está aplicado
+  if (appliedCoupon) {
+    orderSummary += `
+*Subtotal:* $${totalAmount.toLocaleString()}
+*Cupón aplicado:* ${appliedCoupon.coupon.code} (${appliedCoupon.coupon.name})
+*Descuento:* -$${appliedCoupon.discountAmount.toLocaleString()}
+*TOTAL A PAGAR:* $${appliedCoupon.finalAmount.toLocaleString()}`;
+  } else {
+    orderSummary += `
 *TOTAL A PAGAR:* $${totalAmount.toLocaleString()}`;
+  }
 
   // Generar timestamp
   const now = new Date();

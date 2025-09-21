@@ -805,7 +805,19 @@ function ModernOrdersDashboard() {
                             
                             <div className="flex items-center justify-between">
                               <span className="text-xs lg:text-sm text-slate-600">{order.items?.length || 0} productos</span>
-                              <span className="text-base lg:text-lg font-bold text-slate-900">${order.totalAmount}</span>
+                              <div className="text-right">
+                                {order.couponCode ? (
+                                  <div>
+                                    <span className="text-base lg:text-lg font-bold text-green-600">${order.finalAmount || order.totalAmount}</span>
+                                    <div className="text-xs text-slate-500">
+                                      <span className="line-through">${order.totalAmount}</span>
+                                      <span className="ml-1 text-green-600">🎫 {order.couponCode}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-base lg:text-lg font-bold text-slate-900">${order.totalAmount}</span>
+                                )}
+                              </div>
                             </div>
                           </div>
 
@@ -870,8 +882,21 @@ function ModernOrdersDashboard() {
                         
                         <div className="flex items-center space-x-4">
                           <div className="text-right">
-                            <p className="text-lg font-bold text-slate-900">${order.totalAmount}</p>
-                            <p className="text-sm text-slate-600">{order.items?.length || 0} productos</p>
+                            {order.couponCode ? (
+                              <div>
+                                <p className="text-lg font-bold text-green-600">${order.finalAmount || order.totalAmount}</p>
+                                <p className="text-sm text-slate-500">
+                                  <span className="line-through">${order.totalAmount}</span>
+                                  <span className="ml-2 text-green-600">🎫 {order.couponCode}</span>
+                                </p>
+                                <p className="text-sm text-slate-600">{order.items?.length || 0} productos</p>
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="text-lg font-bold text-slate-900">${order.totalAmount}</p>
+                                <p className="text-sm text-slate-600">{order.items?.length || 0} productos</p>
+                              </div>
+                            )}
                           </div>
                           
                           <div className="flex space-x-2">
@@ -1060,10 +1085,27 @@ function ModernOrdersDashboard() {
 
                 {/* Total */}
                 <div className="border-t border-slate-200 pt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold text-slate-900">Total:</span>
-                    <span className="text-2xl font-bold text-slate-900">${orderDetails.totalAmount}</span>
-                  </div>
+                  {orderDetails.couponCode ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-lg font-semibold text-slate-900">Subtotal:</span>
+                        <span className="text-lg font-semibold text-slate-900">${orderDetails.totalAmount}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-600">Cupón aplicado ({orderDetails.couponCode}):</span>
+                        <span className="text-sm text-green-600">-${orderDetails.discountAmount || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+                        <span className="text-xl font-bold text-slate-900">Total:</span>
+                        <span className="text-2xl font-bold text-green-600">${orderDetails.finalAmount || orderDetails.totalAmount}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center">
+                      <span className="text-lg font-semibold text-slate-900">Total:</span>
+                      <span className="text-2xl font-bold text-slate-900">${orderDetails.totalAmount}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Action buttons */}

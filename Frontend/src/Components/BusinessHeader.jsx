@@ -27,7 +27,6 @@ const BusinessHeader = () => {
       try {
         const response = await api.get(`/business-config?businessId=${businessId}`);
         if (response.data && typeof response.data === 'object') {
-          console.log("Datos recibidos del servidor:", response.data);
           setBusinessConfig(prevConfig => ({
             ...prevConfig,
             ...response.data,
@@ -47,19 +46,17 @@ const BusinessHeader = () => {
               ...response.data?.extraLink
             }
           }));
-          console.log("Dirección cargada:", response.data.address);
-          console.log("URL de Google Maps cargada:", response.data.googleMapsUrl);
         }
       } catch (error) {
-        console.error('Error fetching business config:', error);
+        // Error silencioso
       }
     };
     fetchBusinessConfig();
     // --- WebSocket: Conexión y listeners ---
-    socket.connect();
-    socket.emit('joinBusiness', businessId);
-    socket.on('business_config_update', (data) => {
-      console.log("Actualización recibida por WebSocket:", data);
+    if (socket) {
+      socket.connect();
+      socket.emit('joinBusiness', businessId);
+      socket.on('business_config_update', (data) => {
       setBusinessConfig(prevConfig => ({
         ...prevConfig,
         ...data,
@@ -80,10 +77,14 @@ const BusinessHeader = () => {
         }
       }));
     });
+    }
+    
     return () => {
-      socket.emit('leaveBusiness', businessId);
-      socket.off('business_config_update');
-      socket.disconnect();
+      if (socket) {
+        socket.emit('leaveBusiness', businessId);
+        socket.off('business_config_update');
+        socket.disconnect();
+      }
     };
     // Reducir la frecuencia de actualización a cada 5 minutos
     // const intervalId = setInterval(fetchBusinessConfig, 5 * 60 * 1000);
@@ -92,8 +93,6 @@ const BusinessHeader = () => {
 
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
 
-  console.log('Estado del negocio:', businessConfig.isOpen ? 'Abierto' : 'Cerrado');
-  console.log('Cover Image URL:', businessConfig.coverImage);
 
   return (
     <div className="w-full text-center relative">

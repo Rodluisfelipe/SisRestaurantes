@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Limpiar Storage</title>
+</head>
+<body>
+    <h1>Limpiando localStorage...</h1>
+    <script>
+        // Limpiar todo el localStorage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Mostrar confirmación
+        document.body.innerHTML = '<h1>✅ Storage limpiado correctamente</h1><p>Ahora puedes cerrar esta pestaña y recargar tu aplicación.</p>';
+        
+        console.log('Storage limpiado completamente');
+    </script>
+</body>
+</html>

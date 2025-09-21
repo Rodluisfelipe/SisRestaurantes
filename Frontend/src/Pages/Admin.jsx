@@ -25,6 +25,8 @@ import ModernOrdersDashboard from "../Components/ModernOrdersDashboard";
 import CompletedOrdersSummary from "../Components/CompletedOrdersSummary";
 import ModernAdminSidebar from "../Components/ModernAdminSidebar";
 import SubscriptionStatus from "../Components/SubscriptionStatus";
+import CustomersManager from "../Components/CustomersManager";
+import CouponsManager from "../Components/CouponsManager";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Componente de Modal de Confirmación para edición
@@ -415,10 +417,12 @@ function Admin() {
     
     // --- WebSocket: Conexión y listeners ---
     try {
-      if (!socket.connected) {
+      if (socket && !socket.connected) {
         socket.connect();
       }
-      socket.emit('joinBusiness', businessId);
+      if (socket) {
+        socket.emit('joinBusiness', businessId);
+      }
       
       // Definir listeners para los eventos
       const handleProductsUpdate = (data) => {
@@ -434,18 +438,22 @@ function Admin() {
         console.log('Estado de toppingGroups actualizado:', data);
       };
       
-      // Registrar listeners
-      socket.on('products_update', handleProductsUpdate);
-      socket.on('categories_update', handleCategoriesUpdate);
-      socket.on('topping_groups_update', handleToppingGroupsUpdate);
+      // Registrar listeners solo si socket existe
+      if (socket) {
+        socket.on('products_update', handleProductsUpdate);
+        socket.on('categories_update', handleCategoriesUpdate);
+        socket.on('topping_groups_update', handleToppingGroupsUpdate);
+      }
       
       // Cleanup function
       return () => {
         console.log('Admin: Cerrando conexión SSE');
-        socket.off('products_update', handleProductsUpdate);
-        socket.off('categories_update', handleCategoriesUpdate);
-        socket.off('topping_groups_update', handleToppingGroupsUpdate);
-        socket.emit('leaveBusiness', businessId);
+        if (socket) {
+          socket.off('products_update', handleProductsUpdate);
+          socket.off('categories_update', handleCategoriesUpdate);
+          socket.off('topping_groups_update', handleToppingGroupsUpdate);
+          socket.emit('leaveBusiness', businessId);
+        }
       };
     } catch (error) {
       console.error('Error en la configuración de WebSocket:', error);
@@ -893,6 +901,8 @@ function Admin() {
                     {activeTab === 'orders' && 'Panel de Pedidos'}
                     {activeTab === 'categories' && 'Gestión de Categorías'}
                     {activeTab === 'toppings' && 'Gestión de Extras'}
+                    {activeTab === 'customers' && 'Gestión de Clientes'}
+                    {activeTab === 'coupons' && 'Gestión de Cupones'}
                     {activeTab === 'tables' && 'Configuración de Mesas'}
                     {activeTab === 'theme' && 'Personalización de Tema'}
                     {activeTab === 'location' && 'Configuración de Ubicación'}
@@ -908,6 +918,8 @@ function Admin() {
                     {activeTab === 'orders' && 'Gestiona pedidos en tiempo real'}
                     {activeTab === 'categories' && 'Organiza tu menú por categorías'}
                     {activeTab === 'toppings' && 'Configura extras y complementos'}
+                    {activeTab === 'customers' && 'Administra información y estadísticas de clientes'}
+                    {activeTab === 'coupons' && 'Crea y gestiona cupones de descuento para promocionar tu restaurante'}
                     {activeTab === 'tables' && 'Administra mesas y códigos QR'}
                     {activeTab === 'theme' && 'Personaliza la apariencia de tu restaurante'}
                     {activeTab === 'location' && 'Configura tu ubicación para el catálogo'}
@@ -999,6 +1011,8 @@ function Admin() {
           {activeTab === 'change-password' && <ChangePassword />}
                 {activeTab === 'orders' && <ModernOrdersDashboard />}
           {activeTab === 'completed_orders' && <CompletedOrdersSummary />}
+          {activeTab === 'customers' && <CustomersManager />}
+          {activeTab === 'coupons' && <CouponsManager />}
                 
                 {/* Products Management */}
           {activeTab === 'products' && (
@@ -1368,6 +1382,8 @@ function Admin() {
               <WhatsAppCustomizer />
             </motion.div>
           )}
+
+          {/* Customers Manager */}
                 
               </motion.div>
             </AnimatePresence>

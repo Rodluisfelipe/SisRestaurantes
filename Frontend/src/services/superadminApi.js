@@ -2,9 +2,11 @@ import axios from "axios";
 
 // Crear instancia de axios para el SuperAdmin
 const superadminApi = axios.create({
-  baseURL: (import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production') 
-    ? `${import.meta.env.VITE_API_URL || 'http://157.245.125.216'}/api/superadmin`
-    : "/api/superadmin",
+  baseURL: import.meta.env.VITE_API_URL 
+    ? `${import.meta.env.VITE_API_URL}/api/superadmin`
+    : (import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production')
+      ? 'https://157-245-125-216.nip.io/api/superadmin'
+      : "/api/superadmin",
   headers: {
     "Content-Type": "application/json",
   },

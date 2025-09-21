@@ -110,6 +110,8 @@ app.use("/api/businesses", require("./Routes/businesses")); // Catálogo de rest
 app.use("/api/banners", require("./Routes/banners")); // Gestión de banners promocionales
 app.use("/api/categories", require("./Routes/categories"));
 app.use("/api/topping-groups", require("./Routes/toppingGroups"));
+app.use("/api/customers", require("./Routes/customers"));
+app.use("/api/coupons", require("./Routes/coupons"));
 app.use("/api/auth", require("./Routes/auth"));
 app.use("/api/tables", require("./Routes/tables"));
 app.use("/api/orders", require("./Routes/orders"));

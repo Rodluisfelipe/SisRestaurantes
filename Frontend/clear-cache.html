@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Limpiar Caché - MenuBy</title>
+</head>
+<body>
+    <h1>Limpiando Caché del Navegador...</h1>
+    <p id="status">Iniciando limpieza...</p>
+    
+    <script>
+        const statusEl = document.getElementById('status');
+        
+        async function clearCache() {
+            try {
+                // 1. Limpiar localStorage
+                localStorage.clear();
+                statusEl.innerHTML += '<br>✅ LocalStorage limpiado';
+                
+                // 2. Limpiar sessionStorage
+                sessionStorage.clear();
+                statusEl.innerHTML += '<br>✅ SessionStorage limpiado';
+                
+                // 3. Limpiar IndexedDB
+                if ('indexedDB' in window) {
+                    try {
+                        const databases = await indexedDB.databases();
+                        for (const db of databases) {
+                            indexedDB.deleteDatabase(db.name);
+                            statusEl.innerHTML += '<br>✅ IndexedDB eliminado: ' + db.name;
+                        }
+                    } catch (e) {
+                        statusEl.innerHTML += '<br>⚠️ IndexedDB: ' + e.message;
+                    }
+                }
+                
+                // 4. Desregistrar todos los service workers
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    for (let registration of registrations) {
+                        await registration.unregister();
+                        statusEl.innerHTML += '<br>✅ Service Worker desregistrado';
+                    }
+                }
+                
+                // 5. Limpiar caché de la API de Cache
+                if ('caches' in window) {
+                    const cacheNames = await caches.keys();
+                    for (const cacheName of cacheNames) {
+                        await caches.delete(cacheName);
+                        statusEl.innerHTML += '<br>✅ Caché eliminado: ' + cacheName;
+                    }
+                }
+                
+                // 6. Forzar recarga del manifest
+                const manifestLinks = document.querySelectorAll('link[rel="manifest"]');
+                manifestLinks.forEach(link => {
+                    link.href = link.href + '?clear=' + Date.now();
+                });
+                
+                statusEl.innerHTML += '<br><br>🎉 <strong>LIMPIEZA NUCLEAR COMPLETA!</strong>';
+                statusEl.innerHTML += '<br>📝 Ahora:';
+                statusEl.innerHTML += '<br>1. Cierra esta pestaña';
+                statusEl.innerHTML += '<br>2. Presiona Ctrl+Shift+Delete';
+                statusEl.innerHTML += '<br>3. Selecciona "Todo el tiempo"';
+                statusEl.innerHTML += '<br>4. Marca todas las opciones';
+                statusEl.innerHTML += '<br>5. Click "Borrar datos"';
+                statusEl.innerHTML += '<br>6. Recarga con Ctrl+F5';
+                
+            } catch (error) {
+                statusEl.innerHTML += '<br>❌ Error: ' + error.message;
+            }
+        }
+        
+        // Ejecutar limpieza automáticamente
+        clearCache();
+    </script>
+</body>
+</html>

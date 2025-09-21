@@ -61,7 +61,6 @@ function BusinessProviderWrapper({ children }) {
   const [businessNotFound, setBusinessNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   
-  console.log('BusinessProviderWrapper - businessId from URL:', businessId);
   
   // Si el negocio no existe, mostrar la página NotFound
   if (businessNotFound) {
@@ -72,13 +71,12 @@ function BusinessProviderWrapper({ children }) {
     <BusinessProvider 
       businessId={businessId}
       onError={(error) => {
-        console.error('BusinessProviderWrapper - Error detectado:', error);
+        // Error silencioso
         
         // Si es un error 404 o no se pudo encontrar el negocio, mostrar NotFound
         if (error?.response?.status === 404 || 
             error?.type === 'INVALID_ID' || 
             (error?.message && error?.message.includes('not found'))) {
-          console.log('BusinessProviderWrapper - Negocio no encontrado, mostrando NotFound');
           setBusinessNotFound(true);
         }
         

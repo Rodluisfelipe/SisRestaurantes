@@ -3,6 +3,8 @@ const router = express.Router();
 const mongoose = require("mongoose");
 const Order = require("../Models/Order");
 const CompletedOrder = require("../Models/CompletedOrder");
+const Customer = require("../Models/Customer");
+const Coupon = require("../Models/Coupon");
 const { ObjectId } = require("mongoose").Types;
 const socketService = require("../services/socketService");
 const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
@@ -61,7 +63,7 @@ router.get("/", async (req, res) => {
 // Create a new order
 router.post("/", async (req, res) => {
   try {
-    const { businessId, customerName, orderType, items, totalAmount, tableNumber, phone, address } = req.body;
+    const { businessId, customerName, orderType, items, totalAmount, tableNumber, phone, address, couponCode } = req.body;
     
     if (!businessId || !customerName || !orderType || !items || !totalAmount) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -78,6 +80,70 @@ router.post("/", async (req, res) => {
     // Generate order number
     const orderNumber = await generateOrderNumber(businessObjectId);
     
+    // Find or create customer
+    let customer = null;
+    if (phone) {
+      customer = await Customer.findOne({ phone, businessId: businessObjectId });
+      
+      if (customer) {
+        // Update existing customer stats
+        await customer.updateStats(totalAmount);
+      } else {
+        // Create new customer
+        customer = new Customer({
+          businessId: businessObjectId,
+          phone,
+          name: customerName,
+          stats: {
+            totalOrders: 1,
+            totalSpent: totalAmount,
+            averageOrderValue: totalAmount,
+            lastOrderDate: new Date(),
+            firstOrderDate: new Date()
+          }
+        });
+        await customer.save();
+      }
+    }
+
+    // Handle coupon validation and application
+    let coupon = null;
+    let discountAmount = 0;
+    let finalAmount = totalAmount;
+    
+    if (couponCode) {
+      coupon = await Coupon.findOne({ 
+        businessId: businessObjectId, 
+        code: couponCode.toUpperCase() 
+      });
+      
+      if (coupon) {
+        const orderData = {
+          totalAmount,
+          orderType,
+          items
+        };
+        
+        const validation = coupon.validateForOrder(orderData, customer ? customer._id : null);
+        
+        if (validation.valid) {
+          discountAmount = coupon.calculateDiscount(totalAmount);
+          finalAmount = totalAmount - discountAmount;
+          
+          // Record coupon usage
+          await coupon.recordUsage(customer ? customer._id : null, discountAmount);
+        } else {
+          return res.status(400).json({ 
+            message: `Cupón inválido: ${validation.error}` 
+          });
+        }
+      } else {
+        return res.status(404).json({ 
+          message: 'Cupón no encontrado' 
+        });
+      }
+    }
+
     // Create the order
     const newOrder = new Order({
       businessId: businessObjectId,
@@ -89,6 +155,11 @@ router.post("/", async (req, res) => {
       tableNumber: tableNumber || "",
       phone: phone || "",
       address: address || "",
+      customerId: customer ? customer._id : null,
+      couponCode: coupon ? coupon.code : null,
+      couponId: coupon ? coupon._id : null,
+      discountAmount,
+      finalAmount,
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date()

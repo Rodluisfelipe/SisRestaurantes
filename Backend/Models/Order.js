@@ -32,6 +32,11 @@ const orderSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  customerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Customer',
+    default: null
+  },
   
   // Order details
   orderType: {
@@ -43,6 +48,26 @@ const orderSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'inProgress', 'completed'],
     default: 'pending'
+  },
+  
+  // Coupon information
+  couponCode: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  couponId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Coupon',
+    default: null
+  },
+  discountAmount: {
+    type: Number,
+    default: 0
+  },
+  finalAmount: {
+    type: Number,
+    required: true
   },
   
   // Flag to indicate if the order has been sent to kitchen

@@ -10,6 +10,11 @@
     <meta name="robots" content="index, follow" />
     <meta name="theme-color" content="#3A7AFF" />
     
+    <!-- Prevenir caché en desarrollo -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="MenuBy - Sistema de Gestión de Restaurantes" />
@@ -30,8 +35,8 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <link rel="apple-touch-icon" href="/icon.svg" />
     
-    <!-- Manifest for PWA -->
-    <link rel="manifest" href="/manifest.json" />
+    <!-- Manifest vacío para sobrescribir caché -->
+    <link rel="manifest" href="/manifest.json?v=3" />
     
     <title>MenuBy - Sistema de Gestión de Restaurantes</title>
   </head>

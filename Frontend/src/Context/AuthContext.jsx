@@ -96,7 +96,6 @@ export function AuthProvider({ children }) {
       
       // Si estamos en rutas especiales, no necesitamos verificar token de usuario normal
       if (isSuperAdminRoute || isResetPasswordRoute) {
-        console.log(`Ruta especial detectada (${isSuperAdminRoute ? 'superadmin' : 'reset-password'}) - omitiendo verificación de token regular`);
         setLoading(false);
         return;
       }
@@ -122,7 +121,7 @@ export function AuthProvider({ children }) {
           navigate(location.pathname, { replace: true });
           return;
         } catch (error) {
-          console.error('Error processing URL token', error);
+          // Error silencioso
         }
       }
       
@@ -144,7 +143,6 @@ export function AuthProvider({ children }) {
         
         // Si es un token temporal de superadmin, no intentamos verificarlo
         if (isTempSuperAdminToken) {
-          console.log('Usando token temporal de SuperAdmin - acceso directo autorizado');
           setLoading(false);
           return;
         }
@@ -174,12 +172,12 @@ export function AuthProvider({ children }) {
                 }
               } catch (userErr) {
                 // Si falla, no importa, mantenemos la sesión
-                console.log('No se pudo obtener el usuario, pero mantenemos la sesión');
+                // Error silencioso
               }
             }
           } catch (refreshErr) {
             // Si falla el refresh, no importa, mantenemos la sesión
-            console.log('No se pudo refrescar el token, pero mantenemos la sesión');
+            // Error silencioso
           }
         }
       } else {

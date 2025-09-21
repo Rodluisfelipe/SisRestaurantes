@@ -66,7 +66,10 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+    // Solo intentar refrescar si no es login y hay refresh token
+    if (error.response && error.response.status === 401 && !originalRequest._retry && 
+        !originalRequest.url.includes('/auth/login') && 
+        localStorage.getItem('refreshToken')) {
       if (isRefreshing) {
         // Esperar a que el token se refresque
         return new Promise((resolve, reject) => {

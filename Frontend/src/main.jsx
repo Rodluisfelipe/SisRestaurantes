@@ -1,5 +1,65 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+
+// SOBRESCRITURA NUCLEAR DE CONSOLE - Filtrar TODO lo relacionado con PWA y React DevTools
+if (typeof window !== 'undefined') {
+  // Guardar referencias originales
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  const originalError = console.error;
+  const originalInfo = console.info;
+  
+  // Función de filtrado agresiva
+  const shouldFilter = (...args) => {
+    const message = String(args.join(' ')).toLowerCase();
+    return message.includes('react devtools') || 
+           message.includes('development experience') ||
+           message.includes('download the react devtools') ||
+           message.includes('reactjs.org/link/react-devtools') ||
+           message.includes('better development experience') ||
+           message.includes('manifest:') ||
+           message.includes('property') && message.includes('ignored') ||
+           message.includes('url is invalid') ||
+           message.includes('start_url') ||
+           message.includes('scope') ||
+           message.includes('shortcut') ||
+           message.includes('not present');
+  };
+
+  // Sobrescribir TODOS los métodos de console
+  console.log = (...args) => {
+    if (!shouldFilter(...args)) {
+      originalLog.apply(console, args);
+    }
+  };
+
+  console.warn = (...args) => {
+    if (!shouldFilter(...args)) {
+      originalWarn.apply(console, args);
+    }
+  };
+
+  console.error = (...args) => {
+    if (!shouldFilter(...args)) {
+      originalError.apply(console, args);
+    }
+  };
+
+  console.info = (...args) => {
+    if (!shouldFilter(...args)) {
+      originalInfo.apply(console, args);
+    }
+  };
+
+  // Deshabilitar React DevTools
+  window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
+    isDisabled: true,
+    supportsFiber: true,
+    inject: () => {},
+    onCommitFiberRoot: () => {},
+    onCommitFiberUnmount: () => {},
+  };
+}
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";
 import { AuthProvider } from "./Context/AuthContext";
@@ -25,15 +85,16 @@ const Root = () => {
   );
 };
 
-// Register service worker for PWA functionality
+// Service Worker temporal para limpiar caché
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/sw.js?v=3')
       .then((registration) => {
-        console.log('SW registered: ', registration);
+        // Service Worker registrado para limpiar caché
+        registration.update();
       })
       .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
+        // Error silencioso
       });
   });
 }

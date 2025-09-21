@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import * as SessionManager from '../utils/sessionManager';
+import CouponInput from './CouponInput';
+import { logSystem } from '../utils/systemLogger';
 
 function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -10,6 +12,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     address: orderInfo?.address || ''
   });
   const [tableNumber, setTableNumber] = useState(orderInfo?.tableNumber || '');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const { businessConfig } = useBusinessConfig();
   
   // Determinar si el pedido viene de un QR de mesa basado en la URL
@@ -55,6 +58,18 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     const totalItemPrice = (itemPrice + toppingPriceSum) * quantity;
     return sum + totalItemPrice;
   }, 0);
+
+  // Calcular total final con descuento de cupón
+  const finalAmount = appliedCoupon ? appliedCoupon.finalAmount : totalAmount;
+
+  // Funciones para manejar cupones
+  const handleCouponApplied = (couponData) => {
+    setAppliedCoupon(couponData);
+  };
+
+  const handleCouponRemoved = () => {
+    setAppliedCoupon(null);
+  };
 
   // Use useEffect to synchronize deliveryInfo with orderInfo
   useEffect(() => {
@@ -118,7 +133,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     
     // Small delay to ensure state is fully updated before order submission
     setTimeout(() => {
-      onOrder(updatedOrderInfo);
+      onOrder(updatedOrderInfo, appliedCoupon);
       setLocalIsSubmitting(false);
     }, 300);
   };
@@ -179,7 +194,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     
     // Enviar el pedido directamente
     console.log('Enviando pedido inmediatamente con mesa:', updatedOrderInfo.tableNumber);
-    onOrder();
+    onOrder(updatedOrderInfo, appliedCoupon);
     setLocalIsSubmitting(false);
   };
   
@@ -218,7 +233,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
       // Pequeño retraso para asegurar que el estado se actualice
       setTimeout(() => {
         console.log('Enviando pedido con información:', updatedOrderInfo);
-    onOrder();
+    onOrder(updatedOrderInfo, appliedCoupon);
         
         // Asegurar que el estado de envío se resetee después de completar
         setTimeout(() => {
@@ -291,8 +306,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
     const [formState, setFormState] = useState({
       tableNumber: '',
-      phone: '',
-      address: ''
+      phone: orderInfo?.phone || '',
+      address: orderInfo?.address || ''
     });
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -319,14 +334,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
       e.preventDefault();
       
       if (isProcessing || isSubmitting) {
-        console.log("Ya hay un proceso en curso, ignorando solicitud");
+        logSystem("Proceso de pedido ya en curso, ignorando solicitud", 'warning');
         return;
       }
 
       if (orderType === 'inSite') {
         const trimmedTableNumber = formState.tableNumber.trim();
+        const trimmedPhone = formState.phone.trim();
+        
         if (!trimmedTableNumber) {
           alert('Por favor ingresa el número de mesa');
+          return;
+        }
+        
+        if (!trimmedPhone) {
+          alert('Por favor ingresa el número de teléfono');
           return;
         }
 
@@ -334,22 +356,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         setLocalIsSubmitting(true);
 
         try {
-          console.log('🔵 Número de mesa confirmado:', trimmedTableNumber);
-          
           const updatedOrderInfo = {
             ...orderInfo,
             orderType: 'inSite',
-            tableNumber: trimmedTableNumber
+            tableNumber: trimmedTableNumber,
+            phone: trimmedPhone
           };
 
-          console.log('🔵 Enviando pedido con información completa:', JSON.stringify(updatedOrderInfo));
+          logSystem(`Pedido en sitio procesado - Mesa: ${trimmedTableNumber}, Teléfono: ${trimmedPhone}`);
           
           updateOrderInfo(updatedOrderInfo);
           SessionManager.saveOrderInfo(updatedOrderInfo);
           closeOrderModal();
-          onOrder(updatedOrderInfo);
+          onOrder(updatedOrderInfo, appliedCoupon);
         } catch (error) {
-          console.error('Error al procesar el pedido:', error);
+          logSystem(`Error al procesar pedido: ${error.message}`, 'error');
           alert('Hubo un error al procesar el pedido. Por favor intenta nuevamente.');
         } finally {
           setIsProcessing(false);
@@ -378,9 +399,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           updateOrderInfo(updatedOrderInfo);
           SessionManager.saveOrderInfo(updatedOrderInfo);
           closeOrderModal();
-          onOrder(updatedOrderInfo);
+          onOrder(updatedOrderInfo, appliedCoupon);
         } catch (error) {
-          console.error('Error al procesar el pedido:', error);
+          logSystem(`Error al procesar pedido: ${error.message}`, 'error');
           alert('Hubo un error al procesar el pedido. Por favor intenta nuevamente.');
         } finally {
           setIsProcessing(false);
@@ -407,25 +428,41 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {orderType === 'inSite' ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Número de Mesa
-                </label>
-                <input
-                  type="number"
-                  name="tableNumber"
-                  value={formState.tableNumber}
-                  onChange={handleInputChange}
-                  className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
-                  placeholder="Ej: 5"
-                  min="1"
-                  max="999"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  required
-                  autoFocus
-                />
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Número de Mesa
+                  </label>
+                  <input
+                    type="number"
+                    name="tableNumber"
+                    value={formState.tableNumber}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
+                    placeholder="Ej: 5"
+                    min="1"
+                    max="999"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formState.phone}
+                    onChange={handleInputChange}
+                    className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
+                    placeholder="Ej: 3001234567"
+                    required
+                  />
+                </div>
+              </>
             ) : (
               <>
                 <div>
@@ -581,7 +618,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         setTimeout(() => {
           // Enviar pedido directamente
           console.log("*** EJECUTANDO ENVÍO DIRECTO CON MESA:", existingTable, " ***");
-          onOrder();
+          onOrder(orderInfo, appliedCoupon);
           
           // Resetear estado después de un tiempo prudente
           setTimeout(() => {
@@ -611,7 +648,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     }
     
     try {
-      console.log("Ejecutando handleSubmitOrder con orderType:", orderInfo.orderType);
+      logSystem(`Procesando pedido tipo: ${orderInfo.orderType}`);
       
       // En función del tipo de pedido, llamamos a la función correspondiente
       if (orderInfo.orderType === 'delivery') {
@@ -652,7 +689,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           setTimeout(() => {
             // Enviar pedido directamente
             console.log("*** EJECUTANDO ENVÍO FINAL CON MESA:", existingTable, "***");
-            onOrder();
+            onOrder(orderInfo, appliedCoupon);
             
             // Resetear estado de envío
             setTimeout(() => {
@@ -684,7 +721,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         
         // Pequeño retraso para asegurar actualización de estado
         setTimeout(() => {
-          onOrder();
+          onOrder(orderInfo, appliedCoupon);
           setLocalIsSubmitting(false);
         }, 300);
       } else {
@@ -728,7 +765,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
       
       // Enviar el pedido después de un pequeño retraso
       setTimeout(() => {
-        onOrder();
+        onOrder(orderInfo, appliedCoupon);
         setLocalIsSubmitting(false);
       }, 300);
     } catch (error) {
@@ -941,6 +978,20 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         {/* Footer con total y botones - SIEMPRE VISIBLE */}
         {cart.length > 0 && (
           <div className="border-t border-slate-200/80 bg-white p-6 space-y-4 shadow-xl rounded-b-2xl flex-shrink-0">
+            {/* Coupon Input */}
+            <CouponInput
+              onCouponApplied={handleCouponApplied}
+              onCouponRemoved={handleCouponRemoved}
+              appliedCoupon={appliedCoupon}
+              orderData={{
+                totalAmount,
+                orderType: orderInfo?.orderType || 'inSite',
+                items: cart
+              }}
+              customerId={orderInfo?.customerId}
+              businessId={businessConfig?.businessId || businessConfig?._id}
+            />
+
             {/* Total amount */}
             <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border border-slate-200/50"
                  style={{
@@ -948,7 +999,15 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                  }}>
               <div>
                 <p className="text-sm text-slate-600">Total ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})</p>
-                <p className="text-2xl font-bold text-slate-800">${totalAmount.toLocaleString('es-CO')}</p>
+                {appliedCoupon ? (
+                  <div>
+                    <p className="text-lg text-slate-600 line-through">${totalAmount.toLocaleString('es-CO')}</p>
+                    <p className="text-2xl font-bold text-green-600">${finalAmount.toLocaleString('es-CO')}</p>
+                    <p className="text-sm text-green-600">Ahorras: ${appliedCoupon.discountAmount.toLocaleString('es-CO')}</p>
+                  </div>
+                ) : (
+                  <p className="text-2xl font-bold text-slate-800">${totalAmount.toLocaleString('es-CO')}</p>
+                )}
               </div>
               <div 
                 className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
