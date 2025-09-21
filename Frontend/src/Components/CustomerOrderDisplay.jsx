@@ -214,14 +214,17 @@ function CustomerOrderDisplay() {
   useEffect(() => {
     if (!businessId) return;
     
-    if (!socket.connected) {
+    if (socket && !socket.connected) {
       socket.connect();
     }
     
-    socket.emit('joinBusiness', businessId);
+    if (socket) {
+      socket.emit('joinBusiness', businessId);
+    }
     
     // Listen for order events
-    socket.on('order_created', (newOrder) => {
+    if (socket) {
+      socket.on('order_created', (newOrder) => {
       console.log('New order received:', newOrder);
       setOrders(prevOrders => {
         const updatedOrders = [newOrder, ...prevOrders];
@@ -257,18 +260,21 @@ function CustomerOrderDisplay() {
       setLastUpdated(new Date());
     });
     
-    socket.on('order_deleted', (deletedOrder) => {
-      console.log('Order deleted:', deletedOrder);
-      setOrders(prevOrders => 
-        prevOrders.filter(order => order._id !== deletedOrder._id)
-      );
-      setLastUpdated(new Date());
-    });
+      socket.on('order_deleted', (deletedOrder) => {
+        console.log('Order deleted:', deletedOrder);
+        setOrders(prevOrders => 
+          prevOrders.filter(order => order._id !== deletedOrder._id)
+        );
+        setLastUpdated(new Date());
+      });
+    }
 
     return () => {
-      socket.off('order_created');
-      socket.off('order_updated');
-      socket.off('order_deleted');
+      if (socket) {
+        socket.off('order_created');
+        socket.off('order_updated');
+        socket.off('order_deleted');
+      }
     };
   }, [businessId]);
 

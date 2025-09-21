@@ -173,15 +173,18 @@ function OrdersDashboard() {
     console.log('Connecting to socket for business:', businessId);
     
     // Connect to socket if not already connected
-    if (!socket.connected) {
+    if (socket && !socket.connected) {
       socket.connect();
     }
     
     // Join the business room
-    socket.emit('joinBusiness', businessId);
+    if (socket) {
+      socket.emit('joinBusiness', businessId);
+    }
     
     // Listen for order events
-    socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
+    if (socket) {
+      socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
       console.log('New order received:', newOrder);
       setOrders(prevOrders => [newOrder, ...prevOrders]);
       
@@ -224,18 +227,21 @@ function OrdersDashboard() {
         setSelectedOrder(null);
         setOrderDetails(null);
       }
-    });
+      });
+    }
     
     // Fetch initial orders
     fetchOrders();
     
     // Cleanup on unmount
     return () => {
-      socket.off('order_created');
-      socket.off('order_updated');
-      socket.off('order_deleted');
-      socket.emit('leaveBusiness', businessId);
-      // Don't disconnect as other components might be using the socket
+      if (socket) {
+        socket.off('order_created');
+        socket.off('order_updated');
+        socket.off('order_deleted');
+        socket.emit('leaveBusiness', businessId);
+        // Don't disconnect as other components might be using the socket
+      }
     };
   }, [businessId, selectedOrder]);
   

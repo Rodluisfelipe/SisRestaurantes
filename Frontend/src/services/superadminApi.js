@@ -103,4 +103,27 @@ export const deleteBusiness = async (id) => {
   }
 };
 
+// Crear instancia separada para suscripciones
+const subscriptionApi = axios.create({
+  baseURL: import.meta.env.VITE_API_URL 
+    ? `${import.meta.env.VITE_API_URL}/api`
+    : (import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production')
+      ? 'https://157-245-125-216.nip.io/api'
+      : "/api",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true
+});
+
+// Agregar interceptor para añadir el token a cada solicitud
+subscriptionApi.interceptors.request.use((config) => {
+  const token = localStorage.getItem("superadmin_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export { subscriptionApi };
 export default superadminApi;

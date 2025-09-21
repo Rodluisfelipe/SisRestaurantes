@@ -505,4 +505,44 @@ router.post("/cleanup-completed", async (req, res) => {
   }
 });
 
+// Get all completed orders for a business (historical view)
+router.get("/completed", async (req, res) => {
+  try {
+    const { businessId } = req.query;
+    
+    if (!businessId) {
+      return res.status(400).json({ message: "Business ID is required" });
+    }
+    
+    // Handle the businessId, which could be an ObjectId or a slug
+    let businessObjectId;
+    
+    if (isValidObjectId(businessId)) {
+      // If it's a valid ObjectId, use it directly
+      businessObjectId = businessId;
+    } else {
+      // If it's a slug, find the corresponding business to get its ObjectId
+      const BusinessConfig = require('../Models/BusinessConfig');
+      const business = await BusinessConfig.findOne({ slug: businessId });
+      
+      if (!business) {
+        return res.status(404).json({ message: "Business not found" });
+      }
+      
+      businessObjectId = business._id;
+    }
+    
+    // Get all completed orders sorted by completion date (newest first)
+    const completedOrders = await CompletedOrder.find({
+      businessId: businessObjectId
+    }).sort({ completedAt: -1 });
+    
+    logger.info(`Retrieved ${completedOrders.length} completed orders for business ${businessId}`);
+    res.json(completedOrders);
+  } catch (error) {
+    logger.error("Error fetching completed orders", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router; 

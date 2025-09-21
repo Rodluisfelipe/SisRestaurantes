@@ -3,9 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
+import { logSystem } from '../utils/systemLogger';
 
-function CompletedOrdersSummary() {
+function EnhancedCompletedOrders() {
   const [completedOrders, setCompletedOrders] = useState([]);
+  const [allTimeOrders, setAllTimeOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -23,26 +25,25 @@ function CompletedOrdersSummary() {
   const [searchTerm, setSearchTerm] = useState('');
   const [generatingReport, setGeneratingReport] = useState(false);
   const [showNoOrdersModal, setShowNoOrdersModal] = useState(false);
+  const [viewMode, setViewMode] = useState('today'); // 'today' or 'all'
+  const [topSellingItems, setTopSellingItems] = useState([]);
+  const [insights, setInsights] = useState([]);
 
   // Fetch completed orders for today
   const fetchCompletedOrders = async () => {
     setLoading(true);
     try {
-      // Obtener la fecha de hoy en formato ISO (YYYY-MM-DD)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
       const response = await api.post('/orders/daily-closing', { 
         businessId: businessId
       });
       
-      // Actualizar los pedidos y estadísticas
       if (response.data && response.data.orders) {
         setCompletedOrders(response.data.orders);
         
-        // Actualizar estadísticas
         if (response.data.stats) {
           setStats(response.data.stats);
+          setTopSellingItems(response.data.stats.topSellingItems || []);
+          generateInsights(response.data.stats, response.data.orders);
         }
       } else {
         setCompletedOrders([]);
@@ -55,11 +56,13 @@ function CompletedOrdersSummary() {
             delivery: { count: 0, total: 0 }
           }
         });
+        setTopSellingItems([]);
+        setInsights([]);
       }
       
       setError(null);
     } catch (err) {
-      console.error('Error fetching completed orders:', err);
+      logSystem('Error fetching completed orders: ' + err.message, 'error');
       setError('No se pudieron cargar los pedidos completados');
       setCompletedOrders([]);
     } finally {
@@ -67,27 +70,130 @@ function CompletedOrdersSummary() {
     }
   };
 
-  // Calcular tiempo transcurrido desde la creación del pedido
-  const calculateTimeElapsed = (createdAt, completedAt) => {
-    const start = new Date(createdAt);
-    const end = new Date(completedAt || Date.now());
-    const diffMs = end - start;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHrs = Math.floor(diffMins / 60);
-    
-    if (diffHrs > 0) {
-      return `${diffHrs}h ${diffMins % 60}m`;
+  // Fetch all completed orders (for historical view)
+  const fetchAllCompletedOrders = async () => {
+    try {
+      const response = await api.get(`/orders/completed?businessId=${businessId}`);
+      if (response.data) {
+        setAllTimeOrders(response.data);
+      }
+    } catch (err) {
+      logSystem('Error fetching all completed orders: ' + err.message, 'error');
     }
-    return `${diffMins}m`;
   };
 
-  // Efecto para cargar los pedidos completados cuando cambia el businessId
+  // Generate insights and recommendations
+  const generateInsights = (stats, orders) => {
+    const newInsights = [];
+    
+    // Insight 1: Total sales performance
+    if (stats.totalSales > 0) {
+      if (stats.totalSales > 1000000) { // > $1M COP
+        newInsights.push({
+          type: 'success',
+          icon: '🎉',
+          title: '¡Excelente día!',
+          message: `Has generado $${stats.totalSales.toLocaleString()} en ventas. ¡Sigue así!`,
+          recommendation: 'Considera ofrecer promociones especiales para mantener este momentum.'
+        });
+      } else if (stats.totalSales > 500000) { // > $500K COP
+        newInsights.push({
+          type: 'good',
+          icon: '👍',
+          title: 'Buen día de ventas',
+          message: `Has generado $${stats.totalSales.toLocaleString()} en ventas.`,
+          recommendation: 'Podrías mejorar promocionando tus productos más populares.'
+        });
+      } else {
+        newInsights.push({
+          type: 'info',
+          icon: '💡',
+          title: 'Oportunidad de mejora',
+          message: `Has generado $${stats.totalSales.toLocaleString()} en ventas.`,
+          recommendation: 'Considera ofrecer combos o promociones para aumentar el ticket promedio.'
+        });
+      }
+    }
+
+    // Insight 2: Order type analysis
+    const totalOrders = stats.ordersByType.inSite.count + stats.ordersByType.takeaway.count + stats.ordersByType.delivery.count;
+    if (totalOrders > 0) {
+      const deliveryPercentage = (stats.ordersByType.delivery.count / totalOrders) * 100;
+      if (deliveryPercentage > 60) {
+        newInsights.push({
+          type: 'info',
+          icon: '🚚',
+          title: 'Alto volumen de delivery',
+          message: `${deliveryPercentage.toFixed(1)}% de tus pedidos son a domicilio.`,
+          recommendation: 'Considera optimizar tus rutas de delivery o implementar un sistema de delivery propio.'
+        });
+      }
+    }
+
+    // Insight 3: Average order value
+    const avgOrderValue = stats.totalSales / (stats.totalOrders || 1);
+    if (avgOrderValue > 50000) {
+      newInsights.push({
+        type: 'success',
+        icon: '💰',
+        title: 'Ticket promedio excelente',
+        message: `Tu ticket promedio es de $${avgOrderValue.toLocaleString()}.`,
+        recommendation: '¡Excelente! Los clientes están comprando productos de alto valor.'
+      });
+    } else if (avgOrderValue < 25000) {
+      newInsights.push({
+        type: 'warning',
+        icon: '📈',
+        title: 'Oportunidad de aumentar ticket promedio',
+        message: `Tu ticket promedio es de $${avgOrderValue.toLocaleString()}.`,
+        recommendation: 'Ofrece combos, bebidas o postres para aumentar el valor por pedido.'
+      });
+    }
+
+    // Insight 4: Top selling items
+    if (topSellingItems.length > 0) {
+      const topItem = topSellingItems[0];
+      newInsights.push({
+        type: 'success',
+        icon: '🏆',
+        title: 'Producto estrella',
+        message: `"${topItem.name}" es tu producto más vendido con ${topItem.count} unidades.`,
+        recommendation: 'Asegúrate de tener suficiente stock y considera crear variaciones de este producto.'
+      });
+    }
+
+    // Insight 5: Time-based insights
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour >= 12 && hour <= 14) {
+      newInsights.push({
+        type: 'info',
+        icon: '🍽️',
+        title: 'Hora pico del almuerzo',
+        message: 'Estás en la hora pico del almuerzo.',
+        recommendation: 'Asegúrate de tener suficiente personal y productos preparados.'
+      });
+    } else if (hour >= 18 && hour <= 20) {
+      newInsights.push({
+        type: 'info',
+        icon: '🌅',
+        title: 'Hora pico de la cena',
+        message: 'Estás en la hora pico de la cena.',
+        recommendation: 'Prepara tu cocina para el aumento de pedidos.'
+      });
+    }
+
+    setInsights(newInsights);
+  };
+
+  // Effect to load orders when businessId changes
   useEffect(() => {
     if (!businessId) return;
     
     fetchCompletedOrders();
+    fetchAllCompletedOrders();
     
-    // Escuchar eventos de socket para actualizaciones de pedidos completados
+    // Socket connection for real-time updates
     if (socket && !socket.connected) {
       socket.connect();
     }
@@ -95,16 +201,14 @@ function CompletedOrdersSummary() {
     if (socket) {
       socket.emit('joinBusiness', businessId);
       
-      // Cuando un pedido cambia a completado, actualizar la lista
       socket.on('order_updated', (updatedOrder) => {
-      if (updatedOrder.status === 'completed') {
-        // Recargar todos los pedidos para tener estadísticas actualizadas
-        fetchCompletedOrders();
-      }
+        if (updatedOrder.status === 'completed') {
+          fetchCompletedOrders();
+          fetchAllCompletedOrders();
+        }
       });
     }
     
-    // Limpieza al desmontar
     return () => {
       if (socket) {
         socket.off('order_updated');
@@ -112,20 +216,52 @@ function CompletedOrdersSummary() {
     };
   }, [businessId]);
 
-  // Mostrar detalles de un pedido
+  // Show order details
   const showOrderDetails = (order) => {
-    console.log('Mostrando detalles del pedido:', order); // Debug log
     setSelectedOrder(order);
     setOrderDetails(order);
   };
 
-  // Modal de detalles del pedido
+  // Generate daily closing report (view only, no deletion)
+  const generateDailyClosingReport = async () => {
+    try {
+      setGeneratingReport(true);
+      await fetchCompletedOrders();
+      logSystem('Reporte de cierre del día generado correctamente', 'info');
+    } catch (err) {
+      logSystem('Error generating daily closing report: ' + err.message, 'error');
+      let errorMessage = 'Error al generar el reporte de cierre diario';
+      if (err.response) {
+        if (err.response.status === 404) {
+          setShowNoOrdersModal(true);
+          return;
+        } else if (err.response.data && err.response.data.message) {
+          errorMessage = `Error: ${err.response.data.message}`;
+        }
+      } else if (err.request) {
+        errorMessage = 'No se recibió respuesta del servidor. Verifica tu conexión.';
+      }
+      alert(errorMessage);
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  // Filter orders based on search term and view mode
+  const getFilteredOrders = () => {
+    const ordersToFilter = viewMode === 'today' ? completedOrders : allTimeOrders;
+    return ordersToFilter.filter(order => 
+      searchTerm 
+        ? order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          order.orderNumber.toString().includes(searchTerm)
+        : true
+    );
+  };
+
+  // Order Details Modal
   const OrderDetailsModal = () => {
     if (!selectedOrder) return null;
     
-    console.log('Renderizando modal con pedido:', selectedOrder); // Debug log
-    
-    // Formatear la fecha correctamente
     const formattedDate = selectedOrder.completedAt 
       ? new Date(selectedOrder.completedAt).toLocaleString('es-ES', {
           year: 'numeric',
@@ -244,98 +380,87 @@ function CompletedOrdersSummary() {
     );
   };
 
-  // Tarjeta de pedido
-  const OrderCard = ({ order }) => {
-    // Obtener el tipo de pedido en español
-    const orderTypeLabels = {
-      'inSite': 'En Sitio',
-      'takeaway': 'Para Llevar',
-      'delivery': 'A Domicilio'
-    };
-    
+  // Top Selling Items Component
+  const TopSellingItems = () => {
+    if (topSellingItems.length === 0) return null;
+
     return (
-      <div 
-        className="bg-white p-4 rounded-lg shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow"
-        onClick={() => showOrderDetails(order)}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="bg-white rounded-lg shadow-sm overflow-hidden"
       >
-        <div className="flex justify-between items-start mb-2">
-          <div>
-            <h3 className="font-medium">{order.customerName}</h3>
-            <div className="text-sm text-gray-500 mt-1">
-              {order.orderType === 'inSite' && `Mesa: ${order.tableNumber}`}
-              {order.orderType === 'takeaway' && 'Para llevar'}
-              {order.orderType === 'delivery' && 'A domicilio'}
-            </div>
-          </div>
-          <div className="text-sm font-medium">
-            #{order.orderNumber}
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+            <span className="mr-2">🏆</span>
+            Productos Más Vendidos
+          </h3>
+        </div>
+        <div className="p-6">
+          <div className="space-y-4">
+            {topSellingItems.slice(0, 5).map((item, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
+                  </div>
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                    <p className="text-sm text-gray-500">{item.count} unidades vendidas</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">${item.total.toLocaleString()}</p>
+                  <p className="text-xs text-gray-500">en ventas</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="flex justify-between items-center mt-2">
-          <div className="flex items-center space-x-2">
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-              Completado
-            </span>
-            {order.includedInReport && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                En reporte
-              </span>
-            )}
-            <span className="text-xs text-gray-500">
-              {calculateTimeElapsed(order.createdAt, order.completedAt)}
-            </span>
-          </div>
-          <div className="text-sm font-medium">
-            ${order.totalAmount.toFixed(2)}
-          </div>
-        </div>
-      </div>
+      </motion.div>
     );
   };
 
-  // Filtrar órdenes basado en el término de búsqueda
-  const filteredOrders = completedOrders.filter(order => 
-    searchTerm 
-      ? order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.orderNumber.toString().includes(searchTerm)
-      : true
-  );
+  // Insights Component
+  const InsightsSection = () => {
+    if (insights.length === 0) return null;
 
-  // Nueva función para cierre del día (basada en OrdersDashboard)
-  const generateDailyClosingReport = async () => {
-    try {
-      setGeneratingReport(true);
-      const currentPath = window.location.pathname;
-      const match = currentPath.match(/^\/([^/]+)/);
-      const businessSlug = match ? match[1] : businessId;
-      const response = await api.post('/orders/daily-closing', {
-        businessId: businessSlug || businessId
-      });
-      setCompletedOrders(response.data.orders || []);
-      if (response.data.stats) {
-        setStats(response.data.stats);
-      }
-      alert('Cierre del día generado correctamente.');
-    } catch (err) {
-      console.error('Error generating daily closing report:', err);
-      let errorMessage = 'Error al generar el reporte de cierre diario';
-      if (err.response) {
-        if (err.response.status === 404) {
-          setShowNoOrdersModal(true);
-          return;
-        } else if (err.response.data && err.response.data.message) {
-          errorMessage = `Error: ${err.response.data.message}`;
-        }
-      } else if (err.request) {
-        errorMessage = 'No se recibió respuesta del servidor. Verifica tu conexión.';
-      }
-      alert(errorMessage);
-    } finally {
-      setGeneratingReport(false);
-    }
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="space-y-4"
+      >
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+          <span className="mr-2">💡</span>
+          Insights y Recomendaciones
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {insights.map((insight, index) => (
+            <div key={index} className={`p-4 rounded-lg border-l-4 ${
+              insight.type === 'success' ? 'bg-green-50 border-green-400' :
+              insight.type === 'warning' ? 'bg-yellow-50 border-yellow-400' :
+              'bg-blue-50 border-blue-400'
+            }`}>
+              <div className="flex items-start">
+                <span className="text-2xl mr-3">{insight.icon}</span>
+                <div>
+                  <h4 className="font-medium text-gray-900">{insight.title}</h4>
+                  <p className="text-sm text-gray-600 mt-1">{insight.message}</p>
+                  <p className="text-xs text-gray-500 mt-2 italic">{insight.recommendation}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    );
   };
 
-  // Renderizado del componente
+  const filteredOrders = getFilteredOrders();
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -348,14 +473,45 @@ function CompletedOrdersSummary() {
           <span className="text-2xl">✅</span>
         </div>
         <h2 className="text-3xl font-bold text-slate-900 mb-2">Pedidos Completados</h2>
-        <p className="text-slate-600">Historial y resumen de pedidos del día</p>
+        <p className="text-slate-600">Historial y análisis de ventas</p>
       </motion.div>
 
-      {/* Modern Stats Cards */}
+      {/* View Mode Toggle */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
+        className="flex justify-center"
+      >
+        <div className="bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setViewMode('today')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'today' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📅 Cierre del Día
+          </button>
+          <button
+            onClick={() => setViewMode('all')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'all' 
+                ? 'bg-white text-gray-900 shadow-sm' 
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📊 Historial Completo
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Stats Cards */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
       >
         <motion.div 
@@ -365,7 +521,7 @@ function CompletedOrdersSummary() {
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold opacity-90">Total de Pedidos</h3>
-              <p className="text-3xl font-bold mt-2">{completedOrders.length}</p>
+              <p className="text-3xl font-bold mt-2">{filteredOrders.length}</p>
             </div>
             <span className="text-3xl opacity-80">📋</span>
           </div>
@@ -377,8 +533,9 @@ function CompletedOrdersSummary() {
         >
           <div className="flex items-center justify-between">
             <div>
+              <h3 className="text-sm font-semibold opacity-90">Total Ventas</h3>
               <p className="text-3xl font-bold mt-2">
-                ${completedOrders.reduce((sum, order) => sum + order.totalAmount, 0).toFixed(2)}
+                ${filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}
               </p>
             </div>
             <span className="text-3xl opacity-80">💰</span>
@@ -393,7 +550,7 @@ function CompletedOrdersSummary() {
             <div>
               <h3 className="text-sm font-semibold opacity-90">Promedio por Pedido</h3>
               <p className="text-3xl font-bold mt-2">
-                ${(completedOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (completedOrders.length || 1)).toFixed(2)}
+                ${(filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (filteredOrders.length || 1)).toLocaleString()}
               </p>
             </div>
             <span className="text-3xl opacity-80">📊</span>
@@ -408,7 +565,7 @@ function CompletedOrdersSummary() {
             <div>
               <h3 className="text-sm font-semibold opacity-90">Productos Vendidos</h3>
               <p className="text-3xl font-bold mt-2">
-                {completedOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)}
+                {filteredOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)}
               </p>
             </div>
             <span className="text-3xl opacity-80">🍔</span>
@@ -416,11 +573,19 @@ function CompletedOrdersSummary() {
         </motion.div>
       </motion.div>
 
-      {/* Tabla de pedidos completados */}
+      {/* Insights Section */}
+      {viewMode === 'today' && <InsightsSection />}
+
+      {/* Top Selling Items */}
+      {viewMode === 'today' && <TopSellingItems />}
+
+      {/* Orders Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Pedidos Completados del Día</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              {viewMode === 'today' ? 'Pedidos Completados del Día' : 'Historial Completo de Pedidos'}
+            </h2>
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-none">
                 <input
@@ -434,26 +599,27 @@ function CompletedOrdersSummary() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              {/* Botón de cierre del día reemplazando al de generar reporte */}
-              <button
-                onClick={generateDailyClosingReport}
-                disabled={generatingReport}
-                className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
-              >
-                {generatingReport ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    <span>Generando...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span>Cierre del Día</span>
-                  </>
-                )}
-              </button>
+              {viewMode === 'today' && (
+                <button
+                  onClick={generateDailyClosingReport}
+                  disabled={generatingReport}
+                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
+                >
+                  {generatingReport ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <span>Generando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Actualizar Cierre</span>
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -478,7 +644,7 @@ function CompletedOrdersSummary() {
                   Total
                 </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Hora
+                  Fecha/Hora
                 </th>
                 <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
                   Acciones
@@ -517,10 +683,15 @@ function CompletedOrdersSummary() {
                       : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                    ${order.totalAmount.toFixed(2)}
+                    ${order.totalAmount.toLocaleString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(order.completedAt).toLocaleTimeString()}
+                    {new Date(order.completedAt || order.createdAt).toLocaleString('es-ES', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
@@ -537,11 +708,9 @@ function CompletedOrdersSummary() {
         </div>
       </div>
 
-      {/* Modal de detalles del pedido */}
-      {selectedOrder && (
-        <OrderDetailsModal />
-      )}
-      {/* Modal de no hay pedidos completados */}
+      {/* Modals */}
+      {selectedOrder && <OrderDetailsModal />}
+      
       {showNoOrdersModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6 text-center">
@@ -565,32 +734,4 @@ function CompletedOrdersSummary() {
   );
 }
 
-// Función auxiliar para calcular el tiempo promedio de preparación
-function calculateAveragePreparationTime(orders) {
-  if (!orders || orders.length === 0) return 'N/A';
-  
-  let totalMinutes = 0;
-  const ordersWithComplete = orders.filter(order => order.completedAt && order.createdAt);
-  
-  if (ordersWithComplete.length === 0) return 'N/A';
-  
-  ordersWithComplete.forEach(order => {
-    const start = new Date(order.createdAt);
-    const end = new Date(order.completedAt);
-    const diffMs = end - start;
-    const diffMins = Math.floor(diffMs / 60000);
-    totalMinutes += diffMins;
-  });
-  
-  const avgMinutes = Math.floor(totalMinutes / ordersWithComplete.length);
-  
-  if (avgMinutes >= 60) {
-    const hours = Math.floor(avgMinutes / 60);
-    const minutes = avgMinutes % 60;
-    return `${hours}h ${minutes}m`;
-  }
-  
-  return `${avgMinutes}m`;
-}
-
-export default CompletedOrdersSummary; 
+export default EnhancedCompletedOrders;

@@ -22,7 +22,7 @@ import { socket } from '../services/socket';
 import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import TableSettings from "../Components/TableSettings";
 import ModernOrdersDashboard from "../Components/ModernOrdersDashboard";
-import CompletedOrdersSummary from "../Components/CompletedOrdersSummary";
+import EnhancedCompletedOrders from "../Components/EnhancedCompletedOrders";
 import ModernAdminSidebar from "../Components/ModernAdminSidebar";
 import SubscriptionStatus from "../Components/SubscriptionStatus";
 import CustomersManager from "../Components/CustomersManager";
@@ -1010,7 +1010,7 @@ function Admin() {
           )}
           {activeTab === 'change-password' && <ChangePassword />}
                 {activeTab === 'orders' && <ModernOrdersDashboard />}
-          {activeTab === 'completed_orders' && <CompletedOrdersSummary />}
+          {activeTab === 'completed_orders' && <EnhancedCompletedOrders />}
           {activeTab === 'customers' && <CustomersManager />}
           {activeTab === 'coupons' && <CouponsManager />}
                 

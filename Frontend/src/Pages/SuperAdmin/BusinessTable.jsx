@@ -26,11 +26,13 @@ export default function BusinessTable({ refreshTrigger }) {
     loadBusinesses();
     
     // Conectar al socket para escuchar actualizaciones
-    if (!socket.connected) {
+    if (socket && !socket.connected) {
       socket.connect();
     }
     
-    socket.emit('joinSuperAdmin');
+    if (socket) {
+      socket.emit('joinSuperAdmin');
+    }
     
     // Debounce para evitar bucles de peticiones
     const handler = () => {
@@ -40,11 +42,15 @@ export default function BusinessTable({ refreshTrigger }) {
       }, 300); // 300ms de espera
     };
     
-    socket.on('businesses-updated', handler);
+    if (socket) {
+      socket.on('businesses-updated', handler);
+    }
     
     return () => {
-      socket.off('businesses-updated', handler);
-      socket.emit('leaveSuperAdmin');
+      if (socket) {
+        socket.off('businesses-updated', handler);
+        socket.emit('leaveSuperAdmin');
+      }
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [refreshTrigger]);

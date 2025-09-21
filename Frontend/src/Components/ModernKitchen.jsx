@@ -241,23 +241,24 @@ function ModernKitchen() {
       setSocketConnected(false);
     };
     
-    if (!socket.connected) {
+    if (socket && !socket.connected) {
       console.log('Connecting to socket...');
       socket.connect();
-    } else {
+    } else if (socket) {
       setSocketConnected(true);
       socket.emit('joinBusiness', businessId);
     }
     
-    socket.on('connect', handleConnect);
-    socket.on('disconnect', handleDisconnect);
-    socket.on('connect_error', (err) => {
-      console.error('Socket connection error:', err);
-      setSocketConnected(false);
-    });
-    
-    // Listen for order events
-    socket.on('order_created', (newOrder) => {
+    if (socket) {
+      socket.on('connect', handleConnect);
+      socket.on('disconnect', handleDisconnect);
+      socket.on('connect_error', (err) => {
+        console.error('Socket connection error:', err);
+        setSocketConnected(false);
+      });
+      
+      // Listen for order events
+      socket.on('order_created', (newOrder) => {
       console.log('New order received:', newOrder);
       setOrders(prevOrders => {
         if (newOrder.sentToKitchen && (newOrder.status === 'pending' || newOrder.status === 'inProgress')) {
@@ -280,21 +281,24 @@ function ModernKitchen() {
       setLastUpdated(new Date());
     });
     
-    socket.on('order_deleted', (deletedOrder) => {
-      console.log('Order deleted:', deletedOrder);
-      setOrders(prevOrders => 
-        prevOrders.filter(order => order._id !== deletedOrder._id)
-      );
-      setLastUpdated(new Date());
-    });
+      socket.on('order_deleted', (deletedOrder) => {
+        console.log('Order deleted:', deletedOrder);
+        setOrders(prevOrders => 
+          prevOrders.filter(order => order._id !== deletedOrder._id)
+        );
+        setLastUpdated(new Date());
+      });
+    }
 
     return () => {
-      socket.off('connect', handleConnect);
-      socket.off('disconnect', handleDisconnect);
-      socket.off('connect_error');
-      socket.off('order_created');
-      socket.off('order_updated');
-      socket.off('order_deleted');
+      if (socket) {
+        socket.off('connect', handleConnect);
+        socket.off('disconnect', handleDisconnect);
+        socket.off('connect_error');
+        socket.off('order_created');
+        socket.off('order_updated');
+        socket.off('order_deleted');
+      }
     };
   }, [businessId]);
 

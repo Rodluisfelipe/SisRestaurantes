@@ -18,12 +18,20 @@ if (typeof window !== 'undefined') {
            message.includes('reactjs.org/link/react-devtools') ||
            message.includes('better development experience') ||
            message.includes('manifest:') ||
-           message.includes('property') && message.includes('ignored') ||
+           (message.includes('property') && message.includes('ignored')) ||
            message.includes('url is invalid') ||
            message.includes('start_url') ||
            message.includes('scope') ||
            message.includes('shortcut') ||
-           message.includes('not present');
+           message.includes('not present') ||
+           message.includes('fetch event handler is recognized as no-op') ||
+           message.includes('no-op fetch handler') ||
+           message.includes('may bring overhead during navigation') ||
+           message.includes('consider removing the handler') ||
+           message.includes('detectado token en url') ||
+           message.includes('parámetros detectados') ||
+           message.includes('ruta actual') ||
+           message.includes('search params');
   };
 
   // Sobrescribir TODOS los métodos de console

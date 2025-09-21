@@ -600,18 +600,18 @@ function ModernOrdersDashboard() {
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   socketDiagnostic();
-                  if (!socket.connected) {
+                  if (socket && !socket.connected) {
                     forceReconnect();
                   }
                 }}
                 className={`p-2 rounded-lg transition-colors ${
-                  socket.connected 
+                  socket && socket.connected 
                     ? 'bg-green-100 hover:bg-green-200 text-green-700' 
                     : 'bg-red-100 hover:bg-red-200 text-red-700'
                 }`}
-                title={socket.connected ? 'Socket conectado - Click para diagnóstico' : 'Socket desconectado - Click para reconectar'}
+                title={socket && socket.connected ? 'Socket conectado - Click para diagnóstico' : 'Socket desconectado - Click para reconectar'}
               >
-                <span className="text-lg">{socket.connected ? '🟢' : '🔴'}</span>
+                <span className="text-lg">{socket && socket.connected ? '🟢' : '🔴'}</span>
               </motion.button>
             </div>
           </div>
