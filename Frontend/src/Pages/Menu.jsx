@@ -393,7 +393,7 @@ export default function Menu() {
         const newCart = [...prevCart];
         newCart[existingItemIndex] = {
           ...newCart[existingItemIndex],
-          quantity: (newCart[existingItemIndex].quantity || 0) + 1
+          quantity: (newCart[existingItemIndex].quantity || 0) + (product.quantity || 1)
         };
         return newCart;
       }
@@ -401,7 +401,7 @@ export default function Menu() {
       return [...prevCart, { 
         ...product, 
         uniqueId, 
-        quantity: 1 
+        quantity: product.quantity || 1 
       }];
     });
   };
