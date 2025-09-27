@@ -696,7 +696,7 @@ export default function Menu() {
           quantity: item.quantity || 1,
           selectedToppings: item.selectedToppings || []
         })),
-        totalAmount,
+        totalAmount: totalAmount.toString(), // Convertir a string para evitar problemas con 0
         // Información del cupón si está aplicado
         ...(appliedCoupon && {
           couponCode: appliedCoupon.coupon.code,

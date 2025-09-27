@@ -74,13 +74,16 @@ router.post("/", async (req, res) => {
     console.log('items:', items, 'tipo:', typeof items, 'length:', items?.length);
     console.log('totalAmount:', totalAmount, 'tipo:', typeof totalAmount);
     
-    if (!businessId || !customerName || !orderType || !items || totalAmount === undefined || totalAmount === null) {
+    // Convertir totalAmount a número si es string
+    const numericTotalAmount = typeof totalAmount === 'string' ? parseFloat(totalAmount) : totalAmount;
+    
+    if (!businessId || !customerName || !orderType || !items || numericTotalAmount === undefined || numericTotalAmount === null || isNaN(numericTotalAmount)) {
       console.log('ERROR: Campos requeridos faltantes');
       console.log('businessId válido:', !!businessId);
       console.log('customerName válido:', !!customerName);
       console.log('orderType válido:', !!orderType);
       console.log('items válido:', !!items);
-      console.log('totalAmount válido:', totalAmount !== undefined && totalAmount !== null, 'valor:', totalAmount);
+      console.log('totalAmount válido:', numericTotalAmount !== undefined && numericTotalAmount !== null && !isNaN(numericTotalAmount), 'valor:', totalAmount, 'convertido:', numericTotalAmount);
       return res.status(400).json({ message: "Missing required fields" });
     }
     
@@ -102,7 +105,7 @@ router.post("/", async (req, res) => {
       
       if (customer) {
         // Update existing customer stats
-        await customer.updateStats(totalAmount);
+        await customer.updateStats(numericTotalAmount);
       } else {
         // Create new customer
         customer = new Customer({
@@ -111,8 +114,8 @@ router.post("/", async (req, res) => {
           name: customerName,
           stats: {
             totalOrders: 1,
-            totalSpent: totalAmount,
-            averageOrderValue: totalAmount,
+            totalSpent: numericTotalAmount,
+            averageOrderValue: numericTotalAmount,
             lastOrderDate: new Date(),
             firstOrderDate: new Date()
           }
@@ -124,7 +127,7 @@ router.post("/", async (req, res) => {
     // Handle coupon validation and application
     let coupon = null;
     let discountAmount = 0;
-    let finalAmount = totalAmount;
+    let finalAmount = numericTotalAmount;
     
     if (couponCode) {
       coupon = await Coupon.findOne({ 
@@ -134,7 +137,7 @@ router.post("/", async (req, res) => {
       
       if (coupon) {
         const orderData = {
-          totalAmount,
+          totalAmount: numericTotalAmount,
           orderType,
           items
         };
@@ -142,8 +145,8 @@ router.post("/", async (req, res) => {
         const validation = coupon.validateForOrder(orderData, customer ? customer._id : null);
         
         if (validation.valid) {
-          discountAmount = coupon.calculateDiscount(totalAmount);
-          finalAmount = totalAmount - discountAmount;
+          discountAmount = coupon.calculateDiscount(numericTotalAmount);
+          finalAmount = numericTotalAmount - discountAmount;
           
           // Record coupon usage
           await coupon.recordUsage(customer ? customer._id : null, discountAmount);
@@ -166,7 +169,7 @@ router.post("/", async (req, res) => {
       customerName,
       orderType,
       items,
-      totalAmount,
+      totalAmount: numericTotalAmount,
       tableNumber: tableNumber || "",
       phone: phone || "",
       address: address || "",
@@ -556,6 +559,38 @@ router.get("/completed", async (req, res) => {
     res.json(completedOrders);
   } catch (error) {
     logger.error("Error fetching completed orders", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET /orders/customer/:phone - Obtener pedidos de un cliente por teléfono
+router.get('/customer/:phone', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { businessId } = req.query;
+    
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+    
+    // Use centralized business validation
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) {
+      return res.status(404).json({ message: businessResult.error });
+    }
+    
+    const businessObjectId = businessResult.businessId;
+    
+    // Find orders for this customer in this business
+    const orders = await Order.find({
+      businessId: businessObjectId,
+      phone: phone
+    }).sort({ createdAt: -1 });
+    
+    logger.info(`Retrieved ${orders.length} orders for customer ${phone} in business ${businessObjectId}`);
+    res.json(orders);
+  } catch (error) {
+    logger.error("Error fetching customer orders", error);
     res.status(500).json({ message: error.message });
   }
 });

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { logSystem } from '../utils/systemLogger';
 import * as SessionManager from '../utils/sessionManager';
+import api from '../services/api';
 
 export const useCustomerData = () => {
   const [customerData, setCustomerData] = useState(null);
@@ -55,19 +56,45 @@ export const useCustomerData = () => {
   const loadCustomerOrders = async () => {
     try {
       const phone = customerData?.phone || SessionManager.getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone');
-      if (!phone) return;
+      console.log('loadCustomerOrders - phone:', phone);
+      if (!phone) {
+        console.log('loadCustomerOrders - No phone found, skipping');
+        return;
+      }
 
-      // TODO: Implementar carga de pedidos del backend
-      // const response = await api.get(`/orders/customer/${phone}`);
-      // setCustomerOrders(response.data);
+      // Obtener businessId del contexto o de la URL
+      const businessId = window.location.pathname.split('/')[1] || 'felipe';
+      console.log('loadCustomerOrders - businessId:', businessId);
+      console.log('loadCustomerOrders - window.location.pathname:', window.location.pathname);
       
-      // Por ahora, cargar pedidos de localStorage si existen
-      const savedOrders = localStorage.getItem(`customerOrders_${phone}`);
-      if (savedOrders) {
-        setCustomerOrders(JSON.parse(savedOrders));
+      // Cargar todos los pedidos del negocio y filtrar por teléfono
+      console.log('loadCustomerOrders - Fetching orders from backend...');
+      const response = await api.get(`/orders?businessId=${businessId}`);
+      const allOrders = response.data || [];
+      console.log('loadCustomerOrders - All orders received:', allOrders.length);
+      
+      // Filtrar pedidos por teléfono del cliente
+      const customerOrders = allOrders.filter(order => order.phone === phone);
+      console.log('loadCustomerOrders - Filtered customer orders:', customerOrders.length);
+      console.log('loadCustomerOrders - Customer orders:', customerOrders);
+      setCustomerOrders(customerOrders);
+      
+      // También guardar en localStorage como backup
+      if (customerOrders.length > 0) {
+        localStorage.setItem(`customerOrders_${phone}`, JSON.stringify(customerOrders));
       }
     } catch (error) {
+      console.error('loadCustomerOrders - Error:', error);
       logSystem('Error al cargar pedidos del cliente', error);
+      
+      // Fallback: cargar pedidos de localStorage si el backend falla
+      const phone = customerData?.phone || SessionManager.getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone');
+      if (phone) {
+        const savedOrders = localStorage.getItem(`customerOrders_${phone}`);
+        if (savedOrders) {
+          setCustomerOrders(JSON.parse(savedOrders));
+        }
+      }
     }
   };
 
@@ -90,6 +117,11 @@ export const useCustomerData = () => {
       // Guardar en localStorage
       localStorage.setItem(`customerOrders_${phone}`, JSON.stringify(updatedOrders));
       logSystem('Pedido agregado al historial del cliente');
+      
+      // Recargar pedidos del backend para asegurar sincronización
+      setTimeout(() => {
+        loadCustomerOrders();
+      }, 1000);
     } catch (error) {
       logSystem('Error al agregar pedido al historial', error);
     }
@@ -115,15 +147,23 @@ export const useCustomerData = () => {
   };
 
   useEffect(() => {
+    console.log('useEffect - Initial load');
     const data = loadCustomerData();
     if (data) {
+      console.log('useEffect - Customer data loaded, loading orders');
       loadCustomerOrders();
+    } else {
+      console.log('useEffect - No customer data found');
     }
   }, []);
 
   useEffect(() => {
+    console.log('useEffect - customerData changed:', customerData);
     if (customerData) {
+      console.log('useEffect - Loading orders for customer:', customerData.phone);
       loadCustomerOrders();
+    } else {
+      console.log('useEffect - No customerData, skipping loadCustomerOrders');
     }
   }, [customerData]);
 

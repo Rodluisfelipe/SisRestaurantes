@@ -76,8 +76,6 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           return;
         }
         
-        setBusinessId(id);
-        
         try {
           // Si es un slug (no es un ObjectID hexadecimal), usar el endpoint by-slug
           let response;
@@ -88,6 +86,9 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           }
           
           if (response.data) {
+            // Establecer el businessId con el _id real del negocio
+            setBusinessId(response.data._id);
+            
             const theme = response.data.theme || { 
               buttonColor: '#2563eb', 
               buttonTextColor: '#ffffff'

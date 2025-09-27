@@ -13,6 +13,10 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
     address: customerData?.address || ''
   });
 
+  // Log para depurar los pedidos recibidos
+  console.log('AccountManagementModal - orders recibidos:', orders);
+  console.log('AccountManagementModal - orders.length:', orders?.length);
+
   // Log para depurar y actualizar profileData cuando cambien customerData
   useEffect(() => {
     logSystem('AccountManagementModal - customerData recibido:', customerData);
@@ -418,7 +422,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                     Mis Pedidos
                   </h3>
                   
-                  {customerOrders.length === 0 ? (
+                  {orders.length === 0 ? (
                     <motion.div 
                       initial={{ opacity: 0, scale: 0.9 }}
                       animate={{ opacity: 1, scale: 1 }}
@@ -441,7 +445,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                     </motion.div>
                   ) : (
                     <div className="space-y-4">
-                      {customerOrders.map((order, index) => (
+                      {orders.map((order, index) => (
                         <motion.div 
                           key={order._id || index} 
                           initial={{ opacity: 0, y: 10 }}
