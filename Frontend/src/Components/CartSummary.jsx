@@ -1088,7 +1088,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 ) : (
                   <>
                     <button
-                      onClick={handleInSiteOrder}
+                      onClick={() => openOrderModal('inSite')}
                       style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
                       className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
                       disabled={isSubmitting}
