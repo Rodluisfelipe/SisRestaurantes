@@ -19,8 +19,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const isFromTableQR = window.location.pathname.includes('/mesa/');
   
   // Comprobar si el usuario eligió inicialmente "En sitio" o "Para llevar" desde el QR de mesa
-  const initialOrderTypeSelected = isFromTableQR && 
-    (orderInfo.orderType === 'inSite' || orderInfo.orderType === 'takeaway');
+  // O si ya completó el modal y tiene toda la información necesaria
+  const initialOrderTypeSelected = (isFromTableQR && 
+    (orderInfo.orderType === 'inSite' || orderInfo.orderType === 'takeaway')) ||
+    (orderInfo.orderType === 'inSite' && orderInfo.tableNumber && orderInfo.tableNumber.trim() !== '') ||
+    (orderInfo.orderType === 'takeaway');
 
   // Calcular totales correctamente
   const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
