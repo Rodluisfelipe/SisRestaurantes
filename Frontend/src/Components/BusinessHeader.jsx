@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { User } from 'lucide-react';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
+import AccountManagementModal from './AccountManagementModal';
+import { useCustomerData } from '../hooks/useCustomerData';
 
 const BusinessHeader = () => {
   const [businessConfig, setBusinessConfig] = useState({
@@ -20,7 +23,52 @@ const BusinessHeader = () => {
     extraLink: { url: '', isVisible: true }
   });
   const [logoError, setLogoError] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [hasActiveOrder, setHasActiveOrder] = useState(false);
+  const [activeOrderType, setActiveOrderType] = useState('');
   const { businessId } = useBusinessConfig();
+  const { customerData, customerOrders, reloadCustomerData } = useCustomerData();
+
+  // Log para depurar
+  useEffect(() => {
+    console.log('BusinessHeader - customerData:', customerData);
+    console.log('BusinessHeader - customerOrders:', customerOrders);
+  }, [customerData, customerOrders]);
+
+  // Detectar pedidos activos
+  useEffect(() => {
+    if (customerOrders && customerOrders.length > 0) {
+      const activeOrder = customerOrders.find(order => 
+        order.status === 'pending' || 
+        order.status === 'preparing' || 
+        order.status === 'ready'
+      );
+      
+      if (activeOrder) {
+        setHasActiveOrder(true);
+        setActiveOrderType(activeOrder.orderType || '');
+      } else {
+        setHasActiveOrder(false);
+        setActiveOrderType('');
+      }
+    }
+  }, [customerOrders]);
+
+  // Listener para recargar datos cuando se actualice la dirección
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key && e.key.includes('customerAddress')) {
+        console.log('Dirección del cliente actualizada, recargando datos...');
+        reloadCustomerData();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [reloadCustomerData]);
 
   useEffect(() => {
     const fetchBusinessConfig = async () => {
@@ -112,7 +160,7 @@ const BusinessHeader = () => {
       
       {/* Content Container */}
       <div className={`relative z-10 pt-4 pb-3 ${businessConfig.coverImage ? 'text-white' : 'text-gray-800'}`}>
-        {/* Status Indicator */}
+        {/* Status Indicator and Account Button */}
         <div className="absolute left-2 top-4 z-20">
           <div 
             className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
@@ -123,6 +171,43 @@ const BusinessHeader = () => {
           >
             {businessConfig.isOpen ? 'Abierto' : 'Cerrado'}
           </div>
+        </div>
+
+        {/* Account Button */}
+        <div className="absolute right-2 top-4 z-20">
+          <button
+            onClick={() => setShowAccountModal(true)}
+            style={
+              hasActiveOrder 
+                ? { 
+                    background: 'linear-gradient(to right, #10b981, #059669)', 
+                    color: 'white' 
+                  }
+                : { 
+                    backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6', 
+                    color: businessConfig.theme?.buttonTextColor || 'white' 
+                  }
+            }
+            className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 hover:opacity-90 ${
+              hasActiveOrder ? 'animate-pulse' : ''
+            }`}
+          >
+            {hasActiveOrder ? (
+              <>
+                <div className="relative">
+                  <User className="w-4 h-4" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
+                </div>
+                <span className="font-medium text-sm">Ver Estado de Orden</span>
+              </>
+            ) : (
+              <>
+                <User className="w-4 h-4" />
+                <span className="font-medium text-sm">Mi Cuenta</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Logo Container - Centered at the top now */}
@@ -239,6 +324,15 @@ const BusinessHeader = () => {
           </div>
         </div>
       </div>
+
+      {/* Account Management Modal */}
+      <AccountManagementModal 
+        isOpen={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+        customerData={customerData}
+        orders={customerOrders}
+        initialTab={hasActiveOrder ? 'orders' : 'profile'}
+      />
     </div>
   );
 };

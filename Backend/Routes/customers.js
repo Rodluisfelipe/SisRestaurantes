@@ -1,279 +1,225 @@
 const express = require('express');
 const router = express.Router();
 const Customer = require('../Models/Customer');
-const { validateAndResolveBusinessId } = require('../utils/businessValidator');
+const Order = require('../Models/Order');
+const { validateBusinessId } = require('../middleware/authMiddleware');
+const { isValidObjectId } = require('../utils/isValidObjectId');
 
-// Middleware to validate and resolve business ID
-const validateBusinessId = async (req, res, next) => {
+// GET /api/customers/:phone - Obtener datos del cliente por teléfono
+router.get('/:phone', validateBusinessId, async (req, res) => {
   try {
+    const { phone } = req.params;
     const { businessId } = req.query;
-    console.log('validateBusinessId - Received businessId:', businessId);
-    
-    if (!businessId) {
-      return res.status(400).json({ message: 'Business ID is required' });
-    }
-    
-    const result = await validateAndResolveBusinessId(businessId);
-    console.log('validateBusinessId - Result:', result);
-    
-    if (!result.success) {
-      return res.status(404).json({ message: result.error });
-    }
-    
-    req.businessId = result.businessId;
-    req.business = result.business;
-    console.log('validateBusinessId - Set req.businessId to:', req.businessId);
-    next();
-  } catch (error) {
-    console.error('validateBusinessId - Error:', error);
-    res.status(500).json({ message: 'Error validating business ID' });
-  }
-};
 
-// Get all customers for a business
-router.get('/', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
-    const { 
-      page = 1, 
-      limit = 20, 
-      sortBy = 'lastOrderDate', 
-      sortOrder = 'desc',
-      search = '',
-      status = 'all'
-    } = req.query;
-
-    // Build query
-    const query = { businessId };
-    
-    // Add search filter
-    if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    // Add status filter
-    if (status !== 'all') {
-      query.status = status;
+    if (!phone) {
+      return res.status(400).json({ error: 'Número de teléfono requerido' });
     }
 
-    // Build sort object
-    const sortObj = {};
-    if (sortBy === 'lastOrderDate') {
-      sortObj['stats.lastOrderDate'] = sortOrder === 'desc' ? -1 : 1;
-    } else if (sortBy === 'totalOrders') {
-      sortObj['stats.totalOrders'] = sortOrder === 'desc' ? -1 : 1;
-    } else if (sortBy === 'totalSpent') {
-      sortObj['stats.totalSpent'] = sortOrder === 'desc' ? -1 : 1;
-    } else {
-      sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
-    }
-
-    // Execute query with pagination
-    const customers = await Customer.find(query)
-      .sort(sortObj)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .populate('preferences.favoriteProducts.productId', 'name image')
-      .lean();
-
-    // Get total count for pagination
-    const total = await Customer.countDocuments(query);
-
-    // Calculate statistics
-    const stats = await Customer.aggregate([
-      { $match: { businessId } },
-      {
-        $group: {
-          _id: null,
-          totalCustomers: { $sum: 1 },
-          totalOrders: { $sum: '$stats.totalOrders' },
-          totalRevenue: { $sum: '$stats.totalSpent' },
-          averageOrderValue: { $avg: '$stats.averageOrderValue' },
-          vipCustomers: {
-            $sum: { $cond: [{ $eq: ['$status', 'vip'] }, 1, 0] }
-          }
-        }
-      }
-    ]);
-
-    res.json({
-      customers,
-      pagination: {
-        current: parseInt(page),
-        pages: Math.ceil(total / limit),
-        total
-      },
-      stats: stats[0] || {
-        totalCustomers: 0,
-        totalOrders: 0,
-        totalRevenue: 0,
-        averageOrderValue: 0,
-        vipCustomers: 0
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching customers:', error);
-    res.status(500).json({ message: 'Error al obtener los clientes' });
-  }
-});
-
-// Get customer by ID
-router.get('/:id', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
     const customer = await Customer.findOne({ 
-      _id: req.params.id, 
-      businessId 
-    }).populate('preferences.favoriteProducts.productId', 'name image price');
+      businessId: isValidObjectId(businessId) ? businessId : null, 
+      phone 
+    });
 
     if (!customer) {
-      return res.status(404).json({ message: 'Cliente no encontrado' });
+      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
     res.json(customer);
   } catch (error) {
-    console.error('Error fetching customer:', error);
-    res.status(500).json({ message: 'Error al obtener el cliente' });
+    console.error('Error al obtener cliente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Create or update customer
+// PUT /api/customers/:phone - Actualizar datos del cliente
+router.put('/:phone', validateBusinessId, async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { businessId } = req.query;
+    const updateData = { ...req.body };
+
+    // Remover campos que no se deben actualizar directamente
+    delete updateData.businessId;
+    delete updateData.phone;
+    delete updateData.totalOrders;
+    delete updateData.totalSpent;
+    delete updateData.lastOrderDate;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Número de teléfono requerido' });
+    }
+
+    const customer = await Customer.findOneAndUpdate(
+      { 
+        businessId: isValidObjectId(businessId) ? businessId : null, 
+        phone 
+      },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+
+    res.json(customer);
+  } catch (error) {
+    console.error('Error al actualizar cliente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// POST /api/customers - Crear o encontrar cliente
 router.post('/', validateBusinessId, async (req, res) => {
   try {
-    const { businessId } = req;
-    const { phone, name, email, notes } = req.body;
+    const { businessId } = req.query;
+    const { phone, name, ...otherData } = req.body;
 
-    // Check if customer already exists
-    let customer = await Customer.findOne({ phone, businessId });
+    if (!phone || !name) {
+      return res.status(400).json({ error: 'Teléfono y nombre son requeridos' });
+    }
+
+    // Buscar cliente existente
+    let customer = await Customer.findOne({ 
+      businessId: isValidObjectId(businessId) ? businessId : null, 
+      phone 
+    });
 
     if (customer) {
-      // Update existing customer
-      customer.name = name || customer.name;
-      customer.email = email || customer.email;
-      customer.preferences.notes = notes || customer.preferences.notes;
+      // Si existe, actualizar con nuevos datos si se proporcionan
+      Object.assign(customer, otherData);
       await customer.save();
     } else {
-      // Create new customer
+      // Si no existe, crear nuevo cliente
       customer = new Customer({
-        businessId,
+        businessId: isValidObjectId(businessId) ? businessId : null,
         phone,
         name,
-        email,
-        preferences: {
-          notes: notes || ''
-        }
+        ...otherData
       });
       await customer.save();
     }
 
-    res.json(customer);
+    res.status(201).json(customer);
   } catch (error) {
-    console.error('Error creating/updating customer:', error);
-    res.status(500).json({ message: 'Error al crear/actualizar el cliente' });
+    console.error('Error al crear/actualizar cliente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Update customer
-router.put('/:id', validateBusinessId, async (req, res) => {
+// GET /api/customers/:phone/orders - Obtener pedidos del cliente
+router.get('/:phone/orders', validateBusinessId, async (req, res) => {
   try {
-    const { businessId } = req;
-    const { name, email, notes, status } = req.body;
+    const { phone } = req.params;
+    const { businessId } = req.query;
+    const { limit = 10, page = 1, status } = req.query;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Número de teléfono requerido' });
+    }
+
+    // Verificar que el cliente existe
+    const customer = await Customer.findOne({ 
+      businessId: isValidObjectId(businessId) ? businessId : null, 
+      phone 
+    });
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+
+    // Construir filtro para pedidos
+    const orderFilter = {
+      businessId: isValidObjectId(businessId) ? businessId : null,
+      'customerInfo.phone': phone
+    };
+
+    if (status) {
+      orderFilter.status = status;
+    }
+
+    // Obtener pedidos con paginación
+    const orders = await Order.find(orderFilter)
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .populate('items.productId', 'name price');
+
+    const totalOrders = await Order.countDocuments(orderFilter);
+
+    res.json({
+      orders,
+      pagination: {
+        current: parseInt(page),
+        total: Math.ceil(totalOrders / parseInt(limit)),
+        limit: parseInt(limit),
+        totalOrders
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener pedidos del cliente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// PUT /api/customers/:phone/settings - Actualizar configuraciones del cliente
+router.put('/:phone/settings', validateBusinessId, async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { businessId } = req.query;
+    const { notifications, settings } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Número de teléfono requerido' });
+    }
+
+    const updateData = {};
+    if (notifications) updateData.notifications = notifications;
+    if (settings) updateData.settings = settings;
 
     const customer = await Customer.findOneAndUpdate(
-      { _id: req.params.id, businessId },
-      {
-        name,
-        email,
-        'preferences.notes': notes,
-        status,
-        updatedAt: new Date()
+      { 
+        businessId: isValidObjectId(businessId) ? businessId : null, 
+        phone 
       },
-      { new: true }
+      updateData,
+      { new: true, runValidators: true }
     );
 
     if (!customer) {
-      return res.status(404).json({ message: 'Cliente no encontrado' });
+      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
     res.json(customer);
   } catch (error) {
-    console.error('Error updating customer:', error);
-    res.status(500).json({ message: 'Error al actualizar el cliente' });
+    console.error('Error al actualizar configuraciones del cliente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// Delete customer
-router.delete('/:id', validateBusinessId, async (req, res) => {
+// DELETE /api/customers/:phone - Eliminar cliente
+router.delete('/:phone', validateBusinessId, async (req, res) => {
   try {
-    const { businessId } = req;
+    const { phone } = req.params;
+    const { businessId } = req.query;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Número de teléfono requerido' });
+    }
+
     const customer = await Customer.findOneAndDelete({ 
-      _id: req.params.id, 
-      businessId 
+      businessId: isValidObjectId(businessId) ? businessId : null, 
+      phone 
     });
 
     if (!customer) {
-      return res.status(404).json({ message: 'Cliente no encontrado' });
+      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
     res.json({ message: 'Cliente eliminado exitosamente' });
   } catch (error) {
-    console.error('Error deleting customer:', error);
-    res.status(500).json({ message: 'Error al eliminar el cliente' });
-  }
-});
-
-// Get customer statistics
-router.get('/stats/overview', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
-
-    const stats = await Customer.aggregate([
-      { $match: { businessId } },
-      {
-        $group: {
-          _id: null,
-          totalCustomers: { $sum: 1 },
-          totalOrders: { $sum: '$stats.totalOrders' },
-          totalRevenue: { $sum: '$stats.totalSpent' },
-          averageOrderValue: { $avg: '$stats.averageOrderValue' },
-          vipCustomers: {
-            $sum: { $cond: [{ $eq: ['$status', 'vip'] }, 1, 0] }
-          },
-          activeCustomers: {
-            $sum: { $cond: [{ $eq: ['$status', 'active'] }, 1, 0] }
-          }
-        }
-      }
-    ]);
-
-    // Get recent customers (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const recentCustomers = await Customer.countDocuments({
-      businessId,
-      createdAt: { $gte: thirtyDaysAgo }
-    });
-
-    // Get top customers by spending
-    const topCustomers = await Customer.find({ businessId })
-      .sort({ 'stats.totalSpent': -1 })
-      .limit(5)
-      .select('name phone stats.totalSpent stats.totalOrders')
-      .lean();
-
-    res.json({
-      ...stats[0],
-      recentCustomers,
-      topCustomers
-    });
-  } catch (error) {
-    console.error('Error fetching customer stats:', error);
-    res.status(500).json({ message: 'Error al obtener estadísticas' });
+    console.error('Error al eliminar cliente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 

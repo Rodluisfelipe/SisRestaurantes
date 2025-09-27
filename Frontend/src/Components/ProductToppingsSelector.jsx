@@ -653,7 +653,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
         <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-gray-700 font-medium">Precio total:</span>
-            <span className="text-xl font-bold" style={{ color: businessConfig.theme?.primaryColor || '#3B82F6' }}>
+            <span className="text-xl font-bold" style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}>
               ${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
             </span>
           </div>

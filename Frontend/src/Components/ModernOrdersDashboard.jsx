@@ -328,56 +328,62 @@ function ModernOrdersDashboard() {
     joinBusiness(businessId);
     
     // Listen for order events
-    socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
-      console.log('New order received:', newOrder);
-      setOrders(prevOrders => [newOrder, ...prevOrders]);
-      
-      // Add to pending notifications if status is 'pending'
-      if (newOrder.status === ORDER_STATUS.PENDING) {
-        setPendingNotifications(prev => [...prev, newOrder._id]);
-      }
-    });
+    if (socket) {
+      socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
+        console.log('New order received:', newOrder);
+        setOrders(prevOrders => [newOrder, ...prevOrders]);
+        
+        // Add to pending notifications if status is 'pending'
+        if (newOrder.status === ORDER_STATUS.PENDING) {
+          setPendingNotifications(prev => [...prev, newOrder._id]);
+        }
+      });
+    }
     
-    socket.on(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
-      console.log('Order updated:', updatedOrder);
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order._id === updatedOrder._id ? updatedOrder : order
-        )
-      );
+    if (socket) {
+      socket.on(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
+        console.log('Order updated:', updatedOrder);
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === updatedOrder._id ? updatedOrder : order
+          )
+        );
+        
+        // Remove from pending notifications if status is changed from 'pending'
+        if (updatedOrder.status !== ORDER_STATUS.PENDING) {
+          setPendingNotifications(prev => prev.filter(id => id !== updatedOrder._id));
+        }
+        
+        // Update details if the selected order was updated
+        if (selectedOrder === updatedOrder._id) {
+          setOrderDetails(updatedOrder);
+        }
+      });
       
-      // Remove from pending notifications if status is changed from 'pending'
-      if (updatedOrder.status !== ORDER_STATUS.PENDING) {
-        setPendingNotifications(prev => prev.filter(id => id !== updatedOrder._id));
-      }
-      
-      // Update details if the selected order was updated
-      if (selectedOrder === updatedOrder._id) {
-        setOrderDetails(updatedOrder);
-      }
-    });
-    
-    socket.on('order_deleted', (deletedOrder) => {
-      console.log('Order deleted:', deletedOrder);
-      setOrders(prevOrders => 
-        prevOrders.filter(order => order._id !== deletedOrder._id)
-      );
-      
-      // Remove from pending notifications
-      setPendingNotifications(prev => prev.filter(id => id !== deletedOrder._id));
-      
-      // Close details if the deleted order was selected
-      if (selectedOrder === deletedOrder._id) {
-        setSelectedOrder(null);
-        setOrderDetails(null);
-      }
-    });
+      socket.on('order_deleted', (deletedOrder) => {
+        console.log('Order deleted:', deletedOrder);
+        setOrders(prevOrders => 
+          prevOrders.filter(order => order._id !== deletedOrder._id)
+        );
+        
+        // Remove from pending notifications
+        setPendingNotifications(prev => prev.filter(id => id !== deletedOrder._id));
+        
+        // Close details if the deleted order was selected
+        if (selectedOrder === deletedOrder._id) {
+          setSelectedOrder(null);
+          setOrderDetails(null);
+        }
+      });
+    }
 
     // Cleanup on unmount
     return () => {
-      socket.off(SOCKET_EVENTS.ORDER_CREATED);
-      socket.off(SOCKET_EVENTS.ORDER_UPDATED);
-      socket.off('order_deleted');
+      if (socket) {
+        socket.off(SOCKET_EVENTS.ORDER_CREATED);
+        socket.off(SOCKET_EVENTS.ORDER_UPDATED);
+        socket.off('order_deleted');
+      }
     };
   }, [businessId, selectedOrder]);
 

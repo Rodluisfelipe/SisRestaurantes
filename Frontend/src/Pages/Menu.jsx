@@ -96,14 +96,17 @@ export default function Menu() {
     if (isQRMode) {
       return {
         customerName: '',
+        phone: '',
         orderType: '',
         tableNumber: tableFromUrl || ''
       };
     } else {
-      // En modo normal, usar nombre guardado si existe
+      // En modo normal, usar nombre y teléfono guardados si existen
       const savedName = SessionManager.getSavedCustomerName();
+      const savedPhone = SessionManager.getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone');
       return {
         customerName: savedName || '',
+        phone: savedPhone || '',
         orderType: '',
         tableNumber: ''
       };
@@ -124,9 +127,9 @@ export default function Menu() {
 
   // Determinar si debe mostrar el selector de tipo de pedido
   const shouldShowOrderTypeSelector = () => {
-    // Si ya hay información de pedido guardada con nombre de cliente, no mostrar el selector
+    // Si ya hay información de pedido guardada con nombre y teléfono, no mostrar el selector
     const savedOrderInfo = SessionManager.getFromSession('orderInfo');
-    if (savedOrderInfo && savedOrderInfo.customerName) {
+    if (savedOrderInfo && savedOrderInfo.customerName && savedOrderInfo.phone) {
       logger.info('Hay información de cliente guardada, no mostrar selector inicial');
       return false;
     }
@@ -137,19 +140,20 @@ export default function Menu() {
       return true;
     }
     
-    // En modo normal, verificar si hay nombre de cliente guardado y si ya está en orderInfo
+    // En modo normal, verificar si hay nombre y teléfono guardados
     const savedName = SessionManager.getSavedCustomerName();
-    if (savedName && savedName.trim() !== '') {
-      logger.info('Hay nombre de cliente guardado en localStorage, no mostrar selector inicial');
+    const savedPhone = SessionManager.getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone');
+    if (savedName && savedName.trim() !== '' && savedPhone && savedPhone.trim() !== '') {
+      logger.info('Hay nombre y teléfono guardados en localStorage, no mostrar selector inicial');
       
-      // El nombre ya debería estar en orderInfo por la inicialización del estado
+      // El nombre y teléfono ya deberían estar en orderInfo por la inicialización del estado
       // No necesitamos setOrderInfo aquí, evitando el problema de inicialización
       
       return false;
     }
     
-    // Si no hay información de cliente, mostrar el selector para pedir nombre
-    logger.info('No hay información de cliente, mostrar selector inicial para pedir nombre');
+    // Si no hay información completa de cliente, mostrar el selector para pedir nombre y teléfono
+    logger.info('No hay información completa de cliente, mostrar selector inicial para pedir nombre y teléfono');
     return true;
   };
 
@@ -541,10 +545,18 @@ export default function Menu() {
       const finalOrderInfo = directOrderInfo || orderInfo;
       logger.info('Información final a usar:', finalOrderInfo);
 
-      // Validar nombre del cliente
+      // Validar nombre y teléfono del cliente
       if (!finalOrderInfo?.customerName) {
         logger.error('Error: Falta nombre del cliente');
-        // Si no hay nombre de cliente, mostrar selector solo para nombre
+        // Si no hay nombre de cliente, mostrar selector para nombre y teléfono
+        setShowOrderTypeSelector(true);
+        setIsSubmittingOrder(false);
+        return;
+      }
+
+      if (!finalOrderInfo?.phone) {
+        logger.error('Error: Falta teléfono del cliente');
+        // Si no hay teléfono de cliente, mostrar selector para nombre y teléfono
         setShowOrderTypeSelector(true);
         setIsSubmittingOrder(false);
         return;
@@ -744,6 +756,29 @@ export default function Menu() {
       logger.info('Enviando datos del pedido a la API:', orderData);
       const response = await api.post('/orders', orderData);
       logger.info('Pedido creado exitosamente:', response.data);
+      
+      // Si es un pedido a domicilio, actualizar la dirección del cliente en la BD
+      if (orderDetails.orderType === 'delivery' && orderDetails.address && orderDetails.phone) {
+        try {
+          logger.info('Actualizando dirección del cliente en la BD:', {
+            phone: orderDetails.phone,
+            address: orderDetails.address
+          });
+          
+          await api.put(`/customers/${orderDetails.phone}?businessId=${businessId}`, {
+            name: orderDetails.customerName,
+            address: orderDetails.address
+          });
+          
+          // También guardar en localStorage para uso inmediato
+          SessionManager.saveToLocalStorage('customerAddress', orderDetails.address);
+          
+          logger.info('Dirección del cliente actualizada exitosamente');
+        } catch (addressError) {
+          logger.error('Error al actualizar dirección del cliente:', addressError);
+          // No fallar el pedido si no se puede actualizar la dirección
+        }
+      }
       
       // Limpiar cualquier ID de pedido anterior y guardar el nuevo
       sessionStorage.removeItem('lastOrderId');

@@ -306,7 +306,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
     const [formState, setFormState] = useState({
       tableNumber: '',
-      phone: orderInfo?.phone || '',
       address: orderInfo?.address || ''
     });
     const [isProcessing, setIsProcessing] = useState(false);
@@ -340,15 +339,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
       if (orderType === 'inSite') {
         const trimmedTableNumber = formState.tableNumber.trim();
-        const trimmedPhone = formState.phone.trim();
         
         if (!trimmedTableNumber) {
           alert('Por favor ingresa el número de mesa');
-          return;
-        }
-        
-        if (!trimmedPhone) {
-          alert('Por favor ingresa el número de teléfono');
           return;
         }
 
@@ -360,10 +353,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             ...orderInfo,
             orderType: 'inSite',
             tableNumber: trimmedTableNumber,
-            phone: trimmedPhone
+            // Mantener el teléfono que ya tenemos desde el inicio
+            phone: orderInfo.phone
           };
 
-          logSystem(`Pedido en sitio procesado - Mesa: ${trimmedTableNumber}, Teléfono: ${trimmedPhone}`);
+          logSystem(`Pedido en sitio procesado - Mesa: ${trimmedTableNumber}, Cliente: ${orderInfo.customerName}`);
           
           updateOrderInfo(updatedOrderInfo);
           SessionManager.saveOrderInfo(updatedOrderInfo);
@@ -377,11 +371,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           setLocalIsSubmitting(false);
         }
       } else if (orderType === 'delivery') {
-        const trimmedPhone = formState.phone.trim();
         const trimmedAddress = formState.address.trim();
 
-        if (!trimmedPhone || !trimmedAddress) {
-          alert('Por favor completa todos los campos');
+        if (!trimmedAddress) {
+          alert('Por favor ingresa la dirección de entrega');
           return;
         }
 
@@ -392,7 +385,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           const updatedOrderInfo = {
             ...orderInfo,
             orderType: 'delivery',
-            phone: trimmedPhone,
+            // Mantener el teléfono que ya tenemos desde el inicio
+            phone: orderInfo.phone,
             address: trimmedAddress
           };
 
@@ -427,74 +421,44 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {orderType === 'inSite' ? (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Número de Mesa
-                  </label>
-                  <input
-                    type="number"
-                    name="tableNumber"
-                    value={formState.tableNumber}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
-                    placeholder="Ej: 5"
-                    min="1"
-                    max="999"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formState.phone}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
-                    placeholder="Ej: 3001234567"
-                    required
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Teléfono
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formState.phone}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
-                    placeholder="Ej: 3001234567"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Dirección
-                  </label>
-                  <textarea
-                    name="address"
-                    value={formState.address}
-                    onChange={handleInputChange}
-                    className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
-                    placeholder="Ej: Calle 123 #45-67, Barrio Centro"
-                    rows="3"
-                    required
-                  />
-                </div>
-              </>
+            {orderType === 'inSite' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Número de Mesa
+                </label>
+                <input
+                  type="number"
+                  name="tableNumber"
+                  value={formState.tableNumber}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
+                  placeholder="Ej: 5"
+                  min="1"
+                  max="999"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  required
+                  autoFocus
+                />
+              </div>
+            )}
+            
+            {orderType === 'delivery' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Dirección de Entrega
+                </label>
+                <textarea
+                  name="address"
+                  value={formState.address}
+                  onChange={handleInputChange}
+                  className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
+                  placeholder="Ej: Calle 123 #45-67, Barrio Centro"
+                  rows="3"
+                  required
+                  autoFocus
+                />
+              </div>
             )}
 
             <button
@@ -834,99 +798,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 <div className="flex-1">
                   <h3 className="font-semibold text-gray-800 text-base">{item.name}</h3>
                   
-                  {/* Toppings */}
-                  {item.selectedToppings && item.selectedToppings.length > 0 && (
-                    <div className="mt-3 p-3 sm:p-4 bg-gradient-to-r from-slate-50 to-gray-50 rounded-xl border border-slate-200/60 shadow-sm">
-                      <p className="text-sm sm:text-base font-semibold text-slate-700 mb-3 flex items-center">
-                        <svg className="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Personalizaciones
-                      </p>
-                      <div className="space-y-3">
-                        {(() => {
-                          // Agrupar toppings por nombre de grupo para evitar repetición
-                          const groupedToppings = {};
-                          
-                          item.selectedToppings.forEach((topping, idx) => {
-                            const groupName = topping.groupName;
-                            if (!groupedToppings[groupName]) {
-                              groupedToppings[groupName] = {
-                                groupName: groupName,
-                                basePrice: Number(topping.basePrice || 0),
-                                options: [],
-                                subGroups: []
-                              };
-                            }
-                            
-                            // Agregar opción si existe
-                            if (topping.optionName) {
-                              groupedToppings[groupName].options.push({
-                                name: topping.optionName,
-                                price: Number(topping.price || 0)
-                              });
-                            }
-                            
-                            // Agregar subgrupos si existen
-                            if (topping.subGroups && topping.subGroups.length > 0) {
-                              groupedToppings[groupName].subGroups.push(...topping.subGroups);
-                            }
-                          });
-                          
-                          return Object.values(groupedToppings).map((group, groupIdx) => (
-                            <div key={`${item.uniqueId || item._id}-group-${groupIdx}`} className="bg-white rounded-lg p-3 border border-slate-100 shadow-sm">
-                              {/* Título del grupo */}
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                                <span className="font-semibold text-blue-700 text-sm sm:text-base">{group.groupName}</span>
-                                {group.basePrice > 0 && (
-                                  <span className="text-green-600 text-sm font-medium bg-green-50 px-2 py-1 rounded-full">
-                                    +${group.basePrice.toLocaleString('es-CO')}
-                                  </span>
-                                )}
-                              </div>
-                              
-                              {/* Opciones seleccionadas del grupo */}
-                              {group.options.length > 0 && (
-                                <div className="ml-2 sm:ml-4 space-y-1">
-                                  {group.options.map((option, optionIdx) => (
-                                    <div key={`${item.uniqueId || item._id}-option-${optionIdx}`} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                                      <span className="text-gray-800 text-sm sm:text-base font-medium">• {option.name}</span>
-                                      {option.price > 0 && (
-                                        <span className="text-green-600 text-sm font-medium bg-green-50 px-2 py-1 rounded-full">
-                                          +${option.price.toLocaleString('es-CO')}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                              
-                              {/* Subgrupos */}
-                              {group.subGroups.length > 0 && (
-                                <div className="mt-3 ml-2 sm:ml-4 pl-3 sm:pl-4 border-l-2 border-orange-200 space-y-2">
-                                  <p className="text-xs font-medium text-orange-600 uppercase tracking-wide">Adiciones:</p>
-                                  {group.subGroups.map((subItem, subIdx) => (
-                                    <div key={`${item.uniqueId || item._id}-subtopping-${subIdx}`} className="bg-orange-50 rounded-lg p-2 border border-orange-100">
-                                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                                        <span className="font-medium text-orange-700 text-sm">{subItem.subGroupTitle}:</span>
-                                        <span className="text-gray-800 text-sm font-medium">{subItem.optionName}</span>
-                                        {subItem.price > 0 && (
-                                          <span className="text-green-600 text-sm font-medium bg-green-50 px-2 py-1 rounded-full">
-                                            +${subItem.price.toLocaleString('es-CO')}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ));
-                        })()}
-                      </div>
-                    </div>
-                  )}
-                  
                   {/* Price information */}
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span 
@@ -938,7 +809,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     >
                       ${(item.finalPrice || item.price || 0).toLocaleString('es-CO')} c/u
                     </span>
-                    <p className="text-sm font-medium" style={{ color: businessConfig.theme.buttonColor }}>
+                    <p className="text-sm font-medium" style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}>
                       Subtotal: {calculateItemTotal(item).toLocaleString('es-CO')}
                     </p>
                   </div>
@@ -982,9 +853,113 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     </svg>
                   </button>
                 </div>
+                </div>
+                
+                {/* Personalizaciones - Ancho completo */}
+                {item.selectedToppings && item.selectedToppings.length > 0 && (
+                  <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-200/50 shadow-sm">
+                    <p className="text-base font-semibold text-slate-700 mb-4 flex items-center">
+                      <svg 
+                        className="w-5 h-5 mr-2" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Personalizaciones
+                    </p>
+                    <div className="space-y-4">
+                      {(() => {
+                        // Agrupar toppings por nombre de grupo para evitar repetición
+                        const groupedToppings = {};
+                        
+                        item.selectedToppings.forEach((topping, idx) => {
+                          const groupName = topping.groupName;
+                          if (!groupedToppings[groupName]) {
+                            groupedToppings[groupName] = {
+                              groupName: groupName,
+                              basePrice: Number(topping.basePrice || 0),
+                              options: [],
+                              subGroups: []
+                            };
+                          }
+                          
+                          // Agregar opción si existe
+                          if (topping.optionName) {
+                            groupedToppings[groupName].options.push({
+                              name: topping.optionName,
+                              price: Number(topping.price || 0)
+                            });
+                          }
+                          
+                          // Agregar subgrupos si existen
+                          if (topping.subGroups && topping.subGroups.length > 0) {
+                            groupedToppings[groupName].subGroups.push(...topping.subGroups);
+                          }
+                        });
+                        
+                        return Object.values(groupedToppings).map((group, groupIdx) => (
+                          <div key={`${item.uniqueId || item._id}-group-${groupIdx}`} className="bg-white rounded-lg p-4 border border-slate-100 shadow-sm">
+                            {/* Título del grupo */}
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
+                              <span 
+                                className="font-bold text-base sm:text-lg"
+                                style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}
+                              >
+                                {group.groupName}
+                              </span>
+                              {group.basePrice > 0 && (
+                                <span className="text-green-600 text-sm font-semibold bg-green-50 px-3 py-1 rounded-full">
+                                  +${group.basePrice.toLocaleString('es-CO')}
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Opciones seleccionadas del grupo */}
+                            {group.options.length > 0 && (
+                              <div className="ml-2 sm:ml-4 space-y-2">
+                                {group.options.map((option, optionIdx) => (
+                                  <div key={`${item.uniqueId || item._id}-option-${optionIdx}`} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                    <span className="text-gray-800 text-base sm:text-lg font-medium">• {option.name}</span>
+                                    {option.price > 0 && (
+                                      <span className="text-green-600 text-sm font-semibold bg-green-50 px-3 py-1 rounded-full">
+                                        +${option.price.toLocaleString('es-CO')}
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            
+                            {/* Subgrupos */}
+                            {group.subGroups.length > 0 && (
+                              <div className="mt-4 ml-2 sm:ml-4 pl-4 sm:pl-6 border-l-2 border-orange-200 space-y-3">
+                                <p className="text-sm font-bold text-orange-600 uppercase tracking-wide">Adiciones:</p>
+                                {group.subGroups.map((subItem, subIdx) => (
+                                  <div key={`${item.uniqueId || item._id}-subtopping-${subIdx}`} className="bg-orange-50 rounded-lg p-3 border border-orange-100">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                      <span className="font-semibold text-orange-700 text-sm sm:text-base">{subItem.subGroupTitle}:</span>
+                                      <span className="text-gray-800 text-sm sm:text-base font-medium">{subItem.optionName}</span>
+                                      {subItem.price > 0 && (
+                                        <span className="text-green-600 text-sm font-semibold bg-green-50 px-3 py-1 rounded-full">
+                                          +${subItem.price.toLocaleString('es-CO')}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            ))}
 
           {/* Empty cart state */}
           {cart.length === 0 && (

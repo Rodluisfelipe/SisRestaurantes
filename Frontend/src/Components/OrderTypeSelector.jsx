@@ -85,16 +85,20 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
           setShowOrderTypes(true);
         }
       } else {
-        // En modo normal, solo guardar el nombre y completar directamente
+        // En modo normal, solo guardar el nombre y teléfono y completar directamente
         // sin mostrar selección de tipo de pedido
         const normalModeInfo = {
           customerName: orderInfo.customerName.trim(),
+          phone: orderInfo.phone?.trim() || '',
           orderType: '', // No preseleccionar tipo de pedido
           tableNumber: '' // No incluir número de mesa por defecto
         };
         
-        // Guardar nombre para futuras visitas
+        // Guardar nombre y teléfono para futuras visitas
         SessionManager.saveCustomerName(normalModeInfo.customerName);
+        if (orderInfo.phone) {
+          SessionManager.saveToLocalStorage('customerPhone', orderInfo.phone);
+        }
         
         // Guardar la información y continuar
         SessionManager.saveOrderInfo(normalModeInfo);
@@ -133,19 +137,34 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         {/* Para modo normal, simplificado */}
         {!isQRMode && (
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-[#6C7A92] mb-1">
-                ¿Cuál es tu nombre?
-              </label>
-              <input
-                type="text"
-                value={orderInfo.customerName}
-                onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                className="w-full p-2 border border-[#DCE4F5] rounded-md focus:ring-2 focus:ring-[#3A7AFF] text-[#1F2937]"
-                placeholder="Ingresa tu nombre"
-                required
-                autoFocus
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#6C7A92] mb-1">
+                  ¿Cuál es tu nombre?
+                </label>
+                <input
+                  type="text"
+                  value={orderInfo.customerName}
+                  onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
+                  className="w-full p-3 border border-[#DCE4F5] rounded-md focus:ring-2 focus:ring-[#3A7AFF] text-[#1F2937]"
+                  placeholder="Ingresa tu nombre"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#6C7A92] mb-1">
+                  ¿Cuál es tu número de teléfono?
+                </label>
+                <input
+                  type="tel"
+                  value={orderInfo.phone || ''}
+                  onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value })}
+                  className="w-full p-3 border border-[#DCE4F5] rounded-md focus:ring-2 focus:ring-[#3A7AFF] text-[#1F2937]"
+                  placeholder="Ej: 3001234567"
+                  required
+                />
+              </div>
             </div>
             <button
               type="submit"
@@ -161,19 +180,35 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         {isQRMode && (
           <form onSubmit={handleSubmit} className="space-y-6">
             {!showOrderTypes ? (
-              // First step: Ask for customer name
-              <div>
-                <label className="block text-sm font-medium text-[#6C7A92] mb-1">
-                  Tu nombre
-                </label>
-                <input
-                  type="text"
-                  value={orderInfo.customerName}
-                  onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                  className="w-full p-2 border border-[#DCE4F5] rounded-md focus:ring-2 focus:ring-[#3A7AFF] text-[#1F2937]"
-                  placeholder="Ingresa tu nombre"
-                  required
-                />
+              // First step: Ask for customer name and phone
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#6C7A92] mb-1">
+                    Tu nombre
+                  </label>
+                  <input
+                    type="text"
+                    value={orderInfo.customerName}
+                    onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
+                    className="w-full p-3 border border-[#DCE4F5] rounded-md focus:ring-2 focus:ring-[#3A7AFF] text-[#1F2937]"
+                    placeholder="Ingresa tu nombre"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#6C7A92] mb-1">
+                    Tu número de teléfono
+                  </label>
+                  <input
+                    type="tel"
+                    value={orderInfo.phone || ''}
+                    onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value })}
+                    className="w-full p-3 border border-[#DCE4F5] rounded-md focus:ring-2 focus:ring-[#3A7AFF] text-[#1F2937]"
+                    placeholder="Ej: 3001234567"
+                    required
+                  />
+                </div>
               </div>
             ) : (
               // Second step: Show appropriate options based on table number
