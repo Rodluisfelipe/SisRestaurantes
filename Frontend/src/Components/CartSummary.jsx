@@ -253,6 +253,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
   const openOrderModal = (type) => {
     console.log(`*** ABRIENDO MODAL DE TIPO ${type.toUpperCase()} ***`);
+    console.log('showOrderModal antes:', showOrderModal);
     setOrderType(type);
     
     // Verificar si hay un número de mesa existente para inicializar
@@ -295,6 +296,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     
     // Activar el modal
     setShowOrderModal(true);
+    console.log('showOrderModal después:', true);
     document.body.classList.add('modal-open'); // Prevenir scroll en el body
   };
 
@@ -335,6 +337,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     const handleSubmit = async (e) => {
       e.preventDefault();
       
+      console.log('Modal handleSubmit ejecutado - orderType:', orderType);
+      console.log('Modal handleSubmit ejecutado - formState:', formState);
+      
       if (isProcessing || isSubmitting) {
         logSystem("Proceso de pedido ya en curso, ignorando solicitud", 'warning');
         return;
@@ -343,8 +348,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
       if (orderType === 'inSite') {
         const trimmedTableNumber = formState.tableNumber.trim();
         
+        console.log('Validando número de mesa:', trimmedTableNumber);
+        
         if (!trimmedTableNumber) {
           alert('Por favor ingresa el número de mesa');
+          console.log('Número de mesa vacío, mostrando alert');
           return;
         }
 

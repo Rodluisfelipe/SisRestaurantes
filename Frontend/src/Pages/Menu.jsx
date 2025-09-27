@@ -610,6 +610,10 @@ export default function Menu() {
       
       // Calcular total del pedido
       const totalAmount = calculateTotalAmount();
+      console.log('=== CÁLCULO DE TOTAL ===');
+      console.log('totalAmount calculado:', totalAmount);
+      console.log('cart items:', cart);
+      console.log('=== FIN CÁLCULO ===');
       
       // Realizar últimas validaciones
       if (finalOrderInfo.orderType === 'inSite' && !finalOrderInfo.tableNumber) {
@@ -703,6 +707,16 @@ export default function Menu() {
       };
 
       logger.info('Datos finales del pedido a enviar:', orderData);
+      console.log('=== DATOS COMPLETOS ENVIADOS AL BACKEND ===');
+      console.log('businessId:', orderData.businessId);
+      console.log('customerName:', orderData.customerName);
+      console.log('orderType:', orderData.orderType);
+      console.log('items:', orderData.items);
+      console.log('totalAmount:', orderData.totalAmount);
+      console.log('tableNumber:', orderData.tableNumber);
+      console.log('phone:', orderData.phone);
+      console.log('address:', orderData.address);
+      console.log('=== FIN DATOS ===');
 
       // Para pedidos a domicilio enviar WhatsApp además de guardar en API
       if (orderDetails.orderType === 'delivery') {

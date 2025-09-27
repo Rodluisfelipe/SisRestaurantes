@@ -63,9 +63,24 @@ router.get("/", async (req, res) => {
 // Create a new order
 router.post("/", async (req, res) => {
   try {
+    console.log('=== POST /orders - DATOS RECIBIDOS ===');
+    console.log('req.body completo:', JSON.stringify(req.body, null, 2));
+    
     const { businessId, customerName, orderType, items, totalAmount, tableNumber, phone, address, couponCode } = req.body;
     
-    if (!businessId || !customerName || !orderType || !items || !totalAmount) {
+    console.log('businessId:', businessId, 'tipo:', typeof businessId);
+    console.log('customerName:', customerName, 'tipo:', typeof customerName);
+    console.log('orderType:', orderType, 'tipo:', typeof orderType);
+    console.log('items:', items, 'tipo:', typeof items, 'length:', items?.length);
+    console.log('totalAmount:', totalAmount, 'tipo:', typeof totalAmount);
+    
+    if (!businessId || !customerName || !orderType || !items || totalAmount === undefined || totalAmount === null) {
+      console.log('ERROR: Campos requeridos faltantes');
+      console.log('businessId válido:', !!businessId);
+      console.log('customerName válido:', !!customerName);
+      console.log('orderType válido:', !!orderType);
+      console.log('items válido:', !!items);
+      console.log('totalAmount válido:', totalAmount !== undefined && totalAmount !== null, 'valor:', totalAmount);
       return res.status(400).json({ message: "Missing required fields" });
     }
     
