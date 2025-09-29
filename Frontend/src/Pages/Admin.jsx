@@ -591,8 +591,7 @@ function Admin() {
     const formData = new FormData();
     formData.append('name', form.name);
     formData.append('description', form.description);
-    // Convertir el precio del formato colombiano (29.000) a número (29000)
-    const numericPrice = parseFloat(form.price.replace(/\./g, ''));
+    // Usar el precio ya convertido para validación
     formData.append('price', numericPrice);
     formData.append('category', form.category);
     if (form.image instanceof File) {
