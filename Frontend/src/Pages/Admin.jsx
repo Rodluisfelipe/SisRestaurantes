@@ -171,6 +171,11 @@ function Admin() {
   const [activeTab, setActiveTab] = useState('products');
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   const [products, setProducts] = useState([]);
+  
+  // Log para debugging del estado de productos
+  useEffect(() => {
+    console.log('🔄 Estado de productos actualizado:', products.length, 'productos');
+  }, [products]);
   const [categories, setCategories] = useState([]);
   const [toppingGroups, setToppingGroups] = useState([]);
   const [dataLoading, setDataLoading] = useState(true);
@@ -188,6 +193,7 @@ function Admin() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sseEnabled, setSseEnabled] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
@@ -394,6 +400,12 @@ function Admin() {
       setProducts(Array.isArray(productsRes.data) ? productsRes.data : []);
       setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
       setToppingGroups(Array.isArray(toppingGroupsRes.data) ? toppingGroupsRes.data : []);
+      
+      // Log adicional para debugging
+      console.log('✅ Datos cargados exitosamente:');
+      console.log('- Productos:', productsRes.data.length);
+      console.log('- Categorías:', categoriesRes.data.length);
+      console.log('- Topping Groups:', toppingGroupsRes.data.length);
     } catch (err) {
       console.error("Error al obtener datos:", err);
     } finally {
@@ -557,6 +569,23 @@ function Admin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validación del lado del cliente
+    if (!form.name.trim()) {
+      showErrorMessage('El nombre del producto es obligatorio');
+      return;
+    }
+    
+    if (!form.price || form.price <= 0) {
+      showErrorMessage('El precio debe ser mayor a 0');
+      return;
+    }
+    
+    if (!form.category) {
+      showErrorMessage('Debes seleccionar una categoría para el producto');
+      return;
+    }
+    
     const formData = new FormData();
     formData.append('name', form.name);
     formData.append('description', form.description);
@@ -600,15 +629,27 @@ function Admin() {
         });
         // Actualizar la lista de productos con el nuevo producto
         setProducts(prevProducts => [...prevProducts, response.data]);
+        // Recargar datos para asegurar sincronización
+        setTimeout(() => {
+          loadData();
+        }, 500);
       }
     } catch (error) {
       console.error('Error:', error);
+      showErrorMessage('Error al crear el producto. Verifica que todos los campos estén completos.');
     }
   };
 
   const showSuccessMessage = (message) => {
     setSuccessMessage(message);
+    setErrorMessage(''); // Limpiar mensaje de error
     setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  const showErrorMessage = (message) => {
+    setErrorMessage(message);
+    setSuccessMessage(''); // Limpiar mensaje de éxito
+    setTimeout(() => setErrorMessage(''), 5000);
   };
 
   const confirmEdit = async () => {
@@ -665,6 +706,10 @@ function Admin() {
       
       // Mostrar mensaje de éxito
       showSuccessMessage("Producto actualizado correctamente");
+      // Recargar datos para asegurar sincronización
+      setTimeout(() => {
+        loadData();
+      }, 500);
     } catch (error) {
       console.error("Error al actualizar producto:", error);
     }
@@ -727,6 +772,10 @@ function Admin() {
       showSuccessMessage('Producto eliminado exitosamente');
       setShowDeleteModal(false);
       setProductToDelete(null);
+      // Recargar datos para asegurar sincronización
+      setTimeout(() => {
+        loadData();
+      }, 500);
     } catch (error) {
       console.error('Error al eliminar el producto:', error);
     }
@@ -1052,14 +1101,22 @@ function Admin() {
                         name="name"
                         value={form.name}
                         onChange={handleChange}
-                                    className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
+                                    className={`w-full rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300 ${
+                                      !form.name.trim() ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
+                                    }`}
                                     placeholder="Ej: Hamburguesa Clásica"
                         required
                       />
                                   <div className="absolute inset-y-0 right-0 flex items-center pr-4">
                                     <span className="text-slate-400">✨</span>
-                    </div>
+                                  </div>
                                 </div>
+                                {!form.name.trim() && (
+                                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                                    <span className="mr-1">⚠️</span>
+                                    El nombre es obligatorio
+                                  </p>
+                                )}
                               </div>
 
                               {/* Description */}
@@ -1097,12 +1154,20 @@ function Admin() {
                         step="0.01"
                           value={form.price}
                           onChange={handleChange}
-                                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-12 pr-6 py-4 text-lg font-semibold transition-all duration-200 group-hover:border-slate-300"
+                                      className={`w-full rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-12 pr-6 py-4 text-lg font-semibold transition-all duration-200 group-hover:border-slate-300 ${
+                                        !form.price || form.price <= 0 ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
+                                      }`}
                           placeholder="0.00"
                           required
                         />
                     </div>
                                 </div>
+                                {(!form.price || form.price <= 0) && (
+                                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                                    <span className="mr-1">⚠️</span>
+                                    El precio debe ser mayor a 0
+                                  </p>
+                                )}
 
                                 {/* Category */}
                                 <div className="group">
@@ -1114,15 +1179,23 @@ function Admin() {
                         name="category"
                         value={form.category}
                         onChange={handleChange}
-                                    className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                                    className={`w-full rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 px-6 py-4 transition-all duration-200 group-hover:border-slate-300 ${
+                                      !form.category ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
+                                    }`}
                       >
-                        <option value="">Sin categoría</option>
+                        <option value="">Selecciona una categoría *</option>
                         {categories.map(category => (
                           <option key={category._id} value={category._id}>
                             {category.name}
                           </option>
                         ))}
                       </select>
+                      {!form.category && (
+                        <p className="text-red-500 text-sm mt-1 flex items-center">
+                          <span className="mr-1">⚠️</span>
+                          La categoría es obligatoria
+                        </p>
+                      )}
                     </div>
                   </div>
                             </div>
@@ -1399,6 +1472,17 @@ function Admin() {
               className="fixed top-20 left-1/2 transform -translate-x-1/2 p-3 bg-green-500/20 text-green-300 text-sm rounded-lg border border-green-500/30 z-50"
             >
               {successMessage}
+            </motion.div>
+          )}
+
+      {/* Error Message Banner */}
+          {errorMessage && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="fixed top-20 left-1/2 transform -translate-x-1/2 p-3 bg-red-500/20 text-red-300 text-sm rounded-lg border border-red-500/30 z-50"
+            >
+              {errorMessage}
             </motion.div>
           )}
           
