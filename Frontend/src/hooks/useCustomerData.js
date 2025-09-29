@@ -73,28 +73,8 @@ export const useCustomerData = () => {
       const allOrders = response.data || [];
       console.log('loadCustomerOrders - All orders received:', allOrders.length);
       
-      // Filtrar pedidos por teléfono del cliente y aplicar lógica de visibilidad
-      const customerOrders = allOrders.filter(order => {
-        if (order.phone !== phone) return false;
-        
-        // Mostrar pedidos pendientes y en progreso siempre
-        if (order.status === 'pending' || order.status === 'inProgress') {
-          return true;
-        }
-        
-        // Para pedidos completados, mostrar solo si fueron completados hace menos de 30 minutos
-        if (order.status === 'completed') {
-          const completedTime = new Date(order.updatedAt || order.createdAt);
-          const now = new Date();
-          const timeDiff = now - completedTime;
-          const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en milisegundos
-          
-          return timeDiff < thirtyMinutes;
-        }
-        
-        return false;
-      });
-      
+      // Filtrar pedidos por teléfono del cliente
+      const customerOrders = allOrders.filter(order => order.phone === phone);
       console.log('loadCustomerOrders - Filtered customer orders:', customerOrders.length);
       console.log('loadCustomerOrders - Customer orders:', customerOrders);
       setCustomerOrders(customerOrders);
@@ -186,46 +166,6 @@ export const useCustomerData = () => {
       console.log('useEffect - No customerData, skipping loadCustomerOrders');
     }
   }, [customerData]);
-
-  // Función para filtrar pedidos localmente sin hacer llamada al backend
-  const filterOrdersLocally = (orders) => {
-    const phone = customerData?.phone || SessionManager.getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone');
-    if (!phone) return [];
-
-    return orders.filter(order => {
-      if (order.phone !== phone) return false;
-      
-      // Mostrar pedidos pendientes y en progreso siempre
-      if (order.status === 'pending' || order.status === 'inProgress') {
-        return true;
-      }
-      
-      // Para pedidos completados, mostrar solo si fueron completados hace menos de 30 minutos
-      if (order.status === 'completed') {
-        const completedTime = new Date(order.updatedAt || order.createdAt);
-        const now = new Date();
-        const timeDiff = now - completedTime;
-        const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en milisegundos
-        
-        return timeDiff < thirtyMinutes;
-      }
-      
-      return false;
-    });
-  };
-
-  // Actualizar pedidos cada 2 minutos para que los completados desaparezcan después de 30 minutos
-  useEffect(() => {
-    if (!customerData?.phone) return;
-
-    const interval = setInterval(() => {
-      console.log('Filtrando pedidos localmente...');
-      // Filtrar pedidos localmente sin hacer llamada al backend
-      setCustomerOrders(prevOrders => filterOrdersLocally(prevOrders));
-    }, 2 * 60 * 1000); // Cada 2 minutos
-
-    return () => clearInterval(interval);
-  }, [customerData?.phone]);
 
   return { 
     customerData, 

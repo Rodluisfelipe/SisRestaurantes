@@ -140,22 +140,6 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
     }
   };
 
-  // Función para calcular tiempo restante antes de que el pedido desaparezca
-  const getTimeUntilDisappear = (order) => {
-    if (order.status !== 'completed') return null;
-    
-    const completedTime = new Date(order.updatedAt || order.createdAt);
-    const now = new Date();
-    const timeDiff = now - completedTime;
-    const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en milisegundos
-    const remainingTime = thirtyMinutes - timeDiff;
-    
-    if (remainingTime <= 0) return null;
-    
-    const remainingMinutes = Math.ceil(remainingTime / (60 * 1000));
-    return remainingMinutes;
-  };
-
   const getOrderStatusColor = (status) => {
     switch (status) {
       case 'pending': return 'text-yellow-700 bg-yellow-100 border-yellow-200';
@@ -489,12 +473,6 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                                 {getOrderStatusIcon(order.status)}
                                 {getOrderStatusText(order.status)}
                               </div>
-                              {getTimeUntilDisappear(order) && (
-                                <div className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                                  <span>⏰</span>
-                                  <span>Desaparece en {getTimeUntilDisappear(order)} min</span>
-                                </div>
-                              )}
                             </div>
                           </div>
                           
