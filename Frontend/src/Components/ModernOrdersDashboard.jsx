@@ -731,7 +731,7 @@ function ModernOrdersDashboard() {
             animate="visible"
             className={
               viewMode === 'grid'
-                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 lg:gap-6'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8'
                 : 'space-y-4'
             }
           >
@@ -754,20 +754,20 @@ function ModernOrdersDashboard() {
                       isPending 
                         ? 'border-yellow-200 shadow-yellow-100' 
                         : 'border-slate-200 hover:border-blue-200 hover:shadow-lg'
-                    } ${viewMode === 'list' ? 'p-6' : 'p-0'}`}
+                    } ${viewMode === 'list' ? 'p-6' : 'p-0'} min-h-[280px]`}
                   >
                     {viewMode === 'grid' ? (
                       <>
                         {/* Card Header */}
-                        <div className={`px-4 lg:px-6 py-3 lg:py-4 ${statusInfo.bgColor} border-b border-slate-100`}>
+                        <div className={`px-5 lg:px-7 py-4 lg:py-5 ${statusInfo.bgColor} border-b border-slate-100`}>
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
-                              <div className={`w-8 h-8 lg:w-10 lg:h-10 ${orderTypeInfo.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                <span className="text-sm lg:text-base">{orderTypeInfo.icon}</span>
+                              <div className={`w-10 h-10 lg:w-12 lg:h-12 ${orderTypeInfo.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
+                                <span className="text-base lg:text-lg">{orderTypeInfo.icon}</span>
                               </div>
                               <div className="min-w-0">
-                                <h3 className="font-bold text-slate-900 text-sm lg:text-base truncate">#{order.orderNumber}</h3>
-                                <p className="text-xs lg:text-sm text-slate-600 truncate">{orderTypeInfo.label}</p>
+                                <h3 className="font-bold text-slate-900 text-base lg:text-lg truncate">#{order.orderNumber}</h3>
+                                <p className="text-sm lg:text-base text-slate-600 truncate">{orderTypeInfo.label}</p>
                               </div>
                             </div>
                             <div className="text-right flex-shrink-0">
@@ -781,61 +781,61 @@ function ModernOrdersDashboard() {
                         </div>
 
                         {/* Card Body */}
-                        <div className="p-4 lg:p-6">
-                          <div className="space-y-2 lg:space-y-3 mb-3 lg:mb-4">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs lg:text-sm flex-shrink-0">👤</span>
-                              <span className="text-xs lg:text-sm font-medium text-slate-700 truncate">{order.customerName}</span>
+                        <div className="p-5 lg:p-7">
+                          <div className="space-y-3 lg:space-y-4 mb-4 lg:mb-5">
+                            <div className="flex items-center space-x-3">
+                              <span className="text-sm lg:text-base flex-shrink-0">👤</span>
+                              <span className="text-sm lg:text-base font-medium text-slate-700 truncate">{order.customerName}</span>
                             </div>
                             
                             {order.phone && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs lg:text-sm flex-shrink-0">📞</span>
-                                <span className="text-xs lg:text-sm text-slate-600 truncate">{order.phone}</span>
+                              <div className="flex items-center space-x-3">
+                                <span className="text-sm lg:text-base flex-shrink-0">📞</span>
+                                <span className="text-sm lg:text-base text-slate-600 truncate">{order.phone}</span>
                               </div>
                             )}
                             
                             {order.tableNumber && (
-                              <div className="flex items-center space-x-2">
-                                <span className="text-xs lg:text-sm flex-shrink-0">📍</span>
-                                <span className="text-xs lg:text-sm text-slate-600">Mesa {order.tableNumber}</span>
+                              <div className="flex items-center space-x-3">
+                                <span className="text-sm lg:text-base flex-shrink-0">📍</span>
+                                <span className="text-sm lg:text-base text-slate-600">Mesa {order.tableNumber}</span>
                               </div>
                             )}
                             
                             {order.orderType === 'delivery' && order.address && (
-                              <div className="flex items-start space-x-2">
-                                <span className="text-xs lg:text-sm flex-shrink-0 mt-0.5">🏠</span>
-                                <span className="text-xs lg:text-sm text-slate-600 leading-tight">{order.address}</span>
+                              <div className="flex items-start space-x-3">
+                                <span className="text-sm lg:text-base flex-shrink-0 mt-0.5">🏠</span>
+                                <span className="text-sm lg:text-base text-slate-600 leading-tight">{order.address}</span>
                               </div>
                             )}
                             
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs lg:text-sm text-slate-600">{order.items?.length || 0} productos</span>
+                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                              <span className="text-sm lg:text-base text-slate-600 font-medium">{order.items?.length || 0} productos</span>
                               <div className="text-right">
                                 {order.couponCode ? (
                                   <div>
-                                    <span className="text-base lg:text-lg font-bold text-green-600">${order.finalAmount || order.totalAmount}</span>
-                                    <div className="text-xs text-slate-500">
+                                    <span className="text-lg lg:text-xl font-bold text-green-600">${order.finalAmount || order.totalAmount}</span>
+                                    <div className="text-sm text-slate-500">
                                       <span className="line-through">${order.totalAmount}</span>
                                       <span className="ml-1 text-green-600">🎫 {order.couponCode}</span>
                                     </div>
                                   </div>
                                 ) : (
-                                  <span className="text-base lg:text-lg font-bold text-slate-900">${order.totalAmount}</span>
+                                  <span className="text-lg lg:text-xl font-bold text-slate-900">${order.totalAmount}</span>
                                 )}
                               </div>
                             </div>
                           </div>
 
                           {/* Action buttons */}
-                          <div className="flex space-x-2">
+                          <div className="flex space-x-3">
                             <motion.button
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               onClick={() => showOrderDetails(order)}
-                              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-3 rounded-xl text-sm lg:text-base font-medium transition-colors flex items-center justify-center space-x-2"
                             >
-                              <span className="text-sm">👁️</span>
+                              <span className="text-base">👁️</span>
                               <span>Ver</span>
                             </motion.button>
                             
@@ -844,9 +844,9 @@ function ModernOrdersDashboard() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl text-sm lg:text-base font-medium transition-colors flex items-center justify-center space-x-2"
                               >
-                                    <span className="text-sm">▶️</span>
+                                    <span className="text-base">▶️</span>
                                 <span>Iniciar</span>
                               </motion.button>
                             )}
@@ -856,9 +856,9 @@ function ModernOrdersDashboard() {
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                className="flex-1 bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-1"
+                                className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-xl text-sm lg:text-base font-medium transition-colors flex items-center justify-center space-x-2"
                               >
-                                    <span className="text-sm">✅</span>
+                                    <span className="text-base">✅</span>
                                 <span>Completar</span>
                               </motion.button>
                             )}
