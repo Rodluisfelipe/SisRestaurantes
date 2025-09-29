@@ -73,34 +73,35 @@ export const useCustomerData = () => {
       const allOrders = response.data || [];
       console.log('loadCustomerOrders - All orders received:', allOrders.length);
       
-      // Filtrar pedidos por teléfono del cliente
-      const customerOrders = allOrders.filter(order => order.phone === phone);
-      
-      // Filtrar pedidos: mostrar todos los pendientes/en progreso + completados de los últimos 30 minutos
-      const filteredOrders = customerOrders.filter(order => {
+      // Filtrar pedidos por teléfono del cliente y aplicar lógica de visibilidad
+      const customerOrders = allOrders.filter(order => {
+        if (order.phone !== phone) return false;
+        
+        // Mostrar pedidos pendientes y en progreso siempre
         if (order.status === 'pending' || order.status === 'inProgress') {
-          return true; // Mostrar todos los pedidos activos
+          return true;
         }
         
+        // Para pedidos completados, mostrar solo si fueron completados hace menos de 30 minutos
         if (order.status === 'completed') {
           const completedTime = new Date(order.updatedAt || order.createdAt);
           const now = new Date();
           const timeDiff = now - completedTime;
           const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en milisegundos
           
-          return timeDiff < thirtyMinutes; // Mostrar solo si fue completado hace menos de 30 minutos
+          return timeDiff < thirtyMinutes;
         }
         
         return false;
       });
       
-      console.log('loadCustomerOrders - Filtered customer orders:', filteredOrders.length);
-      console.log('loadCustomerOrders - Customer orders:', filteredOrders);
-      setCustomerOrders(filteredOrders);
+      console.log('loadCustomerOrders - Filtered customer orders:', customerOrders.length);
+      console.log('loadCustomerOrders - Customer orders:', customerOrders);
+      setCustomerOrders(customerOrders);
       
       // También guardar en localStorage como backup
-      if (filteredOrders.length > 0) {
-        localStorage.setItem(`customerOrders_${phone}`, JSON.stringify(filteredOrders));
+      if (customerOrders.length > 0) {
+        localStorage.setItem(`customerOrders_${phone}`, JSON.stringify(customerOrders));
       }
     } catch (error) {
       console.error('loadCustomerOrders - Error:', error);
@@ -186,16 +187,45 @@ export const useCustomerData = () => {
     }
   }, [customerData]);
 
-  // Timer para actualizar pedidos completados cada minuto
+  // Función para filtrar pedidos localmente sin hacer llamada al backend
+  const filterOrdersLocally = (orders) => {
+    const phone = customerData?.phone || SessionManager.getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone');
+    if (!phone) return [];
+
+    return orders.filter(order => {
+      if (order.phone !== phone) return false;
+      
+      // Mostrar pedidos pendientes y en progreso siempre
+      if (order.status === 'pending' || order.status === 'inProgress') {
+        return true;
+      }
+      
+      // Para pedidos completados, mostrar solo si fueron completados hace menos de 30 minutos
+      if (order.status === 'completed') {
+        const completedTime = new Date(order.updatedAt || order.createdAt);
+        const now = new Date();
+        const timeDiff = now - completedTime;
+        const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en milisegundos
+        
+        return timeDiff < thirtyMinutes;
+      }
+      
+      return false;
+    });
+  };
+
+  // Actualizar pedidos cada 2 minutos para que los completados desaparezcan después de 30 minutos
   useEffect(() => {
-    if (!customerOrders.some(order => order.status === 'completed')) return;
+    if (!customerData?.phone) return;
 
     const interval = setInterval(() => {
-      loadCustomerOrders(); // Recargar pedidos para aplicar el filtro de tiempo
-    }, 60000); // Actualizar cada minuto
+      console.log('Filtrando pedidos localmente...');
+      // Filtrar pedidos localmente sin hacer llamada al backend
+      setCustomerOrders(prevOrders => filterOrdersLocally(prevOrders));
+    }, 2 * 60 * 1000); // Cada 2 minutos
 
     return () => clearInterval(interval);
-  }, [customerOrders]);
+  }, [customerData?.phone]);
 
   return { 
     customerData, 
