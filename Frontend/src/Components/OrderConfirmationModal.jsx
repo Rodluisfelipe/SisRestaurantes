@@ -205,85 +205,112 @@ const OrderConfirmationModal = ({
   return (
     <>
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-2xl w-full max-w-xs mx-auto shadow-2xl border border-slate-200/50 transform transition-all">
-          {/* Encabezado simplificado */}
+        <div className="bg-white rounded-3xl w-full max-w-sm mx-auto shadow-2xl border border-slate-200/50 transform transition-all overflow-hidden">
+          {/* Encabezado mejorado */}
           <div 
-            className="p-4 text-center" 
+            className="relative p-6 text-center overflow-hidden" 
             style={{ 
-              background: businessConfig.theme.buttonColor || '#2563eb',
+              background: `linear-gradient(135deg, ${businessConfig.theme.buttonColor || '#2563eb'} 0%, ${businessConfig.theme.buttonColor || '#2563eb'}dd 100%)`,
               color: businessConfig.theme.buttonTextColor || '#ffffff'
             }}
           >
-            <div className="w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-              {businessConfig.logo ? (
-                <img 
-                  src={businessConfig.logo} 
-                  alt={businessConfig.businessName || 'Logo'} 
-                  className="w-12 h-12 object-contain"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }}
-                />
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+            {/* Decoración de fondo */}
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -translate-y-16 translate-x-16"></div>
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full translate-y-12 -translate-x-12"></div>
+            </div>
+            
+            {/* Contenido del header */}
+            <div className="relative z-10">
+              <div className="w-20 h-20 mx-auto mb-4 flex items-center justify-center bg-white/20 rounded-full backdrop-blur-sm">
+                {businessConfig.logo ? (
+                  <img 
+                    src={businessConfig.logo} 
+                    alt={businessConfig.businessName || 'Logo'} 
+                    className="w-14 h-14 object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )}
+              </div>
+              <h2 className="text-2xl font-bold mb-2">¡Pedido Confirmado!</h2>
+              <p className="text-base opacity-90 mb-1">{businessConfig.businessName || 'Nuestro Restaurante'}</p>
+              {orderNumber && (
+                <div className="inline-flex items-center justify-center px-4 py-2 bg-white/20 rounded-full backdrop-blur-sm">
+                  <span className="text-sm font-semibold">Orden #{orderNumber}</span>
+                </div>
               )}
             </div>
-            <h2 className="text-xl font-bold mb-1">¡Pedido Confirmado!</h2>
-            <p className="text-sm opacity-90">{businessConfig.businessName || 'Nuestro Restaurante'}</p>
-            {orderNumber && (
-              <p className="text-sm font-semibold mt-1">Orden #{orderNumber}</p>
-            )}
           </div>
           
           {/* Contenido principal */}
-          <div className="p-4">
-            {/* Contador */}
+          <div className="p-6">
+            {/* Contador mejorado */}
             {isCountdownActive && (
-              <div className="text-center mb-3">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mb-1">
-                  <span className="text-lg font-bold text-red-600">{countdown}</span>
+              <div className="text-center mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-red-100 to-red-200 rounded-full mb-3 shadow-lg">
+                  <span className="text-2xl font-bold text-red-600">{countdown}</span>
                 </div>
-                <p className="text-xs text-red-600 font-medium">Se confirmará automáticamente</p>
+                <p className="text-sm text-red-600 font-medium">Se confirmará automáticamente</p>
               </div>
             )}
             
-            <div className="text-center mb-4">
-              <p className="text-gray-800 text-sm mb-3">{orderConfirmationDetails.message}</p>
+            <div className="text-center mb-6">
+              <div className="mb-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-3">
+                  <span className="text-2xl">✅</span>
+                </div>
+                <p className="text-gray-800 text-base leading-relaxed">{orderConfirmationDetails.message}</p>
+              </div>
               
               {orderNumber && (
-                <div className="mb-3">
-                  <p className="text-gray-600 text-xs mb-1">Número de orden:</p>
-                  <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-xl">
-                    <span className="text-lg font-bold text-gray-800">#{orderNumber}</span>
+                <div className="mb-4">
+                  <p className="text-gray-600 text-sm mb-2 font-medium">Número de orden:</p>
+                  <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl shadow-md">
+                    <span className="text-2xl font-bold text-slate-800">#{orderNumber}</span>
                   </div>
                 </div>
               )}
               
               {orderConfirmationDetails.type === 'inSite' && orderInfo.tableNumber && (
-                <p className="text-gray-600 text-sm">Será servido en la <span className="font-bold text-gray-800">Mesa {orderInfo.tableNumber}</span></p>
+                <div className="inline-flex items-center justify-center px-4 py-2 bg-blue-50 rounded-full border border-blue-200">
+                  <span className="text-blue-600 text-sm font-medium">
+                    🪑 Será servido en la <span className="font-bold">Mesa {orderInfo.tableNumber}</span>
+                  </span>
+                </div>
               )}
             </div>
-            {/* Botones */}
-            <div className="flex flex-col space-y-2">
+            {/* Botones mejorados */}
+            <div className="flex flex-col space-y-3">
               <button
                 onClick={handleModalClose}
-                className="w-full py-2 rounded-lg text-white text-sm font-medium transition-colors"
+                className="w-full py-4 rounded-2xl text-white text-base font-semibold transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
                 style={{ 
-                  backgroundColor: businessConfig.theme.buttonColor || '#2563eb'
+                  background: `linear-gradient(135deg, ${businessConfig.theme.buttonColor || '#2563eb'} 0%, ${businessConfig.theme.buttonColor || '#2563eb'}dd 100%)`,
+                  boxShadow: `0 4px 15px ${businessConfig.theme.buttonColor || '#2563eb'}40`
                 }}
               >
-                Entendido
+                <span className="flex items-center justify-center space-x-2">
+                  <span>✅</span>
+                  <span>Entendido</span>
+                </span>
               </button>
 
               {isCountdownActive && (
                 <button
                   onClick={() => setShowCancelConfirmation(true)}
-                  className="w-full py-2 rounded-lg text-red-600 text-sm font-medium bg-red-50 border border-red-200 hover:bg-red-100 transition-colors"
+                  className="w-full py-3 rounded-2xl text-red-600 text-sm font-medium bg-red-50 border-2 border-red-200 hover:bg-red-100 hover:border-red-300 transition-all duration-200 hover:scale-105 active:scale-95"
                 >
-                  Cancelar Pedido ({countdown}s)
+                  <span className="flex items-center justify-center space-x-2">
+                    <span>❌</span>
+                    <span>Cancelar Pedido ({countdown}s)</span>
+                  </span>
                 </button>
               )}
             </div>
