@@ -17,6 +17,18 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
   console.log('AccountManagementModal - orders recibidos:', orders);
   console.log('AccountManagementModal - orders.length:', orders?.length);
 
+  // Timer para actualizar el tiempo restante cada minuto
+  useEffect(() => {
+    if (!isOpen || !orders.some(order => order.status === 'completed')) return;
+
+    const interval = setInterval(() => {
+      // Forzar re-render para actualizar el tiempo restante
+      setProfileData(prev => ({ ...prev }));
+    }, 60000); // Actualizar cada minuto
+
+    return () => clearInterval(interval);
+  }, [isOpen, orders]);
+
   // Log para depurar y actualizar profileData cuando cambien customerData
   useEffect(() => {
     logSystem('AccountManagementModal - customerData recibido:', customerData);
@@ -61,7 +73,27 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
         
         // Cargar pedidos del cliente
         const ordersResponse = await api.get(`/customers/${customerData.phone}/orders?businessId=${businessConfig.businessId}&limit=20`);
-        setCustomerOrders(ordersResponse.data.orders || []);
+        const allOrders = ordersResponse.data.orders || [];
+        
+        // Filtrar pedidos: mostrar todos los pendientes/en progreso + completados de los últimos 30 minutos
+        const filteredOrders = allOrders.filter(order => {
+          if (order.status === 'pending' || order.status === 'inProgress') {
+            return true; // Mostrar todos los pedidos activos
+          }
+          
+          if (order.status === 'completed') {
+            const completedTime = new Date(order.updatedAt || order.createdAt);
+            const now = new Date();
+            const timeDiff = now - completedTime;
+            const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en milisegundos
+            
+            return timeDiff < thirtyMinutes; // Mostrar solo si fue completado hace menos de 30 minutos
+          }
+          
+          return false;
+        });
+        
+        setCustomerOrders(filteredOrders);
         
       } catch (error) {
         // Si no existe en BD, usar datos locales
@@ -468,11 +500,30 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                                 })}
                               </p>
                             </div>
-                            <div className={`px-4 py-2 rounded-xl text-sm font-bold border ${getOrderStatusColor(order.status)}`}>
-                              <div className="flex items-center gap-2">
-                                {getOrderStatusIcon(order.status)}
-                                {getOrderStatusText(order.status)}
+                            <div className="text-right">
+                              <div className={`px-4 py-2 rounded-xl text-sm font-bold border ${getOrderStatusColor(order.status)} mb-2`}>
+                                <div className="flex items-center gap-2">
+                                  {getOrderStatusIcon(order.status)}
+                                  {getOrderStatusText(order.status)}
+                                </div>
                               </div>
+                              {order.status === 'completed' && (
+                                <div className="text-xs text-gray-500">
+                                  {(() => {
+                                    const completedTime = new Date(order.updatedAt || order.createdAt);
+                                    const now = new Date();
+                                    const timeDiff = now - completedTime;
+                                    const thirtyMinutes = 30 * 60 * 1000;
+                                    const remainingTime = thirtyMinutes - timeDiff;
+                                    
+                                    if (remainingTime > 0) {
+                                      const remainingMinutes = Math.ceil(remainingTime / (60 * 1000));
+                                      return `Visible por ${remainingMinutes} min más`;
+                                    }
+                                    return 'Desaparecerá pronto';
+                                  })()}
+                                </div>
+                              )}
                             </div>
                           </div>
                           

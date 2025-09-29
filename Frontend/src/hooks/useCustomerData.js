@@ -75,13 +75,32 @@ export const useCustomerData = () => {
       
       // Filtrar pedidos por teléfono del cliente
       const customerOrders = allOrders.filter(order => order.phone === phone);
-      console.log('loadCustomerOrders - Filtered customer orders:', customerOrders.length);
-      console.log('loadCustomerOrders - Customer orders:', customerOrders);
-      setCustomerOrders(customerOrders);
+      
+      // Filtrar pedidos: mostrar todos los pendientes/en progreso + completados de los últimos 30 minutos
+      const filteredOrders = customerOrders.filter(order => {
+        if (order.status === 'pending' || order.status === 'inProgress') {
+          return true; // Mostrar todos los pedidos activos
+        }
+        
+        if (order.status === 'completed') {
+          const completedTime = new Date(order.updatedAt || order.createdAt);
+          const now = new Date();
+          const timeDiff = now - completedTime;
+          const thirtyMinutes = 30 * 60 * 1000; // 30 minutos en milisegundos
+          
+          return timeDiff < thirtyMinutes; // Mostrar solo si fue completado hace menos de 30 minutos
+        }
+        
+        return false;
+      });
+      
+      console.log('loadCustomerOrders - Filtered customer orders:', filteredOrders.length);
+      console.log('loadCustomerOrders - Customer orders:', filteredOrders);
+      setCustomerOrders(filteredOrders);
       
       // También guardar en localStorage como backup
-      if (customerOrders.length > 0) {
-        localStorage.setItem(`customerOrders_${phone}`, JSON.stringify(customerOrders));
+      if (filteredOrders.length > 0) {
+        localStorage.setItem(`customerOrders_${phone}`, JSON.stringify(filteredOrders));
       }
     } catch (error) {
       console.error('loadCustomerOrders - Error:', error);
@@ -166,6 +185,17 @@ export const useCustomerData = () => {
       console.log('useEffect - No customerData, skipping loadCustomerOrders');
     }
   }, [customerData]);
+
+  // Timer para actualizar pedidos completados cada minuto
+  useEffect(() => {
+    if (!customerOrders.some(order => order.status === 'completed')) return;
+
+    const interval = setInterval(() => {
+      loadCustomerOrders(); // Recargar pedidos para aplicar el filtro de tiempo
+    }, 60000); // Actualizar cada minuto
+
+    return () => clearInterval(interval);
+  }, [customerOrders]);
 
   return { 
     customerData, 
