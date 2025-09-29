@@ -1,0 +1,71 @@
+/* Estilos personalizados para sobrescribir Tailwind CSS */
+
+/* CTA Section - Fondo oscuro forzado */
+.cta-section-dark {
+  background-color: #111827 !important;
+  background: #111827 !important;
+}
+
+.cta-section-dark h2 {
+  color: #ffffff !important;
+}
+
+.cta-section-dark p {
+  color: #d1d5db !important;
+}
+
+.cta-section-dark .btn-primary {
+  background-color: #059669 !important;
+  background: #059669 !important;
+}
+
+.cta-section-dark .btn-secondary {
+  color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+/* Footer - Fondo oscuro forzado */
+.footer-dark {
+  background-color: #111827 !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+.footer-dark h3 {
+  color: #ffffff !important;
+}
+
+.footer-dark p {
+  color: #d1d5db !important;
+}
+
+.footer-dark a {
+  color: #d1d5db !important;
+}
+
+.footer-dark a:hover {
+  color: #10b981 !important;
+}
+
+.footer-dark .logo-bg {
+  background-color: #059669 !important;
+  background: #059669 !important;
+}
+
+.footer-dark .social-bg {
+  background-color: #1f2937 !important;
+  background: #1f2937 !important;
+}
+
+.footer-dark .social-bg:hover {
+  background-color: #059669 !important;
+  background: #059669 !important;
+}
+
+.footer-dark .border-top {
+  border-color: #374151 !important;
+}
+
+.footer-dark .copyright {
+  color: #9ca3af !important;
+}

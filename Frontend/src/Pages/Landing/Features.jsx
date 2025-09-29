@@ -1,325 +1,159 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useTheme } from '../../Context/ThemeContext';
+import React, { useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
+import CTA from '../../Components/Landing/CTA';
 
 const Features = () => {
-  const [activeTab, setActiveTab] = useState('operations');
-  const { theme, colors } = useTheme();
+  const featuresRef = useRef(null);
+  const isFeaturesInView = useInView(featuresRef, { once: true, amount: 0.2 });
 
-  const featureCategories = [
-    { id: 'operations', name: 'Operaciones', icon: '⚙️' },
-    { id: 'customer', name: 'Experiencia del cliente', icon: '👥' },
-    { id: 'analytics', name: 'Analíticas', icon: '📊' },
-    { id: 'management', name: 'Administración', icon: '🏢' }
+  const features = [
+    {
+      icon: "📱",
+      title: "Menú Digital Interactivo",
+      description: "Crea menús atractivos con fotos profesionales, descripciones detalladas y precios actualizados en tiempo real."
+    },
+    {
+      icon: "🛒",
+      title: "Pedidos Directos",
+      description: "Los clientes ordenan directamente desde su mesa sin necesidad de descargar aplicaciones o esperar meseros."
+    },
+    {
+      icon: "📊",
+      title: "Analytics en Tiempo Real",
+      description: "Monitorea ventas, productos más populares, horarios pico y rendimiento de tu restaurante con datos precisos."
+    },
+    {
+      icon: "👨‍🍳",
+      title: "Gestión de Cocina",
+      description: "Pantalla dedicada para cocina con órdenes organizadas por tiempo, mesa y prioridad para máxima eficiencia."
+    },
+    {
+      icon: "📲",
+      title: "QR Code Instantáneo",
+      description: "Genera códigos QR únicos para cada mesa. Los clientes escanean y ordenan al instante desde su dispositivo."
+    },
+    {
+      icon: "🔒",
+      title: "Seguro y Confiable",
+      description: "Protección de datos y transacciones seguras. Cumplimiento con estándares internacionales de seguridad."
+    }
   ];
 
-  const features = {
-    operations: [
-      {
-        title: 'Gestión de pedidos en tiempo real',
-        description: 'Sistema completo de pedidos con seguimiento desde la recepción hasta la entrega. Notificaciones automáticas y estados actualizados.',
-        icon: '📋',
-        highlights: ['Pedidos en mesa', 'Para llevar', 'Delivery', 'Notificaciones sonoras']
-      },
-      {
-        title: 'Interfaz profesional para cocina',
-        description: 'Dashboard especializado para cocina con vista de pedidos activos, tiempos de preparación y control de estados.',
-        icon: '👨‍🍳',
-        highlights: ['Vista en tiempo real', 'Control de estados', 'Tiempos de preparación', 'Organización automática']
-      },
-      {
-        title: 'Sistema de mesas inteligente',
-        description: 'Gestión completa de mesas con códigos QR únicos para cada mesa y validación automática.',
-        icon: '🪑',
-        highlights: ['Códigos QR únicos', 'Validación automática', 'Gestión de capacidad', 'Estados de mesa']
-      },
-      {
-        title: 'Menús dinámicos y personalizables',
-        description: 'Crea y gestiona menús completamente personalizables con categorías, productos y opciones de ingredientes.',
-        icon: '🍽️',
-        highlights: ['Categorías ilimitadas', 'Productos personalizables', 'Ingredientes extras', 'Precios dinámicos']
-      },
-      {
-        title: 'Sistema de toppings avanzado',
-        description: 'Configura grupos de ingredientes con opciones múltiples, precios adicionales y subgrupos organizados.',
-        icon: '🧄',
-        highlights: ['Grupos de ingredientes', 'Opciones múltiples', 'Precios personalizados', 'Subgrupos organizados']
-      },
-      {
-        title: 'Multi-negocio (Multi-tenant)',
-        description: 'Una sola instalación puede manejar múltiples restaurantes con configuraciones independientes.',
-        icon: '🏢',
-        highlights: ['Múltiples restaurantes', 'Configuración independiente', 'Administración centralizada', 'Escalabilidad']
+  const stats = [
+    { value: '98%', label: 'Satisfacción del cliente' },
+    { value: '+45%', label: 'Aumento en ventas' },
+    { value: '-60%', label: 'Tiempo de espera' },
+    { value: '24/7', label: 'Soporte disponible' }
+  ];
+
+  const fadeUpVariants = {
+    hidden: { opacity: 0, y: 50 },
+    visible: (custom) => ({
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        delay: custom * 0.1,
+        ease: [0.25, 0.1, 0.25, 1.0]
       }
-    ],
-    customer: [
-      {
-        title: 'Experiencia móvil sin app',
-        description: 'Tus clientes pueden ordenar directamente desde sus teléfonos escaneando el código QR de la mesa, sin descargar aplicaciones.',
-        icon: '📱',
-        highlights: ['Sin descargas', 'Acceso por QR', 'Responsive design', 'Experiencia nativa']
-      },
-      {
-        title: 'Carrito de compras inteligente',
-        description: 'Sistema de carrito avanzado con personalización de productos, cálculo automático de precios y resumen detallado.',
-        icon: '🛒',
-        highlights: ['Personalización completa', 'Cálculo automático', 'Resumen detallado', 'Guardado temporal']
-      },
-      {
-        title: 'Selector de tipo de pedido',
-        description: 'Los clientes pueden elegir entre comer en el restaurante, llevar o delivery con información específica para cada tipo.',
-        icon: '🎯',
-        highlights: ['En mesa', 'Para llevar', 'Delivery', 'Información específica']
-      },
-      {
-        title: 'Interfaz moderna y accesible',
-        description: 'Diseño moderno, intuitivo y accesible que funciona perfectamente en cualquier dispositivo móvil.',
-        icon: '✨',
-        highlights: ['Diseño moderno', 'Totalmente responsive', 'Accesible', 'Carga rápida']
-      },
-      {
-        title: 'Confirmación de pedidos',
-        description: 'Sistema de confirmación con detalles completos del pedido, tiempo estimado y seguimiento en tiempo real.',
-        icon: '✅',
-        highlights: ['Confirmación detallada', 'Tiempo estimado', 'Seguimiento en vivo', 'Notificaciones']
-      },
-      {
-        title: 'Personalización de marca',
-        description: 'Cada restaurante puede personalizar completamente su menú digital con logo, colores y estilo único.',
-        icon: '🎨',
-        highlights: ['Logo personalizado', 'Colores de marca', 'Temas personalizables', 'Identidad única']
-      }
-    ],
-    analytics: [
-      {
-        title: 'Dashboard de pedidos en vivo',
-        description: 'Visualiza todos los pedidos activos en tiempo real con estados, tiempos y detalles completos.',
-        icon: '📈',
-        highlights: ['Pedidos en vivo', 'Estados actualizados', 'Tiempos de preparación', 'Métricas en tiempo real']
-      },
-      {
-        title: 'Reportes de ventas diarios',
-        description: 'Genera reportes detallados de ventas con estadísticas por tipo de pedido, productos más vendidos y totales.',
-        icon: '💰',
-        highlights: ['Reportes PDF', 'Ventas por tipo', 'Productos populares', 'Estadísticas detalladas']
-      },
-      {
-        title: 'Historial de pedidos completados',
-        description: 'Accede al historial completo de pedidos con búsqueda, filtros y exportación de datos.',
-        icon: '📊',
-        highlights: ['Historial completo', 'Búsqueda avanzada', 'Filtros múltiples', 'Exportación de datos']
-      },
-      {
-        title: 'Métricas de rendimiento',
-        description: 'Analiza el rendimiento de tu restaurante con estadísticas de eficiencia, tiempos promedio y productividad.',
-        icon: '⚡',
-        highlights: ['Tiempo promedio', 'Eficiencia operativa', 'Productividad', 'Análisis de tendencias']
-      },
-      {
-        title: 'Notificaciones inteligentes',
-        description: 'Recibe notificaciones automáticas por nuevos pedidos con sonidos personalizables y alertas visuales.',
-        icon: '🔔',
-        highlights: ['Notificaciones sonoras', 'Alertas visuales', 'Configuración personalizable', 'Múltiples dispositivos']
-      },
-      {
-        title: 'Análisis de productos',
-        description: 'Comprende qué productos son más populares, en qué horarios y con qué combinaciones de ingredientes.',
-        icon: '🔍',
-        highlights: ['Productos populares', 'Análisis temporal', 'Combinaciones exitosas', 'Insights de negocio']
-      }
-    ],
-    management: [
-      {
-        title: 'Panel de administración completo',
-        description: 'Interfaz administrativa completa para gestionar todos los aspectos de tu restaurante desde un solo lugar.',
-        icon: '⚙️',
-        highlights: ['Gestión centralizada', 'Interfaz intuitiva', 'Configuración avanzada', 'Control total']
-      },
-      {
-        title: 'Gestión de productos y categorías',
-        description: 'Crea, edita y organiza productos con categorías, precios, descripciones e imágenes de manera sencilla.',
-        icon: '📝',
-        highlights: ['CRUD completo', 'Categorías organizadas', 'Imágenes de productos', 'Precios dinámicos']
-      },
-      {
-        title: 'Configuración de negocio',
-        description: 'Personaliza completamente tu restaurante: nombre, logo, colores, información de contacto y redes sociales.',
-        icon: '🏢',
-        highlights: ['Personalización completa', 'Logo y colores', 'Información de contacto', 'Redes sociales']
-      },
-      {
-        title: 'Gestión de mesas y QR',
-        description: 'Administra las mesas de tu restaurante y genera códigos QR únicos para cada mesa automáticamente.',
-        icon: '🪑',
-        highlights: ['Gestión de mesas', 'QR automáticos', 'Capacidad configurable', 'Estados en tiempo real']
-      },
-      {
-        title: 'Sistema de autenticación',
-        description: 'Control de acceso seguro con diferentes niveles de permisos para administradores y personal.',
-        icon: '🔐',
-        highlights: ['Acceso seguro', 'Múltiples usuarios', 'Roles y permisos', 'Cambio de contraseñas']
-      },
-      {
-        title: 'SuperAdmin para múltiples negocios',
-        description: 'Panel de super administración para gestionar múltiples restaurantes desde una sola cuenta.',
-        icon: '👑',
-        highlights: ['Múltiples restaurantes', 'Gestión centralizada', 'Creación de negocios', 'Administración global']
-      }
-    ]
+    })
   };
 
   return (
-    <div className={`min-h-screen pt-24 pb-20 ${theme === 'dark' ? 'bg-[#051C2C]' : 'bg-[#F4F7FB]'} ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>
-      {/* Header */}
-      <div className="py-16">
-        <div className="container mx-auto px-4 text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className={`text-4xl md:text-5xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'} mb-4`}
-          >
-            Características y capacidades
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className={`text-xl ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'} max-w-3xl mx-auto`}
-          >
-            Descubre todas las herramientas que tenemos para potenciar tu restaurante
-          </motion.p>
-        </div>
-      </div>
-
-      {/* Features Content */}
-      <div className="container mx-auto px-4 py-16">
-        {/* Category Tabs */}
-        <div className="flex flex-wrap justify-center gap-4 mb-16">
-          {featureCategories.map((category) => (
-            <motion.button
-              key={category.id}
-              onClick={() => setActiveTab(category.id)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`flex items-center px-6 py-3 rounded-full text-lg font-medium transition-colors duration-300 ${
-                activeTab === category.id
-                  ? 'bg-[#3A7AFF] text-white shadow-md shadow-[#3A7AFF]/20'
-                  : theme === 'dark' 
-                    ? 'bg-[#333F50] text-[#D1D9FF] hover:bg-[#333F50]/80' 
-                    : 'bg-white text-[#6C7A92] hover:bg-gray-50 border border-[#DCE4F5]'
-              }`}
-            >
-              <span className="mr-2">{category.icon}</span>
-              {category.name}
-            </motion.button>
-          ))}
-        </div>
-
-        {/* Feature Grid */}
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
-        >
-          {features[activeTab].map((feature, index) => (
+    <div className="min-h-screen bg-white">
+      
+      {/* Hero Section */}
+      <section className="py-20 bg-gradient-to-br from-white via-green-50 to-white">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto text-center">
             <motion.div
-              key={index}
+              initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="mb-8"
+            >
+              <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-6">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                Características profesionales
+        </div>
+            </motion.div>
+
+          <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="text-5xl md:text-6xl font-bold text-gray-900 mb-6"
+          >
+              Todo lo que necesitas para tu restaurante
+          </motion.h1>
+
+          <motion.p
+              initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto"
+          >
+              Una plataforma completa que incluye todas las herramientas necesarias 
+              para modernizar tu restaurante y aumentar tus ventas.
+          </motion.p>
+
+            {/* Stats */}
+            <motion.div
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`${theme === 'dark' ? 'bg-[#333F50]' : 'bg-white border border-[#DCE4F5]'} rounded-xl shadow-md ${theme === 'dark' ? 'shadow-black/20' : 'shadow-gray-200/50'} overflow-hidden hover:shadow-lg transition-shadow duration-300`}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
             >
-              <div className="p-8">
-                <div className="text-4xl mb-4">{feature.icon}</div>
-                <h3 className={`text-xl font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>{feature.title}</h3>
-                <p className={`${theme === 'dark' ? 'text-[#A5B9FF]' : 'text-[#6C7A92]'} mb-4`}>{feature.description}</p>
-                {feature.highlights && (
-                  <div className="space-y-2">
-                    {feature.highlights.map((highlight, idx) => (
-                      <div key={idx} className="flex items-center">
-                        <svg className="w-4 h-4 text-[#5FF9B4] mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span className={`text-sm ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
-                          {highlight}
-                        </span>
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">{stat.value}</div>
+                  <div className="text-sm md:text-base text-gray-600">{stat.label}</div>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </motion.div>
           ))}
         </motion.div>
       </div>
+      </div>
+      </section>
 
-      {/* Integration Section */}
-      <div className={theme === 'dark' ? 'bg-[#051C2C]/50' : 'bg-white'}>
-        <div className="container mx-auto px-4 py-16">
+      {/* Features Section */}
+      <section ref={featuresRef} className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            animate={isFeaturesInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
-            className="text-center mb-12"
+            className="text-center mb-16"
           >
-            <h2 className={`text-3xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>Integraciones y compatibilidad</h2>
-            <p className={`text-xl ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'} max-w-3xl mx-auto`}>
-              Nuestro sistema se conecta perfectamente con las herramientas que ya utilizas
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Características principales
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Descubre cómo nuestro sistema puede transformar la operación de tu restaurante
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-8">
-            {[
-              'Whatsapp',
-              'Redes sociales'
-            ].map((integration, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {features.map((feature, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.05 }}
-                className={`${theme === 'dark' ? 'bg-[#333F50]' : 'bg-[#F4F7FB] border border-[#DCE4F5]'} rounded-lg shadow-sm p-6 flex items-center justify-center text-center`}
+                custom={index}
+                variants={fadeUpVariants}
+                initial="hidden"
+                animate={isFeaturesInView ? "visible" : "hidden"}
+                whileHover={{ y: -8, transition: { duration: 0.3 } }}
+                className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
               >
-                <p className={theme === 'dark' ? 'text-[#A5B9FF] font-medium' : 'text-[#6C7A92] font-medium'}>{integration}</p>
+                <div className="text-4xl mb-6">{feature.icon}</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Call-to-Action */}
-      <div className="py-16 mt-16">
-        <div className="container mx-auto px-4 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-          >
-            <h2 className={`text-3xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>¿Listo para transformar tu restaurante?</h2>
-            <p className={`text-xl mb-10 ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'} max-w-3xl mx-auto`}>
-              Comienza hoy mismo y descubre cómo nuestra plataforma puede impulsar tu negocio
-            </p>
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="inline-block"
-            >
-              <a
-                href="/register"
-                className={`bg-[#5FF9B4] ${theme === 'dark' ? 'text-[#051C2C]' : 'text-[#1F2937]'} font-bold py-3 px-8 rounded-full inline-block hover:bg-[#5FF9B4]/90 hover:shadow-lg hover:shadow-[#5FF9B4]/20 transition duration-300`}
-              >
-                Comenzar gratis ahora
-              </a>
-            </motion.div>
-          </motion.div>
-        </div>
-      </div>
+      {/* CTA Section */}
+      <CTA />
     </div>
   );
 };

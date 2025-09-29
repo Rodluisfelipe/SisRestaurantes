@@ -5,6 +5,8 @@ import Home from './Pages/Landing/Home';
 import Login from './Pages/Landing/Login';
 import Register from './Pages/Landing/Register';
 import Features from './Pages/Landing/Features';
+import Pricing from './Pages/Landing/Pricing';
+import Demo from './Pages/Landing/Demo';
 import Contact from './Pages/Landing/Contact';
 
 const LandingRoutes = () => {
@@ -15,6 +17,8 @@ const LandingRoutes = () => {
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
         <Route path="features" element={<Features />} />
+        <Route path="pricing" element={<Pricing />} />
+        <Route path="demo" element={<Demo />} />
         <Route path="contact" element={<Contact />} />
       </Route>
     </Routes>

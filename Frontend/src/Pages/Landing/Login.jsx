@@ -1,214 +1,171 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useAuth } from '../../Context/AuthContext';
-import { useTheme } from '../../Context/ThemeContext';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
   const [isLoading, setIsLoading] = useState(false);
-  
-  const { login } = useAuth();
-  const navigate = useNavigate();
-  const { theme } = useTheme();
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
     
-    try {
-      // Usar el email como username para el login
-      await login(email, password);
-      // El redirect lo maneja el AuthContext automáticamente
-    } catch (err) {
-      console.error('Error de login:', err);
-      setError(
-        err.response?.data?.message || 
-        'Error al iniciar sesión. Por favor, verifica tus credenciales.'
-      );
+    // Simular login
+    setTimeout(() => {
       setIsLoading(false);
-    }
+      // Aquí iría la lógica de autenticación
+    }, 2000);
   };
 
   return (
-    <div className={`min-h-screen ${theme === 'dark' ? 'bg-[#051C2C]' : 'bg-[#F4F7FB]'} flex items-center justify-center py-8 sm:py-12 px-4 sm:px-6 lg:px-8`}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className={`max-w-md w-full ${
-          theme === 'dark' 
-            ? 'bg-[#333F50]/80 border border-[#333F50]' 
-            : 'bg-white border border-[#DCE4F5]'
-        } rounded-2xl shadow-xl overflow-hidden`}
-      >
-        <div className="p-6 sm:p-10">
-          <div className="text-center mb-6 sm:mb-10">
+    <div className="min-h-screen bg-white">
+      
+      {/* Hero Section */}
+      <section className="py-20 bg-gradient-to-br from-white via-green-50 to-white">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-md mx-auto">
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+              className="text-center mb-8"
             >
-              <h2 className={`text-2xl sm:text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>Bienvenido de nuevo</h2>
-              <p className={`mt-2 text-xs sm:text-sm ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
-                Ingresa a tu cuenta para continuar
+              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white font-bold text-2xl">M</span>
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Bienvenido de vuelta
+              </h1>
+              <p className="text-gray-600">
+                Inicia sesión en tu cuenta de Menuby
               </p>
             </motion.div>
-          </div>
 
-          {error && (
+            {/* Login Form */}
             <motion.div 
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-3 bg-red-500/20 text-red-300 text-sm rounded-lg border border-red-500/30"
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8"
             >
-              {error}
-            </motion.div>
-          )}
-
-          <form className="space-y-4 sm:space-y-6" onSubmit={handleSubmit}>
-            <motion.div
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.3 }}
-            >
-              <label htmlFor="email" className={`block text-sm font-medium ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Email Field */}
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                 Correo electrónico
               </label>
-              <div className="mt-1">
                 <input
+                    type="email"
                   id="email"
                   name="email"
-                  type="email"
-                  autoComplete="email"
+                    value={formData.email}
+                    onChange={handleChange}
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={`appearance-none block w-full px-3 py-2.5 sm:py-3 border ${
-                    theme === 'dark'
-                      ? 'border-[#333F50] bg-[#333F50]/50 text-white placeholder-[#A5B9FF]/70'
-                      : 'border-[#DCE4F5] bg-white text-[#1F2937] placeholder-[#6C7A92]/70'
-                  } rounded-lg shadow-sm focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-sm`}
-                  placeholder="tucorreo@ejemplo.com"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                    placeholder="tu@email.com"
                 />
               </div>
-            </motion.div>
 
-            <motion.div
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.4 }}
-            >
-              <label htmlFor="password" className={`block text-sm font-medium ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
+                {/* Password Field */}
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Contraseña
               </label>
-              <div className="mt-1">
+                  <div className="relative">
                 <input
+                      type={showPassword ? 'text' : 'password'}
                   id="password"
                   name="password"
-                  type="password"
-                  autoComplete="current-password"
+                      value={formData.password}
+                      onChange={handleChange}
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`appearance-none block w-full px-3 py-2.5 sm:py-3 border ${
-                    theme === 'dark'
-                      ? 'border-[#333F50] bg-[#333F50]/50 text-white placeholder-[#A5B9FF]/70'
-                      : 'border-[#DCE4F5] bg-white text-[#1F2937] placeholder-[#6C7A92]/70'
-                  } rounded-lg shadow-sm focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF] text-sm`}
-                  placeholder="••••••••"
-                />
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                      placeholder="Tu contraseña"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
               </div>
-            </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.5 }}
-              className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0"
-            >
-              <div className="flex items-center">
+                {/* Remember Me & Forgot Password */}
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center">
                 <input
-                  id="remember-me"
-                  name="remember-me"
                   type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className={`h-4 w-4 text-[#3A7AFF] focus:ring-[#3A7AFF] ${theme === 'dark' ? 'border-[#333F50]' : 'border-[#DCE4F5]'} rounded`}
+                      className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
                 />
-                <label htmlFor="remember-me" className={`ml-2 block text-sm ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
-                  Recordarme
+                    <span className="ml-2 text-sm text-gray-600">Recordarme</span>
                 </label>
-              </div>
-
-              <div className="text-sm">
-                <Link to="/forgot-password" className={`font-medium ${theme === 'dark' ? 'text-[#A5B9FF] hover:text-[#5FF9B4]' : 'text-[#3A7AFF] hover:text-[#3A7AFF]/80'}`}>
+                  <Link
+                    to="/forgot-password"
+                    className="text-sm text-green-600 hover:text-green-700 font-medium"
+                  >
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
-            </motion.div>
 
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.6 }}
-              className="pt-2 sm:pt-4"
-            >
+                {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full flex justify-center py-2.5 sm:py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white 
-                  ${isLoading 
-                    ? 'bg-[#3A7AFF]/50 cursor-not-allowed' 
-                    : 'bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#3A7AFF]/50 hover:shadow-lg hover:shadow-[#3A7AFF]/20'
-                  } transition-all duration-300`}
+                  className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 flex items-center justify-center"
               >
                 {isLoading ? (
-                  <div className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <>
+                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
                     Iniciando sesión...
-                  </div>
-                ) : 'Iniciar sesión'}
-              </button>
-            </motion.div>
-          </form>
+                    </>
+                  ) : (
+                    'Iniciar Sesión'
+                  )}
+                </button>
+              </form>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.7 }}
-            className="mt-5 sm:mt-6 text-center"
-          >
-            <p className={`text-xs sm:text-sm ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
-              ¿No tienes una cuenta?{' '}
-              <Link to="/register" className="font-medium text-[#5FF9B4] hover:text-[#5FF9B4]/80">
-                Regístrate
+
+              {/* Sign Up Link */}
+              <div className="mt-8 text-center">
+                <p className="text-gray-600">
+                  ¿No tienes una cuenta?{' '}
+                  <Link
+                    to="/register"
+                    className="text-green-600 hover:text-green-700 font-semibold"
+                  >
+                    Regístrate gratis
               </Link>
             </p>
+              </div>
           </motion.div>
-
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.8 }}
-            className="mt-6 sm:mt-10 text-center"
-          >
-            <Link to="/" className={`inline-flex items-center text-xs sm:text-sm font-medium ${theme === 'dark' ? 'text-[#A5B9FF] hover:text-white' : 'text-[#6C7A92] hover:text-[#1F2937]'}`}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-              </svg>
-              Volver al inicio
-            </Link>
-          </motion.div>
+          </div>
         </div>
-      </motion.div>
+      </section>
     </div>
   );
 };

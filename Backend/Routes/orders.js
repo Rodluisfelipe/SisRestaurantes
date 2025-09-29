@@ -112,13 +112,9 @@ router.post("/", async (req, res) => {
           businessId: businessObjectId,
           phone,
           name: customerName,
-          stats: {
-            totalOrders: 1,
-            totalSpent: numericTotalAmount,
-            averageOrderValue: numericTotalAmount,
-            lastOrderDate: new Date(),
-            firstOrderDate: new Date()
-          }
+          totalOrders: 1,
+          totalSpent: numericTotalAmount,
+          lastOrderDate: new Date()
         });
         await customer.save();
       }

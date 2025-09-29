@@ -1,347 +1,301 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
-import { useTheme } from '../../Context/ThemeContext';
+import CTA from '../../Components/Landing/CTA';
 
 const Pricing = () => {
-  const { theme } = useTheme();
-  const heroRef = useRef(null);
-  const planRef = useRef(null);
-  const faqRef = useRef(null);
-  
-  const isHeroInView = useInView(heroRef, { once: true, amount: 0.3 });
-  const isPlanInView = useInView(planRef, { once: true, amount: 0.3 });
-  const isFaqInView = useInView(faqRef, { once: true, amount: 0.3 });
+  const [isAnnual, setIsAnnual] = useState(false);
+  const pricingRef = useRef(null);
+  const isPricingInView = useInView(pricingRef, { once: true, amount: 0.3 });
 
-  const plan = {
-    name: 'Menuby Complete',
-    subtitle: 'Todo lo que necesitas para digitalizar tu restaurante',
-    description: 'Plan único que incluye todas las funcionalidades disponibles sin restricciones ni límites',
-    features: [
-      {
-        category: '🍽️ Gestión de Pedidos',
-        items: [
-          'Pedidos ilimitados en tiempo real',
-          'Pedidos en mesa, para llevar y delivery',
-          'Notificaciones automáticas con sonido',
-          'Panel de cocina profesional',
-          'Estados de pedidos actualizados automáticamente'
-        ]
-      },
-      {
-        category: '📱 Menú Digital',
-        items: [
-          'Menú completamente personalizable',
-          'Categorías y productos ilimitados',
-          'Sistema de ingredientes y extras avanzado',
-          'Imágenes de productos de alta calidad',
-          'Precios dinámicos y promociones'
-        ]
-      },
-      {
-        category: '👥 Experiencia del Cliente',
-        items: [
-          'Códigos QR únicos para cada mesa',
-          'Interfaz móvil sin necesidad de app',
-          'Carrito de compras inteligente',
-          'Personalización completa de productos',
-          'Confirmación y seguimiento de pedidos'
-        ]
-      },
-      {
-        category: '⚙️ Administración',
-        items: [
-          'Panel de administración completo',
-          'Gestión de mesas y códigos QR',
-          'Configuración completa del negocio',
-          'Múltiples usuarios y roles',
-          'Personalización total de marca'
-        ]
-      },
-      {
-        category: '📊 Analíticas y Reportes',
-        items: [
-          'Dashboard de métricas en tiempo real',
-          'Reportes de ventas detallados en PDF',
-          'Historial completo de pedidos',
-          'Métricas de rendimiento y eficiencia',
-          'Análisis de productos más populares'
-        ]
-      },
-      {
-        category: '🚀 Tecnología Avanzada',
-        items: [
-          'Comunicación en tiempo real (WebSocket)',
-          'Arquitectura multi-restaurante',
-          'Respaldo automático de todos los datos',
-          'Actualizaciones automáticas del sistema',
-          'Seguridad empresarial SSL incluida'
-        ]
-      }
-    ],
-    included: [
-      '✅ Configuración inicial completamente gratuita',
-      '✅ Soporte técnico completo 24/7',
-      '✅ Todas las actualizaciones incluidas',
-      '✅ Respaldo automático de datos',
-      '✅ Certificado SSL y seguridad empresarial',
-      '✅ Sin límite de usuarios administradores',
-      '✅ Sin límite de productos en el menú',
-      '✅ Sin límite de pedidos mensuales',
-      '✅ Sin límite de mesas o códigos QR',
-      '✅ Personalización completa de marca'
-    ]
-  };
+  const features = [
+    "Menú digital ilimitado con fotos HD",
+    "Códigos QR únicos para cada mesa",
+    "Sistema de pedidos en tiempo real",
+    "Pantalla de cocina dedicada",
+    "Analytics y reportes detallados",
+    "Soporte técnico 24/7",
+    "Actualizaciones automáticas",
+    "Backup de datos diario",
+    "Integración con WhatsApp",
+    "Gestión de inventario básica",
+    "Reportes de ventas en tiempo real",
+    "Soporte multi-idioma"
+  ];
 
-  const faqs = [
+  const benefits = [
     {
-      question: '¿Cómo funciona el sistema de pedidos?',
-      answer: 'Los clientes escanean el código QR de su mesa, acceden al menú digital, personalizan sus productos y realizan el pedido. Tú recibes notificaciones inmediatas y puedes gestionar todo desde el panel de administración.'
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      ),
+      title: "Aumento promedio del 45% en ventas",
+      description: "Los menús digitales aumentan significativamente las ventas promedio por mesa."
     },
     {
-      question: '¿Necesito instalar alguna aplicación?',
-      answer: 'No, ni tú ni tus clientes necesitan descargar aplicaciones. Todo funciona desde el navegador web, tanto en computadoras como en dispositivos móviles.'
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      title: "Reducción del 60% en tiempo de espera",
+      description: "Los pedidos llegan directamente a cocina, eliminando intermediarios."
     },
     {
-      question: '¿Puedo personalizar el diseño para mi restaurante?',
-      answer: 'Sí, puedes personalizar completamente el logo, colores, información de contacto, redes sociales y toda la presentación para que coincida con la identidad de tu marca.'
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+        </svg>
+      ),
+      title: "Mejora del 98% en satisfacción del cliente",
+      description: "Experiencia más rápida y conveniente para tus clientes."
     },
     {
-      question: '¿Qué incluye el soporte técnico?',
-      answer: 'Incluye configuración inicial gratuita, soporte técnico completo, resolución de problemas, actualizaciones automáticas y asistencia para optimizar el uso del sistema.'
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+      title: "ROI positivo desde el primer mes",
+      description: "Recupera tu inversión rápidamente con el aumento en ventas."
+    }
+  ];
+
+  const testimonials = [
+    {
+      name: "María González",
+      role: "Propietaria, Restaurante El Buen Sabor",
+      content: "En solo 2 meses recuperamos la inversión. Las ventas aumentaron un 50% y los clientes están más satisfechos.",
+      avatar: "👩‍🍳"
     },
     {
-      question: '¿Hay límites en el número de pedidos o productos?',
-      answer: 'No hay límites. Puedes recibir pedidos ilimitados, crear productos ilimitados, tener múltiples usuarios y gestionar tantas mesas como necesites.'
-    },
-    {
-      question: '¿Cómo empiezo a usar Menuby?',
-      answer: 'Solo regístrate, configura tu restaurante con nuestra ayuda, carga tu menú y comienza a recibir pedidos. El proceso de configuración es rápido y sencillo.'
+      name: "Carlos Rodríguez",
+      role: "Gerente, Café Central",
+      content: "El mejor ROI que hemos tenido en años. Menuby se paga solo con el aumento en ventas.",
+      avatar: "👨‍💼"
     }
   ];
 
   return (
-    <div className={`min-h-screen pt-24 pb-20 ${theme === 'dark' ? 'bg-[#051C2C]' : 'bg-[#F4F7FB]'}`}>
+    <div className="min-h-screen bg-white">
+      
       {/* Hero Section */}
-      <section ref={heroRef} className="py-16 sm:py-20">
-        <div className="container mx-auto px-4 sm:px-6 text-center">
+      <section className="py-20 bg-gradient-to-br from-white via-green-50 to-white">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
-            animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
+              animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            className="max-w-4xl mx-auto"
+              className="mb-8"
           >
-            <div className="inline-block bg-[#3A7AFF]/20 text-[#3A7AFF] px-4 py-2 rounded-full text-sm font-semibold mb-6">
-              SOLUCIÓN EMPRESARIAL COMPLETA
+              <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-6">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                Plan único, máximo valor
             </div>
-            
-            <h1 className={`text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>
-              La solución completa para
-              <span className="bg-gradient-to-r from-[#3A7AFF] to-[#5FF9B4] bg-clip-text text-transparent"> tu restaurante</span>
-            </h1>
-            
-            <p className={`text-xl sm:text-2xl mb-8 ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'} max-w-3xl mx-auto`}>
-              Sistema profesional con todas las funcionalidades que necesitas para digitalizar y optimizar tu negocio.
-            </p>
-          
-          <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6"
-            >
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Link
-                  to="/contact"
-                  className="bg-gradient-to-r from-[#3A7AFF] to-[#5FF9B4] hover:from-[#3A7AFF]/90 hover:to-[#5FF9B4]/90 text-white py-4 px-8 rounded-lg font-bold inline-block transition-all duration-300 shadow-lg hover:shadow-xl"
-                >
-                  Solicitar información
-                </Link>
-              </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Link
-                  to="/register"
-                  className={`border-2 border-[#3A7AFF] text-[#3A7AFF] hover:bg-[#3A7AFF] hover:text-white py-4 px-8 rounded-lg font-bold inline-block transition-all duration-300 ${theme === 'dark' ? 'hover:text-white' : ''}`}
-                >
-                  Ver demo
-                </Link>
-              </motion.div>
             </motion.div>
-          </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="text-5xl md:text-6xl font-bold text-gray-900 mb-6"
+            >
+              Inversión que se paga sola
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto"
+            >
+              Un solo plan que incluye todo lo que necesitas para transformar tu restaurante. 
+              Sin complicaciones, sin límites, sin sorpresas.
+            </motion.p>
+          </div>
         </div>
       </section>
 
-      {/* Main Plan Section */}
-      <section ref={planRef} className="py-16 sm:py-20">
+      {/* Pricing Card */}
+      <section ref={pricingRef} className="py-20 bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={isPlanInView ? { opacity: 1, y: 0 } : {}}
+            initial={{ opacity: 0, y: 30 }}
+            animate={isPricingInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
-            className="max-w-6xl mx-auto"
+            className="max-w-5xl mx-auto"
           >
-            {/* Plan Card */}
-            <div className={`${theme === 'dark' ? 'bg-[#333F50]/30' : 'bg-white'} rounded-3xl shadow-2xl border ${theme === 'dark' ? 'border-[#333F50]' : 'border-[#DCE4F5]'} overflow-hidden`}>
-              {/* Header */}
-              <div className="bg-gradient-to-r from-[#3A7AFF] to-[#5FF9B4] p-8 sm:p-12 text-center text-white">
-                <h2 className="text-3xl sm:text-4xl font-bold mb-4">{plan.name}</h2>
-                <p className="text-xl mb-6 opacity-90">{plan.subtitle}</p>
-                <div className="text-4xl sm:text-5xl font-bold mb-2">Solicita información</div>
-                <div className="text-xl opacity-90">Precio personalizado según tus necesidades</div>
+            <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-4 border-green-200 relative overflow-hidden">
+              {/* Badge */}
+              <div className="absolute top-0 right-0 bg-green-600 text-white px-6 py-2 rounded-bl-2xl font-semibold">
+                Más Popular
         </div>
         
-              {/* Content */}
-              <div className="p-8 sm:p-12">
-                <p className={`text-lg ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'} mb-8 text-center`}>
-                  {plan.description}
+              <div className="text-center mb-12">
+                <h2 className="text-4xl font-bold text-gray-900 mb-4">Plan Completo</h2>
+                <div className="mb-6">
+                  <span className="text-7xl font-bold text-green-600">$25,000</span>
+                  <span className="text-2xl text-gray-600 ml-2">/mes</span>
+                </div>
+                <p className="text-gray-600 text-xl mb-4">
+                  Todo incluido. Sin sorpresas. Sin límites.
                 </p>
-
-                {/* Features Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-                  {plan.features.map((category, index) => (
-        <motion.div
-                      key={index}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={isPlanInView ? { opacity: 1, y: 0 } : {}}
-                      transition={{ duration: 0.5, delay: 0.1 * index }}
-                      className={`${theme === 'dark' ? 'bg-[#051C2C]/50' : 'bg-[#F4F7FB]'} rounded-xl p-6`}
-                    >
-                      <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>
-                        {category.category}
-                      </h3>
-                      <ul className="space-y-2">
-                        {category.items.map((item, idx) => (
-                          <li key={idx} className="flex items-start">
-                            <svg className="w-5 h-5 text-[#5FF9B4] mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
-                            <span className={`text-sm ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
-                              {item}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </motion.div>
-                  ))}
+                  Prueba gratuita de 14 días
+                </div>
                 </div>
 
-                {/* What's Included */}
-                <div className={`${theme === 'dark' ? 'bg-[#051C2C]/30' : 'bg-[#F4F7FB]/50'} rounded-2xl p-8 mb-8`}>
-                  <h3 className={`text-2xl font-bold mb-6 text-center ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>
-                    Todo esto está incluido
-                  </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-12">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">¿Qué incluye?</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {plan.included.map((item, index) => (
-                      <div key={index} className="flex items-center">
-                        <span className={`${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
-                          {item}
-                        </span>
+                    {features.map((feature, index) => (
+                      <div key={index} className="flex items-start">
+                        <svg className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-gray-700 text-sm">{feature}</span>
                       </div>
                     ))}
                   </div>
           </div>
           
-                {/* CTA */}
-                <div className="text-center">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Link
-                to="/contact"
-                      className="bg-gradient-to-r from-[#3A7AFF] to-[#5FF9B4] hover:from-[#3A7AFF]/90 hover:to-[#5FF9B4]/90 text-white py-4 px-12 rounded-lg font-bold inline-block transition-all duration-300 shadow-lg hover:shadow-xl text-lg"
-              >
-                      Solicitar información
-              </Link>
-            </motion.div>
-                  <p className={`mt-4 text-sm ${theme === 'dark' ? 'text-[#A5B9FF]' : 'text-[#6C7A92]'}`}>
-                    Consulta personalizada • Configuración incluida • Soporte completo
-                  </p>
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Beneficios comprobados</h3>
+                  <div className="space-y-6">
+                    {benefits.map((benefit, index) => (
+                      <div key={index} className="flex items-start">
+                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600 mr-4 flex-shrink-0">
+                          {benefit.icon}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-1">{benefit.title}</h4>
+                          <p className="text-gray-600 text-sm">{benefit.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+              </div>
+
+                <div className="text-center">
+              <Link
+                  to="/register"
+                  className="inline-flex items-center px-10 py-5 bg-green-600 hover:bg-green-700 text-white font-bold text-lg rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+              >
+                  <span>Empezar Prueba Gratuita</span>
+                  <svg className="w-6 h-6 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+              </Link>
+                <p className="text-sm text-gray-500 mt-4">
+                  Sin compromiso • Cancelación en cualquier momento • Soporte incluido
+                  </p>
               </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section ref={faqRef} className="py-16 sm:py-20">
-        <div className="container mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={isFaqInView ? { opacity: 1, y: 0 } : {}}
-            transition={{ duration: 0.8 }}
-            className="max-w-4xl mx-auto"
-          >
-            <div className="text-center mb-12">
-              <h2 className={`text-3xl sm:text-4xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>
-                Preguntas frecuentes
-              </h2>
-              <p className={`text-xl ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
-                Resolvemos las dudas más comunes sobre Menuby
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              {faqs.map((faq, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={isFaqInView ? { opacity: 1, y: 0 } : {}}
-                  transition={{ duration: 0.5, delay: 0.1 * index }}
-                  className={`${theme === 'dark' ? 'bg-[#333F50]/30' : 'bg-white'} rounded-xl p-6 border ${theme === 'dark' ? 'border-[#333F50]' : 'border-[#DCE4F5]'}`}
-                >
-                  <h3 className={`text-lg font-bold mb-3 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>
-                    {faq.question}
-                  </h3>
-                  <p className={theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}>
-                    {faq.answer}
-                  </p>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-16 sm:py-20">
+      {/* ROI Calculator */}
+      <section className="py-20 bg-white">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.8 }}
-            className="text-center max-w-4xl mx-auto"
+            className="max-w-4xl mx-auto text-center"
           >
-            <div className={`${theme === 'dark' ? 'bg-[#333F50]/30' : 'bg-white'} rounded-3xl p-8 sm:p-12 border ${theme === 'dark' ? 'border-[#333F50]' : 'border-[#DCE4F5]'} shadow-2xl`}>
-              <h2 className={`text-3xl sm:text-4xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-[#1F2937]'}`}>
-                ¿Listo para transformar tu restaurante?
+            <h2 className="text-4xl font-bold text-gray-900 mb-6">
+              Calcula tu ROI
               </h2>
-              <p className={`text-xl mb-8 ${theme === 'dark' ? 'text-[#D1D9FF]' : 'text-[#6C7A92]'}`}>
-                Únete a los restaurantes que ya están mejorando su operación con Menuby
+            <p className="text-xl text-gray-600 mb-12">
+              Descubre cuánto puedes aumentar tus ventas con Menuby
+            </p>
+
+            <div className="bg-gray-50 rounded-2xl p-8 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600 mb-2">45%</div>
+                  <div className="text-gray-600">Aumento promedio en ventas</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600 mb-2">2 meses</div>
+                  <div className="text-gray-600">Tiempo promedio de ROI</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-green-600 mb-2">$50,000+</div>
+                  <div className="text-gray-600">Aumento mensual promedio</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-green-50 rounded-2xl p-8">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                ¿Tienes un restaurante con ventas mensuales de $100,000?
+                  </h3>
+              <p className="text-lg text-gray-600 mb-6">
+                Con Menuby podrías aumentar tus ventas a $145,000 mensuales
               </p>
+              <div className="text-4xl font-bold text-green-600 mb-2">
+                ROI del 1,800% anual
+              </div>
+              <p className="text-gray-600">
+                Inversión: $25,000/mes • Retorno: $45,000/mes adicionales
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4 sm:px-6">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl font-bold text-gray-900 mb-6">
+              Lo que dicen nuestros clientes
+              </h2>
+            <p className="text-xl text-gray-600">
+              Casos reales de restaurantes que ya están viendo resultados
+              </p>
+          </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {testimonials.map((testimonial, index) => (
             <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-                <Link
-                  to="/contact"
-                  className="bg-gradient-to-r from-[#3A7AFF] to-[#5FF9B4] hover:from-[#3A7AFF]/90 hover:to-[#5FF9B4]/90 text-white py-4 px-12 rounded-lg font-bold inline-block transition-all duration-300 shadow-lg hover:shadow-xl text-lg"
-                >
-                  Solicitar información
-                </Link>
-            </motion.div>
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: index * 0.2 }}
+                className="bg-white p-8 rounded-2xl shadow-lg"
+              >
+                <div className="text-4xl mb-4">{testimonial.avatar}</div>
+                <p className="text-gray-700 mb-6 italic text-lg">"{testimonial.content}"</p>
+                <div>
+                  <div className="font-semibold text-gray-900 text-lg">{testimonial.name}</div>
+                  <div className="text-gray-600">{testimonial.role}</div>
           </div>
         </motion.div>
+            ))}
+          </div>
       </div>
       </section>
+
+      {/* Final CTA */}
+      <CTA />
     </div>
   );
 };

@@ -1,15 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView, useAnimation, useScroll, useTransform } from 'framer-motion';
-import { useTheme } from '../../Context/ThemeContext';
 
 const HeroSection = ({ 
-  title = "Menuby: Transformando la experiencia gastronómica",
-  description = "Tu menú digital, sin costos. Configura tu carta, agrega fotos, combos y recibe pedidos directo al celular, gratis y sin descargas.",
-  primaryButtonText = "Crear Menú",
+  title = "Menuby: La Revolución Digital para Restaurantes",
+  description = "Transforma tu restaurante con menús digitales interactivos. Aumenta ventas, mejora la experiencia del cliente y optimiza tu operación con nuestra plataforma todo-en-uno.",
+  primaryButtonText = "Crear Mi Menú Gratis",
   primaryButtonLink = "/register",
-  secondaryButtonText = "Iniciar sesión",
-  secondaryButtonLink = "/login",
+  secondaryButtonText = "Ver Demo",
+  secondaryButtonLink = "/contact",
   showButtons = true,
   backgroundClass = ""
 }) => {
@@ -19,8 +18,6 @@ const HeroSection = ({
   const textRef = useRef(null);
   const isInView = useInView(textRef, { once: true, amount: 0.3 });
   const mainControls = useAnimation();
-  const { theme, colors } = useTheme();
-  const isDark = theme === 'dark';
   
   const { scrollYProgress } = useScroll({
     target: heroRef,
@@ -31,29 +28,13 @@ const HeroSection = ({
   const y = useTransform(scrollYProgress, [0, 0.5], [0, 150]);
   const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.9]);
   
-  // Particles
-  const [particles, setParticles] = useState([]);
-  
   useEffect(() => {
-    // Detectar si es dispositivo móvil para ajustar elementos visuales
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
     
     checkIfMobile();
     window.addEventListener('resize', checkIfMobile);
-    
-    // Generate random particles - menos en móvil para mejor rendimiento
-    const particleCount = isMobile ? 15 : 30;
-    const newParticles = Array.from({ length: particleCount }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      size: Math.random() * 5 + 2,
-      duration: Math.random() * 15 + 10
-    }));
-    
-    setParticles(newParticles);
     setIsLoaded(true);
     
     if (isInView) {
@@ -114,141 +95,60 @@ const HeroSection = ({
     }
   };
 
-  const particleVariants = {
-    animate: (custom) => ({
-      y: ["0%", "-100%"],
-      x: [`${custom.x}%`, `${custom.x + (Math.random() * 10 - 5)}%`],
-      opacity: [0, 0.8, 0],
-      scale: [0, 1, 0.5],
-      transition: {
-        duration: custom.duration,
-        repeat: Infinity,
-        ease: "linear",
-        delay: Math.random() * 5
-      }
-    })
-  };
-
   return (
     <motion.section 
       ref={heroRef}
       style={{ opacity, y, scale }}
-      className={`relative h-[90vh] sm:h-screen flex items-center justify-center overflow-hidden ${
-        backgroundClass || (isDark ? "bg-[#051C2C]" : "bg-[#F4F7FB]")
-      }`}
+      className={`relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-green-50 to-white ${backgroundClass}`}
     >
-      {/* Animated Background Gradients */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute inset-0 z-0">
         <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.7 }}
-          transition={{ duration: 2 }}
-          className={`absolute inset-0 ${
-            isDark 
-              ? "bg-gradient-to-r from-[#051C2C]/60 to-[#333F50]/40" 
-              : "bg-gradient-to-r from-[#F4F7FB]/60 to-[#DCE4F5]/40"
-          }`}
-        />
-        
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, rotate: 0 }}
           animate={{ 
-            opacity: [0.3, 0.5, 0.3], 
-            scale: [0.8, 1.2, 0.8], 
-            rotate: 360 
+            scale: [1, 1.1, 1],
+            opacity: [0.3, 0.5, 0.3]
           }}
           transition={{ 
-            duration: 20, 
+            duration: 8, 
             repeat: Infinity,
-            ease: "linear" 
+            ease: "easeInOut"
           }}
-          className={`absolute -top-1/4 -left-1/4 w-1/2 h-1/2 rounded-full ${
-            isDark ? "bg-[#3A7AFF]/20" : "bg-[#3A7AFF]/10"
-          } blur-3xl`}
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-200 rounded-full blur-3xl opacity-30"
         />
-        
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8, rotate: 0 }}
+        <motion.div 
           animate={{ 
-            opacity: [0.4, 0.6, 0.4], 
-            scale: [0.8, 1.1, 0.8], 
-            rotate: -360 
+            scale: [1.1, 1, 1.1],
+            opacity: [0.2, 0.4, 0.2]
           }}
           transition={{ 
-            duration: 25, 
+            duration: 10, 
             repeat: Infinity,
-            ease: "linear",
-            delay: 1
+            ease: "easeInOut",
+            delay: 2
           }}
-          className={`absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 rounded-full ${
-            isDark ? "bg-[#A5B9FF]/20" : "bg-[#DCE4F5]/40"
-          } blur-3xl`}
+          className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-green-300 rounded-full blur-3xl opacity-20"
         />
       </div>
-
-      {/* Animated Particles - solo en desktop o menos cantidad en móvil */}
-      {particles.map((particle) => (
-        <motion.div
-          key={particle.id}
-          custom={particle}
-          variants={particleVariants}
-          animate="animate"
-          className={`absolute rounded-full ${isDark ? "bg-white" : "bg-[#3A7AFF]"}`}
-          style={{
-            left: `${particle.x}%`,
-            top: `100%`,
-            width: particle.size,
-            height: particle.size,
-            opacity: 0,
-            filter: "blur(1px)"
-          }}
-        />
-      ))}
-
-      {/* Grid Pattern Overlay */}
-      <div 
-        className={`absolute inset-0 z-0 ${
-          isDark ? "opacity-20" : "opacity-10"
-        } bg-grid-pattern mix-blend-soft-light`}
-        style={{
-          backgroundSize: isMobile ? "30px 30px" : "40px 40px",
-          backgroundPosition: "center center"
-        }}
-      />
-
-      {/* Circle Decorations */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 1.5, delay: 0.5 }}
-        className="absolute top-0 left-0 w-full h-full pointer-events-none"
-      >
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ duration: 100, repeat: Infinity, ease: "linear" }}
-          className={`absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full border border-dashed ${
-            isDark ? "border-[#3A7AFF]/10" : "border-[#3A7AFF]/10"
-          }`}
-        />
-        <motion.div 
-          animate={{ rotate: -360 }}
-          transition={{ duration: 120, repeat: Infinity, ease: "linear" }}
-          className={`absolute top-1/4 left-1/4 w-[400px] h-[400px] rounded-full border border-dashed ${
-            isDark ? "border-[#5FF9B4]/10" : "border-[#5FF9B4]/10"
-          }`}
-        />
-      </motion.div>
 
       {/* Content Container */}
       <div className="container mx-auto px-4 sm:px-6 relative z-10">
         <div className="max-w-4xl mx-auto text-center" ref={textRef}>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={mainControls}
+            className="mb-8"
+          >
+            <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-6">
+              <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+              La solución #1 para restaurantes en Colombia
+            </div>
+          </motion.div>
+
           <motion.h1 
             variants={titleVariants}
             initial="hidden"
             animate={mainControls}
-            className={`text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight md:leading-tight ${
-              isDark ? "text-white" : "text-[#1F2937]"
-            }`}
+            className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight"
           >
             {title}
           </motion.h1>
@@ -257,9 +157,7 @@ const HeroSection = ({
             variants={descriptionVariants}
             initial="hidden"
             animate={mainControls}
-            className={`mt-6 text-lg sm:text-xl md:text-2xl max-w-3xl mx-auto ${
-              isDark ? "text-[#D1D9FF]" : "text-[#6C7A92]"
-            }`}
+            className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed"
           >
             {description}
           </motion.p>
@@ -269,16 +167,12 @@ const HeroSection = ({
               variants={buttonGroupVariants}
               initial="hidden"
               animate={mainControls}
-              className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
             >
               <motion.div variants={buttonVariants}>
                 <Link
                   to={primaryButtonLink}
-                  className={`px-8 py-3 text-white rounded-lg font-medium flex items-center justify-center ${
-                    isDark 
-                      ? "bg-gradient-to-r from-[#3A7AFF] to-[#3A7AFF]/90 hover:shadow-[0_0_15px_rgba(95,249,180,0.3)]" 
-                      : "bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 shadow-md hover:shadow-lg"
-                  } transition-all duration-300 text-base sm:text-lg`}
+                  className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center text-base sm:text-lg"
                 >
                   {primaryButtonText}
                   <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -290,12 +184,11 @@ const HeroSection = ({
               <motion.div variants={buttonVariants}>
                 <Link
                   to={secondaryButtonLink}
-                  className={`px-8 py-3 rounded-lg font-medium flex items-center justify-center transition-all duration-300 text-base sm:text-lg ${
-                    isDark 
-                      ? "bg-[#333F50]/50 text-[#D1D9FF] hover:bg-[#333F50]/80 hover:text-white border border-[#333F50]" 
-                      : "bg-white text-[#1F2937] hover:bg-[#DCE4F5]/30 border border-[#DCE4F5] shadow-sm"
-                  }`}
+                  className="px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 transition-all duration-300 transform hover:scale-105 flex items-center justify-center text-base sm:text-lg"
                 >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M19 10a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                   {secondaryButtonText}
                 </Link>
               </motion.div>
@@ -307,4 +200,4 @@ const HeroSection = ({
   );
 };
 
-export default HeroSection; 
+export default HeroSection;

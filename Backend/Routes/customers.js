@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const Customer = require('../Models/Customer');
 const Order = require('../Models/Order');
-const { validateBusinessId } = require('../middleware/authMiddleware');
+const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const { isValidObjectId } = require('../utils/isValidObjectId');
 
 // GET /api/customers/:phone - Obtener datos del cliente por teléfono
-router.get('/:phone', validateBusinessId, async (req, res) => {
+router.get('/:phone', async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -32,7 +32,7 @@ router.get('/:phone', validateBusinessId, async (req, res) => {
 });
 
 // PUT /api/customers/:phone - Actualizar datos del cliente
-router.put('/:phone', validateBusinessId, async (req, res) => {
+router.put('/:phone', async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -70,7 +70,7 @@ router.put('/:phone', validateBusinessId, async (req, res) => {
 });
 
 // POST /api/customers - Crear o encontrar cliente
-router.post('/', validateBusinessId, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { businessId } = req.query;
     const { phone, name, ...otherData } = req.body;
@@ -108,7 +108,7 @@ router.post('/', validateBusinessId, async (req, res) => {
 });
 
 // GET /api/customers/:phone/orders - Obtener pedidos del cliente
-router.get('/:phone/orders', validateBusinessId, async (req, res) => {
+router.get('/:phone/orders', async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -163,7 +163,7 @@ router.get('/:phone/orders', validateBusinessId, async (req, res) => {
 });
 
 // PUT /api/customers/:phone/settings - Actualizar configuraciones del cliente
-router.put('/:phone/settings', validateBusinessId, async (req, res) => {
+router.put('/:phone/settings', async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -198,7 +198,7 @@ router.put('/:phone/settings', validateBusinessId, async (req, res) => {
 });
 
 // DELETE /api/customers/:phone - Eliminar cliente
-router.delete('/:phone', validateBusinessId, async (req, res) => {
+router.delete('/:phone', async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;

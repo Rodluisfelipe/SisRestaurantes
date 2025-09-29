@@ -17,6 +17,7 @@ import LandingHome from "./Pages/Landing/Home";
 import LandingLogin from "./Pages/Landing/Login";
 import LandingRegister from "./Pages/Landing/Register";
 import LandingFeatures from "./Pages/Landing/Features";
+import LandingDemo from "./Pages/Landing/Demo";
 import LandingContact from "./Pages/Landing/Contact";
 import LandingPricing from "./Pages/Landing/Pricing";
 import LandingLayout from "./Layouts/LandingLayout";
@@ -97,7 +98,7 @@ function BusinessProviderWrapper({ children }) {
 }
 
 // Lista de rutas reservadas que no deben tratarse como IDs de negocio
-const RESERVED_PATHS = ['login', 'register', 'features', 'contact', 'pricing', 'about', 'terms'];
+const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pricing', 'about', 'terms'];
 
 function App() {
   return (
@@ -119,6 +120,7 @@ function App() {
           <Route path="/login" element={<LandingLogin />} />
           <Route path="/register" element={<LandingRegister />} />
           <Route path="/features" element={<LandingFeatures />} />
+          <Route path="/demo" element={<LandingDemo />} />
           <Route path="/contact" element={<LandingContact />} />
           <Route path="/pricing" element={<LandingPricing />} /> 
           <Route path="/about" element={<LandingHome />} /> 

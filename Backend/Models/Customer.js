@@ -34,7 +34,7 @@ const customerSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'inactive'],
+    enum: ['active', 'inactive', 'vip'],
     default: 'active'
   }
 }, {
@@ -46,8 +46,15 @@ customerSchema.index({ businessId: 1, phone: 1 }, { unique: true });
 
 // Método para actualizar estadísticas después de un pedido
 customerSchema.methods.updateStats = function(orderTotal) {
+  // Asegurar que orderTotal sea un número válido
+  const numericOrderTotal = parseFloat(orderTotal);
+  if (isNaN(numericOrderTotal) || !isFinite(numericOrderTotal)) {
+    console.error('Invalid orderTotal received:', orderTotal);
+    throw new Error(`Invalid order total: ${orderTotal}`);
+  }
+  
   this.totalOrders += 1;
-  this.totalSpent += orderTotal;
+  this.totalSpent += numericOrderTotal;
   this.lastOrderDate = new Date();
   return this.save();
 };

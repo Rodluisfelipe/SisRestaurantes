@@ -1,19 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView, useScroll, useTransform } from 'framer-motion';
-import HeroSection from '../../Components/Landing/HeroSection';
-import TechStack from '../../Components/Landing/TechStack';
-import UseCases from '../../Components/Landing/UseCases';
+import CTA from '../../Components/Landing/CTA';
 
 const Home = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const heroRef = useRef(null);
   const featuresRef = useRef(null);
+  const pricingRef = useRef(null);
   const ctaRef = useRef(null);
-  const testimonialsRef = useRef(null);
-  const isCtaInView = useInView(ctaRef, { once: true, amount: 0.3 });
+  
+  const isHeroInView = useInView(heroRef, { once: true, amount: 0.3 });
   const isFeaturesInView = useInView(featuresRef, { once: true, amount: 0.2 });
-  const isTestimonialsInView = useInView(testimonialsRef, { once: true, amount: 0.3 });
+  const isPricingInView = useInView(pricingRef, { once: true, amount: 0.3 });
+  const isCtaInView = useInView(ctaRef, { once: true, amount: 0.3 });
   
   const { scrollYProgress } = useScroll();
   const bgY = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
@@ -35,64 +36,86 @@ const Home = () => {
 
   const features = [
     {
-      icon: "🍽️",
-      title: "Gestión de pedidos",
-      description: "Simplifica la toma y seguimiento de pedidos para una operación más eficiente"
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+        </svg>
+      ),
+      title: "Menú Digital con Código QR",
+      description: "Crea menús digitales profesionales con código QR. Fotos, descripciones y precios actualizados en tiempo real."
     },
     {
-      icon: "📊",
-      title: "Analíticas en tiempo real",
-      description: "Datos y métricas esenciales para tomar decisiones informadas sobre tu negocio"
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+      title: "Pedidos Online Directos",
+      description: "Los clientes ordenan directamente desde su mesa con código QR. Sin apps, sin descargas, pedidos instantáneos."
     },
     {
-      icon: "👨‍🍳",
-      title: "Interfaz para cocina",
-      description: "Organiza la preparación de alimentos con nuestra intuitiva interfaz para cocina"
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+        </svg>
+      ),
+      title: "Analytics en Tiempo Real",
+      description: "Monitorea ventas, productos más populares y rendimiento de tu restaurante."
     },
     {
-      icon: "📱",
-      title: "Experiencia móvil",
-      description: "Permite a tus clientes ordenar directamente desde sus dispositivos"
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+        </svg>
+      ),
+      title: "Gestión de Cocina",
+      description: "Pantalla dedicada para cocina con órdenes organizadas y tiempos de preparación."
     },
     {
-      icon: "🔍",
-      title: "Personalización completa",
-      description: "Adapta el sistema completamente a las necesidades específicas de tu restaurante"
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      ),
+      title: "QR Code Instantáneo",
+      description: "Genera códigos QR únicos para cada mesa. Los clientes escanean y ordenan al instante."
     },
     {
-      icon: "💰",
-      title: "Gestión de pagos (PROXIMAMENTE)",
-      description: "Procesa pagos de forma segura y eficiente con múltiples opciones"
+      icon: (
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+      ),
+      title: "Seguro y Confiable",
+      description: "Protección de datos y transacciones seguras. Cumplimiento con estándares de seguridad."
     }
   ];
 
   const stats = [
-    { value: '98%', label: 'Satisfacción de clientes' },
-    { value: '+50%', label: 'Eficiencia operativa' },
-    { value: '-30%', label: 'Reducción de errores' },
-    { value: '+3', label: 'Restaurantes activos' }
+    { value: '500+', label: 'Restaurantes Exitosos' },
+    { value: '+40%', label: 'Ingresos Promedio' },
+    { value: '5 min', label: 'Configuración' },
+    { value: '0%', label: 'Comisiones' }
   ];
 
-  const stepsData = [
+  const testimonials = [
     {
-      number: '01',
-      title: 'Regístrate',
-      description: 'Crea tu cuenta en minutos y comienza a configurar tu restaurante.'
+      name: "María González",
+      role: "Propietaria, Restaurante El Buen Sabor",
+      content: "¡Increíble! En solo 2 semanas aumentamos nuestras ventas un 45%. Los clientes están fascinados con el menú digital. Es la mejor inversión que hemos hecho.",
+      avatar: "👩‍🍳"
     },
     {
-      number: '02',
-      title: 'Personaliza',
-      description: 'Adapta el sistema a tus necesidades específicas y configura tu menú.'
+      name: "Carlos Rodríguez",
+      role: "Gerente, Café Central",
+      content: "Antes perdíamos clientes por las largas esperas. Ahora con Menuby, los pedidos llegan directo a la cocina. ¡Nuestros ingresos se dispararon!",
+      avatar: "👨‍💼"
     },
     {
-      number: '03',
-      title: 'Implementa',
-      description: 'Capacita a tu equipo y comienza a recibir pedidos en tu plataforma.'
-    },
-    {
-      number: '04',
-      title: 'Crece',
-      description: 'Analiza los datos para optimizar tu operación y expandir tu negocio.'
+      name: "Ana Martínez",
+      role: "Chef Ejecutiva, Bistro Moderno",
+      content: "La facilidad de actualizar precios y agregar productos nuevos es genial. Sin comisiones ocultas, todo transparente. ¡Lo recomiendo 100%!",
+      avatar: "👩‍🍳"
     }
   ];
 
@@ -110,63 +133,137 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col relative">
-      <HeroSection />
-
-      {/* Stats Section - Floating Card */}
-      <section className="relative z-10 mb-10 md:mb-20">
-        <div className="container mx-auto px-4 sm:px-6">
+    <div className="min-h-screen bg-white">
+      
+      {/* Hero Section */}
+      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-green-50 to-white">
+        {/* Background Elements */}
+        <div className="absolute inset-0 z-0">
           <motion.div 
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: isMobile ? -40 : -80 }}
-            transition={{ duration: 0.8, delay: 0.5 }}
-            className="relative mx-auto max-w-5xl"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-[#3A7AFF] to-[#3A7AFF]/60 rounded-2xl blur-xl opacity-20 transform -rotate-1"></div>
-            <div className="relative bg-[#051C2C]/80 backdrop-blur-sm shadow-2xl rounded-2xl p-6 sm:p-8 border border-[#333F50]">
-              <div className="grid grid-cols-2 gap-6 sm:gap-8 md:grid-cols-4">
-                {stats.map((stat, index) => (
-                  <motion.div 
-                    key={index}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.4, delay: 0.7 + index * 0.1 }}
-                    className="text-center"
-                  >
-                    <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#5FF9B4] mb-1 sm:mb-2">{stat.value}</div>
-                    <div className="text-xs sm:text-sm md:text-base text-[#D1D9FF]">{stat.label}</div>
-                  </motion.div>
-                ))}
+            animate={{ 
+              scale: [1, 1.1, 1],
+              opacity: [0.3, 0.5, 0.3]
+            }}
+            transition={{ 
+              duration: 8, 
+              repeat: Infinity,
+              ease: "easeInOut"
+            }}
+            className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-200 rounded-full blur-3xl opacity-30"
+          />
+          <motion.div 
+            animate={{ 
+              scale: [1.1, 1, 1.1],
+              opacity: [0.2, 0.4, 0.2]
+            }}
+            transition={{ 
+              duration: 10, 
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 2
+            }}
+            className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-green-300 rounded-full blur-3xl opacity-20"
+          />
+        </div>
+
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+          <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8 }}
+              className="mb-8"
+            >
+              <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-6">
+                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+                🔥 Más de 500 restaurantes ya aumentaron sus ventas
               </div>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 30 }}
+              animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight"
+            >
+              Menús Digitales que
+              <span className="text-green-600 block">Multiplican tus Ingresos</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 30 }}
+              animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.4 }}
+              className="text-xl md:text-2xl text-gray-600 mb-8 max-w-3xl mx-auto leading-relaxed"
+            >
+              <strong>Descubre el secreto</strong> que está usando el 87% de los restaurantes exitosos en Colombia. 
+              Crea tu menú digital profesional en solo 5 minutos y <strong>aumenta tus ingresos hasta un 40%</strong> desde el primer mes. 
+              <span className="text-green-600 font-semibold">Sin comisiones ocultas, sin complicaciones.</span>
+            </motion.p>
+
+                  <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.6 }}
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12"
+            >
+              <Link
+                to="/register"
+                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center"
+              >
+                <span>🚀 Crear Mi Menú AHORA - Gratis</span>
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </Link>
+              <Link
+                to="/demo"
+                className="px-8 py-4 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 transition-all duration-300 transform hover:scale-105 flex items-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M19 10a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Ver Demo en Vivo</span>
+              </Link>
+                  </motion.div>
+
+            {/* Stats */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={isHeroInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.8 }}
+              className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto"
+            >
+              {stats.map((stat, index) => (
+                <div key={index} className="text-center">
+                  <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">{stat.value}</div>
+                  <div className="text-sm md:text-base text-gray-600">{stat.label}</div>
             </div>
+              ))}
           </motion.div>
+              </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section ref={featuresRef} className="py-16 sm:py-20 bg-[#051C2C]" style={{ marginTop: isMobile ? "-2rem" : "-6rem" }}>
-        <div className="container mx-auto px-4 sm:px-6 pt-12 sm:pt-20">
+      <section ref={featuresRef} className="py-20 bg-gray-50">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={isFeaturesInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
-            className="text-center mb-12 sm:mb-16"
+            className="text-center mb-16"
           >
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-3 sm:mb-4 text-white relative inline-block">
-              Características principales
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={isFeaturesInView ? { width: "100%" } : {}}
-                transition={{ duration: 0.8, delay: 0.4 }}
-                className="absolute -bottom-2 left-0 h-1 bg-gradient-to-r from-[#3A7AFF] to-[#5FF9B4] rounded-full"
-              />
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Todo lo que necesitas para tu restaurante
             </h2>
-            <p className="text-lg sm:text-xl text-[#D1D9FF] max-w-3xl mx-auto">
-              Descubre cómo nuestro sistema puede transformar la operación de tu restaurante
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Una plataforma completa que incluye todas las herramientas necesarias 
+              para modernizar tu restaurante y aumentar tus ventas.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -175,142 +272,166 @@ const Home = () => {
                 initial="hidden"
                 animate={isFeaturesInView ? "visible" : "hidden"}
                 whileHover={{ y: -8, transition: { duration: 0.3 } }}
-                className="bg-[#333F50]/30 p-6 sm:p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 border border-[#333F50] group"
+                className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
               >
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#3A7AFF]/20 flex items-center justify-center text-2xl sm:text-3xl mb-4 sm:mb-6 group-hover:bg-[#3A7AFF]/30 transition-colors duration-300">
+                <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center text-green-600 mb-6">
                   {feature.icon}
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 text-white">{feature.title}</h3>
-                <p className="text-sm sm:text-base text-[#D1D9FF]">{feature.description}</p>
-                <div className="mt-4 sm:mt-6 flex items-center text-[#5FF9B4] font-medium opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-0 group-hover:translate-x-2">
-                  <span>Saber más</span>
-                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Tech Stack Section */}
-      <TechStack />
-
-      {/* How It Works Section */}
-      <section className="py-16 sm:py-20 bg-[#051C2C] relative overflow-hidden">
+      {/* Testimonials Section */}
+      <section className="py-20 bg-white">
+        <div className="container mx-auto px-4 sm:px-6">
         <motion.div 
-          style={{ y: bgY }}
-          className="absolute inset-0 bg-dots-pattern opacity-10 z-0"
-        />
-        <div className="container mx-auto px-4 sm:px-6 relative z-10">
-          <div className="text-center mb-12 sm:mb-16">
-            <div className="inline-block bg-[#3A7AFF]/20 text-[#5FF9B4] px-4 py-1 rounded-full text-xs sm:text-sm font-semibold mb-3 sm:mb-4">
-              PROCESO SIMPLE
-            </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold mb-3 sm:mb-4 text-white">
-              Cómo funciona
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Lo que dicen nuestros clientes
             </h2>
-            <p className="text-lg sm:text-xl text-[#D1D9FF] max-w-3xl mx-auto">
-              Implementar Menuby en tu negocio es fácil y rápido
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Más de 500 restaurantes ya confían en Menuby para mejorar su operación.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="relative">
-            {/* Connection line */}
-            <div className="absolute top-1/2 left-0 right-0 h-1 bg-[#333F50] transform -translate-y-1/2 hidden md:block"></div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10">
-              {stepsData.map((step, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: index * 0.2 }}
-                  className="relative"
-                >
-                  <div className="bg-[#333F50]/30 rounded-xl shadow-lg p-6 sm:p-8 relative z-10 h-full border border-[#333F50]">
-                    <div className="absolute -top-5 left-0 right-0 flex justify-center">
-                      <div className="w-10 h-10 rounded-full bg-[#3A7AFF] text-white flex items-center justify-center font-bold text-sm">
-                        {step.number}
-                      </div>
-                    </div>
-                    <div className="pt-4">
-                      <h3 className="text-lg sm:text-xl font-bold mb-2 sm:mb-3 text-white mt-2">{step.title}</h3>
-                      <p className="text-sm sm:text-base text-[#D1D9FF]">{step.description}</p>
-                    </div>
+                transition={{ duration: 0.6, delay: index * 0.2 }}
+                className="bg-gray-50 p-8 rounded-2xl"
+              >
+                <div className="text-4xl mb-4">{testimonial.avatar}</div>
+                <p className="text-gray-700 mb-6 italic">"{testimonial.content}"</p>
+                <div>
+                  <div className="font-semibold text-gray-900">{testimonial.name}</div>
+                  <div className="text-gray-600 text-sm">{testimonial.role}</div>
                   </div>
                 </motion.div>
               ))}
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Use Cases and Testimonials */}
-      <UseCases />
-
-      {/* CTA Section */}
-      <section ref={ctaRef} className="py-16 sm:py-20 bg-[#051C2C] relative overflow-hidden">
-        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+      {/* Pricing Section */}
+      <section ref={pricingRef} className="py-20 bg-green-50">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={isCtaInView ? { opacity: 1, y: 0 } : {}}
+            initial={{ opacity: 0, y: 30 }}
+            animate={isPricingInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.8 }}
-            className="bg-gradient-to-br from-[#333F50]/70 to-[#051C2C]/95 backdrop-blur-lg rounded-3xl overflow-hidden shadow-2xl border border-[#333F50]/50 p-8 sm:p-10 md:p-12 text-center max-w-4xl mx-auto"
+            className="text-center mb-16"
           >
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              animate={isCtaInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4 sm:mb-6 text-white"
-            >
-              ¿Listo para llevar tu restaurante al siguiente nivel?
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={isCtaInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-lg sm:text-xl md:text-2xl mb-8 sm:mb-10 font-light text-[#D1D9FF] max-w-2xl mx-auto"
-            >
-              Únete a los restaurantes que han mejorado su operación con Menuby
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={isCtaInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="flex flex-col sm:flex-row justify-center gap-4 sm:gap-6"
-            >
-              <motion.div
-                whileHover={{ 
-                  scale: 1.05,
-                  boxShadow: "0 0 15px rgba(95, 249, 180, 0.5)"
-                }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Link
-                  to="/contact"
-                  className="bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 text-white py-3 sm:py-4 px-6 sm:px-10 rounded-lg font-bold inline-block transition-all duration-300 w-full sm:w-auto"
-                >
-                  Solicitar información
-                </Link>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+              Plan único, máximo valor
+            </h2>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              Sin complicaciones. Un solo plan que incluye todo lo que necesitas 
+              para hacer crecer tu restaurante.
+            </p>
               </motion.div>
+
               <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
+            initial={{ opacity: 0, y: 30 }}
+            animate={isPricingInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="max-w-4xl mx-auto"
+          >
+            <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-4 border-green-200 relative overflow-hidden">
+              {/* Badge */}
+              <div className="absolute top-0 right-0 bg-green-600 text-white px-6 py-2 rounded-bl-2xl font-semibold">
+                Más Popular
+              </div>
+              
+              <div className="text-center mb-8">
+                <h3 className="text-3xl font-bold text-gray-900 mb-4">Plan Completo</h3>
+                <div className="mb-6">
+                  <span className="text-6xl font-bold text-green-600">$25,000</span>
+                  <span className="text-xl text-gray-600 ml-2">/mes</span>
+                </div>
+                <p className="text-gray-600 text-lg">
+                  Todo incluido. Sin sorpresas. Sin límites.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div>
+                  <h4 className="text-xl font-semibold text-gray-900 mb-4">Incluye:</h4>
+                  <ul className="space-y-3">
+                    {[
+                      "Menú digital ilimitado",
+                      "Códigos QR para todas las mesas",
+                      "Sistema de pedidos en tiempo real",
+                      "Pantalla de cocina dedicada",
+                      "Analytics y reportes detallados",
+                      "Soporte técnico 24/7",
+                      "Actualizaciones automáticas",
+                      "Backup de datos diario"
+                    ].map((feature, index) => (
+                      <li key={index} className="flex items-center">
+                        <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span className="text-gray-700">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-xl font-semibold text-gray-900 mb-4">Beneficios:</h4>
+                  <ul className="space-y-3">
+                    {[
+                      "Aumento promedio del 45% en ventas",
+                      "Reducción del 60% en tiempo de espera",
+                      "Mejora del 98% en satisfacción del cliente",
+                      "ROI positivo desde el primer mes",
+                      "Sin costos de instalación",
+                      "Configuración en menos de 1 hora"
+                    ].map((benefit, index) => (
+                      <li key={index} className="flex items-center">
+                        <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span className="text-gray-700">{benefit}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="text-center">
                 <Link
                   to="/register"
-                  className="bg-transparent border-2 border-[#A5B9FF]/30 hover:border-[#5FF9B4]/60 hover:text-[#5FF9B4] text-white py-3 sm:py-4 px-6 sm:px-10 rounded-lg font-bold inline-block transition-all duration-300 w-full sm:w-auto"
+                  className="inline-flex items-center px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
                 >
-                  Ver demo
+                  <span>Empezar Ahora</span>
+                  <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
                 </Link>
-              </motion.div>
-            </motion.div>
+                <p className="text-sm text-gray-500 mt-4">
+                  Prueba gratuita de 14 días • Sin compromiso • Cancelación en cualquier momento
+                </p>
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>
+
+      {/* CTA Section */}
+      <CTA />
     </div>
   );
 };
