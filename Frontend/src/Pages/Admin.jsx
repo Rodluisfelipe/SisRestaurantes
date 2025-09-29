@@ -576,7 +576,9 @@ function Admin() {
       return;
     }
     
-    if (!form.price || form.price <= 0) {
+    // Convertir el precio a número para validación
+    const numericPrice = parseFloat(form.price.replace(/\./g, ''));
+    if (!form.price || numericPrice <= 0 || isNaN(numericPrice)) {
       showErrorMessage('El precio debe ser mayor a 0');
       return;
     }
@@ -589,7 +591,9 @@ function Admin() {
     const formData = new FormData();
     formData.append('name', form.name);
     formData.append('description', form.description);
-    formData.append('price', form.price);
+    // Convertir el precio del formato colombiano (29.000) a número (29000)
+    const numericPrice = parseFloat(form.price.replace(/\./g, ''));
+    formData.append('price', numericPrice);
     formData.append('category', form.category);
     if (form.image instanceof File) {
       formData.append('image', form.image);
@@ -666,7 +670,7 @@ function Admin() {
       const formToSend = {
         name: form.name,
         description: form.description,
-        price: Number(form.price),
+        price: parseFloat(form.price.replace(/\./g, '')),
         category: form.category,
         image: form.image,
         toppingGroups: toppingGroupIds,
@@ -717,6 +721,21 @@ function Admin() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handlePriceChange = (e) => {
+    const { value } = e.target;
+    
+    // Permitir solo números, puntos y comas
+    const cleanValue = value.replace(/[^0-9.,]/g, '');
+    
+    // Convertir comas a puntos para formato colombiano
+    const formattedValue = cleanValue.replace(/,/g, '.');
+    
+    setForm(prev => ({
+      ...prev,
+      price: formattedValue
+    }));
   };
 
   const handleToppingGroupsChange = (selectedGroups) => {
@@ -1149,20 +1168,18 @@ function Admin() {
                                     </div>
                         <input
                           name="price"
-                        type="number"
-                        min="0"
-                        step="0.01"
+                        type="text"
                           value={form.price}
-                          onChange={handleChange}
+                          onChange={handlePriceChange}
                                       className={`w-full rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-12 pr-6 py-4 text-lg font-semibold transition-all duration-200 group-hover:border-slate-300 ${
-                                        !form.price || form.price <= 0 ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
+                                        !form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, ''))) ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
                                       }`}
-                          placeholder="0.00"
+                          placeholder="29.000"
                           required
                         />
                     </div>
                                 </div>
-                                {(!form.price || form.price <= 0) && (
+                                {(!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, '')))) && (
                                   <p className="text-red-500 text-sm mt-1 flex items-center">
                                     <span className="mr-1">⚠️</span>
                                     El precio debe ser mayor a 0
