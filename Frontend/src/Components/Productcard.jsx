@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import ErrorBoundary from './ErrorBoundary';
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -8,6 +8,105 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
   const [showToppings, setShowToppings] = useState(false);
   const [hasError, setHasError] = useState(false);
   const { businessConfig } = useBusinessConfig();
+
+  // Variantes de animación para la tarjeta
+  const cardVariants = {
+    hidden: { 
+      opacity: 0, 
+      y: 20,
+      scale: 0.95
+    },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      scale: 1,
+      transition: {
+        duration: 0.3,
+        ease: "easeOut"
+      }
+    },
+    hover: {
+      y: -5,
+      scale: 1.02,
+      boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+      transition: {
+        duration: 0.2,
+        ease: "easeOut"
+      }
+    },
+    tap: {
+      scale: 0.98,
+      transition: {
+        duration: 0.1
+      }
+    }
+  };
+
+  const imageVariants = {
+    hidden: { 
+      opacity: 0,
+      scale: 1.1
+    },
+    visible: { 
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut"
+      }
+    },
+    hover: {
+      scale: 1.05,
+      transition: {
+        duration: 0.3,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const priceVariants = {
+    hidden: { 
+      opacity: 0,
+      x: 20
+    },
+    visible: { 
+      opacity: 1,
+      x: 0,
+      transition: {
+        duration: 0.3,
+        delay: 0.1,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const buttonVariants = {
+    hidden: { 
+      opacity: 0,
+      y: 10
+    },
+    visible: { 
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.3,
+        delay: 0.2,
+        ease: "easeOut"
+      }
+    },
+    hover: {
+      scale: 1.05,
+      transition: {
+        duration: 0.2
+      }
+    },
+    tap: {
+      scale: 0.95,
+      transition: {
+        duration: 0.1
+      }
+    }
+  };
 
   const handleAddToCart = (productWithToppings) => {
     addToCart(productWithToppings);
@@ -39,8 +138,11 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
     <>
       <motion.div 
         onClick={handleShowToppings}
-        whileHover={{ y: -8, scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
+        variants={cardVariants}
+        initial="hidden"
+        animate="visible"
+        whileHover="hover"
+        whileTap="tap"
         className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/50 overflow-hidden backdrop-blur-sm cursor-pointer"
       >
         {/* Premium Product Image */}
@@ -49,8 +151,11 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
             <motion.img 
               src={product.image} 
               alt={product.name}
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
-              whileHover={{ scale: 1.1 }}
+              className="w-full h-full object-contain"
+              variants={imageVariants}
+              initial="hidden"
+              animate="visible"
+              whileHover="hover"
               onError={(e) => {
                 // Si la imagen falla al cargar, ocultar y mostrar fallback
                 e.target.style.display = 'none';
@@ -101,18 +206,21 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
           
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <span 
+              <motion.span
                 className="text-lg sm:text-2xl font-bold"
                 style={{
                   color: businessConfig?.theme?.buttonColor || '#f97316'
                 }}
+                variants={priceVariants}
+                initial="hidden"
+                animate="visible"
               >
                 ${(() => {
                   const price = Number(product.price);
                   const options = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
                   return price.toLocaleString('es-CO', options);
                 })()}
-              </span>
+              </motion.span>
             </div>
             
             <motion.button
@@ -120,8 +228,11 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
                 e.stopPropagation(); // Evita que se propague al div padre
                 handleShowToppings();
               }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              variants={buttonVariants}
+              initial="hidden"
+              animate="visible"
+              whileHover="hover"
+              whileTap="tap"
               className="w-10 h-10 sm:w-12 sm:h-12 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 relative z-10"
               style={{
                 backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
@@ -148,9 +259,10 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
         </div>
       </motion.div>
 
-      {showToppings && (
-        <div onClick={(e) => e.stopPropagation()} className="debugging-wrapper">
-          <ProductToppingsSelector
+      <AnimatePresence>
+        {showToppings && (
+          <div onClick={(e) => e.stopPropagation()} className="debugging-wrapper">
+            <ProductToppingsSelector
             product={{
               ...product,
               toppingGroups: Array.isArray(product.toppingGroups) ? product.toppingGroups : []
@@ -162,8 +274,9 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
               handleCloseToppings();
             }}
           />
-        </div>
-      )}
+          </div>
+        )}
+      </AnimatePresence>
       
       {hasError && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from "../Context/BusinessContext";
+import useNotification from '../hooks/useNotification';
 
 function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   const [selectedToppings, setSelectedToppings] = useState({});
@@ -18,8 +20,103 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     const name = optionName.toLowerCase();
     return name.includes('gratis') || name.includes('gratuito') || name.includes('sin costo') || name.includes('incluido');
   };
+
+  // Variantes de animación
+  const modalVariants = {
+    hidden: { 
+      opacity: 0, 
+      scale: 0.8,
+      y: 50
+    },
+    visible: { 
+      opacity: 1, 
+      scale: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        damping: 25,
+        stiffness: 300
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      scale: 0.8,
+      y: 50,
+      transition: {
+        duration: 0.2
+      }
+    }
+  };
+
+  const backdropVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 },
+    exit: { opacity: 0 }
+  };
+
+  const groupVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.3,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const optionVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: { 
+      opacity: 1, 
+      x: 0,
+      transition: {
+        duration: 0.2,
+        ease: "easeOut"
+      }
+    }
+  };
+
+  const buttonVariants = {
+    hover: { 
+      scale: 1.05,
+      transition: {
+        duration: 0.2
+      }
+    },
+    tap: { 
+      scale: 0.95,
+      transition: {
+        duration: 0.1
+      }
+    }
+  };
+
+  const highlightVariants = {
+    initial: { 
+      scale: 1,
+      boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.4)"
+    },
+    highlight: { 
+      scale: 1.02,
+      boxShadow: "0 0 0 8px rgba(239, 68, 68, 0.1)",
+      transition: {
+        duration: 0.3,
+        ease: "easeOut"
+      }
+    },
+    exit: { 
+      scale: 1,
+      boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.4)",
+      transition: {
+        duration: 0.3
+      }
+    }
+  };
   
   const { businessConfig } = useBusinessConfig();
+  const { success } = useNotification();
   
   // Asegurarnos de que no haya grupos duplicados y que toppingGroups sea un array
   // Ordenar según el orden guardado en el backend
@@ -496,6 +593,9 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
       
       // Llamar a la función de callback
       onAddToCart(productToAdd);
+      
+      // Mostrar notificación de éxito
+      success(`¡${product.name} agregado al carrito!`, 2000);
     } catch (error) {
       handleError(error);
     }
@@ -508,14 +608,23 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
 
   // Renderizar el modal con los toppings
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="relative bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col"
-        onClick={handleModalClick}
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+        onClick={onClose}
+        variants={backdropVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
       >
+        <motion.div
+          className="relative bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col"
+          onClick={handleModalClick}
+          variants={modalVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
         {/* Encabezado del modal */}
         <div className="sticky top-0 z-10 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-800 truncate">
@@ -579,7 +688,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
               
               {uniqueToppingGroups.map((group, index) => (
                 group && group._id ? (
-                  <div
+                  <motion.div
                     key={group._id}
                     id={`group-${group._id}`}
                     className={`border rounded-lg overflow-hidden transition-all duration-500 ${
@@ -587,6 +696,10 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                         ? 'ring-2 ring-red-400 bg-red-50 shadow-lg' 
                         : ''
                     }`}
+                    variants={groupVariants}
+                    initial="hidden"
+                    animate="visible"
+                    transition={{ delay: index * 0.1 }}
                   >
                     {/* Encabezado del grupo (acordeón) */}
                     <div
@@ -688,8 +801,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                         {/* Opciones principales */}
                         {Array.isArray(group.options) && group.options.length > 0 && (
                           <div className="space-y-2">
-                            {group.options.filter(option => option && option._id && option.active !== false).map(option => (
-                              <div
+                            {group.options.filter(option => option && option._id && option.active !== false).map((option, optionIndex) => (
+                              <motion.div
                                   key={option._id}
                                   onClick={() => handleOptionChange(group._id, option._id)}
                                   className={`flex items-center justify-between p-2 rounded cursor-pointer ${
@@ -697,6 +810,12 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                       ? 'bg-blue-50 border border-blue-200'
                                       : 'hover:bg-gray-50 border border-gray-100'
                                   }`}
+                                  variants={optionVariants}
+                                  initial="hidden"
+                                  animate="visible"
+                                  transition={{ delay: optionIndex * 0.05 }}
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
                                 >
                                   <div className="flex items-center">
                                     {group.isMultipleChoice ? (
@@ -722,7 +841,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                   ) : Number(option.price) > 0 ? (
                                     <span className="text-gray-700">+${option.price}</span>
                                   ) : null}
-                                </div>
+                                </motion.div>
                             ))}
                           </div>
                         )}
@@ -793,7 +912,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                         )}
                       </div>
                     )}
-                  </div>
+                  </motion.div>
                 ) : null
               ))}
             </div>
@@ -832,23 +951,27 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
           </div>
           
           
-          <button
+          <motion.button
             onClick={handleAddToCart}
-            className="w-full py-3 rounded-lg font-semibold text-white flex items-center justify-center transition-all duration-200 hover:opacity-90 transform hover:scale-105"
+            className="w-full py-3 rounded-lg font-semibold text-white flex items-center justify-center"
             style={{ 
               backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6', 
               color: businessConfig.theme?.buttonTextColor || 'white' 
             }}
+            variants={buttonVariants}
+            whileHover="hover"
+            whileTap="tap"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3z" />
               <path d="M16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
             </svg>
             Agregar al carrito
-          </button>
+          </motion.button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+    </AnimatePresence>
   );
 }
 
