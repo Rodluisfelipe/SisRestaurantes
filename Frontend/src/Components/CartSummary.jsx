@@ -834,19 +834,20 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   };
 
   return (
-    <motion.div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-40"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
+    <>
       <motion.div 
-        className="bg-white rounded-2xl max-w-lg w-full h-[85vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
-        variants={cartVariants}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-40"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
       >
+        <motion.div 
+          className="bg-white rounded-2xl max-w-lg w-full h-[85vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
+          variants={cartVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
+        >
         {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-6 flex justify-between items-center z-10 backdrop-blur-lg">
           <div className="flex items-center space-x-3">
@@ -1073,7 +1074,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     </div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
           </AnimatePresence>
 
@@ -1272,14 +1273,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               </div>
             </div>
           )}
-        </div>
-        
+        </motion.div>
+      </motion.div>
+      
       {/* Order form modal - improve styling */}
       {showOrderModal && (
         <OrderFormModal />
       )}
-      </motion.div>
-    </motion.div>
+    </>
   );
 }
 
