@@ -904,22 +904,7 @@ export default function Menu() {
     return <OrderTypeSelector onComplete={handleOrderTypeComplete} initialTableNumber={tableFromUrl} />;
   }
 
-  if (showCartSummary) {
-    return (
-      <CartSummary
-        cart={cart}
-        updateQuantity={updateQuantity}
-        removeFromCart={removeFromCart}
-        onClose={() => setShowCartSummary(false)}
-        orderInfo={orderInfo}
-        updateOrderInfo={updateOrderInfo}
-        createWhatsAppMessage={createWhatsAppMessage}
-        onOrder={handleOrder}
-        businessConfig={businessConfig}
-        isSubmittingOrder={isSubmittingOrder}
-      />
-    );
-  }
+  // El menú siempre se renderiza, el CartSummary se superpone como modal
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -954,6 +939,22 @@ export default function Menu() {
         setCart={setCart}
         setShowCartSummary={setShowCartSummary}
       />
+      
+      {/* CartSummary como modal superpuesto */}
+      {showCartSummary && (
+        <CartSummary
+          cart={cart}
+          updateQuantity={updateQuantity}
+          removeFromCart={removeFromCart}
+          onClose={() => setShowCartSummary(false)}
+          orderInfo={orderInfo}
+          updateOrderInfo={updateOrderInfo}
+          createWhatsAppMessage={createWhatsAppMessage}
+          onOrder={handleOrder}
+          businessConfig={businessConfig}
+          isSubmittingOrder={isSubmittingOrder}
+        />
+      )}
     </div>
   );
 } 

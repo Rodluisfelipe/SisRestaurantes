@@ -2,8 +2,6 @@ import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "./Context/AuthContext";
 import { useState } from "react";
-import useNotification from './hooks/useNotification';
-import NotificationContainer from './Components/NotificationContainer';
 
 // Lazy load components
 const HealthCheckLazy = lazy(() => import('./Pages/HealthCheck'));
@@ -205,12 +203,6 @@ function App() {
         {/* Ruta para páginas no encontradas */}
         <Route path="*" element={<NotFound />} />
         </Routes>
-        
-        {/* Notification Container */}
-        <NotificationContainer 
-          notifications={[]} 
-          removeNotification={() => {}} 
-        />
     </AuthProvider>
   );
 }

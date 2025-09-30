@@ -5,7 +5,7 @@ import api from '../services/api';
 
 const CancelConfirmationModal = ({ onConfirm, onCancel, isLoading }) => {
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[60]">
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[60]">
       <div className="bg-white rounded-xl sm:rounded-2xl max-w-xs sm:max-w-md w-full overflow-hidden shadow-2xl border border-red-100 transform transition-all">
         <div className="p-4 sm:p-6 text-center">
           <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-red-50 to-red-100 mx-auto mb-4 sm:mb-6 flex items-center justify-center shadow-lg">
@@ -204,7 +204,7 @@ const OrderConfirmationModal = ({
   
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
         <div className="bg-white rounded-2xl w-full max-w-xs sm:max-w-sm mx-auto shadow-2xl border border-slate-200/50 transform transition-all overflow-hidden max-h-[90vh] overflow-y-auto">
           {/* Encabezado mejorado */}
           <div 

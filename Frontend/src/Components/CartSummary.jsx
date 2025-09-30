@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
@@ -15,88 +14,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const [tableNumber, setTableNumber] = useState(orderInfo?.tableNumber || '');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const { businessConfig } = useBusinessConfig();
-
-  // Variantes de animación para el carrito
-  const cartVariants = {
-    hidden: { 
-      opacity: 0, 
-      x: 300,
-      scale: 0.95
-    },
-    visible: { 
-      opacity: 1, 
-      x: 0,
-      scale: 1,
-      transition: {
-        type: "spring",
-        damping: 25,
-        stiffness: 300
-      }
-    },
-    exit: { 
-      opacity: 0, 
-      x: 300,
-      scale: 0.95,
-      transition: {
-        duration: 0.3
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { 
-      opacity: 0, 
-      x: 50,
-      scale: 0.9
-    },
-    visible: { 
-      opacity: 1, 
-      x: 0,
-      scale: 1,
-      transition: {
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    },
-    exit: { 
-      opacity: 0, 
-      x: -50,
-      scale: 0.9,
-      transition: {
-        duration: 0.2
-      }
-    }
-  };
-
-  const buttonVariants = {
-    hover: { 
-      scale: 1.05,
-      transition: {
-        duration: 0.2
-      }
-    },
-    tap: { 
-      scale: 0.95,
-      transition: {
-        duration: 0.1
-      }
-    }
-  };
-
-  const quantityVariants = {
-    hover: { 
-      scale: 1.1,
-      transition: {
-        duration: 0.2
-      }
-    },
-    tap: { 
-      scale: 0.9,
-      transition: {
-        duration: 0.1
-      }
-    }
-  };
   
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
@@ -834,22 +751,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   };
 
   return (
-    <>
-      <motion.div 
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-40"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        <motion.div 
-          className="bg-white rounded-2xl max-w-lg w-full h-[85vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
-          variants={cartVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-        >
+    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-40">
+      <div className="bg-white rounded-2xl max-w-lg w-full h-[85vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-6 flex justify-between items-center z-10 backdrop-blur-lg">
+        <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-6 flex justify-between items-center z-10 backdrop-blur-lg rounded-t-2xl">
           <div className="flex items-center space-x-3">
             <div 
               className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
@@ -876,18 +781,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
         {/* Cart Items - Scrollable Content */}
         <div className="flex-1 overflow-y-auto px-6 pt-2 pb-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
-          <AnimatePresence>
-            {cart.map((item, index) => (
-              <motion.div 
-                key={item.uniqueId || item._id} 
-                className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 mb-4 last:mb-0 shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-200"
-                variants={itemVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
-              >
+          {cart.map((item) => (
+            <div key={item.uniqueId || item._id} className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 mb-4 last:mb-0 shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-200">
               <div className="flex justify-between items-start">
                 {/* Product image */}
                 <div className="w-16 h-16 mr-3 flex-shrink-0">
@@ -1074,9 +969,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     </div>
                   </div>
                 )}
-              </motion.div>
+              </div>
             ))}
-          </AnimatePresence>
 
           {/* Empty cart state */}
           {cart.length === 0 && (
@@ -1273,14 +1167,13 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               </div>
             </div>
           )}
-        </motion.div>
-      </motion.div>
-      
+        </div>
+        
       {/* Order form modal - improve styling */}
       {showOrderModal && (
         <OrderFormModal />
       )}
-    </>
+    </div>
   );
 }
 

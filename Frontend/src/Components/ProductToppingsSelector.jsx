@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from "../Context/BusinessContext";
-import useNotification from '../hooks/useNotification';
 
 function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   const [selectedToppings, setSelectedToppings] = useState({});
@@ -20,103 +18,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     const name = optionName.toLowerCase();
     return name.includes('gratis') || name.includes('gratuito') || name.includes('sin costo') || name.includes('incluido');
   };
-
-  // Variantes de animación
-  const modalVariants = {
-    hidden: { 
-      opacity: 0, 
-      scale: 0.8,
-      y: 50
-    },
-    visible: { 
-      opacity: 1, 
-      scale: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        damping: 25,
-        stiffness: 300
-      }
-    },
-    exit: { 
-      opacity: 0, 
-      scale: 0.8,
-      y: 50,
-      transition: {
-        duration: 0.2
-      }
-    }
-  };
-
-  const backdropVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1 },
-    exit: { opacity: 0 }
-  };
-
-  const groupVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: {
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    }
-  };
-
-  const optionVariants = {
-    hidden: { opacity: 0, x: -20 },
-    visible: { 
-      opacity: 1, 
-      x: 0,
-      transition: {
-        duration: 0.2,
-        ease: "easeOut"
-      }
-    }
-  };
-
-  const buttonVariants = {
-    hover: { 
-      scale: 1.05,
-      transition: {
-        duration: 0.2
-      }
-    },
-    tap: { 
-      scale: 0.95,
-      transition: {
-        duration: 0.1
-      }
-    }
-  };
-
-  const highlightVariants = {
-    initial: { 
-      scale: 1,
-      boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.4)"
-    },
-    highlight: { 
-      scale: 1.02,
-      boxShadow: "0 0 0 8px rgba(239, 68, 68, 0.1)",
-      transition: {
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    },
-    exit: { 
-      scale: 1,
-      boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.4)",
-      transition: {
-        duration: 0.3
-      }
-    }
-  };
   
   const { businessConfig } = useBusinessConfig();
-  const { success } = useNotification();
   
   // Asegurarnos de que no haya grupos duplicados y que toppingGroups sea un array
   // Ordenar según el orden guardado en el backend
@@ -135,7 +38,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     
     // Si no hay orden guardado, usar el orden por defecto
     return Array.from(new Set(product.toppingGroups.map(g => g?._id)))
-      .map(id => product.toppingGroups.find(g => g?._id === id))
+        .map(id => product.toppingGroups.find(g => g?._id === id))
       .filter(g => g); // Filtrar elementos nulos o undefined
   };
 
@@ -593,9 +496,6 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
       
       // Llamar a la función de callback
       onAddToCart(productToAdd);
-      
-      // Mostrar notificación de éxito
-      success(`¡${product.name} agregado al carrito!`, 2000);
     } catch (error) {
       handleError(error);
     }
@@ -608,41 +508,41 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
 
   // Renderizar el modal con los toppings
   return (
-    <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
-        onClick={onClose}
-        variants={backdropVariants}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
+    <div
+      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-40"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl max-w-lg w-full h-[85vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
+        onClick={handleModalClick}
       >
-        <motion.div
-          className="relative bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col"
-          onClick={handleModalClick}
-          variants={modalVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-        >
         {/* Encabezado del modal */}
-        <div className="sticky top-0 z-10 bg-white p-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-bold text-gray-800 truncate">
-            {product.name}
-          </h2>
+        <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-6 flex justify-between items-center z-10 backdrop-blur-lg rounded-t-2xl">
+          <div className="flex items-center space-x-3">
+            <div 
+              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6' }}
+            >
+              <span className="text-white text-lg font-bold">🍽️</span>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">Personalizar Producto</h2>
+              <p className="text-sm text-slate-500">{product.name}</p>
+            </div>
+          </div>
           <button
+            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md"
             onClick={onClose}
-            className="rounded-full p-1 hover:bg-gray-100 text-gray-500"
             aria-label="Cerrar"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
         </div>
 
         {/* Cuerpo del modal - Scrolleable */}
-        <div className="overflow-y-auto flex-1 p-4">
+        <div className="flex-1 overflow-y-auto px-6 pt-2 pb-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
           {/* Imagen del producto */}
           {product.image && (
             <div className="relative w-full h-40 mb-4 rounded-lg overflow-hidden bg-white">
@@ -684,29 +584,22 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
           {/* Lista de grupos de toppings */}
           {uniqueToppingGroups.length > 0 ? (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Personalizar producto</h3>
               
               {uniqueToppingGroups.map((group, index) => (
                 group && group._id ? (
-                  <motion.div
+                  <div
                     key={group._id}
                     id={`group-${group._id}`}
-                    className={`border rounded-lg overflow-hidden transition-all duration-500 ${
+                    className={`bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 mb-4 last:mb-0 shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-200 ${
                       scrollToRequired && group.isRequired 
                         ? 'ring-2 ring-red-400 bg-red-50 shadow-lg' 
                         : ''
                     }`}
-                    variants={groupVariants}
-                    initial="hidden"
-                    animate="visible"
-                    transition={{ delay: index * 0.1 }}
                   >
-                    {/* Encabezado del grupo (acordeón) */}
+                    {/* Encabezado del grupo */}
                     <div
                       onClick={() => toggleGroup(group._id)}
-                      className={`flex items-center justify-between p-3 cursor-pointer ${
-                        expandedGroups[group._id] ? 'bg-blue-50 border-b' : 'bg-gray-50'
-                      }`}
+                      className="flex items-center justify-between cursor-pointer mb-3"
                     >
                       <div className="flex-1">
                         <div className="flex justify-between">
@@ -714,9 +607,9 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                             <div className="flex items-center justify-between">
                               <div>
                                 <h4 className="font-medium text-gray-800">{group.name}</h4>
-                                {group.description && (
-                                  <p className="text-sm text-gray-600">{group.description}</p>
-                                )}
+                            {group.description && (
+                              <p className="text-sm text-gray-600">{group.description}</p>
+                            )}
                               </div>
                               {/* Verificar si hay opciones gratis en el grupo principal */}
                               {group.options && group.options.some(option => isFreeOption(option.name)) && (
@@ -797,25 +690,19 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                     
                     {/* Contenido del grupo (opciones) */}
                     {expandedGroups[group._id] && (
-                      <div className="p-3">
+                      <div className="bg-white rounded-lg p-3 border border-slate-200/50">
                         {/* Opciones principales */}
                         {Array.isArray(group.options) && group.options.length > 0 && (
                           <div className="space-y-2">
-                            {group.options.filter(option => option && option._id && option.active !== false).map((option, optionIndex) => (
-                              <motion.div
+                            {group.options.filter(option => option && option._id && option.active !== false).map(option => (
+                                <div
                                   key={option._id}
                                   onClick={() => handleOptionChange(group._id, option._id)}
-                                  className={`flex items-center justify-between p-2 rounded cursor-pointer ${
+                                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
                                     (selectedToppings[group._id] || []).includes(option._id)
-                                      ? 'bg-blue-50 border border-blue-200'
-                                      : 'hover:bg-gray-50 border border-gray-100'
+                                      ? 'bg-blue-50 border border-blue-200 shadow-sm'
+                                      : 'hover:bg-gray-50 border border-gray-200 hover:shadow-sm'
                                   }`}
-                                  variants={optionVariants}
-                                  initial="hidden"
-                                  animate="visible"
-                                  transition={{ delay: optionIndex * 0.05 }}
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
                                 >
                                   <div className="flex items-center">
                                     {group.isMultipleChoice ? (
@@ -841,16 +728,16 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                   ) : Number(option.price) > 0 ? (
                                     <span className="text-gray-700">+${option.price}</span>
                                   ) : null}
-                                </motion.div>
+                                </div>
                             ))}
                           </div>
                         )}
                         
                         {/* Subgrupos */}
                         {Array.isArray(group.subGroups) && group.subGroups.length > 0 && (
-                          <div className="mt-4 space-y-4">
+                          <div className="mt-4 space-y-3">
                             {group.subGroups.filter(subGroup => subGroup && subGroup._id).map(subGroup => (
-                                <div key={subGroup._id} className="pl-3 border-l-2 border-gray-200">
+                                <div key={subGroup._id} className="bg-slate-50 rounded-lg p-3 border border-slate-200/30">
                                   <div className="flex items-center justify-between mb-2">
                                     <h5 className="font-medium text-gray-800">{subGroup.title}</h5>
                                     {/* Verificar si hay opciones gratis en este subgrupo */}
@@ -864,7 +751,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                   {/* Opciones del subgrupo */}
                                   <div className="space-y-2">
                                     {Array.isArray(subGroup.options) && subGroup.options.filter(option => option && option._id && option.active !== false).map(option => (
-                                      <div
+                                        <div
                                           key={option._id}
                                           onClick={() => handleOptionChange(
                                             group._id,
@@ -873,10 +760,10 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                             subGroup._id,
                                             !subGroup.isMultipleChoice
                                           )}
-                                          className={`flex items-center justify-between p-2 rounded cursor-pointer ${
+                                          className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
                                             (selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id)
-                                              ? 'bg-blue-50 border border-blue-200'
-                                              : 'hover:bg-gray-50 border border-gray-100'
+                                              ? 'bg-blue-50 border border-blue-200 shadow-sm'
+                                              : 'hover:bg-gray-50 border border-gray-200 hover:shadow-sm'
                                           }`}
                                         >
                                           <div className="flex items-center">
@@ -912,7 +799,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                         )}
                       </div>
                     )}
-                  </motion.div>
+                  </div>
                 ) : null
               ))}
             </div>
@@ -942,36 +829,37 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
         </div>
         
         {/* Pie del modal con precio y botón */}
-        <div className="sticky bottom-0 z-10 bg-white border-t border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-gray-700 font-medium">Precio total:</span>
-            <span className="text-xl font-bold" style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}>
-              ${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}
-            </span>
+        <div className="border-t border-slate-200/80 bg-white p-6 space-y-4 shadow-xl rounded-b-2xl flex-shrink-0">
+          <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border border-slate-200/50" style={{ background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.063), rgba(0, 0, 0, 0.02))' }}>
+            <div>
+              <p className="text-sm text-slate-600">Total personalización</p>
+              <p className="text-2xl font-bold text-slate-800">${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</p>
+            </div>
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6' }}
+            >
+              <span className="text-white text-xl">💰</span>
+            </div>
           </div>
           
           
-          <motion.button
+          <button
             onClick={handleAddToCart}
-            className="w-full py-3 rounded-lg font-semibold text-white flex items-center justify-center"
+            className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
             style={{ 
               backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6', 
               color: businessConfig.theme?.buttonTextColor || 'white' 
             }}
-            variants={buttonVariants}
-            whileHover="hover"
-            whileTap="tap"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3z" />
-              <path d="M16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
             </svg>
-            Agregar al carrito
-          </motion.button>
+            <span>Agregar al carrito</span>
+          </button>
         </div>
-      </motion.div>
-    </motion.div>
-    </AnimatePresence>
+      </div>
+    </div>
   );
 }
 
