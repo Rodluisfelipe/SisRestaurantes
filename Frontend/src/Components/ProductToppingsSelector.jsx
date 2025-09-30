@@ -9,6 +9,8 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   const [expandedGroups, setExpandedGroups] = useState({});
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
+  const [isValid, setIsValid] = useState(false);
+  const [scrollToRequired, setScrollToRequired] = useState(false);
   
   const { businessConfig } = useBusinessConfig();
   
@@ -41,6 +43,27 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     hasSubGroups: g.subGroups && g.subGroups.length > 0,
     subGroups: g.subGroups ? g.subGroups.length : 0
   })));
+
+  // Validar en tiempo real cuando cambien las selecciones
+  useEffect(() => {
+    const validationErrors = validateRequiredToppings();
+    setIsValid(validationErrors.length === 0);
+    
+    // No mostrar ningún mensaje de error
+    setError(null);
+  }, [selectedToppings, uniqueToppingGroups]);
+
+  // Efecto para destacar visualmente el grupo cuando se hace scroll
+  useEffect(() => {
+    if (scrollToRequired) {
+      // Remover el efecto después de 3 segundos
+      const timer = setTimeout(() => {
+        setScrollToRequired(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [scrollToRequired]);
 
   // Debug para ver los datos recibidos
   console.log('Datos enviados a ProductToppingsSelector:', {
@@ -343,8 +366,116 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     setError('Ha ocurrido un error al procesar las opciones');
   };
 
+  // Función para validar toppings obligatorios
+  const validateRequiredToppings = () => {
+    const errors = [];
+    
+    uniqueToppingGroups.forEach(group => {
+      // Verificar si el grupo principal es obligatorio
+      if (group.isRequired) {
+        const hasMainSelections = selectedToppings[group._id] && 
+          selectedToppings[group._id].length > 0;
+        
+        // Verificar si hay subgrupos obligatorios
+        const hasRequiredSubGroups = group.subGroups && 
+          group.subGroups.some(subGroup => subGroup.isRequired);
+        
+        if (hasRequiredSubGroups) {
+          // Si hay subgrupos obligatorios, verificar que al menos uno tenga selecciones
+          const hasSubGroupSelections = group.subGroups.some(subGroup => {
+            if (!subGroup.isRequired) return true; // Si no es obligatorio, no validar
+            return selectedToppings[`${group._id}_${subGroup.title}`] && 
+                   selectedToppings[`${group._id}_${subGroup.title}`].length > 0;
+          });
+          
+          if (!hasMainSelections && !hasSubGroupSelections) {
+            errors.push(`Debes seleccionar al menos una opción en "${group.name}"`);
+          }
+        } else if (!hasMainSelections) {
+          // Si no hay subgrupos obligatorios pero el grupo principal es obligatorio
+          errors.push(`Debes seleccionar al menos una opción en "${group.name}"`);
+        }
+      }
+      
+      // Verificar subgrupos obligatorios individualmente
+      if (group.subGroups) {
+        group.subGroups.forEach(subGroup => {
+          if (subGroup.isRequired) {
+            const subGroupKey = `${group._id}_${subGroup.title}`;
+            const hasSubGroupSelection = selectedToppings[subGroupKey] && 
+              selectedToppings[subGroupKey].length > 0;
+            
+            if (!hasSubGroupSelection) {
+              errors.push(`Debes seleccionar al menos una opción en "${subGroup.title}"`);
+            }
+          }
+        });
+      }
+    });
+    
+    return errors;
+  };
+
   const handleAddToCart = () => {
     try {
+      // Si no es válido, encontrar el siguiente grupo obligatorio que falte
+      if (!isValid) {
+        setError(null);
+        
+        // Encontrar el primer grupo obligatorio que no tenga selecciones
+        const nextRequiredGroup = uniqueToppingGroups.find(group => {
+          if (!group.isRequired) return false;
+          
+          // Verificar si el grupo principal tiene selecciones
+          const hasMainSelections = selectedToppings[group._id] && 
+            selectedToppings[group._id].length > 0;
+          
+          // Verificar si hay subgrupos obligatorios sin selecciones
+          const hasRequiredSubGroups = group.subGroups && 
+            group.subGroups.some(subGroup => subGroup.isRequired);
+          
+          if (hasRequiredSubGroups) {
+            // Si hay subgrupos obligatorios, verificar que al menos uno tenga selecciones
+            const hasSubGroupSelections = group.subGroups.some(subGroup => {
+              if (!subGroup.isRequired) return true; // Si no es obligatorio, no validar
+              return selectedToppings[`${group._id}_${subGroup.title}`] && 
+                     selectedToppings[`${group._id}_${subGroup.title}`].length > 0;
+            });
+            
+            return !hasMainSelections && !hasSubGroupSelections;
+          } else {
+            // Si no hay subgrupos obligatorios, verificar solo el grupo principal
+            return !hasMainSelections;
+          }
+        });
+        
+        if (nextRequiredGroup) {
+          // Expandir el grupo que falta
+          const newExpandedGroups = { ...expandedGroups };
+          newExpandedGroups[nextRequiredGroup._id] = true;
+          setExpandedGroups(newExpandedGroups);
+          
+          // Activar scroll hacia el grupo que falta
+          setScrollToRequired(true);
+          
+          // Hacer scroll al grupo que falta después de un pequeño delay
+          setTimeout(() => {
+            const element = document.getElementById(`group-${nextRequiredGroup._id}`);
+            if (element) {
+              element.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+              });
+            }
+          }, 100);
+        }
+        
+        return;
+      }
+      
+      // Si es válido, proceder normalmente
+      setError(null);
+      
       // Preparar los datos para añadir al carrito
       const selectedToppingsData = prepareSelectedToppingsData();
       
@@ -443,7 +574,12 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                 group && group._id ? (
                   <div
                     key={group._id}
-                    className="border rounded-lg overflow-hidden"
+                    id={`group-${group._id}`}
+                    className={`border rounded-lg overflow-hidden transition-all duration-500 ${
+                      scrollToRequired && group.isRequired 
+                        ? 'ring-2 ring-red-400 bg-red-50 shadow-lg' 
+                        : ''
+                    }`}
                   >
                     {/* Encabezado del grupo (acordeón) */}
                     <div
@@ -658,10 +794,14 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
             </span>
           </div>
           
+          
           <button
             onClick={handleAddToCart}
-            className="w-full py-3 rounded-lg font-semibold text-white flex items-center justify-center"
-            style={{ backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6', color: businessConfig.theme?.buttonTextColor || 'white' }}
+            className="w-full py-3 rounded-lg font-semibold text-white flex items-center justify-center transition-all duration-200 hover:opacity-90 transform hover:scale-105"
+            style={{ 
+              backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6', 
+              color: businessConfig.theme?.buttonTextColor || 'white' 
+            }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
               <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3z" />
