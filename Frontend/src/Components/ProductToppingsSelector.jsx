@@ -11,6 +11,13 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   const [quantity, setQuantity] = useState(1);
   const [isValid, setIsValid] = useState(false);
   const [scrollToRequired, setScrollToRequired] = useState(false);
+
+  // Función para verificar si una opción es gratis
+  const isFreeOption = (optionName) => {
+    if (!optionName) return false;
+    const name = optionName.toLowerCase();
+    return name.includes('gratis') || name.includes('gratuito') || name.includes('sin costo') || name.includes('incluido');
+  };
   
   const { businessConfig } = useBusinessConfig();
   
@@ -591,10 +598,28 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                       <div className="flex-1">
                         <div className="flex justify-between">
                           <div>
-                            <h4 className="font-medium text-gray-800">{group.name}</h4>
-                            {group.description && (
-                              <p className="text-sm text-gray-600">{group.description}</p>
-                            )}
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h4 className="font-medium text-gray-800">{group.name}</h4>
+                                {group.description && (
+                                  <p className="text-sm text-gray-600">{group.description}</p>
+                                )}
+                              </div>
+                              {/* Verificar si hay opciones gratis en el grupo principal */}
+                              {group.options && group.options.some(option => isFreeOption(option.name)) && (
+                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full ml-2">
+                                  🎉 Opciones gratis
+                                </span>
+                              )}
+                              {/* Verificar si hay opciones gratis en subgrupos */}
+                              {group.subGroups && group.subGroups.some(subGroup => 
+                                subGroup.options && subGroup.options.some(option => isFreeOption(option.name))
+                              ) && (
+                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full ml-2">
+                                  🎉 Opciones gratis
+                                </span>
+                              )}
+                            </div>
                           </div>
                           
                           {/* Indicador de selecciones */}
@@ -692,9 +717,11 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                     <span className="text-gray-800">{option.name || 'Opción'}</span>
                                   </div>
                                   
-                                  {Number(option.price) > 0 && (
+                                  {isFreeOption(option.name) ? (
+                                    <span className="text-green-600 font-medium">Gratis</span>
+                                  ) : Number(option.price) > 0 ? (
                                     <span className="text-gray-700">+${option.price}</span>
-                                  )}
+                                  ) : null}
                                 </div>
                             ))}
                           </div>
@@ -705,7 +732,15 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                           <div className="mt-4 space-y-4">
                             {group.subGroups.filter(subGroup => subGroup && subGroup._id).map(subGroup => (
                                 <div key={subGroup._id} className="pl-3 border-l-2 border-gray-200">
-                                  <h5 className="font-medium mb-2 text-gray-800">{subGroup.title}</h5>
+                                  <div className="flex items-center justify-between mb-2">
+                                    <h5 className="font-medium text-gray-800">{subGroup.title}</h5>
+                                    {/* Verificar si hay opciones gratis en este subgrupo */}
+                                    {subGroup.options && subGroup.options.some(option => isFreeOption(option.name)) && (
+                                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                        🎉 Opciones gratis
+                                      </span>
+                                    )}
+                                  </div>
                                   
                                   {/* Opciones del subgrupo */}
                                   <div className="space-y-2">
@@ -744,9 +779,11 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                             <span className="text-gray-800">{option.name || 'Opción'}</span>
                                           </div>
                                           
-                                          {Number(option.price) > 0 && (
+                                          {isFreeOption(option.name) ? (
+                                            <span className="text-green-600 font-medium">Gratis</span>
+                                          ) : Number(option.price) > 0 ? (
                                             <span className="text-gray-700">+${option.price}</span>
-                                          )}
+                                          ) : null}
                                         </div>
                                     ))}
                                   </div>
