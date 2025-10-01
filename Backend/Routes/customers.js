@@ -5,6 +5,75 @@ const Order = require('../Models/Order');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const { isValidObjectId } = require('../utils/isValidObjectId');
 
+// GET /api/customers - Listar clientes con filtros
+router.get('/', async (req, res) => {
+  try {
+    const { 
+      businessId, 
+      page = 1, 
+      limit = 20, 
+      search = '', 
+      status = 'all',
+      sortBy = 'lastOrderDate',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Construir filtro
+    const filter = {
+      businessId: isValidObjectId(businessId) ? businessId : null
+    };
+
+    // Filtro por estado
+    if (status !== 'all') {
+      filter.status = status;
+    }
+
+    // Filtro por búsqueda
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { phone: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Construir sort
+    const sort = {};
+    if (sortBy === 'lastOrderDate') {
+      sort.lastOrderDate = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'name') {
+      sort.name = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'totalSpent') {
+      sort.totalSpent = sortOrder === 'desc' ? -1 : 1;
+    } else if (sortBy === 'totalOrders') {
+      sort.totalOrders = sortOrder === 'desc' ? -1 : 1;
+    } else {
+      sort.createdAt = -1; // Default sort
+    }
+
+    // Obtener clientes con paginación
+    const customers = await Customer.find(filter)
+      .sort(sort)
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const totalCustomers = await Customer.countDocuments(filter);
+
+    res.json({
+      customers,
+      pagination: {
+        current: parseInt(page),
+        total: Math.ceil(totalCustomers / parseInt(limit)),
+        limit: parseInt(limit),
+        totalCustomers
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener clientes:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // GET /api/customers/:phone - Obtener datos del cliente por teléfono
 router.get('/:phone', async (req, res) => {
   try {

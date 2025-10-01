@@ -528,23 +528,13 @@ router.get("/completed", async (req, res) => {
       return res.status(400).json({ message: "Business ID is required" });
     }
     
-    // Handle the businessId, which could be an ObjectId or a slug
-    let businessObjectId;
-    
-    if (isValidObjectId(businessId)) {
-      // If it's a valid ObjectId, use it directly
-      businessObjectId = businessId;
-    } else {
-      // If it's a slug, find the corresponding business to get its ObjectId
-      const BusinessConfig = require('../Models/BusinessConfig');
-      const business = await BusinessConfig.findOne({ slug: businessId });
-      
-      if (!business) {
-        return res.status(404).json({ message: "Business not found" });
-      }
-      
-      businessObjectId = business._id;
+    // Use centralized business validation
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) {
+      return res.status(404).json({ message: businessResult.error });
     }
+    
+    const businessObjectId = businessResult.businessId;
     
     // Get all completed orders sorted by completion date (newest first)
     const completedOrders = await CompletedOrder.find({
