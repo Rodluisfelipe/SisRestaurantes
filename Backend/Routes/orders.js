@@ -101,12 +101,16 @@ router.post("/", async (req, res) => {
     // Find or create customer
     let customer = null;
     if (phone) {
+      console.log(`[Orders] Looking for customer with phone: "${phone}" and businessId: ${businessObjectId}`);
+      
       customer = await Customer.findOne({ phone, businessId: businessObjectId });
       
       if (customer) {
+        console.log(`[Orders] Found existing customer: ${customer.name} (${customer.phone})`);
         // Update existing customer stats
         await customer.updateStats(numericTotalAmount);
       } else {
+        console.log(`[Orders] Creating new customer: ${customerName} (${phone})`);
         // Create new customer
         customer = new Customer({
           businessId: businessObjectId,
@@ -117,6 +121,7 @@ router.post("/", async (req, res) => {
           lastOrderDate: new Date()
         });
         await customer.save();
+        console.log(`[Orders] New customer created with ID: ${customer._id}`);
       }
     }
 
@@ -188,28 +193,6 @@ router.post("/", async (req, res) => {
     res.status(201).json(savedOrder);
   } catch (error) {
     logger.error("Error creating order", error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Get order by ID
-router.get("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    if (!isValidObjectId(id)) {
-      return res.status(400).json({ message: "Invalid order ID" });
-    }
-    
-    const order = await Order.findById(id);
-    
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-    
-    res.json(order);
-  } catch (error) {
-    console.error("Error fetching order:", error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -523,27 +506,36 @@ router.post("/cleanup-completed", async (req, res) => {
 router.get("/completed", async (req, res) => {
   try {
     const { businessId } = req.query;
+    console.log(`[Orders/Completed] Received request with businessId: ${businessId}`);
     
     if (!businessId) {
+      console.log('[Orders/Completed] No businessId provided');
       return res.status(400).json({ message: "Business ID is required" });
     }
     
     // Use centralized business validation
+    console.log(`[Orders/Completed] Validating businessId: ${businessId}`);
     const businessResult = await validateAndResolveBusinessId(businessId);
+    console.log(`[Orders/Completed] Validation result:`, businessResult);
+    
     if (!businessResult.success) {
+      console.log(`[Orders/Completed] Validation failed: ${businessResult.error}`);
       return res.status(404).json({ message: businessResult.error });
     }
     
     const businessObjectId = businessResult.businessId;
+    console.log(`[Orders/Completed] Resolved businessObjectId: ${businessObjectId}`);
     
     // Get all completed orders sorted by completion date (newest first)
     const completedOrders = await CompletedOrder.find({
       businessId: businessObjectId
     }).sort({ completedAt: -1 });
     
+    console.log(`[Orders/Completed] Found ${completedOrders.length} completed orders`);
     logger.info(`Retrieved ${completedOrders.length} completed orders for business ${businessId}`);
     res.json(completedOrders);
   } catch (error) {
+    console.error(`[Orders/Completed] Error:`, error);
     logger.error("Error fetching completed orders", error);
     res.status(500).json({ message: error.message });
   }
@@ -577,6 +569,28 @@ router.get('/customer/:phone', async (req, res) => {
     res.json(orders);
   } catch (error) {
     logger.error("Error fetching customer orders", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get order by ID - MUST BE LAST to avoid intercepting specific routes
+router.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+    
+    const order = await Order.findById(id);
+    
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    
+    res.json(order);
+  } catch (error) {
+    console.error("Error fetching order:", error);
     res.status(500).json({ message: error.message });
   }
 });

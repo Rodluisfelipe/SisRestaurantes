@@ -18,10 +18,39 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
+    console.log(`[Customers] Received request with businessId: ${businessId}`);
+    console.log(`[Customers] Query params:`, { businessId, page, limit, search, status, sortBy, sortOrder });
+
     // Construir filtro
     const filter = {
       businessId: isValidObjectId(businessId) ? businessId : null
     };
+
+    console.log(`[Customers] Filter before businessId resolution:`, filter);
+
+    // Si businessId no es un ObjectId válido, intentar resolverlo como slug
+    if (!isValidObjectId(businessId)) {
+      console.log(`[Customers] businessId is not ObjectId, trying to resolve as slug: ${businessId}`);
+      const BusinessConfig = require('../Models/BusinessConfig');
+      const business = await BusinessConfig.findOne({ slug: businessId });
+      if (business) {
+        filter.businessId = business._id;
+        console.log(`[Customers] Resolved slug to ObjectId: ${business._id}`);
+      } else {
+        console.log(`[Customers] Business not found with slug: ${businessId}`);
+        return res.json({
+          customers: [],
+          pagination: {
+            current: parseInt(page),
+            total: 0,
+            limit: parseInt(limit),
+            totalCustomers: 0
+          }
+        });
+      }
+    }
+
+    console.log(`[Customers] Final filter:`, filter);
 
     // Filtro por estado
     if (status !== 'all') {
@@ -51,6 +80,8 @@ router.get('/', async (req, res) => {
       sort.createdAt = -1; // Default sort
     }
 
+    console.log(`[Customers] Sort:`, sort);
+
     // Obtener clientes con paginación
     const customers = await Customer.find(filter)
       .sort(sort)
@@ -59,8 +90,27 @@ router.get('/', async (req, res) => {
 
     const totalCustomers = await Customer.countDocuments(filter);
 
+    console.log(`[Customers] Found ${customers.length} customers out of ${totalCustomers} total`);
+
+    // Calcular estadísticas (solo las necesarias)
+    const stats = {
+      totalCustomers: totalCustomers,
+      vipCustomers: 0
+    };
+
+    // Calcular solo clientes VIP
+    const vipCount = await Customer.countDocuments({
+      ...filter,
+      status: 'vip'
+    });
+    
+    stats.vipCustomers = vipCount;
+
+    console.log(`[Customers] Calculated stats:`, stats);
+
     res.json({
       customers,
+      stats,
       pagination: {
         current: parseInt(page),
         total: Math.ceil(totalCustomers / parseInt(limit)),
@@ -69,33 +119,7 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error al obtener clientes:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// GET /api/customers/:phone - Obtener datos del cliente por teléfono
-router.get('/:phone', async (req, res) => {
-  try {
-    const { phone } = req.params;
-    const { businessId } = req.query;
-
-    if (!phone) {
-      return res.status(400).json({ error: 'Número de teléfono requerido' });
-    }
-
-    const customer = await Customer.findOne({ 
-      businessId: isValidObjectId(businessId) ? businessId : null, 
-      phone 
-    });
-
-    if (!customer) {
-      return res.status(404).json({ error: 'Cliente no encontrado' });
-    }
-
-    res.json(customer);
-  } catch (error) {
-    console.error('Error al obtener cliente:', error);
+    console.error('[Customers] Error al obtener clientes:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -288,6 +312,80 @@ router.delete('/:phone', async (req, res) => {
     res.json({ message: 'Cliente eliminado exitosamente' });
   } catch (error) {
     console.error('Error al eliminar cliente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// DELETE /api/customers/by-id/:id - Eliminar cliente por ID
+router.delete('/by-id/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { businessId } = req.query;
+
+    console.log(`[Customers] DELETE by ID - Received id: ${id}, businessId: ${businessId}`);
+
+    if (!id) {
+      return res.status(400).json({ error: 'ID del cliente requerido' });
+    }
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ error: 'ID del cliente inválido' });
+    }
+
+    // Resolver businessId si es un slug
+    let resolvedBusinessId = businessId;
+    if (!isValidObjectId(businessId)) {
+      console.log(`[Customers] Resolving businessId slug: ${businessId}`);
+      const BusinessConfig = require('../Models/BusinessConfig');
+      const business = await BusinessConfig.findOne({ slug: businessId });
+      if (business) {
+        resolvedBusinessId = business._id;
+        console.log(`[Customers] Resolved businessId to: ${resolvedBusinessId}`);
+      } else {
+        return res.status(404).json({ error: 'Negocio no encontrado' });
+      }
+    }
+
+    const customer = await Customer.findOneAndDelete({ 
+      _id: id,
+      businessId: resolvedBusinessId
+    });
+
+    if (!customer) {
+      console.log(`[Customers] Customer not found with id: ${id} and businessId: ${resolvedBusinessId}`);
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+
+    console.log(`[Customers] Customer deleted successfully: ${customer.name}`);
+    res.json({ message: 'Cliente eliminado exitosamente' });
+  } catch (error) {
+    console.error('[Customers] Error al eliminar cliente por ID:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// GET /api/customers/:phone - Obtener datos del cliente por teléfono - MUST BE LAST
+router.get('/:phone', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { businessId } = req.query;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Número de teléfono requerido' });
+    }
+
+    const customer = await Customer.findOne({ 
+      businessId: isValidObjectId(businessId) ? businessId : null, 
+      phone 
+    });
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+
+    res.json(customer);
+  } catch (error) {
+    console.error('Error al obtener cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

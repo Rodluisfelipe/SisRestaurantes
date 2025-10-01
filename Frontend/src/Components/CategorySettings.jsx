@@ -71,21 +71,25 @@ const CategorySettings = () => {
   useEffect(() => {
     fetchCategories();
     // --- WebSocket: Conexión y listeners ---
-    socket.connect();
-    socket.emit('joinBusiness', businessId);
-    socket.on('categories_update', (data) => {
-      if (data.type === 'created') {
-        setCategories((prev) => [...prev, data.category]);
-      } else if (data.type === 'updated') {
-        setCategories((prev) => prev.map(cat => cat._id === data.category._id ? data.category : cat));
-      } else if (data.type === 'deleted') {
-        setCategories((prev) => prev.filter(cat => cat._id !== data.categoryId));
-      }
-    });
+    if (socket) {
+      socket.connect();
+      socket.emit('joinBusiness', businessId);
+      socket.on('categories_update', (data) => {
+        if (data.type === 'created') {
+          setCategories((prev) => [...prev, data.category]);
+        } else if (data.type === 'updated') {
+          setCategories((prev) => prev.map(cat => cat._id === data.category._id ? data.category : cat));
+        } else if (data.type === 'deleted') {
+          setCategories((prev) => prev.filter(cat => cat._id !== data.categoryId));
+        }
+      });
+    }
     return () => {
-      socket.emit('leaveBusiness', businessId);
-      socket.off('categories_update');
-      socket.disconnect();
+      if (socket) {
+        socket.emit('leaveBusiness', businessId);
+        socket.off('categories_update');
+        socket.disconnect();
+      }
     };
     // --- Fin WebSocket ---
   }, [businessId]);

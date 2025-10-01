@@ -28,6 +28,9 @@ const CustomersManager = () => {
       businessId = getBusinessSlug();
     }
     
+    console.log('[CustomersManager] fetchCustomers - businessId:', businessId);
+    console.log('[CustomersManager] fetchCustomers - businessConfig:', businessConfig);
+    
     if (!businessId) {
       logSystem('Business ID no disponible aún', 'warning');
       return;
@@ -35,6 +38,16 @@ const CustomersManager = () => {
     
     try {
       setLoading(true);
+      console.log('[CustomersManager] Haciendo solicitud a /customers con params:', {
+        businessId: businessId,
+        page: currentPage,
+        limit: 20,
+        search: searchTerm,
+        status: statusFilter,
+        sortBy,
+        sortOrder
+      });
+      
       const response = await api.get('/customers', {
         params: {
           businessId: businessId,
@@ -47,13 +60,19 @@ const CustomersManager = () => {
         }
       });
       
+      console.log('[CustomersManager] Respuesta de la API:', response.data);
       logSystem(`Clientes cargados: ${response.data.customers?.length || 0} encontrados`);
       
-      setCustomers(response.data.customers);
-      setStats(response.data.stats);
-      setPagination(response.data.pagination);
+      setCustomers(response.data.customers || []);
+      setStats(response.data.stats || {});
+      setPagination(response.data.pagination || {});
     } catch (error) {
+      console.error('[CustomersManager] Error completo:', error);
+      console.error('[CustomersManager] Error response:', error.response?.data);
       logSystem(`Error al cargar clientes: ${error.message}`, 'error');
+      setCustomers([]);
+      setStats({});
+      setPagination({});
     } finally {
       setLoading(false);
     }
@@ -127,10 +146,12 @@ const CustomersManager = () => {
     
     try {
       const finalBusinessId = businessConfig?.businessId || getBusinessSlug();
-      await api.delete(`/customers/${customerId}?businessId=${finalBusinessId}`);
+      console.log(`[CustomersManager] Deleting customer with ID: ${customerId}, businessId: ${finalBusinessId}`);
+      await api.delete(`/customers/by-id/${customerId}?businessId=${finalBusinessId}`);
       fetchCustomers();
       alert('Cliente eliminado exitosamente');
     } catch (error) {
+      console.error('[CustomersManager] Error deleting customer:', error);
       logSystem(`Error al eliminar cliente: ${error.message}`, 'error');
       alert('Error al eliminar el cliente');
     }
@@ -157,7 +178,7 @@ const CustomersManager = () => {
             </div>
             <div className="ml-3">
               <p className="text-sm text-gray-600">Total Clientes</p>
-              <p className="text-xl font-semibold">{stats.totalCustomers || 0}</p>
+              <p className="text-xl font-semibold">{stats?.totalCustomers || 0}</p>
             </div>
           </div>
         </motion.div>
@@ -169,46 +190,12 @@ const CustomersManager = () => {
           className="bg-white p-4 rounded-lg shadow-sm border"
         >
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <span className="text-2xl">📦</span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-gray-600">Total Pedidos</p>
-              <p className="text-xl font-semibold">{stats.totalOrders || 0}</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white p-4 rounded-lg shadow-sm border"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <span className="text-2xl">💰</span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-gray-600">Ingresos Totales</p>
-              <p className="text-xl font-semibold">{formatCurrency(stats.totalRevenue || 0)}</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white p-4 rounded-lg shadow-sm border"
-        >
-          <div className="flex items-center">
             <div className="p-2 bg-purple-100 rounded-lg">
               <span className="text-2xl">👑</span>
             </div>
             <div className="ml-3">
               <p className="text-sm text-gray-600">Clientes VIP</p>
-              <p className="text-xl font-semibold">{stats.vipCustomers || 0}</p>
+              <p className="text-xl font-semibold">{stats?.vipCustomers || 0}</p>
             </div>
           </div>
         </motion.div>
@@ -327,10 +314,10 @@ const CustomersManager = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {customer.stats.totalOrders} pedidos
+                            {customer.stats?.totalOrders || 0} pedidos
                           </div>
                           <div className="text-sm text-gray-500">
-                            {formatCurrency(customer.stats.totalSpent)}
+                            {formatCurrency(customer.stats?.totalSpent || 0)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -339,7 +326,7 @@ const CustomersManager = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(customer.stats.lastOrderDate)}
+                          {formatDate(customer.stats?.lastOrderDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
@@ -474,19 +461,19 @@ const CustomersManager = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Total Pedidos</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{selectedCustomer.stats.totalOrders}</p>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">{selectedCustomer.stats?.totalOrders || 0}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Total Gastado</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(selectedCustomer.stats.totalSpent)}</p>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(selectedCustomer.stats?.totalSpent || 0)}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Valor Promedio</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(selectedCustomer.stats.averageOrderValue)}</p>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(selectedCustomer.stats?.averageOrderValue || 0)}</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Último Pedido</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatDate(selectedCustomer.stats.lastOrderDate)}</p>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatDate(selectedCustomer.stats?.lastOrderDate)}</p>
                     </div>
                   </div>
                 </div>
