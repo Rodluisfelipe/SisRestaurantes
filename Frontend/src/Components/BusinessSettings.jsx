@@ -67,27 +67,29 @@ const BusinessSettings = () => {
 
   useEffect(() => {
     fetchBusinessConfig();
-    socket.connect();
-    socket.emit('joinBusiness', businessId);
+    if (socket) {
+      socket.connect();
+      socket.emit('joinBusiness', businessId);
 
-    // Debounce para evitar bucles si el backend emite muchos eventos
-    let debounceTimeout = null;
-    const handler = (data) => {
-      if (debounceTimeout) clearTimeout(debounceTimeout);
-      debounceTimeout = setTimeout(() => {
-        if (!isEditingLogo) setSettings(prev => ({ ...prev, ...data }));
-        if (!isEditingLogo) setPreviewLogo(data.logo || '');
-      }, 300);
-    };
+      // Debounce para evitar bucles si el backend emite muchos eventos
+      let debounceTimeout = null;
+      const handler = (data) => {
+        if (debounceTimeout) clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => {
+          if (!isEditingLogo) setSettings(prev => ({ ...prev, ...data }));
+          if (!isEditingLogo) setPreviewLogo(data.logo || '');
+        }, 300);
+      };
 
-    socket.on('business_config_update', handler);
+      socket.on('business_config_update', handler);
 
-    return () => {
-      socket.emit('leaveBusiness', businessId);
-      socket.off('business_config_update', handler);
-      socket.disconnect();
-      if (debounceTimeout) clearTimeout(debounceTimeout);
-    };
+      return () => {
+        socket.emit('leaveBusiness', businessId);
+        socket.off('business_config_update', handler);
+        socket.disconnect();
+        if (debounceTimeout) clearTimeout(debounceTimeout);
+      };
+    }
   }, [businessId]);
 
   const handleChange = (e) => {

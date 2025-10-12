@@ -47,17 +47,21 @@ const BusinessSettingsAdmin = () => {
     };
     fetchSettings();
     // --- WebSocket: Conexión y listeners ---
-    socket.connect();
-    socket.emit('joinBusiness', businessId);
-    socket.on('business_config_update', (data) => {
-      setSettings(prev => ({ ...prev, ...data }));
-      setPreviewLogo(data.logo || defaultLogo);
-      setPreviewCover(data.coverImage);
-    });
+    if (socket) {
+      socket.connect();
+      socket.emit('joinBusiness', businessId);
+      socket.on('business_config_update', (data) => {
+        setSettings(prev => ({ ...prev, ...data }));
+        setPreviewLogo(data.logo || defaultLogo);
+        setPreviewCover(data.coverImage);
+      });
+    }
     return () => {
-      socket.emit('leaveBusiness', businessId);
-      socket.off('business_config_update');
-      socket.disconnect();
+      if (socket) {
+        socket.emit('leaveBusiness', businessId);
+        socket.off('business_config_update');
+        socket.disconnect();
+      }
     };
     // --- Fin WebSocket ---
   }, [businessId]);

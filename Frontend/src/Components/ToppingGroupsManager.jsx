@@ -23,15 +23,19 @@ function ToppingGroupsManager() {
   useEffect(() => {
     fetchToppingGroups();
     // --- WebSocket: Conexión y listeners ---
-    socket.connect();
-    socket.emit('joinBusiness', businessId);
-    socket.on('topping_groups_update', () => {
-      fetchToppingGroups();
-    });
+    if (socket) {
+      socket.connect();
+      socket.emit('joinBusiness', businessId);
+      socket.on('topping_groups_update', () => {
+        fetchToppingGroups();
+      });
+    }
     return () => {
-      socket.emit('leaveBusiness', businessId);
-      socket.off('topping_groups_update');
-      socket.disconnect();
+      if (socket) {
+        socket.emit('leaveBusiness', businessId);
+        socket.off('topping_groups_update');
+        socket.disconnect();
+      }
     };
     // --- Fin WebSocket ---
   }, [businessId]);
@@ -79,8 +83,24 @@ function ToppingGroupsManager() {
       }
       fetchToppingGroups();
       resetForm();
+      setError(null); // Limpiar errores previos
     } catch (error) {
       console.error('Error al guardar el grupo de toppings:', error);
+      
+      // Mostrar mensaje de error específico
+      if (error.response?.data?.message) {
+        setError(error.response.data.message);
+      } else if (error.response?.data?.errors) {
+        setError(`Errores de validación: ${error.response.data.errors.join(', ')}`);
+      } else if (error.response?.status === 404) {
+        setError('Grupo de toppings no encontrado');
+      } else if (error.response?.status === 400) {
+        setError('Datos inválidos. Por favor revisa la información');
+      } else if (error.response?.status === 409) {
+        setError('Ya existe un grupo con este nombre. Por favor usa un nombre diferente.');
+      } else {
+        setError('Error al guardar el grupo de toppings. Inténtalo de nuevo.');
+      }
     }
   };
 

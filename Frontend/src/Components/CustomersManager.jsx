@@ -127,6 +127,11 @@ const CustomersManager = () => {
   // Handle customer edit
   const handleEditCustomer = async (customerData) => {
     try {
+      if (!selectedCustomer?._id) {
+        console.error('No customer selected for editing');
+        return;
+      }
+      
       const finalBusinessId = businessConfig?.businessId || getBusinessSlug();
       await api.put(`/customers/${selectedCustomer._id}?businessId=${finalBusinessId}`, customerData);
       fetchCustomers();
@@ -450,8 +455,8 @@ const CustomersManager = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Estado</label>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(selectedCustomer.status)}`}>
-                      {getStatusIcon(selectedCustomer.status)} {selectedCustomer.status.toUpperCase()}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(selectedCustomer.status || 'active')}`}>
+                      {getStatusIcon(selectedCustomer.status || 'active')} {(selectedCustomer.status || 'active').toUpperCase()}
                     </span>
                   </div>
                 </div>
@@ -473,15 +478,15 @@ const CustomersManager = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Último Pedido</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatDate(selectedCustomer.stats?.lastOrderDate)}</p>
+                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatDate(selectedCustomer.stats?.lastOrderDate || null)}</p>
                     </div>
                   </div>
                 </div>
 
-                {selectedCustomer.preferences.notes && (
+                {selectedCustomer.preferences?.notes && (
                   <div className="border-t pt-4">
                     <label className="block text-sm font-medium text-gray-700">Notas</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedCustomer.preferences.notes}</p>
+                    <p className="mt-1 text-sm text-gray-900">{selectedCustomer.preferences?.notes}</p>
                   </div>
                 )}
               </div>
