@@ -43,7 +43,12 @@ export const socket = socketUrl ? io(socketUrl, {
   path: '/socket.io',
   forceNew: false,
   upgrade: false,
-  rememberUpgrade: false
+  rememberUpgrade: false,
+  // Agregar identificador único para esta sesión
+  query: {
+    sessionId: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    clientType: 'admin'
+  }
 }) : null;
 
 // Sistema de logging centralizado

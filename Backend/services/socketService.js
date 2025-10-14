@@ -6,8 +6,16 @@ function initSocket(io) {
   ioInstance = io;
 
   io.on('connection', (socket) => {
-    console.log('Cliente conectado:', socket.id);
-    connectedClients.set(socket.id, { socket, businessId: null, connectedAt: new Date() });
+    const sessionId = socket.handshake.query.sessionId;
+    const clientType = socket.handshake.query.clientType;
+    console.log('Cliente conectado:', socket.id, 'SessionId:', sessionId, 'Type:', clientType);
+    connectedClients.set(socket.id, { 
+      socket, 
+      businessId: null, 
+      connectedAt: new Date(),
+      sessionId,
+      clientType
+    });
 
     // Unirse a un room por businessId
     socket.on('joinBusiness', async (businessId) => {
@@ -72,8 +80,10 @@ function initSocket(io) {
 
     socket.on('disconnect', () => {
       const clientInfo = connectedClients.get(socket.id);
-      console.log('Cliente desconectado:', socket.id, clientInfo?.businessId ? `(negocio: ${clientInfo.businessId})` : '');
-      connectedClients.delete(socket.id);
+      if (clientInfo) {
+        console.log(`Cliente desconectado: ${socket.id} (SessionId: ${clientInfo.sessionId}, Type: ${clientInfo.clientType})`);
+        connectedClients.delete(socket.id);
+      }
     });
   });
 }

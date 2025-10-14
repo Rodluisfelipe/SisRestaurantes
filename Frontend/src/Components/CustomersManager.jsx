@@ -319,25 +319,36 @@ const CustomersManager = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
-                            {customer.stats?.totalOrders || 0} pedidos
+                            {customer.totalOrders || 0} pedidos
                           </div>
                           <div className="text-sm text-gray-500">
-                            {formatCurrency(customer.stats?.totalSpent || 0)}
+                            {formatCurrency(customer.totalSpent || 0)}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(customer.status)}`}>
-                            {getStatusIcon(customer.status)} {customer.status.toUpperCase()}
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(customer.status || 'active')}`}>
+                            {getStatusIcon(customer.status || 'active')} {(customer.status || 'active').toUpperCase()}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(customer.stats?.lastOrderDate)}
+                          {formatDate(customer.lastOrderDate)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
                             <button
                               onClick={() => {
-                                setSelectedCustomer(customer);
+                                // Estructurar los datos del cliente con stats
+                                const customerWithStats = {
+                                  ...customer,
+                                  stats: {
+                                    totalOrders: customer.totalOrders || 0,
+                                    totalSpent: customer.totalSpent || 0,
+                                    averageOrderValue: customer.totalOrders > 0 ? (customer.totalSpent / customer.totalOrders) : 0,
+                                    lastOrderDate: customer.lastOrderDate
+                                  }
+                                };
+                                console.log('Selected customer:', customerWithStats);
+                                setSelectedCustomer(customerWithStats);
                                 setShowCustomerModal(true);
                               }}
                               className="text-blue-600 hover:text-blue-900"
@@ -420,7 +431,10 @@ const CustomersManager = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-            onClick={() => setShowCustomerModal(false)}
+            onClick={() => {
+              console.log('Closing modal');
+              setShowCustomerModal(false);
+            }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}

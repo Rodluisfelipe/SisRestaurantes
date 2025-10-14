@@ -27,6 +27,7 @@ import ModernAdminSidebar from "../Components/ModernAdminSidebar";
 import SubscriptionStatus from "../Components/SubscriptionStatus";
 import CustomersManager from "../Components/CustomersManager";
 import CouponsManager from "../Components/CouponsManager";
+import MultiSessionWarning from "../Components/MultiSessionWarning";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Componente de Modal de Confirmación para edición
@@ -940,6 +941,9 @@ function Admin() {
           Modo SuperAdmin - Visualización del panel de administración
         </motion.div>
       )}
+      
+      {/* Multi-Session Warning */}
+      <MultiSessionWarning />
       
       <div className="flex">
         {/* Modern Sidebar */}
