@@ -4,8 +4,9 @@ import { Link } from 'react-router-dom';
 import api from '../../services/api';
 import RestaurantCard from '../../Components/Catalog/RestaurantCard';
 import BannerCarousel from '../../Components/Catalog/BannerCarousel';
+import { useBusinessStatus } from '../../hooks/useBusinessStatus';
 
-// Iconos SVG simples
+// Iconos SVG modernos
 const SearchIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -19,8 +20,8 @@ const FilterIcon = () => (
 );
 
 const StarIcon = () => (
-  <svg className="w-4 h-4" fill="currentColor" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
   </svg>
 );
 
@@ -30,12 +31,19 @@ const ClockIcon = () => (
   </svg>
 );
 
+const LocationIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+
 const MenuByCatalog = () => {
   const [restaurants, setRestaurants] = useState([]);
   const [filteredRestaurants, setFilteredRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('todo');
   const [sortBy, setSortBy] = useState('popularity');
   const [categories, setCategories] = useState([]);
 
@@ -51,142 +59,48 @@ const MenuByCatalog = () => {
     try {
       setLoading(true);
       const response = await api.get('/businesses');
-      const restaurantsData = response.data;
+      const data = response.data || [];
       
-      // Cargar productos para cada restaurante y generar categorías
-      const restaurantsWithProducts = await Promise.all(
-        restaurantsData.map(async (restaurant) => {
-          try {
-            const productsResponse = await api.get(`/products?businessId=${restaurant._id}`);
-            const products = productsResponse.data;
-            
-            // Extraer categorías de los productos basándose en nombres y categorías
-            const productCategories = new Set();
-            
-            products.forEach(product => {
-              const productName = product.name.toLowerCase();
-              const categoryName = product.category?.name?.toLowerCase() || '';
-              
-              // Detectar categorías por nombre del producto
-              if (productName.includes('hamburguesa') || productName.includes('burger') || productName.includes('combo')) {
-                productCategories.add('Hamburguesas');
-              }
-              if (productName.includes('pizza') || productName.includes('pizzas')) {
-                productCategories.add('Pizza');
-              }
-              if (productName.includes('pollo') || productName.includes('chicken')) {
-                productCategories.add('Pollo');
-              }
-              if (productName.includes('pasta') || productName.includes('spaghetti') || productName.includes('lasagna')) {
-                productCategories.add('Italiana');
-              }
-              if (productName.includes('taco') || productName.includes('burrito') || productName.includes('quesadilla')) {
-                productCategories.add('Mexicana');
-              }
-              if (productName.includes('sushi') || productName.includes('ramen') || productName.includes('wok')) {
-                productCategories.add('Asiática');
-              }
-              if (productName.includes('ensalada') || productName.includes('salad')) {
-                productCategories.add('Ensaladas');
-              }
-              if (productName.includes('bebida') || productName.includes('jugo') || productName.includes('gaseosa') || productName.includes('refresco')) {
-                productCategories.add('Bebidas');
-              }
-              if (productName.includes('postre') || productName.includes('helado') || productName.includes('torta') || productName.includes('dulce')) {
-                productCategories.add('Postres');
-              }
-              if (productName.includes('pescado') || productName.includes('marisco') || productName.includes('camarón')) {
-                productCategories.add('Pescados y Mariscos');
-              }
-              if (productName.includes('carne') || productName.includes('bistec') || productName.includes('lomo')) {
-                productCategories.add('Carnes');
-              }
-              if (productName.includes('vegetariano') || productName.includes('vegano') || productName.includes('quinoa')) {
-                productCategories.add('Vegetariano');
-              }
-              if (productName.includes('desayuno') || productName.includes('huevo') || productName.includes('pancake')) {
-                productCategories.add('Desayunos');
-              }
-              if (productName.includes('sandwich') || productName.includes('wrap') || productName.includes('panini')) {
-                productCategories.add('Sandwiches');
-              }
-              
-              // También agregar la categoría asignada si existe
-              if (product.category?.name) {
-                productCategories.add(product.category.name);
-              }
-            });
-            
-            const productCategoriesArray = Array.from(productCategories);
-            
-            return {
-              ...restaurant,
-              products,
-              categories: productCategoriesArray
-            };
-          } catch (error) {
-            console.error(`Error loading products for ${restaurant.businessName}:`, error);
-            return {
-              ...restaurant,
-              products: [],
-              categories: []
-            };
-          }
-        })
-      );
+      // Generar categorías dinámicas basadas en los restaurantes
+      const allCategories = new Set(['todo']); // Siempre incluir "Todo"
       
-      setRestaurants(restaurantsWithProducts);
-      
-      // Generar categorías dinámicamente basadas en todos los productos
-      const allCategories = new Set();
-      restaurantsWithProducts.forEach(restaurant => {
-        restaurant.categories.forEach(category => {
-          allCategories.add(category);
-        });
+      data.forEach(restaurant => {
+        if (restaurant.categories && restaurant.categories.length > 0) {
+          restaurant.categories.forEach(category => {
+            allCategories.add(category);
+          });
+        }
       });
       
-      const dynamicCategories = [
-        { id: 'all', name: 'Todos', icon: '🍽️' },
-        ...Array.from(allCategories).map(category => ({
-          id: category.toLowerCase().replace(/\s+/g, '-'),
-          name: category,
-          icon: getCategoryIcon(category)
-        }))
-      ];
-      
-      setCategories(dynamicCategories);
+      setCategories(Array.from(allCategories));
+      setRestaurants(data);
     } catch (error) {
       console.error('Error loading restaurants:', error);
+      // En caso de error, mostrar datos de ejemplo
+      const fallbackData = [{
+        _id: 'fallback-1',
+        businessName: 'GO BURGER',
+        slug: 'go-burger',
+        logo: 'https://images.rappi.com/restaurants_logo/ad12613b-45af-444b-8cf6-055a4ed85aaf-1700338253532.png',
+        coverImage: 'https://static.vecteezy.com/system/resources/previews/000/278/278/large_2x/textured-black-background-vector.jpg',
+        description: 'Deliciosa comida casera con ingredientes frescos y servicio de calidad.',
+        isOpen: true,
+        rating: 5.0,
+        address: 'Chía, Cundinamarca',
+        whatsappNumber: '+57 300 123 4567',
+        categories: ['hamburguesas', 'bebidas'] // Categorías de ejemplo
+      }];
+      setRestaurants(fallbackData);
+      setCategories(['todo', 'hamburguesas', 'bebidas']);
     } finally {
       setLoading(false);
     }
   };
 
-  // Función para asignar iconos a categorías
-  const getCategoryIcon = (categoryName) => {
-    const name = categoryName.toLowerCase();
-    if (name.includes('hamburguesa') || name.includes('burger')) return '🍔';
-    if (name.includes('pizza')) return '🍕';
-    if (name.includes('pollo') || name.includes('chicken')) return '🍗';
-    if (name.includes('italiana') || name.includes('pasta')) return '🍝';
-    if (name.includes('mexicana') || name.includes('taco') || name.includes('burrito')) return '🌮';
-    if (name.includes('asiática') || name.includes('asiatica') || name.includes('sushi')) return '🍜';
-    if (name.includes('ensalada') || name.includes('salad')) return '🥗';
-    if (name.includes('bebida') || name.includes('jugo') || name.includes('gaseosa')) return '🥤';
-    if (name.includes('postre') || name.includes('dulce') || name.includes('helado')) return '🍰';
-    if (name.includes('pescado') || name.includes('marisco') || name.includes('camarón')) return '🐟';
-    if (name.includes('carne') || name.includes('bistec') || name.includes('lomo')) return '🥩';
-    if (name.includes('vegetariano') || name.includes('vegano')) return '🥬';
-    if (name.includes('desayuno') || name.includes('huevo')) return '🍳';
-    if (name.includes('sandwich') || name.includes('wrap') || name.includes('panini')) return '🥪';
-    if (name.includes('comida rápida') || name.includes('rapida')) return '🍟';
-    return '🍽️'; // Icono por defecto
-  };
-
   const filterAndSortRestaurants = () => {
     let filtered = [...restaurants];
 
-    // Filtrar por búsqueda
+    // Filtrar por término de búsqueda
     if (searchTerm) {
       filtered = filtered.filter(restaurant =>
         restaurant.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -195,11 +109,9 @@ const MenuByCatalog = () => {
     }
 
     // Filtrar por categoría
-    if (selectedCategory !== 'all') {
+    if (selectedCategory !== 'todo') {
       filtered = filtered.filter(restaurant =>
-        restaurant.categories?.some(category => 
-          category.toLowerCase().replace(/\s+/g, '-') === selectedCategory
-        )
+        restaurant.categories && restaurant.categories.includes(selectedCategory)
       );
     }
 
@@ -211,201 +123,240 @@ const MenuByCatalog = () => {
       case 'name':
         filtered.sort((a, b) => a.businessName.localeCompare(b.businessName));
         break;
-      case 'newest':
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      case 'delivery_time':
+        filtered.sort((a, b) => (a.deliveryTime || 30) - (b.deliveryTime || 30));
         break;
       default:
-        // Popularidad (por defecto)
-        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        // Mantener orden original (popularidad)
+        break;
     }
 
     setFilteredRestaurants(filtered);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-red-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando restaurantes...</p>
-        </div>
-      </div>
-    );
-  }
+  const categoryIcons = {
+    todo: '🍽️',
+    hamburguesas: '🍔',
+    pollo: '🍗',
+    bebidas: '🥤',
+    pizza: '🍕',
+    asiatica: '🍜',
+    mexicana: '🌮'
+  };
+
+  const categoryNames = {
+    todo: 'Todo',
+    hamburguesas: 'Hamburguesas',
+    pollo: 'Pollo',
+    bebidas: 'Bebidas',
+    pizza: 'Pizza',
+    asiatica: 'Asiática',
+    mexicana: 'Mexicana'
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header móvil optimizado */}
-      <div className="bg-white shadow-sm sticky top-0 z-40">
-        <div className="px-4 py-4">
-          {/* Barra de búsqueda principal */}
-          <div className="relative mb-4">
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-              <SearchIcon />
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar restaurantes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-gray-100 border-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+      {/* Header moderno */}
+      <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Logo y ubicación */}
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center space-x-3">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.1 }}
+                className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg"
               >
-                ✕
-              </button>
-            )}
+                <span className="text-white font-bold text-lg">M</span>
+              </motion.div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">MenuBy</h1>
+                <div className="flex items-center space-x-1 text-sm text-gray-600">
+                  <LocationIcon />
+                  <span>Chía, Cundinamarca</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Badge BETA */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full shadow-lg"
+            >
+              BETA
+            </motion.div>
           </div>
 
-          {/* Filtros horizontales */}
-          <div className="flex space-x-3 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  selectedCategory === category.id
-                    ? 'bg-red-500 text-white shadow-lg'
-                    : 'bg-white text-gray-600 border border-gray-200'
-                }`}
-              >
-                <span className="mr-1">{category.icon}</span>
-                {category.name}
-              </button>
-            ))}
-          </div>
+          {/* Barra de búsqueda moderna */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="relative mb-6"
+          >
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <SearchIcon />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar restaurantes..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-4 bg-gray-50 border-0 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white transition-all duration-200 shadow-sm"
+              />
+            </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* Contenido principal */}
-      <div className="px-4 py-6">
-        {/* Banner promocional */}
-        <BannerCarousel />
-        
-        {/* Header con información */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            Restaurantes en Chía
-          </h1>
-          <p className="text-gray-600 text-sm">
-            {filteredRestaurants.length} restaurantes disponibles
-          </p>
-        </div>
-
-        {/* Filtros adicionales */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-2">
-            <FilterIcon />
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="text-sm text-gray-600 bg-transparent border-0 focus:outline-none"
-            >
-              <option value="popularity">Más populares</option>
-              <option value="rating">Mejor calificados</option>
-              <option value="name">A-Z</option>
-              <option value="newest">Más recientes</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Lista de restaurantes */}
-        <AnimatePresence>
-          <div className="space-y-4">
-            {filteredRestaurants.map((restaurant) => (
-              <motion.div
-                key={restaurant._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3 }}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Categorías con scroll horizontal */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mb-8"
+        >
+          <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
+            {categories.map((category) => (
+              <motion.button
+                key={category}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSelectedCategory(category)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-2xl font-medium whitespace-nowrap transition-all duration-200 ${
+                  selectedCategory === category
+                    ? 'bg-red-500 text-white shadow-lg'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm'
+                }`}
               >
-                <Link to={`/${restaurant.slug}`} className="block">
-                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all duration-200">
-                    <div className="flex">
-                      {/* Imagen del restaurante */}
-                      <div className="w-24 h-24 bg-gray-100 relative overflow-hidden flex-shrink-0">
-                        {restaurant.logo ? (
-                          <img
-                            src={restaurant.logo}
-                            alt={restaurant.businessName}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-                              <span className="text-white font-bold text-lg">
-                                {restaurant.businessName.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Información del restaurante */}
-                      <div className="flex-1 p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-bold text-lg text-gray-900 line-clamp-1">
-                            {restaurant.businessName}
-                          </h3>
-                          <div className="flex items-center space-x-2">
-                            {/* Estado del restaurante */}
-                            <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              restaurant.isOpen 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {restaurant.isOpen ? 'Abierto' : 'Cerrado'}
-                            </div>
-                            {restaurant.rating && (
-                              <div className="flex items-center space-x-1 bg-gray-100 px-2 py-1 rounded-full">
-                                <StarIcon />
-                                <span className="text-sm font-medium">{restaurant.rating}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {restaurant.description && (
-                          <p className="text-gray-600 text-sm mb-2 line-clamp-2">
-                            {restaurant.description}
-                          </p>
-                        )}
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-1 text-sm text-gray-500">
-                            <ClockIcon />
-                            <span>25-35 min</span>
-                          </div>
-                          <div className="text-red-500 text-sm font-medium">
-                            Ver menú →
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
+                <span className="text-lg">{categoryIcons[category]}</span>
+                <span>{categoryNames[category] || category}</span>
+              </motion.button>
             ))}
           </div>
-        </AnimatePresence>
+        </motion.div>
+
+        {/* Banner carousel */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mb-8"
+        >
+          <BannerCarousel />
+        </motion.div>
+
+        {/* Contador de restaurantes */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mb-6"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-1">
+                Restaurantes en Chía
+              </h2>
+              <p className="text-gray-600">
+                {filteredRestaurants.length} restaurante{filteredRestaurants.length !== 1 ? 's' : ''} disponible{filteredRestaurants.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            
+            {/* Filtros */}
+            <div className="flex items-center space-x-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                <option value="popularity">Más populares</option>
+                <option value="rating">Mejor calificados</option>
+                <option value="delivery_time">Tiempo de entrega</option>
+                <option value="name">Nombre A-Z</option>
+              </select>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Grid de restaurantes */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        >
+          {loading ? (
+            // Skeleton loading
+            Array.from({ length: 6 }).map((_, index) => (
+              <motion.div
+                key={`skeleton-${index}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-white rounded-3xl shadow-lg overflow-hidden"
+              >
+                <div className="h-48 bg-gray-200 animate-pulse" />
+                <div className="p-5">
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-2" />
+                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-4" />
+                  <div className="flex justify-between">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-20" />
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-16" />
+                  </div>
+                </div>
+              </motion.div>
+            ))
+          ) : (
+            <AnimatePresence>
+              {filteredRestaurants.map((restaurant, index) => (
+                <motion.div
+                  key={restaurant._id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <RestaurantCard restaurant={restaurant} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+        </motion.div>
 
         {/* Estado vacío */}
-        {filteredRestaurants.length === 0 && (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        {!loading && filteredRestaurants.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.5 }}
+            className="text-center py-16"
+          >
+            <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
               <SearchIcon />
             </div>
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">
+            <h3 className="text-2xl font-bold text-gray-600 mb-3">
               No se encontraron restaurantes
             </h3>
-            <p className="text-gray-500">
-              Intenta con otros términos de búsqueda o filtros
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              Intenta con otros términos de búsqueda o explora nuestras categorías
             </p>
-          </div>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('todo');
+              }}
+              className="px-6 py-3 bg-red-500 text-white font-semibold rounded-2xl hover:bg-red-600 transition-colors shadow-lg"
+            >
+              Limpiar filtros
+            </motion.button>
+          </motion.div>
         )}
       </div>
     </div>

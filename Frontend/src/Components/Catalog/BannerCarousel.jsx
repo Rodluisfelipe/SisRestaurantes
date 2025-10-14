@@ -56,7 +56,20 @@ const BannerCarousel = () => {
   }
 
   if (banners.length === 0) {
-    return null;
+    // Mostrar banner promocional por defecto
+    return (
+      <div className="relative w-full mb-6">
+        <div className="relative w-full h-32 md:h-40 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r from-red-500 via-red-600 to-orange-500">
+          <div className="absolute inset-0 bg-black/20" />
+          <div className="relative h-full flex items-center justify-center text-white">
+            <div className="text-center">
+              <h3 className="text-2xl md:text-3xl font-bold mb-2">🚀 MenuBy BETA</h3>
+              <p className="text-sm md:text-base opacity-90">Descubre los mejores restaurantes de Chía</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
