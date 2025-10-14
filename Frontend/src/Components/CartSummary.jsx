@@ -3,9 +3,12 @@ import { useBusinessConfig } from "../Context/BusinessContext";
 import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
 import { logSystem } from '../utils/systemLogger';
+import { useBusinessStatus } from '../hooks/useBusinessStatus';
+import BusinessClosedModal from './BusinessClosedModal';
 
 function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showClosedModal, setShowClosedModal] = useState(false);
   const [orderType, setOrderType] = useState('');
   const [deliveryInfo, setDeliveryInfo] = useState({
     phone: orderInfo?.phone || '',
@@ -13,7 +16,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   });
   const [tableNumber, setTableNumber] = useState(orderInfo?.tableNumber || '');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
-  const { businessConfig } = useBusinessConfig();
+  const { businessConfig, businessId } = useBusinessConfig();
+  const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
   
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
@@ -613,6 +617,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   };
 
   const handleSubmitOrder = () => {
+    // Verificar si el negocio está abierto
+    if (!businessStatus?.isOpen) {
+      setShowClosedModal(true);
+      return;
+    }
+    
     // Debug para verificar estado actual
     debugInputState();
     
@@ -767,6 +777,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             <div>
               <h2 className="text-xl font-bold text-slate-800">Resumen del Pedido</h2>
               <p className="text-sm text-slate-500">{totalItems} {totalItems === 1 ? 'producto' : 'productos'}</p>
+              
             </div>
           </div>
           <button
@@ -1057,9 +1068,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 {initialOrderTypeSelected && orderInfo.orderType === 'inSite' ? (
                   <button
                     onClick={handleSubmitOrder}
-                    style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                    className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
-                    disabled={isSubmitting}
+                    style={{ 
+                      backgroundColor: businessStatus?.isOpen 
+                        ? businessConfig.theme.buttonColor 
+                        : '#9ca3af',
+                      color: businessConfig.theme.buttonTextColor 
+                    }}
+                    className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
+                      businessStatus?.isOpen ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
+                    }`}
+                    disabled={isSubmitting || !businessStatus?.isOpen}
                   >
                     {isSubmitting ? (
                       <>
@@ -1078,9 +1096,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 ) : initialOrderTypeSelected && orderInfo.orderType === 'takeaway' ? (
                   <button
                     onClick={handleSubmitOrder}
-                    style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                    className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
-                    disabled={isSubmitting}
+                    style={{ 
+                      backgroundColor: businessStatus?.isOpen 
+                        ? businessConfig.theme.buttonColor 
+                        : '#9ca3af',
+                      color: businessConfig.theme.buttonTextColor 
+                    }}
+                    className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
+                      businessStatus?.isOpen ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
+                    }`}
+                    disabled={isSubmitting || !businessStatus?.isOpen}
                   >
                     {isSubmitting ? (
                       <>
@@ -1100,9 +1125,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   <>
                     <button
                       onClick={() => openOrderModal('inSite')}
-                      style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                      className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
-                      disabled={isSubmitting}
+                      style={{ 
+                        backgroundColor: businessStatus?.isOpen 
+                          ? businessConfig.theme.buttonColor 
+                          : '#9ca3af',
+                        color: businessConfig.theme.buttonTextColor 
+                      }}
+                      className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
+                        businessStatus?.isOpen ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
+                      }`}
+                      disabled={isSubmitting || !businessStatus?.isOpen}
                     >
                       {isSubmitting ? (
                         <>
@@ -1121,9 +1153,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     {!isFromTableQR ? (
                       <button
                         onClick={() => openOrderModal('delivery')}
-                        style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                        className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
-                        disabled={isSubmitting}
+                        style={{ 
+                          backgroundColor: businessStatus?.isOpen 
+                            ? businessConfig.theme.buttonColor 
+                            : '#9ca3af',
+                          color: businessConfig.theme.buttonTextColor 
+                        }}
+                        className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
+                          businessStatus?.isOpen ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
+                        }`}
+                        disabled={isSubmitting || !businessStatus?.isOpen}
                       >
                         {isSubmitting ? (
                           <>
@@ -1173,6 +1212,13 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
       {showOrderModal && (
         <OrderFormModal />
       )}
+      
+      {/* Modal de negocio cerrado */}
+      <BusinessClosedModal
+        isOpen={showClosedModal}
+        onClose={() => setShowClosedModal(false)}
+        businessStatus={businessStatus}
+      />
     </div>
   );
 }

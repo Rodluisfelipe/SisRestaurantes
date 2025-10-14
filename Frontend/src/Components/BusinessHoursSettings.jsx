@@ -41,6 +41,23 @@ const BusinessHoursSettings = () => {
     sunday: 'Domingo'
   };
 
+
+  // Función para copiar horarios de un día a otros
+  const copyDayHours = (sourceDay, targetDays) => {
+    const sourceHours = businessHours[sourceDay];
+    const newHours = { ...businessHours };
+    
+    targetDays.forEach(day => {
+      if (day !== sourceDay) {
+        newHours[day] = { ...sourceHours };
+      }
+    });
+    
+    setBusinessHours(newHours);
+    setSuccessMessage(`Horarios de ${dayNames[sourceDay]} copiados correctamente`);
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
   const fetchBusinessConfig = async () => {
     try {
       const response = await api.get(`/business-config?businessId=${businessId}`);
@@ -293,7 +310,7 @@ const BusinessHoursSettings = () => {
         )}
       </AnimatePresence>
 
-      {/* Configuración de Horarios */}
+      {/* Configuración Manual de Horarios */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -306,52 +323,129 @@ const BusinessHoursSettings = () => {
         
         <div className="space-y-4">
           {Object.entries(dayNames).map(([dayKey, dayName]) => (
-            <div key={dayKey} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-              <div className="flex items-center space-x-3 flex-1">
-                <input
-                  type="checkbox"
-                  checked={businessHours[dayKey].isOpen}
-                  onChange={() => handleDayToggle(dayKey)}
-                  className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-                />
-                <span className="font-medium text-gray-700 w-20">{dayName}</span>
+            <motion.div
+              key={dayKey}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: Object.keys(dayNames).indexOf(dayKey) * 0.1 }}
+              className={`p-4 rounded-xl border-2 transition-all duration-200 ${
+                businessHours[dayKey]?.isOpen
+                  ? 'border-green-200 bg-green-50'
+                  : 'border-red-200 bg-red-50'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-3">
+                  <div className={`w-4 h-4 rounded-full ${
+                    businessHours[dayKey]?.isOpen ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                  <h4 className="font-semibold text-gray-900">{dayName}</h4>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => {
+                      const newHours = { ...businessHours };
+                      newHours[dayKey] = {
+                        ...newHours[dayKey],
+                        isOpen: !newHours[dayKey]?.isOpen
+                      };
+                      setBusinessHours(newHours);
+                    }}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      businessHours[dayKey]?.isOpen
+                        ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                        : 'bg-red-100 text-red-800 hover:bg-red-200'
+                    }`}
+                  >
+                    {businessHours[dayKey]?.isOpen ? 'Abierto' : 'Cerrado'}
+                  </button>
+                  
+                  {businessHours[dayKey]?.isOpen && (
+                    <button
+                      onClick={() => {
+                        const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+                        const weekends = ['saturday', 'sunday'];
+                        
+                        if (weekdays.includes(dayKey)) {
+                          copyDayHours(dayKey, weekdays);
+                        } else if (weekends.includes(dayKey)) {
+                          copyDayHours(dayKey, weekends);
+                        }
+                      }}
+                      className="px-2 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-medium hover:bg-blue-200 transition-colors"
+                      title={`Copiar a ${dayKey === 'monday' ? 'todos los días laborales' : dayKey === 'saturday' ? 'domingo' : 'sábado'}`}
+                    >
+                      📋 Copiar
+                    </button>
+                  )}
+                </div>
               </div>
               
-              {businessHours[dayKey].isOpen && (
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="time"
-                    value={businessHours[dayKey].openTime}
-                    onChange={(e) => handleTimeChange(dayKey, 'openTime', e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <span className="text-gray-500">a</span>
-                  <input
-                    type="time"
-                    value={businessHours[dayKey].closeTime}
-                    onChange={(e) => handleTimeChange(dayKey, 'closeTime', e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
+              {businessHours[dayKey]?.isOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="flex items-center space-x-4"
+                >
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hora de Apertura
+                    </label>
+                    <input
+                      type="time"
+                      value={businessHours[dayKey]?.openTime || '08:00'}
+                      onChange={(e) => {
+                        const newHours = { ...businessHours };
+                        newHours[dayKey] = {
+                          ...newHours[dayKey],
+                          openTime: e.target.value
+                        };
+                        setBusinessHours(newHours);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                  
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Hora de Cierre
+                    </label>
+                    <input
+                      type="time"
+                      value={businessHours[dayKey]?.closeTime || '22:00'}
+                      onChange={(e) => {
+                        const newHours = { ...businessHours };
+                        newHours[dayKey] = {
+                          ...newHours[dayKey],
+                          closeTime: e.target.value
+                        };
+                        setBusinessHours(newHours);
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    />
+                  </div>
+                </motion.div>
               )}
-              
-              {!businessHours[dayKey].isOpen && (
-                <span className="text-gray-500 italic">Cerrado</span>
-              )}
-            </div>
+            </motion.div>
           ))}
         </div>
         
         <div className="mt-6 flex justify-end">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleSaveHours}
             disabled={saving}
-            className={`px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors ${
-              saving ? 'opacity-50 cursor-not-allowed' : ''
+            className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 ${
+              saving
+                ? 'bg-gray-400 cursor-not-allowed text-white'
+                : 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl'
             }`}
           >
-            {saving ? 'Guardando...' : '💾 Guardar Horarios'}
-          </button>
+            {saving ? '⏳ Guardando...' : '💾 Guardar Horarios'}
+          </motion.button>
         </div>
       </motion.div>
     </div>

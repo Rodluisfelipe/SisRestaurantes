@@ -165,17 +165,17 @@ businessConfigSchema.statics.getConfig = async function() {
 // Método para verificar si el negocio está abierto según horarios
 businessConfigSchema.methods.isCurrentlyOpen = function() {
   const now = new Date();
-  const currentDay = now.toLocaleLowerCase().substring(0, 3); // 'mon', 'tue', etc.
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const currentTime = now.toTimeString().substring(0, 5); // 'HH:MM'
   
   const dayMap = {
-    'mon': 'monday',
-    'tue': 'tuesday', 
-    'wed': 'wednesday',
-    'thu': 'thursday',
-    'fri': 'friday',
-    'sat': 'saturday',
-    'sun': 'sunday'
+    'monday': 'monday',
+    'tuesday': 'tuesday', 
+    'wednesday': 'wednesday',
+    'thursday': 'thursday',
+    'friday': 'friday',
+    'saturday': 'saturday',
+    'sunday': 'sunday'
   };
   
   const dayKey = dayMap[currentDay];
@@ -208,20 +208,10 @@ businessConfigSchema.methods.getBusinessStatus = function() {
 // Método para obtener la próxima hora de apertura
 businessConfigSchema.methods.getNextOpenTime = function() {
   const now = new Date();
-  const currentDay = now.toLocaleLowerCase().substring(0, 3);
-  
-  const dayMap = {
-    'mon': 'monday',
-    'tue': 'tuesday', 
-    'wed': 'wednesday',
-    'thu': 'thursday',
-    'fri': 'friday',
-    'sat': 'saturday',
-    'sun': 'sunday'
-  };
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   
   const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-  const currentDayIndex = dayOrder.indexOf(dayMap[currentDay]);
+  const currentDayIndex = dayOrder.indexOf(currentDay);
   
   // Buscar el próximo día abierto
   for (let i = 0; i < 7; i++) {

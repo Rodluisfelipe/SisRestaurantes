@@ -661,7 +661,7 @@ function CustomerOrderDisplay() {
                                   lineHeight: '1'
                                 }}
                               >
-                                #{order.orderNumber}
+                                #{order.orderNumber} ({order._id?.slice(-6)})
                               </span>
                             </div>
 
@@ -781,7 +781,7 @@ function CustomerOrderDisplay() {
                                   lineHeight: '1'
                                 }}
                               >
-                                #{order.orderNumber}
+                                #{order.orderNumber} ({order._id?.slice(-6)})
                               </span>
                             </div>
 
@@ -902,7 +902,7 @@ function CustomerOrderDisplay() {
                                   lineHeight: '1'
                                 }}
                               >
-                                #{order.orderNumber}
+                                #{order.orderNumber} ({order._id?.slice(-6)})
                               </span>
                             </div>
 

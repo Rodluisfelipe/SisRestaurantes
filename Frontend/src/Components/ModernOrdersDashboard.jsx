@@ -976,7 +976,7 @@ function ModernOrdersDashboard() {
                       <span className="text-lg">{getOrderTypeInfo(orderDetails.orderType).icon}</span>
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900">Pedido #{orderDetails.orderNumber}</h2>
+                      <h2 className="text-xl font-bold text-slate-900">Pedido #{orderDetails.orderNumber} ({orderDetails._id?.slice(-6)})</h2>
                       <p className="text-sm text-slate-600">{getOrderTypeInfo(orderDetails.orderType).label}</p>
                     </div>
                   </div>

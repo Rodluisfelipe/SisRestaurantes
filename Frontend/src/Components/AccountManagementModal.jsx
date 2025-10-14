@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Package, Phone, MapPin, Star, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { X, User, Package, Phone, MapPin, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { logSystem } from '../utils/systemLogger';
@@ -125,18 +125,27 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
       case 'ready': return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'completed': return <CheckCircle className="w-4 h-4 text-green-600" />;
       case 'cancelled': return <XCircle className="w-4 h-4 text-red-500" />;
+      case 'delivered': return <CheckCircle className="w-4 h-4 text-green-700" />;
+      case 'inProgress': return <Clock className="w-4 h-4 text-blue-600" />;
+      case 'confirmed': return <CheckCircle className="w-4 h-4 text-blue-500" />;
       default: return <Clock className="w-4 h-4 text-gray-500" />;
     }
   };
 
   const getOrderStatusText = (status) => {
+    console.log('getOrderStatusText - status recibido:', status, 'tipo:', typeof status);
     switch (status) {
       case 'pending': return 'Pendiente';
       case 'preparing': return 'Preparando';
       case 'ready': return 'Listo';
       case 'completed': return 'Completado';
       case 'cancelled': return 'Cancelado';
-      default: return 'Desconocido';
+      case 'delivered': return 'Entregado';
+      case 'inProgress': return 'En Progreso';
+      case 'confirmed': return 'Confirmado';
+      default: 
+        console.log('getOrderStatusText - Estado no reconocido:', status);
+        return 'Desconocido';
     }
   };
 
@@ -147,15 +156,12 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
       case 'ready': return 'text-green-700 bg-green-100 border-green-200';
       case 'completed': return 'text-green-800 bg-green-200 border-green-300';
       case 'cancelled': return 'text-red-700 bg-red-100 border-red-200';
+      case 'delivered': return 'text-green-900 bg-green-300 border-green-400';
+      case 'inProgress': return 'text-blue-800 bg-blue-200 border-blue-300';
+      case 'confirmed': return 'text-blue-700 bg-blue-100 border-blue-200';
       default: return 'text-gray-700 bg-gray-100 border-gray-200';
     }
   };
-
-  const repeatOrder = (order) => {
-    logSystem('Repitiendo pedido', order);
-    // TODO: Implementar repetir pedido
-  };
-
 
   if (!isOpen) return null;
 
@@ -445,7 +451,10 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                     </motion.div>
                   ) : (
                     <div className="space-y-4">
-                      {orders.map((order, index) => (
+                      {orders.map((order, index) => {
+                        console.log(`Order ${index}:`, order);
+                        console.log(`Order ${index} status:`, order.status);
+                        return (
                         <motion.div 
                           key={order._id || index} 
                           initial={{ opacity: 0, y: 10 }}
@@ -456,7 +465,20 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                           <div className="flex justify-between items-start mb-4">
                             <div>
                               <h4 className="font-bold text-gray-800 text-lg">
-                                Pedido #{order._id?.slice(-6) || index + 1}
+                                {(() => {
+                                  console.log('Order number fields:', {
+                                    orderNumber: order.orderNumber,
+                                    _id: order._id,
+                                    index: index
+                                  });
+                                  
+                                  const orderNum = order.orderNumber || index + 1;
+                                  const shortId = order._id?.slice(-6) || 'N/A';
+                                  
+                                  console.log('Display order number:', orderNum, 'Short ID:', shortId);
+                                  
+                                  return `Pedido #${orderNum} (${shortId})`;
+                                })()}
                               </h4>
                               <p className="text-sm text-gray-600 mt-1">
                                 {new Date(order.createdAt || order.date || Date.now()).toLocaleDateString('es-ES', {
@@ -476,22 +498,82 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm mb-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mb-4">
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-700">Total:</span>
+                              <span className="font-semibold" style={{ color: '#374151', fontWeight: 'bold' }}>Total:</span>
                               <span className="font-bold" style={{ color: primaryColor }}>
-                                ${order.total?.toLocaleString() || order.finalAmount?.toLocaleString() || '0'}
+                                {(() => {
+                                  console.log('Order total fields:', {
+                                    total: order.total,
+                                    finalAmount: order.finalAmount,
+                                    totalAmount: order.totalAmount,
+                                    items: order.items
+                                  });
+                                  
+                                  // Calcular total desde los items si no hay total definido
+                                  let calculatedTotal = 0;
+                                  if (order.items && order.items.length > 0) {
+                                    calculatedTotal = order.items.reduce((sum, item) => {
+                                      const itemTotal = (item.price || 0) * (item.quantity || 1);
+                                      console.log(`Item ${item.name}: price=${item.price}, quantity=${item.quantity}, total=${itemTotal}`);
+                                      return sum + itemTotal;
+                                    }, 0);
+                                    console.log('Calculated total from items:', calculatedTotal);
+                                  }
+                                  
+                                  const displayTotal = order.finalAmount?.toLocaleString() || 
+                                                     order.total?.toLocaleString() || 
+                                                     order.totalAmount?.toLocaleString() ||
+                                                     calculatedTotal?.toLocaleString() || 
+                                                     '0';
+                                  console.log('Final display total:', displayTotal);
+                                  return `$${displayTotal}`;
+                                })()}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-700">Método:</span>
-                              <span>{order.paymentMethod || 'Efectivo'}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-gray-700">Tipo:</span>
-                              <span>{order.orderType === 'dine-in' ? 'En sitio' : order.orderType === 'takeaway' ? 'Para llevar' : 'Domicilio'}</span>
+                              <span className="font-semibold" style={{ color: '#374151', fontWeight: 'bold' }}>Tipo:</span>
+                              <span style={{ color: '#1f2937', fontWeight: '500' }}>
+                                {(() => {
+                                  console.log('OrderType mapping - order.orderType:', order.orderType);
+                                  const typeText = order.orderType === 'inSite' ? 'En sitio' : 
+                                                 order.orderType === 'takeaway' ? 'Para llevar' : 
+                                                 order.orderType === 'delivery' ? 'Domicilio' : 
+                                                 order.orderType || 'Desconocido';
+                                  console.log('OrderType mapping - result:', typeText);
+                                  return typeText;
+                                })()}
+                              </span>
                             </div>
                           </div>
+                          
+                          {/* Información específica según el tipo de pedido */}
+                          {order.orderType === 'inSite' && order.tableNumber && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold" style={{ color: '#374151', fontWeight: 'bold' }}>Mesa:</span>
+                                <span style={{ color: '#1f2937', fontWeight: '500' }}>#{order.tableNumber}</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {order.orderType === 'delivery' && order.address && (
+                            <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
+                              <div className="flex items-start gap-2">
+                                <span className="font-semibold" style={{ color: '#374151', fontWeight: 'bold' }}>Dirección:</span>
+                                <span style={{ color: '#1f2937', fontWeight: '500' }}>{order.address}</span>
+                              </div>
+                            </div>
+                          )}
+                          
+                          {order.orderType === 'takeaway' && (
+                            <div className="bg-orange-50 border border-orange-200 rounded-xl p-3 mb-4">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold" style={{ color: '#374151', fontWeight: 'bold' }}>Recogida:</span>
+                                <span style={{ color: '#1f2937', fontWeight: '500' }}>En el mostrador</span>
+                              </div>
+                            </div>
+                          )}
                           
                           {order.couponCode && (
                             <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4">
@@ -502,41 +584,29 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                             </div>
                           )}
                           
-                          <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                            <p className="font-semibold text-gray-700 mb-2">Productos:</p>
-                            <div className="space-y-2">
+                          <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+                            <p className="font-semibold text-gray-800 mb-3">Productos:</p>
+                            <div className="space-y-3">
                               {order.items?.map((item, itemIndex) => (
-                                <div key={itemIndex} className="flex justify-between items-center">
-                                  <span className="text-gray-700">{item.quantity}x {item.name}</span>
-                                  <span className="font-semibold">${item.price?.toLocaleString() || '0'}</span>
+                                <div key={itemIndex} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+                                  <span className="text-gray-700 font-medium">{item.quantity}x {item.name}</span>
+                                  <span className="font-bold text-lg px-2 py-1 rounded" style={{ 
+                                    color: '#1f2937', 
+                                    fontWeight: 'bold', 
+                                    fontSize: '18px',
+                                    backgroundColor: '#f3f4f6',
+                                    border: '1px solid #d1d5db'
+                                  }}>
+                                    ${item.price?.toLocaleString() || '0'}
+                                  </span>
                                 </div>
                               )) || <p className="text-gray-500">No hay productos disponibles</p>}
                             </div>
                           </div>
                           
-                          {order.status === 'completed' && (
-                            <div className="flex gap-3 pt-4 border-t border-gray-200">
-                              <motion.button 
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => repeatOrder(order)}
-                                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition-colors font-semibold text-sm"
-                              >
-                                <span>🔄</span>
-                                Repetir Pedido
-                              </motion.button>
-                              <motion.button 
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 rounded-xl hover:bg-yellow-100 transition-colors font-semibold text-sm"
-                              >
-                                <Star className="w-4 h-4" />
-                                Calificar
-                              </motion.button>
-                            </div>
-                          )}
                         </motion.div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </motion.div>

@@ -3,11 +3,15 @@ import { motion } from 'framer-motion';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import ErrorBoundary from './ErrorBoundary';
 import { useBusinessConfig } from "../Context/BusinessContext";
+import { useBusinessStatus } from '../hooks/useBusinessStatus';
+import BusinessClosedModal from './BusinessClosedModal';
 
 function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
   const [showToppings, setShowToppings] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const { businessConfig } = useBusinessConfig();
+  const [showClosedModal, setShowClosedModal] = useState(false);
+  const { businessConfig, businessId } = useBusinessConfig();
+  const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
 
   const handleAddToCart = (productWithToppings) => {
     addToCart(productWithToppings);
@@ -17,6 +21,12 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
   };
 
   const handleShowToppings = () => {
+    // Verificar si el negocio está abierto
+    if (!businessStatus?.isOpen) {
+      setShowClosedModal(true);
+      return;
+    }
+    
     setHasError(false); // Resetear error al abrir
     setShowToppings(true);
     onToppingsOpen();
@@ -120,21 +130,32 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
                 e.stopPropagation(); // Evita que se propague al div padre
                 handleShowToppings();
               }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className="w-10 h-10 sm:w-12 sm:h-12 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 relative z-10"
+              whileHover={businessStatus?.isOpen ? { scale: 1.1 } : {}}
+              whileTap={businessStatus?.isOpen ? { scale: 0.9 } : {}}
+              className={`w-10 h-10 sm:w-12 sm:h-12 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 relative z-10 ${
+                businessStatus?.isOpen ? 'hover:shadow-xl cursor-pointer' : 'opacity-50 cursor-not-allowed'
+              }`}
               style={{
-                backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                backgroundColor: businessStatus?.isOpen 
+                  ? (businessConfig?.theme?.buttonColor || '#f97316')
+                  : '#9ca3af',
                 color: businessConfig?.theme?.buttonTextColor || '#ffffff',
-                boxShadow: `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`
+                boxShadow: businessStatus?.isOpen 
+                  ? `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`
+                  : '0 5px 15px rgba(0,0,0,0.1)'
               }}
               onMouseEnter={(e) => {
-                e.target.style.boxShadow = `0 15px 35px ${businessConfig?.theme?.buttonColor || '#f97316'}35`;
+                if (businessStatus?.isOpen) {
+                  e.target.style.boxShadow = `0 15px 35px ${businessConfig?.theme?.buttonColor || '#f97316'}35`;
+                }
               }}
               onMouseLeave={(e) => {
-                e.target.style.boxShadow = `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`;
+                if (businessStatus?.isOpen) {
+                  e.target.style.boxShadow = `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`;
+                }
               }}
-              aria-label="Agregar al carrito"
+              aria-label={businessStatus?.isOpen ? "Agregar al carrito" : "Negocio cerrado"}
+              disabled={!businessStatus?.isOpen}
             >
               <motion.span 
                 className="text-lg sm:text-xl font-bold"
@@ -183,6 +204,13 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
           </div>
         </div>
       )}
+      
+      {/* Modal de negocio cerrado */}
+      <BusinessClosedModal
+        isOpen={showClosedModal}
+        onClose={() => setShowClosedModal(false)}
+        businessStatus={businessStatus}
+      />
     </>
   );
 }
