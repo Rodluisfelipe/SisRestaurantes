@@ -9,21 +9,76 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showMultiSessionWarning, setShowMultiSessionWarning] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   // Helper para guardar tokens
   const saveTokens = (token, refreshToken, userObj) => {
+    // Generar un ID único para esta sesión
+    const sessionId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    // Guardar en sessionStorage para esta sesión específica
+    sessionStorage.setItem('accessToken', token);
+    sessionStorage.setItem('refreshToken', refreshToken);
+    sessionStorage.setItem('user', JSON.stringify(userObj));
+    sessionStorage.setItem('sessionId', sessionId);
+    
+    // También guardar en localStorage para persistencia, pero con prefijo único
+    localStorage.setItem(`accessToken_${sessionId}`, token);
+    localStorage.setItem(`refreshToken_${sessionId}`, refreshToken);
+    localStorage.setItem(`user_${sessionId}`, JSON.stringify(userObj));
+    
+    // Mantener el último token activo en localStorage sin prefijo para compatibilidad
     localStorage.setItem('accessToken', token);
     localStorage.setItem('refreshToken', refreshToken);
     localStorage.setItem('user', JSON.stringify(userObj));
   };
 
+  // Helper para detectar múltiples sesiones
+  const checkMultipleSessions = () => {
+    const sessionKeys = Object.keys(localStorage).filter(key => 
+      key.startsWith('accessToken_admin_') || 
+      key.startsWith('refreshToken_admin_') || 
+      key.startsWith('user_admin_')
+    );
+    
+    // Contar sesiones únicas basándose en los prefijos
+    const uniqueSessions = new Set();
+    sessionKeys.forEach(key => {
+      const sessionId = key.split('_').slice(2).join('_');
+      uniqueSessions.add(sessionId);
+    });
+    
+    const count = uniqueSessions.size;
+    setShowMultiSessionWarning(count > 1);
+    return count;
+  };
+
   // Helper para limpiar tokens
   const clearTokens = () => {
+    const sessionId = sessionStorage.getItem('sessionId');
+    
+    // Limpiar sessionStorage
+    sessionStorage.removeItem('accessToken');
+    sessionStorage.removeItem('refreshToken');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('sessionId');
+    
+    // Limpiar localStorage con prefijo específico
+    if (sessionId) {
+      localStorage.removeItem(`accessToken_${sessionId}`);
+      localStorage.removeItem(`refreshToken_${sessionId}`);
+      localStorage.removeItem(`user_${sessionId}`);
+    }
+    
+    // Limpiar localStorage sin prefijo (para compatibilidad)
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    
+    // Verificar sesiones múltiples después de limpiar
+    checkMultipleSessions();
   };
 
   // Login
@@ -32,6 +87,9 @@ export function AuthProvider({ children }) {
     saveTokens(res.data.token, res.data.refreshToken, res.data.user);
     setIsAuthenticated(true);
     setUser(res.data.user);
+    
+    // Verificar sesiones múltiples después del login
+    checkMultipleSessions();
     // Buscar el slug usando el businessId
     let slug = null;
     try {
@@ -50,7 +108,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     let slug = null;
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
       if (userStr) {
         const userObj = JSON.parse(userStr);
         // Buscar el slug usando el businessId
@@ -62,7 +120,7 @@ export function AuthProvider({ children }) {
           slug = userObj.businessId;
         }
       }
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
       if (refreshToken) {
         await api.post('/auth/logout', { refreshToken });
       }
@@ -79,10 +137,14 @@ export function AuthProvider({ children }) {
 
   // Refrescar access token
   const refreshToken = useCallback(async () => {
-    const refreshToken = sessionStorage.getItem('refreshToken');
+    const refreshToken = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
     if (!refreshToken) throw new Error('No refresh token');
     const res = await api.post('/auth/refresh', { refreshToken });
+    
+    // Actualizar tanto sessionStorage como localStorage
+    sessionStorage.setItem('accessToken', res.data.token);
     localStorage.setItem('accessToken', res.data.token);
+    
     setIsAuthenticated(true);
     return res.data.token;
   }, []);
@@ -125,8 +187,8 @@ export function AuthProvider({ children }) {
         }
       }
       
-      const token = localStorage.getItem('accessToken');
-      const userStr = localStorage.getItem('user');
+      const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
+      const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
       
       // Verificar si es un token temporal de superadmin
       const isTempSuperAdminToken = token?.startsWith('temp_sa_token_');
@@ -159,7 +221,7 @@ export function AuthProvider({ children }) {
         } catch (err) {
           // Intentar refrescar, pero no cerramos sesión si falla
           try {
-            const refreshTokenValue = sessionStorage.getItem('refreshToken');
+            const refreshTokenValue = sessionStorage.getItem('refreshToken') || localStorage.getItem('refreshToken');
             if (refreshTokenValue) {
               const newToken = await refreshToken();
               // Si se pudo refrescar, intentar obtener el usuario
@@ -189,7 +251,29 @@ export function AuthProvider({ children }) {
       setLoading(false);
     };
     checkAuth();
+    
+    // Verificar sesiones múltiples al cargar
+    checkMultipleSessions();
   }, [refreshToken, navigate, location]);
+
+  // Función para limpiar sesiones antiguas
+  const cleanupOldSessions = () => {
+    const currentSessionId = sessionStorage.getItem('sessionId');
+    const allKeys = Object.keys(localStorage);
+    
+    allKeys.forEach(key => {
+      if (key.startsWith('accessToken_admin_') || 
+          key.startsWith('refreshToken_admin_') || 
+          key.startsWith('user_admin_')) {
+        const sessionId = key.split('_').slice(2).join('_');
+        if (sessionId !== currentSessionId) {
+          localStorage.removeItem(key);
+        }
+      }
+    });
+    
+    setShowMultiSessionWarning(false);
+  };
 
   const value = {
     isAuthenticated,
@@ -197,7 +281,10 @@ export function AuthProvider({ children }) {
     login,
     logout,
     refreshToken,
-    loading
+    loading,
+    showMultiSessionWarning,
+    cleanupOldSessions,
+    checkMultipleSessions
   };
 
   return (

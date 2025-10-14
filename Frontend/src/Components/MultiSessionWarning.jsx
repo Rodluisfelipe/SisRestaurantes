@@ -1,82 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../Context/AuthContext';
 
 /**
  * Componente que detecta múltiples sesiones de administración activas
  * y muestra una advertencia al usuario
  */
 export default function MultiSessionWarning() {
-  const [showWarning, setShowWarning] = useState(false);
-  const [sessionCount, setSessionCount] = useState(0);
-
-  useEffect(() => {
-    // Detectar si hay múltiples sesiones activas
-    const checkMultipleSessions = () => {
-      const sessionKeys = Object.keys(localStorage).filter(key => 
-        key.startsWith('accessToken_admin_') || 
-        key.startsWith('refreshToken_admin_') || 
-        key.startsWith('user_admin_')
-      );
-      
-      // Contar sesiones únicas basándose en los prefijos
-      const uniqueSessions = new Set();
-      sessionKeys.forEach(key => {
-        const sessionId = key.split('_').slice(2).join('_');
-        uniqueSessions.add(sessionId);
-      });
-      
-      const count = uniqueSessions.size;
-      setSessionCount(count);
-      setShowWarning(count > 1);
-    };
-
-    // Verificar al montar
-    checkMultipleSessions();
-
-    // Verificar periódicamente
-    const interval = setInterval(checkMultipleSessions, 5000);
-
-    // Escuchar cambios en localStorage
-    const handleStorageChange = (e) => {
-      if (e.key && (e.key.includes('accessToken') || e.key.includes('refreshToken'))) {
-        checkMultipleSessions();
-      }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  const { showMultiSessionWarning, cleanupOldSessions, checkMultipleSessions } = useAuth();
 
   const handleDismiss = () => {
-    setShowWarning(false);
+    // No hacer nada, solo ocultar la advertencia temporalmente
   };
 
   const handleCleanup = () => {
-    // Limpiar sesiones antiguas (mantener solo la actual)
-    const currentSessionId = sessionStorage.getItem('sessionId');
-    const allKeys = Object.keys(localStorage);
-    
-    allKeys.forEach(key => {
-      if (key.startsWith('accessToken_admin_') || 
-          key.startsWith('refreshToken_admin_') || 
-          key.startsWith('user_admin_')) {
-        const sessionId = key.split('_').slice(2).join('_');
-        if (sessionId !== currentSessionId) {
-          localStorage.removeItem(key);
-        }
-      }
-    });
-    
-    setShowWarning(false);
+    cleanupOldSessions();
   };
 
   return (
     <AnimatePresence>
-      {showWarning && (
+      {showMultiSessionWarning && (
         <motion.div
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
@@ -96,7 +39,7 @@ export default function MultiSessionWarning() {
                 </h3>
                 <div className="mt-2 text-sm text-yellow-700">
                   <p>
-                    Se detectaron {sessionCount} sesiones de administración activas. 
+                    Se detectaron múltiples sesiones de administración activas. 
                     Esto puede causar conflictos y pantallas en blanco.
                   </p>
                 </div>
