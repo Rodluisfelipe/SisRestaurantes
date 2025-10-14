@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
+import BusinessHoursSettings from './BusinessHoursSettings';
 
 const BusinessSettings = () => {
   const initialSettings = {
@@ -456,52 +457,8 @@ const BusinessSettings = () => {
           </div>
         </motion.div>
 
-        {/* Business Status Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
-        >
-          <div className="text-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-              <span className="text-xl">{settings.isOpen ? '🟢' : '🔴'}</span>
-            </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">Estado del Negocio</h3>
-            <p className="text-slate-600">Controla si tu negocio está abierto o cerrado</p>
-          </div>
-
-          <div className="flex items-center justify-center space-x-6">
-            <div className="text-center">
-              <div className={`w-4 h-4 rounded-full mx-auto mb-2 ${settings.isOpen ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className={`text-lg font-bold ${settings.isOpen ? 'text-green-600' : 'text-red-600'}`}>
-                {settings.isOpen ? '🟢 Abierto' : '🔴 Cerrado'}
-              </span>
-            </div>
-            
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleStoreStatusToggle}
-              disabled={statusLoading}
-              className={`px-8 py-4 rounded-2xl text-white font-semibold shadow-xl transition-all duration-200 ${
-                statusLoading 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : settings.isOpen 
-                    ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700' 
-                    : 'bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'
-              }`}
-            >
-              {statusLoading 
-                ? '⏳ Actualizando...' 
-                : settings.isOpen 
-                  ? '🔴 Cerrar Negocio' 
-                  : '🟢 Abrir Negocio'
-              }
-            </motion.button>
-          </div>
-        </motion.div>
+        {/* Horarios y Estado del Negocio */}
+        <BusinessHoursSettings />
 
         {/* Social Media Section */}
         <motion.div 

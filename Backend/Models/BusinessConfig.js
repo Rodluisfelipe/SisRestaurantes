@@ -41,6 +41,50 @@ const businessConfigSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Configuración de horarios del negocio
+  businessHours: {
+    monday: {
+      isOpen: { type: Boolean, default: true },
+      openTime: { type: String, default: "08:00" },
+      closeTime: { type: String, default: "22:00" }
+    },
+    tuesday: {
+      isOpen: { type: Boolean, default: true },
+      openTime: { type: String, default: "08:00" },
+      closeTime: { type: String, default: "22:00" }
+    },
+    wednesday: {
+      isOpen: { type: Boolean, default: true },
+      openTime: { type: String, default: "08:00" },
+      closeTime: { type: String, default: "22:00" }
+    },
+    thursday: {
+      isOpen: { type: Boolean, default: true },
+      openTime: { type: String, default: "08:00" },
+      closeTime: { type: String, default: "22:00" }
+    },
+    friday: {
+      isOpen: { type: Boolean, default: true },
+      openTime: { type: String, default: "08:00" },
+      closeTime: { type: String, default: "22:00" }
+    },
+    saturday: {
+      isOpen: { type: Boolean, default: true },
+      openTime: { type: String, default: "08:00" },
+      closeTime: { type: String, default: "22:00" }
+    },
+    sunday: {
+      isOpen: { type: Boolean, default: true },
+      openTime: { type: String, default: "08:00" },
+      closeTime: { type: String, default: "22:00" }
+    }
+  },
+  // Estado del menú (pausado/activo)
+  menuStatus: {
+    type: String,
+    enum: ['active', 'paused'],
+    default: 'active'
+  },
   whatsappNumber: {
     type: String,
     default: ""
@@ -90,6 +134,16 @@ businessConfigSchema.statics.getConfig = async function() {
       logo: "",
       coverImage: "",
       isOpen: true,
+      businessHours: {
+        monday: { isOpen: true, openTime: "08:00", closeTime: "22:00" },
+        tuesday: { isOpen: true, openTime: "08:00", closeTime: "22:00" },
+        wednesday: { isOpen: true, openTime: "08:00", closeTime: "22:00" },
+        thursday: { isOpen: true, openTime: "08:00", closeTime: "22:00" },
+        friday: { isOpen: true, openTime: "08:00", closeTime: "22:00" },
+        saturday: { isOpen: true, openTime: "08:00", closeTime: "22:00" },
+        sunday: { isOpen: true, openTime: "08:00", closeTime: "22:00" }
+      },
+      menuStatus: 'active',
       whatsappNumber: "",
       address: "",
       googleMapsUrl: "",
@@ -106,6 +160,84 @@ businessConfigSchema.statics.getConfig = async function() {
     });
   }
   return config;
+};
+
+// Método para verificar si el negocio está abierto según horarios
+businessConfigSchema.methods.isCurrentlyOpen = function() {
+  const now = new Date();
+  const currentDay = now.toLocaleLowerCase().substring(0, 3); // 'mon', 'tue', etc.
+  const currentTime = now.toTimeString().substring(0, 5); // 'HH:MM'
+  
+  const dayMap = {
+    'mon': 'monday',
+    'tue': 'tuesday', 
+    'wed': 'wednesday',
+    'thu': 'thursday',
+    'fri': 'friday',
+    'sat': 'saturday',
+    'sun': 'sunday'
+  };
+  
+  const dayKey = dayMap[currentDay];
+  if (!dayKey || !this.businessHours[dayKey]) {
+    return false;
+  }
+  
+  const dayHours = this.businessHours[dayKey];
+  if (!dayHours.isOpen) {
+    return false;
+  }
+  
+  return currentTime >= dayHours.openTime && currentTime <= dayHours.closeTime;
+};
+
+// Método para obtener el estado completo del negocio
+businessConfigSchema.methods.getBusinessStatus = function() {
+  const isOpenByHours = this.isCurrentlyOpen();
+  const isMenuActive = this.menuStatus === 'active';
+  
+  return {
+    isOpen: this.isOpen && isOpenByHours && isMenuActive,
+    isOpenByHours,
+    isMenuActive,
+    menuStatus: this.menuStatus,
+    nextOpenTime: this.getNextOpenTime()
+  };
+};
+
+// Método para obtener la próxima hora de apertura
+businessConfigSchema.methods.getNextOpenTime = function() {
+  const now = new Date();
+  const currentDay = now.toLocaleLowerCase().substring(0, 3);
+  
+  const dayMap = {
+    'mon': 'monday',
+    'tue': 'tuesday', 
+    'wed': 'wednesday',
+    'thu': 'thursday',
+    'fri': 'friday',
+    'sat': 'saturday',
+    'sun': 'sunday'
+  };
+  
+  const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const currentDayIndex = dayOrder.indexOf(dayMap[currentDay]);
+  
+  // Buscar el próximo día abierto
+  for (let i = 0; i < 7; i++) {
+    const dayIndex = (currentDayIndex + i) % 7;
+    const dayKey = dayOrder[dayIndex];
+    const dayHours = this.businessHours[dayKey];
+    
+    if (dayHours && dayHours.isOpen) {
+      return {
+        day: dayKey,
+        time: dayHours.openTime
+      };
+    }
+  }
+  
+  return null;
 };
 
 // Importante: esto es para asegurarnos de que usamos el mismo modelo si ya existe

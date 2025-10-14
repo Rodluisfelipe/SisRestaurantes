@@ -220,4 +220,118 @@ router.get("/by-slug/:slug", async (req, res) => {
   }
 });
 
+// Obtener estado del negocio (horarios + menú)
+router.get("/status/:businessId", async (req, res) => {
+  const { businessId } = req.params;
+  
+  try {
+    const business = await findBusinessByIdentifier(businessId);
+    
+    if (!business) {
+      return res.status(404).json({ message: 'Negocio no encontrado' });
+    }
+    
+    const status = business.getBusinessStatus();
+    res.json(status);
+  } catch (error) {
+    console.error(`Error al obtener el estado del negocio ${businessId}:`, error);
+    res.status(500).json({ 
+      message: 'Error al obtener el estado del negocio',
+      error: error.message 
+    });
+  }
+});
+
+// Actualizar horarios del negocio
+router.put("/hours", async (req, res) => {
+  const { businessId, businessHours } = req.body;
+  
+  if (!businessId || !businessHours) {
+    return res.status(400).json({ message: "businessId y businessHours son requeridos" });
+  }
+  
+  try {
+    const business = await findBusinessByIdentifier(businessId);
+    
+    if (!business) {
+      return res.status(404).json({ message: 'Negocio no encontrado' });
+    }
+    
+    // Validar estructura de horarios
+    const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const validatedHours = {};
+    
+    validDays.forEach(day => {
+      if (businessHours[day]) {
+        validatedHours[day] = {
+          isOpen: Boolean(businessHours[day].isOpen),
+          openTime: businessHours[day].openTime || "08:00",
+          closeTime: businessHours[day].closeTime || "22:00"
+        };
+      } else {
+        validatedHours[day] = {
+          isOpen: true,
+          openTime: "08:00",
+          closeTime: "22:00"
+        };
+      }
+    });
+    
+    const config = await BusinessConfig.findByIdAndUpdate(
+      business._id,
+      { businessHours: validatedHours },
+      { new: true }
+    );
+    
+    // Emitir evento de WebSocket
+    emitToBusiness(business._id.toString(), "business_hours_update", { businessHours: validatedHours });
+    
+    res.json(config);
+  } catch (error) {
+    console.error(`Error al actualizar horarios del negocio ${businessId}:`, error);
+    res.status(500).json({ 
+      message: 'Error al actualizar horarios del negocio',
+      error: error.message 
+    });
+  }
+});
+
+// Actualizar estado del menú (pausar/activar)
+router.put("/menu-status", async (req, res) => {
+  const { businessId, menuStatus } = req.body;
+  
+  if (!businessId || !menuStatus) {
+    return res.status(400).json({ message: "businessId y menuStatus son requeridos" });
+  }
+  
+  if (!['active', 'paused'].includes(menuStatus)) {
+    return res.status(400).json({ message: "menuStatus debe ser 'active' o 'paused'" });
+  }
+  
+  try {
+    const business = await findBusinessByIdentifier(businessId);
+    
+    if (!business) {
+      return res.status(404).json({ message: 'Negocio no encontrado' });
+    }
+    
+    const config = await BusinessConfig.findByIdAndUpdate(
+      business._id,
+      { menuStatus },
+      { new: true }
+    );
+    
+    // Emitir evento de WebSocket
+    emitToBusiness(business._id.toString(), "menu_status_update", { menuStatus });
+    
+    res.json(config);
+  } catch (error) {
+    console.error(`Error al actualizar estado del menú del negocio ${businessId}:`, error);
+    res.status(500).json({ 
+      message: 'Error al actualizar estado del menú',
+      error: error.message 
+    });
+  }
+});
+
 module.exports = router;

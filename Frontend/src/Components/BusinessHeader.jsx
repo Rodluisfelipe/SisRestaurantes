@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { User } from 'lucide-react';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import { socket } from '../services/socket';
 import AccountManagementModal from './AccountManagementModal';
 import { useCustomerData } from '../hooks/useCustomerData';
@@ -27,6 +28,7 @@ const BusinessHeader = () => {
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [activeOrderType, setActiveOrderType] = useState('');
   const { businessId } = useBusinessConfig();
+  const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
   const { customerData, customerOrders, reloadCustomerData } = useCustomerData();
 
   // Log para depurar
@@ -163,13 +165,9 @@ const BusinessHeader = () => {
         {/* Status Indicator and Account Button */}
         <div className="absolute left-2 top-4 z-20">
           <div 
-            className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${
-              businessConfig.isOpen 
-                ? 'bg-green-500 text-white' 
-                : 'bg-red-500 text-white'
-            }`}
+            className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${getStatusDisplay().color} text-white`}
           >
-            {businessConfig.isOpen ? 'Abierto' : 'Cerrado'}
+            {getStatusDisplay().text}
           </div>
         </div>
 
