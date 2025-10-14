@@ -14,37 +14,16 @@ export function AuthProvider({ children }) {
 
   // Helper para guardar tokens
   const saveTokens = (token, refreshToken, userObj) => {
-    // Generar un ID único para esta sesión
-    const sessionId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Usar sessionStorage para evitar conflictos entre múltiples sesiones
-    sessionStorage.setItem('accessToken', token);
-    sessionStorage.setItem('refreshToken', refreshToken);
-    sessionStorage.setItem('user', JSON.stringify(userObj));
-    sessionStorage.setItem('sessionId', sessionId);
-    
-    // También guardar en localStorage para persistencia, pero con prefijo único
-    localStorage.setItem(`accessToken_${sessionId}`, token);
-    localStorage.setItem(`refreshToken_${sessionId}`, refreshToken);
-    localStorage.setItem(`user_${sessionId}`, JSON.stringify(userObj));
+    localStorage.setItem('accessToken', token);
+    localStorage.setItem('refreshToken', refreshToken);
+    localStorage.setItem('user', JSON.stringify(userObj));
   };
 
   // Helper para limpiar tokens
   const clearTokens = () => {
-    const sessionId = sessionStorage.getItem('sessionId');
-    
-    // Limpiar sessionStorage
-    sessionStorage.removeItem('accessToken');
-    sessionStorage.removeItem('refreshToken');
-    sessionStorage.removeItem('user');
-    sessionStorage.removeItem('sessionId');
-    
-    // Limpiar localStorage con prefijo
-    if (sessionId) {
-      localStorage.removeItem(`accessToken_${sessionId}`);
-      localStorage.removeItem(`refreshToken_${sessionId}`);
-      localStorage.removeItem(`user_${sessionId}`);
-    }
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
   };
 
   // Login
@@ -71,7 +50,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     let slug = null;
     try {
-      const userStr = sessionStorage.getItem('user');
+      const userStr = localStorage.getItem('user');
       if (userStr) {
         const userObj = JSON.parse(userStr);
         // Buscar el slug usando el businessId
@@ -83,7 +62,7 @@ export function AuthProvider({ children }) {
           slug = userObj.businessId;
         }
       }
-      const refreshToken = sessionStorage.getItem('refreshToken');
+      const refreshToken = localStorage.getItem('refreshToken');
       if (refreshToken) {
         await api.post('/auth/logout', { refreshToken });
       }
@@ -103,7 +82,7 @@ export function AuthProvider({ children }) {
     const refreshToken = sessionStorage.getItem('refreshToken');
     if (!refreshToken) throw new Error('No refresh token');
     const res = await api.post('/auth/refresh', { refreshToken });
-    sessionStorage.setItem('accessToken', res.data.token);
+    localStorage.setItem('accessToken', res.data.token);
     setIsAuthenticated(true);
     return res.data.token;
   }, []);
@@ -146,8 +125,8 @@ export function AuthProvider({ children }) {
         }
       }
       
-      const token = sessionStorage.getItem('accessToken');
-      const userStr = sessionStorage.getItem('user');
+      const token = localStorage.getItem('accessToken');
+      const userStr = localStorage.getItem('user');
       
       // Verificar si es un token temporal de superadmin
       const isTempSuperAdminToken = token?.startsWith('temp_sa_token_');

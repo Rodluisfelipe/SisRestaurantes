@@ -69,7 +69,7 @@ api.interceptors.response.use(
     // Solo intentar refrescar si no es login y hay refresh token
     if (error.response && error.response.status === 401 && !originalRequest._retry && 
         !originalRequest.url.includes('/auth/login') && 
-        sessionStorage.getItem('refreshToken')) {
+        localStorage.getItem('refreshToken')) {
       if (isRefreshing) {
         // Esperar a que el token se refresque
         return new Promise((resolve, reject) => {
@@ -86,7 +86,7 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token');
         const res = await api.post('/auth/refresh', { refreshToken });
         const newToken = res.data.token;
-        sessionStorage.setItem('accessToken', newToken);
+        localStorage.setItem('accessToken', newToken);
         api.defaults.headers.common['Authorization'] = 'Bearer ' + newToken;
         onRefreshed(newToken);
         return api(originalRequest);
