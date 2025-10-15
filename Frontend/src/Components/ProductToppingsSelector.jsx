@@ -513,29 +513,29 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
       onClick={onClose}
     >
         <div
-          className="bg-white rounded-2xl max-w-lg w-full h-[90vh] sm:h-[92vh] md:h-[95vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
+          className="bg-white rounded-2xl max-w-lg w-full h-[95vh] sm:h-[92vh] md:h-[95vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
           onClick={handleModalClick}
         >
         {/* Encabezado del modal */}
-        <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-6 flex justify-between items-center z-10 backdrop-blur-lg rounded-t-2xl">
-          <div className="flex items-center space-x-3">
+        <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-4 sm:p-6 flex justify-between items-center z-10 backdrop-blur-lg rounded-t-2xl">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg"
               style={{ backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6' }}
             >
-              <span className="text-white text-lg font-bold">🍽️</span>
+              <span className="text-white text-sm sm:text-lg font-bold">🍽️</span>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">Personalizar Producto</h2>
-              <p className="text-sm text-slate-500">{product.name}</p>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-800">Personalizar Producto</h2>
+              <p className="text-xs sm:text-sm text-slate-500">{product.name}</p>
             </div>
           </div>
           <button
-            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md"
             onClick={onClose}
             aria-label="Cerrar"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
           </button>
@@ -545,7 +545,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
         <div className="flex-1 overflow-y-auto px-6 pt-4 pb-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
           {/* Imagen del producto */}
           {product.image && (
-            <div className="relative w-full h-40 mb-4 rounded-lg overflow-hidden bg-white">
+            <div className="relative w-full h-32 sm:h-40 mb-3 sm:mb-4 rounded-lg overflow-hidden bg-white">
               <img
                 src={product.image}
                 alt={product.name}
@@ -864,30 +864,30 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
         </div>
         
         {/* Pie del modal con precio y botón */}
-        <div className="border-t border-slate-200/80 bg-white p-6 space-y-4 shadow-xl rounded-b-2xl flex-shrink-0">
-          <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border border-slate-200/50" style={{ background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.063), rgba(0, 0, 0, 0.02))' }}>
+        <div className="border-t border-slate-200/80 bg-white p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-xl rounded-b-2xl flex-shrink-0">
+          <div className="flex justify-between items-center p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200/50" style={{ background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.063), rgba(0, 0, 0, 0.02))' }}>
             <div>
-              <p className="text-sm text-slate-600">Total personalización</p>
-              <p className="text-2xl font-bold text-slate-800">${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</p>
+              <p className="text-xs sm:text-sm text-slate-600">Total personalización</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-800">${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</p>
             </div>
             <div 
-              className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-lg"
               style={{ backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6' }}
             >
-              <span className="text-white text-xl">💰</span>
+              <span className="text-white text-lg sm:text-xl">💰</span>
             </div>
           </div>
           
           
           <button
             onClick={handleAddToCart}
-            className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
+            className="w-full py-2.5 sm:py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow text-sm sm:text-base"
             style={{ 
               backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6', 
               color: businessConfig.theme?.buttonTextColor || 'white' 
             }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
             </svg>
             <span>
