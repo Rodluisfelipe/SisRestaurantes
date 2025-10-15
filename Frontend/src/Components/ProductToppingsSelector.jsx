@@ -509,13 +509,13 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   // Renderizar el modal con los toppings
   return (
     <div
-      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-40"
+      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-40"
       onClick={onClose}
     >
-      <div
-        className="bg-white rounded-2xl max-w-lg w-full h-[85vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
-        onClick={handleModalClick}
-      >
+        <div
+          className="bg-white rounded-2xl max-w-lg w-full h-[90vh] sm:h-[92vh] md:h-[95vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
+          onClick={handleModalClick}
+        >
         {/* Encabezado del modal */}
         <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-6 flex justify-between items-center z-10 backdrop-blur-lg rounded-t-2xl">
           <div className="flex items-center space-x-3">
@@ -542,7 +542,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
         </div>
 
         {/* Cuerpo del modal - Scrolleable */}
-        <div className="flex-1 overflow-y-auto px-6 pt-2 pb-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
+        <div className="flex-1 overflow-y-auto px-6 pt-4 pb-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
           {/* Imagen del producto */}
           {product.image && (
             <div className="relative w-full h-40 mb-4 rounded-lg overflow-hidden bg-white">
@@ -580,6 +580,29 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
               </button>
             </div>
           </div>
+
+          {/* Indicador de opciones adicionales */}
+          {uniqueToppingGroups.length > 0 && (
+            <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">Opciones adicionales disponibles</p>
+                    <p className="text-xs text-blue-600">Desliza hacia abajo para ver todas las opciones</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center">
+                  <svg className="w-4 h-4 text-blue-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                  <span className="text-xs text-blue-500 font-medium">↓</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Lista de grupos de toppings */}
           {uniqueToppingGroups.length > 0 ? (
@@ -826,6 +849,18 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
               <p>{error}</p>
             </div>
           )}
+
+          {/* Indicador de fin de opciones */}
+          {uniqueToppingGroups.length > 0 && (
+            <div className="mt-6 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+              <div className="flex items-center justify-center space-x-2">
+                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <p className="text-sm font-medium text-green-800">¡Has visto todas las opciones disponibles!</p>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* Pie del modal con precio y botón */}
@@ -855,7 +890,12 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
             </svg>
-            <span>Agregar al carrito</span>
+            <span>
+              {uniqueToppingGroups.length > 0 
+                ? `Agregar al carrito ${extraTotal > 0 ? `(+$${extraTotal.toLocaleString()})` : ''}` 
+                : 'Agregar al carrito'
+              }
+            </span>
           </button>
         </div>
       </div>
