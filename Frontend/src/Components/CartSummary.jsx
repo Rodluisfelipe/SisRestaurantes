@@ -472,7 +472,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     placeholder="Ej: Calle 123 #45-67, Barrio Centro"
                     rows="3"
                     required
-                    autoFocus
                   />
                 </div>
 
