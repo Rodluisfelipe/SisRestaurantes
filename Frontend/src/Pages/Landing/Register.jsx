@@ -51,7 +51,7 @@ const Register = () => {
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-white via-green-50 to-white">
+      <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-2xl mx-auto">
       <motion.div
@@ -60,7 +60,7 @@ const Register = () => {
               transition={{ duration: 0.8 }}
               className="text-center mb-8"
             >
-              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-white font-bold text-2xl">M</span>
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -92,7 +92,7 @@ const Register = () => {
                       value={formData.firstName}
                   onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                       placeholder="Tu nombre"
                     />
                   </div>
@@ -107,7 +107,7 @@ const Register = () => {
                       value={formData.lastName}
                   onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                       placeholder="Tu apellido"
                 />
                   </div>
@@ -125,7 +125,7 @@ const Register = () => {
                   value={formData.email}
                   onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                     placeholder="tu@email.com"
                   />
                   </div>
@@ -142,7 +142,7 @@ const Register = () => {
                     value={formData.businessName}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                     placeholder="Mi Restaurante"
                   />
               </div>
@@ -159,7 +159,7 @@ const Register = () => {
                     value={formData.phone}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                     placeholder="+57 300 123 4567"
                   />
                 </div>
@@ -178,7 +178,7 @@ const Register = () => {
                   value={formData.password}
                   onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                   placeholder="Mínimo 8 caracteres"
                       />
                       <button
@@ -211,7 +211,7 @@ const Register = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                         placeholder="Repite tu contraseña"
                       />
                       <button
@@ -242,15 +242,15 @@ const Register = () => {
                   name="acceptTerms"
                   checked={formData.acceptTerms}
                   onChange={handleChange}
-                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 mt-1"
+                    className="w-4 h-4 text-[#E31E24] border-gray-300 rounded focus:ring-[#E31E24] mt-1"
                 />
                   <label htmlFor="acceptTerms" className="ml-3 text-sm text-gray-600">
                   Acepto los{' '}
-                    <Link to="/terms" className="text-green-600 hover:text-green-700 font-medium">
+                    <Link to="/terms" className="text-[#E31E24] hover:text-[#C71A1F] font-medium">
                     términos y condiciones
                     </Link>{' '}
                     y la{' '}
-                    <Link to="/privacy" className="text-green-600 hover:text-green-700 font-medium">
+                    <Link to="/privacy" className="text-[#E31E24] hover:text-[#C71A1F] font-medium">
                       política de privacidad
                   </Link>
                 </label>
@@ -260,7 +260,7 @@ const Register = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                  className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 flex items-center justify-center"
+                  className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] disabled:bg-red-400 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 flex items-center justify-center"
               >
                 {isLoading ? (
                   <>
@@ -283,7 +283,7 @@ const Register = () => {
               ¿Ya tienes una cuenta?{' '}
                   <Link
                     to="/login"
-                    className="text-green-600 hover:text-green-700 font-semibold"
+                    className="text-[#E31E24] hover:text-[#C71A1F] font-semibold"
                   >
                 Inicia sesión
               </Link>

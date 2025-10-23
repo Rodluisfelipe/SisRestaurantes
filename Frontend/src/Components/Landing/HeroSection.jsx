@@ -172,7 +172,7 @@ const HeroSection = ({
               <motion.div variants={buttonVariants}>
                 <Link
                   to={primaryButtonLink}
-                  className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center text-base sm:text-lg"
+                  className="px-8 py-4 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center text-base sm:text-lg"
                 >
                   {primaryButtonText}
                   <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

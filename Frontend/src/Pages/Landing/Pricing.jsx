@@ -81,7 +81,7 @@ const Pricing = () => {
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-white via-green-50 to-white">
+      <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-4xl mx-auto text-center">
           <motion.div
@@ -90,8 +90,8 @@ const Pricing = () => {
             transition={{ duration: 0.8 }}
               className="mb-8"
           >
-              <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-6">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+              <div className="inline-flex items-center px-4 py-2 bg-red-100 text-green-800 rounded-full text-sm font-medium mb-6">
+                <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
                 Plan único, máximo valor
             </div>
             </motion.div>
@@ -129,20 +129,20 @@ const Pricing = () => {
           >
             <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-4 border-green-200 relative overflow-hidden">
               {/* Badge */}
-              <div className="absolute top-0 right-0 bg-green-600 text-white px-6 py-2 rounded-bl-2xl font-semibold">
+              <div className="absolute top-0 right-0 bg-[#E31E24] text-white px-6 py-2 rounded-bl-2xl font-semibold">
                 Más Popular
         </div>
         
               <div className="text-center mb-12">
                 <h2 className="text-4xl font-bold text-gray-900 mb-4">Plan Completo</h2>
                 <div className="mb-6">
-                  <span className="text-7xl font-bold text-green-600">$25,000</span>
+                  <span className="text-7xl font-bold text-[#E31E24]">$25,000</span>
                   <span className="text-2xl text-gray-600 ml-2">/mes</span>
                 </div>
                 <p className="text-gray-600 text-xl mb-4">
                   Todo incluido. Sin sorpresas. Sin límites.
                 </p>
-                <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                <div className="inline-flex items-center px-4 py-2 bg-red-100 text-green-800 rounded-full text-sm font-medium">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
@@ -156,7 +156,7 @@ const Pricing = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {features.map((feature, index) => (
                       <div key={index} className="flex items-start">
-                        <svg className="w-5 h-5 text-green-600 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-[#E31E24] mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span className="text-gray-700 text-sm">{feature}</span>
@@ -170,7 +170,7 @@ const Pricing = () => {
                   <div className="space-y-6">
                     {benefits.map((benefit, index) => (
                       <div key={index} className="flex items-start">
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600 mr-4 flex-shrink-0">
+                        <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center text-[#E31E24] mr-4 flex-shrink-0">
                           {benefit.icon}
                         </div>
                         <div>
@@ -186,7 +186,7 @@ const Pricing = () => {
                 <div className="text-center">
               <Link
                   to="/register"
-                  className="inline-flex items-center px-10 py-5 bg-green-600 hover:bg-green-700 text-white font-bold text-lg rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center px-10 py-5 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-bold text-lg rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
                   <span>Empezar Prueba Gratuita</span>
                   <svg className="w-6 h-6 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -222,28 +222,28 @@ const Pricing = () => {
             <div className="bg-gray-50 rounded-2xl p-8 mb-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-2">45%</div>
+                  <div className="text-3xl font-bold text-[#E31E24] mb-2">45%</div>
                   <div className="text-gray-600">Aumento promedio en ventas</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-2">2 meses</div>
+                  <div className="text-3xl font-bold text-[#E31E24] mb-2">2 meses</div>
                   <div className="text-gray-600">Tiempo promedio de ROI</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-green-600 mb-2">$50,000+</div>
+                  <div className="text-3xl font-bold text-[#E31E24] mb-2">$50,000+</div>
                   <div className="text-gray-600">Aumento mensual promedio</div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-green-50 rounded-2xl p-8">
+            <div className="bg-red-50 rounded-2xl p-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">
                 ¿Tienes un restaurante con ventas mensuales de $100,000?
                   </h3>
               <p className="text-lg text-gray-600 mb-6">
                 Con Menuby podrías aumentar tus ventas a $145,000 mensuales
               </p>
-              <div className="text-4xl font-bold text-green-600 mb-2">
+              <div className="text-4xl font-bold text-[#E31E24] mb-2">
                 ROI del 1,800% anual
               </div>
               <p className="text-gray-600">

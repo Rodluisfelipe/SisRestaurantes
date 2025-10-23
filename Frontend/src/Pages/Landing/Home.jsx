@@ -136,7 +136,7 @@ const Home = () => {
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
-      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-green-50 to-white">
+      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-red-50 to-white">
         {/* Background Elements */}
         <div className="absolute inset-0 z-0">
           <motion.div 
@@ -149,7 +149,7 @@ const Home = () => {
               repeat: Infinity,
               ease: "easeInOut"
             }}
-            className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-200 rounded-full blur-3xl opacity-30"
+            className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-200 rounded-full blur-3xl opacity-30"
           />
           <motion.div 
             animate={{ 
@@ -162,7 +162,7 @@ const Home = () => {
               ease: "easeInOut",
               delay: 2
             }}
-            className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-green-300 rounded-full blur-3xl opacity-20"
+            className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-red-300 rounded-full blur-3xl opacity-20"
           />
         </div>
 
@@ -174,8 +174,8 @@ const Home = () => {
               transition={{ duration: 0.8 }}
               className="mb-8"
             >
-              <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-6">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+              <div className="inline-flex items-center px-4 py-2 bg-red-100 text-red-800 rounded-full text-sm font-medium mb-6">
+                <span className="w-2 h-2 bg-[#E31E24] rounded-full mr-2 animate-pulse"></span>
                 🔥 Más de 500 restaurantes ya aumentaron sus ventas
               </div>
             </motion.div>
@@ -187,7 +187,7 @@ const Home = () => {
               className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-6 leading-tight"
             >
               Menús Digitales que
-              <span className="text-green-600 block">Multiplican tus Ingresos</span>
+              <span className="text-[#E31E24] block">Multiplican tus Ingresos</span>
             </motion.h1>
 
             <motion.p
@@ -198,7 +198,7 @@ const Home = () => {
             >
               <strong>Descubre el secreto</strong> que está usando el 87% de los restaurantes exitosos en Colombia. 
               Crea tu menú digital profesional en solo 5 minutos y <strong>aumenta tus ingresos hasta un 40%</strong> desde el primer mes. 
-              <span className="text-green-600 font-semibold">Sin comisiones ocultas, sin complicaciones.</span>
+              <span className="text-[#E31E24] font-semibold">Sin comisiones ocultas, sin complicaciones.</span>
             </motion.p>
 
                   <motion.div 
@@ -209,7 +209,7 @@ const Home = () => {
             >
               <Link
                 to="/register"
-                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center"
+                className="px-8 py-4 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center"
               >
                 <span>🚀 Crear Mi Menú AHORA - Gratis</span>
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,7 +236,7 @@ const Home = () => {
             >
               {stats.map((stat, index) => (
                 <div key={index} className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">{stat.value}</div>
+                  <div className="text-3xl md:text-4xl font-bold text-[#E31E24] mb-2">{stat.value}</div>
                   <div className="text-sm md:text-base text-gray-600">{stat.label}</div>
             </div>
               ))}
@@ -274,7 +274,7 @@ const Home = () => {
                 whileHover={{ y: -8, transition: { duration: 0.3 } }}
                 className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100"
               >
-                <div className="w-16 h-16 bg-green-100 rounded-xl flex items-center justify-center text-green-600 mb-6">
+                <div className="w-16 h-16 bg-red-100 rounded-xl flex items-center justify-center text-[#E31E24] mb-6">
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-4">{feature.title}</h3>
@@ -326,7 +326,7 @@ const Home = () => {
       </section>
 
       {/* Pricing Section */}
-      <section ref={pricingRef} className="py-20 bg-green-50">
+      <section ref={pricingRef} className="py-20 bg-red-50">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -349,16 +349,16 @@ const Home = () => {
             transition={{ duration: 0.8, delay: 0.2 }}
             className="max-w-4xl mx-auto"
           >
-            <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-4 border-green-200 relative overflow-hidden">
+            <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border-4 border-red-200 relative overflow-hidden">
               {/* Badge */}
-              <div className="absolute top-0 right-0 bg-green-600 text-white px-6 py-2 rounded-bl-2xl font-semibold">
+              <div className="absolute top-0 right-0 bg-[#E31E24] text-white px-6 py-2 rounded-bl-2xl font-semibold">
                 Más Popular
               </div>
               
               <div className="text-center mb-8">
                 <h3 className="text-3xl font-bold text-gray-900 mb-4">Plan Completo</h3>
                 <div className="mb-6">
-                  <span className="text-6xl font-bold text-green-600">$25,000</span>
+                  <span className="text-6xl font-bold text-[#E31E24]">$25,000</span>
                   <span className="text-xl text-gray-600 ml-2">/mes</span>
                 </div>
                 <p className="text-gray-600 text-lg">
@@ -381,7 +381,7 @@ const Home = () => {
                       "Backup de datos diario"
                     ].map((feature, index) => (
                       <li key={index} className="flex items-center">
-                        <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-[#E31E24] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                         <span className="text-gray-700">{feature}</span>
@@ -401,7 +401,7 @@ const Home = () => {
                       "Configuración en menos de 1 hora"
                     ].map((benefit, index) => (
                       <li key={index} className="flex items-center">
-                        <svg className="w-5 h-5 text-green-600 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 text-[#E31E24] mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                         <span className="text-gray-700">{benefit}</span>
@@ -414,7 +414,7 @@ const Home = () => {
               <div className="text-center">
                 <Link
                   to="/register"
-                  className="inline-flex items-center px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
+                  className="inline-flex items-center px-8 py-4 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
                 >
                   <span>Empezar Ahora</span>
                   <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

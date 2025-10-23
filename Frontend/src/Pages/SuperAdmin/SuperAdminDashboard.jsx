@@ -98,7 +98,7 @@ function SuperAdminDashboard() {
           className="flex items-center space-x-6"
         >
           <div className="flex items-center space-x-3">
-            <img src="/logo.png" alt="Menuby" className="h-10 w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
+            <img src="/logo.jpeg" alt="Menuby" className="h-10 w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
             <span className="text-lg font-bold text-white tracking-wide">Panel SuperAdmin</span>
           </div>
           

@@ -32,7 +32,7 @@ const Login = () => {
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-white via-green-50 to-white">
+      <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-md mx-auto">
             <motion.div
@@ -41,7 +41,7 @@ const Login = () => {
               transition={{ duration: 0.8 }}
               className="text-center mb-8"
             >
-              <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-4">
                 <span className="text-white font-bold text-2xl">M</span>
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -72,7 +72,7 @@ const Login = () => {
                     value={formData.email}
                     onChange={handleChange}
                   required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                     placeholder="tu@email.com"
                 />
               </div>
@@ -90,7 +90,7 @@ const Login = () => {
                       value={formData.password}
                       onChange={handleChange}
                   required
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-colors duration-200"
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
                       placeholder="Tu contraseña"
                     />
                     <button
@@ -117,13 +117,13 @@ const Login = () => {
                   <label className="flex items-center">
                 <input
                   type="checkbox"
-                      className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                      className="w-4 h-4 text-[#E31E24] border-gray-300 rounded focus:ring-[#E31E24]"
                 />
                     <span className="ml-2 text-sm text-gray-600">Recordarme</span>
                 </label>
                   <Link
                     to="/forgot-password"
-                    className="text-sm text-green-600 hover:text-green-700 font-medium"
+                    className="text-sm text-[#E31E24] hover:text-[#C71A1F] font-medium"
                   >
                   ¿Olvidaste tu contraseña?
                 </Link>
@@ -133,7 +133,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                  className="w-full py-3 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 flex items-center justify-center"
+                  className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] disabled:bg-red-400 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 flex items-center justify-center"
               >
                 {isLoading ? (
                     <>
@@ -156,7 +156,7 @@ const Login = () => {
                   ¿No tienes una cuenta?{' '}
                   <Link
                     to="/register"
-                    className="text-green-600 hover:text-green-700 font-semibold"
+                    className="text-[#E31E24] hover:text-[#C71A1F] font-semibold"
                   >
                     Regístrate gratis
               </Link>

@@ -63,7 +63,7 @@ const Features = () => {
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-white via-green-50 to-white">
+      <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-4xl mx-auto text-center">
             <motion.div
@@ -72,8 +72,8 @@ const Features = () => {
               transition={{ duration: 0.8 }}
               className="mb-8"
             >
-              <div className="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium mb-6">
-                <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
+              <div className="inline-flex items-center px-4 py-2 bg-red-100 text-green-800 rounded-full text-sm font-medium mb-6">
+                <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
                 Características profesionales
         </div>
             </motion.div>
@@ -106,7 +106,7 @@ const Features = () => {
             >
               {stats.map((stat, index) => (
                 <div key={index} className="text-center">
-                  <div className="text-3xl md:text-4xl font-bold text-green-600 mb-2">{stat.value}</div>
+                  <div className="text-3xl md:text-4xl font-bold text-[#E31E24] mb-2">{stat.value}</div>
                   <div className="text-sm md:text-base text-gray-600">{stat.label}</div>
                       </div>
           ))}

@@ -1,71 +1,77 @@
 /* Estilos personalizados para sobrescribir Tailwind CSS */
 
-/* CTA Section - Fondo oscuro forzado */
+/* CTA Section - Fondo claro con gradiente rojo */
 .cta-section-dark {
-  background-color: #111827 !important;
-  background: #111827 !important;
+  background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 50%, #fff 100%) !important;
 }
 
 .cta-section-dark h2 {
-  color: #ffffff !important;
+  color: #111827 !important;
 }
 
 .cta-section-dark p {
-  color: #d1d5db !important;
+  color: #4b5563 !important;
 }
 
 .cta-section-dark .btn-primary {
-  background-color: #059669 !important;
-  background: #059669 !important;
+  background-color: #E31E24 !important;
+  background: #E31E24 !important;
 }
 
 .cta-section-dark .btn-secondary {
-  color: #ffffff !important;
-  border-color: #ffffff !important;
+  color: #E31E24 !important;
+  border-color: #E31E24 !important;
 }
 
-/* Footer - Fondo oscuro forzado */
-.footer-dark {
-  background-color: #111827 !important;
-  background: #111827 !important;
+.cta-section-dark .btn-secondary:hover {
+  background-color: #E31E24 !important;
   color: #ffffff !important;
+}
+
+/* Footer - Fondo claro moderno */
+.footer-dark {
+  background-color: #f9fafb !important;
+  background: #f9fafb !important;
+  color: #111827 !important;
 }
 
 .footer-dark h3 {
-  color: #ffffff !important;
+  color: #111827 !important;
 }
 
 .footer-dark p {
-  color: #d1d5db !important;
+  color: #4b5563 !important;
 }
 
 .footer-dark a {
-  color: #d1d5db !important;
+  color: #6b7280 !important;
 }
 
 .footer-dark a:hover {
-  color: #10b981 !important;
+  color: #E31E24 !important;
 }
 
 .footer-dark .logo-bg {
-  background-color: #059669 !important;
-  background: #059669 !important;
+  background-color: #E31E24 !important;
+  background: #E31E24 !important;
 }
 
 .footer-dark .social-bg {
-  background-color: #1f2937 !important;
-  background: #1f2937 !important;
+  background-color: #e5e7eb !important;
+  background: #e5e7eb !important;
+  color: #4b5563 !important;
 }
 
 .footer-dark .social-bg:hover {
-  background-color: #059669 !important;
-  background: #059669 !important;
+  background-color: #E31E24 !important;
+  background: #E31E24 !important;
+  color: #ffffff !important;
 }
 
 .footer-dark .border-top {
-  border-color: #374151 !important;
+  border-color: #e5e7eb !important;
 }
 
 .footer-dark .copyright {
-  color: #9ca3af !important;
+  color: #6b7280 !important;
 }

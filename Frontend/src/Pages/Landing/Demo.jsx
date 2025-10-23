@@ -61,7 +61,7 @@ const Demo = () => {
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-white via-green-50 to-white">
+      <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -80,7 +80,7 @@ const Demo = () => {
                 href="https://www.menuby.tech/macdonalds"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-8 py-4 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center"
+                className="px-8 py-4 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center"
               >
                 <span>Ver Demo en Vivo</span>
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,7 +89,7 @@ const Demo = () => {
               </a>
               <a
                 href="/register"
-                className="px-8 py-4 bg-transparent hover:bg-white hover:text-gray-900 text-green-600 font-semibold rounded-xl border-2 border-green-600 hover:border-gray-300 transition-all duration-300 transform hover:scale-105 flex items-center"
+                className="px-8 py-4 bg-transparent hover:bg-white hover:text-gray-900 text-[#E31E24] font-semibold rounded-xl border-2 border-[#E31E24] hover:border-gray-300 transition-all duration-300 transform hover:scale-105 flex items-center"
               >
                 <span>Crear Mi Menú Gratis</span>
                 <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,8 +115,8 @@ const Demo = () => {
                   whileTap={{ scale: 0.95 }}
                   className={`p-6 rounded-2xl border-2 transition-all duration-300 ${
                     selectedDemo === demo.id
-                      ? 'border-green-500 bg-green-50 shadow-lg'
-                      : 'border-gray-200 bg-white hover:border-green-300 hover:shadow-md'
+                      ? 'border-[#E31E24] bg-red-50 shadow-lg'
+                      : 'border-gray-200 bg-white hover:border-[#E31E24] hover:shadow-md'
                   }`}
                 >
                   <div className="text-4xl mb-4">{demo.image}</div>
@@ -165,12 +165,12 @@ const Demo = () => {
                           </h4>
                           <div className="space-y-3">
                             {category.items.map((item, itemIndex) => (
-                              <div key={itemIndex} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-green-50 transition-colors duration-200">
+                              <div key={itemIndex} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-red-50 transition-colors duration-200">
                                 <div>
                                   <h5 className="font-medium text-gray-900">{item}</h5>
                                   <p className="text-sm text-gray-600">Descripción del producto</p>
                                 </div>
-                                <span className="text-lg font-bold text-green-600">
+                                <span className="text-lg font-bold text-[#E31E24]">
                                   ${Math.floor(Math.random() * 20 + 10)}.000
                                 </span>
                               </div>
@@ -193,8 +193,8 @@ const Demo = () => {
                           transition={{ duration: 0.5, delay: index * 0.1 }}
                           className="flex items-center space-x-3"
                         >
-                          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
+                            <svg className="w-4 h-4 text-[#E31E24]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                           </div>
@@ -203,9 +203,9 @@ const Demo = () => {
                       ))}
                     </div>
 
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200">
-                      <h4 className="text-lg font-semibold text-green-800 mb-2">¿Te gusta lo que ves?</h4>
-                      <p className="text-green-700 mb-4">
+                    <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border border-red-200">
+                      <h4 className="text-lg font-semibold text-red-800 mb-2">¿Te gusta lo que ves?</h4>
+                      <p className="text-gray-700 mb-4">
                         Crea tu propio menú en minutos con nuestra plataforma fácil de usar.
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3">
@@ -213,13 +213,13 @@ const Demo = () => {
                           href="https://www.menuby.tech/macdonalds"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors duration-200 text-center"
+                          className="flex-1 px-4 py-3 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-lg transition-colors duration-200 text-center"
                         >
                           Ver Demo en Vivo
                         </a>
                         <a
                           href="/register"
-                          className="flex-1 px-4 py-3 bg-transparent hover:bg-green-600 hover:text-white text-green-600 font-semibold rounded-lg border-2 border-green-600 hover:border-green-700 transition-all duration-200 text-center"
+                          className="flex-1 px-4 py-3 bg-transparent hover:bg-[#E31E24] hover:text-white text-[#E31E24] font-semibold rounded-lg border-2 border-[#E31E24] hover:border-[#C71A1F] transition-all duration-200 text-center"
                         >
                           Crear Mi Menú
                         </a>
@@ -243,15 +243,15 @@ const Demo = () => {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="text-4xl font-bold text-green-600 mb-2">500+</div>
+                <div className="text-4xl font-bold text-[#E31E24] mb-2">500+</div>
                 <div className="text-gray-600">Restaurantes activos</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-green-600 mb-2">35%</div>
+                <div className="text-4xl font-bold text-[#E31E24] mb-2">35%</div>
                 <div className="text-gray-600">Aumento promedio en ventas</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-green-600 mb-2">24/7</div>
+                <div className="text-4xl font-bold text-[#E31E24] mb-2">24/7</div>
                 <div className="text-gray-600">Soporte disponible</div>
               </div>
             </div>
