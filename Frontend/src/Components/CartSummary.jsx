@@ -30,14 +30,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const { businessConfig, businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
   
-  // Sincronizar formState con orderInfo cuando cambie
-  useEffect(() => {
-    setFormState({
-      tableNumber: orderInfo?.tableNumber || '',
-      address: orderInfo?.address || ''
-    });
-  }, [orderInfo?.tableNumber, orderInfo?.address]);
-  
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
   
