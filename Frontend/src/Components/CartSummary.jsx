@@ -5,6 +5,7 @@ import CouponInput from './CouponInput';
 import { logSystem } from '../utils/systemLogger';
 import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import BusinessClosedModal from './BusinessClosedModal';
+import api from '../services/api';
 
 function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
@@ -16,6 +17,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   });
   const [tableNumber, setTableNumber] = useState(orderInfo?.tableNumber || '');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [deliveryFee, setDeliveryFee] = useState(null);
+  const [deliveryZoneInfo, setDeliveryZoneInfo] = useState(null);
+  const [checkingLocation, setCheckingLocation] = useState(false);
+  const [locationError, setLocationError] = useState(null);
+  const [locationChecked, setLocationChecked] = useState(false);
   const { businessConfig, businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
   
@@ -101,6 +107,105 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   
   // Función para determinar si está en proceso de envío (cualquier fuente)
   const isSubmitting = localIsSubmitting || parentIsSubmittingOrder;
+
+  // Función para detectar ubicación y calcular costo de envío automáticamente
+  const detectLocationAndCalculateFee = async () => {
+    if (!navigator.geolocation) {
+      console.log('ℹ️ Navegador no soporta geolocalización. Mostrando aviso de costo por confirmar.');
+      setDeliveryFee(null);
+      setDeliveryZoneInfo(null);
+      setLocationError(null);
+      setLocationChecked(true);
+      return;
+    }
+
+    setCheckingLocation(true);
+    setLocationError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          console.log('📍 Ubicación detectada:', { lat: latitude, lon: longitude });
+
+          // Calcular total del carrito
+          const orderTotal = cart.reduce((sum, item) => {
+            const price = item.price || 0;
+            const quantity = item.quantity || 0;
+            return sum + (price * quantity);
+          }, 0);
+
+          // Consultar cobertura
+          const response = await api.post('/delivery-zones/check-coverage', {
+            businessId,
+            lat: latitude,
+            lon: longitude,
+            orderTotal
+          });
+
+          console.log('✅ Respuesta de cobertura:', response.data);
+
+          // La respuesta tiene: { success, valid, coverage: { covered, delivery, zone } }
+          const isValid = response.data.valid && response.data.coverage?.covered;
+          
+          if (isValid) {
+            // Cliente DENTRO de una zona: mostrar costo calculado
+            const { delivery, zone } = response.data.coverage;
+            setDeliveryFee(delivery.price);
+            setDeliveryZoneInfo({
+              zoneName: zone.name,
+              estimatedTime: delivery.estimatedTime,
+              distance: delivery.distance,
+              coordinates: { lat: latitude, lon: longitude }
+            });
+            setLocationError(null);
+            setLocationChecked(true);
+          } else {
+            // Cliente FUERA de zonas: resetear y mostrar aviso original "costo por confirmar"
+            setDeliveryFee(null);
+            setDeliveryZoneInfo(null);
+            setLocationError(null); // NO mostrar error, solo el aviso por defecto
+            setLocationChecked(true); // Marcar que se intentó verificar
+            console.log('ℹ️ Cliente fuera de zonas delimitadas. Mostrando aviso de costo por confirmar.');
+          }
+        } catch (error) {
+          console.error('❌ Error al verificar cobertura:', error);
+          setLocationError('Error al verificar la zona de entrega');
+          setDeliveryFee(null);
+          setDeliveryZoneInfo(null);
+          setLocationChecked(false);
+        } finally {
+          setCheckingLocation(false);
+        }
+      },
+      (error) => {
+        console.error('❌ Error de geolocalización:', error);
+        setCheckingLocation(false);
+        
+        // Si el usuario deniega el permiso, NO mostrar error, solo continuar con "costo por confirmar"
+        if (error.code === error.PERMISSION_DENIED) {
+          console.log('ℹ️ Usuario no compartió ubicación. Mostrando aviso de costo por confirmar.');
+          setDeliveryFee(null);
+          setDeliveryZoneInfo(null);
+          setLocationError(null);
+          setLocationChecked(true); // Marcar como verificado para mostrar mensaje apropiado
+          return;
+        }
+        
+        // Para otros errores (timeout, no disponible), no mostrar error tampoco
+        console.log('ℹ️ No se pudo verificar ubicación. Mostrando aviso de costo por confirmar.');
+        setDeliveryFee(null);
+        setDeliveryZoneInfo(null);
+        setLocationError(null);
+        setLocationChecked(true);
+      },
+      { 
+        enableHighAccuracy: true, 
+        timeout: 10000, 
+        maximumAge: 0 
+      }
+    );
+  };
 
   const handleDeliverySubmit = (e) => {
     // Prevent default form submission if called from a form
@@ -469,28 +574,91 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     value={formState.address}
                     onChange={handleInputChange}
                     className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
-                    placeholder="Ej: Calle 123 #45-67, Barrio Centro"
+                    placeholder="Ej: Calle 123 #45-67, Barrio Centro, Apartamento 201"
                     rows="3"
                     required
                   />
                 </div>
 
-                {/* Avisos informativos */}
-                <div className="space-y-3">
-                  {/* Aviso de costo de envío */}
-                  <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-300 rounded-lg">
-                    <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div>
-                      <p className="text-sm text-amber-900 font-semibold">
-                        💰 El costo de envío será confirmado
-                      </p>
-                      <p className="text-xs text-amber-700 mt-1">
-                        Te informaremos el valor del domicilio según tu ubicación
-                      </p>
+                {/* Botón para calcular costo de envío */}
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={detectLocationAndCalculateFee}
+                    disabled={checkingLocation || !formState.address || formState.address.trim().length < 10}
+                    className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 font-medium text-blue-700 disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-500"
+                  >
+                    {checkingLocation ? (
+                      <>
+                        <span className="animate-spin">🔄</span>
+                        Verificando ubicación...
+                      </>
+                    ) : (
+                      <>
+                        📍 Verificar costo de envío
+                      </>
+                    )}
+                  </button>
+                  {!formState.address || formState.address.trim().length < 10 ? (
+                    <p className="text-xs text-amber-600 mt-2 text-center font-medium">
+                      ⬆️ Primero ingresa tu dirección completa
+                    </p>
+                  ) : (
+                    <p className="text-xs text-blue-600 mt-2 text-center">
+                      Necesitaremos tu ubicación GPS solo para verificar si hay precio automático en tu zona
+                    </p>
+                  )}
+                </div>
+
+                {/* Mostrar costo de envío calculado */}
+                {deliveryZoneInfo && deliveryFee !== null && (
+                  <div className="mt-3 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">✅</span>
+                        <span className="font-semibold text-green-800">Costo de envío</span>
+                      </div>
+                      <span className="text-xl font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
                     </div>
                   </div>
+                )}
+
+                {/* Mostrar error de geolocalización o sistema */}
+                {locationError && (
+                  <div className="mt-3 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">⚠️</span>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-red-800 mb-1">Error de ubicación</h4>
+                        <p className="text-sm text-red-700">{locationError}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Avisos informativos */}
+                <div className="space-y-3 mt-4">
+                  {/* Aviso de costo de envío (solo si no se ha calculado o está fuera de zonas) */}
+                  {!deliveryFee && !locationError && (
+                    <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-300 rounded-lg">
+                      <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div>
+                        <p className="text-sm text-amber-900 font-semibold">
+                          💰 El costo de envío será confirmado
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          {checkingLocation 
+                            ? 'Verificando ubicación...' 
+                            : locationChecked 
+                              ? 'Tu ubicación está fuera de nuestras zonas de entrega automáticas. Te confirmaremos el costo de envío al recibir tu pedido.' 
+                              : 'Puedes verificar si hay costo automático en tu zona (requiere compartir ubicación GPS), o te confirmaremos el valor al recibir tu pedido'
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Aviso de WhatsApp */}
                   <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-300 rounded-lg">
@@ -1056,29 +1224,49 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             />
 
             {/* Total amount */}
-            <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border border-slate-200/50"
-                 style={{
-                   background: `linear-gradient(135deg, ${businessConfig?.theme?.buttonColor || '#f97316'}10, ${businessConfig?.theme?.buttonColor || '#f97316'}05)`
-                 }}>
-              <div>
-                <p className="text-sm text-slate-600">Total ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})</p>
-                {appliedCoupon ? (
+            <div className="space-y-3">
+              {/* Mostrar costo de envío si está disponible */}
+              {deliveryFee !== null && deliveryFee > 0 && (
+                <div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div>
-                    <p className="text-lg text-slate-600 line-through">${totalAmount.toLocaleString('es-CO')}</p>
-                    <p className="text-2xl font-bold text-green-600">${finalAmount.toLocaleString('es-CO')}</p>
-                    <p className="text-sm text-green-600">Ahorras: ${appliedCoupon.discountAmount.toLocaleString('es-CO')}</p>
+                    <p className="text-sm text-slate-700">Subtotal productos</p>
+                    <p className="text-lg font-semibold text-slate-800">${totalAmount.toLocaleString('es-CO')}</p>
                   </div>
-                ) : (
-                  <p className="text-2xl font-bold text-slate-800">${totalAmount.toLocaleString('es-CO')}</p>
-                )}
-              </div>
-              <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
-                style={{
-                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
-                }}
-              >
-                <span className="text-white text-xl">💰</span>
+                </div>
+              )}
+              
+              {deliveryFee !== null && deliveryFee > 0 && (
+                <div className="flex justify-between items-center p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm font-medium text-slate-700">🚚 Costo de envío</p>
+                  <p className="text-lg font-semibold text-green-700">${deliveryFee.toLocaleString('es-CO')}</p>
+                </div>
+              )}
+              
+              {/* Total final */}
+              <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border border-slate-200/50"
+                   style={{
+                     background: `linear-gradient(135deg, ${businessConfig?.theme?.buttonColor || '#f97316'}10, ${businessConfig?.theme?.buttonColor || '#f97316'}05)`
+                   }}>
+                <div>
+                  <p className="text-sm text-slate-600">Total ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})</p>
+                  {appliedCoupon ? (
+                    <div>
+                      <p className="text-lg text-slate-600 line-through">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
+                      <p className="text-2xl font-bold text-green-600">${((deliveryFee || 0) + finalAmount).toLocaleString('es-CO')}</p>
+                      <p className="text-sm text-green-600">Ahorras: ${appliedCoupon.discountAmount.toLocaleString('es-CO')}</p>
+                    </div>
+                  ) : (
+                    <p className="text-2xl font-bold text-slate-800">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
+                  )}
+                </div>
+                <div 
+                  className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+                  style={{
+                    backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
+                  }}
+                >
+                  <span className="text-white text-xl">💰</span>
+                </div>
               </div>
             </div>
 

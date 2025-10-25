@@ -115,6 +115,7 @@ app.use("/api/coupons", require("./Routes/coupons"));
 app.use("/api/auth", require("./Routes/auth"));
 app.use("/api/tables", require("./Routes/tables"));
 app.use("/api/orders", require("./Routes/orders"));
+app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot
 app.use("/api/debug", require("./Routes/debug")); // Debug endpoints para Socket.IO
 

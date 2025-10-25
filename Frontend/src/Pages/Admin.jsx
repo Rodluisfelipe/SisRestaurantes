@@ -28,6 +28,7 @@ import SubscriptionStatus from "../Components/SubscriptionStatus";
 import CustomersManager from "../Components/CustomersManager";
 import CouponsManager from "../Components/CouponsManager";
 import MultiSessionWarning from "../Components/MultiSessionWarning";
+import DeliveryZoneManager from "../Components/DeliveryZoneManager";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Componente de Modal de Confirmación para edición
@@ -975,6 +976,7 @@ function Admin() {
                     {activeTab === 'customers' && 'Gestión de Clientes'}
                     {activeTab === 'coupons' && 'Gestión de Cupones'}
                     {activeTab === 'tables' && 'Configuración de Mesas'}
+                    {activeTab === 'delivery-zones' && 'Zonas de Entrega'}
                     {activeTab === 'theme' && 'Personalización de Tema'}
                     {activeTab === 'location' && 'Configuración de Ubicación'}
                     {activeTab === 'catalog' && 'Gestión de Catálogo'}
@@ -992,6 +994,7 @@ function Admin() {
                     {activeTab === 'customers' && 'Administra información y estadísticas de clientes'}
                     {activeTab === 'coupons' && 'Crea y gestiona cupones de descuento para promocionar tu restaurante'}
                     {activeTab === 'tables' && 'Administra mesas y códigos QR'}
+                    {activeTab === 'delivery-zones' && 'Define áreas de cobertura, precios y tiempos de entrega'}
                     {activeTab === 'theme' && 'Personaliza la apariencia de tu restaurante'}
                     {activeTab === 'location' && 'Configura tu ubicación para el catálogo'}
                     {activeTab === 'catalog' && 'Gestiona banners promocionales para el catálogo'}
@@ -1084,6 +1087,7 @@ function Admin() {
           {activeTab === 'completed_orders' && <EnhancedCompletedOrders />}
           {activeTab === 'customers' && <CustomersManager />}
           {activeTab === 'coupons' && <CouponsManager />}
+          {activeTab === 'delivery-zones' && <DeliveryZoneManager />}
                 
                 {/* Products Management */}
           {activeTab === 'products' && (

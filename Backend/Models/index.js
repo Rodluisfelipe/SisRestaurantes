@@ -29,8 +29,10 @@ const BusinessConfig = mongoose.models.BusinessConfig || mongoose.model("Busines
 
 // Importar el modelo SuperAdmin
 const SuperAdmin = require('./SuperAdmin');
+const DeliveryZone = require('./DeliveryZone');
 
 module.exports = {
   BusinessConfig,
-  SuperAdmin
+  SuperAdmin,
+  DeliveryZone
 }; 

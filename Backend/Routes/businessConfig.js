@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-// Actualizar la configuración
+// Actualizar la configuración (por businessId en body)
 router.put("/", async (req, res) => {
     const { businessId, ...updateData } = req.body;
     if (!businessId) {
@@ -70,6 +70,46 @@ router.put("/", async (req, res) => {
       );
       
       console.log('Configuración actualizada:', config);
+      res.json(config);
+    } catch (error) {
+      console.error(`Error al actualizar la configuración del negocio ${businessId}:`, error);
+      res.status(500).json({ 
+        message: 'Error al actualizar la configuración del negocio',
+        error: error.message 
+      });
+    }
+});
+
+// Actualizar la configuración (por businessId en URL)
+router.put("/:businessId", async (req, res) => {
+    const { businessId } = req.params;
+    const updateData = req.body;
+    
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId es requerido" });
+    }
+    
+    try {
+      console.log('Datos recibidos para actualizar (URL param):', updateData);
+      
+      // Buscar por _id o slug usando el helper
+      const business = await findBusinessByIdentifier(businessId);
+      
+      if (!business) {
+        return res.status(404).json({ 
+          message: 'Negocio no encontrado',
+          detail: `No se encontró un negocio con el identificador '${businessId}'`
+        });
+      }
+      
+      // Actualizar usando el _id encontrado
+      const config = await BusinessConfig.findByIdAndUpdate(
+        business._id,
+        updateData,
+        { new: true, runValidators: true }
+      );
+      
+      console.log('Configuración actualizada (URL param):', config);
       res.json(config);
     } catch (error) {
       console.error(`Error al actualizar la configuración del negocio ${businessId}:`, error);

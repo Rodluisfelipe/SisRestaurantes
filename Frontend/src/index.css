@@ -1,5 +1,9 @@
 /* Importar helpers para responsive */
 
+/* Leaflet CSS para mapas */
+@import 'leaflet/dist/leaflet.css';
+@import 'leaflet-draw/dist/leaflet.draw.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

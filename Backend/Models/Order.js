@@ -89,6 +89,44 @@ const orderSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  deliveryZoneId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryZone',
+    default: null
+  },
+  deliveryZoneName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  deliveryFee: {
+    type: Number,
+    default: 0
+  },
+  deliveryCoordinates: {
+    lat: {
+      type: Number,
+      default: null
+    },
+    lon: {
+      type: Number,
+      default: null
+    }
+  },
+  deliveryDistance: {
+    type: Number,
+    default: 0
+  },
+  estimatedDeliveryTime: {
+    min: {
+      type: Number,
+      default: 0
+    },
+    max: {
+      type: Number,
+      default: 0
+    }
+  },
   
   // Order items
   items: [{
@@ -144,5 +182,31 @@ orderSchema.index({ businessId: 1, createdAt: -1 });
 orderSchema.index({ businessId: 1, status: 1 });
 orderSchema.index({ businessId: 1, tableNumber: 1 });
 orderSchema.index({ businessId: 1, sentToKitchen: 1 });
+orderSchema.index({ deliveryZoneId: 1 });
+
+// Hook para actualizar estadísticas de zona cuando se completa un pedido
+orderSchema.post('save', async function(doc, next) {
+  // Solo actualizar si el pedido tiene zona de entrega y está completado/entregado
+  if (doc.deliveryZoneId && (doc.status === 'completed' || doc.status === 'delivered')) {
+    try {
+      const DeliveryZone = require('./DeliveryZone');
+      const zone = await DeliveryZone.findById(doc.deliveryZoneId);
+      
+      if (zone) {
+        // Verificar si este pedido ya fue contado (para evitar duplicados en actualizaciones)
+        const wasAlreadyCounted = this._wasAlreadyCounted || false;
+        
+        if (!wasAlreadyCounted) {
+          await zone.recordOrder(doc.totalAmount);
+          // Marcar como contado para evitar duplicados
+          this._wasAlreadyCounted = true;
+        }
+      }
+    } catch (error) {
+      console.error('Error al actualizar estadísticas de zona:', error);
+      // No fallar la operación principal si hay error en estadísticas
+    }
+  }
+});
 
 module.exports = mongoose.models.Order || mongoose.model("Order", orderSchema); 

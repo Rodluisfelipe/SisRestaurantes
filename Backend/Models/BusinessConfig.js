@@ -97,6 +97,22 @@ const businessConfigSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  location: {
+    coordinates: {
+      lat: {
+        type: Number,
+        default: null
+      },
+      lng: {
+        type: Number,
+        default: null
+      }
+    },
+    address: {
+      type: String,
+      default: ""
+    }
+  },
   socialMedia: {
     facebook: socialMediaItemSchema,
     instagram: socialMediaItemSchema,

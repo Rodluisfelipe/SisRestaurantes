@@ -11,6 +11,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     { id: 'customers', label: 'Clientes', icon: '👥' },
     { id: 'coupons', label: 'Cupones', icon: '🎫' },
     { id: 'tables', label: 'Mesas', icon: '🪑' },
+    { id: 'delivery-zones', label: 'Zonas de Entrega', icon: '🗺️' },
     { id: 'completed_orders', label: 'Pedidos Completados', icon: '✅' },
     { id: 'catalog', label: 'Catálogo', icon: '📢' },
     { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
