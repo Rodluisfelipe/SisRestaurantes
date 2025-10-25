@@ -703,6 +703,14 @@ export default function Menu() {
           couponId: appliedCoupon.coupon._id,
           discountAmount: appliedCoupon.discountAmount,
           finalAmount: appliedCoupon.finalAmount
+        }),
+        // Información de zona de entrega
+        ...(orderDetails.orderType === 'delivery' && {
+          deliveryFee: orderDetails.deliveryFee || null,
+          deliveryZoneName: orderDetails.deliveryZoneName || null,
+          deliveryZoneInfo: orderDetails.deliveryZoneInfo || null,
+          deliveryCalculated: orderDetails.deliveryCalculated || false,
+          deliveryNeedsConfirmation: orderDetails.deliveryNeedsConfirmation || false
         })
       };
 
@@ -716,6 +724,13 @@ export default function Menu() {
       console.log('tableNumber:', orderData.tableNumber);
       console.log('phone:', orderData.phone);
       console.log('address:', orderData.address);
+      if (orderData.orderType === 'delivery') {
+        console.log('--- Datos de zona de entrega ---');
+        console.log('deliveryFee:', orderData.deliveryFee);
+        console.log('deliveryZoneName:', orderData.deliveryZoneName);
+        console.log('deliveryCalculated:', orderData.deliveryCalculated);
+        console.log('deliveryNeedsConfirmation:', orderData.deliveryNeedsConfirmation);
+      }
       console.log('=== FIN DATOS ===');
 
       // Para pedidos a domicilio enviar WhatsApp además de guardar en API

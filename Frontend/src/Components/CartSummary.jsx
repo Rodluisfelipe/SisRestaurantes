@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
@@ -7,25 +7,23 @@ import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import BusinessClosedModal from './BusinessClosedModal';
 import api from '../services/api';
 
+// (Sin componente separado - el textarea estará directamente en el JSX)
+
 function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
   const [orderType, setOrderType] = useState('');
-  const [deliveryInfo, setDeliveryInfo] = useState({
-    phone: orderInfo?.phone || '',
-    address: orderInfo?.address || ''
-  });
   const [tableNumber, setTableNumber] = useState(orderInfo?.tableNumber || '');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [deliveryFee, setDeliveryFee] = useState(null);
   const [deliveryZoneInfo, setDeliveryZoneInfo] = useState(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
-  const [locationError, setLocationError] = useState(null);
   const [locationChecked, setLocationChecked] = useState(false);
   const [formState, setFormState] = useState({
     tableNumber: '',
-    address: orderInfo?.address || ''
+    address: ''
   });
+  const deliveryAddressRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { businessConfig, businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
@@ -89,17 +87,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     setAppliedCoupon(null);
   };
 
-  // Use useEffect to synchronize deliveryInfo with orderInfo
-  useEffect(() => {
-    // Only update if orderInfo changes from external sources
-    if (orderInfo?.phone || orderInfo?.address) {
-      setDeliveryInfo({
-        phone: orderInfo.phone || '',
-        address: orderInfo.address || ''
-      });
-    }
-  }, [orderInfo?.phone, orderInfo?.address]);
-
   // Sincronizar tableNumber con orderInfo
   useEffect(() => {
     if (orderInfo?.tableNumber) {
@@ -107,109 +94,161 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     }
   }, [orderInfo?.tableNumber]);
 
+
   // Estado local para control de envío (sync con prop del padre)
   const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
   
   // Función para determinar si está en proceso de envío (cualquier fuente)
   const isSubmitting = localIsSubmitting || parentIsSubmittingOrder;
 
-  // Función para detectar ubicación y calcular costo de envío automáticamente
+  // Función para detectar ubicación y calcular costo de envío
   const detectLocationAndCalculateFee = async () => {
-    if (!navigator.geolocation) {
-      console.log('ℹ️ Navegador no soporta geolocalización. Mostrando aviso de costo por confirmar.');
-      setDeliveryFee(null);
-      setDeliveryZoneInfo(null);
-      setLocationError(null);
-      setLocationChecked(true);
-      return;
-    }
-
+    // CRÍTICO: Capturar el valor de la dirección ANTES de cualquier setState
+    const savedAddress = deliveryAddressRef.current?.value || '';
+    console.log('🔒 Guardando dirección antes de verificar:', savedAddress);
+    
     setCheckingLocation(true);
-    setLocationError(null);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const { latitude, longitude } = position.coords;
-          console.log('📍 Ubicación detectada:', { lat: latitude, lon: longitude });
-
-          // Calcular total del carrito
-          const orderTotal = cart.reduce((sum, item) => {
-            const price = item.price || 0;
-            const quantity = item.quantity || 0;
-            return sum + (price * quantity);
-          }, 0);
-
-          // Consultar cobertura
-          const response = await api.post('/delivery-zones/check-coverage', {
-            businessId,
-            lat: latitude,
-            lon: longitude,
-            orderTotal
-          });
-
-          console.log('✅ Respuesta de cobertura:', response.data);
-
-          // La respuesta tiene: { success, valid, coverage: { covered, delivery, zone } }
-          const isValid = response.data.valid && response.data.coverage?.covered;
-          
-          if (isValid) {
-            // Cliente DENTRO de una zona: mostrar costo calculado
-            const { delivery, zone } = response.data.coverage;
-            setDeliveryFee(delivery.price);
-            setDeliveryZoneInfo({
-              zoneName: zone.name,
-              estimatedTime: delivery.estimatedTime,
-              distance: delivery.distance,
-              coordinates: { lat: latitude, lon: longitude }
-            });
-            setLocationError(null);
-            setLocationChecked(true);
-          } else {
-            // Cliente FUERA de zonas: resetear y mostrar aviso original "costo por confirmar"
-            setDeliveryFee(null);
-            setDeliveryZoneInfo(null);
-            setLocationError(null); // NO mostrar error, solo el aviso por defecto
-            setLocationChecked(true); // Marcar que se intentó verificar
-            console.log('ℹ️ Cliente fuera de zonas delimitadas. Mostrando aviso de costo por confirmar.');
-          }
-        } catch (error) {
-          console.error('❌ Error al verificar cobertura:', error);
-          setLocationError('Error al verificar la zona de entrega');
-          setDeliveryFee(null);
-          setDeliveryZoneInfo(null);
-          setLocationChecked(false);
-        } finally {
-          setCheckingLocation(false);
-        }
-      },
-      (error) => {
-        console.error('❌ Error de geolocalización:', error);
+    
+    // Restaurar dirección inmediatamente después del setState
+    setTimeout(() => {
+      if (deliveryAddressRef.current && savedAddress) {
+        deliveryAddressRef.current.value = savedAddress;
+        console.log('✅ Dirección restaurada (inicio):', savedAddress);
+      }
+    }, 0);
+    
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        console.log('ℹ️ Navegador no soporta geolocalización.');
         setCheckingLocation(false);
-        
-        // Si el usuario deniega el permiso, NO mostrar error, solo continuar con "costo por confirmar"
-        if (error.code === error.PERMISSION_DENIED) {
-          console.log('ℹ️ Usuario no compartió ubicación. Mostrando aviso de costo por confirmar.');
-          setDeliveryFee(null);
-          setDeliveryZoneInfo(null);
-          setLocationError(null);
-          setLocationChecked(true); // Marcar como verificado para mostrar mensaje apropiado
-          return;
-        }
-        
-        // Para otros errores (timeout, no disponible), no mostrar error tampoco
-        console.log('ℹ️ No se pudo verificar ubicación. Mostrando aviso de costo por confirmar.');
+        setLocationChecked(true);
         setDeliveryFee(null);
         setDeliveryZoneInfo(null);
-        setLocationError(null);
-        setLocationChecked(true);
-      },
-      { 
-        enableHighAccuracy: true, 
-        timeout: 10000, 
-        maximumAge: 0 
+        
+        // Restaurar dirección
+        setTimeout(() => {
+          if (deliveryAddressRef.current && savedAddress) {
+            deliveryAddressRef.current.value = savedAddress;
+            console.log('✅ Dirección restaurada (no geolocation):', savedAddress);
+          }
+        }, 0);
+        
+        resolve({ fee: null, zoneInfo: null });
+        return;
       }
-    );
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            console.log('📍 Ubicación detectada:', { lat: latitude, lon: longitude });
+
+            // Calcular total del carrito
+            const orderTotal = cart.reduce((sum, item) => {
+              const price = item.price || 0;
+              const quantity = item.quantity || 0;
+              return sum + (price * quantity);
+            }, 0);
+
+            // Consultar cobertura
+            const response = await api.post('/delivery-zones/check-coverage', {
+              businessId,
+              lat: latitude,
+              lon: longitude,
+              orderTotal
+            });
+
+            console.log('✅ Respuesta de cobertura:', response.data);
+
+            // La respuesta tiene: { success, valid, coverage: { covered, delivery, zone } }
+            const isValid = response.data.valid && response.data.coverage?.covered;
+            
+            if (isValid) {
+              // Cliente DENTRO de una zona: mostrar costo calculado
+              const { delivery, zone } = response.data.coverage;
+              const fee = delivery.price;
+              const zoneInfo = {
+                zoneName: zone.name,
+                estimatedTime: delivery.estimatedTime,
+                distance: delivery.distance,
+                coordinates: { lat: latitude, lon: longitude }
+              };
+              setDeliveryFee(fee);
+              setDeliveryZoneInfo(zoneInfo);
+              setLocationChecked(true);
+              setCheckingLocation(false);
+              
+              // Restaurar dirección después de todos los setState
+              setTimeout(() => {
+                if (deliveryAddressRef.current && savedAddress) {
+                  deliveryAddressRef.current.value = savedAddress;
+                  console.log('✅ Dirección restaurada (zona válida):', savedAddress);
+                }
+              }, 0);
+              
+              console.log('✅ Costo de envío calculado:', fee, '- Zona:', zone.name);
+              resolve({ fee, zoneInfo });
+            } else {
+              // Cliente FUERA de zonas
+              setDeliveryFee(null);
+              setDeliveryZoneInfo(null);
+              setLocationChecked(true);
+              setCheckingLocation(false);
+              
+              // Restaurar dirección después de todos los setState
+              setTimeout(() => {
+                if (deliveryAddressRef.current && savedAddress) {
+                  deliveryAddressRef.current.value = savedAddress;
+                  console.log('✅ Dirección restaurada (fuera de zona):', savedAddress);
+                }
+              }, 0);
+              
+              console.log('ℹ️ Cliente fuera de zonas delimitadas.');
+              resolve({ fee: null, zoneInfo: null });
+            }
+          } catch (error) {
+            console.error('❌ Error al verificar cobertura:', error);
+            setDeliveryFee(null);
+            setDeliveryZoneInfo(null);
+            setLocationChecked(true);
+            setCheckingLocation(false);
+            
+            // Restaurar dirección después de todos los setState
+            setTimeout(() => {
+              if (deliveryAddressRef.current && savedAddress) {
+                deliveryAddressRef.current.value = savedAddress;
+                console.log('✅ Dirección restaurada (error):', savedAddress);
+              }
+            }, 0);
+            
+            resolve({ fee: null, zoneInfo: null });
+          }
+        },
+        (error) => {
+          console.error('❌ Error de geolocalización:', error);
+          console.log('ℹ️ No se pudo obtener ubicación. Costo será confirmado manualmente.');
+          setDeliveryFee(null);
+          setDeliveryZoneInfo(null);
+          setLocationChecked(true);
+          setCheckingLocation(false);
+          
+          // Restaurar dirección después de todos los setState
+          setTimeout(() => {
+            if (deliveryAddressRef.current && savedAddress) {
+              deliveryAddressRef.current.value = savedAddress;
+              console.log('✅ Dirección restaurada (error geolocalización):', savedAddress);
+            }
+          }, 0);
+          
+          resolve({ fee: null, zoneInfo: null });
+        },
+        { 
+          enableHighAccuracy: true, 
+          timeout: 10000, 
+          maximumAge: 0 
+        }
+      );
+    });
   };
 
   const handleDeliverySubmit = (e) => {
@@ -256,28 +295,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   };
 
   // Update input handlers to use functional state updates to prevent stale state issues
-  const handlePhoneChange = (e) => {
-    const phone = e.target.value;
-    setDeliveryInfo(prev => ({...prev, phone}));
-    // Actualizar orderInfo solo cuando se complete el input
-    const updatedOrderInfo = {
-      ...orderInfo,
-      phone
-    };
-    updateOrderInfo(updatedOrderInfo);
-  };
-  
-  const handleAddressChange = (e) => {
-    const address = e.target.value;
-    setDeliveryInfo(prev => ({...prev, address}));
-    // Actualizar orderInfo solo cuando se complete el input
-    const updatedOrderInfo = {
-      ...orderInfo,
-      address
-    };
-    updateOrderInfo(updatedOrderInfo);
-  };
-
   const handleTableSubmit = () => {
     // Debug para ver el estado actual
     debugInputState();
@@ -400,14 +417,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     console.log('Actualizando orderInfo con tipo:', type, 'y mesa:', updatedOrderInfo.tableNumber || 'ninguna');
     updateOrderInfo(updatedOrderInfo);
     
-    // Reset delivery info with the latest data from orderInfo
-    if (type === 'delivery') {
-      setDeliveryInfo({
-        phone: orderInfo?.phone || '',
-        address: orderInfo?.address || ''
-      });
-    }
-    
     // Activar el modal
     setShowOrderModal(true);
     console.log('showOrderModal después:', true);
@@ -417,30 +426,31 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const closeOrderModal = () => {
     setShowOrderModal(false);
     document.body.classList.remove('modal-open');
+    // Resetear estados de verificación
+    setLocationChecked(false);
+    setCheckingLocation(false);
+    setDeliveryFee(null);
+    setDeliveryZoneInfo(null);
   };
+
+  // Memoizar handleInputChange para evitar recreaciones
+  const handleInputChange = useCallback((e) => {
+    const { name, value } = e.target;
+    
+    // Solo manejamos tableNumber, address usa ref
+    if (name === 'tableNumber') {
+      // Filtrar solo números
+      const numericValue = value.replace(/[^0-9]/g, '');
+      setFormState(prev => ({
+        ...prev,
+        [name]: numericValue
+      }));
+    }
+  }, []);
 
   // Renderizar el modal de forma condicional
   const OrderFormModal = () => {
     if (!showOrderModal) return null;
-
-    const handleInputChange = (e) => {
-      const { name, value } = e.target;
-      
-      // Si es el campo de número de mesa, solo permitir números
-      if (name === 'tableNumber') {
-        // Filtrar solo números
-        const numericValue = value.replace(/[^0-9]/g, '');
-        setFormState(prev => ({
-          ...prev,
-          [name]: numericValue
-        }));
-      } else {
-        setFormState(prev => ({
-          ...prev,
-          [name]: value
-        }));
-      }
-    };
 
     const handleSubmit = async (e) => {
       e.preventDefault();
@@ -490,7 +500,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           setLocalIsSubmitting(false);
         }
       } else if (orderType === 'delivery') {
-        const trimmedAddress = formState.address.trim();
+        const trimmedAddress = (deliveryAddressRef.current?.value || '').trim();
 
         if (!trimmedAddress) {
           alert('Por favor ingresa la dirección de entrega');
@@ -501,6 +511,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         setLocalIsSubmitting(true);
 
         try {
+          // Usar los valores ya verificados
+          const finalFee = deliveryFee;
+          const finalZoneInfo = deliveryZoneInfo;
+
           const updatedOrderInfo = {
             ...orderInfo,
             orderType: 'delivery',
@@ -508,18 +522,18 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             phone: orderInfo.phone,
             address: trimmedAddress,
             // Información de entrega y zona
-            deliveryFee: deliveryFee || null,
-            deliveryZoneName: deliveryZoneInfo?.zoneName || null,
-            deliveryZoneInfo: deliveryZoneInfo || null,
-            deliveryCalculated: locationChecked,
-            deliveryNeedsConfirmation: !deliveryFee // true si no hay costo automático
+            deliveryFee: finalFee || null,
+            deliveryZoneName: finalZoneInfo?.zoneName || null,
+            deliveryZoneInfo: finalZoneInfo || null,
+            deliveryCalculated: true,
+            deliveryNeedsConfirmation: !finalFee // true si no hay costo automático
           };
 
           console.log('📦 Datos de entrega incluidos en pedido:', {
-            deliveryFee,
-            zoneName: deliveryZoneInfo?.zoneName,
-            calculated: locationChecked,
-            needsConfirmation: !deliveryFee
+            deliveryFee: finalFee,
+            zoneName: finalZoneInfo?.zoneName,
+            calculated: true,
+            needsConfirmation: !finalFee
           });
 
           updateOrderInfo(updatedOrderInfo);
@@ -555,10 +569,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           <form onSubmit={handleSubmit} className="space-y-4">
             {orderType === 'inSite' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="table-number" className="block text-sm font-medium text-gray-700 mb-1">
                   Número de Mesa
                 </label>
                 <input
+                  id="table-number"
                   type="number"
                   name="tableNumber"
                   value={formState.tableNumber}
@@ -571,6 +586,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   pattern="[0-9]*"
                   required
                   autoFocus
+                  autoComplete="off"
                 />
               </div>
             )}
@@ -578,116 +594,87 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             {orderType === 'delivery' && (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="delivery-address" className="block text-sm font-medium text-gray-700 mb-1">
                     Dirección de Entrega
                   </label>
                   <textarea
+                    key="delivery-address-field"
+                    ref={deliveryAddressRef}
+                    id="delivery-address"
                     name="address"
-                    value={formState.address}
-                    onChange={handleInputChange}
+                    defaultValue={orderInfo?.address || ''}
                     className="w-full p-3 border rounded-md text-gray-800 placeholder-gray-500"
                     placeholder="Ej: Calle 123 #45-67, Barrio Centro, Apartamento 201"
                     rows="3"
                     required
+                    autoComplete="street-address"
                   />
                 </div>
 
-                {/* Botón para calcular costo de envío */}
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={detectLocationAndCalculateFee}
-                    disabled={
-                      checkingLocation || 
-                      !formState.address || 
-                      formState.address.trim().length < 10 || 
-                      locationChecked // Deshabilitar después de verificar
-                    }
-                    className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 font-medium text-blue-700 disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-500"
-                  >
-                    {checkingLocation ? (
-                      <>
-                        <span className="animate-spin">🔄</span>
-                        Verificando ubicación...
-                      </>
-                    ) : locationChecked && !deliveryFee ? (
-                      <>
-                        ✓ Verificación completada
-                      </>
-                    ) : deliveryFee ? (
-                      <>
-                        ✓ Costo calculado
-                      </>
-                    ) : (
-                      <>
-                        📍 Verificar costo de envío
-                      </>
-                    )}
-                  </button>
-                  {!formState.address || formState.address.trim().length < 10 ? (
-                    <p className="text-xs text-amber-600 mt-2 text-center font-medium">
-                      ⬆️ Primero ingresa tu dirección completa
+                {/* Botón para verificar costo de domicilio */}
+                {!locationChecked && (
+                  <div className="mt-4">
+                    <button
+                      type="button"
+                      onClick={detectLocationAndCalculateFee}
+                      disabled={checkingLocation}
+                      className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400"
+                    >
+                      {checkingLocation ? (
+                        <>
+                          <span className="animate-spin">🔄</span>
+                          Verificando ubicación...
+                        </>
+                      ) : (
+                        <>
+                          📍 Verificar costo de domicilio
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-gray-600 mt-2 text-center">
+                      Necesitaremos tu ubicación GPS para calcular el costo de envío
                     </p>
-                  ) : locationChecked ? (
-                    <p className="text-xs text-green-600 mt-2 text-center">
-                      ✓ Ubicación verificada
-                    </p>
-                  ) : (
-                    <p className="text-xs text-blue-600 mt-2 text-center">
-                      Necesitaremos tu ubicación GPS solo para verificar si hay precio automático en tu zona
-                    </p>
-                  )}
-                </div>
-
-                {/* Mostrar costo de envío calculado */}
-                {deliveryZoneInfo && deliveryFee !== null && (
-                  <div className="mt-3 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">✅</span>
-                        <span className="font-semibold text-green-800">Costo de envío</span>
-                      </div>
-                      <span className="text-xl font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
-                    </div>
                   </div>
                 )}
 
-                {/* Mostrar error de geolocalización o sistema */}
-                {locationError && (
-                  <div className="mt-3 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">⚠️</span>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-red-800 mb-1">Error de ubicación</h4>
-                        <p className="text-sm text-red-700">{locationError}</p>
+                {/* Mostrar resultado de la verificación */}
+                {locationChecked && (
+                  <>
+                    {deliveryFee && deliveryZoneInfo ? (
+                      <div className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">✅</span>
+                            <div>
+                              <p className="font-semibold text-green-800">Costo de envío</p>
+                              <p className="text-xs text-green-700">Zona: {deliveryZoneInfo.zoneName}</p>
+                            </div>
+                          </div>
+                          <span className="text-xl font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    ) : (
+                      <div className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
+                        <div className="flex items-start gap-3">
+                          <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div>
+                            <p className="text-sm text-amber-900 font-semibold">
+                              Costo de envío por confirmar
+                            </p>
+                            <p className="text-xs text-amber-700 mt-1">
+                              Tu ubicación está fuera de nuestras zonas automáticas. Te confirmaremos el costo al recibir tu pedido.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Avisos informativos */}
                 <div className="space-y-3 mt-4">
-                  {/* Aviso de costo de envío (solo si no se ha calculado o está fuera de zonas) */}
-                  {!deliveryFee && !locationError && (
-                    <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-300 rounded-lg">
-                      <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div>
-                        <p className="text-sm text-amber-900 font-semibold">
-                          💰 El costo de envío será confirmado
-                        </p>
-                        <p className="text-xs text-amber-700 mt-1">
-                          {checkingLocation 
-                            ? 'Verificando ubicación...' 
-                            : locationChecked 
-                              ? 'Tu ubicación está fuera de nuestras zonas de entrega automáticas. Te confirmaremos el costo de envío al recibir tu pedido.' 
-                              : 'Puedes verificar si hay costo automático en tu zona (requiere compartir ubicación GPS), o te confirmaremos el valor al recibir tu pedido'
-                          }
-                        </p>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Aviso de WhatsApp */}
                   <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-300 rounded-lg">
@@ -707,21 +694,24 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               </>
             )}
 
-            <button
-              type="submit"
-              style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-              className="w-full py-3 px-4 rounded-md transition-colors duration-300 font-medium shadow-sm hover:shadow"
-              disabled={isProcessing || isSubmitting}
-            >
-              {isProcessing || isSubmitting ? (
-                <>
-                  <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                  Procesando...
-                </>
-              ) : (
-                orderType === 'inSite' ? 'Confirmar Mesa' : 'Confirmar Pedido'
-              )}
-            </button>
+            {/* Botón de confirmar solo se muestra si no es delivery O si ya se verificó la ubicación */}
+            {(orderType !== 'delivery' || locationChecked) && (
+              <button
+                type="submit"
+                style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
+                className="w-full py-3 px-4 rounded-md transition-colors duration-300 font-medium shadow-sm hover:shadow"
+                disabled={isProcessing || isSubmitting}
+              >
+                {isProcessing || isSubmitting ? (
+                  <>
+                    <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
+                    Procesando...
+                  </>
+                ) : (
+                  orderType === 'inSite' ? 'Confirmar Mesa' : 'Confirmar Pedido'
+                )}
+              </button>
+            )}
           </form>
         </div>
       </div>

@@ -809,19 +809,45 @@ function ModernOrdersDashboard() {
                               </div>
                             )}
                             
+                            {order.orderType === 'delivery' && order.deliveryZoneName && (
+                              <div className="flex items-center space-x-3">
+                                <span className="text-sm lg:text-base flex-shrink-0">📍</span>
+                                <span className="text-sm lg:text-base text-slate-600">Zona: {order.deliveryZoneName}</span>
+                              </div>
+                            )}
+                            
+                            {order.orderType === 'delivery' && order.deliveryFee && (
+                              <div className="flex items-center space-x-3">
+                                <span className="text-sm lg:text-base flex-shrink-0">🚚</span>
+                                <span className="text-sm lg:text-base text-slate-600">Envío: ${order.deliveryFee.toLocaleString()}</span>
+                              </div>
+                            )}
+                            
+                            {order.orderType === 'delivery' && order.deliveryNeedsConfirmation && (
+                              <div className="flex items-start space-x-3 bg-amber-50 p-2 rounded-lg">
+                                <span className="text-sm lg:text-base flex-shrink-0 mt-0.5">⚠️</span>
+                                <span className="text-xs lg:text-sm text-amber-800 leading-tight font-medium">Costo de envío por confirmar</span>
+                              </div>
+                            )}
+                            
                             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
                               <span className="text-sm lg:text-base text-slate-600 font-medium">{order.items?.length || 0} productos</span>
                               <div className="text-right">
                                 {order.couponCode ? (
                                   <div>
-                                    <span className="text-lg lg:text-xl font-bold text-green-600">${order.finalAmount || order.totalAmount}</span>
+                                    <span className="text-lg lg:text-xl font-bold text-green-600">${((order.totalAmount || 0) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
                                     <div className="text-sm text-slate-500">
-                                      <span className="line-through">${order.totalAmount}</span>
+                                      <span className="line-through">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</span>
                                       <span className="ml-1 text-green-600">🎫 {order.couponCode}</span>
                                     </div>
                                   </div>
+                                ) : order.deliveryNeedsConfirmation ? (
+                                  <div>
+                                    <span className="text-lg lg:text-xl font-bold text-slate-900">${order.totalAmount}</span>
+                                    <div className="text-xs text-amber-700 font-medium">+ envío</div>
+                                  </div>
                                 ) : (
-                                  <span className="text-lg lg:text-xl font-bold text-slate-900">${order.totalAmount}</span>
+                                  <span className="text-lg lg:text-xl font-bold text-slate-900">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</span>
                                 )}
                               </div>
                             </div>
@@ -1029,6 +1055,32 @@ function ModernOrdersDashboard() {
                         <span className="text-sm text-slate-900 leading-relaxed">{orderDetails.address}</span>
                       </div>
                     )}
+                    
+                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base">📍</span>
+                        <span className="text-sm font-medium text-slate-700">Zona:</span>
+                        <span className="text-sm text-slate-900">{orderDetails.deliveryZoneName}</span>
+                      </div>
+                    )}
+                    
+                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryFee && (
+                      <div className="flex items-center space-x-2">
+                        <span className="text-base">🚚</span>
+                        <span className="text-sm font-medium text-slate-700">Costo de envío:</span>
+                        <span className="text-sm text-slate-900">${orderDetails.deliveryFee.toLocaleString()}</span>
+                      </div>
+                    )}
+                    
+                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryNeedsConfirmation && (
+                      <div className="flex items-start space-x-2 bg-amber-50 p-3 rounded-lg">
+                        <span className="text-base">⚠️</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-amber-900">Costo de envío por confirmar</p>
+                          <p className="text-xs text-amber-700 mt-1">Cliente fuera de zonas automáticas</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-3">
@@ -1094,22 +1146,62 @@ function ModernOrdersDashboard() {
                   {orderDetails.couponCode ? (
                     <div className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="text-lg font-semibold text-slate-900">Subtotal:</span>
-                        <span className="text-lg font-semibold text-slate-900">${orderDetails.totalAmount}</span>
+                        <span className="text-sm text-slate-600">Subtotal productos:</span>
+                        <span className="text-sm text-slate-900">${orderDetails.totalAmount}</span>
                       </div>
+                      {orderDetails.deliveryFee && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600">Costo de envío:</span>
+                          <span className="text-sm text-slate-900">${orderDetails.deliveryFee.toLocaleString()}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-600">Cupón aplicado ({orderDetails.couponCode}):</span>
                         <span className="text-sm text-green-600">-${orderDetails.discountAmount || 0}</span>
                       </div>
                       <div className="flex justify-between items-center border-t border-slate-200 pt-2">
                         <span className="text-xl font-bold text-slate-900">Total:</span>
-                        <span className="text-2xl font-bold text-green-600">${orderDetails.finalAmount || orderDetails.totalAmount}</span>
+                        <span className="text-2xl font-bold text-green-600">${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0) - (orderDetails.discountAmount || 0)).toLocaleString()}</span>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold text-slate-900">Total:</span>
-                      <span className="text-2xl font-bold text-slate-900">${orderDetails.totalAmount}</span>
+                    <div className="space-y-2">
+                      {orderDetails.deliveryFee ? (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600">Subtotal productos:</span>
+                            <span className="text-sm text-slate-900">${orderDetails.totalAmount}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600">Costo de envío:</span>
+                            <span className="text-sm text-slate-900">${orderDetails.deliveryFee.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+                            <span className="text-xl font-bold text-slate-900">Total:</span>
+                            <span className="text-2xl font-bold text-slate-900">${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0)).toLocaleString()}</span>
+                          </div>
+                        </>
+                      ) : orderDetails.deliveryNeedsConfirmation ? (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600">Subtotal productos:</span>
+                            <span className="text-sm text-slate-900">${orderDetails.totalAmount}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-amber-700 font-medium">Costo de envío:</span>
+                            <span className="text-sm text-amber-700 font-medium">Por confirmar</span>
+                          </div>
+                          <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+                            <span className="text-xl font-bold text-slate-900">Total estimado:</span>
+                            <span className="text-2xl font-bold text-slate-900">${orderDetails.totalAmount} + envío</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex justify-between items-center">
+                          <span className="text-lg font-semibold text-slate-900">Total:</span>
+                          <span className="text-2xl font-bold text-slate-900">${orderDetails.totalAmount}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
