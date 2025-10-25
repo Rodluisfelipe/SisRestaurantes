@@ -22,8 +22,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [locationError, setLocationError] = useState(null);
   const [locationChecked, setLocationChecked] = useState(false);
+  const [formState, setFormState] = useState({
+    tableNumber: '',
+    address: orderInfo?.address || ''
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
   const { businessConfig, businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
+  
+  // Sincronizar formState con orderInfo cuando cambie
+  useEffect(() => {
+    setFormState({
+      tableNumber: orderInfo?.tableNumber || '',
+      address: orderInfo?.address || ''
+    });
+  }, [orderInfo?.tableNumber, orderInfo?.address]);
   
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
@@ -418,12 +431,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const OrderFormModal = () => {
     if (!showOrderModal) return null;
 
-    const [formState, setFormState] = useState({
-      tableNumber: '',
-      address: orderInfo?.address || ''
-    });
-    const [isProcessing, setIsProcessing] = useState(false);
-
     const handleInputChange = (e) => {
       const { name, value } = e.target;
       
@@ -507,8 +514,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             orderType: 'delivery',
             // Mantener el teléfono que ya tenemos desde el inicio
             phone: orderInfo.phone,
-            address: trimmedAddress
+            address: trimmedAddress,
+            // Información de entrega y zona
+            deliveryFee: deliveryFee || null,
+            deliveryZoneName: deliveryZoneInfo?.zoneName || null,
+            deliveryZoneInfo: deliveryZoneInfo || null,
+            deliveryCalculated: locationChecked,
+            deliveryNeedsConfirmation: !deliveryFee // true si no hay costo automático
           };
+
+          console.log('📦 Datos de entrega incluidos en pedido:', {
+            deliveryFee,
+            zoneName: deliveryZoneInfo?.zoneName,
+            calculated: locationChecked,
+            needsConfirmation: !deliveryFee
+          });
 
           updateOrderInfo(updatedOrderInfo);
           SessionManager.saveOrderInfo(updatedOrderInfo);
@@ -585,13 +605,26 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   <button
                     type="button"
                     onClick={detectLocationAndCalculateFee}
-                    disabled={checkingLocation || !formState.address || formState.address.trim().length < 10}
+                    disabled={
+                      checkingLocation || 
+                      !formState.address || 
+                      formState.address.trim().length < 10 || 
+                      locationChecked // Deshabilitar después de verificar
+                    }
                     className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-lg hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 font-medium text-blue-700 disabled:bg-gray-100 disabled:border-gray-200 disabled:text-gray-500"
                   >
                     {checkingLocation ? (
                       <>
                         <span className="animate-spin">🔄</span>
                         Verificando ubicación...
+                      </>
+                    ) : locationChecked && !deliveryFee ? (
+                      <>
+                        ✓ Verificación completada
+                      </>
+                    ) : deliveryFee ? (
+                      <>
+                        ✓ Costo calculado
                       </>
                     ) : (
                       <>
@@ -602,6 +635,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   {!formState.address || formState.address.trim().length < 10 ? (
                     <p className="text-xs text-amber-600 mt-2 text-center font-medium">
                       ⬆️ Primero ingresa tu dirección completa
+                    </p>
+                  ) : locationChecked ? (
+                    <p className="text-xs text-green-600 mt-2 text-center">
+                      ✓ Ubicación verificada
                     </p>
                   ) : (
                     <p className="text-xs text-blue-600 mt-2 text-center">

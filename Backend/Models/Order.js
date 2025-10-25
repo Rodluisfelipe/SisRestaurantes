@@ -127,6 +127,18 @@ const orderSchema = new mongoose.Schema({
       default: 0
     }
   },
+  deliveryZoneInfo: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+  },
+  deliveryCalculated: {
+    type: Boolean,
+    default: false
+  },
+  deliveryNeedsConfirmation: {
+    type: Boolean,
+    default: false
+  },
   
   // Order items
   items: [{

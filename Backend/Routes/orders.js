@@ -66,7 +66,23 @@ router.post("/", async (req, res) => {
     console.log('=== POST /orders - DATOS RECIBIDOS ===');
     console.log('req.body completo:', JSON.stringify(req.body, null, 2));
     
-    const { businessId, customerName, orderType, items, totalAmount, tableNumber, phone, address, couponCode } = req.body;
+    const { 
+      businessId, 
+      customerName, 
+      orderType, 
+      items, 
+      totalAmount, 
+      tableNumber, 
+      phone, 
+      address, 
+      couponCode,
+      // Datos de delivery zone
+      deliveryFee,
+      deliveryZoneName,
+      deliveryZoneInfo,
+      deliveryCalculated,
+      deliveryNeedsConfirmation
+    } = req.body;
     
     console.log('businessId:', businessId, 'tipo:', typeof businessId);
     console.log('customerName:', customerName, 'tipo:', typeof customerName);
@@ -179,9 +195,22 @@ router.post("/", async (req, res) => {
       couponId: coupon ? coupon._id : null,
       discountAmount,
       finalAmount,
+      // Datos de zona de entrega
+      deliveryFee: deliveryFee || null,
+      deliveryZoneName: deliveryZoneName || null,
+      deliveryZoneInfo: deliveryZoneInfo || null,
+      deliveryCalculated: deliveryCalculated || false,
+      deliveryNeedsConfirmation: deliveryNeedsConfirmation || false,
       status: "pending",
       createdAt: new Date(),
       updatedAt: new Date()
+    });
+    
+    console.log('📦 Orden creada con datos de delivery:', {
+      deliveryFee,
+      deliveryZoneName,
+      deliveryCalculated,
+      deliveryNeedsConfirmation
     });
     
     const savedOrder = await newOrder.save();

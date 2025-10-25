@@ -88,6 +88,16 @@ Tu orden será procesada inmediatamente.
     customerInfo += `*Tipo de pedido:* A Domicilio\n`;
     customerInfo += `*Teléfono:* ${orderInfo.phone || 'No proporcionado'}\n`;
     customerInfo += `*Dirección:* ${orderInfo.address || 'No proporcionada'}\n`;
+    
+    // Agregar información de zona y costo de envío
+    if (orderInfo.deliveryFee && orderInfo.deliveryFee > 0) {
+      customerInfo += `*Zona:* ${orderInfo.deliveryZoneName || 'Automática'}\n`;
+      customerInfo += `*Costo de envío:* $${orderInfo.deliveryFee.toLocaleString()}\n`;
+    } else if (orderInfo.deliveryNeedsConfirmation) {
+      customerInfo += `*⚠️ Costo de envío:* Por confirmar (fuera de zonas automáticas)\n`;
+    } else {
+      customerInfo += `*Costo de envío:* Por confirmar\n`;
+    }
   } else if (orderInfo.orderType === 'inSite') {
     customerInfo += `*Tipo de pedido:* En Sitio\n`;
     customerInfo += `*Mesa #:* ${orderInfo.tableNumber || 'No especificada'}\n`;
@@ -146,16 +156,36 @@ Tu orden será procesada inmediatamente.
   let orderSummary = `*Productos:* ${cart.length}
 *Cantidad total:* ${totalItems} items`;
 
+  // Calcular total incluyendo costo de envío
+  const deliveryFee = orderInfo.deliveryFee || 0;
+  const totalWithDelivery = totalAmount + deliveryFee;
+
   // Agregar información del cupón si está aplicado
   if (appliedCoupon) {
     orderSummary += `
-*Subtotal:* $${totalAmount.toLocaleString()}
+*Subtotal productos:* $${totalAmount.toLocaleString()}`;
+    
+    // Agregar costo de envío si existe
+    if (deliveryFee > 0) {
+      orderSummary += `
+*Costo de envío:* $${deliveryFee.toLocaleString()}`;
+    }
+    
+    orderSummary += `
 *Cupón aplicado:* ${appliedCoupon.coupon.code} (${appliedCoupon.coupon.name})
 *Descuento:* -$${appliedCoupon.discountAmount.toLocaleString()}
-*TOTAL A PAGAR:* $${appliedCoupon.finalAmount.toLocaleString()}`;
+*TOTAL A PAGAR:* $${(totalWithDelivery - appliedCoupon.discountAmount).toLocaleString()}`;
   } else {
-    orderSummary += `
+    // Sin cupón
+    if (deliveryFee > 0) {
+      orderSummary += `
+*Subtotal productos:* $${totalAmount.toLocaleString()}
+*Costo de envío:* $${deliveryFee.toLocaleString()}
+*TOTAL A PAGAR:* $${totalWithDelivery.toLocaleString()}`;
+    } else {
+      orderSummary += `
 *TOTAL A PAGAR:* $${totalAmount.toLocaleString()}`;
+    }
   }
 
   // Generar timestamp
