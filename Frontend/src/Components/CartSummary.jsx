@@ -107,15 +107,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     const savedAddress = deliveryAddressRef.current?.value || '';
     console.log('🔒 Guardando dirección antes de verificar:', savedAddress);
     
-    setCheckingLocation(true);
+    // Función auxiliar para restaurar dirección de forma más robusta
+    const restoreAddress = () => {
+      // Usar requestAnimationFrame + setTimeout para mayor confiabilidad
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          if (deliveryAddressRef.current && savedAddress) {
+            deliveryAddressRef.current.value = savedAddress;
+            console.log('✅ Dirección restaurada:', savedAddress);
+          }
+        }, 0);
+      });
+    };
     
-    // Restaurar dirección inmediatamente después del setState
-    setTimeout(() => {
-      if (deliveryAddressRef.current && savedAddress) {
-        deliveryAddressRef.current.value = savedAddress;
-        console.log('✅ Dirección restaurada (inicio):', savedAddress);
-      }
-    }, 0);
+    setCheckingLocation(true);
+    restoreAddress();
     
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -124,15 +130,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         setLocationChecked(true);
         setDeliveryFee(null);
         setDeliveryZoneInfo(null);
-        
-        // Restaurar dirección
-        setTimeout(() => {
-          if (deliveryAddressRef.current && savedAddress) {
-            deliveryAddressRef.current.value = savedAddress;
-            console.log('✅ Dirección restaurada (no geolocation):', savedAddress);
-          }
-        }, 0);
-        
+        restoreAddress();
         resolve({ fee: null, zoneInfo: null });
         return;
       }
@@ -177,15 +175,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               setDeliveryZoneInfo(zoneInfo);
               setLocationChecked(true);
               setCheckingLocation(false);
-              
-              // Restaurar dirección después de todos los setState
-              setTimeout(() => {
-                if (deliveryAddressRef.current && savedAddress) {
-                  deliveryAddressRef.current.value = savedAddress;
-                  console.log('✅ Dirección restaurada (zona válida):', savedAddress);
-                }
-              }, 0);
-              
+              restoreAddress();
               console.log('✅ Costo de envío calculado:', fee, '- Zona:', zone.name);
               resolve({ fee, zoneInfo });
             } else {
@@ -194,15 +184,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               setDeliveryZoneInfo(null);
               setLocationChecked(true);
               setCheckingLocation(false);
-              
-              // Restaurar dirección después de todos los setState
-              setTimeout(() => {
-                if (deliveryAddressRef.current && savedAddress) {
-                  deliveryAddressRef.current.value = savedAddress;
-                  console.log('✅ Dirección restaurada (fuera de zona):', savedAddress);
-                }
-              }, 0);
-              
+              restoreAddress();
               console.log('ℹ️ Cliente fuera de zonas delimitadas.');
               resolve({ fee: null, zoneInfo: null });
             }
@@ -212,15 +194,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             setDeliveryZoneInfo(null);
             setLocationChecked(true);
             setCheckingLocation(false);
-            
-            // Restaurar dirección después de todos los setState
-            setTimeout(() => {
-              if (deliveryAddressRef.current && savedAddress) {
-                deliveryAddressRef.current.value = savedAddress;
-                console.log('✅ Dirección restaurada (error):', savedAddress);
-              }
-            }, 0);
-            
+            restoreAddress();
             resolve({ fee: null, zoneInfo: null });
           }
         },
@@ -231,15 +205,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           setDeliveryZoneInfo(null);
           setLocationChecked(true);
           setCheckingLocation(false);
-          
-          // Restaurar dirección después de todos los setState
-          setTimeout(() => {
-            if (deliveryAddressRef.current && savedAddress) {
-              deliveryAddressRef.current.value = savedAddress;
-              console.log('✅ Dirección restaurada (error geolocalización):', savedAddress);
-            }
-          }, 0);
-          
+          restoreAddress();
           resolve({ fee: null, zoneInfo: null });
         },
         { 
@@ -598,7 +564,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     Dirección de Entrega
                   </label>
                   <textarea
-                    key="delivery-address-field"
                     ref={deliveryAddressRef}
                     id="delivery-address"
                     name="address"

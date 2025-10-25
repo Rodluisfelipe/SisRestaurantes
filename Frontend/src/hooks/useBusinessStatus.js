@@ -58,8 +58,10 @@ export const useBusinessStatus = (businessId) => {
     if (!businessId) return;
     
     try {
-      // Obtener la configuración completa del negocio
-      const response = await api.get(`/business-config?businessId=${businessId}`);
+      // Obtener la configuración completa del negocio con timeout extendido
+      const response = await api.get(`/business-config?businessId=${businessId}`, {
+        timeout: 15000 // 15 segundos para esta llamada específica
+      });
       const config = response.data;
       
       // Calcular el estado basado en los datos
@@ -75,21 +77,35 @@ export const useBusinessStatus = (businessId) => {
       };
       
       setBusinessStatus(status);
+      setError(null); // Limpiar error si la llamada fue exitosa
     } catch (err) {
-      console.error('Error al obtener estado del negocio:', err);
-      setError(err.message);
+      // Solo registrar el error si no es un timeout (para no llenar la consola)
+      if (err.code !== 'ECONNABORTED') {
+        console.warn('⚠️ No se pudo cargar el estado del negocio:', err.message);
+      }
+      // No mostrar el error al usuario, usar valores por defecto seguros
+      setBusinessStatus({
+        isOpen: true,
+        isOpenByHours: true,
+        isMenuActive: true,
+        menuStatus: 'active',
+        nextOpenTime: null
+      });
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (!businessId) return;
+    
     fetchBusinessStatus();
     
-    // Actualizar cada minuto para verificar cambios de horario
-    const interval = setInterval(fetchBusinessStatus, 60000);
+    // Actualizar cada 5 minutos (reducido para menos carga)
+    const interval = setInterval(fetchBusinessStatus, 300000);
     
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [businessId]);
 
   const getStatusDisplay = () => {
