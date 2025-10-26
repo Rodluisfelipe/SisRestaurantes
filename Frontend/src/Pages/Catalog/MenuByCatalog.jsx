@@ -376,14 +376,16 @@ const MenuByCatalog = () => {
             </p>
           </div>
           
-          {/* Filtros modernos con chips */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+          {/* Filtros modernos con chips (Desktop) y Dropdown (Móvil) */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center space-x-2 text-sm font-medium text-gray-700 flex-shrink-0">
               <FilterIcon />
-              <span className="hidden sm:inline">Ordenar por:</span>
+              <span className="hidden md:inline">Ordenar por:</span>
+              <span className="md:hidden">Ordenar:</span>
             </div>
             
-            <div className="flex flex-wrap gap-2 justify-end">
+            {/* Filtros para Desktop (md y superiores) */}
+            <div className="hidden md:flex flex-wrap gap-2 justify-end">
               {hasLocation && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -425,8 +427,7 @@ const MenuByCatalog = () => {
                 }`}
               >
                 <span className="text-base">⭐</span>
-                <span className="hidden sm:inline">Top Rated</span>
-                <span className="sm:hidden">Rating</span>
+                <span>Top Rated</span>
               </motion.button>
               
               <motion.button
@@ -440,9 +441,37 @@ const MenuByCatalog = () => {
                 }`}
               >
                 <span className="text-base">⚡</span>
-                <span className="hidden sm:inline">Rápidos</span>
-                <span className="sm:hidden">Fast</span>
+                <span>Rápidos</span>
               </motion.button>
+            </div>
+
+            {/* Dropdown para Móvil (menores a md) */}
+            <div className="md:hidden relative flex-1">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full appearance-none bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-3 pr-10 rounded-xl font-semibold text-sm shadow-lg shadow-red-500/30 focus:outline-none focus:ring-2 focus:ring-red-400 cursor-pointer transition-all duration-200"
+              >
+                {hasLocation && (
+                  <option value="distance" className="bg-white text-gray-900 font-medium">📍 Más cercanos</option>
+                )}
+                <option value="popularity" className="bg-white text-gray-900 font-medium">🔥 Más populares</option>
+                <option value="rating" className="bg-white text-gray-900 font-medium">⭐ Mejor calificados</option>
+                <option value="delivery_time" className="bg-white text-gray-900 font-medium">⚡ Más rápidos</option>
+              </select>
+              {/* Icono de flecha personalizado */}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <motion.svg 
+                  animate={{ y: [0, 2, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="w-5 h-5 text-white" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                </motion.svg>
+              </div>
             </div>
           </div>
         </motion.div>
