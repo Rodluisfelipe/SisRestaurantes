@@ -248,9 +248,13 @@ const MenuByCatalog = () => {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.1 }}
-                className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg"
+                className="w-12 h-12 rounded-2xl shadow-lg overflow-hidden bg-white"
               >
-                <span className="text-white font-bold text-lg">M</span>
+                <img 
+                  src="/logo.jpeg" 
+                  alt="MenuBy Logo" 
+                  className="w-full h-full object-cover"
+                />
               </motion.div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">MenuBy</h1>

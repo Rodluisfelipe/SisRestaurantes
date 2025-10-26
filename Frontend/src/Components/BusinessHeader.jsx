@@ -7,7 +7,7 @@ import { socket } from '../services/socket';
 import AccountManagementModal from './AccountManagementModal';
 import { useCustomerData } from '../hooks/useCustomerData';
 
-const BusinessHeader = () => {
+const BusinessHeader = ({ comesFromCatalog = false }) => {
   const [businessConfig, setBusinessConfig] = useState({
     businessName: '',
     logo: '',
@@ -163,9 +163,9 @@ const BusinessHeader = () => {
       {/* Content Container */}
       <div className={`relative z-10 pt-4 pb-3 ${businessConfig.coverImage ? 'text-white' : 'text-gray-800'}`}>
         {/* Status Indicator and Account Button */}
-        <div className="absolute left-2 top-4 z-20">
+        <div className={`absolute ${comesFromCatalog ? 'left-16' : 'left-2'} top-4 z-20`}>
           <div 
-            className={`px-4 py-2 rounded-full text-sm font-bold shadow-md ${getStatusDisplay().color} text-white`}
+            className={`${comesFromCatalog ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'} rounded-full font-bold shadow-md ${getStatusDisplay().color} text-white`}
           >
             {getStatusDisplay().text}
           </div>
@@ -186,23 +186,23 @@ const BusinessHeader = () => {
                     color: businessConfig.theme?.buttonTextColor || 'white' 
                   }
             }
-            className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 hover:opacity-90 ${
+            className={`flex items-center space-x-2 ${comesFromCatalog ? 'px-2 py-1' : 'px-4 py-2'} rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 hover:opacity-90 ${
               hasActiveOrder ? 'animate-pulse' : ''
             }`}
           >
             {hasActiveOrder ? (
               <>
                 <div className="relative">
-                  <User className="w-4 h-4" />
+                  <User className={comesFromCatalog ? 'w-3 h-3' : 'w-4 h-4'} />
                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></div>
                 </div>
-                <span className="font-medium text-sm">Ver Estado de Orden</span>
+                <span className={`font-medium ${comesFromCatalog ? 'text-xs' : 'text-sm'}`}>Ver Estado</span>
               </>
             ) : (
               <>
-                <User className="w-4 h-4" />
-                <span className="font-medium text-sm">Mi Cuenta</span>
+                <User className={comesFromCatalog ? 'w-3 h-3' : 'w-4 h-4'} />
+                <span className={`font-medium ${comesFromCatalog ? 'text-xs' : 'text-sm'}`}>Cuenta</span>
               </>
             )}
           </button>

@@ -26,6 +26,11 @@ const RestaurantCard = ({ restaurant, userLocation }) => {
   // Obtener estado real del negocio
   const { businessStatus, getStatusDisplay } = useBusinessStatus(restaurant._id);
   
+  // Marcar que el usuario viene del catálogo
+  const handleRestaurantClick = () => {
+    sessionStorage.setItem('fromCatalog', 'true');
+  };
+  
   // Calcular tiempo de entrega estimado
   const getDeliveryTime = () => {
     // 1. Prioridad: Si el restaurante tiene zona de entrega asignada, usar su tiempo configurado
@@ -67,7 +72,11 @@ const RestaurantCard = ({ restaurant, userLocation }) => {
       whileTap={{ scale: 0.98 }}
       className="group relative bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 cursor-pointer"
     >
-      <Link to={`/${restaurant.slug}`} className="block">
+      <Link 
+        to={`/${restaurant.slug}`} 
+        className="block"
+        onClick={handleRestaurantClick}
+      >
         {/* Imagen principal con overlay */}
         <div className="relative h-48 overflow-hidden">
           {restaurant.coverImage ? (

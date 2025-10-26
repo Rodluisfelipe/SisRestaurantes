@@ -78,6 +78,22 @@ export default function Menu() {
   });
   const [businessNotFound, setBusinessNotFound] = useState(false);
   
+  // Detectar si viene del catálogo
+  const [comesFromCatalog, setComesFromCatalog] = useState(() => {
+    // Verificar si el referrer contiene "/catalog"
+    const referrer = document.referrer;
+    const fromCatalog = referrer.includes('/catalog');
+    
+    // Guardar en sessionStorage para mantener el estado durante la navegación
+    if (fromCatalog) {
+      sessionStorage.setItem('fromCatalog', 'true');
+      return true;
+    }
+    
+    // Verificar si ya estaba marcado en sessionStorage
+    return sessionStorage.getItem('fromCatalog') === 'true';
+  });
+  
   // Initialize orderInfo with the appropriate storage
   const [orderInfo, setOrderInfo] = useState(() => {
     // Obtener información guardada de la sesión
@@ -921,9 +937,39 @@ export default function Menu() {
 
   // El menú siempre se renderiza, el CartSummary se superpone como modal
 
+  // Función para volver al catálogo
+  const handleBackToCatalog = () => {
+    sessionStorage.removeItem('fromCatalog');
+    navigate('/catalog');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <BusinessHeader />
+      <BusinessHeader comesFromCatalog={comesFromCatalog} />
+      
+      {/* Botón para volver al catálogo (solo si viene del catálogo) */}
+      {comesFromCatalog && (
+        <button
+          onClick={handleBackToCatalog}
+          className="fixed top-4 left-4 z-50 bg-white hover:bg-gray-100 text-gray-700 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110 active:scale-95 border border-gray-200"
+          title="Volver al catálogo"
+          aria-label="Volver al catálogo"
+        >
+          <svg 
+            className="w-5 h-5" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2.5} 
+              d="M6 18L18 6M6 6l12 12" 
+            />
+          </svg>
+        </button>
+      )}
       
       <FilterableMenu 
         products={products}
