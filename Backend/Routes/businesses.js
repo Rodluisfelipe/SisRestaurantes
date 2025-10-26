@@ -56,11 +56,20 @@ router.get('/', async (req, res) => {
     const businesses = await BusinessConfig.find({ 
       isActive: true,
       city: "Chía" // Solo mostrar negocios de Chía por ahora
-    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city createdAt updatedAt');
+    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location createdAt updatedAt');
 
     // Formatear respuesta para el catálogo con categorías reales
     const formattedBusinesses = await Promise.all(businesses.map(async (business) => {
       const categories = await getBusinessCategories(business._id);
+      
+      // Extraer coordenadas del campo location
+      let coordinates = null;
+      if (business.location && business.location.coordinates) {
+        coordinates = {
+          lat: business.location.coordinates.lat,
+          lng: business.location.coordinates.lng
+        };
+      }
       
       return {
         _id: business._id,
@@ -75,6 +84,7 @@ router.get('/', async (req, res) => {
         socialMedia: business.socialMedia,
         department: business.department,
         city: business.city,
+        coordinates: coordinates, // Coordenadas para calcular distancia
         createdAt: business.createdAt,
         updatedAt: business.updatedAt,
         // Usar el campo real isOpen del modelo
