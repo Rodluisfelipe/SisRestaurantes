@@ -27,6 +27,7 @@ import TableValidator from "./Components/TableValidator";
 import MenuByCatalog from "./Pages/Catalog/MenuByCatalog";
 import RestaurantDetail from "./Pages/Catalog/RestaurantDetail";
 import DynamicManifest from "./Components/DynamicManifest";
+import LeadCapturePage from "./Pages/LeadCapturePage";
 
 // Componente protegido para rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
@@ -110,9 +111,13 @@ function App() {
         
         {/* Rutas del Catálogo MenuBy */}
         <Route element={<CatalogLayout />}>
-          <Route path="/catalog" element={<MenuByCatalog />} />
-          <Route path="/catalog/restaurant/:restaurantId" element={<RestaurantDetail />} />
+          <Route path="/restaurantes" element={<MenuByCatalog />} />
+          <Route path="/restaurantes/restaurant/:restaurantId" element={<RestaurantDetail />} />
         </Route>
+
+        {/* Redirección de rutas antiguas para compatibilidad */}
+        <Route path="/catalog" element={<Navigate to="/restaurantes" replace />} />
+        <Route path="/catalog/*" element={<Navigate to="/restaurantes" replace />} />
 
         {/* Rutas de la Landing Page con layout compartido - IMPORTANTE: Deben ir ANTES de las rutas de negocio */}
         <Route element={<LandingLayout />}>
@@ -200,8 +205,8 @@ function App() {
           }
         />
         
-        {/* Ruta para páginas no encontradas */}
-        <Route path="*" element={<NotFound />} />
+        {/* Ruta para captura de leads - URLs no encontradas se convierten en oportunidades */}
+        <Route path="*" element={<LeadCapturePage />} />
         </Routes>
     </AuthProvider>
   );

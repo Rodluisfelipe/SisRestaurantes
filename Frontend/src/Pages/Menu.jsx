@@ -18,6 +18,7 @@ import { calculateItemPrice, calculateTotalAmount, calculateTotalItems, createWh
 import logger from '../utils/logger';
 import { useParams, useNavigate } from 'react-router-dom';
 import NotFound from './NotFound';
+import LeadCapturePage from './LeadCapturePage';
 import useSEO from '../hooks/useSEO';
 
 /**
@@ -78,11 +79,11 @@ export default function Menu() {
   });
   const [businessNotFound, setBusinessNotFound] = useState(false);
   
-  // Detectar si viene del catálogo
+  // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
-    // Verificar si el referrer contiene "/catalog"
+    // Verificar si el referrer contiene "/restaurantes"
     const referrer = document.referrer;
-    const fromCatalog = referrer.includes('/catalog');
+    const fromCatalog = referrer.includes('/restaurantes');
     
     // Guardar en sessionStorage para mantener el estado durante la navegación
     if (fromCatalog) {
@@ -878,7 +879,7 @@ export default function Menu() {
 
   // Si el negocio no se encuentra, mostrar NotFound
   if (businessNotFound) {
-    return <NotFound />;
+    return <LeadCapturePage />;
   }
 
   // Verificar si el negocio está activo
@@ -937,10 +938,10 @@ export default function Menu() {
 
   // El menú siempre se renderiza, el CartSummary se superpone como modal
 
-  // Función para volver al catálogo
+  // Función para volver al catálogo de restaurantes
   const handleBackToCatalog = () => {
     sessionStorage.removeItem('fromCatalog');
-    navigate('/catalog');
+    navigate('/restaurantes');
   };
 
   return (

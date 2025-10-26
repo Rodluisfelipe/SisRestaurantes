@@ -32,7 +32,7 @@ const CatalogNavbar = () => {
   const location = useLocation();
 
   const navItems = [
-    { name: 'Inicio', path: '/catalog', icon: HomeIcon },
+    { name: 'Inicio', path: '/restaurantes', icon: HomeIcon },
   ];
 
   return (
@@ -40,7 +40,7 @@ const CatalogNavbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo y información - Desktop */}
-          <Link to="/catalog" className="hidden md:flex items-center space-x-3">
+          <Link to="/restaurantes" className="hidden md:flex items-center space-x-3">
             <motion.div
               whileHover={{ scale: 1.05 }}
               className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center"
@@ -62,7 +62,7 @@ const CatalogNavbar = () => {
 
           {/* Logo móvil - Centrado */}
           <div className="md:hidden flex-1 flex justify-center">
-            <Link to="/catalog" className="flex flex-col items-center">
+            <Link to="/restaurantes" className="flex flex-col items-center">
               <div className="flex items-center space-x-2 mb-1">
                 <span className="text-xl font-bold text-slate-800">MenuBy</span>
                 <span className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-medium px-2 py-1 rounded-full">

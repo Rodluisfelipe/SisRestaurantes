@@ -44,7 +44,7 @@ const RestaurantDetail = () => {
         setProducts(productsData);
       } catch (error) {
         console.error('Error loading restaurant:', error);
-        navigate('/catalog');
+        navigate('/restaurantes');
       } finally {
         setLoading(false);
       }
@@ -105,8 +105,8 @@ const RestaurantDetail = () => {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-slate-800 mb-4">Restaurante no encontrado</h2>
-          <Link to="/catalog" className="text-blue-500 hover:text-blue-600">
-            Volver al catálogo
+          <Link to="/restaurantes" className="text-blue-500 hover:text-blue-600">
+            Volver a restaurantes
           </Link>
         </div>
       </div>
@@ -169,7 +169,7 @@ const RestaurantDetail = () => {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/catalog')}
+            onClick={() => navigate('/restaurantes')}
             className="p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors"
           >
             <ArrowLeft className="w-6 h-6 text-slate-700" />

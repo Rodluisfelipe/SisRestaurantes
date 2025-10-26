@@ -47,14 +47,14 @@ const MenuByCatalog = () => {
   const [selectedCategory, setSelectedCategory] = useState('todo');
   const [sortBy, setSortBy] = useState('popularity');
   const [categories, setCategories] = useState([]);
-  
+
   // Hook de ubicación dinámica
   const { location, updateLocation, hasLocation, isLoading: locationLoading } = useUserLocation();
 
   // Cargar restaurantes cuando la ubicación esté lista
   useEffect(() => {
     if (!locationLoading) {
-      loadRestaurants();
+    loadRestaurants();
     }
   }, [location.coordinates, locationLoading]);
 
@@ -374,7 +374,7 @@ const MenuByCatalog = () => {
           <div className="mb-4">
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
               Restaurantes en {location.city || 'tu zona'}
-            </h2>
+              </h2>
             <p className="text-gray-600 text-sm md:text-base">
               {filteredRestaurants.length} {filteredRestaurants.length === 1 ? 'restaurante disponible' : 'restaurantes disponibles'}
             </p>
@@ -481,7 +481,7 @@ const MenuByCatalog = () => {
         </motion.div>
 
         {/* Grid de restaurantes */}
-        {loading ? (
+          {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, index) => (
               <motion.div
