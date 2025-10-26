@@ -5,6 +5,7 @@ import api from '../../services/api';
 import RestaurantCard from '../../Components/Catalog/RestaurantCard';
 import BannerCarousel from '../../Components/Catalog/BannerCarousel';
 import { useBusinessStatus } from '../../hooks/useBusinessStatus';
+import { useUserLocation } from '../../hooks/useUserLocation';
 
 // Iconos SVG modernos
 const SearchIcon = () => (
@@ -46,20 +47,71 @@ const MenuByCatalog = () => {
   const [selectedCategory, setSelectedCategory] = useState('todo');
   const [sortBy, setSortBy] = useState('popularity');
   const [categories, setCategories] = useState([]);
+  
+  // Hook de ubicación dinámica
+  const { location, updateLocation, hasLocation, isLoading: locationLoading } = useUserLocation();
 
+  // Cargar restaurantes cuando la ubicación esté lista
   useEffect(() => {
-    loadRestaurants();
-  }, []);
+    if (!locationLoading) {
+      loadRestaurants();
+    }
+  }, [location.coordinates, locationLoading]);
 
   useEffect(() => {
     filterAndSortRestaurants();
   }, [restaurants, searchTerm, selectedCategory, sortBy]);
+  
+  // Función para calcular distancia usando fórmula Haversine
+  const calculateDistance = (from, to) => {
+    if (!from || !to) return null;
+    
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = toRad(to.lat - from.lat);
+    const dLon = toRad(to.lng - from.lng);
+    
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(from.lat)) * Math.cos(toRad(to.lat)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    
+    return Math.round(distance * 10) / 10; // Redondear a 1 decimal
+  };
+  
+  const toRad = (degrees) => degrees * (Math.PI / 180);
 
   const loadRestaurants = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/businesses');
-      const data = response.data || [];
+      
+      // Si tenemos ubicación del usuario, enviarla para filtrar por cobertura
+      let url = '/businesses';
+      if (location.coordinates) {
+        url += `?lat=${location.coordinates.lat}&lon=${location.coordinates.lng}`;
+        console.log('🔍 Filtrando restaurantes por ubicación:', location.coordinates);
+      } else {
+        console.log('📍 Sin ubicación del usuario - mostrando todos los restaurantes');
+      }
+      
+      const response = await api.get(url);
+      let data = response.data || [];
+      
+      // Calcular distancias si hay ubicación
+      if (location.coordinates) {
+        data = data.map(restaurant => {
+          if (restaurant.coordinates) {
+            const distance = calculateDistance(
+              location.coordinates,
+              restaurant.coordinates
+            );
+            return { ...restaurant, distance };
+          }
+          return { ...restaurant, distance: null };
+        });
+      }
       
       // Generar categorías dinámicas basadas en los restaurantes
       const allCategories = new Set(['todo']); // Siempre incluir "Todo"
@@ -74,6 +126,8 @@ const MenuByCatalog = () => {
       
       setCategories(Array.from(allCategories));
       setRestaurants(data);
+      
+      console.log(`✅ Cargados ${data.length} restaurantes con cobertura en tu área`);
     } catch (error) {
       console.error('Error loading restaurants:', error);
       // En caso de error, mostrar datos de ejemplo
@@ -117,6 +171,24 @@ const MenuByCatalog = () => {
 
     // Ordenar
     switch (sortBy) {
+      case 'distance':
+        // Ordenar por cercanía (solo si hay ubicación)
+        if (hasLocation) {
+          filtered.sort((a, b) => {
+            const distA = a.distance !== null ? a.distance : 999;
+            const distB = b.distance !== null ? b.distance : 999;
+            return distA - distB;
+          });
+        }
+        break;
+      case 'popularity':
+        // Ordenar por popularidad (rating como proxy, en el futuro usar número de pedidos)
+        filtered.sort((a, b) => {
+          const scoreA = (a.rating || 5.0) * 100 + (a.isOpen ? 50 : 0);
+          const scoreB = (b.rating || 5.0) * 100 + (b.isOpen ? 50 : 0);
+          return scoreB - scoreA;
+        });
+        break;
       case 'rating':
         filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
@@ -124,10 +196,20 @@ const MenuByCatalog = () => {
         filtered.sort((a, b) => a.businessName.localeCompare(b.businessName));
         break;
       case 'delivery_time':
-        filtered.sort((a, b) => (a.deliveryTime || 30) - (b.deliveryTime || 30));
+        // Ordenar por tiempo estimado de entrega
+        filtered.sort((a, b) => {
+          const timeA = a.distance ? Math.round(15 + (a.distance * 2)) : 30;
+          const timeB = b.distance ? Math.round(15 + (b.distance * 2)) : 30;
+          return timeA - timeB;
+        });
         break;
       default:
-        // Mantener orden original (popularidad)
+        // Por defecto: popularidad
+        filtered.sort((a, b) => {
+          const scoreA = (a.rating || 5.0) * 100 + (a.isOpen ? 50 : 0);
+          const scoreB = (b.rating || 5.0) * 100 + (b.isOpen ? 50 : 0);
+          return scoreB - scoreA;
+        });
         break;
     }
 
@@ -172,9 +254,24 @@ const MenuByCatalog = () => {
               </motion.div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">MenuBy</h1>
-                <div className="flex items-center space-x-1 text-sm text-gray-600">
+                <div className="flex items-center space-x-1 text-sm">
                   <LocationIcon />
-                  <span>Chía, Cundinamarca</span>
+                  {locationLoading ? (
+                    <span className="text-gray-400 animate-pulse">
+                      Detectando ubicación...
+                    </span>
+                  ) : (
+                    <button
+                      onClick={updateLocation}
+                      className="text-gray-600 hover:text-red-600 transition-colors flex items-center space-x-1 group"
+                      title="Click para actualizar ubicación"
+                    >
+                      <span className="max-w-[200px] truncate">{location.address}</span>
+                      <svg className="w-3 h-3 text-gray-400 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -214,28 +311,39 @@ const MenuByCatalog = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Categorías con scroll horizontal */}
+        {/* Categorías con scroll horizontal mejorado */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
           className="mb-8"
         >
-          <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map((category) => (
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 px-1">Categorías</h3>
+          <div className="flex space-x-3 overflow-x-auto pb-3 scrollbar-hide">
+            {categories.map((category, index) => (
               <motion.button
                 key={category}
-                whileHover={{ scale: 1.05 }}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + index * 0.05 }}
+                whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSelectedCategory(category)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-2xl font-medium whitespace-nowrap transition-all duration-200 ${
+                className={`flex items-center space-x-2 px-5 py-3 rounded-2xl font-semibold whitespace-nowrap transition-all duration-200 ${
                   selectedCategory === category
-                    ? 'bg-red-500 text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-sm'
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg shadow-red-500/40 scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md border border-gray-100 hover:shadow-lg'
                 }`}
               >
-                <span className="text-lg">{categoryIcons[category]}</span>
-                <span>{categoryNames[category] || category}</span>
+                <span className="text-xl">{categoryIcons[category]}</span>
+                <span className="text-sm">{categoryNames[category] || category}</span>
+                {selectedCategory === category && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="w-2 h-2 bg-white rounded-full"
+                  />
+                )}
               </motion.button>
             ))}
           </div>
@@ -251,49 +359,98 @@ const MenuByCatalog = () => {
           <BannerCarousel />
         </motion.div>
 
-        {/* Contador de restaurantes */}
+        {/* Contador de restaurantes y filtros modernos */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="mb-6"
+          className="mb-8"
         >
+          {/* Header con título */}
+          <div className="mb-4">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
+              Restaurantes en {location.city || 'tu zona'}
+            </h2>
+            <p className="text-gray-600 text-sm md:text-base">
+              {filteredRestaurants.length} {filteredRestaurants.length === 1 ? 'restaurante disponible' : 'restaurantes disponibles'}
+            </p>
+          </div>
+          
+          {/* Filtros modernos con chips */}
           <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-1">
-                Restaurantes en Chía
-              </h2>
-              <p className="text-gray-600">
-                {filteredRestaurants.length} restaurante{filteredRestaurants.length !== 1 ? 's' : ''} disponible{filteredRestaurants.length !== 1 ? 's' : ''}
-              </p>
+            <div className="flex items-center space-x-2 text-sm font-medium text-gray-700">
+              <FilterIcon />
+              <span className="hidden sm:inline">Ordenar por:</span>
             </div>
             
-            {/* Filtros */}
-            <div className="flex items-center space-x-2">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+            <div className="flex flex-wrap gap-2 justify-end">
+              {hasLocation && (
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSortBy('distance')}
+                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 shadow-sm ${
+                    sortBy === 'distance'
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  }`}
+                >
+                  <span className="text-base">📍</span>
+                  <span>Cercanos</span>
+                </motion.button>
+              )}
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSortBy('popularity')}
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 shadow-sm ${
+                  sortBy === 'popularity'
+                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg shadow-red-500/30'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                }`}
               >
-                <option value="popularity">Más populares</option>
-                <option value="rating">Mejor calificados</option>
-                <option value="delivery_time">Tiempo de entrega</option>
-                <option value="name">Nombre A-Z</option>
-              </select>
+                <span className="text-base">🔥</span>
+                <span>Populares</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSortBy('rating')}
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 shadow-sm ${
+                  sortBy === 'rating'
+                    ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-white shadow-lg shadow-yellow-500/30'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                }`}
+              >
+                <span className="text-base">⭐</span>
+                <span className="hidden sm:inline">Top Rated</span>
+                <span className="sm:hidden">Rating</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSortBy('delivery_time')}
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 shadow-sm ${
+                  sortBy === 'delivery_time'
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                }`}
+              >
+                <span className="text-base">⚡</span>
+                <span className="hidden sm:inline">Rápidos</span>
+                <span className="sm:hidden">Fast</span>
+              </motion.button>
             </div>
           </div>
         </motion.div>
 
         {/* Grid de restaurantes */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-        >
-          {loading ? (
-            // Skeleton loading
-            Array.from({ length: 6 }).map((_, index) => (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 6 }).map((_, index) => (
               <motion.div
                 key={`skeleton-${index}`}
                 initial={{ opacity: 0 }}
@@ -310,8 +467,61 @@ const MenuByCatalog = () => {
                   </div>
                 </div>
               </motion.div>
-            ))
-          ) : (
+            ))}
+          </div>
+        ) : filteredRestaurants.length === 0 ? (
+          // Estado vacío mejorado
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+            className="col-span-full flex flex-col items-center justify-center py-20"
+          >
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-3xl p-12 text-center max-w-md">
+              <motion.div
+                animate={{ 
+                  rotate: [0, -10, 10, -10, 0],
+                  scale: [1, 1.1, 1.1, 1.1, 1]
+                }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-7xl mb-6"
+              >
+                🔍
+              </motion.div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                No encontramos restaurantes
+              </h3>
+              <p className="text-gray-600 mb-6 leading-relaxed">
+                {searchTerm ? (
+                  <>No hay resultados para "<span className="font-semibold">{searchTerm}</span>"</>
+                ) : selectedCategory !== 'todo' ? (
+                  <>No hay restaurantes en la categoría <span className="font-semibold">{categoryNames[selectedCategory]}</span></>
+                ) : hasLocation ? (
+                  <>No hay restaurantes con cobertura en tu ubicación actual</>
+                ) : (
+                  <>Pronto tendremos más restaurantes disponibles</>
+                )}
+              </p>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCategory('todo');
+                }}
+                className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-red-500/30 hover:shadow-xl transition-all duration-200"
+              >
+                Ver todos los restaurantes
+              </motion.button>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
             <AnimatePresence>
               {filteredRestaurants.map((restaurant, index) => (
                 <motion.div
@@ -321,41 +531,13 @@ const MenuByCatalog = () => {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <RestaurantCard restaurant={restaurant} />
+                  <RestaurantCard 
+                    restaurant={restaurant} 
+                    userLocation={location.coordinates}
+                  />
                 </motion.div>
               ))}
             </AnimatePresence>
-          )}
-        </motion.div>
-
-        {/* Estado vacío */}
-        {!loading && filteredRestaurants.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.5 }}
-            className="text-center py-16"
-          >
-            <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-6">
-              <SearchIcon />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-600 mb-3">
-              No se encontraron restaurantes
-            </h3>
-            <p className="text-gray-500 mb-6 max-w-md mx-auto">
-              Intenta con otros términos de búsqueda o explora nuestras categorías
-            </p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setSearchTerm('');
-                setSelectedCategory('todo');
-              }}
-              className="px-6 py-3 bg-red-500 text-white font-semibold rounded-2xl hover:bg-red-600 transition-colors shadow-lg"
-            >
-              Limpiar filtros
-            </motion.button>
           </motion.div>
         )}
       </div>

@@ -111,6 +111,7 @@ const BusinessSettings = () => {
       const dataToSend = {
         businessId,
         businessName: settings.businessName || "Mi Restaurante",
+        description: settings.description || "Deliciosa comida casera con ingredientes frescos y servicio de calidad.",
         logo: settings.logo || "",
         coverImage: settings.coverImage || "",
         isOpen: settings.isOpen !== undefined ? settings.isOpen : true,

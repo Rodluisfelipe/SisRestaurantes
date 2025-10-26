@@ -3,8 +3,10 @@ const router = express.Router();
 const BusinessConfig = require('../Models/BusinessConfig');
 const Product = require('../Models/Product');
 const Category = require('../Models/Category');
+const DeliveryZone = require('../Models/DeliveryZone');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const logger = require('../utils/logger');
+const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
 
 // Función para obtener categorías reales basadas en productos
 const getBusinessCategories = async (businessId) => {
@@ -47,19 +49,102 @@ const getBusinessCategories = async (businessId) => {
 /**
  * GET /api/businesses
  * Obtener todos los negocios activos para el catálogo
+ * Si se proporcionan lat/lon, filtra solo los que cubren esa ubicación
  */
 router.get('/', async (req, res) => {
   try {
-    logger.info('GET /api/businesses - Obteniendo lista de negocios');
+    const { lat, lon } = req.query;
+    const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
+    
+    logger.info('GET /api/businesses - Obteniendo lista de negocios', {
+      withLocation: hasLocation,
+      lat,
+      lon
+    });
 
-    // Obtener todos los negocios activos que estén en Chía (beta)
+    // Obtener todos los negocios activos
     const businesses = await BusinessConfig.find({ 
-      isActive: true,
-      city: "Chía" // Solo mostrar negocios de Chía por ahora
+      isActive: true
     }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location createdAt updatedAt');
 
+    // Si hay ubicación, filtrar por cobertura
+    let businessesToShow = businesses;
+    
+    if (hasLocation) {
+      const userPoint = {
+        lat: parseFloat(lat),
+        lon: parseFloat(lon)  // Cambiar lng a lon para coincidir con geospatial.js
+      };
+      
+      console.log('🔍 Filtrando por ubicación del usuario:', userPoint);
+      
+      // Verificar cobertura para cada negocio
+      const businessesWithCoverage = await Promise.all(
+        businesses.map(async (business) => {
+          // Buscar zonas activas del negocio
+          const zones = await DeliveryZone.find({
+            businessId: business._id,
+            isActive: true
+          });
+          
+          console.log(`📍 ${business.businessName} (${business._id}): Encontró ${zones.length} zonas activas`);
+          
+          if (zones.length === 0) {
+            return null; // No tiene zonas configuradas
+          }
+          
+          // Verificar si el usuario está en alguna zona y obtener la zona con mayor prioridad
+          let matchedZone = null;
+          
+          for (const zone of zones.sort((a, b) => b.priority - a.priority)) {
+            console.log(`  🗺️  Verificando zona "${zone.name}" (${zone.type}, prioridad: ${zone.priority})`);
+            console.log(`      Geometry:`, JSON.stringify(zone.geometry).substring(0, 200));
+            
+            let isInZone = false;
+            
+            if (zone.type === 'polygon') {
+              // GeoJSON Polygon: coordinates es [[...]], necesitamos el array interno [0]
+              const polygonRing = zone.geometry.coordinates[0];
+              isInZone = pointInPolygon(userPoint, polygonRing);
+              console.log(`      ✓ pointInPolygon(${userPoint.lat}, ${userPoint.lon}) = ${isInZone}`);
+            } else if (zone.type === 'circle') {
+              const center = {
+                lat: zone.geometry.center.coordinates[1],
+                lon: zone.geometry.center.coordinates[0]
+              };
+              isInZone = pointInRadius(userPoint, center, zone.geometry.radius);
+              console.log(`      ✓ pointInRadius = ${isInZone}, center: ${center.lat},${center.lon}, radius: ${zone.geometry.radius}m`);
+            }
+            
+            if (isInZone) {
+              matchedZone = zone;
+              break; // Tomar la primera zona que coincida (ya están ordenadas por prioridad)
+            }
+          }
+          
+          if (matchedZone) {
+            console.log(`✅ ${business.businessName}: Usuario EN cobertura (zona: ${matchedZone.name})`);
+            // Agregar información de la zona al negocio
+            business._doc.deliveryZone = {
+              name: matchedZone.name,
+              estimatedTime: matchedZone.estimatedTime,
+              pricing: matchedZone.pricing
+            };
+            return business;
+          } else {
+            console.log(`❌ ${business.businessName}: Usuario FUERA de cobertura`);
+            return null;
+          }
+        })
+      );
+      
+      // Filtrar solo los que tienen cobertura
+      businessesToShow = businessesWithCoverage.filter(b => b !== null);
+      console.log(`📊 Restaurantes con cobertura: ${businessesToShow.length} de ${businesses.length}`);
+    }
+    
     // Formatear respuesta para el catálogo con categorías reales
-    const formattedBusinesses = await Promise.all(businesses.map(async (business) => {
+    const formattedBusinesses = await Promise.all(businessesToShow.map(async (business) => {
       const categories = await getBusinessCategories(business._id);
       
       // Extraer coordenadas del campo location
@@ -91,7 +176,8 @@ router.get('/', async (req, res) => {
         isOpen: business.isOpen,
         // Agregar campos calculados
         rating: 5.0, // Rating fijo de 5 estrellas
-        categories: categories // Categorías reales basadas en productos
+        categories: categories, // Categorías reales basadas en productos
+        deliveryZone: business._doc?.deliveryZone || business.deliveryZone || null // Información de zona de entrega
       };
     }));
 

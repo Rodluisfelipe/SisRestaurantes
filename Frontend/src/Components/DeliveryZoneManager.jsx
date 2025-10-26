@@ -262,7 +262,10 @@ const DeliveryZoneManager = () => {
         return;
       }
 
-      if (!formData.geometry) {
+      // Si estamos editando y NO se dibujó una nueva zona, usar la geometría existente
+      const geometryToUse = formData.geometry || (selectedZone ? selectedZone.geometry : null);
+      
+      if (!geometryToUse) {
         alert('Debes dibujar un área en el mapa');
         return;
       }
@@ -285,6 +288,7 @@ const DeliveryZoneManager = () => {
       // Agregar businessId a los datos
       const dataToSend = {
         ...formData,
+        geometry: geometryToUse, // Usar la geometría determinada (nueva o existente)
         businessId
       };
 
@@ -347,7 +351,7 @@ const DeliveryZoneManager = () => {
       name: zone.name,
       description: zone.description || '',
       type: zone.type,
-      geometry: null, // La geometría existente se mantiene en el servidor
+      geometry: zone.geometry, // ✅ CARGAR la geometría existente para mostrarla en el mapa
       pricing: zone.pricing,
       estimatedTime: zone.estimatedTime,
       priority: zone.priority,
@@ -1038,9 +1042,30 @@ const DeliveryZoneManager = () => {
               {/* Mapa para dibujar */}
               <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-3">Dibujar Área en el Mapa</h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  Usa las herramientas de dibujo para crear un polígono o círculo que represente tu zona de entrega.
-                </p>
+                {selectedZone && formData.geometry ? (
+                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-3">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-blue-800 font-medium">
+                          ✅ Zona existente cargada en el mapa
+                        </p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          Puedes ver la zona actual marcada en <span className="font-semibold" style={{ color: formData.color }}>color {formData.color}</span>. 
+                          Si quieres cambiar el área, usa las herramientas de dibujo para crear una nueva. Si solo cambias nombre/precio, la zona se mantendrá igual.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 mb-2">
+                    Usa las herramientas de dibujo para crear un polígono o círculo que represente tu zona de entrega.
+                  </p>
+                )}
                 <div style={{ height: '400px', width: '100%' }}>
                   <MapContainer
                     center={businessLocation ? [businessLocation.lat, businessLocation.lng] : mapCenter}
@@ -1073,7 +1098,50 @@ const DeliveryZoneManager = () => {
                       color={formData.color}
                     />
                     
-                    {/* Mostrar zonas existentes en el fondo */}
+                    {/* Mostrar la zona que se está editando (si existe) */}
+                    {selectedZone && formData.geometry && (
+                      <>
+                        {formData.type === 'polygon' && formData.geometry?.coordinates ? (
+                          <Polygon
+                            positions={formData.geometry.coordinates[0].map(coord => [coord[1], coord[0]])}
+                            pathOptions={{ 
+                              color: formData.color, 
+                              fillColor: formData.color, 
+                              fillOpacity: 0.35,
+                              weight: 3
+                            }}
+                          >
+                            <Popup>
+                              <div className="text-sm">
+                                <strong className="text-blue-600">📝 {formData.name}</strong>
+                                <p className="text-xs text-gray-600 mt-1">Zona en edición</p>
+                              </div>
+                            </Popup>
+                          </Polygon>
+                        ) : formData.type === 'circle' && formData.geometry?.center ? (
+                          <Circle
+                            center={[formData.geometry.center.coordinates[1], formData.geometry.center.coordinates[0]]}
+                            radius={formData.geometry.radius}
+                            pathOptions={{ 
+                              color: formData.color, 
+                              fillColor: formData.color, 
+                              fillOpacity: 0.35,
+                              weight: 3
+                            }}
+                          >
+                            <Popup>
+                              <div className="text-sm">
+                                <strong className="text-blue-600">📝 {formData.name}</strong>
+                                <p className="text-xs text-gray-600 mt-1">Zona en edición</p>
+                                <p className="text-xs text-gray-600">Radio: {formData.geometry.radius}m</p>
+                              </div>
+                            </Popup>
+                          </Circle>
+                        ) : null}
+                      </>
+                    )}
+                    
+                    {/* Mostrar zonas existentes en el fondo (solo las otras zonas) */}
                     {zones.filter(z => !selectedZone || z.id !== selectedZone.id).map((zone) => {
                       if (zone.type === 'polygon' && zone.geometry?.coordinates) {
                         const positions = zone.geometry.coordinates[0].map(coord => [coord[1], coord[0]]);

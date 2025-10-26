@@ -22,17 +22,29 @@ const DeliveryIcon = () => (
   </svg>
 );
 
-const RestaurantCard = ({ restaurant }) => {
+const RestaurantCard = ({ restaurant, userLocation }) => {
   // Obtener estado real del negocio
   const { businessStatus, getStatusDisplay } = useBusinessStatus(restaurant._id);
   
-  // Debug: verificar qué imágenes tenemos
-  console.log('RestaurantCard - restaurant:', {
-    businessName: restaurant.businessName,
-    coverImage: restaurant.coverImage,
-    logo: restaurant.logo,
-    businessStatus: businessStatus
-  });
+  // Calcular tiempo de entrega estimado
+  const getDeliveryTime = () => {
+    // 1. Prioridad: Si el restaurante tiene zona de entrega asignada, usar su tiempo configurado
+    if (restaurant.deliveryZone?.estimatedTime) {
+      const { min, max } = restaurant.deliveryZone.estimatedTime;
+      return `${min}-${max} min`;
+    }
+    
+    // 2. Fallback: Calcular basado en distancia si está disponible
+    if (restaurant.distance !== null && restaurant.distance !== undefined) {
+      // Fórmula: 15 min base + 2 min por km
+      const estimatedMin = Math.round(15 + (restaurant.distance * 2));
+      const estimatedMax = estimatedMin + 10;
+      return `${estimatedMin}-${estimatedMax} min`;
+    }
+    
+    // 3. Fallback final: tiempo genérico
+    return '25-35 min';
+  };
 
   // Usar el estado real del negocio o fallback al campo isOpen
   const isOpen = businessStatus?.isOpen ?? restaurant.isOpen;
@@ -155,16 +167,26 @@ const RestaurantCard = ({ restaurant }) => {
           {/* Información adicional */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              {/* Tiempo de entrega */}
+              {/* Distancia (si está disponible) */}
+              {restaurant.distance !== null && restaurant.distance !== undefined && (
+                <div className="flex items-center space-x-1.5 text-gray-600">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="text-sm font-medium">
+                    {restaurant.distance < 1 
+                      ? `${Math.round(restaurant.distance * 1000)}m`
+                      : `${restaurant.distance.toFixed(1)}km`
+                    }
+                  </span>
+                </div>
+              )}
+              
+              {/* Tiempo de entrega dinámico */}
               <div className="flex items-center space-x-1.5 text-gray-600">
                 <ClockIcon />
-                <span className="text-sm font-medium">25-35 min</span>
-              </div>
-              
-              {/* Tipo de entrega */}
-              <div className="flex items-center space-x-1.5 text-gray-600">
-                <DeliveryIcon />
-                <span className="text-sm font-medium">Delivery</span>
+                <span className="text-sm font-medium">{getDeliveryTime()}</span>
               </div>
             </div>
 
