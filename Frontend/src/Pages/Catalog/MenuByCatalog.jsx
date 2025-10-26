@@ -311,11 +311,21 @@ const MenuByCatalog = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Categorías con scroll horizontal mejorado */}
+        {/* Banner carousel */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
+          className="mb-8"
+        >
+          <BannerCarousel />
+        </motion.div>
+
+        {/* Categorías con scroll horizontal mejorado */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
           className="mb-8"
         >
           <h3 className="text-sm font-semibold text-gray-700 mb-3 px-1">Categorías</h3>
@@ -325,7 +335,7 @@ const MenuByCatalog = () => {
                 key={category}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 + index * 0.05 }}
+                transition={{ delay: 0.5 + index * 0.05 }}
                 whileHover={{ scale: 1.05, y: -2 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => setSelectedCategory(category)}
@@ -347,16 +357,6 @@ const MenuByCatalog = () => {
               </motion.button>
             ))}
           </div>
-        </motion.div>
-
-        {/* Banner carousel */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mb-8"
-        >
-          <BannerCarousel />
         </motion.div>
 
         {/* Contador de restaurantes y filtros modernos */}

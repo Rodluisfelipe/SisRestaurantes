@@ -26,15 +26,24 @@ export const useUserLocation = () => {
         
         // Si tiene menos de 5 minutos, usar ubicación guardada
         if (now - savedTime < fiveMinutes) {
-          setLocation({
-            coordinates: parsed.coordinates,
-            address: parsed.address,
-            city: parsed.city,
-            loading: false,
-            error: null
-          });
-          console.log('📍 Usando ubicación guardada:', parsed.address);
-          return;
+          // Si el cache tiene el valor genérico "Ciudad", forzar actualización
+          if (parsed.city === 'Ciudad') {
+            console.log('⚠️ Cache con ciudad genérica, actualizando...');
+            localStorage.removeItem('userLocation');
+            // Continuar para obtener nueva ubicación
+          } else {
+            console.log('💾 Cargando desde cache - Ciudad:', parsed.city, '| Dirección:', parsed.address);
+            setLocation({
+              coordinates: parsed.coordinates,
+              address: parsed.address,
+              city: parsed.city || 'tu zona', // Asegurar fallback
+              loading: false,
+              error: null
+            });
+            return;
+          }
+        } else {
+          console.log('⏰ Cache expirado, obteniendo nueva ubicación...');
         }
       } catch (e) {
         console.log('Error parsing saved location:', e);
@@ -84,11 +93,16 @@ export const useUserLocation = () => {
             const parts = displayName.split(',');
             const formattedAddress = parts.slice(0, 3).join(',').trim();
             
+            // Intentar obtener la ciudad de múltiples campos de Nominatim
             const city = result.address?.city || 
                         result.address?.town || 
                         result.address?.village || 
                         result.address?.municipality || 
-                        'Ciudad';
+                        result.address?.county ||  // Condado/Municipio
+                        result.address?.state_district || // Distrito estatal
+                        result.address?.state || // Estado/Departamento
+                        (parts[1] ? parts[1].trim() : null) || // Segunda parte de displayName
+                        'tu zona'; // Fallback final más amigable
             
             const locationData = {
               coordinates: coords,
@@ -96,6 +110,8 @@ export const useUserLocation = () => {
               city: city,
               timestamp: Date.now()
             };
+            
+            console.log('📍 Ciudad detectada:', city, '| Dirección completa:', formattedAddress);
             
             setLocation({
               coordinates: coords,
