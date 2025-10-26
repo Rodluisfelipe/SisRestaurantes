@@ -162,15 +162,6 @@ const BusinessHeader = ({ comesFromCatalog = false }) => {
       
       {/* Content Container */}
       <div className={`relative z-10 pt-4 pb-3 ${businessConfig.coverImage ? 'text-white' : 'text-gray-800'}`}>
-        {/* Status Indicator and Account Button */}
-        <div className={`absolute ${comesFromCatalog ? 'left-16' : 'left-2'} top-4 z-20`}>
-          <div 
-            className={`${comesFromCatalog ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'} rounded-full font-bold shadow-md ${getStatusDisplay().color} text-white`}
-          >
-            {getStatusDisplay().text}
-          </div>
-        </div>
-
         {/* Account Button */}
         <div className="absolute right-2 top-4 z-20">
           <button
@@ -206,6 +197,15 @@ const BusinessHeader = ({ comesFromCatalog = false }) => {
               </>
             )}
           </button>
+        </div>
+
+        {/* Status Indicator */}
+        <div className={`absolute ${comesFromCatalog ? 'right-2 top-12' : 'left-2 top-4'} z-20`}>
+          <div 
+            className={`${comesFromCatalog ? 'px-2 py-1 text-xs' : 'px-4 py-2 text-sm'} rounded-full font-bold shadow-md ${getStatusDisplay().color} text-white`}
+          >
+            {getStatusDisplay().text}
+          </div>
         </div>
 
         {/* Logo Container - Centered at the top now */}
