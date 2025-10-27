@@ -259,17 +259,27 @@ export const loadOrderInfo = (defaultValue = null) => {
   if (!orderInfo || !orderInfo.customerName || !orderInfo.phone) {
     const savedName = getFromLocalStorage('customerName', '');
     const savedPhone = getFromLocalStorage('customerPhone', '');
+    const savedAddress = getFromLocalStorage('customerAddress', '');
     
     // Si hay datos en localStorage, crear el objeto orderInfo
     if (savedName && savedPhone) {
       orderInfo = {
         customerName: savedName,
         phone: savedPhone,
+        address: savedAddress, // Incluir dirección guardada
         orderType: '',
         tableNumber: ''
       };
       
       // Guardar en sessionStorage para uso posterior en esta sesión
+      saveToSessionStorage('orderInfo', orderInfo);
+    }
+  } else if (orderInfo && !orderInfo.address) {
+    // Si ya hay orderInfo pero sin dirección, intentar cargar la dirección desde localStorage
+    const savedAddress = getFromLocalStorage('customerAddress', '');
+    if (savedAddress) {
+      orderInfo.address = savedAddress;
+      // Actualizar sessionStorage con la dirección
       saveToSessionStorage('orderInfo', orderInfo);
     }
   }

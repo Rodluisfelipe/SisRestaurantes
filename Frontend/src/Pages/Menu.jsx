@@ -853,6 +853,17 @@ export default function Menu() {
       // Activar modal de confirmación
       setShowOrderConfirmationModal(true);
       
+      // Actualizar orderInfo con la información del pedido completado para mantener los datos del cliente
+      const updatedOrderInfo = {
+        ...orderInfo,
+        customerName: orderDetails.customerName,
+        phone: orderDetails.phone,
+        address: orderDetails.address || orderInfo.address || '',
+        orderType: '' // Limpiar tipo de pedido para que pueda elegir de nuevo
+      };
+      setOrderInfo(updatedOrderInfo);
+      SessionManager.saveOrderInfo(updatedOrderInfo);
+      
       // Limpiar el carrito después de enviar
       setCart([]);
       setShowCartSummary(false);
