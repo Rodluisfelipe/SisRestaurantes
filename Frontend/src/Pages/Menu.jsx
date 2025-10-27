@@ -868,8 +868,11 @@ export default function Menu() {
       setCart([]);
       setShowCartSummary(false);
       
-      // Limpiar localStorage y guardar tipo de pedido completado
+      // Limpiar carrito de AMBOS storages (localStorage y sessionStorage)
       SessionManager.removeFromLocalStorage('cart');
+      SessionManager.removeFromSession('cart');
+      
+      // Guardar tipo de pedido completado
       SessionManager.saveToLocalStorage('lastCompletedOrderType', orderDetails.orderType);
       
       // Notificar a otras pestañas que se completó un pedido
@@ -1003,7 +1006,20 @@ export default function Menu() {
       
       <OrderConfirmationModal 
         show={showOrderConfirmationModal}
-        onClose={() => setShowOrderConfirmationModal(false)}
+        onClose={() => {
+          // Recargar orderInfo desde sessionStorage después de cerrar el modal
+          const reloadedOrderInfo = SessionManager.loadOrderInfo();
+          if (reloadedOrderInfo) {
+            logger.info('Recargando orderInfo después de cerrar modal de confirmación:', reloadedOrderInfo);
+            setOrderInfo(reloadedOrderInfo);
+          }
+          
+          // Asegurarse de que el carrito esté vacío
+          setCart([]);
+          SessionManager.removeFromSession('cart');
+          
+          setShowOrderConfirmationModal(false);
+        }}
         orderInfo={orderInfo}
         orderConfirmationDetails={orderConfirmationDetails}
         businessConfig={businessConfig}

@@ -94,6 +94,22 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     }
   }, [orderInfo?.tableNumber]);
 
+  // Sincronizar dirección de entrega cuando orderInfo.address cambie
+  useEffect(() => {
+    if (deliveryAddressRef.current && orderInfo?.address) {
+      deliveryAddressRef.current.value = orderInfo.address;
+      console.log('📝 Dirección sincronizada desde orderInfo:', orderInfo.address);
+    }
+  }, [orderInfo?.address]);
+
+  // Cargar dirección cuando se selecciona delivery
+  useEffect(() => {
+    if (orderType === 'delivery' && deliveryAddressRef.current && orderInfo?.address) {
+      deliveryAddressRef.current.value = orderInfo.address;
+      console.log('📝 Dirección cargada al seleccionar delivery:', orderInfo.address);
+    }
+  }, [orderType, orderInfo?.address]);
+
 
   // Estado local para control de envío (sync con prop del padre)
   const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
