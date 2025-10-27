@@ -252,7 +252,27 @@ export const saveOrderInfo = (orderInfo) => {
 
 // Cargar la información del pedido
 export const loadOrderInfo = (defaultValue = null) => {
-  const orderInfo = getFromSessionStorage('orderInfo', defaultValue);
+  // Primero intentar cargar desde sessionStorage
+  let orderInfo = getFromSessionStorage('orderInfo', null);
+  
+  // Si no hay datos en sessionStorage, buscar en localStorage
+  if (!orderInfo || !orderInfo.customerName || !orderInfo.phone) {
+    const savedName = getFromLocalStorage('customerName', '');
+    const savedPhone = getFromLocalStorage('customerPhone', '');
+    
+    // Si hay datos en localStorage, crear el objeto orderInfo
+    if (savedName && savedPhone) {
+      orderInfo = {
+        customerName: savedName,
+        phone: savedPhone,
+        orderType: '',
+        tableNumber: ''
+      };
+      
+      // Guardar en sessionStorage para uso posterior en esta sesión
+      saveToSessionStorage('orderInfo', orderInfo);
+    }
+  }
   
   // En modo normal, asegurarse de no recuperar el número de mesa
   if (!isQRMode() && orderInfo) {
@@ -261,7 +281,7 @@ export const loadOrderInfo = (defaultValue = null) => {
     }
   }
   
-  return orderInfo;
+  return orderInfo || defaultValue;
 };
 
 // Limpiar todos los datos de la sesión actual
