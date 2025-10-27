@@ -294,13 +294,33 @@ export const loadOrderInfo = (defaultValue = null) => {
   return orderInfo || defaultValue;
 };
 
-// Limpiar todos los datos de la sesión actual
+// Limpiar todos los datos de la sesión actual EXCEPTO los datos del cliente
 export const clearCurrentSession = () => {
   const context = detectCurrentContext();
   
   console.log('Limpiando sesión actual con contexto:', context);
   
+  // Guardar los datos del cliente antes de limpiar
+  const savedCustomerName = getFromLocalStorage('customerName');
+  const savedCustomerPhone = getFromLocalStorage('customerPhone');
+  const savedCustomerAddress = getFromLocalStorage('customerAddress');
+  const savedOrderInfo = getFromSessionStorage('orderInfo');
+  
+  // Limpiar todo el contexto de sessionStorage
   clearContextSessionStorage(context);
+  
+  // Restaurar los datos del cliente en sessionStorage
+  if (savedOrderInfo) {
+    const preservedOrderInfo = {
+      customerName: savedOrderInfo.customerName || savedCustomerName || '',
+      phone: savedOrderInfo.phone || savedCustomerPhone || '',
+      address: savedOrderInfo.address || savedCustomerAddress || '',
+      orderType: '', // Limpiar tipo de pedido
+      tableNumber: '' // Limpiar mesa
+    };
+    saveToSessionStorage('orderInfo', preservedOrderInfo);
+    console.log('Datos del cliente preservados después de limpiar sesión:', preservedOrderInfo);
+  }
   
   // Si estamos en modo normal, también limpiar cualquier número de mesa
   if (!isQRMode()) {
