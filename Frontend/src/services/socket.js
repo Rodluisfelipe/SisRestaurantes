@@ -89,6 +89,13 @@ if (socket) {
 
   socket.on('disconnect', (reason) => {
     systemStatus.socket = 'disconnected';
+    
+    // No loggear como error si es una desconexión intencional del cliente
+    if (reason === 'io client disconnect') {
+      // Desconexión normal, no loggear
+      return;
+    }
+    
     systemStatus.lastError = `Desconectado: ${reason}`;
     systemStatus.lastUpdate = new Date();
     logSystemStatus();

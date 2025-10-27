@@ -136,7 +136,7 @@ const Home = () => {
     <div className="min-h-screen bg-white">
       
       {/* Hero Section */}
-      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-red-50 to-white">
+      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-white via-red-50 to-white pt-20">
         {/* Background Elements */}
         <div className="absolute inset-0 z-0">
           <motion.div 

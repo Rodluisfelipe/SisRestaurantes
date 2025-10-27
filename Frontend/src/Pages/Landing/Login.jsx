@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../Context/AuthContext';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -9,23 +10,37 @@ const Login = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Limpiar error cuando el usuario empieza a escribir
+    if (error) setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
     
-    // Simular login
-    setTimeout(() => {
+    try {
+      // Usar email como username (el backend acepta ambos)
+      await login(formData.email, formData.password);
+      // El AuthContext se encarga de la navegación
+    } catch (err) {
+      console.error('Error de login:', err);
+      setError(
+        err.response?.status === 401
+          ? 'Credenciales incorrectas. Por favor, verifica tu email y contraseña.'
+          : 'Error al iniciar sesión. Por favor, intenta de nuevo.'
+      );
+    } finally {
       setIsLoading(false);
-      // Aquí iría la lógica de autenticación
-    }, 2000);
+    }
   };
 
   return (
@@ -72,7 +87,7 @@ const Login = () => {
                     value={formData.email}
                     onChange={handleChange}
                   required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
                     placeholder="tu@email.com"
                 />
               </div>
@@ -90,7 +105,7 @@ const Login = () => {
                       value={formData.password}
                       onChange={handleChange}
                   required
-                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                      className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white placeholder-gray-400"
                       placeholder="Tu contraseña"
                     />
                     <button
@@ -128,6 +143,20 @@ const Login = () => {
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
+
+                {/* Error Message */}
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-start"
+                  >
+                    <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <span>{error}</span>
+                  </motion.div>
+                )}
 
                 {/* Submit Button */}
               <button

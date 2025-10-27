@@ -468,17 +468,19 @@ router.post("/daily-closing", async (req, res) => {
     });
     
     if (completedOrders.length === 0) {
-      return res.status(404).json({ 
+      return res.status(200).json({ 
         message: "No completed orders found for today", 
         orders: [], 
         stats: { 
           totalOrders: 0, 
           totalSales: 0, 
+          totalAmount: 0,
           ordersByType: {
             inSite: { count: 0, total: 0 },
             takeaway: { count: 0, total: 0 },
             delivery: { count: 0, total: 0 }
-          } 
+          },
+          topSellingItems: []
         }
       });
     }
@@ -487,6 +489,7 @@ router.post("/daily-closing", async (req, res) => {
     const stats = {
       totalOrders: completedOrders.length,
       totalSales: 0,
+      totalAmount: 0,
       ordersByType: {
         inSite: { count: 0, total: 0 },
         takeaway: { count: 0, total: 0 },
@@ -499,6 +502,7 @@ router.post("/daily-closing", async (req, res) => {
     completedOrders.forEach(order => {
       // Add to total sales
       stats.totalSales += order.totalAmount;
+      stats.totalAmount += order.totalAmount;
       
       // Add to orders by type
       const type = order.orderType;
