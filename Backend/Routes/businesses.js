@@ -11,27 +11,37 @@ const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
 // Función para obtener categorías reales basadas en productos
 const getBusinessCategories = async (businessId) => {
   try {
-    // Obtener todos los productos del negocio
-    const products = await Product.find({ businessId, active: true });
+    // Obtener todos los productos activos del negocio
+    const products = await Product.find({ businessId, active: true })
+      .select('name description')
+      .lean();
     
-    // Mapear palabras clave de productos a categorías
-    const categoryMapping = {
-      'hamburguesas': ['hamburguesa', 'burger', 'sandwich', 'combo', 'carne', 'queso', 'lechuga', 'tomate'],
-      'pollo': ['pollo', 'chicken', 'alitas', 'muslo', 'pechuga', 'nuggets', 'frito'],
-      'bebidas': ['bebida', 'jugo', 'gaseosa', 'refresco', 'agua', 'coca', 'pepsi', 'soda', 'limonada'],
-      'pizza': ['pizza', 'masa', 'queso', 'pepperoni', 'margarita', 'hawaiana'],
-      'asiatica': ['sushi', 'roll', 'asiatica', 'china', 'japonesa', 'arroz', 'salsa', 'wasabi'],
-      'mexicana': ['mexicana', 'taco', 'burrito', 'quesadilla', 'nachos', 'guacamole', 'salsa picante']
+    if (products.length === 0) {
+      console.log(`📂 Negocio ${businessId}: Sin productos activos`);
+      return [];
+    }
+    
+    // Categorías GENÉRICAS del catálogo (como Rappi, DiDi)
+    const categoryKeywords = {
+      'hamburguesas': ['hamburguesa', 'burger', 'whopper', 'big mac', 'mcpollo', 'cheeseburger', 'carne de res'],
+      'pollo': ['pollo', 'chicken', 'alitas', 'wings', 'nuggets', 'broaster', 'pechuga', 'mcnuggets'],
+      'pizza': ['pizza', 'pizzeta', 'pepperoni', 'hawaiana', 'margarita', 'quattro'],
+      'bebidas': ['coca', 'pepsi', 'gaseosa', 'jugo', 'agua', 'bebida', 'refresco', 'limonada', 'té', 'cafe', 'soda', 'sprite', 'fanta'],
+      'postres': ['postre', 'helado', 'pastel', 'torta', 'brownie', 'flan', 'dulce', 'sundae', 'mcflurry', 'oreo', 'cheesecake'],
+      'sandwich': ['sandwich', 'sándwich', 'sub', 'bocadillo', 'mccrispy'],
+      'papas': ['papa', 'fries', 'papas fritas'],
+      'ensaladas': ['ensalada', 'salad', 'vegetal'],
+      'combos': ['combo', 'menu', 'cajita feliz']
     };
 
     const foundCategories = new Set();
     
-    // Analizar cada producto
+    // Analizar cada producto por nombre Y descripción
     products.forEach(product => {
       const productText = `${product.name} ${product.description || ''}`.toLowerCase();
       
-      // Buscar coincidencias con las palabras clave
-      for (const [category, keywords] of Object.entries(categoryMapping)) {
+      // Buscar coincidencias con palabras clave de categorías genéricas
+      for (const [category, keywords] of Object.entries(categoryKeywords)) {
         const hasMatch = keywords.some(keyword => productText.includes(keyword));
         if (hasMatch) {
           foundCategories.add(category);
@@ -39,7 +49,10 @@ const getBusinessCategories = async (businessId) => {
       }
     });
 
-    return Array.from(foundCategories);
+    const categories = Array.from(foundCategories);
+    console.log(`📂 Categorías GENÉRICAS del negocio ${businessId}:`, categories, `(${products.length} productos)`);
+    
+    return categories;
   } catch (error) {
     logger.error('Error getting business categories:', error);
     return [];

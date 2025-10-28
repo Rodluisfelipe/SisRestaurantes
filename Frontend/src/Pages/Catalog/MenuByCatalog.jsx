@@ -113,21 +113,32 @@ const MenuByCatalog = () => {
         });
       }
       
-      // Generar categorías dinámicas basadas en los restaurantes
-      const allCategories = new Set(['todo']); // Siempre incluir "Todo"
+      // Generar categorías dinámicas basadas SOLO en categorías con restaurantes activos
+      const categoriesWithRestaurants = new Set();
       
       data.forEach(restaurant => {
         if (restaurant.categories && restaurant.categories.length > 0) {
           restaurant.categories.forEach(category => {
-            allCategories.add(category);
+            categoriesWithRestaurants.add(category);
           });
         }
       });
       
-      setCategories(Array.from(allCategories));
+      // Agregar "todo" al inicio solo si hay restaurantes
+      const finalCategories = data.length > 0 
+        ? ['todo', ...Array.from(categoriesWithRestaurants)]
+        : [];
+      
+      setCategories(finalCategories);
       setRestaurants(data);
       
       console.log(`✅ Cargados ${data.length} restaurantes con cobertura en tu área`);
+      console.log('📂 Categorías disponibles:', finalCategories);
+      
+      // Log detallado de categorías por restaurante
+      data.forEach(r => {
+        console.log(`  🏪 ${r.businessName}: ${r.categories?.join(', ') || 'Sin categorías'}`);
+      });
     } catch (error) {
       console.error('Error loading restaurants:', error);
       // En caso de error, mostrar datos de ejemplo
@@ -203,6 +214,14 @@ const MenuByCatalog = () => {
           return timeA - timeB;
         });
         break;
+      case 'delivery_price':
+        // Ordenar por costo de envío (menor a mayor)
+        filtered.sort((a, b) => {
+          const priceA = a.deliveryZone?.pricing?.basePrice ?? 999999;
+          const priceB = b.deliveryZone?.pricing?.basePrice ?? 999999;
+          return priceA - priceB;
+        });
+        break;
       default:
         // Por defecto: popularidad
         filtered.sort((a, b) => {
@@ -222,8 +241,16 @@ const MenuByCatalog = () => {
     pollo: '🍗',
     bebidas: '🥤',
     pizza: '🍕',
+    postres: '🍰',
+    sandwich: '🥪',
+    papas: '🍟',
+    ensaladas: '🥗',
+    combos: '🎁',
     asiatica: '🍜',
-    mexicana: '🌮'
+    mexicana: '🌮',
+    pasta: '🍝',
+    mariscos: '🦐',
+    carnes: '🥩'
   };
 
   const categoryNames = {
@@ -232,8 +259,27 @@ const MenuByCatalog = () => {
     pollo: 'Pollo',
     bebidas: 'Bebidas',
     pizza: 'Pizza',
+    postres: 'Postres',
+    sandwich: 'Sándwiches',
+    papas: 'Papas',
+    ensaladas: 'Ensaladas',
+    combos: 'Combos',
     asiatica: 'Asiática',
-    mexicana: 'Mexicana'
+    mexicana: 'Mexicana',
+    pasta: 'Pasta',
+    mariscos: 'Mariscos',
+    carnes: 'Carnes'
+  };
+  
+  // Función para obtener icono de una categoría (con fallback)
+  const getCategoryIcon = (category) => {
+    return categoryIcons[category?.toLowerCase()] || '🍴';
+  };
+  
+  // Función para obtener nombre de una categoría (con fallback)
+  const getCategoryName = (category) => {
+    return categoryNames[category?.toLowerCase()] || 
+           category?.charAt(0).toUpperCase() + category?.slice(1).replace(/_/g, ' ');
   };
 
   return (
@@ -349,8 +395,8 @@ const MenuByCatalog = () => {
                     : 'bg-white text-gray-700 hover:bg-gray-50 shadow-md border border-gray-100 hover:shadow-lg'
                 }`}
               >
-                <span className="text-xl">{categoryIcons[category]}</span>
-                <span className="text-sm">{categoryNames[category] || category}</span>
+                <span className="text-xl">{getCategoryIcon(category)}</span>
+                <span className="text-sm">{getCategoryName(category)}</span>
                 {selectedCategory === category && (
                   <motion.div
                     initial={{ scale: 0 }}
@@ -447,6 +493,20 @@ const MenuByCatalog = () => {
                 <span className="text-base">⚡</span>
                 <span>Rápidos</span>
               </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setSortBy('delivery_price')}
+                className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 shadow-sm ${
+                  sortBy === 'delivery_price'
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                }`}
+              >
+                <span className="text-base">💰</span>
+                <span>Envío más bajo</span>
+              </motion.button>
             </div>
 
             {/* Dropdown para Móvil (menores a md) */}
@@ -462,6 +522,7 @@ const MenuByCatalog = () => {
                 <option value="popularity" className="bg-white text-gray-900 font-medium">🔥 Más populares</option>
                 <option value="rating" className="bg-white text-gray-900 font-medium">⭐ Mejor calificados</option>
                 <option value="delivery_time" className="bg-white text-gray-900 font-medium">⚡ Más rápidos</option>
+                <option value="delivery_price" className="bg-white text-gray-900 font-medium">💰 Envío más bajo</option>
               </select>
               {/* Icono de flecha personalizado */}
               <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">

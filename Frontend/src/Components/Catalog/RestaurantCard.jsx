@@ -22,6 +22,12 @@ const DeliveryIcon = () => (
   </svg>
 );
 
+const MoneyIcon = () => (
+  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
 const RestaurantCard = ({ restaurant, userLocation }) => {
   // Obtener estado real del negocio
   const { businessStatus, getStatusDisplay } = useBusinessStatus(restaurant._id);
@@ -49,6 +55,44 @@ const RestaurantCard = ({ restaurant, userLocation }) => {
     
     // 3. Fallback final: tiempo genérico
     return '25-35 min';
+  };
+  
+  // Obtener precio del domicilio según la zona
+  const getDeliveryPrice = () => {
+    if (restaurant.deliveryZone?.pricing) {
+      const pricing = restaurant.deliveryZone.pricing;
+      
+      // Según el modo de pricing, mostrar el precio base
+      let price = 0;
+      
+      if (pricing.mode === 'fixed' || !pricing.mode) {
+        // Modo fijo: mostrar precio base
+        price = pricing.basePrice || 0;
+      } else if (pricing.mode === 'distance') {
+        // Modo por distancia: mostrar "Desde" + precio base
+        price = pricing.basePrice || 0;
+        if (price === 0 && pricing.pricePerKm > 0) {
+          return `Desde $${pricing.pricePerKm.toLocaleString('es-CO')}/km`;
+        }
+      } else if (pricing.mode === 'tiered') {
+        // Modo por tramos: mostrar "Desde" + precio del primer tramo
+        if (pricing.tiers && pricing.tiers.length > 0) {
+          price = pricing.tiers[0].price || 0;
+          return `Desde $${price.toLocaleString('es-CO')}`;
+        }
+        price = pricing.basePrice || 0;
+      }
+      
+      // Si el precio es 0, mostrar "Gratis"
+      if (price === 0) {
+        return 'Gratis';
+      }
+      
+      // Formatear el precio en pesos colombianos
+      return `$${price.toLocaleString('es-CO')}`;
+    }
+    
+    return null; // No mostrar si no hay información de precio
   };
 
   // Usar el estado real del negocio o fallback al campo isOpen
@@ -151,10 +195,10 @@ const RestaurantCard = ({ restaurant, userLocation }) => {
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ delay: 0.3 }}
-                className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg"
+                className="flex items-center space-x-1 bg-gradient-to-r from-yellow-400 to-orange-400 px-3 py-1.5 rounded-full shadow-lg"
               >
                 <StarIcon />
-                <span className="text-sm font-bold text-gray-800">{restaurant.rating}</span>
+                <span className="text-sm font-bold text-white">{restaurant.rating}</span>
               </motion.div>
             </div>
           )}
@@ -197,6 +241,16 @@ const RestaurantCard = ({ restaurant, userLocation }) => {
                 <ClockIcon />
                 <span className="text-sm font-medium">{getDeliveryTime()}</span>
               </div>
+              
+              {/* Precio del domicilio (si está disponible) */}
+              {getDeliveryPrice() && (
+                <div className="flex items-center space-x-1.5 text-gray-600">
+                  <MoneyIcon />
+                  <span className={`text-sm font-medium ${getDeliveryPrice() === 'Gratis' ? 'text-green-600 font-bold' : ''}`}>
+                    {getDeliveryPrice()}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Botón de acción */}
