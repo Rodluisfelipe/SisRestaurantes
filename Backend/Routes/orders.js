@@ -297,7 +297,7 @@ router.patch("/:id/status", async (req, res) => {
       return res.status(400).json({ message: "Invalid order ID" });
     }
     
-    if (!status || !["pending", "inProgress", "completed"].includes(status)) {
+    if (!status || !["pending", "inProgress", "completed", "ready"].includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
     }
     

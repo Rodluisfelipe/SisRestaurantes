@@ -2,10 +2,68 @@ const express = require('express');
 const router = express.Router();
 const Banner = require('../Models/Banner');
 const BusinessConfig = require('../Models/BusinessConfig');
-const { authenticateToken, requireSuperAdmin } = require('../Middleware/auth');
+const authMiddleware = require('../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const logger = require('../utils/logger');
+const { formatHttpError } = require('../utils/errorFormatter');
+
+// Validación de entrada para crear banner (después de multer)
+const validateBannerInput = (req, res, next) => {
+  const errors = [];
+  const { title, description, endDate, priority, businessId } = req.body;
+  
+  // Validar title
+  if (!title) {
+    errors.push({ field: 'title', message: 'title es requerido' });
+  } else if (typeof title !== 'string' || title.trim().length === 0) {
+    errors.push({ field: 'title', message: 'title debe ser un string no vacío' });
+  } else if (title.length > 100) {
+    errors.push({ field: 'title', message: 'title no puede exceder 100 caracteres' });
+  }
+  
+  // Validar description (opcional)
+  if (description !== undefined && (typeof description !== 'string' || description.length > 200)) {
+    errors.push({ field: 'description', message: 'description debe ser un string y no exceder 200 caracteres' });
+  }
+  
+  // Validar endDate
+  if (!endDate) {
+    errors.push({ field: 'endDate', message: 'endDate es requerido' });
+  } else {
+    const endDateObj = new Date(endDate);
+    if (isNaN(endDateObj.getTime())) {
+      errors.push({ field: 'endDate', message: 'endDate debe ser una fecha válida' });
+    } else {
+      const now = new Date();
+      if (endDateObj <= now) {
+        errors.push({ field: 'endDate', message: 'endDate debe ser posterior a hoy' });
+      }
+    }
+  }
+  
+  // Validar priority (opcional)
+  if (priority !== undefined) {
+    const priorityNum = parseInt(priority);
+    if (isNaN(priorityNum) || priorityNum < 1 || priorityNum > 10) {
+      errors.push({ field: 'priority', message: 'priority debe ser un número entre 1 y 10' });
+    }
+  }
+  
+  // Validar businessId (solo si no viene del token)
+  if (businessId !== undefined && typeof businessId !== 'string') {
+    errors.push({ field: 'businessId', message: 'businessId debe ser un string' });
+  }
+  
+  if (errors.length > 0) {
+    return res.status(400).json(
+      formatHttpError(req, 'Errores de validación en la entrada', 400, errors)
+    );
+  }
+  
+  next();
+};
 
 // Configuración de multer para subir imágenes
 const storage = multer.diskStorage({
@@ -127,11 +185,8 @@ router.post('/superadmin-create', upload.single('image'), async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error creating banner:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al crear banner'
-    });
+    logger.error('Error creating banner', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al crear banner', 500));
   }
 });
 
@@ -148,6 +203,7 @@ router.get('/', async (req, res) => {
     .sort({ priority: -1, createdAt: -1 })
     .limit(5); // Máximo 5 banners activos
 
+    logger.info(`Found ${banners.length} active banners`, { count: banners.length }, req);
     res.json({
       success: true,
       banners: banners.map(banner => ({
@@ -162,16 +218,13 @@ router.get('/', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('Error fetching banners:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener banners'
-    });
+    logger.error('Error fetching banners', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener banners', 500));
   }
 });
 
 // GET /api/banners/my - Obtener banners del restaurante autenticado
-router.get('/my', authenticateToken, async (req, res) => {
+router.get('/my', authMiddleware, async (req, res) => {
   try {
     const businessId = req.user.businessId;
     const banners = await Banner.find({ businessId })
@@ -182,16 +235,13 @@ router.get('/my', authenticateToken, async (req, res) => {
       banners
     });
   } catch (error) {
-    console.error('Error fetching user banners:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener tus banners'
-    });
+    logger.error('Error fetching user banners', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener tus banners', 500));
   }
 });
 
 // GET /api/banners/business/:businessId - Obtener banners de un negocio específico (con autenticación)
-router.get('/business/:businessId', authenticateToken, async (req, res) => {
+router.get('/business/:businessId', authMiddleware, async (req, res) => {
   try {
     const { businessId } = req.params;
     const banners = await Banner.find({ businessId })
@@ -202,11 +252,8 @@ router.get('/business/:businessId', authenticateToken, async (req, res) => {
       banners
     });
   } catch (error) {
-    console.error('Error fetching business banners:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener banners del negocio'
-    });
+    logger.error('Error fetching business banners', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener banners del negocio', 500));
   }
 });
 
@@ -223,47 +270,27 @@ router.get('/business/:businessId/public', async (req, res) => {
       banners
     });
   } catch (error) {
-    console.error('Error fetching business banners (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener banners del negocio'
-    });
+    logger.error('Error fetching business banners (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener banners del negocio', 500));
   }
 });
 
 
 // POST /api/banners - Crear nuevo banner (restaurante)
-router.post('/', authenticateToken, upload.single('image'), async (req, res) => {
+router.post('/', authMiddleware, upload.single('image'), validateBannerInput, async (req, res) => {
   try {
     // Usar businessId del FormData si está disponible, sino del token
     let businessId = req.body.businessId || req.user.businessId;
     const { title, description, endDate, priority } = req.body;
 
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'La imagen es requerida'
-      });
+      return res.status(400).json(formatHttpError(req, 'La imagen es requerida', 400));
     }
 
     // Obtener información del negocio
     const business = await BusinessConfig.findById(businessId);
     if (!business) {
-      return res.status(404).json({
-        success: false,
-        message: 'Negocio no encontrado'
-      });
-    }
-
-    // Validar fechas
-    const startDate = new Date();
-    const endDateObj = new Date(endDate);
-    
-    if (endDateObj <= startDate) {
-      return res.status(400).json({
-        success: false,
-        message: 'La fecha de fin debe ser posterior a hoy'
-      });
+      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
     }
 
     // Crear banner
@@ -280,22 +307,20 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
 
     await banner.save();
 
+    logger.info('Banner created', { id: banner._id, businessId }, req);
     res.status(201).json({
       success: true,
       message: 'Banner creado exitosamente. Está pendiente de aprobación.',
       banner
     });
   } catch (error) {
-    console.error('Error creating banner:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al crear banner'
-    });
+    logger.error('Error creating banner', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al crear banner', 500));
   }
 });
 
 // GET /api/banners/pending - Obtener banners pendientes (SuperAdmin)
-router.get('/pending', authenticateToken, requireSuperAdmin, async (req, res) => {
+router.get('/pending', authMiddleware, async (req, res) => {
   try {
     const banners = await Banner.find({ status: 'pending' })
       .populate('businessId', 'businessName slug logo')
@@ -306,11 +331,8 @@ router.get('/pending', authenticateToken, requireSuperAdmin, async (req, res) =>
       banners
     });
   } catch (error) {
-    console.error('Error fetching pending banners:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener banners pendientes'
-    });
+    logger.error('Error fetching pending banners', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener banners pendientes', 500));
   }
 });
 
@@ -326,11 +348,8 @@ router.get('/pending/public', async (req, res) => {
       banners
     });
   } catch (error) {
-    console.error('Error fetching pending banners (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener banners pendientes'
-    });
+    logger.error('Error fetching pending banners (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener banners pendientes', 500));
   }
 });
 
@@ -346,11 +365,8 @@ router.get('/approved/public', async (req, res) => {
       banners
     });
   } catch (error) {
-    console.error('Error fetching approved banners (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener banners aprobados'
-    });
+    logger.error('Error fetching approved banners (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener banners aprobados', 500));
   }
 });
 
@@ -366,11 +382,8 @@ router.get('/rejected/public', async (req, res) => {
       banners
     });
   } catch (error) {
-    console.error('Error fetching rejected banners (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener banners rechazados'
-    });
+    logger.error('Error fetching rejected banners (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener banners rechazados', 500));
   }
 });
 
@@ -386,16 +399,13 @@ router.get('/all/public', async (req, res) => {
       banners
     });
   } catch (error) {
-    console.error('Error fetching all banners (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al obtener todos los banners'
-    });
+    logger.error('Error fetching all banners (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener todos los banners', 500));
   }
 });
 
 // PUT /api/banners/:id/approve - Aprobar banner (SuperAdmin)
-router.put('/:id/approve', authenticateToken, requireSuperAdmin, async (req, res) => {
+router.put('/:id/approve', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { priority } = req.body;
@@ -415,32 +425,27 @@ router.put('/:id/approve', authenticateToken, requireSuperAdmin, async (req, res
 
     await banner.save();
 
+    logger.info('Banner approved', { id, businessId: banner.businessId }, req);
     res.json({
       success: true,
       message: 'Banner aprobado exitosamente',
       banner
     });
   } catch (error) {
-    console.error('Error approving banner:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al aprobar banner'
-    });
+    logger.error('Error approving banner', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al aprobar banner', 500));
   }
 });
 
 // PUT /api/banners/:id/reject - Rechazar banner (SuperAdmin)
-router.put('/:id/reject', authenticateToken, requireSuperAdmin, async (req, res) => {
+router.put('/:id/reject', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { rejectionReason } = req.body;
 
     const banner = await Banner.findById(id);
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: 'Banner no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
     banner.status = 'rejected';
@@ -448,17 +453,15 @@ router.put('/:id/reject', authenticateToken, requireSuperAdmin, async (req, res)
 
     await banner.save();
 
+    logger.info('Banner rejected', { id }, req);
     res.json({
       success: true,
       message: 'Banner rechazado',
       banner
     });
   } catch (error) {
-    console.error('Error rejecting banner:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al rechazar banner'
-    });
+    logger.error('Error rejecting banner', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al rechazar banner', 500));
   }
 });
 
@@ -469,10 +472,7 @@ router.put('/:id/click', async (req, res) => {
     const banner = await Banner.findById(id);
     
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: 'Banner no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
     await banner.incrementClicks();
@@ -482,26 +482,20 @@ router.put('/:id/click', async (req, res) => {
       message: 'Click registrado'
     });
   } catch (error) {
-    console.error('Error incrementing clicks:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al registrar click'
-    });
+    logger.error('Error incrementing clicks', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al registrar click', 500));
   }
 });
 
 // DELETE /api/banners/:id - Eliminar banner
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const businessId = req.user.businessId;
 
     const banner = await Banner.findOne({ _id: id, businessId });
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: 'Banner no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
     // Eliminar archivo de imagen
@@ -514,16 +508,14 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     await Banner.findByIdAndDelete(id);
 
+    logger.info('Banner deleted', { id }, req);
     res.json({
       success: true,
       message: 'Banner eliminado exitosamente'
     });
   } catch (error) {
-    console.error('Error deleting banner:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al eliminar banner'
-    });
+    logger.error('Error deleting banner', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al eliminar banner', 500));
   }
 });
 
@@ -552,11 +544,8 @@ router.put('/:id/approve/public', async (req, res) => {
       message: 'Banner aprobado exitosamente'
     });
   } catch (error) {
-    console.error('Error approving banner (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al aprobar banner'
-    });
+    logger.error('Error approving banner (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al aprobar banner', 500));
   }
 });
 
@@ -568,10 +557,7 @@ router.put('/:id/reject/public', async (req, res) => {
 
     const banner = await Banner.findById(id);
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: 'Banner no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
     banner.status = 'rejected';
@@ -584,11 +570,8 @@ router.put('/:id/reject/public', async (req, res) => {
       message: 'Banner rechazado exitosamente'
     });
   } catch (error) {
-    console.error('Error rejecting banner (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al rechazar banner'
-    });
+    logger.error('Error rejecting banner (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al rechazar banner', 500));
   }
 });
 
@@ -600,10 +583,7 @@ router.put('/:id/toggle-status/public', async (req, res) => {
 
     const banner = await Banner.findById(id);
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: 'Banner no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
     banner.status = status;
@@ -618,11 +598,8 @@ router.put('/:id/toggle-status/public', async (req, res) => {
       message: `Banner ${status === 'approved' ? 'activado' : 'desactivado'} exitosamente`
     });
   } catch (error) {
-    console.error('Error toggling banner status (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al cambiar estado del banner'
-    });
+    logger.error('Error toggling banner status (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al cambiar estado del banner', 500));
   }
 });
 
@@ -633,10 +610,7 @@ router.delete('/:id/delete/public', async (req, res) => {
 
     const banner = await Banner.findById(id);
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: 'Banner no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
     // Eliminar archivo de imagen si existe
@@ -648,23 +622,21 @@ router.delete('/:id/delete/public', async (req, res) => {
         try {
           fs.unlinkSync(imagePath);
         } catch (error) {
-          console.log('Error eliminando archivo de imagen:', error);
+          logger.warn('Error eliminando archivo de imagen', error, req);
         }
       }
     }
 
     await Banner.findByIdAndDelete(id);
 
+    logger.info('Banner deleted (public)', { id }, req);
     res.json({
       success: true,
       message: 'Banner eliminado exitosamente'
     });
   } catch (error) {
-    console.error('Error deleting banner (public):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al eliminar banner'
-    });
+    logger.error('Error deleting banner (public)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al eliminar banner', 500));
   }
 });
 
@@ -675,10 +647,7 @@ router.delete('/:id/delete/restaurant', async (req, res) => {
 
     const banner = await Banner.findById(id);
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: 'Banner no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
     // Eliminar archivo de imagen si existe
@@ -690,23 +659,21 @@ router.delete('/:id/delete/restaurant', async (req, res) => {
         try {
           fs.unlinkSync(imagePath);
         } catch (error) {
-          console.log('Error eliminando archivo de imagen:', error);
+          logger.warn('Error eliminando archivo de imagen', error, req);
         }
       }
     }
 
     await Banner.findByIdAndDelete(id);
 
+    logger.info('Banner deleted (restaurant)', { id }, req);
     res.json({
       success: true,
       message: 'Banner eliminado exitosamente'
     });
   } catch (error) {
-    console.error('Error deleting banner (restaurant):', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error al eliminar banner'
-    });
+    logger.error('Error deleting banner (restaurant)', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al eliminar banner', 500));
   }
 });
 

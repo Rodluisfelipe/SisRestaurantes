@@ -5,45 +5,28 @@ const pushSubscriptionSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',
     required: true,
-    index: true
   },
-  userId: {
+  userId: { // Optional, for user-specific notifications within a business
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: false // Opcional: para asociar a un usuario específico
+    ref: 'Admin', // Assuming Admin model for merchants
+    required: false,
   },
   endpoint: {
     type: String,
     required: true,
-    unique: true
+    unique: true, // Ensure unique endpoints
   },
   keys: {
-    p256dh: {
-      type: String,
-      required: true
-    },
-    auth: {
-      type: String,
-      required: true
-    }
-  },
-  userAgent: {
-    type: String,
-    default: ''
+    p256dh: { type: String, required: true },
+    auth: { type: String, required: true },
   },
   isActive: {
     type: Boolean,
-    default: true
-  }
-}, {
-  timestamps: true
-});
+    default: true,
+  },
+}, { timestamps: true });
 
-// Índice compuesto para búsqueda eficiente por negocio
-pushSubscriptionSchema.index({ businessId: 1, isActive: 1 });
-
-// Índice para limpieza de suscripciones expiradas
+pushSubscriptionSchema.index({ businessId: 1, userId: 1 });
 pushSubscriptionSchema.index({ endpoint: 1 });
 
 module.exports = mongoose.model('PushSubscription', pushSubscriptionSchema);
-

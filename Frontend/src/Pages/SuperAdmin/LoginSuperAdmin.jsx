@@ -14,7 +14,13 @@ export default function LoginSuperAdmin({ onLogin }) {
     setLoading(true);
     try {
       const res = await loginSuperAdmin(email, password);
+      // Guardar token tanto en superadmin_token como en accessToken para compatibilidad
       localStorage.setItem("superadmin_token", res.data.token);
+      localStorage.setItem("accessToken", res.data.token);
+      // También guardar el usuario
+      if (res.data.superAdmin) {
+        localStorage.setItem("user", JSON.stringify(res.data.superAdmin));
+      }
       onLogin();
     } catch (err) {
       console.error("Error de autenticación:", err);
