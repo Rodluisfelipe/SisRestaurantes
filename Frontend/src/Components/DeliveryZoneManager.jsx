@@ -294,11 +294,15 @@ const DeliveryZoneManager = () => {
 
       if (selectedZone) {
         // Actualizar zona existente
-        await api.put(`/delivery-zones/${selectedZone.id}`, dataToSend);
+        await api.put(`/delivery-zones/${selectedZone.id}`, dataToSend, {
+          params: { businessId }
+        });
         alert('Zona actualizada exitosamente');
       } else {
         // Crear nueva zona
-        await api.post('/delivery-zones', dataToSend);
+        await api.post('/delivery-zones', dataToSend, {
+          params: { businessId }
+        });
         alert('Zona creada exitosamente');
       }
 
@@ -315,7 +319,12 @@ const DeliveryZoneManager = () => {
     if (!confirm('¿Estás seguro de eliminar esta zona?')) return;
 
     try {
-      await api.delete(`/delivery-zones/${zoneId}`);
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : {};
+      const businessId = user?.businessId;
+      await api.delete(`/delivery-zones/${zoneId}`, {
+        params: { businessId }
+      });
       alert('Zona eliminada exitosamente');
       loadZones();
     } catch (error) {
@@ -326,7 +335,12 @@ const DeliveryZoneManager = () => {
 
   const handleToggleZone = async (zoneId) => {
     try {
-      await api.patch(`/delivery-zones/${zoneId}/toggle`);
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : {};
+      const businessId = user?.businessId;
+      await api.patch(`/delivery-zones/${zoneId}/toggle`, null, {
+        params: { businessId }
+      });
       loadZones();
     } catch (error) {
       console.error('Error al cambiar estado de zona:', error);
@@ -1118,9 +1132,9 @@ const DeliveryZoneManager = () => {
                               </div>
                             </Popup>
                           </Polygon>
-                        ) : formData.type === 'circle' && formData.geometry?.center ? (
+                        ) : formData.type === 'radius' && formData.geometry?.coordinates ? (
                           <Circle
-                            center={[formData.geometry.center.coordinates[1], formData.geometry.center.coordinates[0]]}
+                            center={[formData.geometry.coordinates[1], formData.geometry.coordinates[0]]}
                             radius={formData.geometry.radius}
                             pathOptions={{ 
                               color: formData.color, 

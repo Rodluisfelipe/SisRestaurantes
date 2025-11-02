@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const logger = require("../utils/logger");
 
 /**
  * Model for orders in the restaurant system
@@ -215,7 +216,7 @@ orderSchema.post('save', async function(doc, next) {
         }
       }
     } catch (error) {
-      console.error('Error al actualizar estadísticas de zona:', error);
+      logger.error('Error al actualizar estadísticas de zona en post-save hook', error);
       // No fallar la operación principal si hay error en estadísticas
     }
   }

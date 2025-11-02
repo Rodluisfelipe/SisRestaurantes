@@ -1,11 +1,14 @@
 const jwt = require('jsonwebtoken');
 
-// En producción, esta clave debería estar en variables de entorno
-const JWT_SECRET = process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura';
+// Cargar secretos desde variables de entorno (obligatorios)
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET;
 const JWT_EXPIRE = '24h';
-
-const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'refresh_token_secreto_super_seguro';
 const JWT_REFRESH_EXPIRE = '7d';
+
+if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
+  throw new Error('JWT secrets missing: set JWT_SECRET and JWT_REFRESH_SECRET in environment variables.');
+}
 
 const generateToken = (userId, businessId = null) => {
   const payload = { id: userId };

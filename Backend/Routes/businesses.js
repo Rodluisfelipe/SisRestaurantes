@@ -6,6 +6,7 @@ const Category = require('../Models/Category');
 const DeliveryZone = require('../Models/DeliveryZone');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const logger = require('../utils/logger');
+const { formatHttpError } = require('../utils/errorFormatter');
 const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
 
 // Función para obtener categorías reales basadas en productos
@@ -17,7 +18,7 @@ const getBusinessCategories = async (businessId) => {
       .lean();
     
     if (products.length === 0) {
-      console.log(`📂 Negocio ${businessId}: Sin productos activos`);
+      logger.debug('No active products', { businessId });
       return [];
     }
     
@@ -50,7 +51,7 @@ const getBusinessCategories = async (businessId) => {
     });
 
     const categories = Array.from(foundCategories);
-    console.log(`📂 Categorías GENÉRICAS del negocio ${businessId}:`, categories, `(${products.length} productos)`);
+    logger.debug('Generic categories found', { businessId, categories, productCount: products.length });
     
     return categories;
   } catch (error) {
@@ -89,7 +90,7 @@ router.get('/', async (req, res) => {
         lon: parseFloat(lon)  // Cambiar lng a lon para coincidir con geospatial.js
       };
       
-      console.log('🔍 Filtrando por ubicación del usuario:', userPoint);
+      logger.debug('Filtrando por ubicación del usuario', { userPoint }, req);
       
       // Verificar cobertura para cada negocio
       const businessesWithCoverage = await Promise.all(
@@ -100,8 +101,6 @@ router.get('/', async (req, res) => {
             isActive: true
           });
           
-          console.log(`📍 ${business.businessName} (${business._id}): Encontró ${zones.length} zonas activas`);
-          
           if (zones.length === 0) {
             return null; // No tiene zonas configuradas
           }
@@ -110,23 +109,18 @@ router.get('/', async (req, res) => {
           let matchedZone = null;
           
           for (const zone of zones.sort((a, b) => b.priority - a.priority)) {
-            console.log(`  🗺️  Verificando zona "${zone.name}" (${zone.type}, prioridad: ${zone.priority})`);
-            console.log(`      Geometry:`, JSON.stringify(zone.geometry).substring(0, 200));
-            
             let isInZone = false;
             
             if (zone.type === 'polygon') {
               // GeoJSON Polygon: coordinates es [[...]], necesitamos el array interno [0]
               const polygonRing = zone.geometry.coordinates[0];
               isInZone = pointInPolygon(userPoint, polygonRing);
-              console.log(`      ✓ pointInPolygon(${userPoint.lat}, ${userPoint.lon}) = ${isInZone}`);
             } else if (zone.type === 'circle') {
               const center = {
                 lat: zone.geometry.center.coordinates[1],
                 lon: zone.geometry.center.coordinates[0]
               };
               isInZone = pointInRadius(userPoint, center, zone.geometry.radius);
-              console.log(`      ✓ pointInRadius = ${isInZone}, center: ${center.lat},${center.lon}, radius: ${zone.geometry.radius}m`);
             }
             
             if (isInZone) {
@@ -136,7 +130,7 @@ router.get('/', async (req, res) => {
           }
           
           if (matchedZone) {
-            console.log(`✅ ${business.businessName}: Usuario EN cobertura (zona: ${matchedZone.name})`);
+            logger.debug(`Usuario en cobertura`, { businessId: business._id, zoneName: matchedZone.name }, req);
             // Agregar información de la zona al negocio
             business._doc.deliveryZone = {
               name: matchedZone.name,
@@ -145,7 +139,6 @@ router.get('/', async (req, res) => {
             };
             return business;
           } else {
-            console.log(`❌ ${business.businessName}: Usuario FUERA de cobertura`);
             return null;
           }
         })
@@ -153,7 +146,7 @@ router.get('/', async (req, res) => {
       
       // Filtrar solo los que tienen cobertura
       businessesToShow = businessesWithCoverage.filter(b => b !== null);
-      console.log(`📊 Restaurantes con cobertura: ${businessesToShow.length} de ${businesses.length}`);
+      logger.debug(`Restaurantes con cobertura filtrados`, { count: businessesToShow.length, total: businesses.length }, req);
     }
     
     // Formatear respuesta para el catálogo con categorías reales
@@ -194,17 +187,12 @@ router.get('/', async (req, res) => {
       };
     }));
 
-    logger.info(`GET /api/businesses - Encontrados ${formattedBusinesses.length} negocios`);
-    logger.info('Negocios encontrados:', businesses.map(b => ({ name: b.businessName, isActive: b.isActive })));
+    logger.info(`Found ${formattedBusinesses.length} businesses`, { count: formattedBusinesses.length }, req);
     
     res.json(formattedBusinesses);
   } catch (error) {
-    logger.error('GET /api/businesses - Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    logger.error('GET /api/businesses - Error', error, req);
+    res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
   }
 });
 
@@ -215,15 +203,11 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    logger.info(`GET /api/businesses/${id} - Obteniendo negocio`);
 
     // Validar y resolver el ID del negocio
     const businessResult = await validateAndResolveBusinessId(id);
     if (!businessResult.success) {
-      return res.status(404).json({
-        success: false,
-        message: 'Negocio no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
     }
 
     const businessId = businessResult.businessId;
@@ -235,10 +219,7 @@ router.get('/:id', async (req, res) => {
     }).select('businessName slug logo description theme isOpen address whatsappNumber socialMedia createdAt updatedAt');
 
     if (!business) {
-      return res.status(404).json({
-        success: false,
-        message: 'Negocio no encontrado'
-      });
+      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
     }
 
     // Formatear respuesta
@@ -261,16 +242,12 @@ router.get('/:id', async (req, res) => {
       categories: []
     };
 
-    logger.info(`GET /api/businesses/${id} - Negocio encontrado: ${business.businessName}`);
+    logger.info(`Business found`, { id: business._id, name: business.businessName }, req);
     
     res.json(formattedBusiness);
   } catch (error) {
-    logger.error(`GET /api/businesses/${id} - Error:`, error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    logger.error(`GET /api/businesses/${req.params.id} - Error`, error, req);
+    res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
   }
 });
 
@@ -281,7 +258,7 @@ router.get('/:id', async (req, res) => {
 router.get('/search', async (req, res) => {
   try {
     const { q, category, limit = 20, offset = 0 } = req.query;
-    logger.info(`GET /api/businesses/search - Búsqueda: "${q}", categoría: "${category}"`);
+    logger.debug('Searching businesses', { query: q, category }, req);
 
     // Construir filtros de búsqueda
     const filters = { isActive: true };
@@ -323,7 +300,7 @@ router.get('/search', async (req, res) => {
       };
     }));
 
-    logger.info(`GET /api/businesses/search - Encontrados ${formattedBusinesses.length} negocios`);
+    logger.info(`Found ${formattedBusinesses.length} businesses in search`, { count: formattedBusinesses.length }, req);
     
     res.json({
       success: true,
@@ -333,12 +310,8 @@ router.get('/search', async (req, res) => {
       offset: parseInt(offset)
     });
   } catch (error) {
-    logger.error('GET /api/businesses/search - Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error interno del servidor',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    logger.error('GET /api/businesses/search - Error', error, req);
+    res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
   }
 });
 
@@ -348,10 +321,7 @@ router.get('/search', async (req, res) => {
  */
 router.get('/debug/all', async (req, res) => {
   try {
-    logger.info('GET /api/businesses/debug/all - Debug: obteniendo todos los negocios');
-    
     const allBusinesses = await BusinessConfig.find({});
-    logger.info(`Debug: Encontrados ${allBusinesses.length} negocios en total`);
     
     const businessesInfo = allBusinesses.map(business => ({
       _id: business._id,
@@ -361,18 +331,16 @@ router.get('/debug/all', async (req, res) => {
       createdAt: business.createdAt
     }));
     
+    logger.info(`Found ${allBusinesses.length} total businesses (debug)`, { count: allBusinesses.length }, req);
+    
     res.json({
       success: true,
       total: allBusinesses.length,
       businesses: businessesInfo
     });
   } catch (error) {
-    logger.error('GET /api/businesses/debug/all - Error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Error interno del servidor',
-      error: error.message
-    });
+    logger.error('GET /api/businesses/debug/all - Error', error, req);
+    res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
   }
 });
 

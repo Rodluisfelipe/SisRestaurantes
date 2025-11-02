@@ -326,6 +326,21 @@ router.patch("/:id/status", async (req, res) => {
     // Emit socket event
     socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_updated", updatedOrder);
     
+    // Enviar notificación push por cambio de estado
+    const { sendOrderStatusPush, sendOrderReadyPush } = require('../services/pushService');
+    try {
+      if (status === 'ready' || status === 'completed') {
+        // Notificación especial para "pedido listo"
+        await sendOrderReadyPush(updatedOrder.businessId.toString(), updatedOrder);
+      } else {
+        // Notificación genérica de cambio de estado
+        await sendOrderStatusPush(updatedOrder.businessId.toString(), updatedOrder, status);
+      }
+    } catch (pushError) {
+      // No fallar la request si el push falla
+      console.warn('Failed to send push notification:', pushError.message);
+    }
+    
     // If order is completed, move it to CompletedOrders collection
     if (status === "completed") {
       try {

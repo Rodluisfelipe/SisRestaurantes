@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const BusinessConfig = require('../Models/BusinessConfig');
+const logger = require('./logger');
 
 /**
  * Utility function to find a business by ID or slug
@@ -19,7 +20,7 @@ async function findBusinessByIdentifier(identifier) {
     // If not found or not a valid ObjectId, try to find by slug
     return await BusinessConfig.findOne({ slug: identifier });
   } catch (error) {
-    console.error('Error finding business by identifier:', error);
+    logger.error('Error finding business by identifier', error);
     return null;
   }
 }

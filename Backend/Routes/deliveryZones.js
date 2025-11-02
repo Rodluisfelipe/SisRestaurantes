@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const router = express.Router();
 const DeliveryZone = require("../Models/DeliveryZone");
 const authMiddleware = require("../middleware/authMiddleware");
@@ -14,6 +15,8 @@ const {
   getCacheStats 
 } = require("../utils/geocoding");
 const { validatePolygon } = require("../utils/geospatial");
+const logger = require("../utils/logger");
+const { formatHttpError } = require("../utils/errorFormatter");
 
 // Middleware vacío para no romper compatibilidad (rate limiting deshabilitado temporalmente)
 const geocodeLimiter = (req, res, next) => next();
@@ -32,10 +35,9 @@ router.get("/geocode", geocodeLimiter, async (req, res) => {
     const { address, country } = req.query;
     
     if (!address) {
-      return res.status(400).json({
-        success: false,
-        message: "Se requiere una dirección"
-      });
+      return res.status(400).json(
+        formatHttpError(req, "Se requiere una dirección", 400)
+      );
     }
     
     const results = await geocodeAddress(address, country);
@@ -46,11 +48,8 @@ router.get("/geocode", geocodeLimiter, async (req, res) => {
       count: results.length
     });
   } catch (error) {
-    console.error("Error en geocodificación:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    logger.error("Error en geocodificación", error, req);
+    res.status(500).json(formatHttpError(req, error.message || "Error en geocodificación", 500));
   }
 });
 
@@ -63,10 +62,9 @@ router.post("/geocode", geocodeLimiter, async (req, res) => {
     const { address, country } = req.body;
     
     if (!address) {
-      return res.status(400).json({
-        success: false,
-        message: "Se requiere una dirección"
-      });
+      return res.status(400).json(
+        formatHttpError(req, "Se requiere una dirección", 400)
+      );
     }
     
     const results = await geocodeAddress(address, country);
@@ -77,11 +75,8 @@ router.post("/geocode", geocodeLimiter, async (req, res) => {
       count: results.length
     });
   } catch (error) {
-    console.error("Error en geocodificación:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    logger.error("Error en geocodificación", error, req);
+    res.status(500).json(formatHttpError(req, error.message || "Error en geocodificación", 500));
   }
 });
 
@@ -94,10 +89,9 @@ router.get("/reverse-geocode", geocodeLimiter, async (req, res) => {
     const { lat, lon } = req.query;
     
     if (!lat || !lon) {
-      return res.status(400).json({
-        success: false,
-        message: "Se requieren latitud y longitud"
-      });
+      return res.status(400).json(
+        formatHttpError(req, "Se requieren latitud y longitud", 400)
+      );
     }
     
     const result = await reverseGeocode(parseFloat(lat), parseFloat(lon));
@@ -107,11 +101,8 @@ router.get("/reverse-geocode", geocodeLimiter, async (req, res) => {
       result
     });
   } catch (error) {
-    console.error("Error en geocodificación inversa:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    logger.error("Error en geocodificación inversa", error, req);
+    res.status(500).json(formatHttpError(req, error.message || "Error en geocodificación inversa", 500));
   }
 });
 
@@ -124,10 +115,9 @@ router.post("/reverse-geocode", geocodeLimiter, async (req, res) => {
     const { lat, lon } = req.body;
     
     if (!lat || !lon) {
-      return res.status(400).json({
-        success: false,
-        message: "Se requieren latitud y longitud"
-      });
+      return res.status(400).json(
+        formatHttpError(req, "Se requieren latitud y longitud", 400)
+      );
     }
     
     const result = await reverseGeocode(parseFloat(lat), parseFloat(lon));
@@ -137,11 +127,8 @@ router.post("/reverse-geocode", geocodeLimiter, async (req, res) => {
       result
     });
   } catch (error) {
-    console.error("Error en geocodificación inversa:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    logger.error("Error en geocodificación inversa", error, req);
+    res.status(500).json(formatHttpError(req, error.message || "Error en geocodificación inversa", 500));
   }
 });
 
@@ -157,11 +144,8 @@ router.get("/geocode/stats", async (req, res) => {
       stats
     });
   } catch (error) {
-    console.error("Error al obtener stats:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    logger.error("Error al obtener stats", error, req);
+    res.status(500).json(formatHttpError(req, error.message || "Error al obtener stats", 500));
   }
 });
 
@@ -175,38 +159,33 @@ router.get("/geocode/stats", async (req, res) => {
  */
 router.post("/check-coverage", zoneLimiter, async (req, res) => {
   try {
-    console.log("=== POST /check-coverage ===");
-    console.log("req.body:", JSON.stringify(req.body));
-    console.log("Content-Type:", req.headers['content-type']);
-    console.log("Origin:", req.headers.origin);
+    logger.info("POST /delivery-zones/check-coverage recibido");
     
     const { businessId, lat, lon, orderTotal } = req.body;
-    console.log("📊 Datos extraídos - businessId:", businessId, "lat:", lat, "lon:", lon, "orderTotal:", orderTotal);
+    logger.debug("check-coverage datos", { businessId, lat, lon, hasOrderTotal: orderTotal !== undefined });
     
     if (!businessId) {
-      console.log("❌ Error: businessId no proporcionado");
-      return res.status(400).json({
-        success: false,
-        message: "Se requiere el ID del negocio"
-      });
+      logger.warn("check-coverage sin businessId", null, req);
+      return res.status(400).json(
+        formatHttpError(req, "Se requiere el ID del negocio", 400)
+      );
     }
     
     if (!lat || !lon) {
-      console.log("❌ Error: coordenadas no proporcionadas");
-      return res.status(400).json({
-        success: false,
-        message: "Se requieren las coordenadas (lat, lon)"
-      });
+      logger.warn("check-coverage sin coordenadas", null, req);
+      return res.status(400).json(
+        formatHttpError(req, "Se requieren las coordenadas (lat, lon)", 400)
+      );
     }
     
     const point = { lat: parseFloat(lat), lon: parseFloat(lon) };
-    console.log("📍 Punto a verificar:", point);
+    if (process.env.NODE_ENV !== 'production') logger.debug("Punto a verificar", point);
     
     // Si se proporciona orderTotal, validar el pedido completo
     if (orderTotal !== undefined) {
-      console.log("💰 Validando pedido completo con orderTotal:", orderTotal);
+      logger.debug("Validando pedido con orderTotal", { hasOrderTotal: true });
       const validation = await validateDeliveryForOrder(businessId, point, parseFloat(orderTotal));
-      console.log("✅ Resultado de validación:", JSON.stringify(validation));
+      if (process.env.NODE_ENV !== 'production') logger.debug("Resultado de validación", validation);
       
       return res.json({
         success: true,
@@ -215,24 +194,23 @@ router.post("/check-coverage", zoneLimiter, async (req, res) => {
     }
     
     // Solo verificar cobertura
-    console.log("🔍 Verificando solo cobertura (sin orderTotal)");
+    logger.debug("Verificando cobertura sin orderTotal");
     const coverage = await findCoverageForPoint(businessId, point);
-    console.log("✅ Cobertura encontrada:", JSON.stringify(coverage));
+    if (process.env.NODE_ENV !== 'production') logger.debug("Cobertura encontrada", coverage);
     
     res.json({
       success: true,
       ...coverage
     });
   } catch (error) {
-    console.error("❌ ERROR en check-coverage:");
-    console.error("Error completo:", error);
-    console.error("Stack trace:", error.stack);
-    res.status(500).json({
-      success: false,
-      message: "Error al verificar la cobertura",
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    logger.error("ERROR en check-coverage", error, req);
+    const isDev = process.env.NODE_ENV === 'development';
+    res.status(500).json(formatHttpError(
+      req,
+      "Error al verificar la cobertura",
+      500,
+      isDev ? { stack: error.stack } : undefined
+    ));
   }
 });
 
@@ -246,48 +224,44 @@ router.post("/check-coverage", zoneLimiter, async (req, res) => {
  */
 router.get("/", authMiddleware, zoneLimiter, async (req, res) => {
   try {
-    console.log("=== GET /delivery-zones ===");
-    console.log("req.user:", req.user);
-    console.log("req.query.businessId:", req.query.businessId);
+    logger.info("GET /delivery-zones");
     
     // Obtener businessId del token, query param, o del admin
     let businessId = req.user.businessId || req.query.businessId;
-    console.log("businessId inicial:", businessId);
+    logger.debug("businessId inicial", { businessId });
     
     // Si es un token temporal de SuperAdmin, el businessId debe venir en el query
     if (req.user.isTempToken && !businessId) {
-      console.log("❌ Token temporal sin businessId");
-      return res.status(400).json({
-        success: false,
-        message: "businessId es requerido para tokens temporales de SuperAdmin"
-      });
+      logger.warn("Token temporal sin businessId", null, req);
+      return res.status(400).json(
+        formatHttpError(req, "businessId es requerido para tokens temporales de SuperAdmin", 400)
+      );
     }
     
     if (!businessId && req.user.id) {
       // Fallback: buscar el admin y obtener su businessId
-      console.log("Buscando businessId del admin:", req.user.id);
+      logger.debug("Buscando businessId del admin", { adminId: req.user.id });
       const Admin = require("../Models/Admin");
       const admin = await Admin.findById(req.user.id);
-      console.log("Admin encontrado:", admin ? admin._id : 'NO ENCONTRADO');
+      logger.debug("Admin encontrado", { adminFound: !!admin });
       if (admin && admin.businessId) {
         businessId = admin.businessId;
-        console.log("businessId del admin:", businessId);
+        logger.debug("businessId resuelto del admin");
       }
     }
     
-    console.log("businessId final:", businessId);
+    logger.debug("businessId final", { businessId }, req);
     
     if (!businessId) {
-      console.log("❌ No se pudo determinar businessId");
-      return res.status(400).json({
-        success: false,
-        message: "No se pudo determinar el negocio. Por favor, cierre sesión e inicie de nuevo."
-      });
+      logger.warn("No se pudo determinar businessId", null, req);
+      return res.status(400).json(
+        formatHttpError(req, "No se pudo determinar el negocio. Por favor, cierre sesión e inicie de nuevo.", 400)
+      );
     }
     
-    console.log("📦 Obteniendo zonas para businessId:", businessId);
+    logger.info("Obteniendo zonas para businessId", { businessId });
     const zones = await getZonesWithStats(businessId);
-    console.log("✅ Zonas encontradas:", zones.length);
+    logger.info("Zonas encontradas", { total: zones.length });
     
     res.json({
       success: true,
@@ -295,12 +269,8 @@ router.get("/", authMiddleware, zoneLimiter, async (req, res) => {
       total: zones.length
     });
   } catch (error) {
-    console.error("Error al obtener zonas:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al obtener las zonas de entrega",
-      error: error.message
-    });
+    logger.error("Error al obtener zonas", process.env.NODE_ENV !== 'production' ? error : undefined);
+    res.status(500).json(formatHttpError(req, "Error al obtener las zonas de entrega", 500));
   }
 });
 
@@ -316,10 +286,9 @@ router.get("/:id", authMiddleware, zoneLimiter, async (req, res) => {
     const zone = await DeliveryZone.findOne({ _id: id, businessId });
     
     if (!zone) {
-      return res.status(404).json({
-        success: false,
-        message: "Zona no encontrada"
-      });
+      return res.status(404).json(
+        formatHttpError(req, "Zona no encontrada", 404)
+      );
     }
     
     res.json({
@@ -327,50 +296,125 @@ router.get("/:id", authMiddleware, zoneLimiter, async (req, res) => {
       zone
     });
   } catch (error) {
-    console.error("Error al obtener zona:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al obtener la zona",
-      error: error.message
-    });
+    logger.error("Error al obtener zona", error, req);
+    res.status(500).json(formatHttpError(req, "Error al obtener la zona", 500));
   }
 });
+
+// Validación de entrada para crear zona de entrega
+const validateDeliveryZoneInput = (req, res, next) => {
+  const errors = [];
+  const { name, type, geometry, pricing } = req.body;
+  
+  // Validar name
+  if (!name) {
+    errors.push({ field: 'name', message: 'name es requerido' });
+  } else if (typeof name !== 'string' || name.trim().length === 0) {
+    errors.push({ field: 'name', message: 'name debe ser un string no vacío' });
+  }
+  
+  // Validar type
+  const validTypes = ['polygon', 'radius'];
+  if (!type) {
+    errors.push({ field: 'type', message: 'type es requerido' });
+  } else if (!validTypes.includes(type)) {
+    errors.push({ field: 'type', message: `type debe ser uno de: ${validTypes.join(', ')}` });
+  }
+  
+  // Validar geometry según type
+  if (!geometry) {
+    errors.push({ field: 'geometry', message: 'geometry es requerido' });
+  } else {
+    if (type === 'polygon') {
+      if (!geometry.type || geometry.type !== 'Polygon') {
+        errors.push({ field: 'geometry.type', message: 'Para type="polygon", geometry.type debe ser "Polygon"' });
+      }
+      if (!geometry.coordinates || !Array.isArray(geometry.coordinates)) {
+        errors.push({ field: 'geometry.coordinates', message: 'geometry.coordinates debe ser un array' });
+      } else if (geometry.coordinates.length === 0) {
+        errors.push({ field: 'geometry.coordinates', message: 'geometry.coordinates no puede estar vacío' });
+      }
+    } else if (type === 'radius') {
+      if (!geometry.type || geometry.type !== 'Point') {
+        errors.push({ field: 'geometry.type', message: 'Para type="radius", geometry.type debe ser "Point"' });
+      }
+      if (!geometry.coordinates || !Array.isArray(geometry.coordinates) || geometry.coordinates.length !== 2) {
+        errors.push({ field: 'geometry.coordinates', message: 'Para type="radius", geometry.coordinates debe ser [lon, lat]' });
+      } else {
+        const [lon, lat] = geometry.coordinates;
+        if (typeof lon !== 'number' || typeof lat !== 'number' || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+          errors.push({ field: 'geometry.coordinates', message: 'Coordenadas inválidas: lat entre -90 y 90, lon entre -180 y 180' });
+        }
+      }
+      if (typeof geometry.radius !== 'number' || geometry.radius <= 0) {
+        errors.push({ field: 'geometry.radius', message: 'geometry.radius debe ser un número > 0 para type="radius"' });
+      }
+    }
+  }
+  
+  // Validar pricing (opcional pero si existe debe tener estructura válida)
+  if (pricing !== undefined && pricing !== null) {
+    if (typeof pricing !== 'object') {
+      errors.push({ field: 'pricing', message: 'pricing debe ser un objeto' });
+    } else {
+      if (pricing.fixedFee !== undefined && (typeof pricing.fixedFee !== 'number' || pricing.fixedFee < 0)) {
+        errors.push({ field: 'pricing.fixedFee', message: 'pricing.fixedFee debe ser un número >= 0' });
+      }
+      if (pricing.minOrderValue !== undefined && (typeof pricing.minOrderValue !== 'number' || pricing.minOrderValue < 0)) {
+        errors.push({ field: 'pricing.minOrderValue', message: 'pricing.minOrderValue debe ser un número >= 0' });
+      }
+      if (pricing.distanceFee !== undefined && (typeof pricing.distanceFee !== 'number' || pricing.distanceFee < 0)) {
+        errors.push({ field: 'pricing.distanceFee', message: 'pricing.distanceFee debe ser un número >= 0' });
+      }
+    }
+  }
+  
+  if (errors.length > 0) {
+    return res.status(400).json(
+      formatHttpError(req, 'Errores de validación en la entrada', 400, errors)
+    );
+  }
+  
+  next();
+};
 
 /**
  * POST /api/delivery-zones
  * Crear nueva zona de entrega
  */
-router.post("/", authMiddleware, zoneLimiter, async (req, res) => {
+router.post("/", authMiddleware, zoneLimiter, validateDeliveryZoneInput, async (req, res) => {
   try {
-    console.log("=== POST /delivery-zones ===");
-    console.log("req.user:", req.user);
-    console.log("req.body.businessId:", req.body.businessId);
+    logger.info("POST /delivery-zones");
     
     let businessId = req.user.businessId || req.body.businessId;
-    console.log("businessId inicial:", businessId);
+    logger.debug("businessId inicial", { businessId });
     
     // Si no hay businessId en el token, buscar en el modelo Admin
     if (!businessId && req.user.id) {
-      console.log("Buscando businessId del admin:", req.user.id);
+      logger.debug("Buscando businessId del admin", { adminId: req.user.id });
       const Admin = require("../Models/Admin");
       const admin = await Admin.findById(req.user.id);
-      console.log("Admin encontrado:", admin);
+      logger.debug("Admin encontrado", { adminFound: !!admin });
       if (admin && admin.businessId) {
         businessId = admin.businessId;
-        console.log("businessId del admin:", businessId);
+        logger.debug("businessId resuelto del admin");
       }
     }
     
-    console.log("businessId final:", businessId);
+    logger.debug("businessId final", { businessId });
     
     if (!businessId) {
-      return res.status(400).json({
-        success: false,
-        message: "No se pudo determinar el negocio. Por favor, cierre sesión e inicie de nuevo."
-      });
+      return res.status(400).json(
+        formatHttpError(req, "No se pudo determinar el negocio. Por favor, cierre sesión e inicie de nuevo.", 400)
+      );
     }
     
     const zoneData = req.body;
+    
+    // Normalizar datos del círculo (el frontend envía type: 'radius' pero geometry.type: 'Point')
+    if (zoneData.type === 'radius' && zoneData.geometry) {
+      zoneData.geometry.type = 'Point';
+    }
     
     // Validar datos
     const validation = validateZoneData(zoneData);
@@ -383,7 +427,7 @@ router.post("/", authMiddleware, zoneLimiter, async (req, res) => {
     }
     
     // Validar polígono si es tipo polygon
-    if (zoneData.type === 'polygon') {
+    if (zoneData.type === 'polygon' && zoneData.geometry && zoneData.geometry.coordinates) {
       const polygonValidation = validatePolygon(zoneData.geometry.coordinates);
       if (!polygonValidation.isValid) {
         return res.status(400).json({
@@ -393,13 +437,17 @@ router.post("/", authMiddleware, zoneLimiter, async (req, res) => {
       }
     }
     
+    if (process.env.NODE_ENV !== 'production') logger.debug("Datos que se van a guardar", zoneData);
+    
     // Crear zona
     const newZone = new DeliveryZone({
       ...zoneData,
-      businessId
+      businessId: new mongoose.Types.ObjectId(businessId)
     });
     
+    logger.info("Guardando zona");
     await newZone.save();
+    logger.info("Zona guardada exitosamente", { zoneId: newZone._id.toString() });
     
     res.status(201).json({
       success: true,
@@ -407,12 +455,14 @@ router.post("/", authMiddleware, zoneLimiter, async (req, res) => {
       zone: newZone
     });
   } catch (error) {
-    console.error("Error al crear zona:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al crear la zona de entrega",
-      error: error.message
-    });
+    logger.error("Error al crear zona", process.env.NODE_ENV !== 'production' ? error : undefined);
+    const isDev = process.env.NODE_ENV === 'development';
+    res.status(500).json(formatHttpError(
+      req,
+      "Error al crear la zona de entrega",
+      500,
+      isDev ? { stack: error.stack } : undefined
+    ));
   }
 });
 
@@ -423,7 +473,7 @@ router.post("/", authMiddleware, zoneLimiter, async (req, res) => {
 router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
   try {
     const { id } = req.params;
-    let businessId = req.user.businessId || req.body.businessId;
+    let businessId = req.user.businessId || req.body.businessId || req.query.businessId;
     
     // Si no hay businessId en el token, buscar en el modelo Admin
     if (!businessId && req.user.id) {
@@ -434,23 +484,33 @@ router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
       }
     }
     
+    // Requerir businessId cuando sea un token temporal de SuperAdmin
+    if (req.user.isTempToken && !businessId) {
+      return res.status(400).json(
+        formatHttpError(req, "businessId es requerido para tokens temporales de SuperAdmin", 400)
+      );
+    }
+    
     if (!businessId) {
-      return res.status(400).json({
-        success: false,
-        message: "No se pudo determinar el negocio. Por favor, cierre sesión e inicie de nuevo."
-      });
+      return res.status(400).json(
+        formatHttpError(req, "No se pudo determinar el negocio. Por favor, cierre sesión e inicie de nuevo.", 400)
+      );
     }
     
     const updateData = req.body;
+    
+    // Normalizar datos del círculo (el frontend envía type: 'radius' pero geometry.type: 'Point')
+    if (updateData.type === 'radius' && updateData.geometry) {
+      updateData.geometry.type = 'Point';
+    }
     
     // Buscar zona
     const zone = await DeliveryZone.findOne({ _id: id, businessId });
     
     if (!zone) {
-      return res.status(404).json({
-        success: false,
-        message: "Zona no encontrada"
-      });
+      return res.status(404).json(
+        formatHttpError(req, "Zona no encontrada", 404)
+      );
     }
     
     // Validar datos si se están actualizando campos críticos
@@ -471,7 +531,7 @@ router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
     }
     
     // Validar polígono si se está actualizando
-    if (updateData.geometry && updateData.type === 'polygon') {
+    if (updateData.geometry && updateData.type === 'polygon' && updateData.geometry.coordinates) {
       const polygonValidation = validatePolygon(updateData.geometry.coordinates);
       if (!polygonValidation.isValid) {
         return res.status(400).json({
@@ -491,12 +551,14 @@ router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
       zone
     });
   } catch (error) {
-    console.error("Error al actualizar zona:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al actualizar la zona",
-      error: error.message
-    });
+    logger.error("Error al actualizar zona", error, req);
+    const isDev = process.env.NODE_ENV === 'development';
+    res.status(500).json(formatHttpError(
+      req,
+      "Error al actualizar la zona",
+      500,
+      isDev ? { stack: error.stack } : undefined
+    ));
   }
 });
 
@@ -507,7 +569,7 @@ router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
 router.delete("/:id", authMiddleware, zoneLimiter, async (req, res) => {
   try {
     const { id } = req.params;
-    let businessId = req.user.businessId;
+    let businessId = req.user.businessId || req.body.businessId || req.query.businessId;
     
     // Si no hay businessId en el token, buscar en el modelo Admin
     if (!businessId && req.user.id) {
@@ -516,6 +578,13 @@ router.delete("/:id", authMiddleware, zoneLimiter, async (req, res) => {
       if (admin && admin.businessId) {
         businessId = admin.businessId;
       }
+    }
+    
+    // Requerir businessId cuando sea un token temporal de SuperAdmin
+    if (req.user.isTempToken && !businessId) {
+      return res.status(400).json(
+        formatHttpError(req, "businessId es requerido para tokens temporales de SuperAdmin", 400)
+      );
     }
     
     if (!businessId) {
@@ -528,10 +597,9 @@ router.delete("/:id", authMiddleware, zoneLimiter, async (req, res) => {
     const zone = await DeliveryZone.findOneAndDelete({ _id: id, businessId });
     
     if (!zone) {
-      return res.status(404).json({
-        success: false,
-        message: "Zona no encontrada"
-      });
+      return res.status(404).json(
+        formatHttpError(req, "Zona no encontrada", 404)
+      );
     }
     
     res.json({
@@ -539,12 +607,8 @@ router.delete("/:id", authMiddleware, zoneLimiter, async (req, res) => {
       message: "Zona eliminada exitosamente"
     });
   } catch (error) {
-    console.error("Error al eliminar zona:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al eliminar la zona",
-      error: error.message
-    });
+    logger.error("Error al eliminar zona", error, req);
+    res.status(500).json(formatHttpError(req, "Error al eliminar la zona", 500));
   }
 });
 
@@ -555,7 +619,7 @@ router.delete("/:id", authMiddleware, zoneLimiter, async (req, res) => {
 router.patch("/:id/toggle", authMiddleware, zoneLimiter, async (req, res) => {
   try {
     const { id } = req.params;
-    let businessId = req.user.businessId;
+    let businessId = req.user.businessId || req.body.businessId || req.query.businessId;
     
     // Si no hay businessId en el token, buscar en el modelo Admin
     if (!businessId && req.user.id) {
@@ -564,6 +628,13 @@ router.patch("/:id/toggle", authMiddleware, zoneLimiter, async (req, res) => {
       if (admin && admin.businessId) {
         businessId = admin.businessId;
       }
+    }
+    
+    // Requerir businessId cuando sea un token temporal de SuperAdmin
+    if (req.user.isTempToken && !businessId) {
+      return res.status(400).json(
+        formatHttpError(req, "businessId es requerido para tokens temporales de SuperAdmin", 400)
+      );
     }
     
     if (!businessId) {
@@ -576,10 +647,9 @@ router.patch("/:id/toggle", authMiddleware, zoneLimiter, async (req, res) => {
     const zone = await DeliveryZone.findOne({ _id: id, businessId });
     
     if (!zone) {
-      return res.status(404).json({
-        success: false,
-        message: "Zona no encontrada"
-      });
+      return res.status(404).json(
+        formatHttpError(req, "Zona no encontrada", 404)
+      );
     }
     
     zone.isActive = !zone.isActive;
@@ -591,12 +661,8 @@ router.patch("/:id/toggle", authMiddleware, zoneLimiter, async (req, res) => {
       zone
     });
   } catch (error) {
-    console.error("Error al cambiar estado de zona:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al cambiar el estado de la zona",
-      error: error.message
-    });
+    logger.error("Error al cambiar estado de zona", error, req);
+    res.status(500).json(formatHttpError(req, "Error al cambiar el estado de la zona", 500));
   }
 });
 
@@ -632,10 +698,9 @@ router.post("/:id/duplicate", authMiddleware, zoneLimiter, async (req, res) => {
     const originalZone = await DeliveryZone.findOne({ _id: id, businessId });
     
     if (!originalZone) {
-      return res.status(404).json({
-        success: false,
-        message: "Zona no encontrada"
-      });
+      return res.status(404).json(
+        formatHttpError(req, "Zona no encontrada", 404)
+      );
     }
     
     // Crear copia
@@ -657,12 +722,8 @@ router.post("/:id/duplicate", authMiddleware, zoneLimiter, async (req, res) => {
       zone: newZone
     });
   } catch (error) {
-    console.error("Error al duplicar zona:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error al duplicar la zona",
-      error: error.message
-    });
+    logger.error("Error al duplicar zona", error, req);
+    res.status(500).json(formatHttpError(req, "Error al duplicar la zona", 500));
   }
 });
 

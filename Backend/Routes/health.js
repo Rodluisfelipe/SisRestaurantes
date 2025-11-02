@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../utils/logger');
+const { formatHttpError } = require('../utils/errorFormatter');
 
 /**
  * @route GET /api/health
@@ -19,8 +21,8 @@ router.get('/', (req, res) => {
     
     return res.status(200).json(healthInfo);
   } catch (error) {
-    console.error('Error en health check:', error);
-    return res.status(500).json({ status: 'error', message: 'Error interno del servidor' });
+    logger.error('Error en health check', error, req);
+    return res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
   }
 });
 

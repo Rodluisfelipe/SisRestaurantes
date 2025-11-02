@@ -1,3 +1,5 @@
+const logger = require('../utils/logger');
+
 class EventService {
   constructor() {
     this.clients = new Set();
@@ -6,13 +8,13 @@ class EventService {
   // Agregar un nuevo cliente
   addClient(client) {
     this.clients.add(client);
-    console.log(`Cliente conectado. Total clientes: ${this.clients.size}`);
+    logger.debug(`SSE client connected`, { totalClients: this.clients.size });
   }
 
   // Remover un cliente
   removeClient(client) {
     this.clients.delete(client);
-    console.log(`Cliente desconectado. Total clientes: ${this.clients.size}`);
+    logger.debug(`SSE client disconnected`, { totalClients: this.clients.size });
   }
 
   // Enviar evento a todos los clientes

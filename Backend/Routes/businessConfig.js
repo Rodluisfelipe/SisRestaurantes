@@ -3,7 +3,9 @@ const router = express.Router();
 const BusinessConfig = require("../Models/BusinessConfig");
 const eventService = require('../services/eventService');
 const { emitToBusiness } = require("../services/socketService");
-const { findBusinessByIdentifier } = require("../utils/businessHelper");
+const { resolveBusiness, resolveBusinessId } = require("../utils/businessResolver");
+const logger = require("../utils/logger");
+const { formatHttpError } = require("../utils/errorFormatter");
 
 // Obtener la configuración
 router.get("/", async (req, res) => {
@@ -14,22 +16,20 @@ router.get("/", async (req, res) => {
     
     try {
       // Buscar por _id o slug usando el helper
-      const config = await findBusinessByIdentifier(businessId);
-      
-      if (!config) {
+      let config;
+      try {
+        config = await resolveBusiness(businessId);
+      } catch (error) {
         return res.status(404).json({ 
           message: 'Negocio no encontrado', 
-          detail: `No se encontró un negocio con el identificador '${businessId}'` 
+          detail: error.message 
         });
       }
       
       res.json(config);
     } catch (error) {
-      console.error(`Error al obtener la configuración del negocio ${businessId}:`, error);
-      res.status(500).json({ 
-        message: 'Error al obtener la configuración del negocio',
-        error: error.message 
-      });
+      logger.error(`Error obteniendo configuración del negocio`, error, req);
+      res.status(500).json(formatHttpError(req, 'Error al obtener la configuración del negocio', 500));
     }
 });
 
@@ -41,16 +41,14 @@ router.put("/", async (req, res) => {
     }
     
     try {
-      console.log('Datos recibidos para actualizar:', updateData);
+      logger.debug('Actualizando configuración de negocio', { businessId }, req);
       
       // Buscar por _id o slug usando el helper
-      const business = await findBusinessByIdentifier(businessId);
-      
-      if (!business) {
-        return res.status(404).json({ 
-          message: 'Negocio no encontrado',
-          detail: `No se encontró un negocio con el identificador '${businessId}'`
-        });
+      let business;
+      try {
+        business = await resolveBusiness(businessId);
+      } catch (error) {
+        return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404, { detail: error.message }));
       }
       
       // Asegurarse de que los campos address y googleMapsUrl están presentes
@@ -69,14 +67,11 @@ router.put("/", async (req, res) => {
         { new: true }
       );
       
-      console.log('Configuración actualizada:', config);
+      logger.info('Configuración actualizada', { businessId: config._id }, req);
       res.json(config);
     } catch (error) {
-      console.error(`Error al actualizar la configuración del negocio ${businessId}:`, error);
-      res.status(500).json({ 
-        message: 'Error al actualizar la configuración del negocio',
-        error: error.message 
-      });
+      logger.error(`Error actualizando configuración`, error, req);
+      res.status(500).json(formatHttpError(req, 'Error al actualizar la configuración del negocio', 500));
     }
 });
 
@@ -97,8 +92,8 @@ router.put("/status", async (req, res) => {
     
     res.json(config);
   } catch (error) {
-    console.error("Error al actualizar el estado del negocio:", error);
-    res.status(500).json({ message: "Error al actualizar el estado del negocio" });
+    logger.error("Error actualizando estado del negocio", error, req);
+    res.status(500).json(formatHttpError(req, "Error al actualizar el estado del negocio", 500));
   }
 });
 
@@ -150,11 +145,11 @@ router.post("/fix-schema", async (req, res) => {
       }
     }
     
-    console.log("Esquema actualizado:", config);
+    logger.info('Schema fixed/updated', null, req);
     res.json(config);
   } catch (error) {
-    console.error("Error al reparar el esquema:", error);
-    res.status(500).json({ message: "Error al reparar el esquema" });
+    logger.error("Error reparando esquema", error, req);
+    res.status(500).json(formatHttpError(req, "Error al reparar el esquema", 500));
   }
 });
 
@@ -185,11 +180,8 @@ router.put("/active", async (req, res) => {
       
       res.json(config);
     } catch (error) {
-      console.error(`Error al actualizar el estado activo del negocio ${businessId}:`, error);
-      res.status(500).json({ 
-        message: 'Error al actualizar el estado activo del negocio',
-        error: error.message 
-      });
+      logger.error('Error actualizando estado activo del negocio', error, req);
+      res.status(500).json(formatHttpError(req, 'Error al actualizar el estado activo del negocio', 500));
     }
 });
 
@@ -212,11 +204,8 @@ router.get("/by-slug/:slug", async (req, res) => {
     
     res.json(config);
   } catch (error) {
-    console.error(`Error al obtener la configuración del negocio con slug ${slug}:`, error);
-    res.status(500).json({ 
-      message: 'Error al obtener la configuración del negocio',
-      error: error.message 
-    });
+    logger.error('Error obteniendo configuración por slug', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener la configuración del negocio', 500));
   }
 });
 
@@ -234,11 +223,8 @@ router.get("/status/:businessId", async (req, res) => {
     const status = business.getBusinessStatus();
     res.json(status);
   } catch (error) {
-    console.error(`Error al obtener el estado del negocio ${businessId}:`, error);
-    res.status(500).json({ 
-      message: 'Error al obtener el estado del negocio',
-      error: error.message 
-    });
+    logger.error('Error obteniendo estado del negocio', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener el estado del negocio', 500));
   }
 });
 
@@ -286,13 +272,11 @@ router.put("/hours", async (req, res) => {
     // Emitir evento de WebSocket
     emitToBusiness(business._id.toString(), "business_hours_update", { businessHours: validatedHours });
     
+    logger.info('Business hours updated', { businessId }, req);
     res.json(config);
   } catch (error) {
-    console.error(`Error al actualizar horarios del negocio ${businessId}:`, error);
-    res.status(500).json({ 
-      message: 'Error al actualizar horarios del negocio',
-      error: error.message 
-    });
+    logger.error('Error actualizando horarios del negocio', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al actualizar horarios del negocio', 500));
   }
 });
 
@@ -324,13 +308,11 @@ router.put("/menu-status", async (req, res) => {
     // Emitir evento de WebSocket
     emitToBusiness(business._id.toString(), "menu_status_update", { menuStatus });
     
+    logger.info('Menu status updated', { businessId, menuStatus }, req);
     res.json(config);
   } catch (error) {
-    console.error(`Error al actualizar estado del menú del negocio ${businessId}:`, error);
-    res.status(500).json({ 
-      message: 'Error al actualizar estado del menú',
-      error: error.message 
-    });
+    logger.error('Error actualizando estado del menú', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al actualizar estado del menú', 500));
   }
 });
 
@@ -345,16 +327,14 @@ router.put("/:businessId", async (req, res) => {
     }
     
     try {
-      console.log('Datos recibidos para actualizar (URL param):', updateData);
+      logger.debug('Actualizando configuración (URL param)', { businessId }, req);
       
       // Buscar por _id o slug usando el helper
-      const business = await findBusinessByIdentifier(businessId);
-      
-      if (!business) {
-        return res.status(404).json({ 
-          message: 'Negocio no encontrado',
-          detail: `No se encontró un negocio con el identificador '${businessId}'`
-        });
+      let business;
+      try {
+        business = await resolveBusiness(businessId);
+      } catch (error) {
+        return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404, { detail: error.message }));
       }
       
       // Actualizar usando el _id encontrado
@@ -364,14 +344,11 @@ router.put("/:businessId", async (req, res) => {
         { new: true, runValidators: true }
       );
       
-      console.log('Configuración actualizada (URL param):', config);
+      logger.info('Configuración actualizada (URL param)', { businessId: config._id }, req);
       res.json(config);
     } catch (error) {
-      console.error(`Error al actualizar la configuración del negocio ${businessId}:`, error);
-      res.status(500).json({ 
-        message: 'Error al actualizar la configuración del negocio',
-        error: error.message 
-      });
+      logger.error('Error actualizando configuración (URL param)', error, req);
+      res.status(500).json(formatHttpError(req, 'Error al actualizar la configuración del negocio', 500));
     }
 });
 

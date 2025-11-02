@@ -1,6 +1,8 @@
 // Servicio para manejar sockets y rooms por negocio
 let ioInstance = null;
 const connectedClients = new Map(); // Track connected clients
+const { verifyToken } = require('../config/jwt');
+const logger = require('../utils/logger');
 
 function initSocket(io) {
   ioInstance = io;
@@ -8,7 +10,21 @@ function initSocket(io) {
   io.on('connection', (socket) => {
     const sessionId = socket.handshake.query.sessionId;
     const clientType = socket.handshake.query.clientType;
-    console.log('Cliente conectado:', socket.id, 'SessionId:', sessionId, 'Type:', clientType);
+    logger.info('Socket cliente conectado', { socketId: socket.id, sessionId, clientType });
+
+    // Autenticación por JWT en el handshake
+    try {
+      const authHeader = socket.handshake.headers?.authorization;
+      const authToken = socket.handshake.auth?.token || (authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null);
+      if (authToken) {
+        const decoded = verifyToken(authToken);
+        if (decoded) {
+          socket.user = decoded; // { id, businessId? }
+        }
+      }
+    } catch (e) {
+      logger.warn('Socket auth error', { socketId: socket.id, error: e?.message });
+    }
     connectedClients.set(socket.id, { 
       socket, 
       businessId: null, 
@@ -17,15 +33,31 @@ function initSocket(io) {
       clientType
     });
 
-    // Unirse a un room por businessId
+    // Unirse a un room por businessId con validación de pertenencia
     socket.on('joinBusiness', async (businessId) => {
       if (businessId) {
         try {
+          // Enforce tenant guard: requiere socket.user y coincidencia de tenant
+          if (!socket.user) {
+            logger.warn('joinBusiness rechazado - no autenticado', { socketId: socket.id, businessId });
+            socket.emit('businessJoined', { businessId, success: false, error: 'unauthorized' });
+            return;
+          }
+
+          const requestedBusiness = businessId.toString();
+          const tenantBusiness = (socket.user.businessId || '').toString();
+
+          if (!tenantBusiness || tenantBusiness !== requestedBusiness) {
+            logger.warn('joinBusiness rechazado - tenant mismatch', { socketId: socket.id, tokenTenant: tenantBusiness, requested: requestedBusiness });
+            socket.emit('businessJoined', { businessId, success: false, error: 'forbidden' });
+            return;
+          }
+
           // Leave previous business room if any
           const clientInfo = connectedClients.get(socket.id);
           if (clientInfo && clientInfo.businessId) {
             socket.leave(clientInfo.businessId);
-            console.log(`Socket ${socket.id} salió del negocio anterior ${clientInfo.businessId}`);
+            logger.debug('Socket salió del negocio anterior', { socketId: socket.id, previousBusiness: clientInfo.businessId });
           }
 
           // Join new business room
@@ -39,14 +71,14 @@ function initSocket(io) {
             joinedAt: new Date()
           });
           
-          console.log(`✅ Socket ${socket.id} se unió al negocio ${businessId}`);
-          console.log(`📊 Clientes conectados al negocio ${businessId}:`, io.sockets.adapter.rooms.get(businessId.toString())?.size || 0);
+          const clientCount = io.sockets.adapter.rooms.get(businessId.toString())?.size || 0;
+          logger.info('Socket se unió al negocio', { socketId: socket.id, businessId, clientCount });
           
           // Confirm join to client
           socket.emit('businessJoined', { businessId, success: true });
           
         } catch (error) {
-          console.error('Error joining business room:', error);
+          logger.error('Error joining business room', error);
           socket.emit('businessJoined', { businessId, success: false, error: error.message });
         }
       }
@@ -55,33 +87,33 @@ function initSocket(io) {
     // Unirse a un canal específico para superadmin
     socket.on('joinSuperAdmin', () => {
       socket.join('superadmin-channel');
-      console.log(`Socket ${socket.id} se unió al canal de superadmin`);
+      logger.info('Socket se unió al canal de superadmin', { socketId: socket.id });
     });
 
     // Salir de un room
     socket.on('leaveBusiness', (businessId) => {
       if (businessId) {
         socket.leave(businessId);
-        console.log(`Socket ${socket.id} salió del negocio ${businessId}`);
+        logger.debug('Socket salió del negocio', { socketId: socket.id, businessId });
       }
     });
 
     // Salir del canal de superadmin
     socket.on('leaveSuperAdmin', () => {
       socket.leave('superadmin-channel');
-      console.log(`Socket ${socket.id} salió del canal de superadmin`);
+      logger.debug('Socket salió del canal de superadmin', { socketId: socket.id });
     });
 
     // Test connection endpoint
     socket.on('ping', () => {
-      console.log(`Ping received from ${socket.id}`);
+      logger.debug('Ping received', { socketId: socket.id });
       socket.emit('pong', { timestamp: new Date().toISOString() });
     });
 
     socket.on('disconnect', () => {
       const clientInfo = connectedClients.get(socket.id);
       if (clientInfo) {
-        console.log(`Cliente desconectado: ${socket.id} (SessionId: ${clientInfo.sessionId}, Type: ${clientInfo.clientType})`);
+        logger.info('Cliente desconectado', { socketId: socket.id, sessionId: clientInfo.sessionId, clientType: clientInfo.clientType });
         connectedClients.delete(socket.id);
       }
     });
@@ -90,7 +122,7 @@ function initSocket(io) {
 
 async function emitToBusiness(businessId, event, data) {
   if (!ioInstance || !businessId) {
-    console.warn('⚠️ Cannot emit to business: ioInstance or businessId missing', { ioInstance: !!ioInstance, businessId });
+    logger.warn('Cannot emit to business - ioInstance or businessId missing', { ioInstance: !!ioInstance, businessId });
     return;
   }
   
@@ -102,10 +134,10 @@ async function emitToBusiness(businessId, event, data) {
     const roomClients = ioInstance.sockets.adapter.rooms.get(roomId);
     const clientCount = roomClients?.size || 0;
     
-    console.log(`🚀 Emitting ${event} to business ${roomId} (${clientCount} clients connected)`);
+    logger.debug(`Emitting ${event} to business`, { roomId, clientCount });
     
     if (clientCount === 0) {
-      console.warn(`⚠️ No clients connected to business ${roomId} - event may not be received`);
+      logger.warn(`No clients connected to business - event may not be received`, { roomId });
     }
     
     // Emit to the main room
@@ -121,18 +153,18 @@ async function emitToBusiness(businessId, event, data) {
           const slugClientCount = slugRoomClients?.size || 0;
           
           ioInstance.to(business.slug).emit(event, data);
-          console.log(`🚀 Also emitting to business slug ${business.slug} (${slugClientCount} clients)`);
+          logger.debug(`Also emitting to business slug`, { slug: business.slug, slugClientCount });
         }
       } catch (error) {
-        console.error('Error emitting to business slug:', error);
+        logger.error('Error emitting to business slug', error);
       }
     }
     
     // Log successful emission
-    console.log(`✅ Successfully emitted ${event} to business ${roomId}`);
+    logger.debug(`Successfully emitted ${event} to business`, { roomId });
     
   } catch (error) {
-    console.error('❌ Error in emitToBusiness:', error);
+    logger.error('Error in emitToBusiness', error);
   }
 }
 
@@ -140,7 +172,7 @@ async function emitToBusiness(businessId, event, data) {
 function emitBusinessesUpdate() {
   if (ioInstance) {
     ioInstance.to('superadmin-channel').emit('businesses-updated');
-    console.log('Emitido evento de actualización de negocios a superadmins');
+    logger.debug('Emitido evento de actualización de negocios a superadmins');
   }
 }
 

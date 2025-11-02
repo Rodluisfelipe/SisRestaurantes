@@ -5,6 +5,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const { generateToken, generateRefreshToken, verifyToken, verifyRefreshToken } = require('../config/jwt');
 const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middleware/authMiddleware');
+const logger = require('../utils/logger');
 
 // Rate limiter para prevenir ataques de fuerza bruta
 const loginLimiter = rateLimit({
@@ -96,7 +97,7 @@ router.post('/register', async (req, res) => {
       refreshToken
     });
   } catch (error) {
-    console.error('Error al registrar negocio:', error);
+    logger.error('Error al registrar negocio', process.env.NODE_ENV !== 'production' ? error : undefined);
     res.status(500).json({ message: 'Error en el servidor al registrar el negocio' });
   }
 });
@@ -116,16 +117,16 @@ router.post('/check-email', async (req, res) => {
       available: !existingAdmin
     });
   } catch (error) {
-    console.error('Error al verificar email:', error);
+    logger.error('Error al verificar email', process.env.NODE_ENV !== 'production' ? error : undefined);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });
 
-// Ruta de login
-// router.post('/login', loginLimiter, async (req, res) => {
-router.post('/login', async (req, res) => {
+// Ruta de login con rate limiting
+router.post('/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
+    logger.info('POST /auth/login', { username, password: 'REDACTED' });
 
     // Buscar el admin
     const admin = await Admin.findOne({ username });
@@ -161,7 +162,7 @@ router.post('/login', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error en login:', error);
+    logger.error('Error en login', process.env.NODE_ENV !== 'production' ? error : undefined);
     res.status(500).json({ message: 'Error en el servidor' });
   }
 });

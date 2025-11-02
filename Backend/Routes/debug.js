@@ -1,10 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const socketService = require('../services/socketService');
+const authMiddleware = require('../middleware/authMiddleware');
+const logger = require('../utils/logger');
+const { formatHttpError } = require('../utils/errorFormatter');
 
 /**
  * Debug routes for Socket.IO troubleshooting
  */
+
+// Proteger endpoints de debug con autenticación
+router.use(authMiddleware);
 
 // Get connected clients information
 router.get('/socket/clients', (req, res) => {
@@ -16,11 +22,8 @@ router.get('/socket/clients', (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error getting clients info:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    logger.error('Error getting clients info', error, req);
+    res.status(500).json(formatHttpError(req, error.message, 500));
   }
 });
 
@@ -35,6 +38,7 @@ router.post('/socket/test/:businessId', (req, res) => {
     
     socketService.testEmitToBusiness(businessId, testData);
     
+    logger.debug('Test socket emission sent', { businessId }, req);
     res.json({
       success: true,
       message: `Test event emitted to business ${businessId}`,
@@ -42,11 +46,8 @@ router.post('/socket/test/:businessId', (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error testing socket emission:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    logger.error('Error testing socket emission', error, req);
+    res.status(500).json(formatHttpError(req, error.message, 500));
   }
 });
 
@@ -75,6 +76,7 @@ router.post('/socket/test-order/:businessId', (req, res) => {
     
     socketService.emitToBusiness(businessId, 'order_created', testOrder);
     
+    logger.debug('Test order emission sent', { businessId }, req);
     res.json({
       success: true,
       message: `Test order event emitted to business ${businessId}`,
@@ -82,11 +84,8 @@ router.post('/socket/test-order/:businessId', (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error testing order emission:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message
-    });
+    logger.error('Error testing order emission', error, req);
+    res.status(500).json(formatHttpError(req, error.message, 500));
   }
 });
 

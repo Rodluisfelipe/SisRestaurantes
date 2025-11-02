@@ -1,6 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const eventService = require('../services/eventService');
+const authMiddleware = require('../middleware/authMiddleware');
+
+// Proteger SSE con autenticación
+router.use(authMiddleware);
 
 // Middleware para configurar la respuesta SSE
 const setSSEHeaders = (req, res, next) => {

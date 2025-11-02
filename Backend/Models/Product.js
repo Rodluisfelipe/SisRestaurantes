@@ -53,4 +53,11 @@ const ProductSchema = new mongoose.Schema({
   }
 });
 
+// Índices para mejorar rendimiento de consultas comunes
+// Índice compuesto para consultas filtradas por negocio, categoría y estado activo
+ProductSchema.index({ businessId: 1, category: 1, active: 1 });
+
+// Índice compuesto para ordenamiento eficiente por displayOrder dentro de un negocio
+ProductSchema.index({ businessId: 1, displayOrder: 1 });
+
 module.exports = mongoose.models.Product || mongoose.model("Product", ProductSchema);

@@ -20,37 +20,89 @@ class Logger {
   }
 
   /**
-   * Formatea el mensaje con timestamp y nivel
+   * Redacta PII de un objeto recursivamente
+   * @param {any} obj - El objeto a redactar
+   * @returns {any} - El objeto con PII redactada
    */
-  formatMessage(level, message, data = null) {
-    const timestamp = new Date().toISOString();
-    const prefix = `[${timestamp}] [${level}]`;
+  redactPII(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
     
-    if (data) {
-      return { prefix, message, data };
+    const piiFields = ['password', 'phone', 'token', 'address', 'email', 'authorization'];
+    const redacted = Array.isArray(obj) ? [...obj] : { ...obj };
+    
+    for (const key in redacted) {
+      const lowerKey = key.toLowerCase();
+      // Buscar campos sensibles (exacto o como subcadena)
+      if (piiFields.some(field => lowerKey.includes(field))) {
+        redacted[key] = 'REDACTED';
+      } else if (typeof redacted[key] === 'object' && redacted[key] !== null) {
+        // Recursión para objetos anidados
+        redacted[key] = this.redactPII(redacted[key]);
+      }
     }
-    return { prefix, message };
+    
+    return redacted;
+  }
+
+  /**
+   * Formatea el mensaje con timestamp, nivel y contexto
+   * @param {string} level - Nivel del log
+   * @param {string} message - Mensaje del log
+   * @param {object} data - Datos adicionales
+   * @param {object} context - Contexto (requestId, route, tenantId)
+   */
+  formatMessage(level, message, data = null, context = null) {
+    const timestamp = new Date().toISOString();
+    const contextParts = [];
+    
+    if (context) {
+      if (context.requestId) contextParts.push(`reqId:${context.requestId}`);
+      if (context.route) contextParts.push(`route:${context.route}`);
+      if (context.tenantId) contextParts.push(`tenant:${context.tenantId}`);
+    }
+    
+    const contextStr = contextParts.length > 0 ? ` [${contextParts.join(' ')}]` : '';
+    const prefix = `[${timestamp}] [${level}]${contextStr}`;
+    
+    // Redactar PII de data (siempre, no solo en producción)
+    if (data && typeof data === 'object') {
+      const redactedData = this.redactPII(data);
+      return { prefix, message, data: redactedData };
+    }
+    
+    return { prefix, message, data };
+  }
+
+  /**
+   * Helper para obtener contexto de req si está disponible
+   */
+  getContext(req = null) {
+    if (!req) return null;
+    return {
+      requestId: req.id || req.headers['x-request-id'] || null,
+      route: req.route?.path || req.path || req.originalUrl || null,
+      tenantId: req.user?.businessId?.toString() || req.query?.businessId || req.body?.businessId || null
+    };
   }
 
   /**
    * Log de errores - siempre se muestra
    */
-  error(message, error = null) {
+  error(message, error = null, req = null) {
     if (this.currentLevel >= this.levels.ERROR) {
-      const formatted = this.formatMessage('ERROR', message, error);
+      const context = this.getContext(req);
+      const errorData = error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: isDevelopment ? error.stack : undefined,
+        code: error.code
+      } : error;
+      
+      const formatted = this.formatMessage('ERROR', message, errorData, context);
       console.error(formatted.prefix, formatted.message);
       
-      if (error) {
-        if (error instanceof Error) {
-          console.error('Stack trace:', error.stack);
-          console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            code: error.code
-          });
-        } else {
-          console.error('Error data:', error);
-        }
+      if (formatted.data) {
+        console.error('Details:', formatted.data);
       }
     }
   }
@@ -58,33 +110,36 @@ class Logger {
   /**
    * Log de warnings
    */
-  warn(message, data = null) {
+  warn(message, data = null, req = null) {
     if (this.currentLevel >= this.levels.WARN) {
-      const formatted = this.formatMessage('WARN', message, data);
+      const context = this.getContext(req);
+      const formatted = this.formatMessage('WARN', message, data, context);
       console.warn(formatted.prefix, formatted.message);
-      if (data) console.warn('Data:', data);
+      if (formatted.data) console.warn('Data:', formatted.data);
     }
   }
 
   /**
    * Log de información
    */
-  info(message, data = null) {
+  info(message, data = null, req = null) {
     if (this.currentLevel >= this.levels.INFO) {
-      const formatted = this.formatMessage('INFO', message, data);
+      const context = this.getContext(req);
+      const formatted = this.formatMessage('INFO', message, data, context);
       console.log(formatted.prefix, formatted.message);
-      if (data) console.log('Data:', data);
+      if (formatted.data) console.log('Data:', formatted.data);
     }
   }
 
   /**
    * Log de debug - solo en desarrollo
    */
-  debug(message, data = null) {
+  debug(message, data = null, req = null) {
     if (this.currentLevel >= this.levels.DEBUG && isDevelopment) {
-      const formatted = this.formatMessage('DEBUG', message, data);
+      const context = this.getContext(req);
+      const formatted = this.formatMessage('DEBUG', message, data, context);
       console.log(formatted.prefix, formatted.message);
-      if (data) console.log('Debug data:', data);
+      if (formatted.data) console.log('Debug data:', formatted.data);
     }
   }
 

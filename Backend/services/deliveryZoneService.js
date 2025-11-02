@@ -7,6 +7,7 @@ const {
   getPolygonCenter
 } = require('../utils/geospatial');
 const { findBusinessByIdentifier } = require('../utils/businessHelper');
+const logger = require('../utils/logger');
 
 /**
  * Calcula el precio de entrega según las reglas de la zona
@@ -107,16 +108,14 @@ async function findCoverageForPoint(businessId, point, options = {}) {
   }
   
   // Resolver businessId (puede ser slug o ObjectId)
-  console.log('🔍 findCoverageForPoint - businessId recibido:', businessId);
   const business = await findBusinessByIdentifier(businessId);
   if (!business) {
-    console.error('❌ Negocio no encontrado:', businessId);
+    logger.warn('Negocio no encontrado en findCoverageForPoint', { businessId });
     return {
       covered: false,
       message: 'Negocio no encontrado'
     };
   }
-  console.log('✅ Negocio encontrado:', business._id);
   
   // Obtener todas las zonas activas del negocio ordenadas por prioridad
   const zones = await DeliveryZone.getActiveZones(business._id);
@@ -223,10 +222,20 @@ async function validateDeliveryForOrder(businessId, point, orderTotal) {
  * @returns {Promise<Array>}
  */
 async function getZonesWithStats(businessId) {
-  console.log('📦 getZonesWithStats - Buscando zonas para businessId:', businessId);
-  const zones = await DeliveryZone.find({ businessId })
+  // Convertir businessId a ObjectId para la búsqueda y contemplar datos históricos guardados como string
+  const mongoose = require('mongoose');
+  const isValid = mongoose.Types.ObjectId.isValid(businessId);
+  const asObjectId = isValid ? new mongoose.Types.ObjectId(businessId) : null;
+  const asString = String(businessId);
+
+  const query = asObjectId
+    ? { businessId: { $in: [asObjectId, asString] } }
+    : { businessId: asString };
+
+  const zones = await DeliveryZone.find(query)
     .sort({ priority: -1, createdAt: -1 });
-  console.log('📦 getZonesWithStats - Zonas encontradas:', zones.length);
+  
+  logger.debug('Found zones for business', { businessId, count: zones.length });
   
   return zones.map(zone => ({
     id: zone._id,

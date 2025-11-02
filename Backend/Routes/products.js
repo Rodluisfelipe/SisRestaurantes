@@ -4,7 +4,9 @@ const Product = require("../Models/Product");
 const { emitToBusiness } = require("../services/socketService");
 const mongoose = require("mongoose");
 const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
+const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
+const { formatHttpError } = require("../utils/errorFormatter");
 
 /**
  * API de Productos
@@ -78,13 +80,50 @@ router.get("/:id", async (req, res) => {
       });
     res.json(product);
   } catch (error) {
-    console.error("Error al obtener producto:", error);
-    res.status(500).json({ message: error.message });
+    logger.error("Error al obtener producto", error, req);
+    res.status(500).json(formatHttpError(req, error.message || "Error al obtener producto", 500));
   }
 });
 
+// Validación de entrada para crear/actualizar producto
+const validateProductInput = (req, res, next) => {
+  const errors = [];
+  const { name, price, businessId } = req.body;
+  
+  // Validar name
+  if (!name) {
+    errors.push({ field: 'name', message: 'name es requerido' });
+  } else if (typeof name !== 'string' || name.trim().length === 0) {
+    errors.push({ field: 'name', message: 'name debe ser un string no vacío' });
+  }
+  
+  // Validar price
+  if (price === undefined || price === null) {
+    errors.push({ field: 'price', message: 'price es requerido' });
+  } else if (typeof price !== 'number' || isNaN(price) || price < 0) {
+    errors.push({ field: 'price', message: 'price debe ser un número >= 0' });
+  }
+  
+  // Validar businessId (solo para POST, en PUT se valida en el endpoint)
+  if (req.method === 'POST') {
+    if (!businessId) {
+      errors.push({ field: 'businessId', message: 'businessId es requerido' });
+    } else if (typeof businessId !== 'string') {
+      errors.push({ field: 'businessId', message: 'businessId debe ser un string' });
+    }
+  }
+  
+  if (errors.length > 0) {
+    return res.status(400).json(
+      formatHttpError(req, 'Errores de validación en la entrada', 400, errors)
+    );
+  }
+  
+  next();
+};
+
 // POST a product
-router.post("/", async (req, res) => {
+router.post("/", validateProductInput, async (req, res) => {
   try {
     let productData = req.body;
     
@@ -103,14 +142,13 @@ router.post("/", async (req, res) => {
     
     // Manejar businessId si viene como slug usando la utilidad centralizada
     if (productData.businessId && typeof productData.businessId === 'string') {
-      const businessResult = await validateAndResolveBusinessId(productData.businessId);
-      if (!businessResult.success) {
-        return res.status(404).json({ 
-          message: 'Business not found',
-          detail: businessResult.error
-        });
+      try {
+        productData.businessId = await resolveBusinessId(productData.businessId);
+      } catch (error) {
+        return res.status(404).json(
+          formatHttpError(req, 'Business not found', 404, { detail: error.message })
+        );
       }
-      productData.businessId = businessResult.businessId;
     }
     
     const newProduct = new Product(productData);
@@ -130,20 +168,20 @@ router.post("/", async (req, res) => {
     logger.info(`Created new product: ${newProduct.name} for business ${productData.businessId}`);
     res.json(populatedProduct);
   } catch (error) {
-    logger.error("Error creating product", error);
-    res.status(500).json({ message: "Error creating product" });
+    logger.error("Error creating product", error, req);
+    res.status(500).json(formatHttpError(req, "Error creating product", 500));
   }
 });
 
 // Test endpoint without middleware
 router.put("/reorder-simple", async (req, res) => {
-  console.log(`[Products] Simple test endpoint hit - ${new Date().toISOString()}`);
+  logger.debug("Simple test endpoint hit", { timestamp: new Date().toISOString() }, req);
   res.json({ success: true, message: "Simple endpoint working", timestamp: new Date().toISOString() });
 });
 
 // Reorder products (working endpoint)
 router.put("/products-reorder", async (req, res) => {
-  console.log(`[Products] PRODUCTS-REORDER ENDPOINT CALLED - ${new Date().toISOString()}`);
+  logger.debug("PRODUCTS-REORDER ENDPOINT CALLED", { timestamp: new Date().toISOString() }, req);
   
   try {
     const { businessId, products } = req.body;
@@ -156,7 +194,7 @@ router.put("/products-reorder", async (req, res) => {
       return res.status(400).json({ message: "Formato inválido para products" });
     }
     
-    console.log(`[Products] Reordenando productos para negocio ${businessId}:`, products.length);
+    logger.debug("Reordenando productos", { businessId, productsCount: products.length }, req);
     
     // Usar bulkWrite para actualizar todos los productos de una vez (más eficiente)
     const bulkOps = products.map(productData => ({
@@ -167,7 +205,7 @@ router.put("/products-reorder", async (req, res) => {
     }));
     
     const result = await Product.bulkWrite(bulkOps);
-    console.log(`[Products] Bulk update result:`, result);
+    logger.debug("Bulk update result", { modifiedCount: result.modifiedCount }, req);
     
     // Emitir evento de actualización
     emitToBusiness(businessId, "products_update", { 
@@ -178,40 +216,51 @@ router.put("/products-reorder", async (req, res) => {
     
     res.json({ success: true, message: "Orden de productos actualizado correctamente" });
   } catch (error) {
-    console.error("[Products] Error al reordenar productos:", error);
-    res.status(500).json({ message: "Error al reordenar los productos", error: error.message });
+    logger.error("Error al reordenar productos", error, req);
+    res.status(500).json(formatHttpError(req, "Error al reordenar los productos", 500));
   }
 });
 
 // Reorder products
 router.put("/reorder", async (req, res) => {
-  console.log(`[Products] REORDER ENDPOINT CALLED - ${new Date().toISOString()}`);
-  console.log(`[Products] Request body:`, req.body);
+  logger.debug("REORDER ENDPOINT CALLED", { timestamp: new Date().toISOString() }, req);
   
   try {
-    res.json({ success: true, message: "Endpoint simplificado funcionando", body: req.body });
+    res.json({ success: true, message: "Endpoint simplificado funcionando" });
   } catch (error) {
-    console.error("[Products] Error en endpoint simplificado:", error);
-    res.status(500).json({ message: "Error en endpoint simplificado", error: error.message });
+    logger.error("Error en endpoint simplificado", error, req);
+    res.status(500).json(formatHttpError(req, "Error en endpoint simplificado", 500));
   }
 });
 
 // PUT a product
-router.put("/:id", async (req, res) => {
+router.put("/:id", validateProductInput, async (req, res) => {
   try {
     const productId = req.params.id;
     const { name, description, price, category, image, toppingGroups, businessId } = req.body;
     
-    console.log('Actualizando producto:', productId);
-    console.log('Datos recibidos:', req.body);
-    console.log('ToppingGroups recibidos:', toppingGroups);
+    logger.debug('Actualizando producto', { productId, toppingGroupsCount: toppingGroups?.length }, req);
+    
+    // Validar businessId en PUT
+    if (!businessId) {
+      return res.status(400).json(
+        formatHttpError(req, 'Errores de validación en la entrada', 400, [
+          { field: 'businessId', message: 'businessId es requerido' }
+        ])
+      );
+    }
     
     // Manejar businessId si viene como slug usando la utilidad centralizada
     let finalBusinessId = businessId;
     if (businessId && typeof businessId === 'string') {
-      const businessResult = await validateAndResolveBusinessId(businessId);
-      if (businessResult.success) {
-        finalBusinessId = businessResult.businessId;
+      try {
+        finalBusinessId = await resolveBusinessId(businessId);
+      } catch (error) {
+        return res.status(400).json(
+          formatHttpError(req, 'Errores de validación en la entrada', 400, [
+            { field: 'businessId', message: error.message }
+          ])
+        );
       }
     }
     
@@ -224,8 +273,8 @@ router.put("/:id", async (req, res) => {
       }));
     }
 
-    const updatedProduct = await Product.findByIdAndUpdate(
-      productId,
+    const updatedProduct = await Product.findOneAndUpdate(
+      { _id: productId, businessId: finalBusinessId },
       { 
         name, 
         description, 
@@ -237,26 +286,33 @@ router.put("/:id", async (req, res) => {
         toppingGroups: toppingGroups || [],
         toppingGroupsOrder: toppingGroupsOrder
       },
-      { new: true }  // Para que devuelva el documento actualizado
+      { new: true }
     ).populate({
       path: 'toppingGroups',
       match: { active: true },
       select: 'name description isMultipleChoice isRequired options basePrice subGroups'
     });
     
-    console.log('Producto actualizado:', updatedProduct);
+    logger.info('Producto actualizado', { productId: updatedProduct._id.toString() }, req);
     
     res.json(updatedProduct);
   } catch (error) {
-    console.error('Error al actualizar producto:', error);
-    res.status(500).json({ error: error.message });
+    logger.error('Error al actualizar producto', error, req);
+    res.status(500).json(formatHttpError(req, error.message || "Error al actualizar producto", 500));
   }
 });
 
 // DELETE a product
 router.delete("/:id", async (req, res) => {
   try {
-    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+    const { businessId } = req.query;
+    let resolvedBusinessId;
+    try {
+      resolvedBusinessId = await resolveBusinessId(businessId);
+    } catch (error) {
+      return res.status(404).json(formatHttpError(req, error.message, 404));
+    }
+    const deletedProduct = await Product.findOneAndDelete({ _id: req.params.id, businessId: resolvedBusinessId });
     
     // Emitir evento de actualización por WebSocket
     if (deletedProduct) {
@@ -265,8 +321,8 @@ router.delete("/:id", async (req, res) => {
     
     res.json({ message: "Producto eliminado" });
   } catch (error) {
-    console.error("Error al eliminar producto:", error);
-    res.status(500).json({ message: "Error al eliminar el producto" });
+    logger.error("Error al eliminar producto", error, req);
+    res.status(500).json(formatHttpError(req, "Error al eliminar el producto", 500));
   }
 });
 
@@ -275,7 +331,7 @@ router.patch("/:id/toggle", async (req, res) => {
   try {
     const productId = req.params.id;
     
-    console.log(`[Products] Toggling product ${productId}`);
+    logger.debug("Toggling product", { productId }, req);
     
     // Encontrar el producto
     const product = await Product.findById(productId);
@@ -287,7 +343,7 @@ router.patch("/:id/toggle", async (req, res) => {
     product.active = !product.active;
     await product.save();
     
-    console.log(`[Products] Product ${product.name} toggled to ${product.active}`);
+    logger.info(`Product toggled`, { productId: product._id.toString(), name: product.name, active: product.active }, req);
     
     // Emitir evento de actualización por WebSocket
     emitToBusiness(product.businessId?.toString(), "products_update", { 
@@ -306,8 +362,8 @@ router.patch("/:id/toggle", async (req, res) => {
       }
     });
   } catch (error) {
-    console.error("Error toggling product:", error);
-    res.status(500).json({ message: "Error al cambiar el estado del producto" });
+    logger.error("Error toggling product", error, req);
+    res.status(500).json(formatHttpError(req, "Error al cambiar el estado del producto", 500));
   }
 });
 

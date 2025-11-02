@@ -4,13 +4,10 @@ const ToppingGroup = require("../Models/ToppingGroup");
 const eventService = require('../services/eventService');
 const { emitToBusiness } = require("../services/socketService");
 const mongoose = require('mongoose');
-const { findBusinessByIdentifier, createBusinessFilter } = require("../utils/businessHelper");
-
-// Middleware para debugging
-router.use((req, res, next) => {
-  console.log(`[ToppingGroups] ${req.method} ${req.originalUrl}`);
-  next();
-});
+const { createBusinessFilter } = require("../utils/businessHelper");
+const { resolveBusinessId } = require("../utils/businessResolver");
+const logger = require("../utils/logger");
+const { formatHttpError } = require("../utils/errorFormatter");
 
 // Endpoint de prueba para verificar que el servidor esté funcionando
 router.get("/test", (req, res) => {
@@ -23,14 +20,13 @@ router.get("/test", (req, res) => {
 
 // Get all topping groups
 router.get("/", async (req, res) => {
-  console.log('[ToppingGroups] Iniciando GET /topping-groups');
   try {
     let { businessId } = req.query;
     
     // Crear filtro basado en businessId o slug
     const filter = await createBusinessFilter(businessId);
     
-    console.log('[ToppingGroups] Buscando grupos con filtro:', filter);
+    logger.debug('Buscando topping groups con filtro', filter, req);
     
     // Obtener todos los grupos activos del negocio
     const groups = await ToppingGroup.find(filter);
@@ -50,126 +46,90 @@ router.get("/", async (req, res) => {
       return plainGroup;
     });
     
-    console.log('[ToppingGroups] Grupos procesados con basePrice:', 
-      transformedGroups.map(g => ({
-        id: g._id,
-        name: g.name,
-        basePrice: g.basePrice,
-        type: typeof g.basePrice
-      }))
-    );
+    logger.info(`Retrieved ${transformedGroups.length} topping groups for business ${businessId}`, { count: transformedGroups.length }, req);
 
     // Enviar los grupos transformados
     res.json(transformedGroups);
   } catch (error) {
-    console.error("[ToppingGroups] Error al obtener grupos:", error);
-    res.status(500).json({ 
-      message: "Error al obtener grupos de toppings",
-      error: error.message 
-    });
+    logger.error("Error obteniendo topping groups", error, req);
+    res.status(500).json(formatHttpError(req, "Error al obtener grupos de toppings", 500));
   }
 });
 
 // Create new topping group
 router.post("/", async (req, res) => {
-  console.log("Datos recibidos para crear grupo:", req.body);
   try {
+    logger.debug('Creating topping group', { name: req.body.name }, req);
+    
     // Validar datos requeridos
     if (!req.body.name || req.body.name.trim() === '') {
-      return res.status(400).json({ message: "El nombre del grupo es requerido" });
+      return res.status(400).json(formatHttpError(req, "El nombre del grupo es requerido", 400));
     }
 
     if (!req.body.businessId) {
-      return res.status(400).json({ message: "El businessId es requerido" });
+      return res.status(400).json(formatHttpError(req, "El businessId es requerido", 400));
     }
 
     // Manejar businessId si viene como slug
     if (req.body.businessId && typeof req.body.businessId === 'string') {
-      // Buscar el businessId real
-      const business = await findBusinessByIdentifier(req.body.businessId);
-      if (business) {
-        req.body.businessId = business._id;
-      } else {
-        return res.status(404).json({ 
-          message: 'Negocio no encontrado',
-          detail: `No se encontró un negocio con el identificador '${req.body.businessId}'`
-        });
+      try {
+        req.body.businessId = await resolveBusinessId(req.body.businessId);
+      } catch (error) {
+        return res.status(404).json(formatHttpError(req, "Negocio no encontrado", 404, { detail: error.message }));
       }
     }
     
     const group = new ToppingGroup(req.body);
     await group.save();
     
-    console.log("Grupo creado:", {
-      id: group._id,
-      name: group.name,
-      basePrice: group.basePrice
-    });
+    logger.info('Topping group created', { id: group._id, name: group.name }, req);
     
     // Emitir evento de WebSocket
     emitToBusiness(group.businessId?.toString(), "topping_groups_update", { type: "created" });
     res.status(201).json(group);
   } catch (error) {
-    console.error("Error al crear grupo:", error);
+    logger.error("Error creating topping group", error, req);
     
     // Manejar errores específicos de validación
     if (error.name === 'ValidationError') {
-      const validationErrors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ 
-        message: "Error de validación", 
-        errors: validationErrors 
-      });
+      const validationErrors = Object.values(error.errors).map(err => ({ field: err.path, message: err.message }));
+      return res.status(400).json(formatHttpError(req, "Error de validación", 400, validationErrors));
     }
     
     if (error.name === 'CastError') {
-      return res.status(400).json({ message: "Formato de datos inválido" });
+      return res.status(400).json(formatHttpError(req, "Formato de datos inválido", 400));
     }
     
     if (error.name === 'MongoServerError' && error.code === 11000) {
-      console.log("ERROR DE CLAVE DUPLICADA EN POST");
-      console.log("Detalles:", error.keyValue);
-      return res.status(409).json({ 
-        message: "Ya existe un grupo con este nombre para este negocio",
+      logger.warn('Duplicate key error on topping group creation', { keyValue: error.keyValue }, req);
+      return res.status(409).json(formatHttpError(req, "Ya existe un grupo con este nombre para este negocio", 409, {
         duplicateField: error.keyPattern,
         duplicateValue: error.keyValue
-      });
+      }));
     }
     
-    res.status(500).json({ 
-      message: "Error al crear el grupo de toppings",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(500).json(formatHttpError(req, "Error al crear el grupo de toppings", 500));
   }
 });
 
 // Update topping group - Versión simplificada y robusta
 router.put("/:id", async (req, res) => {
-  console.log("=== INICIO UPDATE TOPPING GROUP ===");
-  console.log("ID recibido:", req.params.id);
-  console.log("Datos recibidos:", JSON.stringify(req.body, null, 2));
-  
   try {
     // Validar que el ID sea válido
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log("ERROR: ID inválido");
-      return res.status(400).json({ message: "ID de grupo inválido" });
+      return res.status(400).json(formatHttpError(req, "ID de grupo inválido", 400));
     }
-    console.log("✓ ID válido");
 
     // Verificar conexión a la base de datos
     if (mongoose.connection.readyState !== 1) {
-      console.log("ERROR: Base de datos no conectada");
-      return res.status(500).json({ message: "Error de conexión a la base de datos" });
+      return res.status(500).json(formatHttpError(req, "Error de conexión a la base de datos", 500));
     }
-    console.log("✓ Base de datos conectada");
 
     // Buscar el grupo existente primero
     const existingGroup = await ToppingGroup.findById(req.params.id);
     if (!existingGroup) {
-      console.log("ERROR: Grupo no encontrado");
-      return res.status(404).json({ message: "Grupo de toppings no encontrado" });
+      return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado", 404));
     }
-    console.log("✓ Grupo encontrado:", existingGroup.name);
 
     // Preparar datos de actualización de forma más segura
     const updateData = {
@@ -183,90 +143,70 @@ router.put("/:id", async (req, res) => {
       businessId: existingGroup.businessId // Mantener el businessId original
     };
 
-    console.log("Datos de actualización preparados:", JSON.stringify(updateData, null, 2));
-
     // Validar datos requeridos
     if (!updateData.name || updateData.name.trim() === '') {
-      console.log("ERROR: Nombre requerido");
-      return res.status(400).json({ message: "El nombre del grupo es requerido" });
+      return res.status(400).json(formatHttpError(req, "El nombre del grupo es requerido", 400));
     }
-    console.log("✓ Nombre válido");
 
     // Actualizar usando save() en lugar de findByIdAndUpdate para mejor control
     Object.assign(existingGroup, updateData);
     const updatedGroup = await existingGroup.save();
     
-    console.log("✓ Grupo actualizado exitosamente");
-    console.log("Grupo actualizado:", {
-      id: updatedGroup._id,
-      name: updatedGroup.name,
-      basePrice: updatedGroup.basePrice,
-      businessId: updatedGroup.businessId
-    });
+    logger.info('Topping group updated', { id: updatedGroup._id, name: updatedGroup.name }, req);
     
     // Emitir evento WebSocket con manejo de errores
     try {
       emitToBusiness(updatedGroup.businessId?.toString(), "topping_groups_update", { type: "updated" });
-      console.log("✓ Evento WebSocket emitido");
     } catch (wsError) {
-      console.error("Error emitiendo WebSocket (no crítico):", wsError);
+      logger.error("Error emitiendo WebSocket (no crítico)", wsError, req);
     }
     
-    console.log("=== FIN UPDATE TOPPING GROUP - ÉXITO ===");
     res.json(updatedGroup);
   } catch (error) {
-    console.error("=== ERROR EN UPDATE TOPPING GROUP ===");
-    console.error("Error completo:", error);
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
+    logger.error("Error updating topping group", error, req);
     
     // Manejar errores específicos
     if (error.name === 'ValidationError') {
-      console.log("ERROR DE VALIDACIÓN");
-      const validationErrors = Object.values(error.errors).map(err => err.message);
-      console.log("Errores de validación:", validationErrors);
-      return res.status(400).json({ 
-        message: "Error de validación", 
-        errors: validationErrors 
-      });
+      const validationErrors = Object.values(error.errors).map(err => ({ field: err.path, message: err.message }));
+      return res.status(400).json(formatHttpError(req, "Error de validación", 400, validationErrors));
     }
     
     if (error.name === 'CastError') {
-      console.log("ERROR DE CAST");
-      return res.status(400).json({ message: "Formato de datos inválido" });
+      return res.status(400).json(formatHttpError(req, "Formato de datos inválido", 400));
     }
     
     if (error.name === 'MongoServerError' && error.code === 11000) {
-      console.log("ERROR DE CLAVE DUPLICADA");
-      console.log("Detalles:", error.keyValue);
-      return res.status(409).json({ 
-        message: "Ya existe un grupo con este nombre para este negocio",
+      logger.warn('Duplicate key error on topping group update', { keyValue: error.keyValue }, req);
+      return res.status(409).json(formatHttpError(req, "Ya existe un grupo con este nombre para este negocio", 409, {
         duplicateField: error.keyPattern,
         duplicateValue: error.keyValue
-      });
+      }));
     }
     
-    console.log("ERROR GENÉRICO - Enviando 500");
-    res.status(500).json({ 
-      message: "Error al actualizar el grupo de toppings",
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(500).json(formatHttpError(req, "Error al actualizar el grupo de toppings", 500));
   }
 });
 
 // Delete topping group (soft delete)
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await ToppingGroup.findByIdAndDelete(req.params.id);
+    const { businessId } = req.query;
+    let resolvedBusinessId;
+    try {
+      resolvedBusinessId = await resolveBusinessId(businessId);
+    } catch (error) {
+      return res.status(404).json(formatHttpError(req, error.message, 404));
+    }
+    const deleted = await ToppingGroup.findOneAndDelete({ _id: req.params.id, businessId: resolvedBusinessId });
     // Emitir evento de WebSocket
     if (deleted) {
       emitToBusiness(deleted.businessId?.toString(), "topping_groups_update", { type: "deleted" });
+      logger.info('Topping group deleted', { id: deleted._id }, req);
     }
     res.json({ message: "Grupo de toppings eliminado" });
   } catch (error) {
-    console.error("Error eliminando grupo:", error);
-    res.status(500).json({ message: "Error al eliminar el grupo de toppings" });
+    logger.error("Error eliminando topping group", error, req);
+    res.status(500).json(formatHttpError(req, "Error al eliminar el grupo de toppings", 500));
   }
 });
 
@@ -275,12 +215,10 @@ router.patch("/:groupId/options/:optionId/toggle", async (req, res) => {
   try {
     const { groupId, optionId } = req.params;
     
-    console.log(`[ToppingGroups] Toggling option ${optionId} in group ${groupId}`);
-    
     // Encontrar el grupo
     const group = await ToppingGroup.findById(groupId);
     if (!group) {
-      return res.status(404).json({ message: "Grupo de toppings no encontrado" });
+      return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado", 404));
     }
     
     // Buscar la opción en las opciones principales
@@ -289,7 +227,7 @@ router.patch("/:groupId/options/:optionId/toggle", async (req, res) => {
       if (option._id.toString() === optionId) {
         option.active = !option.active;
         optionFound = true;
-        console.log(`[ToppingGroups] Option ${option.name} toggled to ${option.active}`);
+        logger.debug(`Option toggled to ${option.active}`, { groupId, optionId, optionName: option.name }, req);
       }
     });
     
@@ -300,14 +238,14 @@ router.patch("/:groupId/options/:optionId/toggle", async (req, res) => {
           if (option._id.toString() === optionId) {
             option.active = !option.active;
             optionFound = true;
-            console.log(`[ToppingGroups] Subgroup option ${option.name} toggled to ${option.active}`);
+            logger.debug(`Subgroup option toggled to ${option.active}`, { groupId, optionId, optionName: option.name }, req);
           }
         });
       });
     }
     
     if (!optionFound) {
-      return res.status(404).json({ message: "Opción no encontrada" });
+      return res.status(404).json(formatHttpError(req, "Opción no encontrada", 404));
     }
     
     // Guardar los cambios
@@ -320,10 +258,11 @@ router.patch("/:groupId/options/:optionId/toggle", async (req, res) => {
       optionId 
     });
     
+    logger.info('Option toggled successfully', { groupId, optionId }, req);
     res.json({ success: true, message: "Estado de la opción actualizado", group });
   } catch (error) {
-    console.error("Error toggling option:", error);
-    res.status(500).json({ message: "Error al cambiar el estado de la opción" });
+    logger.error("Error toggling option", error, req);
+    res.status(500).json(formatHttpError(req, "Error al cambiar el estado de la opción", 500));
   }
 });
 

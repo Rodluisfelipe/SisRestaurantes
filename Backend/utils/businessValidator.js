@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const BusinessConfig = require('../Models/BusinessConfig');
 const { isValidObjectId } = mongoose;
+const logger = require('./logger');
 
 /**
  * Utilidad centralizada para validación y resolución de businessId
@@ -13,10 +14,8 @@ const { isValidObjectId } = mongoose;
  * @returns {Promise<{success: boolean, businessId: string|null, business: Object|null, error: string|null}>}
  */
 async function validateAndResolveBusinessId(identifier) {
-  console.log(`[BusinessValidator] Validating identifier: ${identifier}`);
-  
   if (!identifier) {
-    console.log('[BusinessValidator] No identifier provided');
+    logger.debug('No identifier provided');
     return {
       success: false,
       businessId: null,
@@ -28,10 +27,9 @@ async function validateAndResolveBusinessId(identifier) {
   try {
     // Si es un ObjectId válido, verificar que existe
     if (isValidObjectId(identifier)) {
-      console.log(`[BusinessValidator] ${identifier} is a valid ObjectId, searching by ID`);
       const business = await BusinessConfig.findById(identifier);
       if (!business) {
-        console.log(`[BusinessValidator] Business not found with ID: ${identifier}`);
+        logger.debug('Business not found with ID', { identifier });
         return {
           success: false,
           businessId: null,
@@ -40,7 +38,6 @@ async function validateAndResolveBusinessId(identifier) {
         };
       }
       
-      console.log(`[BusinessValidator] Business found by ID: ${business.slug}`);
       return {
         success: true,
         businessId: identifier,
@@ -50,10 +47,9 @@ async function validateAndResolveBusinessId(identifier) {
     }
 
     // Si no es ObjectId, tratar como slug
-    console.log(`[BusinessValidator] ${identifier} is not ObjectId, searching by slug`);
     const business = await BusinessConfig.findOne({ slug: identifier });
     if (!business) {
-      console.log(`[BusinessValidator] Business not found with slug: ${identifier}`);
+      logger.debug('Business not found with slug', { identifier });
       return {
         success: false,
         businessId: null,
@@ -62,7 +58,6 @@ async function validateAndResolveBusinessId(identifier) {
       };
     }
 
-    console.log(`[BusinessValidator] Business found by slug: ${business._id}`);
     return {
       success: true,
       businessId: business._id.toString(),
@@ -71,7 +66,7 @@ async function validateAndResolveBusinessId(identifier) {
     };
 
   } catch (error) {
-    console.error(`[BusinessValidator] Error validating business: ${error.message}`);
+    logger.error('Error validating business', error);
     return {
       success: false,
       businessId: null,
@@ -121,7 +116,7 @@ function createBusinessValidationMiddleware(sourceParam = 'query') {
 
       next();
     } catch (error) {
-      console.error('Error in business validation middleware:', error);
+      logger.error('Error in business validation middleware', error);
       res.status(500).json({ 
         message: 'Internal server error during business validation',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined

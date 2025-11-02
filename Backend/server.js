@@ -116,6 +116,7 @@ app.use("/api/auth", require("./Routes/auth"));
 app.use("/api/tables", require("./Routes/tables"));
 app.use("/api/orders", require("./Routes/orders"));
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
+app.use("/api/push", require("./Routes/push")); // Push notifications (PWA)
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot
 app.use("/api/debug", require("./Routes/debug")); // Debug endpoints para Socket.IO
 
@@ -140,6 +141,11 @@ app.use((err, req, res, next) => {
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
+    
+    // Configurar VAPID para push notifications
+    const { configureVapid } = require('./services/pushService');
+    configureVapid();
+    
     const port = process.env.PORT || 5000;
     server.listen(port, () =>
       console.log(`Servidor unificado (Backend + BackendSA) corriendo en el puerto ${port}`)

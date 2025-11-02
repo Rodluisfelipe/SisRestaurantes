@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Coupon = require('../Models/Coupon');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
+const logger = require('../utils/logger');
+const { formatHttpError } = require('../utils/errorFormatter');
 
 // Middleware to validate and resolve business ID
 const validateBusinessId = async (req, res, next) => {
@@ -24,8 +26,8 @@ const validateBusinessId = async (req, res, next) => {
     req.business = result.business;
     next();
   } catch (error) {
-    console.error('validateBusinessId - Error:', error);
-    res.status(500).json({ message: 'Error validating business ID' });
+    logger.error('validateBusinessId error', error, req);
+    res.status(500).json(formatHttpError(req, 'Error validating business ID', 500));
   }
 };
 
@@ -146,8 +148,8 @@ router.get('/', validateBusinessId, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching coupons:', error);
-    res.status(500).json({ message: 'Error al obtener los cupones' });
+    logger.error('Error fetching coupons', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener los cupones', 500));
   }
 });
 
@@ -167,13 +169,13 @@ router.get('/:id', validateBusinessId, async (req, res) => {
     .populate('customerUsage.customerId', 'name phone');
 
     if (!coupon) {
-      return res.status(404).json({ message: 'Cupón no encontrado' });
+      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
     }
 
     res.json(coupon);
   } catch (error) {
-    console.error('Error fetching coupon:', error);
-    res.status(500).json({ message: 'Error al obtener el cupón' });
+    logger.error('Error fetching coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener el cupón', 500));
   }
 });
 
@@ -250,20 +252,17 @@ router.post('/', validateBusinessId, async (req, res) => {
       { path: 'excludedCategories', select: 'name' }
     ]);
 
+    logger.info('Coupon created', { id: coupon._id, code: coupon.code }, req);
     res.status(201).json(coupon);
   } catch (error) {
-    console.error('Error creating coupon:', error);
-    res.status(500).json({ message: 'Error al crear el cupón' });
+    logger.error('Error creating coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al crear el cupón', 500));
   }
 });
 
 // Update coupon
 router.put('/:id', validateBusinessId, async (req, res) => {
   try {
-    console.log('Updating coupon with ID:', req.params.id);
-    console.log('Business ID from middleware:', req.businessId);
-    console.log('Update data:', req.body);
-    
     const { businessId } = req;
     const updateData = { ...req.body };
     
@@ -294,13 +293,14 @@ router.put('/:id', validateBusinessId, async (req, res) => {
     .populate('excludedCategories', 'name');
 
     if (!coupon) {
-      return res.status(404).json({ message: 'Cupón no encontrado' });
+      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
     }
 
+    logger.info('Coupon updated', { id: coupon._id }, req);
     res.json(coupon);
   } catch (error) {
-    console.error('Error updating coupon:', error);
-    res.status(500).json({ message: 'Error al actualizar el cupón' });
+    logger.error('Error updating coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al actualizar el cupón', 500));
   }
 });
 
@@ -317,10 +317,11 @@ router.delete('/:id', validateBusinessId, async (req, res) => {
       return res.status(404).json({ message: 'Cupón no encontrado' });
     }
 
+    logger.info('Coupon deleted', { id: req.params.id }, req);
     res.json({ message: 'Cupón eliminado exitosamente' });
   } catch (error) {
-    console.error('Error deleting coupon:', error);
-    res.status(500).json({ message: 'Error al eliminar el cupón' });
+    logger.error('Error deleting coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al eliminar el cupón', 500));
   }
 });
 
@@ -331,7 +332,7 @@ router.post('/validate', validateBusinessId, async (req, res) => {
     const { code, orderData, customerId } = req.body;
 
     if (!code || !orderData) {
-      return res.status(400).json({ message: 'Código y datos del pedido son requeridos' });
+      return res.status(400).json(formatHttpError(req, 'Código y datos del pedido son requeridos', 400));
     }
 
     const coupon = await Coupon.findOne({ 
@@ -340,17 +341,14 @@ router.post('/validate', validateBusinessId, async (req, res) => {
     });
 
     if (!coupon) {
-      return res.status(404).json({ message: 'Cupón no encontrado' });
+      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
     }
 
     // Validate coupon
     const validation = coupon.validateForOrder(orderData, customerId);
     
     if (!validation.valid) {
-      return res.status(400).json({ 
-        message: validation.error,
-        valid: false 
-      });
+      return res.status(400).json(formatHttpError(req, validation.error, 400, { valid: false }));
     }
 
     // Calculate discount
@@ -370,8 +368,8 @@ router.post('/validate', validateBusinessId, async (req, res) => {
       finalAmount: orderData.totalAmount - discountAmount
     });
   } catch (error) {
-    console.error('Error validating coupon:', error);
-    res.status(500).json({ message: 'Error al validar el cupón' });
+    logger.error('Error validating coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al validar el cupón', 500));
   }
 });
 
@@ -382,7 +380,7 @@ router.post('/apply', validateBusinessId, async (req, res) => {
     const { code, orderData, customerId } = req.body;
 
     if (!code || !orderData) {
-      return res.status(400).json({ message: 'Código y datos del pedido son requeridos' });
+      return res.status(400).json(formatHttpError(req, 'Código y datos del pedido son requeridos', 400));
     }
 
     const coupon = await Coupon.findOne({ 
@@ -391,17 +389,14 @@ router.post('/apply', validateBusinessId, async (req, res) => {
     });
 
     if (!coupon) {
-      return res.status(404).json({ message: 'Cupón no encontrado' });
+      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
     }
 
     // Validate coupon
     const validation = coupon.validateForOrder(orderData, customerId);
     
     if (!validation.valid) {
-      return res.status(400).json({ 
-        message: validation.error,
-        valid: false 
-      });
+      return res.status(400).json(formatHttpError(req, validation.error, 400, { valid: false }));
     }
 
     // Calculate discount
@@ -410,6 +405,7 @@ router.post('/apply', validateBusinessId, async (req, res) => {
     // Record usage
     await coupon.recordUsage(customerId, discountAmount);
     
+    logger.info('Coupon applied', { code: coupon.code, discountAmount }, req);
     res.json({
       success: true,
       coupon: {
@@ -423,8 +419,8 @@ router.post('/apply', validateBusinessId, async (req, res) => {
       finalAmount: orderData.totalAmount - discountAmount
     });
   } catch (error) {
-    console.error('Error applying coupon:', error);
-    res.status(500).json({ message: 'Error al aplicar el cupón' });
+    logger.error('Error applying coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al aplicar el cupón', 500));
   }
 });
 
@@ -485,8 +481,8 @@ router.get('/stats/overview', validateBusinessId, async (req, res) => {
       recentCoupons
     });
   } catch (error) {
-    console.error('Error fetching coupon stats:', error);
-    res.status(500).json({ message: 'Error al obtener estadísticas' });
+    logger.error('Error fetching coupon stats', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener estadísticas', 500));
   }
 });
 
@@ -500,8 +496,8 @@ router.post('/generate-code', validateBusinessId, async (req, res) => {
     
     res.json({ code });
   } catch (error) {
-    console.error('Error generating coupon code:', error);
-    res.status(500).json({ message: 'Error al generar código' });
+    logger.error('Error generating coupon code', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al generar código', 500));
   }
 });
 

@@ -3,7 +3,10 @@ const router = express.Router();
 const Category = require("../Models/Category");
 const { emitToBusiness } = require("../services/socketService");
 const mongoose = require('mongoose');
-const { findBusinessByIdentifier, createBusinessFilter } = require("../utils/businessHelper");
+const { createBusinessFilter } = require("../utils/businessHelper");
+const { resolveBusinessId } = require("../utils/businessResolver");
+const logger = require("../utils/logger");
+const { formatHttpError } = require("../utils/errorFormatter");
 
 // Función auxiliar para obtener todas las categorías
 const getAllCategories = async (businessId = null) => {
@@ -20,11 +23,11 @@ router.get("/", async (req, res) => {
     const filter = await createBusinessFilter(businessId);
     const categories = await Category.find(filter).sort({ displayOrder: 1, createdAt: 1 });
     
-    console.log(`Encontradas ${categories.length} categorías para el negocio ${businessId}`);
+    logger.info(`Retrieved ${categories.length} categories for business ${businessId}`, { count: categories.length }, req);
     res.json(categories);
   } catch (error) {
-    console.error(`Error al obtener categorías para ${req.query.businessId}:`, error);
-    res.status(500).json({ message: 'Error al obtener categorías', error: error.message });
+    logger.error('Error obteniendo categorías', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener categorías', 500));
   }
 });
 
@@ -56,19 +59,14 @@ router.post("/", async (req, res) => {
     }
     
     // Si no hay _id, crear una nueva categoría
-    console.log('Intentando crear categoría con:', req.body);
+    logger.debug('Creating category', { name: req.body.name }, req);
     
     // Manejar businessId si viene como slug
     if (req.body.businessId && typeof req.body.businessId === 'string') {
-      // Buscar el businessId real
-      const business = await findBusinessByIdentifier(req.body.businessId);
-      if (business) {
-        req.body.businessId = business._id;
-      } else {
-        return res.status(404).json({ 
-          message: 'Negocio no encontrado',
-          detail: `No se encontró un negocio con el identificador '${req.body.businessId}'`
-        });
+      try {
+        req.body.businessId = await resolveBusinessId(req.body.businessId);
+      } catch (error) {
+        return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404, { detail: error.message }));
       }
     }
     
@@ -77,17 +75,18 @@ router.post("/", async (req, res) => {
       const savedCategory = await newCategory.save();
       // Emitir evento de actualización por WebSocket
       emitToBusiness(savedCategory.businessId?.toString(), "categories_update", { type: "created", category: savedCategory });
+      logger.info('Category created', { id: savedCategory._id, name: savedCategory.name }, req);
       res.status(201).json(savedCategory);
     } catch (error) {
       if (error.code === 11000) {
-        return res.status(400).json({ message: "Ya existe una categoría con ese nombre en este negocio." });
+        return res.status(400).json(formatHttpError(req, "Ya existe una categoría con ese nombre en este negocio.", 400));
       }
-      console.error("Error al crear/actualizar categoría:", error);
-      res.status(500).json({ message: "Error al crear/actualizar la categoría" });
+      logger.error("Error creating category", error, req);
+      res.status(500).json(formatHttpError(req, "Error al crear la categoría", 500));
     }
   } catch (error) {
-    console.error("Error al crear/actualizar categoría:", error);
-    res.status(500).json({ message: "Error al crear/actualizar la categoría" });
+    logger.error("Error en POST categories", error, req);
+    res.status(500).json(formatHttpError(req, "Error al procesar la categoría", 500));
   }
 });
 
@@ -97,14 +96,14 @@ router.put("/reorder", async (req, res) => {
     const { businessId, categories } = req.body;
     
     if (!businessId) {
-      return res.status(400).json({ message: "businessId es requerido" });
+      return res.status(400).json(formatHttpError(req, "businessId es requerido", 400));
     }
     
     if (!categories || !Array.isArray(categories)) {
-      return res.status(400).json({ message: "Formato inválido" });
+      return res.status(400).json(formatHttpError(req, "Formato inválido", 400));
     }
     
-    console.log(`Reordenando categorías para negocio ${businessId}:`, categories);
+    logger.debug(`Reordenando categorías para negocio ${businessId}`, { count: categories.length }, req);
     
     // Actualizar cada categoría con su nuevo orden
     const updatePromises = categories.map(category => 
@@ -124,24 +123,25 @@ router.put("/reorder", async (req, res) => {
       message: "Orden de categorías actualizado" 
     });
     
+    logger.info('Categories reordered', { businessId, count: categories.length }, req);
     res.json({ success: true, message: "Orden de categorías actualizado correctamente" });
   } catch (error) {
-    console.error("Error al reordenar categorías:", error);
-    res.status(500).json({ message: "Error al reordenar las categorías" });
+    logger.error("Error reordenando categorías", error, req);
+    res.status(500).json(formatHttpError(req, "Error al reordenar las categorías", 500));
   }
 });
 
 // Actualizar categoría (mejorado para manejar displayOrder)
 router.put("/:id", async (req, res) => {
   try {
-    console.log(`Actualizando categoría ${req.params.id}:`, req.body);
+    logger.debug('Updating category', { id: req.params.id }, req);
     
     // Manejar businessId si viene como slug
     if (req.body.businessId && typeof req.body.businessId === 'string') {
-      // Buscar el businessId real
-      const business = await findBusinessByIdentifier(req.body.businessId);
-      if (business) {
-        req.body.businessId = business._id;
+      try {
+        req.body.businessId = await resolveBusinessId(req.body.businessId);
+      } catch (error) {
+        return res.status(404).json(formatHttpError(req, error.message, 404));
       }
     }
     
@@ -152,32 +152,41 @@ router.put("/:id", async (req, res) => {
     );
     
     if (!updatedCategory) {
-      return res.status(404).json({ message: "Categoría no encontrada" });
+      return res.status(404).json(formatHttpError(req, "Categoría no encontrada", 404));
     }
     
     // Emitir evento de actualización por WebSocket
     emitToBusiness(updatedCategory.businessId?.toString(), "categories_update", { type: "updated", category: updatedCategory });
     
+    logger.info('Category updated', { id: updatedCategory._id, name: updatedCategory.name }, req);
     res.json(updatedCategory);
   } catch (error) {
-    console.error("Error al actualizar categoría:", error);
-    res.status(500).json({ message: "Error al actualizar la categoría" });
+    logger.error("Error updating category", error, req);
+    res.status(500).json(formatHttpError(req, "Error al actualizar la categoría", 500));
   }
 });
 
 // Eliminar categoría
 router.delete("/:id", async (req, res) => {
   try {
-    const category = await Category.findByIdAndDelete(req.params.id);
+    const { businessId } = req.query;
+    let resolvedBusinessId;
+    try {
+      resolvedBusinessId = await resolveBusinessId(businessId);
+    } catch (error) {
+      return res.status(404).json(formatHttpError(req, error.message, 404));
+    }
+    const category = await Category.findOneAndDelete({ _id: req.params.id, businessId: resolvedBusinessId });
     if (!category) {
-      return res.status(404).json({ message: "Categoría no encontrada" });
+      return res.status(404).json(formatHttpError(req, "Categoría no encontrada", 404));
     }
     // Emitir evento de actualización por WebSocket
     emitToBusiness(category.businessId?.toString(), "categories_update", { type: "deleted", categoryId: category._id });
+    logger.info('Category deleted', { id: category._id }, req);
     res.json({ message: "Categoría eliminada correctamente" });
   } catch (error) {
-    console.error("Error al eliminar categoría:", error);
-    res.status(500).json({ message: "Error al eliminar la categoría" });
+    logger.error("Error deleting category", error, req);
+    res.status(500).json(formatHttpError(req, "Error al eliminar la categoría", 500));
   }
 });
 
@@ -187,10 +196,10 @@ router.post("/update-order", async (req, res) => {
     const { categories } = req.body;
     
     if (!categories || !Array.isArray(categories)) {
-      return res.status(400).json({ message: "Formato inválido" });
+      return res.status(400).json(formatHttpError(req, "Formato inválido", 400));
     }
     
-    console.log("Actualizando orden de categorías:", categories);
+    logger.debug("Actualizando orden de categorías", { count: categories.length }, req);
     
     // Actualizar cada categoría con su nuevo displayOrder
     const updatePromises = categories.map(item => 
@@ -207,10 +216,11 @@ router.post("/update-order", async (req, res) => {
     // const updatedCategories = await getAllCategories();
     // req.emitEvent('categories_update', { categories: updatedCategories }); // <-- Aquí emitir por WebSockets en el futuro
     
+    logger.info('Categories order updated', { count: categories.length }, req);
     res.json({ success: true, message: "Orden actualizado correctamente" });
   } catch (error) {
-    console.error("Error al actualizar orden:", error);
-    res.status(500).json({ message: "Error al actualizar el orden" });
+    logger.error("Error updating categories order", error, req);
+    res.status(500).json(formatHttpError(req, "Error al actualizar el orden", 500));
   }
 });
 
