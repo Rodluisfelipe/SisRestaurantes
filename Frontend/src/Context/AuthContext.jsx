@@ -190,8 +190,9 @@ export function AuthProvider({ children }) {
       const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
       const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
       
-      // Verificar si es un token temporal de superadmin
+      // Verificar si es un token temporal de superadmin O si es un token real de superadmin
       const isTempSuperAdminToken = token?.startsWith('temp_sa_token_');
+      const hasSuperAdminToken = !!localStorage.getItem('superadmin_token');
       
       // Si hay token, consideramos que hay sesión aunque haya errores
       if (token && userStr) {
@@ -199,15 +200,16 @@ export function AuthProvider({ children }) {
         try {
           const userObj = JSON.parse(userStr);
           setUser(userObj);
+          
+          // Si es SuperAdmin (por role o por tener superadmin_token), no intentamos verificar con /auth/me
+          if (isTempSuperAdminToken || hasSuperAdminToken || userObj.role === 'superadmin') {
+            setLoading(false);
+            return;
+          }
         } catch (e) {
           // Si no puedo parsear el user, no importa, mantenemos la sesión
         }
-        
-        // Si es un token temporal de superadmin, no intentamos verificarlo
-        if (isTempSuperAdminToken) {
-          setLoading(false);
-          return;
-        }
+      }
         
         // Intentar verificar el token, pero no cerramos sesión si falla
         try {
