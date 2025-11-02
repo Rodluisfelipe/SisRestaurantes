@@ -71,20 +71,24 @@ export default function BusinessTable({ refreshTrigger }) {
       return;
     }
     
-    // Generate temporary auth token for direct admin access
-    const tempAuthData = {
-      accessToken: `temp_sa_token_${Date.now()}`,
-      refreshToken: `temp_sa_refresh_${Date.now()}`,
+    // Usar el token REAL del SuperAdmin almacenado en localStorage
+    const superadminToken = localStorage.getItem('superadmin_token') || localStorage.getItem('accessToken');
+    
+    if (!superadminToken) {
+      alert('No tienes sesión activa como SuperAdmin. Por favor, inicia sesión de nuevo.');
+      return;
+    }
+    
+    const realAuthData = {
+      accessToken: superadminToken,
       user: {
-        _id: `temp_${Date.now()}`,
-        username: 'superadmin_temp',
         businessId: b._id,
         role: 'superadmin'
       }
     };
     
     // Encode the auth data in the URL
-    const encodedAuthData = encodeURIComponent(JSON.stringify(tempAuthData));
+    const encodedAuthData = encodeURIComponent(JSON.stringify(realAuthData));
     const baseUrl = `${window.location.protocol}//${window.location.host}`;
     const url = `${baseUrl}/${b.slug}/admin?satoken=${encodedAuthData}&source=superadmin`;
     
