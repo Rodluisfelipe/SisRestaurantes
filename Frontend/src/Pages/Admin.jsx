@@ -29,6 +29,7 @@ import CustomersManager from "../Components/CustomersManager";
 import CouponsManager from "../Components/CouponsManager";
 import MultiSessionWarning from "../Components/MultiSessionWarning";
 import DeliveryZoneManager from "../Components/DeliveryZoneManager";
+import PushNotificationToggle from "../Components/PushNotificationToggle";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Componente de Modal de Confirmación para edición
@@ -1042,7 +1043,15 @@ function Admin() {
                 className="w-full"
               >
                 {/* Render Components Based on Active Tab */}
-                {activeTab === 'business' && <BusinessSettings />}
+                {activeTab === 'business' && (
+                  <div className="space-y-6">
+                    <BusinessSettings />
+                    <PushNotificationToggle 
+                      businessId={businessId} 
+                      userId={null} 
+                    />
+                  </div>
+                )}
           {activeTab === 'categories' && <CategorySettings categories={categories} />}
           {activeTab === 'toppings' && <ToppingGroupsManager />}
           {activeTab === 'tables' && <TableSettings />}
