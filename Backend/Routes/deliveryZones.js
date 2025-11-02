@@ -348,7 +348,7 @@ const validateDeliveryZoneInput = (req, res, next) => {
       }
       if (typeof geometry.radius !== 'number' || geometry.radius <= 0) {
         errors.push({ field: 'geometry.radius', message: 'geometry.radius debe ser un número > 0 para type="radius"' });
-      }
+  }
     }
   }
   

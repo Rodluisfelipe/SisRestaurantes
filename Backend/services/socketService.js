@@ -37,20 +37,25 @@ function initSocket(io) {
     socket.on('joinBusiness', async (businessId) => {
       if (businessId) {
         try {
-          // Enforce tenant guard: requiere socket.user y coincidencia de tenant
+          // Enforce tenant guard: requiere socket.user y coincidencia de tenant (excepto SuperAdmin)
           if (!socket.user) {
             logger.warn('joinBusiness rechazado - no autenticado', { socketId: socket.id, businessId });
             socket.emit('businessJoined', { businessId, success: false, error: 'unauthorized' });
             return;
           }
 
-          const requestedBusiness = businessId.toString();
-          const tenantBusiness = (socket.user.businessId || '').toString();
+          // SuperAdmins pueden unirse a cualquier negocio
+          const isSuperAdmin = socket.user.role === 'superadmin' || socket.user.isSuperAdmin;
 
-          if (!tenantBusiness || tenantBusiness !== requestedBusiness) {
-            logger.warn('joinBusiness rechazado - tenant mismatch', { socketId: socket.id, tokenTenant: tenantBusiness, requested: requestedBusiness });
-            socket.emit('businessJoined', { businessId, success: false, error: 'forbidden' });
-            return;
+          if (!isSuperAdmin) {
+            const requestedBusiness = businessId.toString();
+            const tenantBusiness = (socket.user.businessId || '').toString();
+
+            if (!tenantBusiness || tenantBusiness !== requestedBusiness) {
+              logger.warn('joinBusiness rechazado - tenant mismatch', { socketId: socket.id, tokenTenant: tenantBusiness, requested: requestedBusiness });
+              socket.emit('businessJoined', { businessId, success: false, error: 'forbidden' });
+              return;
+            }
           }
 
           // Leave previous business room if any

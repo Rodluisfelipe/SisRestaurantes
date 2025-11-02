@@ -30,6 +30,13 @@ const getSocketUrl = () => {
 
 const socketUrl = getSocketUrl();
 
+// Función para obtener el token JWT del localStorage
+const getAuthToken = () => {
+  // Intentar obtener el token desde accessToken o superadmin_token
+  const token = localStorage.getItem('accessToken') || localStorage.getItem('superadmin_token');
+  return token || null;
+};
+
 // Crear socket solo si tenemos una URL válida
 export const socket = socketUrl ? io(socketUrl, {
   autoConnect: false,
@@ -48,6 +55,10 @@ export const socket = socketUrl ? io(socketUrl, {
   query: {
     sessionId: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     clientType: 'admin'
+  },
+  // Enviar token JWT en el handshake (se actualiza en cada reconexión)
+  auth: {
+    token: getAuthToken()
   }
 }) : null;
 

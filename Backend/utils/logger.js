@@ -70,8 +70,8 @@ class Logger {
       return { prefix, message, data: redactedData };
     }
     
-    return { prefix, message, data };
-  }
+      return { prefix, message, data };
+    }
 
   /**
    * Helper para obtener contexto de req si está disponible
@@ -92,10 +92,10 @@ class Logger {
     if (this.currentLevel >= this.levels.ERROR) {
       const context = this.getContext(req);
       const errorData = error instanceof Error ? {
-        name: error.name,
-        message: error.message,
+            name: error.name,
+            message: error.message,
         stack: isDevelopment ? error.stack : undefined,
-        code: error.code
+            code: error.code
       } : error;
       
       const formatted = this.formatMessage('ERROR', message, errorData, context);

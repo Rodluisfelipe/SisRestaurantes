@@ -870,7 +870,7 @@ export default function Menu() {
       
       // Limpiar carrito de AMBOS storages (localStorage y sessionStorage)
       SessionManager.removeFromLocalStorage('cart');
-      SessionManager.removeFromSession('cart');
+      SessionManager.removeFromSessionStorage('cart');
       
       // Guardar tipo de pedido completado
       SessionManager.saveToLocalStorage('lastCompletedOrderType', orderDetails.orderType);
@@ -1016,7 +1016,7 @@ export default function Menu() {
           
           // Asegurarse de que el carrito esté vacío
           setCart([]);
-          SessionManager.removeFromSession('cart');
+          SessionManager.removeFromSessionStorage('cart');
           
           setShowOrderConfirmationModal(false);
         }}

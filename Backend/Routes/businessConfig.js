@@ -162,7 +162,7 @@ router.put("/active", async (req, res) => {
     
     try {
       // Buscar por _id o slug usando el helper
-      const business = await findBusinessByIdentifier(businessId);
+      const business = await resolveBusiness(businessId);
       
       if (!business) {
         return res.status(404).json({ message: 'Negocio no encontrado' });
@@ -214,10 +214,10 @@ router.get("/status/:businessId", async (req, res) => {
   const { businessId } = req.params;
   
   try {
-    const business = await findBusinessByIdentifier(businessId);
+    const business = await resolveBusiness(businessId);
     
     if (!business) {
-      return res.status(404).json({ message: 'Negocio no encontrado' });
+      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
     }
     
     const status = business.getBusinessStatus();
@@ -237,7 +237,7 @@ router.put("/hours", async (req, res) => {
   }
   
   try {
-    const business = await findBusinessByIdentifier(businessId);
+    const business = await resolveBusiness(businessId);
     
     if (!business) {
       return res.status(404).json({ message: 'Negocio no encontrado' });
@@ -293,7 +293,7 @@ router.put("/menu-status", async (req, res) => {
   }
   
   try {
-    const business = await findBusinessByIdentifier(businessId);
+    const business = await resolveBusiness(businessId);
     
     if (!business) {
       return res.status(404).json({ message: 'Negocio no encontrado' });
