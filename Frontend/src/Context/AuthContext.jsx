@@ -209,7 +209,6 @@ export function AuthProvider({ children }) {
         } catch (e) {
           // Si no puedo parsear el user, no importa, mantenemos la sesión
         }
-      }
         
         // Intentar verificar el token, pero no cerramos sesión si falla
         try {
