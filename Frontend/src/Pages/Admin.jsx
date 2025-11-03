@@ -30,7 +30,39 @@ import CouponsManager from "../Components/CouponsManager";
 import MultiSessionWarning from "../Components/MultiSessionWarning";
 import DeliveryZoneManager from "../Components/DeliveryZoneManager";
 import PushNotificationToggle from "../Components/PushNotificationToggle";
+import SubscriptionPaymentCard from "../Components/SubscriptionPaymentCard";
+import SubscriptionDetailsCard from "../Components/SubscriptionDetailsCard";
 import { motion, AnimatePresence } from "framer-motion";
+
+// Wrapper para gestión de suscripciones
+const SubscriptionManagementWrapper = () => {
+  const [subscription, setSubscription] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSubscription();
+  }, []);
+
+  const loadSubscription = async () => {
+    try {
+      const res = await api.get('/subscriptions/me');
+      if (res.data.success && res.data.subscription) {
+        setSubscription(res.data.subscription);
+      }
+    } catch (error) {
+      console.error('Error loading subscription:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <SubscriptionPaymentCard />
+      {subscription && <SubscriptionDetailsCard subscription={subscription} />}
+    </div>
+  );
+};
 
 // Componente de Modal de Confirmación para edición
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) => {
@@ -982,6 +1014,7 @@ function Admin() {
                     {activeTab === 'location' && 'Configuración de Ubicación'}
                     {activeTab === 'catalog' && 'Gestión de Catálogo'}
                     {activeTab === 'whatsapp' && 'Configuración WhatsApp'}
+                    {activeTab === 'subscription' && 'Mi Suscripción'}
                     {activeTab === 'business' && 'Configuración del Negocio'}
                     {activeTab === 'change-password' && 'Cambiar Contraseña'}
                     {activeTab === 'completed_orders' && 'Pedidos Completados'}
@@ -1000,6 +1033,7 @@ function Admin() {
                     {activeTab === 'location' && 'Configura tu ubicación para el catálogo'}
                     {activeTab === 'catalog' && 'Gestiona banners promocionales para el catálogo'}
                     {activeTab === 'whatsapp' && 'Personaliza el formato de mensajes WhatsApp'}
+                    {activeTab === 'subscription' && 'Gestiona tu suscripción y pagos'}
                     {activeTab === 'business' && 'Información y configuración general'}
                     {activeTab === 'change-password' && 'Actualiza tu contraseña de acceso'}
                     {activeTab === 'completed_orders' && 'Historial y resumen de pedidos'}
@@ -1097,6 +1131,9 @@ function Admin() {
           {activeTab === 'customers' && <CustomersManager />}
           {activeTab === 'coupons' && <CouponsManager />}
           {activeTab === 'delivery-zones' && <DeliveryZoneManager />}
+          {activeTab === 'subscription' && (
+            <SubscriptionManagementWrapper />
+          )}
                 
                 {/* Products Management */}
           {activeTab === 'products' && (

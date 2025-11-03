@@ -44,6 +44,28 @@ const subscriptionSchema = new mongoose.Schema({
   notes: {
     type: String,
     default: ''
+  },
+  // Campos de integración Wompi
+  wompiTransactionId: {
+    type: String,
+    default: null
+  },
+  wompiReference: {
+    type: String,
+    default: null
+  },
+  lastPaymentAttempt: {
+    type: Date,
+    default: null
+  },
+  checkoutLink: {
+    type: String,
+    default: null
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['CARD', 'PSE', 'NEQUI', 'CASH', 'OTHER'],
+    default: null
   }
 }, {
   timestamps: true
@@ -52,6 +74,7 @@ const subscriptionSchema = new mongoose.Schema({
 // Índices para optimizar consultas
 subscriptionSchema.index({ businessId: 1, status: 1 });
 subscriptionSchema.index({ endDate: 1, status: 1 });
+subscriptionSchema.index({ wompiTransactionId: 1 }, { unique: true, sparse: true });
 
 // Método para verificar si la suscripción está activa
 subscriptionSchema.methods.isSubscriptionActive = function() {

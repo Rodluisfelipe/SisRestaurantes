@@ -218,6 +218,21 @@ router.post("/", async (req, res) => {
     // Emit socket event
     socketService.emitToBusiness(businessObjectId.toString(), "order_created", savedOrder);
     
+    // Enviar notificación push por nuevo pedido
+    const { sendPushToBusinessId } = require('../services/pushService');
+    try {
+      const payload = {
+        title: `🆕 Nuevo Pedido #${orderNumber}`,
+        body: `Nuevo pedido de ${customerName} - ${numericTotalAmount.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}`,
+        clickUrl: `/admin/orders/${savedOrder._id}`,
+        data: { orderId: savedOrder._id.toString(), orderNumber, status: 'pending' }
+      };
+      await sendPushToBusinessId(businessObjectId.toString(), payload);
+    } catch (pushError) {
+      // No fallar la request si el push falla
+      logger.warn('Failed to send push notification for new order', { error: pushError.message });
+    }
+    
     logger.info(`Created new order ${orderNumber} for business ${businessId}`);
     res.status(201).json(savedOrder);
   } catch (error) {
@@ -325,21 +340,6 @@ router.patch("/:id/status", async (req, res) => {
     
     // Emit socket event
     socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_updated", updatedOrder);
-    
-    // Enviar notificación push por cambio de estado
-    const { sendOrderStatusPush, sendOrderReadyPush } = require('../services/pushService');
-    try {
-      if (status === 'ready' || status === 'completed') {
-        // Notificación especial para "pedido listo"
-        await sendOrderReadyPush(updatedOrder.businessId.toString(), updatedOrder);
-      } else {
-        // Notificación genérica de cambio de estado
-        await sendOrderStatusPush(updatedOrder.businessId.toString(), updatedOrder, status);
-      }
-    } catch (pushError) {
-      // No fallar la request si el push falla
-      console.warn('Failed to send push notification:', pushError.message);
-    }
     
     // If order is completed, move it to CompletedOrders collection
     if (status === "completed") {

@@ -7,6 +7,7 @@ import ResetPasswordSuperAdmin from "./ResetPasswordSuperAdmin";
 import ChangePasswordSuperAdmin from "./ChangePasswordSuperAdmin";
 import SuperAdminBannerManagement from "../../Components/Catalog/SuperAdminBannerManagement";
 import SubscriptionManagement from "../../Components/SuperAdmin/SubscriptionManagement";
+import PaymentsDashboard from "./PaymentsDashboard";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -16,6 +17,7 @@ function SuperAdminDashboard() {
   const [refresh, setRefresh] = useState(0);
   const [authView, setAuthView] = useState('login'); // 'login' | 'forgot' | 'change'
   const [currentView, setCurrentView] = useState('businesses'); // 'businesses' | 'banners' | 'subscriptions'
+  const [subscriptionSubTab, setSubscriptionSubTab] = useState('payments'); // 'payments' | 'management'
   const params = useParams();
   // Extraer token de parámetros y búsqueda de URL de forma segura
   const location = useLocation();
@@ -254,25 +256,51 @@ function SuperAdminDashboard() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="text-2xl font-bold text-white drop-shadow"
                 >
-                  Gestión de Suscripciones
+                  Suscripciones y Pagos
                 </motion.h1>
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-white/80 text-sm"
-                >
-                  Administra los planes de suscripción de los negocios
-                </motion.div>
               </div>
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
-              >
-                <SubscriptionManagement />
-              </motion.div>
+              
+              {/* Subtabs */}
+              <div className="flex space-x-2 mb-6">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSubscriptionSubTab('payments')}
+                  className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                    subscriptionSubTab === 'payments'
+                      ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                      : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+                  }`}
+                >
+                  💳 Dashboard de Pagos
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setSubscriptionSubTab('management')}
+                  className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                    subscriptionSubTab === 'management'
+                      ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                      : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+                  }`}
+                >
+                  👑 Gestión de Suscripciones
+                </motion.button>
+              </div>
+              
+              {/* Contenido según subtab */}
+              {subscriptionSubTab === 'payments' ? (
+                <PaymentsDashboard />
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 }}
+                  className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
+                >
+                  <SubscriptionManagement />
+                </motion.div>
+              )}
             </>
           )}
         </motion.div>
