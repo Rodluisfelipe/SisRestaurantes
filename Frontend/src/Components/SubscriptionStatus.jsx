@@ -10,6 +10,8 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [graceUntilDate, setGraceUntilDate] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -39,6 +41,49 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
       socket.off('subscription_activated', handleSubscriptionActivated);
     };
   }, [socket]);
+
+  // Contador en tiempo real para el período de gracia
+  useEffect(() => {
+    if (!subscription) return;
+
+    const calculateTimeRemaining = () => {
+      const now = new Date();
+      const periodEnd = subscription.periodEnd ? new Date(subscription.periodEnd) : null;
+      let graceUntil = subscription.graceUntil || subscription.gracePeriodEnd 
+        ? new Date(subscription.graceUntil || subscription.gracePeriodEnd) 
+        : null;
+      
+      // Si no hay graceUntil pero tenemos periodEnd, calcularlo
+      if (!graceUntil && periodEnd) {
+        graceUntil = new Date(periodEnd);
+        graceUntil.setDate(graceUntil.getDate() + 5);
+      }
+
+      if (graceUntil && now <= graceUntil) {
+        setGraceUntilDate(graceUntil);
+        const diff = graceUntil - now;
+        
+        if (diff > 0) {
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+          
+          setTimeRemaining({ days, hours, minutes, seconds });
+        } else {
+          setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        }
+      } else {
+        setGraceUntilDate(null);
+        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      }
+    };
+
+    calculateTimeRemaining();
+    const interval = setInterval(calculateTimeRemaining, 1000);
+
+    return () => clearInterval(interval);
+  }, [subscription]);
 
   const loadSubscription = async () => {
     try {
@@ -146,6 +191,17 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
     });
   };
 
+  const formatDateTime = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleString('es-CO', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   if (loading) {
     return (
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
@@ -245,19 +301,13 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ 
-          opacity: (isExpired || isInGracePeriod) ? [1, 0.7, 1] : 1,
-          y: 0,
-          scale: (isExpired || isInGracePeriod) ? [1, 1.01, 1] : 1
+          opacity: (isExpired || isInGracePeriod) ? [1, 0.9, 1] : 1,
+          y: 0
         }}
         transition={
           (isExpired || isInGracePeriod) ? {
             opacity: {
-              duration: 1.5,
-              repeat: Infinity,
-              ease: "easeInOut"
-            },
-            scale: {
-              duration: 1.5,
+              duration: 3,
               repeat: Infinity,
               ease: "easeInOut"
             }
@@ -318,80 +368,121 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
         </div>
       </div>
       
-              {isInGracePeriod && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ 
-              opacity: [1, 0.5, 1],
-              y: 0,
-              scale: [1, 1.02, 1]
-            }}
-            transition={{
-              opacity: {
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "easeInOut"
-              },
-              scale: {
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }
-            }}
-            className="mt-3 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border-2 border-yellow-300 shadow-lg"
-          >
-          <div className="flex items-start space-x-3">
-            <FaExclamationTriangle className="text-yellow-600 text-xl flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-                <p className="text-yellow-900 font-bold text-sm mb-2">
-                  ⏰ Período de Gracia: {graceDaysRemaining} {graceDaysRemaining === 1 ? 'día restante' : 'días restantes'}
-                </p>
-                <p className="text-yellow-800 text-sm mb-3">
-                  Tu suscripción expiró el {formatDate(subscription.periodEnd || subscription.endDate)}. 
-                  Tienes <strong>{graceDaysRemaining} días de gracia</strong> para renovar antes de que tu menú se desactive.
-                </p>
-                <p className="text-yellow-700 text-xs mb-3 font-medium">
-                  ⚠️ Después de {graceDaysRemaining} días, el menú quedará desactivado para seleccionar o ver órdenes. Los usuarios solo podrán ver el menú, pero no podrán realizar pedidos.
-                </p>
-              <button
-                onClick={() => {
-                  if (onNavigateToSubscription) {
-                    onNavigateToSubscription();
-                  } else if (location.pathname.includes('/admin')) {
-                    // Si estamos en el panel admin, usar evento custom o scroll
-                    window.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'subscription' }));
-                    // También intentar scroll al inicio
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  } else {
-                    navigate('/admin');
-                  }
-                }}
-                className="w-full sm:w-auto mt-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-              >
-                <span>Renovar Ahora</span>
-                <FaArrowRight className="text-sm" />
-              </button>
-            </div>
-          </div>
-        </motion.div>
-      )}
+              {isInGracePeriod && (() => {
+                // Calcular si quedan menos de 24 horas (menos de 1 día)
+                const totalHoursRemaining = (timeRemaining.days * 24) + timeRemaining.hours;
+                const isLessThan24Hours = totalHoursRemaining < 24 && timeRemaining.days === 0;
+                
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ 
+                      opacity: [1, 0.9, 1],
+                      y: 0
+                    }}
+                    transition={{
+                      opacity: {
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }
+                    }}
+                    className={`mt-3 p-4 rounded-lg border-2 shadow-lg ${
+                      isLessThan24Hours 
+                        ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-300' 
+                        : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300'
+                    }`}
+                  >
+                  <div className="flex items-start space-x-3">
+                    <FaExclamationTriangle className={`${isLessThan24Hours ? 'text-red-600' : 'text-yellow-600'} text-xl flex-shrink-0 mt-0.5`} />
+                    <div className="flex-1">
+                        <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-sm mb-2`}>
+                          ⏰ Período de Gracia
+                        </p>
+                        {graceUntilDate && (timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) ? (
+                          <>
+                            <div className={`${isLessThan24Hours ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border-2 rounded-lg p-3 mb-3`}>
+                              <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-lg mb-1 text-center`}>
+                                Tiempo restante hasta desactivación:
+                              </p>
+                              <div className="flex items-center justify-center space-x-2 text-center">
+                                {timeRemaining.days > 0 && (
+                                  <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
+                                    <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{timeRemaining.days}</div>
+                                    <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>{timeRemaining.days === 1 ? 'día' : 'días'}</div>
+                                  </div>
+                                )}
+                                <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
+                                  <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.hours).padStart(2, '0')}</div>
+                                  <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>horas</div>
+                                </div>
+                                <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
+                                  <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.minutes).padStart(2, '0')}</div>
+                                  <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>min</div>
+                                </div>
+                                <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
+                                  <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.seconds).padStart(2, '0')}</div>
+                                  <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>seg</div>
+                                </div>
+                              </div>
+                              <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-xs mt-2 text-center`}>
+                                El menú se desactivará el: <strong>{formatDateTime(graceUntilDate)}</strong>
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="bg-red-100 border-2 border-red-300 rounded-lg p-3 mb-3">
+                            <p className="text-red-900 font-bold text-center">
+                              ⚠️ El menú se desactivará muy pronto
+                            </p>
+                            {graceUntilDate && (
+                              <p className="text-red-800 text-xs mt-1 text-center">
+                                Fecha de desactivación: <strong>{formatDateTime(graceUntilDate)}</strong>
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-sm mb-3`}>
+                          Tu suscripción expiró el {formatDate(subscription.periodEnd || subscription.endDate)}. 
+                          Tienes <strong>{graceDaysRemaining} días de gracia</strong> para renovar antes de que tu menú se desactive.
+                        </p>
+                        <p className={`${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'} text-xs mb-3 font-medium`}>
+                          ⚠️ Después del período de gracia, el menú quedará desactivado para seleccionar o ver órdenes. Los usuarios solo podrán ver el menú, pero no podrán realizar pedidos.
+                        </p>
+                      <button
+                        onClick={() => {
+                          if (onNavigateToSubscription) {
+                            onNavigateToSubscription();
+                          } else if (location.pathname.includes('/admin')) {
+                            // Si estamos en el panel admin, usar evento custom o scroll
+                            window.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'subscription' }));
+                            // También intentar scroll al inicio
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          } else {
+                            navigate('/admin');
+                          }
+                        }}
+                        className={`w-full sm:w-auto mt-2 px-4 py-2 ${isLessThan24Hours ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5`}
+                      >
+                        <span>Renovar Ahora</span>
+                        <FaArrowRight className="text-sm" />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+                  );
+                })()}
       
               {isExpired && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ 
-              opacity: [1, 0.5, 1],
-              y: 0,
-              scale: [1, 1.02, 1]
+              opacity: [1, 0.9, 1],
+              y: 0
             }}
             transition={{
               opacity: {
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "easeInOut"
-              },
-              scale: {
-                duration: 1.5,
+                duration: 3,
                 repeat: Infinity,
                 ease: "easeInOut"
               }

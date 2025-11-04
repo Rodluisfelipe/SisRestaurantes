@@ -262,25 +262,25 @@ const SubscriptionPayment = () => {
       return;
     }
     
-          try {
-        setSubmitting(true);
-        setErrors({});
-        
-        const formDataToSend = new FormData();
-        formDataToSend.append('monthsPurchased', formData.monthsPurchased);
-        formDataToSend.append('amount', formData.amount);
-        formDataToSend.append('paymentMethod', formData.paymentMethod);
-        formDataToSend.append('proof', formData.proof);
+    try {
+      setSubmitting(true);
+      setErrors({});
+      
+      const formDataToSend = new FormData();
+      formDataToSend.append('monthsPurchased', formData.monthsPurchased);
+      formDataToSend.append('amount', formData.amount);
+      formDataToSend.append('paymentMethod', formData.paymentMethod);
+      formDataToSend.append('proof', formData.proof);
         // Incluir businessId si está disponible (necesario para SuperAdmins)
         if (businessId) {
           formDataToSend.append('businessId', businessId);
         }
-        
-        const res = await api.post('/payments/manual/request', formDataToSend, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
+      
+      const res = await api.post('/payments/manual/request', formDataToSend, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       if (res.data.success) {
         alert('Solicitud de pago enviada correctamente. Será revisada por nuestro equipo.');
@@ -409,25 +409,25 @@ const SubscriptionPayment = () => {
                 const isSelected = formData.monthsPurchased === months;
                 const totalDiscount = getTotalDiscount(months);
                 return (
-                  <button
-                    key={months}
-                    type="button"
-                    onClick={() => handleMonthsChange(months)}
+                <button
+                  key={months}
+                  type="button"
+                  onClick={() => handleMonthsChange(months)}
                     className={`p-4 rounded-lg border-2 transition-all relative ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
                     {/* Badge de descuento siempre visible */}
                     <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
                       -${totalDiscount.toLocaleString('es-CO')}
                     </div>
                     
-                    <div className="font-bold text-lg">{months}</div>
-                    <div className="text-xs text-gray-600">
-                      {months === 1 ? 'mes' : 'meses'}
-                    </div>
+                  <div className="font-bold text-lg">{months}</div>
+                  <div className="text-xs text-gray-600">
+                    {months === 1 ? 'mes' : 'meses'}
+                  </div>
                     <div className="mt-2">
                       {PRICING_BASE[months] !== PRICING[months] && (
                         <div className="text-xs text-gray-400 line-through mb-1">
@@ -435,8 +435,8 @@ const SubscriptionPayment = () => {
                         </div>
                       )}
                       <div className="text-sm font-semibold text-green-600">
-                        ${PRICING[months].toLocaleString('es-CO')}
-                      </div>
+                    ${PRICING[months].toLocaleString('es-CO')}
+                  </div>
                     </div>
                     
                     {/* Mostrar ahorro si es mayor a 0 */}
@@ -445,7 +445,7 @@ const SubscriptionPayment = () => {
                         💰 Ahorras ${savings.toLocaleString('es-CO')}
                       </div>
                     )}
-                  </button>
+                </button>
                 );
               })}
             </div>
@@ -454,8 +454,8 @@ const SubscriptionPayment = () => {
           {/* Monto */}
           <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border-2 border-green-200">
             <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-700 font-medium">Total a Pagar:</span>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700 font-medium">Total a Pagar:</span>
                 <div className="text-right">
                   {PRICING_BASE[formData.monthsPurchased] !== formData.amount && (
                       <div className="text-sm text-gray-400 line-through mb-1">
@@ -463,10 +463,10 @@ const SubscriptionPayment = () => {
                       </div>
                     )}
                   <span className="text-2xl font-bold text-green-600">
-                    ${formData.amount.toLocaleString('es-CO')} COP
-                  </span>
-                </div>
-              </div>
+                ${formData.amount.toLocaleString('es-CO')} COP
+              </span>
+            </div>
+          </div>
               
               {/* Mostrar descuentos aplicados */}
               <div className="flex items-center justify-between pt-2 border-t border-green-200">
