@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FaChartLine, FaExclamationTriangle, FaCheckCircle, FaTimesCircle, FaMoneyBillWave, FaUsers } from 'react-icons/fa';
-import superadminApi from '../../services/superadminApi';
+import { subscriptionApi } from '../../services/superadminApi';
 
 const PaymentsDashboard = () => {
   const [kpis, setKpis] = useState(null);
@@ -28,7 +28,7 @@ const PaymentsDashboard = () => {
         limit: filters.limit
       }).toString();
       
-      const res = await superadminApi.get(`/admin/subscriptions/overview?${params}`);
+      const res = await subscriptionApi.get(`/admin/subscriptions/overview?${params}`);
       
       if (res.data.success) {
         setKpis(res.data.kpis);

@@ -6,6 +6,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const authMiddleware = require('../middleware/authMiddleware');
 const { isValidObjectId } = require('../utils/validators');
+const { resolveBusinessId } = require('../utils/businessResolver');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 
@@ -133,10 +134,34 @@ router.get('/check/:businessId', async (req, res) => {
 // GET /api/subscriptions/me - Obtener mi suscripción (para admin autenticado)
 router.get('/me', authMiddleware, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    // Si es SuperAdmin, permitir pasar businessId como query param (puede ser slug u ObjectId)
+    let businessId = req.user.businessId;
+    const isSuperAdmin = req.user.isSuperAdmin || req.user.role === 'superadmin';
+    
+    logger.debug('GET /subscriptions/me', { 
+      hasBusinessId: !!businessId, 
+      isSuperAdmin, 
+      userRole: req.user.role,
+      queryBusinessId: req.query.businessId 
+    }, req);
+    
+    if (!businessId && isSuperAdmin && req.query.businessId) {
+      // Resolver el businessId (slug u ObjectId) a ObjectId
+      try {
+        businessId = await resolveBusinessId(req.query.businessId);
+      } catch (error) {
+        logger.error('Error resolving businessId', error, req);
+        return res.status(400).json(formatHttpError(req, 'Negocio no encontrado: ' + error.message, 400));
+      }
+    }
     
     if (!businessId) {
       return res.status(403).json(formatHttpError(req, 'No se pudo determinar el negocio', 403));
+    }
+    
+    // Asegurar que businessId sea ObjectId válido
+    if (!isValidObjectId(businessId)) {
+      return res.status(400).json(formatHttpError(req, 'ID de negocio inválido', 400));
     }
     
     const subscription = await Subscription.findOne({ businessId })
@@ -202,11 +227,29 @@ router.get('/me', authMiddleware, async (req, res) => {
 // POST /api/subscriptions/checkout - Crear checkout Wompi
 router.post('/checkout', authMiddleware, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
-    const { planType } = req.body;
+    // Si es SuperAdmin, permitir pasar businessId como body param o query param (puede ser slug u ObjectId)
+    let businessId = req.user.businessId;
+    const { planType, businessId: bodyBusinessId } = req.body;
+    const isSuperAdmin = req.user.isSuperAdmin || req.user.role === 'superadmin';
+    
+    if (!businessId && isSuperAdmin && (bodyBusinessId || req.query.businessId)) {
+      const identifier = bodyBusinessId || req.query.businessId;
+      // Resolver el businessId (slug u ObjectId) a ObjectId
+      try {
+        businessId = await resolveBusinessId(identifier);
+      } catch (error) {
+        logger.error('Error resolving businessId', error, req);
+        return res.status(400).json(formatHttpError(req, 'Negocio no encontrado: ' + error.message, 400));
+      }
+    }
     
     if (!businessId) {
       return res.status(403).json(formatHttpError(req, 'No se pudo determinar el negocio', 403));
+    }
+    
+    // Asegurar que businessId sea ObjectId válido
+    if (!isValidObjectId(businessId)) {
+      return res.status(400).json(formatHttpError(req, 'ID de negocio inválido', 400));
     }
     
     // Buscar suscripción actual
@@ -220,51 +263,91 @@ router.post('/checkout', authMiddleware, async (req, res) => {
     // Obtener business para email
     const business = await BusinessConfig.findById(businessId);
     
-    // Precio según plan
-    const price = planType === 'annual' ? 
-      (process.env.SUBSCRIPTION_ANNUAL_PRICE || 500000) : 
-      (process.env.SUBSCRIPTION_MONTHLY_PRICE || 50000);
+    if (!business) {
+      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
+    }
+    
+    // Precio según plan (en pesos, se convertirá a centavos)
+    const priceInPesos = planType === 'annual' ? 
+      parseInt(process.env.SUBSCRIPTION_ANNUAL_PRICE || 500000) : 
+      parseInt(process.env.SUBSCRIPTION_MONTHLY_PRICE || 50000);
     
     // Importar wompiService (dinámicamente para evitar errores si no está configurado)
     let wompiService;
     try {
       wompiService = require('../services/wompiService');
     } catch (error) {
+      logger.error('Error loading wompiService', error, req);
       return res.status(503).json(formatHttpError(req, 'Servicio de pagos no disponible', 503));
     }
     
     if (!wompiService.isConfigured()) {
+      logger.warn('Wompi service not configured', null, req);
       return res.status(503).json(formatHttpError(req, 'Servicio de pagos no configurado', 503));
     }
     
-    // Crear checkout en Wompi
-    const checkout = await wompiService.createCheckout({
-      amountInCents: price,
-      currency: 'COP',
-      reference: `SUB_${subscription._id}_${Date.now()}`,
-      customerEmail: business.adminEmail || req.user.email || 'noreply@menuby.tech',
-      customerName: business.businessName,
-      redirectUrl: `${process.env.FRONTEND_URL || 'https://www.menuby.tech'}/${business.slug}/payment-callback`,
-      businessId: business._id.toString(),
-      subscriptionId: subscription._id.toString()
-    });
+    // Generar referencia única de pago
+    const reference = `SUB_${subscription._id}_${Date.now()}`;
+    const amountInCents = priceInPesos * 100;
     
-    // Actualizar suscripción con datos del checkout
-    subscription.wompiTransactionId = checkout.id;
-    subscription.checkoutLink = checkout.link;
-    subscription.lastPaymentAttempt = new Date();
-    subscription.wompiReference = checkout.reference;
-    await subscription.save();
+    // Generar firma de integridad
+    const signature = wompiService.generateIntegritySignature(reference, amountInCents, 'COP');
     
-    logger.info('Checkout created for subscription', { 
-      subscriptionId: subscription._id, 
-      transactionId: checkout.id 
+    // Actualizar suscripción con datos de referencia y planType si se especifica
+    // Usar findByIdAndUpdate para asegurar que se guarde correctamente
+    const updateData = {
+      wompiReference: reference,
+      lastPaymentAttempt: new Date()
+    };
+    if (planType === 'annual' || planType === 'monthly') {
+      updateData.planType = planType;
+    }
+    
+    const updatedSubscription = await Subscription.findByIdAndUpdate(
+      subscription._id,
+      { $set: updateData },
+      { new: true }
+    );
+    
+    if (!updatedSubscription) {
+      logger.error('Failed to update subscription with wompiReference', {
+        subscriptionId: subscription._id,
+        reference
+      }, req);
+      return res.status(500).json(formatHttpError(req, 'Error al actualizar la suscripción', 500));
+    }
+    
+    // Verificar que se guardó correctamente
+    const savedSubscription = await Subscription.findById(subscription._id);
+    logger.info('Checkout widget prepared for subscription', { 
+      subscriptionId: updatedSubscription._id,
+      businessId: updatedSubscription.businessId,
+      reference,
+      savedReference: savedSubscription?.wompiReference,
+      updatedReference: updatedSubscription.wompiReference,
+      amountInCents,
+      referenceMatches: savedSubscription?.wompiReference === reference && updatedSubscription.wompiReference === reference
     }, req);
     
+    if (savedSubscription?.wompiReference !== reference) {
+      logger.error('⚠️ CRITICAL: wompiReference no se guardó correctamente!', {
+        expected: reference,
+        actual: savedSubscription?.wompiReference,
+        subscriptionId: subscription._id
+      }, req);
+    }
+    
+    // Retornar datos para el Widget
     res.json({
       success: true,
-      checkoutLink: checkout.link,
-      transactionId: checkout.id
+      widgetConfig: {
+        publicKey: wompiService.publicKey,
+        currency: 'COP',
+        amountInCents,
+        reference,
+        signature,
+        redirectUrl: `${process.env.FRONTEND_URL || 'https://www.menuby.tech'}/admin`
+      }
     });
   } catch (error) {
     logger.error('Error creating checkout', error, req);

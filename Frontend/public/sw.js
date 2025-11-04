@@ -46,7 +46,15 @@ self.addEventListener('activate', (event) => {
 
 // Fetch: estrategia Network First con fallback a cache
 self.addEventListener('fetch', (event) => {
-  // Solo cachear GET requests
+  const url = new URL(event.request.url);
+  
+  // NO interceptar peticiones a APIs (backend)
+  if (url.pathname.startsWith('/api/') || 
+      url.hostname !== self.location.hostname) {
+    return; // Dejar que la petición pase directamente sin interceptar
+  }
+  
+  // Solo cachear GET requests del mismo dominio
   if (event.request.method !== 'GET') {
     return;
   }

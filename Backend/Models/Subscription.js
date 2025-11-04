@@ -75,6 +75,7 @@ const subscriptionSchema = new mongoose.Schema({
 subscriptionSchema.index({ businessId: 1, status: 1 });
 subscriptionSchema.index({ endDate: 1, status: 1 });
 subscriptionSchema.index({ wompiTransactionId: 1 }, { unique: true, sparse: true });
+subscriptionSchema.index({ wompiReference: 1 }); // Índice para búsquedas rápidas por reference
 
 // Método para verificar si la suscripción está activa
 subscriptionSchema.methods.isSubscriptionActive = function() {

@@ -125,6 +125,7 @@ app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
 app.use("/api/superadmin", require("./Routes/superadmin"));
 app.use("/api/subscriptions", require("./Routes/subscriptions"));
 app.use("/api/admin/subscriptions", require("./Routes/adminSubscriptions"));
+app.use("/api/webhooks", require("./Routes/webhooks")); // Webhooks de Wompi para reactivación automática
 app.use("/api/whatsapp-templates", require("./Routes/whatsappTemplates"));
   
 // Ruta específica para SSE

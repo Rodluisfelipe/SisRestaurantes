@@ -38,19 +38,35 @@ import { motion, AnimatePresence } from "framer-motion";
 const SubscriptionManagementWrapper = () => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { businessId: businessIdFromConfig } = useBusinessConfig();
+  const { user } = useAuth();
+
+  // Preferir businessId del contexto, si no está disponible usar el del user (para SuperAdmin)
+  const businessId = businessIdFromConfig || user?.businessId;
 
   useEffect(() => {
-    loadSubscription();
-  }, []);
+    if (businessId || user?.role === 'superadmin') {
+      loadSubscription();
+    }
+  }, [businessId, user]);
 
   const loadSubscription = async () => {
     try {
-      const res = await api.get('/subscriptions/me');
+      // Si es SuperAdmin y tenemos businessId, pasarlo como query param
+      const url = user?.role === 'superadmin' && businessId 
+        ? `/subscriptions/me?businessId=${businessId}`
+        : '/subscriptions/me';
+      
+      const res = await api.get(url);
       if (res.data.success && res.data.subscription) {
         setSubscription(res.data.subscription);
       }
     } catch (error) {
       console.error('Error loading subscription:', error);
+      // Si es 403, el usuario no tiene businessId válido - mostrar mensaje
+      if (error.response?.status === 403) {
+        console.error('No se pudo determinar el negocio. Por favor, cierra sesión y vuelve a iniciar sesión.');
+      }
     } finally {
       setLoading(false);
     }
