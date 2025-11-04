@@ -11,6 +11,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const authMiddleware = require('../middleware/authMiddleware');
 const { isValidObjectId } = require('../utils/validators');
+const { resolveBusinessId } = require('../utils/businessResolver');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const socketService = require('../services/socketService');
@@ -180,6 +181,28 @@ router.post('/payments/manual/request', authMiddleware, upload.single('proof'), 
       businessId = bodyBusinessId;
     }
     
+    // Si tenemos un businessId (del token, Admin, o body), intentar resolverlo (puede ser slug o ObjectId)
+    if (businessId) {
+      try {
+        // Resolver businessId si es un slug (convertir a ObjectId)
+        businessId = await resolveBusinessId(businessId);
+      } catch (error) {
+        logger.warn('Error resolving businessId in /payments/manual/request', { 
+          originalBusinessId: businessId, 
+          error: error.message 
+        }, req);
+        // Si hay un archivo subido, eliminarlo
+        if (req.file) {
+          try {
+            fs.unlinkSync(req.file.path);
+          } catch (unlinkError) {
+            logger.error('Error deleting uploaded file', unlinkError, req);
+          }
+        }
+        return res.status(400).json(formatHttpError(req, 'ID de negocio inválido o no encontrado', 400));
+      }
+    }
+    
     if (!businessId) {
       // Si hay un archivo subido, eliminarlo
       if (req.file) {
@@ -192,6 +215,7 @@ router.post('/payments/manual/request', authMiddleware, upload.single('proof'), 
       return res.status(400).json(formatHttpError(req, 'No se pudo determinar el negocio. Por favor, contacta al administrador.', 400));
     }
     
+    // Validar que el businessId resuelto sea un ObjectId válido
     if (!isValidObjectId(businessId)) {
       // Si hay un archivo subido, eliminarlo
       if (req.file) {

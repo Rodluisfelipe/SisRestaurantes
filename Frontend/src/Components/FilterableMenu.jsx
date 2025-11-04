@@ -630,8 +630,16 @@ const FilterableMenu = ({
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                onClick={() => handleShowToppings(product)}
-                className="bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200/50 flex overflow-hidden cursor-pointer"
+                onClick={() => {
+                  // Verificar si la suscripción está suspendida antes de abrir toppings
+                  if (subscriptionStatus === 'suspended') {
+                    return;
+                  }
+                  handleShowToppings(product);
+                }}
+                className={`bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200/50 flex overflow-hidden ${
+                  subscriptionStatus === 'suspended' ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'
+                }`}
               >
                 {/* Product Image */}
                 <div className="w-16 h-16 sm:w-24 sm:h-24 relative flex-shrink-0">

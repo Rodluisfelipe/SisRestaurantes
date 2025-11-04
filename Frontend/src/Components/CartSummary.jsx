@@ -9,7 +9,7 @@ import api from '../services/api';
 
 // (Sin componente separado - el textarea estará directamente en el JSX)
 
-function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder }) {
+function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder, subscriptionStatus }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
   const [orderType, setOrderType] = useState('');
@@ -267,6 +267,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     updateOrderInfo(updatedOrderInfo);
     SessionManager.saveOrderInfo(updatedOrderInfo);
     
+    // Verificar si la suscripción está suspendida
+    if (subscriptionStatus === 'suspended') {
+      setLocalIsSubmitting(false);
+      return;
+    }
+    
     closeOrderModal();
     
     // Small delay to ensure state is fully updated before order submission
@@ -278,6 +284,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
   // Update input handlers to use functional state updates to prevent stale state issues
   const handleTableSubmit = () => {
+    // Verificar si la suscripción está suspendida
+    if (subscriptionStatus === 'suspended') {
+      setLocalIsSubmitting(false);
+      return;
+    }
+    
     // Debug para ver el estado actual
     debugInputState();
     
@@ -316,6 +328,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   
   // Función para enviar directamente cuando ya se seleccionó un tipo de pedido desde QR de mesa
   const handleDirectSubmit = () => {
+    // Verificar si la suscripción está suspendida
+    if (subscriptionStatus === 'suspended') {
+      setLocalIsSubmitting(false);
+      return;
+    }
+    
     // Si viene de QR mesa y ya eligió En Sitio o Para llevar, usamos esa información
     try {
       console.log('Enviando pedido directo desde QR con tipo:', orderInfo.orderType);
@@ -819,6 +837,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   };
 
   const handleSubmitOrder = () => {
+    // Verificar si la suscripción está suspendida
+    if (subscriptionStatus === 'suspended') {
+      setLocalIsSubmitting(false);
+      return;
+    }
+    
     // Verificar si el negocio está abierto
     if (!businessStatus?.isOpen) {
       setShowClosedModal(true);
@@ -926,6 +950,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
   // Función para manejar directamente pedidos para llevar sin modal
   const handleTakeawayOrder = () => {
+    // Verificar si la suscripción está suspendida
+    if (subscriptionStatus === 'suspended') {
+      setLocalIsSubmitting(false);
+      return;
+    }
+    
     // Debug para verificar estado actual
     debugInputState();
     
@@ -1292,14 +1322,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     onClick={handleSubmitOrder}
                     style={{ 
                       backgroundColor: businessStatus?.isOpen 
-                        ? businessConfig.theme.buttonColor 
+                        ? (subscriptionStatus === 'suspended' ? '#9ca3af' : businessConfig.theme.buttonColor)
                         : '#9ca3af',
                       color: businessConfig.theme.buttonTextColor 
                     }}
                     className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
-                      businessStatus?.isOpen ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
+                      (businessStatus?.isOpen && subscriptionStatus !== 'suspended') ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
                     }`}
-                    disabled={isSubmitting || !businessStatus?.isOpen}
+                    disabled={isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended'}
                   >
                     {isSubmitting ? (
                       <>
@@ -1320,14 +1350,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     onClick={handleSubmitOrder}
                     style={{ 
                       backgroundColor: businessStatus?.isOpen 
-                        ? businessConfig.theme.buttonColor 
+                        ? (subscriptionStatus === 'suspended' ? '#9ca3af' : businessConfig.theme.buttonColor)
                         : '#9ca3af',
                       color: businessConfig.theme.buttonTextColor 
                     }}
                     className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
-                      businessStatus?.isOpen ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
+                      (businessStatus?.isOpen && subscriptionStatus !== 'suspended') ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
                     }`}
-                    disabled={isSubmitting || !businessStatus?.isOpen}
+                    disabled={isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended'}
                   >
                     {isSubmitting ? (
                       <>
@@ -1354,9 +1384,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         color: businessConfig.theme.buttonTextColor 
                       }}
                       className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
-                        businessStatus?.isOpen ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
+                        (businessStatus?.isOpen && subscriptionStatus !== 'suspended') ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
                       }`}
-                      disabled={isSubmitting || !businessStatus?.isOpen}
+                      disabled={isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended'}
                     >
                       {isSubmitting ? (
                         <>
@@ -1382,9 +1412,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                           color: businessConfig.theme.buttonTextColor 
                         }}
                         className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
-                          businessStatus?.isOpen ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
+                          (businessStatus?.isOpen && subscriptionStatus !== 'suspended') ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
                         }`}
-                        disabled={isSubmitting || !businessStatus?.isOpen}
+                        disabled={isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended'}
                       >
                         {isSubmitting ? (
                           <>

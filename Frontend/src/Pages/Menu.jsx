@@ -300,20 +300,53 @@ export default function Menu() {
         const response = await api.get(`/subscriptions/check/${businessId}`);
         if (response.data.success && response.data.subscription) {
           const sub = response.data.subscription;
-          const now = new Date();
-          const periodEnd = sub.periodEnd || sub.endDate;
-          const graceUntil = sub.graceUntil || (periodEnd ? new Date(new Date(periodEnd).getTime() + 5 * 24 * 60 * 60 * 1000) : null);
           
-          let status = 'active';
-          if (periodEnd && graceUntil && now > graceUntil) {
-            status = 'suspended';
-          } else if (periodEnd && now > periodEnd) {
-            status = 'grace';
+          // Usar el estado calculado por el backend (más confiable)
+          // El backend ya calcula el estado usando getCurrentStatus() que considera:
+          // - active: si now <= periodEnd
+          // - grace: si now > periodEnd pero now <= graceUntil
+          // - suspended: si now > graceUntil
+          const backendStatus = sub.status;
+          
+          // Verificar manualmente como respaldo si el backend no envió el status
+          let status = backendStatus;
+          if (!backendStatus) {
+            const now = new Date();
+            const periodEnd = sub.periodEnd ? new Date(sub.periodEnd) : (sub.endDate ? new Date(sub.endDate) : null);
+            const graceUntil = sub.graceUntil ? new Date(sub.graceUntil) : (periodEnd ? new Date(new Date(periodEnd).getTime() + 5 * 24 * 60 * 60 * 1000) : null);
+            
+            if (periodEnd && graceUntil) {
+              if (now > graceUntil) {
+                status = 'suspended';
+              } else if (now > periodEnd) {
+                status = 'grace';
+              } else {
+                status = 'active';
+              }
+            } else {
+              status = 'active';
+            }
+          }
+          
+          logger.info('Menu - Estado de suscripción cargado:', { 
+            status, 
+            backendStatus, 
+            periodEnd: sub.periodEnd, 
+            graceUntil: sub.graceUntil,
+            now: new Date().toISOString(),
+            periodEndDate: sub.periodEnd ? new Date(sub.periodEnd).toISOString() : null,
+            graceUntilDate: sub.graceUntil ? new Date(sub.graceUntil).toISOString() : null
+          });
+          
+          // Asegurar que el estado se establezca correctamente
+          if (status === 'suspended') {
+            logger.warn('Menu - SUSCRIPCIÓN SUSPENDIDA - El menú debe estar bloqueado');
           }
           
           setSubscriptionStatus(status);
         } else {
-          setSubscriptionStatus(null); // Sin suscripción
+          // Sin suscripción = activo (para no bloquear el menú si no hay suscripción configurada)
+          setSubscriptionStatus(null);
         }
       } catch (err) {
         // Si no hay suscripción o hay error, asumir que está activo (para no bloquear el menú)
@@ -325,6 +358,13 @@ export default function Menu() {
     };
     
     loadSubscriptionStatus();
+    
+    // Actualizar el estado cada minuto para asegurar que se actualice cuando cambie el estado
+    const interval = setInterval(() => {
+      loadSubscriptionStatus();
+    }, 60000); // Cada minuto
+    
+    return () => clearInterval(interval);
   }, [businessId]);
 
   useEffect(() => {
@@ -447,6 +487,7 @@ export default function Menu() {
   const addToCart = (product) => {
     // Verificar si la suscripción está suspendida
     if (subscriptionStatus === 'suspended') {
+      logger.warn('Menu - addToCart bloqueado: suscripción suspendida', { subscriptionStatus, productId: product._id });
       // Mensaje sutil sin mencionar problemas de pago
       return;
     }
@@ -1041,13 +1082,13 @@ export default function Menu() {
       
       {/* Aviso discreto de servicio temporalmente no disponible */}
       {subscriptionStatus === 'suspended' && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-4 py-2">
+        <div className="bg-gradient-to-r from-red-50 to-pink-50 border-b border-red-200 px-4 py-3">
           <div className="max-w-7xl mx-auto flex items-center justify-center space-x-2">
-            <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
-            <p className="text-center text-xs sm:text-sm text-amber-700">
-              Servicio temporalmente no disponible. Por favor, contacta al restaurante.
+            <p className="text-center text-sm font-semibold text-red-700">
+              ⚠️ Servicio temporalmente no disponible. Por favor, contacta al restaurante.
             </p>
           </div>
         </div>
@@ -1090,10 +1131,17 @@ export default function Menu() {
         cart={cart}
         totalItems={totalItems}
         totalAmount={totalAmount}
-        onShowCart={() => setShowCartSummary(true)}
+        onShowCart={() => {
+          // No permitir abrir el carrito si está suspendido
+          if (subscriptionStatus === 'suspended') {
+            return;
+          }
+          setShowCartSummary(true);
+        }}
         businessConfig={businessConfig}
         isSelectingToppings={isSelectingToppings}
         showCartSummary={showCartSummary}
+        subscriptionStatus={subscriptionStatus}
       />
       
       <OrderConfirmationModal 
@@ -1134,6 +1182,7 @@ export default function Menu() {
           onOrder={handleOrder}
           businessConfig={businessConfig}
           isSubmittingOrder={isSubmittingOrder}
+          subscriptionStatus={subscriptionStatus}
         />
       )}
     </div>

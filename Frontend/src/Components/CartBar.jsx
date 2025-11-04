@@ -8,7 +8,8 @@ const CartBar = ({
   onShowCart, 
   businessConfig, 
   isSelectingToppings, 
-  showCartSummary 
+  showCartSummary,
+  subscriptionStatus
 }) => {
   if (cart.length === 0 || isSelectingToppings || showCartSummary) return null;
 
@@ -63,13 +64,18 @@ const CartBar = ({
             {/* Cart Button */}
             <motion.button
               onClick={onShowCart}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-8 py-4 rounded-2xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center space-x-2"
+              whileHover={subscriptionStatus !== 'suspended' ? { scale: 1.05 } : {}}
+              whileTap={subscriptionStatus !== 'suspended' ? { scale: 0.95 } : {}}
+              className={`px-8 py-4 rounded-2xl font-bold shadow-xl transition-all duration-300 flex items-center space-x-2 ${
+                subscriptionStatus === 'suspended' ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-2xl'
+              }`}
               style={{
-                backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                backgroundColor: subscriptionStatus === 'suspended' 
+                  ? '#9ca3af' 
+                  : (businessConfig?.theme?.buttonColor || '#f97316'),
                 color: businessConfig?.theme?.buttonTextColor || '#ffffff'
               }}
+              disabled={subscriptionStatus === 'suspended'}
             >
               <span>Ver Carrito</span>
               <motion.div

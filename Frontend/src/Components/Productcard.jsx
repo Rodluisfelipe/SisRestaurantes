@@ -54,10 +54,18 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   return (
     <>
       <motion.div 
-        onClick={handleShowToppings}
-        whileHover={{ y: -8, scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        className="group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/50 overflow-hidden backdrop-blur-sm cursor-pointer"
+        onClick={() => {
+          // Verificar si la suscripción está suspendida antes de abrir toppings
+          if (subscriptionStatus === 'suspended') {
+            return;
+          }
+          handleShowToppings();
+        }}
+        whileHover={subscriptionStatus !== 'suspended' ? { y: -8, scale: 1.02 } : {}}
+        whileTap={subscriptionStatus !== 'suspended' ? { scale: 0.98 } : {}}
+        className={`group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/50 overflow-hidden backdrop-blur-sm ${
+          subscriptionStatus === 'suspended' ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'
+        }`}
       >
         {/* Premium Product Image */}
         <div className="relative w-full h-44 overflow-hidden bg-white">

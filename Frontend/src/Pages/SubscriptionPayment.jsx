@@ -4,7 +4,7 @@ import { useAuth } from '../Context/AuthContext';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useBusinessSocket } from '../hooks/useBusinessSocket';
 import api from '../services/api';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaCreditCard, 
   FaUpload, 
@@ -27,6 +27,7 @@ const SubscriptionPayment = () => {
   const [paymentRequests, setPaymentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   // Formulario
   const [formData, setFormData] = useState({
@@ -267,14 +268,36 @@ const SubscriptionPayment = () => {
       setErrors({});
       
       const formDataToSend = new FormData();
-      formDataToSend.append('monthsPurchased', formData.monthsPurchased);
-      formDataToSend.append('amount', formData.amount);
-      formDataToSend.append('paymentMethod', formData.paymentMethod);
-      formDataToSend.append('proof', formData.proof);
-        // Incluir businessId si está disponible (necesario para SuperAdmins)
-        if (businessId) {
-          formDataToSend.append('businessId', businessId);
-        }
+      
+      // Asegurar que todos los valores sean strings
+      formDataToSend.append('monthsPurchased', String(formData.monthsPurchased));
+      formDataToSend.append('amount', String(formData.amount));
+      formDataToSend.append('paymentMethod', String(formData.paymentMethod));
+      
+      // Asegurar que el archivo se adjunte correctamente
+      if (formData.proof) {
+        formDataToSend.append('proof', formData.proof);
+      } else {
+        alert('Error: No se seleccionó ningún archivo de comprobante');
+        setSubmitting(false);
+        return;
+      }
+      
+      // Incluir businessId si está disponible (necesario para SuperAdmins)
+      if (businessId) {
+        formDataToSend.append('businessId', String(businessId));
+      }
+      
+      // Log para depuración
+      console.log('Enviando solicitud de pago:', {
+        monthsPurchased: formData.monthsPurchased,
+        amount: formData.amount,
+        paymentMethod: formData.paymentMethod,
+        hasProof: !!formData.proof,
+        proofName: formData.proof?.name,
+        proofSize: formData.proof?.size,
+        businessId: businessId || 'no disponible'
+      });
       
       const res = await api.post('/payments/manual/request', formDataToSend, {
         headers: {
@@ -283,7 +306,7 @@ const SubscriptionPayment = () => {
       });
       
       if (res.data.success) {
-        alert('Solicitud de pago enviada correctamente. Será revisada por nuestro equipo.');
+        setShowSuccessModal(true);
         setFormData({
           monthsPurchased: 1,
           amount: PRICING[1] || 25000,
@@ -294,8 +317,20 @@ const SubscriptionPayment = () => {
       }
     } catch (error) {
       console.error('Error submitting payment request:', error);
-      const errorMsg = error.response?.data?.message || 'Error al enviar la solicitud';
+      console.error('Error response:', error.response?.data);
+      console.error('Error request data:', {
+        monthsPurchased: formData.monthsPurchased,
+        amount: formData.amount,
+        paymentMethod: formData.paymentMethod,
+        hasProof: !!formData.proof,
+        hasBusinessId: !!businessId
+      });
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || 'Error al enviar la solicitud';
       alert(errorMsg);
+      setErrors({ 
+        ...errors, 
+        submit: errorMsg 
+      });
     } finally {
       setSubmitting(false);
     }
@@ -670,6 +705,75 @@ const SubscriptionPayment = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Modal de éxito */}
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowSuccessModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative overflow-hidden"
+            >
+            {/* Decoración de fondo */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 rounded-full -mr-16 -mt-16 opacity-50"></div>
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-100 rounded-full -ml-12 -mb-12 opacity-50"></div>
+            
+            <div className="relative z-10">
+              {/* Icono de éxito animado */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: "spring", duration: 0.5 }}
+                >
+                  <FaCheckCircle className="text-green-500 text-5xl" />
+                </motion.div>
+              </motion.div>
+              
+              {/* Título */}
+              <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">
+                ¡Solicitud Enviada!
+              </h3>
+              
+              {/* Mensaje */}
+              <p className="text-gray-600 text-center mb-6">
+                Tu solicitud de pago ha sido enviada correctamente. Será revisada por nuestro equipo y recibirás una notificación cuando sea procesada.
+              </p>
+              
+              {/* Información adicional */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start space-x-3">
+                  <FaClock className="text-blue-500 mt-1 flex-shrink-0" />
+                  <div className="text-sm text-blue-800">
+                    <p className="font-semibold mb-1">Tiempo estimado de revisión:</p>
+                    <p>Tu solicitud será revisada en un plazo máximo de 24 horas.</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Botón de cierre */}
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                Entendido
+              </button>
+            </div>
+          </motion.div>
+        </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
