@@ -131,16 +131,24 @@ export default function BusinessTable({ refreshTrigger }) {
           {message}
         </motion.div>
       )}
-      <div className="overflow-x-auto">
+      
+      {loading && (
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#5FF9B4]"></div>
+        </div>
+      )}
+
+      {/* Desktop Table View */}
+      <div className="hidden lg:block overflow-x-auto">
         <table className="w-full mt-4 border-separate border-spacing-y-2">
           <thead>
             <tr className="text-[#D1D9FF]">
-              <th className="p-3">Logo</th>
-              <th className="p-3">Nombre</th>
-              <th className="p-3">Slug</th>
-              <th className="p-3">WhatsApp</th>
-              <th className="p-3">Estado</th>
-              <th className="p-3">Acciones</th>
+              <th className="p-3 text-left">Logo</th>
+              <th className="p-3 text-left">Nombre</th>
+              <th className="p-3 text-left">Slug</th>
+              <th className="p-3 text-left">WhatsApp</th>
+              <th className="p-3 text-left">Estado</th>
+              <th className="p-3 text-left">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -152,11 +160,11 @@ export default function BusinessTable({ refreshTrigger }) {
                 transition={{ duration: 0.2, delay: idx * 0.05 }}
                 className={`transition-colors bg-[#051C2C]/60 hover:bg-[#051C2C] border-b border-[#333F50]/30`}
               >
-                <td className="p-3 text-center">
+                <td className="p-3">
                   {b.logo ? (
-                    <img src={b.logo} alt="Logo" className="w-10 h-10 rounded-full object-cover border border-[#5FF9B4] shadow-md mx-auto" />
+                    <img src={b.logo} alt="Logo" className="w-10 h-10 rounded-full object-cover border border-[#5FF9B4] shadow-md" />
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-[#333F50] flex items-center justify-center mx-auto">
+                    <div className="w-10 h-10 rounded-full bg-[#333F50] flex items-center justify-center">
                       <svg className="w-6 h-6 text-[#D1D9FF]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
@@ -164,92 +172,196 @@ export default function BusinessTable({ refreshTrigger }) {
                   )}
                 </td>
                 <td className="p-3 font-semibold text-white">{b.businessName}</td>
-                <td className="p-3 text-[#D1D9FF] flex items-center gap-2">
-                  <span className="font-mono bg-[#333F50] px-2 py-0.5 rounded text-xs">{b.slug}</span>
-                  <button 
-                    title="Copiar slug" 
-                    onClick={() => {navigator.clipboard.writeText(b.slug); setMessage('Slug copiado');}} 
-                    className="text-[#3A7AFF] hover:text-[#5FF9B4] transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <rect x="9" y="9" width="13" height="13" rx="2" />
-                      <path d="M5 15V5a2 2 0 012-2h10" />
-                    </svg>
-                  </button>
+                <td className="p-3 text-[#D1D9FF]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono bg-[#333F50] px-2 py-0.5 rounded text-xs">{b.slug}</span>
+                    <button 
+                      title="Copiar slug" 
+                      onClick={() => {navigator.clipboard.writeText(b.slug); setMessage('Slug copiado');}} 
+                      className="text-[#3A7AFF] hover:text-[#5FF9B4] transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
                 </td>
-                <td className="p-3 text-[#D1D9FF]">{b.whatsappNumber}</td>
+                <td className="p-3 text-[#D1D9FF]">{b.whatsappNumber || 'N/A'}</td>
                 <td className="p-3">
-                  {b.isActive ? (
-                    <span className="inline-block px-3 py-1 text-xs font-bold bg-green-500/20 text-green-300 rounded-full">Activo</span>
-                  ) : (
-                    <span className="inline-block px-3 py-1 text-xs font-bold bg-red-500/20 text-red-300 rounded-full">Inactivo</span>
-                  )}
+                  <span className={`px-2 py-1 rounded-full text-xs font-semibold ${b.isActive ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                    {b.isActive ? 'Activo' : 'Inactivo'}
+                  </span>
                 </td>
-                <td className="p-3 flex flex-wrap gap-2">
-                  <button 
-                    onClick={() => handleActivate(b)} 
-                    title={b.isActive ? 'Desactivar' : 'Activar'} 
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium shadow-md transition-colors ${
-                      b.isActive 
-                        ? 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 border border-yellow-500/30' 
-                        : 'bg-green-500/20 text-green-300 hover:bg-green-500/30 border border-green-500/30'
-                    }`}
-                  >
-                    {b.isActive ? (
+                <td className="p-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button 
+                      onClick={() => handleActivate(b)} 
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium text-xs shadow-md transition-colors border ${
+                        b.isActive 
+                          ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30 border-red-500/30' 
+                          : 'bg-green-500/20 text-green-300 hover:bg-green-500/30 border-green-500/30'
+                      }`}
+                    >
+                      {b.isActive ? (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )} 
+                      {b.isActive ? 'Desactivar' : 'Activar'}
+                    </button>
+                    <button 
+                      onClick={() => handleOpenAdmin(b)} 
+                      title="Panel Admin" 
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium bg-[#3A7AFF]/20 text-[#3A7AFF] hover:bg-[#3A7AFF]/30 shadow-md transition-colors border border-[#3A7AFF]/30 text-xs"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-1.414 1.414A9 9 0 105.636 18.364l1.414-1.414" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 21l-2.25-4.5M14.25 17L15 21l2.25-4.5M12 3v18" />
                       </svg>
-                    ) : (
+                      Panel
+                    </button>
+                    <button 
+                      onClick={() => handleOpenMenu(b)} 
+                      title="Ver Menú" 
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium bg-[#5FF9B4]/20 text-[#5FF9B4] hover:bg-[#5FF9B4]/30 shadow-md transition-colors border border-[#5FF9B4]/30 text-xs"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                       </svg>
-                    )} 
-                    {b.isActive ? 'Desactivar' : 'Activar'}
-                  </button>
-                  <button 
-                    onClick={() => handleOpenAdmin(b)} 
-                    title="Panel Admin" 
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium bg-[#3A7AFF]/20 text-[#3A7AFF] hover:bg-[#3A7AFF]/30 shadow-md transition-colors border border-[#3A7AFF]/30"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 21l-2.25-4.5M14.25 17L15 21l2.25-4.5M12 3v18" />
-                    </svg>
-                    Panel Admin
-                  </button>
-                  <button 
-                    onClick={() => handleOpenMenu(b)} 
-                    title="Ver Menú" 
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium bg-[#5FF9B4]/20 text-[#5FF9B4] hover:bg-[#5FF9B4]/30 shadow-md transition-colors border border-[#5FF9B4]/30"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                    Ver Menú
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(b)} 
-                    title="Eliminar" 
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium bg-red-500/20 text-red-300 hover:bg-red-500/30 shadow-md transition-colors border border-red-500/30"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Eliminar
-                  </button>
+                      Menú
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(b)} 
+                      title="Eliminar" 
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-medium bg-red-500/20 text-red-300 hover:bg-red-500/30 shadow-md transition-colors border border-red-500/30 text-xs"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      Eliminar
+                    </button>
+                  </div>
                 </td>
               </motion.tr>
             ))}
           </tbody>
         </table>
       </div>
-      {loading && (
-        <div className="mt-4 flex justify-center">
-          <svg className="animate-spin h-10 w-10 text-[#3A7AFF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-        </div>
-      )}
+
+      {/* Mobile Card View */}
+      <div className="lg:hidden space-y-4 mt-4">
+        {(businesses || []).map((b, idx) => (
+          <motion.div
+            key={b._id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, delay: idx * 0.05 }}
+            className="bg-[#051C2C]/60 rounded-xl p-4 border border-[#333F50]/30"
+          >
+            {/* Header with Logo and Name */}
+            <div className="flex items-center gap-3 mb-4">
+              {b.logo ? (
+                <img src={b.logo} alt="Logo" className="w-12 h-12 rounded-full object-cover border-2 border-[#5FF9B4] shadow-md" />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-[#333F50] flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-[#D1D9FF]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-white text-base truncate">{b.businessName}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${b.isActive ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}`}>
+                    {b.isActive ? 'Activo' : 'Inactivo'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Slug */}
+            <div className="mb-3">
+              <p className="text-xs text-[#D1D9FF] mb-1">Slug:</p>
+              <div className="flex items-center gap-2">
+                <span className="font-mono bg-[#333F50] px-2 py-1 rounded text-xs text-white break-all">{b.slug}</span>
+                <button 
+                  title="Copiar slug" 
+                  onClick={() => {navigator.clipboard.writeText(b.slug); setMessage('Slug copiado');}} 
+                  className="text-[#3A7AFF] hover:text-[#5FF9B4] transition-colors flex-shrink-0"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* WhatsApp */}
+            <div className="mb-4">
+              <p className="text-xs text-[#D1D9FF] mb-1">WhatsApp:</p>
+              <p className="text-sm text-white">{b.whatsappNumber || 'N/A'}</p>
+            </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={() => handleActivate(b)} 
+                className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium text-xs shadow-md transition-colors border ${
+                  b.isActive 
+                    ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30 border-red-500/30' 
+                    : 'bg-green-500/20 text-green-300 hover:bg-green-500/30 border-green-500/30'
+                }`}
+              >
+                {b.isActive ? (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Desactivar
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Activar
+                  </>
+                )}
+              </button>
+              <button 
+                onClick={() => handleOpenAdmin(b)} 
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium bg-[#3A7AFF]/20 text-[#3A7AFF] hover:bg-[#3A7AFF]/30 shadow-md transition-colors border border-[#3A7AFF]/30 text-xs"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 21l-2.25-4.5M14.25 17L15 21l2.25-4.5M12 3v18" />
+                </svg>
+                Panel Admin
+              </button>
+              <button 
+                onClick={() => handleOpenMenu(b)} 
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium bg-[#5FF9B4]/20 text-[#5FF9B4] hover:bg-[#5FF9B4]/30 shadow-md transition-colors border border-[#5FF9B4]/30 text-xs"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                Ver Menú
+              </button>
+              <button 
+                onClick={() => handleDelete(b)} 
+                className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium bg-red-500/20 text-red-300 hover:bg-red-500/30 shadow-md transition-colors border border-red-500/30 text-xs"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Eliminar
+              </button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 } 

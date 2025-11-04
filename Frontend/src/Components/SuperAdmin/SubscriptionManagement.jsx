@@ -23,6 +23,23 @@ const SubscriptionManagement = () => {
 
   useEffect(() => {
     loadData();
+    
+    // Escuchar eventos de actualización desde PaymentRequestsReview
+    const handleSubscriptionUpdate = () => {
+      loadData();
+    };
+    
+    const handlePaymentRequestUpdate = () => {
+      loadData();
+    };
+    
+    window.addEventListener('subscription-updated', handleSubscriptionUpdate);
+    window.addEventListener('payment-request-updated', handlePaymentRequestUpdate);
+    
+    return () => {
+      window.removeEventListener('subscription-updated', handleSubscriptionUpdate);
+      window.removeEventListener('payment-request-updated', handlePaymentRequestUpdate);
+    };
   }, []);
 
   const loadData = async () => {
@@ -72,14 +89,6 @@ const SubscriptionManagement = () => {
     
     if (!formData.startDate) {
       errors.startDate = 'La fecha de inicio es requerida';
-    } else {
-      const startDate = new Date(formData.startDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      if (startDate < today) {
-        errors.startDate = 'La fecha de inicio no puede ser anterior a hoy';
-      }
     }
     
     if (!formData.endDate) {
@@ -121,8 +130,9 @@ const SubscriptionManagement = () => {
       [name]: value
     }));
 
-    // Auto-calcular fecha de fin basada en el tipo de plan
-    if (name === 'planType' || name === 'startDate') {
+    // Auto-calcular fecha de fin basada en el tipo de plan (solo si endDate está vacío o si el usuario quiere auto-calcular)
+    // No sobrescribir si el usuario ya editó la fecha de fin manualmente
+    if ((name === 'planType' || name === 'startDate') && !formData.endDate) {
       if (formData.startDate && value) {
         const startDate = new Date(name === 'startDate' ? value : formData.startDate);
         const planType = name === 'planType' ? value : formData.planType;
@@ -165,6 +175,9 @@ const SubscriptionManagement = () => {
       
       await loadData();
       resetForm();
+      
+      // Notificar a otros componentes
+      window.dispatchEvent(new CustomEvent('subscription-updated'));
     } catch (error) {
       console.error('Error saving subscription:', error);
       alert(`Error al guardar la suscripción: ${error.response?.data?.message || error.message}`);
@@ -195,6 +208,9 @@ const SubscriptionManagement = () => {
       setLoading(true);
       await subscriptionApi.delete(`/subscriptions/${subscriptionId}`);
       await loadData();
+      
+      // Notificar a otros componentes
+      window.dispatchEvent(new CustomEvent('subscription-updated'));
     } catch (error) {
       console.error('Error deleting subscription:', error);
     } finally {

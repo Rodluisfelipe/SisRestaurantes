@@ -1,5 +1,6 @@
 // @charset UTF-8
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
 import CartSummary from "../Components/CartSummary";
@@ -78,6 +79,8 @@ export default function Menu() {
     message: ''
   });
   const [businessNotFound, setBusinessNotFound] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null); // null, 'active', 'grace', 'suspended'
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -287,6 +290,43 @@ export default function Menu() {
     }
   }, [businessError]);
 
+  // Cargar estado de suscripción
+  useEffect(() => {
+    if (!businessId) return;
+    
+    const loadSubscriptionStatus = async () => {
+      try {
+        setSubscriptionLoading(true);
+        const response = await api.get(`/subscriptions/check/${businessId}`);
+        if (response.data.success && response.data.subscription) {
+          const sub = response.data.subscription;
+          const now = new Date();
+          const periodEnd = sub.periodEnd || sub.endDate;
+          const graceUntil = sub.graceUntil || (periodEnd ? new Date(new Date(periodEnd).getTime() + 5 * 24 * 60 * 60 * 1000) : null);
+          
+          let status = 'active';
+          if (periodEnd && graceUntil && now > graceUntil) {
+            status = 'suspended';
+          } else if (periodEnd && now > periodEnd) {
+            status = 'grace';
+          }
+          
+          setSubscriptionStatus(status);
+        } else {
+          setSubscriptionStatus(null); // Sin suscripción
+        }
+      } catch (err) {
+        // Si no hay suscripción o hay error, asumir que está activo (para no bloquear el menú)
+        logger.warn('Error cargando estado de suscripción:', err);
+        setSubscriptionStatus(null);
+      } finally {
+        setSubscriptionLoading(false);
+      }
+    };
+    
+    loadSubscriptionStatus();
+  }, [businessId]);
+
   useEffect(() => {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId para aceptar tanto slugs como ObjectIDs
     const isValid = isValidBusinessIdentifier(businessId);
@@ -405,6 +445,12 @@ export default function Menu() {
   }, [businessId]);
 
   const addToCart = (product) => {
+    // Verificar si la suscripción está suspendida
+    if (subscriptionStatus === 'suspended') {
+      // Mensaje sutil sin mencionar problemas de pago
+      return;
+    }
+    
     setCart(prevCart => {
       const toppingsString = JSON.stringify(product.selectedToppings || {});
       const uniqueId = `${product._id}-${toppingsString.replace(/[{}",:]/g, '')}`;
@@ -542,12 +588,19 @@ export default function Menu() {
       logger.info('Estado del pedido en orderInfo:', orderInfo);
       logger.info('Estado del pedido recibido directamente:', directOrderInfo);
       
+      // Verificar si la suscripción está suspendida
+      if (subscriptionStatus === 'suspended') {
+        // Mensaje sutil sin mencionar problemas de pago
+        setIsSubmittingOrder(false);
+        return;
+      }
+      
       // Prevenir múltiples envíos
       if (isSubmittingOrder) {
         logger.info('Ya hay un envío en proceso, ignorando');
         return;
       }
-      
+    
     setIsSubmittingOrder(true);
     
       // Validar que haya productos en el carrito
@@ -886,7 +939,31 @@ export default function Menu() {
       return true; // Indicar éxito
     } catch (error) {
       logger.error('Error al crear pedido en la API:', error);
-      alert(`Error al procesar el pedido en el servidor: ${error.message || 'Error desconocido'}`);
+      
+      // Manejar error específico de suscripción suspendida
+      if (error.response?.status === 403 && error.response?.data?.code === 'SUBSCRIPTION_SUSPENDED') {
+        // No mostrar alert - el usuario ya ve el aviso discreto en la parte superior
+        // Recargar estado de suscripción
+        if (businessId) {
+          const response = await api.get(`/subscriptions/check/${businessId}`).catch(() => null);
+          if (response?.data?.success && response.data.subscription) {
+            const sub = response.data.subscription;
+            const now = new Date();
+            const periodEnd = sub.periodEnd || sub.endDate;
+            const graceUntil = sub.graceUntil || (periodEnd ? new Date(new Date(periodEnd).getTime() + 5 * 24 * 60 * 60 * 1000) : null);
+            let status = 'active';
+            if (periodEnd && graceUntil && now > graceUntil) {
+              status = 'suspended';
+            } else if (periodEnd && now > periodEnd) {
+              status = 'grace';
+            }
+            setSubscriptionStatus(status);
+          }
+        }
+        return false;
+      }
+      
+      alert(`Error al procesar el pedido en el servidor: ${error.response?.data?.message || error.message || 'Error desconocido'}`);
       return false; // Indicar fallo
     }
   };
@@ -962,6 +1039,20 @@ export default function Menu() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <BusinessHeader comesFromCatalog={comesFromCatalog} />
       
+      {/* Aviso discreto de servicio temporalmente no disponible */}
+      {subscriptionStatus === 'suspended' && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-4 py-2">
+          <div className="max-w-7xl mx-auto flex items-center justify-center space-x-2">
+            <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-center text-xs sm:text-sm text-amber-700">
+              Servicio temporalmente no disponible. Por favor, contacta al restaurante.
+            </p>
+          </div>
+        </div>
+      )}
+      
       {/* Botón para volver al catálogo (solo si viene del catálogo) */}
       {comesFromCatalog && (
         <button
@@ -992,6 +1083,7 @@ export default function Menu() {
         addToCart={addToCart}
         onToppingsOpen={() => setIsSelectingToppings(true)}
         onToppingsClose={() => setIsSelectingToppings(false)}
+        subscriptionStatus={subscriptionStatus}
       />
 
       <CartBar 

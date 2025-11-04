@@ -75,6 +75,34 @@ router.post('/register', async (req, res) => {
     // Guardar el usuario administrador
     await admin.save();
 
+    // Crear suscripción inicial con período de gracia de 7 días
+    const Subscription = require('../Models/Subscription');
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 7);
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setDate(periodEnd.getDate() + GRACE_DAYS);
+    const graceUntil = new Date(periodEnd);
+    graceUntil.setDate(graceUntil.getDate() + GRACE_DAYS); // periodEnd + 7 días de gracia
+    
+    const initialSubscription = new Subscription({
+      businessId: businessConfig._id,
+      planType: 'monthly',
+      status: 'active',
+      startDate: now,
+      endDate: periodEnd,
+      periodStart: now,
+      periodEnd: periodEnd,
+      graceUntil: graceUntil,
+      price: 0, // Gratis durante período de gracia
+      paymentStatus: 'paid',
+      isActive: true,
+      isTrialPeriod: true,
+      paymentMethod: 'OTHER',
+      notes: 'Período de gracia inicial de 7 días al registrarse'
+    });
+    
+    await initialSubscription.save();
+
     // Generar tokens para el inicio de sesión automático
     const token = generateToken(admin._id, businessConfig._id);
     const refreshToken = generateRefreshToken(admin._id);

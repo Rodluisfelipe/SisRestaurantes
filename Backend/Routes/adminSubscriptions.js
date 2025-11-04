@@ -97,7 +97,7 @@ router.get('/overview', async (req, res) => {
           amount: sub.price,
           currency: 'COP',
           status: 'APPROVED',
-          externalId: sub.wompiTransactionId
+          externalId: null
         } : null
       };
     });
@@ -143,7 +143,7 @@ router.get('/:businessId/transactions', async (req, res) => {
       method: sub.paymentMethod || 'CARD',
       status: sub.paymentStatus === 'paid' ? 'APPROVED' : 
               sub.paymentStatus === 'failed' ? 'DECLINED' : 'PENDING',
-      reference: sub.wompiReference || sub.wompiTransactionId,
+      reference: null,
       planType: sub.planType,
       periodStart: sub.startDate,
       periodEnd: sub.endDate

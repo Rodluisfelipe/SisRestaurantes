@@ -1,10 +1,23 @@
-const webpush = require('web-push');
+// Intentar cargar web-push de forma segura (opcional)
+let webpush = null;
+try {
+  webpush = require('web-push');
+} catch (error) {
+  console.warn('⚠️ web-push no está instalado. Push notifications estarán deshabilitadas.');
+}
+
 const PushSubscription = require('../Models/PushSubscription');
 const logger = require('../utils/logger');
 
 let vapidConfigured = false;
 
 const configureVapid = () => {
+  if (!webpush) {
+    logger.warn('web-push no está instalado. Push notifications estarán deshabilitadas.');
+    vapidConfigured = false;
+    return false;
+  }
+  
   const vapidPublic = process.env.VAPID_PUBLIC;
   const vapidPrivate = process.env.VAPID_PRIVATE;
   const vapidMailto = process.env.VAPID_MAILTO || 'mailto:admin@menuby.tech';

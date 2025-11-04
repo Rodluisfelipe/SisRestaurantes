@@ -1,32 +1,116 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaCrown, FaCalendarAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FaCrown, FaCalendarAlt, FaExclamationTriangle, FaArrowRight } from 'react-icons/fa';
 import api from '../services/api';
+import { useAuth } from '../Context/AuthContext';
+import { useBusinessSocket } from '../hooks/useBusinessSocket';
 
-const SubscriptionStatus = ({ businessId }) => {
+const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const socket = useBusinessSocket(businessId || user?.businessId);
 
   useEffect(() => {
-    if (businessId) {
+    // Solo cargar si tenemos businessId o si el usuario está autenticado
+    if (businessId || user) {
       loadSubscription();
+    } else {
+      setLoading(false);
     }
-  }, [businessId]);
+  }, [businessId, user]);
+
+  // Escuchar eventos de socket para actualización en tiempo real
+  useEffect(() => {
+    if (!socket) return;
+    
+    const handleSubscriptionActivated = (data) => {
+      console.log('Socket: Subscription activated', data);
+      loadSubscription();
+    };
+    
+    socket.on('subscription_activated', handleSubscriptionActivated);
+    
+    return () => {
+      socket.off('subscription_activated', handleSubscriptionActivated);
+    };
+  }, [socket]);
 
   const loadSubscription = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/subscriptions/check/${businessId}`);
+      let response;
       
-      if (response.data.success && response.data.hasSubscription) {
-        setSubscription(response.data.subscription);
+      // Si tenemos businessId y el usuario está autenticado, usar /subscriptions/me
+      // Si no, usar /subscriptions/check/:businessId (si tenemos businessId)
+      if (user && !businessId) {
+        // Usuario autenticado sin businessId específico
+        response = await api.get(`/subscriptions/me`);
+      } else if (businessId && user) {
+        // Usuario autenticado con businessId específico
+        response = await api.get(`/subscriptions/me?businessId=${businessId}`);
+      } else if (businessId) {
+        // Sin usuario autenticado pero con businessId (contexto público)
+        response = await api.get(`/subscriptions/check/${businessId}`);
+      } else {
+        setSubscription(null);
+        setLoading(false);
+        return;
+      }
+      
+      if (response.data.success) {
+        // Formato de /subscriptions/me
+        if (response.data.subscription) {
+          setSubscription(response.data.subscription);
+        }
+        // Formato de /subscriptions/check/:businessId
+        else if (response.data.hasSubscription && response.data.subscription) {
+          const sub = response.data.subscription;
+          // Convertir al formato esperado
+          const now = new Date();
+          const periodEnd = sub.periodEnd || sub.endDate;
+          const graceUntil = sub.graceUntil || (periodEnd ? new Date(new Date(periodEnd).getTime() + 5 * 24 * 60 * 60 * 1000) : null);
+          
+          let status = 'active';
+          if (periodEnd && now > graceUntil) {
+            status = 'suspended';
+          } else if (periodEnd && now > periodEnd) {
+            status = 'grace';
+          }
+          
+          setSubscription({
+            ...sub,
+            status,
+            periodEnd: periodEnd || sub.endDate,
+            graceUntil,
+            graceDaysRemaining: graceUntil && now <= graceUntil 
+              ? (() => {
+                  const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                  const graceNormalized = new Date(new Date(graceUntil).getFullYear(), new Date(graceUntil).getMonth(), new Date(graceUntil).getDate());
+                  const diffTime = graceNormalized - nowNormalized;
+                  const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                  return Math.max(0, daysDiff);
+                })()
+              : 0,
+            daysRemaining: periodEnd ? Math.ceil((new Date(periodEnd) - now) / (1000 * 60 * 60 * 24)) : 0
+          });
+        } else {
+          setSubscription(null);
+        }
       } else {
         setSubscription(null);
       }
     } catch (error) {
       console.error('Error loading subscription:', error);
-      setError('Error al cargar la información de suscripción');
+      // Solo mostrar error si es un error crítico, no 403 (puede ser que el usuario no esté autenticado)
+      if (error.response?.status !== 403 && error.response?.status !== 401) {
+        setError('Error al cargar la información de suscripción');
+      }
+      setSubscription(null);
     } finally {
       setLoading(false);
     }
@@ -98,22 +182,95 @@ const SubscriptionStatus = ({ businessId }) => {
     );
   }
 
-  const isExpired = subscription.status === 'expired' && !subscription.isInGracePeriod;
-  const isInGracePeriod = subscription.isInGracePeriod;
-  const isActive = subscription.isActive;
+  // Calcular estado basado en fechas (más confiable que el status del backend)
+  const now = new Date();
+  const periodEnd = subscription.periodEnd ? new Date(subscription.periodEnd) : null;
+  const graceUntil = subscription.graceUntil || subscription.gracePeriodEnd ? new Date(subscription.graceUntil || subscription.gracePeriodEnd) : null;
+  
+  let currentStatus = subscription.status || 'active';
+  if (periodEnd && graceUntil) {
+    if (now > graceUntil) {
+      currentStatus = 'suspended';
+    } else if (now > periodEnd) {
+      currentStatus = 'grace';
+    } else {
+      currentStatus = 'active';
+    }
+  } else if (periodEnd) {
+    if (now > periodEnd) {
+              // Si no hay graceUntil, calcularlo
+        const calculatedGraceUntil = new Date(periodEnd);
+        calculatedGraceUntil.setDate(calculatedGraceUntil.getDate() + 5);
+        if (now > calculatedGraceUntil) {
+          currentStatus = 'suspended';
+        } else {
+          currentStatus = 'grace';
+        }
+    } else {
+      currentStatus = 'active';
+    }
+  }
+  
+  const isExpired = currentStatus === 'suspended';
+  const isInGracePeriod = currentStatus === 'grace';
+  const isActive = currentStatus === 'active';
+  
+  // Calcular días restantes de gracia (normalizando fechas para comparar solo días)
+  let graceDaysRemaining = 0;
+  
+  // Si tenemos graceUntil, calcular basado en eso
+  if (graceUntil) {
+    const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const graceNormalized = new Date(graceUntil.getFullYear(), graceUntil.getMonth(), graceUntil.getDate());
+    const diffTime = graceNormalized - nowNormalized;
+    const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    graceDaysRemaining = Math.max(0, daysDiff);
+  } 
+  // Si no hay graceUntil pero tenemos periodEnd y estamos en período de gracia, calcularlo
+  else if (periodEnd && isInGracePeriod) {
+    const calculatedGraceUntil = new Date(periodEnd);
+    calculatedGraceUntil.setDate(calculatedGraceUntil.getDate() + 5);
+    const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const graceNormalized = new Date(calculatedGraceUntil.getFullYear(), calculatedGraceUntil.getMonth(), calculatedGraceUntil.getDate());
+    const diffTime = graceNormalized - nowNormalized;
+    const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    graceDaysRemaining = Math.max(0, daysDiff);
+  }
+  // Si el backend nos dio un valor, usarlo solo si no pudimos calcularlo nosotros
+  else if (subscription.graceDaysRemaining !== undefined && subscription.graceDaysRemaining !== null) {
+    graceDaysRemaining = subscription.graceDaysRemaining;
+  }
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`rounded-lg p-4 border-2 ${
-        isExpired 
-          ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-200' 
-          : isInGracePeriod
-          ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200'
-          : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
-      }`}
-    >
+      return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ 
+          opacity: (isExpired || isInGracePeriod) ? [1, 0.7, 1] : 1,
+          y: 0,
+          scale: (isExpired || isInGracePeriod) ? [1, 1.01, 1] : 1
+        }}
+        transition={
+          (isExpired || isInGracePeriod) ? {
+            opacity: {
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut"
+            },
+            scale: {
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut"
+            }
+          } : {}
+        }
+        className={`rounded-lg p-4 border-2 ${
+          isExpired 
+            ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-200 shadow-lg' 
+            : isInGracePeriod
+            ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 shadow-lg'
+            : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+        }`}
+      >
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <div className="text-3xl">
@@ -132,7 +289,7 @@ const SubscriptionStatus = ({ businessId }) => {
               {getStatusText(subscription.status, isInGracePeriod)}
             </p>
             <p className="text-gray-600 text-sm">
-              ${subscription.price} • Hasta {formatDate(subscription.endDate)}
+              ${subscription.price?.toLocaleString('es-CO') || '0'} COP • Hasta {formatDate(subscription.periodEnd || subscription.endDate)}
             </p>
           </div>
         </div>
@@ -161,26 +318,119 @@ const SubscriptionStatus = ({ businessId }) => {
         </div>
       </div>
       
-      {isInGracePeriod && (
-        <div className="mt-3 p-3 bg-yellow-100 rounded-lg border border-yellow-200">
-          <div className="flex items-center space-x-2">
-            <FaExclamationTriangle className="text-yellow-600" />
-            <p className="text-yellow-800 text-sm font-medium">
-              Tu suscripción ha expirado. Tienes 1 día para renovar antes de que se desactive el menú.
-            </p>
+              {isInGracePeriod && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ 
+              opacity: [1, 0.5, 1],
+              y: 0,
+              scale: [1, 1.02, 1]
+            }}
+            transition={{
+              opacity: {
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              },
+              scale: {
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }
+            }}
+            className="mt-3 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border-2 border-yellow-300 shadow-lg"
+          >
+          <div className="flex items-start space-x-3">
+            <FaExclamationTriangle className="text-yellow-600 text-xl flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+                <p className="text-yellow-900 font-bold text-sm mb-2">
+                  ⏰ Período de Gracia: {graceDaysRemaining} {graceDaysRemaining === 1 ? 'día restante' : 'días restantes'}
+                </p>
+                <p className="text-yellow-800 text-sm mb-3">
+                  Tu suscripción expiró el {formatDate(subscription.periodEnd || subscription.endDate)}. 
+                  Tienes <strong>{graceDaysRemaining} días de gracia</strong> para renovar antes de que tu menú se desactive.
+                </p>
+                <p className="text-yellow-700 text-xs mb-3 font-medium">
+                  ⚠️ Después de {graceDaysRemaining} días, el menú quedará desactivado para seleccionar o ver órdenes. Los usuarios solo podrán ver el menú, pero no podrán realizar pedidos.
+                </p>
+              <button
+                onClick={() => {
+                  if (onNavigateToSubscription) {
+                    onNavigateToSubscription();
+                  } else if (location.pathname.includes('/admin')) {
+                    // Si estamos en el panel admin, usar evento custom o scroll
+                    window.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'subscription' }));
+                    // También intentar scroll al inicio
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  } else {
+                    navigate('/admin');
+                  }
+                }}
+                className="w-full sm:w-auto mt-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+              >
+                <span>Renovar Ahora</span>
+                <FaArrowRight className="text-sm" />
+              </button>
+            </div>
           </div>
-        </div>
+        </motion.div>
       )}
       
-      {isExpired && (
-        <div className="mt-3 p-3 bg-red-100 rounded-lg border border-red-200">
-          <div className="flex items-center space-x-2">
-            <FaExclamationTriangle className="text-red-600" />
-            <p className="text-red-800 text-sm font-medium">
-              Tu menú está desactivado. Contacta al administrador para renovar tu suscripción.
-            </p>
+              {isExpired && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ 
+              opacity: [1, 0.5, 1],
+              y: 0,
+              scale: [1, 1.02, 1]
+            }}
+            transition={{
+              opacity: {
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              },
+              scale: {
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }
+            }}
+            className="mt-3 p-4 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg border-2 border-red-300 shadow-lg"
+          >
+          <div className="flex items-start space-x-3">
+            <FaExclamationTriangle className="text-red-600 text-xl flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-red-900 font-bold text-sm mb-2">
+                🔴 MENÚ DESACTIVADO
+              </p>
+              <p className="text-red-800 text-sm mb-2">
+                Tu suscripción expiró y el período de gracia de <strong>5 días</strong> ha finalizado.
+              </p>
+              <p className="text-red-700 text-xs mb-3 font-medium">
+                ❌ El menú está desactivado para seleccionar o ver órdenes. Los usuarios solo pueden ver el menú, pero no pueden realizar pedidos. Para reactivarlo completamente, debes renovar tu suscripción.
+              </p>
+              <button
+                onClick={() => {
+                  if (onNavigateToSubscription) {
+                    onNavigateToSubscription();
+                  } else if (location.pathname.includes('/admin')) {
+                    // Si estamos en el panel admin, usar evento custom o scroll
+                    window.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'subscription' }));
+                    // También intentar scroll al inicio
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  } else {
+                    navigate('/admin');
+                  }
+                }}
+                className="w-full sm:w-auto mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+              >
+                <span>Renovar Suscripción</span>
+                <FaArrowRight className="text-sm" />
+              </button>
+            </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </motion.div>
   );

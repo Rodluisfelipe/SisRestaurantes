@@ -147,7 +147,8 @@ const FilterableMenu = ({
   categories, 
   addToCart, 
   onToppingsOpen, 
-  onToppingsClose 
+  onToppingsClose,
+  subscriptionStatus = null
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -248,6 +249,12 @@ const FilterableMenu = ({
 
   // Handle showing toppings selector
   const handleShowToppings = (product) => {
+    // Verificar si la suscripción está suspendida
+    if (subscriptionStatus === 'suspended') {
+      // Mensaje sutil - no mostrar alert, el botón ya está deshabilitado visualmente
+      return;
+    }
+    
     setSelectedProduct(product);
     setShowToppings(true);
     onToppingsOpen && onToppingsOpen();
@@ -549,6 +556,7 @@ const FilterableMenu = ({
                           addToCart={addToCart}
                           onToppingsOpen={onToppingsOpen}
                           onToppingsClose={onToppingsClose}
+                          subscriptionStatus={subscriptionStatus}
                         />
                       ))}
                     </motion.div>
@@ -599,6 +607,7 @@ const FilterableMenu = ({
                       addToCart={addToCart}
                       onToppingsOpen={onToppingsOpen}
                       onToppingsClose={onToppingsClose}
+                      subscriptionStatus={subscriptionStatus}
                     />
                   ))}
                 </motion.div>
@@ -661,14 +670,19 @@ const FilterableMenu = ({
                       e.stopPropagation(); // Evita que se propague al div padre
                       handleShowToppings(product);
                     }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="w-8 h-8 sm:w-10 sm:h-10 text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg ml-2 sm:ml-4 flex-shrink-0 relative z-10"
+                    whileHover={subscriptionStatus !== 'suspended' ? { scale: 1.1 } : {}}
+                    whileTap={subscriptionStatus !== 'suspended' ? { scale: 0.9 } : {}}
+                    className={`w-8 h-8 sm:w-10 sm:h-10 text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg ml-2 sm:ml-4 flex-shrink-0 relative z-10 ${
+                      subscriptionStatus === 'suspended' ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                     style={{
-                      backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                      backgroundColor: subscriptionStatus === 'suspended'
+                        ? '#9ca3af'
+                        : (businessConfig?.theme?.buttonColor || '#f97316'),
                       color: businessConfig?.theme?.buttonTextColor || '#ffffff'
                     }}
-                        aria-label="Agregar al carrito"
+                    disabled={subscriptionStatus === 'suspended'}
+                    aria-label={subscriptionStatus === 'suspended' ? "Menú desactivado" : "Agregar al carrito"}
                       >
                     <span className="text-sm sm:text-lg">➕</span>
                   </motion.button>

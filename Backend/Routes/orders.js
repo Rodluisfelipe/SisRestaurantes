@@ -111,6 +111,65 @@ router.post("/", async (req, res) => {
     
     const businessObjectId = businessResult.businessId;
     
+    // Verificar estado de la suscripción antes de permitir crear órdenes
+    const Subscription = require('../Models/Subscription');
+    const subscription = await Subscription.findOne({ businessId: businessObjectId })
+      .sort({ createdAt: -1 }); // Tomar la más reciente
+    
+    if (subscription) {
+      // Calcular estado explícitamente con validación de fechas
+      const now = new Date();
+      const periodEndDate = subscription.periodEnd || subscription.endDate;
+      const graceUntilDate = subscription.graceUntil || (subscription.calculateGraceUntil ? subscription.calculateGraceUntil() : null);
+      
+      let subscriptionStatus = 'active';
+      
+      // Si tenemos periodEnd, verificar el estado
+      if (periodEndDate) {
+        if (now > periodEndDate) {
+          // Pasó el periodo de pago
+          if (graceUntilDate && now <= graceUntilDate) {
+            subscriptionStatus = 'grace'; // En período de gracia
+          } else {
+            subscriptionStatus = 'suspended'; // Período de gracia vencido
+          }
+        }
+      }
+      
+      // También verificar usando el método del modelo si está disponible
+      if (subscription.getCurrentStatus) {
+        const modelStatus = subscription.getCurrentStatus();
+        // Si el método del modelo dice 'suspended', usar ese
+        if (modelStatus === 'suspended') {
+          subscriptionStatus = 'suspended';
+        }
+      }
+      
+      logger.info('Verificación de suscripción al crear orden', {
+        businessId: businessObjectId,
+        subscriptionId: subscription._id,
+        periodEnd: periodEndDate,
+        graceUntil: graceUntilDate,
+        now: now.toISOString(),
+        subscriptionStatus,
+        isSuspended: subscriptionStatus === 'suspended'
+      });
+      
+      if (subscriptionStatus === 'suspended') {
+        logger.warn('Intento de crear orden con suscripción suspendida', { 
+          businessId: businessObjectId,
+          periodEnd: periodEndDate,
+          graceUntil: graceUntilDate,
+          now: now.toISOString()
+        });
+        return res.status(403).json({ 
+          message: 'El menú está desactivado. La suscripción ha expirado y el período de gracia ha finalizado. Por favor, contacta al restaurante para renovar la suscripción.',
+          code: 'SUBSCRIPTION_SUSPENDED',
+          subscriptionStatus: 'suspended'
+        });
+      }
+    }
+    
     // Generate order number
     const orderNumber = await generateOrderNumber(businessObjectId);
     

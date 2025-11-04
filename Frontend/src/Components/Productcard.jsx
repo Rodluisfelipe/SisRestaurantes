@@ -6,7 +6,7 @@ import { useBusinessConfig } from "../Context/BusinessContext";
 import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import BusinessClosedModal from './BusinessClosedModal';
 
-function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
+function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus }) {
   const [showToppings, setShowToppings] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
@@ -21,6 +21,12 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
   };
 
   const handleShowToppings = () => {
+    // Verificar si la suscripción está suspendida
+    if (subscriptionStatus === 'suspended') {
+      // Mensaje sutil - no mostrar alert, el botón ya está deshabilitado visualmente
+      return;
+    }
+    
     // Verificar si el negocio está abierto
     if (!businessStatus?.isOpen) {
       setShowClosedModal(true);
@@ -133,29 +139,29 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose }) {
               whileHover={businessStatus?.isOpen ? { scale: 1.1 } : {}}
               whileTap={businessStatus?.isOpen ? { scale: 0.9 } : {}}
               className={`w-10 h-10 sm:w-12 sm:h-12 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 relative z-10 ${
-                businessStatus?.isOpen ? 'hover:shadow-xl cursor-pointer' : 'opacity-50 cursor-not-allowed'
+                (subscriptionStatus === 'suspended' || !businessStatus?.isOpen) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl cursor-pointer'
               }`}
               style={{
-                backgroundColor: businessStatus?.isOpen 
-                  ? (businessConfig?.theme?.buttonColor || '#f97316')
-                  : '#9ca3af',
+                backgroundColor: (subscriptionStatus === 'suspended' || !businessStatus?.isOpen)
+                  ? '#9ca3af'
+                  : (businessConfig?.theme?.buttonColor || '#f97316'),
                 color: businessConfig?.theme?.buttonTextColor || '#ffffff',
-                boxShadow: businessStatus?.isOpen 
-                  ? `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`
-                  : '0 5px 15px rgba(0,0,0,0.1)'
+                boxShadow: (subscriptionStatus === 'suspended' || !businessStatus?.isOpen)
+                  ? '0 5px 15px rgba(0,0,0,0.1)'
+                  : `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`
               }}
               onMouseEnter={(e) => {
-                if (businessStatus?.isOpen) {
+                if (businessStatus?.isOpen && subscriptionStatus !== 'suspended') {
                   e.target.style.boxShadow = `0 15px 35px ${businessConfig?.theme?.buttonColor || '#f97316'}35`;
                 }
               }}
               onMouseLeave={(e) => {
-                if (businessStatus?.isOpen) {
+                if (businessStatus?.isOpen && subscriptionStatus !== 'suspended') {
                   e.target.style.boxShadow = `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`;
                 }
               }}
-              aria-label={businessStatus?.isOpen ? "Agregar al carrito" : "Negocio cerrado"}
-              disabled={!businessStatus?.isOpen}
+              aria-label={subscriptionStatus === 'suspended' ? "Menú desactivado" : businessStatus?.isOpen ? "Agregar al carrito" : "Negocio cerrado"}
+              disabled={subscriptionStatus === 'suspended' || !businessStatus?.isOpen}
             >
               <motion.span 
                 className="text-lg sm:text-xl font-bold"

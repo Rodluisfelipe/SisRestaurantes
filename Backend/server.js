@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
+const path = require("path");
 
 // Cargar variables de entorno - ESTO DEBE IR PRIMERO
 require('dotenv').config();
@@ -21,8 +22,8 @@ require('dotenv').config();
 const MONGO_URI = process.env.MONGODB_URI;
 const isProd = process.env.NODE_ENV === 'production';
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://menuby.tech', 'https://menuby.tech', 'https://www.menuby.tech', 'http://127.0.0.1:5173', 'http://localhost:5173'];
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://menuby.tech', 'https://menuby.tech', 'https://www.menuby.tech', 'http://127.0.0.1:5173', 'http://localhost:5173', 'https://157-245-125-216.nip.io'];
 
 // Crear la aplicación Express PRIMERO
 const app = express();
@@ -71,9 +72,15 @@ app.use(cors({
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
+
+// Manejar peticiones OPTIONS explícitamente
+app.options('*', cors());
+
 app.use(express.json());
 
 // Servir archivos estáticos desde la carpeta uploads
@@ -123,10 +130,15 @@ app.use("/api/debug", require("./Routes/debug")); // Debug endpoints para Socket
 // Rutas específicas para superadmin (integradas desde BackendSA)
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
 app.use("/api/superadmin", require("./Routes/superadmin"));
+// Importante: paymentRequests debe ir ANTES de subscriptions para que /api/subscription/me se procese correctamente
+app.use("/api", require("./Routes/paymentRequests"));
 app.use("/api/subscriptions", require("./Routes/subscriptions"));
 app.use("/api/admin/subscriptions", require("./Routes/adminSubscriptions"));
-app.use("/api/webhooks", require("./Routes/webhooks")); // Webhooks de Wompi para reactivación automática
+app.use("/api/coupons", require("./Routes/coupons"));
 app.use("/api/whatsapp-templates", require("./Routes/whatsappTemplates"));
+
+// Servir archivos de comprobantes
+app.use('/uploads/proofs', express.static(path.join(__dirname, 'uploads/proofs')));
   
 // Ruta específica para SSE
 app.use("/events", require("./Routes/events"));
@@ -144,9 +156,22 @@ mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("MongoDB connected");
     
-    // Configurar VAPID para push notifications
-    const { configureVapid } = require('./services/pushService');
-    configureVapid();
+    // Configurar VAPID para push notifications (opcional - no bloquear inicio si falla)
+    // Intentar cargar pushService de forma segura
+    let pushService = null;
+    try {
+      pushService = require('./services/pushService');
+    } catch (error) {
+      console.warn('⚠️ Push notifications no disponibles (web-push no instalado):', error.message);
+    }
+    
+    if (pushService && pushService.configureVapid) {
+      try {
+        pushService.configureVapid();
+      } catch (error) {
+        console.warn('⚠️ Error configurando VAPID:', error.message);
+      }
+    }
     
     const port = process.env.PORT || 5000;
     server.listen(port, () =>

@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const Subscription = require('../Models/Subscription');
 const BusinessConfig = require('../Models/BusinessConfig');
+const Admin = require('../Models/Admin');
 const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const authMiddleware = require('../middleware/authMiddleware');
 const { isValidObjectId } = require('../utils/validators');
@@ -79,12 +80,16 @@ const validateSubscriptionInput = (req, res, next) => {
 // GET /api/subscriptions/check/:businessId - Verificar estado de suscripción (para el admin regular)
 router.get('/check/:businessId', async (req, res) => {
   try {
-    const { businessId } = req.params;
+    let { businessId } = req.params;
     
-    if (!isValidObjectId(businessId)) {
+    // Resolver businessId si es un slug (convertir a ObjectId)
+    try {
+      businessId = await resolveBusinessId(businessId);
+    } catch (error) {
+      logger.warn('Error resolving businessId in /check/:businessId', { businessId: req.params.businessId, error: error.message }, req);
       return res.status(400).json({
         success: false,
-        message: 'ID de negocio inválido'
+        message: 'ID de negocio inválido o no encontrado'
       });
     }
     
@@ -105,22 +110,41 @@ router.get('/check/:businessId', async (req, res) => {
     const isInGracePeriod = subscription.isInGracePeriod();
     const daysRemaining = subscription.getDaysRemaining();
     
+    // Usar el nuevo sistema de estados
+    const currentStatus = subscription.getCurrentStatus ? subscription.getCurrentStatus() : (isActive ? 'active' : (isInGracePeriod ? 'grace' : 'suspended'));
+    const periodEndDate = subscription.periodEnd || subscription.endDate;
+    const graceUntilDate = subscription.graceUntil || subscription.gracePeriodEnd || (subscription.calculateGraceUntil ? subscription.calculateGraceUntil() : null);
+    
     res.json({
       success: true,
       hasSubscription: true,
       subscription: {
         _id: subscription._id,
+        id: subscription._id,
         planType: subscription.planType,
-        status: subscription.status,
+        status: currentStatus, // active, grace, suspended
         paymentStatus: subscription.paymentStatus,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
-        gracePeriodEnd: subscription.gracePeriodEnd,
+        periodStart: subscription.periodStart || subscription.startDate,
+        periodEnd: periodEndDate,
+        graceUntil: graceUntilDate,
+        gracePeriodEnd: graceUntilDate,
         price: subscription.price,
         notes: subscription.notes,
-        isActive,
-        isInGracePeriod,
-        daysRemaining,
+        isActive: currentStatus === 'active',
+        isInGracePeriod: currentStatus === 'grace',
+        daysRemaining: subscription.getDaysRemaining ? subscription.getDaysRemaining() : daysRemaining,
+        graceDaysRemaining: subscription.getGraceDaysRemaining ? subscription.getGraceDaysRemaining() : 
+          (graceUntilDate ? (() => {
+            const now = new Date();
+            const graceDate = new Date(graceUntilDate);
+            const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const graceNormalized = new Date(graceDate.getFullYear(), graceDate.getMonth(), graceDate.getDate());
+            const diffTime = graceNormalized - nowNormalized;
+            const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return Math.max(0, daysDiff);
+          })() : 0),
         createdAt: subscription.createdAt,
         updatedAt: subscription.updatedAt
       }
@@ -138,13 +162,44 @@ router.get('/me', authMiddleware, async (req, res) => {
     let businessId = req.user.businessId;
     const isSuperAdmin = req.user.isSuperAdmin || req.user.role === 'superadmin';
     
-    logger.debug('GET /subscriptions/me', { 
+    logger.info('GET /subscriptions/me', { 
       hasBusinessId: !!businessId, 
       isSuperAdmin, 
       userRole: req.user.role,
+      userId: req.user.id,
+      userBusinessId: req.user.businessId,
       queryBusinessId: req.query.businessId 
     }, req);
     
+    // Si no hay businessId en el token y no es superadmin, intentar obtenerlo de la base de datos
+    if (!businessId && !isSuperAdmin && req.user.id) {
+      try {
+        logger.info('Buscando Admin en BD para obtener businessId', { userId: req.user.id }, req);
+        const admin = await Admin.findById(req.user.id).select('businessId');
+        if (admin) {
+          logger.info('Admin encontrado', { 
+            adminId: admin._id, 
+            hasBusinessId: !!admin.businessId,
+            businessId: admin.businessId 
+          }, req);
+          if (admin.businessId) {
+            // Convertir a string si es ObjectId
+            businessId = admin.businessId.toString();
+            logger.info('BusinessId obtenido de la base de datos', { businessId }, req);
+          } else {
+            logger.warn('Admin encontrado pero sin businessId', { adminId: admin._id }, req);
+          }
+        } else {
+          logger.warn('Admin no encontrado en BD', { userId: req.user.id }, req);
+        }
+      } catch (error) {
+        logger.error('Error fetching businessId from Admin', error, req);
+      }
+    } else if (!req.user.id) {
+      logger.warn('No se tiene userId en req.user', { user: req.user }, req);
+    }
+    
+    // Si es SuperAdmin y tiene query param, usar ese
     if (!businessId && isSuperAdmin && req.query.businessId) {
       // Resolver el businessId (slug u ObjectId) a ObjectId
       try {
@@ -156,7 +211,23 @@ router.get('/me', authMiddleware, async (req, res) => {
     }
     
     if (!businessId) {
-      return res.status(403).json(formatHttpError(req, 'No se pudo determinar el negocio', 403));
+      logger.warn('No se pudo determinar el businessId en /subscriptions/me, retornando sin suscripción', { 
+        hasTokenBusinessId: !!req.user.businessId,
+        isSuperAdmin,
+        hasUserId: !!req.user.id,
+        hasQueryBusinessId: !!req.query.businessId,
+        user: {
+          id: req.user.id,
+          role: req.user.role,
+          businessId: req.user.businessId
+        }
+      }, req);
+      return res.json({
+        success: true,
+        hasSubscription: false,
+        subscription: null,
+        message: 'No se pudo determinar el negocio o no hay suscripción activa'
+      });
     }
     
     // Asegurar que businessId sea ObjectId válido
@@ -165,193 +236,62 @@ router.get('/me', authMiddleware, async (req, res) => {
     }
     
     const subscription = await Subscription.findOne({ businessId })
-      .sort({ createdAt: -1 }) // Tomar la más reciente
-      .populate('businessId', 'businessName slug');
+      .sort({ createdAt: -1 }); // Tomar la más reciente
     
     if (!subscription) {
-      return res.status(200).json({
+      return res.json({
         success: true,
         hasSubscription: false,
-        message: 'No hay suscripción activa'
+        subscription: null,
+        message: 'No tienes una suscripción activa'
       });
     }
     
-    // Calcular nextDueDate dinámicamente
-    const now = new Date();
-    const nextDueDate = subscription.endDate > now ? subscription.endDate : null;
-    
-    // Determinar status (considerar grace period automáticamente)
-    let status = subscription.status;
-    const isInGracePeriod = subscription.isInGracePeriod();
-    
-    if (status === 'active' && subscription.endDate < now) {
-      status = 'past_due';
-    }
-    if (status === 'expired' && isInGracePeriod) {
-      status = 'grace';
-    }
-    
-    // Construir respuesta del último pago (si existe)
-    const lastPayment = subscription.paymentStatus === 'paid' ? {
-      date: subscription.updatedAt,
-      amount: subscription.price,
-      currency: 'COP',
-      method: subscription.paymentMethod || 'CARD',
-      status: subscription.paymentStatus === 'paid' ? 'APPROVED' : 
-              subscription.paymentStatus === 'failed' ? 'DECLINED' : 'PENDING',
-      externalId: subscription.wompiTransactionId || null
-    } : null;
+    // Usar el nuevo sistema de estados
+    const currentStatus = subscription.getCurrentStatus ? subscription.getCurrentStatus() : 'active';
+    const periodEndDate = subscription.periodEnd || subscription.endDate;
+    const graceUntilDate = subscription.graceUntil || (subscription.calculateGraceUntil ? subscription.calculateGraceUntil() : null);
     
     res.json({
       success: true,
+      hasSubscription: true,
       subscription: {
-        plan: subscription.planType,
-        status,
-        periodStart: subscription.startDate,
-        periodEnd: subscription.endDate,
-        graceUntil: subscription.gracePeriodEnd,
-        nextDueDate,
+        id: subscription._id,
+        _id: subscription._id,
+        businessId: subscription.businessId,
+        planType: subscription.planType,
+        status: currentStatus, // active, grace, suspended
+        startDate: subscription.startDate,
+        endDate: subscription.endDate,
+        periodStart: subscription.periodStart || subscription.startDate,
+        periodEnd: periodEndDate,
+        graceUntil: graceUntilDate,
         price: subscription.price,
-        currency: 'COP',
-        lastPayment,
-        isInGracePeriod: isInGracePeriod,
-        daysRemaining: subscription.getDaysRemaining()
+        paymentStatus: subscription.paymentStatus,
+        gracePeriodEnd: graceUntilDate,
+        isInGracePeriod: currentStatus === 'grace',
+        daysRemaining: subscription.getDaysRemaining ? subscription.getDaysRemaining() : 
+          (periodEndDate ? Math.ceil((new Date(periodEndDate) - new Date()) / (1000 * 60 * 60 * 24)) : 0),
+        graceDaysRemaining: subscription.getGraceDaysRemaining ? subscription.getGraceDaysRemaining() : 
+          (graceUntilDate ? (() => {
+            const now = new Date();
+            const graceDate = new Date(graceUntilDate);
+            const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const graceNormalized = new Date(graceDate.getFullYear(), graceDate.getMonth(), graceDate.getDate());
+            const diffTime = graceNormalized - nowNormalized;
+            const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return Math.max(0, daysDiff);
+          })() : 0),
+        isActive: subscription.isActive || (currentStatus === 'active'),
+        isTrialPeriod: subscription.isTrialPeriod,
+        lastPaymentAt: subscription.lastPaymentAt,
+        lastMonthsPurchased: subscription.lastMonthsPurchased,
+        updatedAt: subscription.updatedAt
       }
     });
   } catch (error) {
     logger.error('Error fetching my subscription', error, req);
     res.status(500).json(formatHttpError(req, 'Error al obtener la suscripción', 500));
-  }
-});
-
-// POST /api/subscriptions/checkout - Crear checkout Wompi
-router.post('/checkout', authMiddleware, async (req, res) => {
-  try {
-    // Si es SuperAdmin, permitir pasar businessId como body param o query param (puede ser slug u ObjectId)
-    let businessId = req.user.businessId;
-    const { planType, businessId: bodyBusinessId } = req.body;
-    const isSuperAdmin = req.user.isSuperAdmin || req.user.role === 'superadmin';
-    
-    if (!businessId && isSuperAdmin && (bodyBusinessId || req.query.businessId)) {
-      const identifier = bodyBusinessId || req.query.businessId;
-      // Resolver el businessId (slug u ObjectId) a ObjectId
-      try {
-        businessId = await resolveBusinessId(identifier);
-      } catch (error) {
-        logger.error('Error resolving businessId', error, req);
-        return res.status(400).json(formatHttpError(req, 'Negocio no encontrado: ' + error.message, 400));
-      }
-    }
-    
-    if (!businessId) {
-      return res.status(403).json(formatHttpError(req, 'No se pudo determinar el negocio', 403));
-    }
-    
-    // Asegurar que businessId sea ObjectId válido
-    if (!isValidObjectId(businessId)) {
-      return res.status(400).json(formatHttpError(req, 'ID de negocio inválido', 400));
-    }
-    
-    // Buscar suscripción actual
-    const subscription = await Subscription.findOne({ businessId })
-      .sort({ createdAt: -1 });
-    
-    if (!subscription) {
-      return res.status(404).json(formatHttpError(req, 'No tienes una suscripción', 404));
-    }
-    
-    // Obtener business para email
-    const business = await BusinessConfig.findById(businessId);
-    
-    if (!business) {
-      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
-    }
-    
-    // Precio según plan (en pesos, se convertirá a centavos)
-    const priceInPesos = planType === 'annual' ? 
-      parseInt(process.env.SUBSCRIPTION_ANNUAL_PRICE || 500000) : 
-      parseInt(process.env.SUBSCRIPTION_MONTHLY_PRICE || 50000);
-    
-    // Importar wompiService (dinámicamente para evitar errores si no está configurado)
-    let wompiService;
-    try {
-      wompiService = require('../services/wompiService');
-    } catch (error) {
-      logger.error('Error loading wompiService', error, req);
-      return res.status(503).json(formatHttpError(req, 'Servicio de pagos no disponible', 503));
-    }
-    
-    if (!wompiService.isConfigured()) {
-      logger.warn('Wompi service not configured', null, req);
-      return res.status(503).json(formatHttpError(req, 'Servicio de pagos no configurado', 503));
-    }
-    
-    // Generar referencia única de pago
-    const reference = `SUB_${subscription._id}_${Date.now()}`;
-    const amountInCents = priceInPesos * 100;
-    
-    // Generar firma de integridad
-    const signature = wompiService.generateIntegritySignature(reference, amountInCents, 'COP');
-    
-    // Actualizar suscripción con datos de referencia y planType si se especifica
-    // Usar findByIdAndUpdate para asegurar que se guarde correctamente
-    const updateData = {
-      wompiReference: reference,
-      lastPaymentAttempt: new Date()
-    };
-    if (planType === 'annual' || planType === 'monthly') {
-      updateData.planType = planType;
-    }
-    
-    const updatedSubscription = await Subscription.findByIdAndUpdate(
-      subscription._id,
-      { $set: updateData },
-      { new: true }
-    );
-    
-    if (!updatedSubscription) {
-      logger.error('Failed to update subscription with wompiReference', {
-        subscriptionId: subscription._id,
-        reference
-      }, req);
-      return res.status(500).json(formatHttpError(req, 'Error al actualizar la suscripción', 500));
-    }
-    
-    // Verificar que se guardó correctamente
-    const savedSubscription = await Subscription.findById(subscription._id);
-    logger.info('Checkout widget prepared for subscription', { 
-      subscriptionId: updatedSubscription._id,
-      businessId: updatedSubscription.businessId,
-      reference,
-      savedReference: savedSubscription?.wompiReference,
-      updatedReference: updatedSubscription.wompiReference,
-      amountInCents,
-      referenceMatches: savedSubscription?.wompiReference === reference && updatedSubscription.wompiReference === reference
-    }, req);
-    
-    if (savedSubscription?.wompiReference !== reference) {
-      logger.error('⚠️ CRITICAL: wompiReference no se guardó correctamente!', {
-        expected: reference,
-        actual: savedSubscription?.wompiReference,
-        subscriptionId: subscription._id
-      }, req);
-    }
-    
-    // Retornar datos para el Widget
-    res.json({
-      success: true,
-      widgetConfig: {
-        publicKey: wompiService.publicKey,
-        currency: 'COP',
-        amountInCents,
-        reference,
-        signature,
-        redirectUrl: `${process.env.FRONTEND_URL || 'https://www.menuby.tech'}/admin`
-      }
-    });
-  } catch (error) {
-    logger.error('Error creating checkout', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al crear checkout de pago: ' + error.message, 500));
   }
 });
 
@@ -412,30 +352,60 @@ router.post('/', validateSubscriptionInput, async (req, res) => {
       return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
     }
     
-    // Verificar si ya existe una suscripción activa
-    const existingSubscription = await Subscription.findOne({
-      businessId,
-      status: { $in: ['active', 'pending'] }
-    });
+    // Verificar si ya existe una suscripción activa (solo si la nueva suscripción es activa)
+    // Permitir crear suscripciones pasadas incluso si hay una activa
+    const newStartDate = new Date(startDate);
+    const newEndDate = new Date(endDate);
+    const currentDate = new Date();
     
-    if (existingSubscription) {
-      return res.status(400).json(formatHttpError(req, 'Ya existe una suscripción activa para este negocio', 400));
+    // Solo verificar suscripciones activas si la nueva suscripción se superpone con el presente/futuro
+    if (newEndDate >= currentDate || newStartDate >= currentDate) {
+      const existingSubscription = await Subscription.findOne({
+        businessId,
+        status: { $in: ['active', 'pending'] },
+        $or: [
+          { startDate: { $lte: newEndDate }, endDate: { $gte: newStartDate } }, // Se superpone
+          { endDate: { $gte: currentDate } } // Aún activa
+        ]
+      });
+      
+      if (existingSubscription) {
+        return res.status(400).json(formatHttpError(req, 'Ya existe una suscripción activa o que se superpone con las fechas especificadas', 400));
+      }
     }
     
     // Calcular período de gracia (1 día después de la expiración)
     const gracePeriodEnd = new Date(endDate);
     gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 1);
     
+    // Determinar el estado basado en las fechas
+    const endDateObj = new Date(endDate);
+    let subscriptionStatus = 'active';
+    
+    if (endDateObj < currentDate) {
+      // Si la fecha de fin es pasada, la suscripción está expirada
+      subscriptionStatus = 'expired';
+    }
+    
+    // Calcular graceUntil basado en GRACE_DAYS (5 días)
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 5);
+    const graceUntilDate = new Date(endDate);
+    graceUntilDate.setDate(graceUntilDate.getDate() + GRACE_DAYS);
+    
     const subscription = new Subscription({
       businessId,
       planType,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
+      periodStart: new Date(startDate), // Establecer periodStart igual que startDate
+      periodEnd: new Date(endDate), // Establecer periodEnd igual que endDate
+      graceUntil: graceUntilDate, // Calcular graceUntil
       price,
-      gracePeriodEnd,
+      gracePeriodEnd, // Mantener por compatibilidad
       notes: notes || '',
-      status: 'active',
-      paymentStatus: 'paid'
+      status: subscriptionStatus,
+      paymentStatus: 'paid',
+      isActive: subscriptionStatus === 'active'
     });
     
     await subscription.save();
@@ -473,17 +443,30 @@ router.put('/:id', validateSubscriptionInput, async (req, res) => {
       return res.status(404).json(formatHttpError(req, 'Suscripción no encontrada', 404));
     }
     
-    // Actualizar campos
+    // Calcular graceUntil basado en GRACE_DAYS (5 días)
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 5);
+    
+    // Actualizar campos - SINCRONIZAR periodStart y periodEnd con startDate y endDate
     if (planType) subscription.planType = planType;
-    if (startDate) subscription.startDate = new Date(startDate);
+    if (startDate) {
+      subscription.startDate = new Date(startDate);
+      subscription.periodStart = new Date(startDate); // Sincronizar periodStart
+    }
     if (endDate) {
       subscription.endDate = new Date(endDate);
+      subscription.periodEnd = new Date(endDate); // Sincronizar periodEnd
       // Recalcular período de gracia
+      const graceUntilDate = new Date(endDate);
+      graceUntilDate.setDate(graceUntilDate.getDate() + GRACE_DAYS);
+      subscription.graceUntil = graceUntilDate;
       subscription.gracePeriodEnd = new Date(endDate);
-      subscription.gracePeriodEnd.setDate(subscription.gracePeriodEnd.getDate() + 1);
+      subscription.gracePeriodEnd.setDate(subscription.gracePeriodEnd.getDate() + 1); // Mantener por compatibilidad
     }
     if (price) subscription.price = price;
-    if (status) subscription.status = status;
+    if (status) {
+      subscription.status = status;
+      subscription.isActive = status === 'active';
+    }
     if (paymentStatus) subscription.paymentStatus = paymentStatus;
     if (notes !== undefined) subscription.notes = notes;
     

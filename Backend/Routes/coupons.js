@@ -1,503 +1,279 @@
 const express = require('express');
 const router = express.Router();
 const Coupon = require('../Models/Coupon');
-const { validateAndResolveBusinessId } = require('../utils/businessValidator');
+const Subscription = require('../Models/Subscription');
+const BusinessConfig = require('../Models/BusinessConfig');
+const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
+const authMiddleware = require('../middleware/authMiddleware');
+const { resolveBusinessId } = require('../utils/businessResolver');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 
-// Middleware to validate and resolve business ID
-const validateBusinessId = async (req, res, next) => {
+// Todas las rutas de creación/gestión requieren SuperAdmin
+router.use('/admin', protectSuperAdmin);
+
+// GET /api/coupons/admin/list - Listar todos los cupones (SuperAdmin)
+router.get('/admin/list', async (req, res) => {
   try {
-    let businessId = req.query.businessId;
-    if (!businessId) {
-      businessId = req.body?.businessId;
-      if (!businessId) {
-        return res.status(400).json({ message: 'Business ID is required' });
-      }
-    }
+    const { page = 1, limit = 20, active = 'all' } = req.query;
     
-    const result = await validateAndResolveBusinessId(businessId);
+    let query = {};
+    if (active === 'true') query.isActive = true;
+    else if (active === 'false') query.isActive = false;
     
-    if (!result.success) {
-      return res.status(404).json({ message: result.error });
-    }
+    const skip = (parseInt(page) - 1) * parseInt(limit);
     
-    req.businessId = result.businessId;
-    req.business = result.business;
-    next();
-  } catch (error) {
-    logger.error('validateBusinessId error', error, req);
-    res.status(500).json(formatHttpError(req, 'Error validating business ID', 500));
-  }
-};
-
-// Get all coupons for a business
-router.get('/', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
-    const { 
-      page = 1, 
-      limit = 20, 
-      sortBy = 'createdAt', 
-      sortOrder = 'desc',
-      search = '',
-      status = 'all',
-      discountType = 'all'
-    } = req.query;
-
-    // Build query
-    const query = { businessId };
-    
-    // Add search filter
-    if (search) {
-      query.$or = [
-        { code: { $regex: search, $options: 'i' } },
-        { name: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } }
-      ];
-    }
-    
-    // Add status filter
-    if (status === 'active') {
-      query.isActive = true;
-      query.validFrom = { $lte: new Date() };
-      query.validUntil = { $gte: new Date() };
-    } else if (status === 'inactive') {
-      query.isActive = false;
-    } else if (status === 'expired') {
-      query.validUntil = { $lt: new Date() };
-    }
-    
-    // Add discount type filter
-    if (discountType !== 'all') {
-      query.discountType = discountType;
-    }
-
-    // Build sort object
-    const sortObj = {};
-    if (sortBy === 'createdAt') {
-      sortObj.createdAt = sortOrder === 'desc' ? -1 : 1;
-    } else if (sortBy === 'usageCount') {
-      sortObj.usageCount = sortOrder === 'desc' ? -1 : 1;
-    } else if (sortBy === 'validUntil') {
-      sortObj.validUntil = sortOrder === 'desc' ? -1 : 1;
-    } else {
-      sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
-    }
-
-    // Execute query with pagination
     const coupons = await Coupon.find(query)
-      .sort(sortObj)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .populate('applicableProducts', 'name')
-      .populate('applicableCategories', 'name')
-      .populate('excludedProducts', 'name')
-      .populate('excludedCategories', 'name')
-      .lean();
-
-    // Get total count for pagination
+      .populate('createdBy', 'username')
+      .populate('usedBy.businessId', 'businessName slug')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    
     const total = await Coupon.countDocuments(query);
-
-    // Calculate statistics
-    const stats = await Coupon.aggregate([
-      { $match: { businessId } },
-      {
-        $group: {
-          _id: null,
-          totalCoupons: { $sum: 1 },
-          activeCoupons: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$isActive', true] },
-                    { $lte: ['$validFrom', new Date()] },
-                    { $gte: ['$validUntil', new Date()] }
-                  ]
-                },
-                1,
-                0
-              ]
-            }
-          },
-          totalUsage: { $sum: '$usageCount' },
-          totalDiscountGiven: { $sum: '$totalDiscountGiven' },
-          expiredCoupons: {
-            $sum: {
-              $cond: [{ $lt: ['$validUntil', new Date()] }, 1, 0]
-            }
-          }
-        }
-      }
-    ]);
-
+    
     res.json({
-      coupons,
+      success: true,
+      coupons: coupons.map(c => ({
+        id: c._id,
+        code: c.code,
+        months: c.months,
+        description: c.description,
+        createdBy: c.createdBy?.username || 'N/A',
+        usedCount: c.usedBy.length,
+        maxUses: c.maxUses,
+        isActive: c.isActive,
+        expiresAt: c.expiresAt,
+        createdAt: c.createdAt,
+        usageDetails: c.usedBy.map(u => ({
+          businessName: u.businessId?.businessName || 'N/A',
+          usedAt: u.usedAt
+        }))
+      })),
       pagination: {
-        current: parseInt(page),
-        pages: Math.ceil(total / limit),
-        total
-      },
-      stats: stats[0] || {
-        totalCoupons: 0,
-        activeCoupons: 0,
-        totalUsage: 0,
-        totalDiscountGiven: 0,
-        expiredCoupons: 0
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
     logger.error('Error fetching coupons', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al obtener los cupones', 500));
+    res.status(500).json(formatHttpError(req, 'Error al obtener cupones', 500));
   }
 });
 
-// Get coupon by ID
-router.get('/:id', validateBusinessId, async (req, res) => {
+// POST /api/coupons/admin/create - Crear nuevo cupón (SuperAdmin)
+router.post('/admin/create', async (req, res) => {
   try {
-    const { businessId } = req;
-    const coupon = await Coupon.findOne({ 
-      _id: req.params.id, 
-      businessId 
-    })
-    .populate('applicableProducts', 'name price')
-    .populate('applicableCategories', 'name')
-    .populate('excludedProducts', 'name')
-    .populate('excludedCategories', 'name')
-    .populate('applicableCustomers', 'name phone')
-    .populate('customerUsage.customerId', 'name phone');
-
-    if (!coupon) {
-      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
+    const { months, description, maxUses, expiresAt } = req.body;
+    
+    if (!months || months < 1 || months > 12) {
+      return res.status(400).json(formatHttpError(req, 'Los meses deben estar entre 1 y 12', 400));
     }
-
-    res.json(coupon);
-  } catch (error) {
-    logger.error('Error fetching coupon', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al obtener el cupón', 500));
-  }
-});
-
-// Create new coupon
-router.post('/', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
-    const {
+    
+    // Generar código único
+    const code = await Coupon.generateCode();
+    
+    const coupon = new Coupon({
       code,
-      name,
-      description,
-      discountType,
-      discountValue,
-      maxDiscountAmount,
-      minimumOrderAmount,
-      applicableProducts,
-      applicableCategories,
-      excludedProducts,
-      excludedCategories,
-      usageLimit,
-      usageLimitPerCustomer,
-      applicableCustomers,
-      validFrom,
-      validUntil,
-      applicableOrderTypes,
-      isActive
-    } = req.body;
-
-    // Generate code if not provided
-    let couponCode = code;
-    if (!couponCode) {
-      couponCode = await Coupon.generateUniqueCode(businessId);
-    }
-
-    // Check if code already exists
-    const existingCoupon = await Coupon.findOne({ 
-      businessId, 
-      code: couponCode.toUpperCase() 
+      months: parseInt(months),
+      description: description || `${months} ${months === 1 ? 'mes' : 'meses'} gratis`,
+      createdBy: req.user.id,
+      maxUses: maxUses ? parseInt(maxUses) : null,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      isActive: true
     });
     
-    if (existingCoupon) {
-      return res.status(400).json({ message: 'El código del cupón ya existe' });
-    }
-
-    const coupon = new Coupon({
-      businessId,
-      code: couponCode.toUpperCase(),
-      name,
-      description,
-      discountType,
-      discountValue,
-      maxDiscountAmount,
-      minimumOrderAmount: minimumOrderAmount || 0,
-      applicableProducts: applicableProducts || [],
-      applicableCategories: applicableCategories || [],
-      excludedProducts: excludedProducts || [],
-      excludedCategories: excludedCategories || [],
-      usageLimit,
-      usageLimitPerCustomer: usageLimitPerCustomer || 1,
-      applicableCustomers: applicableCustomers || [],
-      validFrom: validFrom ? new Date(validFrom) : new Date(),
-      validUntil: new Date(validUntil),
-      applicableOrderTypes: applicableOrderTypes || ['inSite', 'takeaway', 'delivery'],
-      isActive: isActive !== undefined ? isActive : true
-    });
-
     await coupon.save();
     
-    // Populate the response
-    await coupon.populate([
-      { path: 'applicableProducts', select: 'name' },
-      { path: 'applicableCategories', select: 'name' },
-      { path: 'excludedProducts', select: 'name' },
-      { path: 'excludedCategories', select: 'name' }
-    ]);
-
-    logger.info('Coupon created', { id: coupon._id, code: coupon.code }, req);
-    res.status(201).json(coupon);
+    logger.info('Coupon created', { couponId: coupon._id, code: coupon.code, months: coupon.months }, req);
+    
+    res.status(201).json({
+      success: true,
+      coupon: {
+        id: coupon._id,
+        code: coupon.code,
+        months: coupon.months,
+        description: coupon.description,
+        maxUses: coupon.maxUses,
+        expiresAt: coupon.expiresAt,
+        shareUrl: `${process.env.FRONTEND_URL || 'https://www.menuby.tech'}/admin/subscriptions?coupon=${coupon.code}`
+      }
+    });
   } catch (error) {
     logger.error('Error creating coupon', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al crear el cupón', 500));
+    res.status(500).json(formatHttpError(req, 'Error al crear cupón: ' + error.message, 500));
   }
 });
 
-// Update coupon
-router.put('/:id', validateBusinessId, async (req, res) => {
+// PUT /api/coupons/admin/:id - Actualizar cupón (SuperAdmin)
+router.put('/admin/:id', async (req, res) => {
   try {
-    const { businessId } = req;
-    const updateData = { ...req.body };
+    const { id } = req.params;
+    const { description, maxUses, expiresAt, isActive } = req.body;
     
-    // Remove businessId from updateData to avoid conflicts
-    delete updateData.businessId;
-    
-    // Convert dates
-    if (updateData.validFrom) {
-      updateData.validFrom = new Date(updateData.validFrom);
-    }
-    if (updateData.validUntil) {
-      updateData.validUntil = new Date(updateData.validUntil);
-    }
-    
-    // Convert code to uppercase
-    if (updateData.code) {
-      updateData.code = updateData.code.toUpperCase();
-    }
-
-    const coupon = await Coupon.findOneAndUpdate(
-      { _id: req.params.id, businessId },
-      updateData,
-      { new: true, runValidators: true }
-    )
-    .populate('applicableProducts', 'name')
-    .populate('applicableCategories', 'name')
-    .populate('excludedProducts', 'name')
-    .populate('excludedCategories', 'name');
-
+    const coupon = await Coupon.findById(id);
     if (!coupon) {
       return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
     }
-
-    logger.info('Coupon updated', { id: coupon._id }, req);
-    res.json(coupon);
-  } catch (error) {
-    logger.error('Error updating coupon', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al actualizar el cupón', 500));
-  }
-});
-
-// Delete coupon
-router.delete('/:id', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
-    const coupon = await Coupon.findOneAndDelete({ 
-      _id: req.params.id, 
-      businessId 
-    });
-
-    if (!coupon) {
-      return res.status(404).json({ message: 'Cupón no encontrado' });
-    }
-
-    logger.info('Coupon deleted', { id: req.params.id }, req);
-    res.json({ message: 'Cupón eliminado exitosamente' });
-  } catch (error) {
-    logger.error('Error deleting coupon', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al eliminar el cupón', 500));
-  }
-});
-
-// Validate coupon for order
-router.post('/validate', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
-    const { code, orderData, customerId } = req.body;
-
-    if (!code || !orderData) {
-      return res.status(400).json(formatHttpError(req, 'Código y datos del pedido son requeridos', 400));
-    }
-
-    const coupon = await Coupon.findOne({ 
-      businessId, 
-      code: code.toUpperCase() 
-    });
-
-    if (!coupon) {
-      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
-    }
-
-    // Validate coupon
-    const validation = coupon.validateForOrder(orderData, customerId);
     
-    if (!validation.valid) {
-      return res.status(400).json(formatHttpError(req, validation.error, 400, { valid: false }));
-    }
-
-    // Calculate discount
-    const discountAmount = coupon.calculateDiscount(orderData.totalAmount);
+    if (description !== undefined) coupon.description = description;
+    if (maxUses !== undefined) coupon.maxUses = maxUses ? parseInt(maxUses) : null;
+    if (expiresAt !== undefined) coupon.expiresAt = expiresAt ? new Date(expiresAt) : null;
+    if (isActive !== undefined) coupon.isActive = isActive;
     
-    res.json({
-      valid: true,
-      coupon: {
-        _id: coupon._id,
-        code: coupon.code,
-        name: coupon.name,
-        discountType: coupon.discountType,
-        discountValue: coupon.discountValue,
-        maxDiscountAmount: coupon.maxDiscountAmount
-      },
-      discountAmount,
-      finalAmount: orderData.totalAmount - discountAmount
-    });
-  } catch (error) {
-    logger.error('Error validating coupon', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al validar el cupón', 500));
-  }
-});
-
-// Apply coupon to order
-router.post('/apply', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
-    const { code, orderData, customerId } = req.body;
-
-    if (!code || !orderData) {
-      return res.status(400).json(formatHttpError(req, 'Código y datos del pedido son requeridos', 400));
-    }
-
-    const coupon = await Coupon.findOne({ 
-      businessId, 
-      code: code.toUpperCase() 
-    });
-
-    if (!coupon) {
-      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
-    }
-
-    // Validate coupon
-    const validation = coupon.validateForOrder(orderData, customerId);
+    await coupon.save();
     
-    if (!validation.valid) {
-      return res.status(400).json(formatHttpError(req, validation.error, 400, { valid: false }));
-    }
-
-    // Calculate discount
-    const discountAmount = coupon.calculateDiscount(orderData.totalAmount);
-    
-    // Record usage
-    await coupon.recordUsage(customerId, discountAmount);
-    
-    logger.info('Coupon applied', { code: coupon.code, discountAmount }, req);
     res.json({
       success: true,
       coupon: {
-        _id: coupon._id,
+        id: coupon._id,
         code: coupon.code,
-        name: coupon.name,
-        discountType: coupon.discountType,
-        discountValue: coupon.discountValue
-      },
-      discountAmount,
-      finalAmount: orderData.totalAmount - discountAmount
-    });
-  } catch (error) {
-    logger.error('Error applying coupon', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al aplicar el cupón', 500));
-  }
-});
-
-// Get coupon statistics
-router.get('/stats/overview', validateBusinessId, async (req, res) => {
-  try {
-    const { businessId } = req;
-
-    const stats = await Coupon.aggregate([
-      { $match: { businessId } },
-      {
-        $group: {
-          _id: null,
-          totalCoupons: { $sum: 1 },
-          activeCoupons: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$isActive', true] },
-                    { $lte: ['$validFrom', new Date()] },
-                    { $gte: ['$validUntil', new Date()] }
-                  ]
-                },
-                1,
-                0
-              ]
-            }
-          },
-          totalUsage: { $sum: '$usageCount' },
-          totalDiscountGiven: { $sum: '$totalDiscountGiven' },
-          expiredCoupons: {
-            $sum: {
-              $cond: [{ $lt: ['$validUntil', new Date()] }, 1, 0]
-            }
-          }
-        }
+        months: coupon.months,
+        description: coupon.description,
+        maxUses: coupon.maxUses,
+        expiresAt: coupon.expiresAt,
+        isActive: coupon.isActive
       }
-    ]);
-
-    // Get most used coupons
-    const mostUsedCoupons = await Coupon.find({ businessId })
-      .sort({ usageCount: -1 })
-      .limit(5)
-      .select('code name usageCount totalDiscountGiven')
-      .lean();
-
-    // Get recent coupons
-    const recentCoupons = await Coupon.find({ businessId })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select('code name discountType discountValue createdAt')
-      .lean();
-
-    res.json({
-      ...stats[0],
-      mostUsedCoupons,
-      recentCoupons
     });
   } catch (error) {
-    logger.error('Error fetching coupon stats', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al obtener estadísticas', 500));
+    logger.error('Error updating coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al actualizar cupón', 500));
   }
 });
 
-// Generate unique coupon code
-router.post('/generate-code', validateBusinessId, async (req, res) => {
+// POST /api/coupons/redeem - Canjear cupón (Admin autenticado)
+router.post('/redeem', authMiddleware, async (req, res) => {
   try {
-    const { businessId } = req;
-    const { length = 8 } = req.body;
+    const { code } = req.body;
     
-    const code = await Coupon.generateUniqueCode(businessId, length);
+    if (!code) {
+      return res.status(400).json(formatHttpError(req, 'Código de cupón requerido', 400));
+    }
     
-    res.json({ code });
+    // Resolver businessId
+    let businessId = req.user.businessId;
+    if (!businessId && req.user.id) {
+      const Admin = require('../Models/Admin');
+      const admin = await Admin.findById(req.user.id).select('businessId');
+      if (admin && admin.businessId) {
+        businessId = admin.businessId.toString();
+      }
+    }
+    
+    if (!businessId) {
+      return res.status(403).json(formatHttpError(req, 'No se pudo determinar el negocio', 403));
+    }
+    
+    // Buscar cupón
+    const coupon = await Coupon.findOne({ code: code.toUpperCase().trim() });
+    if (!coupon) {
+      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
+    }
+    
+    // Verificar si puede ser usado
+    const validation = coupon.canBeUsed(businessId);
+    if (!validation.valid) {
+      return res.status(400).json(formatHttpError(req, validation.reason, 400));
+    }
+    
+    // Obtener suscripción actual del negocio
+    let subscription = await Subscription.findOne({ businessId })
+      .sort({ createdAt: -1 });
+    
+    if (!subscription) {
+      return res.status(404).json(formatHttpError(req, 'No tienes una suscripción activa', 404));
+    }
+    
+    // Calcular nueva fecha de fin basada en meses del cupón
+    const now = new Date();
+    let newEndDate = subscription.endDate > now ? subscription.endDate : now;
+    
+    // Agregar los meses del cupón
+    newEndDate = new Date(newEndDate);
+    newEndDate.setMonth(newEndDate.getMonth() + coupon.months);
+    
+    // Actualizar suscripción
+    subscription.endDate = newEndDate;
+    subscription.gracePeriodEnd = new Date(newEndDate.getTime() + (24 * 60 * 60 * 1000)); // 1 día extra de gracia
+    subscription.status = 'active';
+    subscription.paymentStatus = 'paid';
+    subscription.paymentMethod = 'COUPON';
+    subscription.couponCode = coupon.code;
+    subscription.couponId = coupon._id;
+    subscription.price = 0; // Gratis por cupón
+    
+    await subscription.save();
+    
+    // Registrar uso del cupón
+    coupon.usedBy.push({
+      businessId: businessId,
+      usedAt: now
+    });
+    await coupon.save();
+    
+    logger.info('Coupon redeemed', {
+      couponId: coupon._id,
+      code: coupon.code,
+      businessId,
+      months: coupon.months,
+      newEndDate
+    }, req);
+    
+    res.json({
+      success: true,
+      message: `¡Cupón canjeado exitosamente! Has recibido ${coupon.months} ${coupon.months === 1 ? 'mes' : 'meses'} gratis.`,
+      subscription: {
+        endDate: subscription.endDate,
+        status: subscription.status,
+        paymentStatus: subscription.paymentStatus
+      }
+    });
   } catch (error) {
-    logger.error('Error generating coupon code', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al generar código', 500));
+    logger.error('Error redeeming coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al canjear cupón: ' + error.message, 500));
+  }
+});
+
+// GET /api/coupons/validate/:code - Validar cupón (sin autenticación para compartir)
+router.get('/validate/:code', async (req, res) => {
+  try {
+    const { code } = req.params;
+    
+    const coupon = await Coupon.findOne({ code: code.toUpperCase().trim() });
+    if (!coupon) {
+      return res.json({
+        valid: false,
+        reason: 'Cupón no encontrado'
+      });
+    }
+    
+    const now = new Date();
+    let validation = { valid: true };
+    
+    if (!coupon.isActive) {
+      validation = { valid: false, reason: 'Cupón inactivo' };
+    } else if (coupon.expiresAt && coupon.expiresAt < now) {
+      validation = { valid: false, reason: 'Cupón expirado' };
+    } else if (coupon.maxUses !== null && coupon.usedBy.length >= coupon.maxUses) {
+      validation = { valid: false, reason: 'Cupón alcanzó el límite de usos' };
+    }
+    
+    res.json({
+      valid: validation.valid,
+      reason: validation.reason || null,
+      coupon: validation.valid ? {
+        code: coupon.code,
+        months: coupon.months,
+        description: coupon.description,
+        usedCount: coupon.usedBy.length,
+        maxUses: coupon.maxUses
+      } : null
+    });
+  } catch (error) {
+    logger.error('Error validating coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al validar cupón', 500));
   }
 });
 

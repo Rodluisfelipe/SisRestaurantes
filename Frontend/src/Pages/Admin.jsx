@@ -25,6 +25,7 @@ import ModernOrdersDashboard from "../Components/ModernOrdersDashboard";
 import EnhancedCompletedOrders from "../Components/EnhancedCompletedOrders";
 import ModernAdminSidebar from "../Components/ModernAdminSidebar";
 import SubscriptionStatus from "../Components/SubscriptionStatus";
+import SubscriptionPayment from "./SubscriptionPayment";
 import CustomersManager from "../Components/CustomersManager";
 import CouponsManager from "../Components/CouponsManager";
 import MultiSessionWarning from "../Components/MultiSessionWarning";
@@ -221,6 +222,25 @@ function Admin() {
   const { businessId } = useBusinessConfig();
   const [activeTab, setActiveTab] = useState('products');
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
+  
+  // Listener para navegación desde componentes (evento custom)
+  useEffect(() => {
+    const handleNavigateToTab = (event) => {
+      const tabName = event.detail;
+      if (tabName && typeof tabName === 'string') {
+        setActiveTab(tabName);
+        // Scroll suave al inicio después de un pequeño delay
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 100);
+      }
+    };
+    
+    window.addEventListener('navigateToTab', handleNavigateToTab);
+    return () => {
+      window.removeEventListener('navigateToTab', handleNavigateToTab);
+    };
+  }, []);
   const [products, setProducts] = useState([]);
   
   // Log para debugging del estado de productos
@@ -1080,7 +1100,10 @@ function Admin() {
             {/* Subscription Status */}
             {businessConfig && businessConfig._id && (
               <div className="mb-6">
-                <SubscriptionStatus businessId={businessConfig._id} />
+                <SubscriptionStatus 
+                  businessId={businessConfig._id}
+                  onNavigateToSubscription={() => setActiveTab('subscription')}
+                />
               </div>
             )}
             <AnimatePresence mode="wait">
@@ -1148,7 +1171,7 @@ function Admin() {
           {activeTab === 'coupons' && <CouponsManager />}
           {activeTab === 'delivery-zones' && <DeliveryZoneManager />}
           {activeTab === 'subscription' && (
-            <SubscriptionManagementWrapper />
+            <SubscriptionPayment />
           )}
                 
                 {/* Products Management */}

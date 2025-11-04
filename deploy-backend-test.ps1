@@ -44,3 +44,5 @@ ssh -i $env:SSH_KEY root@$env:REMOTE_HOST "curl -s https://157-245-125-216.nip.i
 
 Write-Host "Done!" -ForegroundColor Green
 
+
+
