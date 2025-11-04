@@ -600,7 +600,7 @@ export default function Menu() {
         logger.info('Ya hay un envío en proceso, ignorando');
         return;
       }
-    
+      
     setIsSubmittingOrder(true);
     
       // Validar que haya productos en el carrito

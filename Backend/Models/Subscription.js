@@ -114,30 +114,30 @@ subscriptionSchema.methods.calculateGraceUntil = function() {
   return graceDate;
 };
 
-  // Método para verificar estado actual
-  subscriptionSchema.methods.getCurrentStatus = function() {
-    const now = new Date();
-    const periodEndDate = this.periodEnd || this.endDate;
-    const graceUntilDate = this.graceUntil || this.calculateGraceUntil();
-    
+// Método para verificar estado actual
+subscriptionSchema.methods.getCurrentStatus = function() {
+  const now = new Date();
+  const periodEndDate = this.periodEnd || this.endDate;
+  const graceUntilDate = this.graceUntil || this.calculateGraceUntil();
+  
     // Si no hay periodEnd, considerar como activo (sin restricciones)
     if (!periodEndDate) {
       return 'active';
     }
     
     // Si aún no ha pasado el periodo de pago, está activo
-    if (now <= periodEndDate) {
-      return 'active';
+  if (now <= periodEndDate) {
+    return 'active';
     }
     
     // Si pasó el periodo de pago pero aún está en gracia
     if (graceUntilDate && now <= graceUntilDate) {
-      return 'grace';
+    return 'grace';
     }
     
     // Si pasó el periodo de gracia, está suspendido
     return 'suspended';
-  };
+};
 
 // Método para verificar si la suscripción está activa
 subscriptionSchema.methods.isSubscriptionActive = function() {
@@ -162,11 +162,11 @@ subscriptionSchema.methods.getDaysRemaining = function() {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
-  // Método para calcular días de gracia restantes
-  subscriptionSchema.methods.getGraceDaysRemaining = function() {
-    const now = new Date();
-    const graceUntilDate = this.graceUntil || this.calculateGraceUntil();
-    if (!graceUntilDate) return 0;
+// Método para calcular días de gracia restantes
+subscriptionSchema.methods.getGraceDaysRemaining = function() {
+  const now = new Date();
+  const graceUntilDate = this.graceUntil || this.calculateGraceUntil();
+  if (!graceUntilDate) return 0;
     
     // Normalizar las fechas para comparar solo días (sin horas)
     const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -176,6 +176,6 @@ subscriptionSchema.methods.getDaysRemaining = function() {
     const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
     return Math.max(0, daysDiff);
-  };
+};
 
 module.exports = mongoose.model('Subscription', subscriptionSchema);

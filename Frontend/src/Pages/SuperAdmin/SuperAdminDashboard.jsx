@@ -106,10 +106,10 @@ function SuperAdminDashboard() {
       <header className="fixed top-0 left-0 w-full bg-[#333F50] shadow-lg z-50 border-b border-[#333F50]/80">
         {/* Top bar - Logo and Mobile Menu Button */}
         <div className="flex items-center justify-between px-4 sm:px-6 py-3">
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
             className="flex items-center space-x-2 sm:space-x-3"
           >
             <img src="/logo.jpeg" alt="Menuby" className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
@@ -160,47 +160,47 @@ function SuperAdminDashboard() {
               )}
             </svg>
           </button>
-        </div>
-
+          </div>
+          
         {/* Desktop Navigation Tabs */}
         <div className="hidden lg:flex space-x-2 px-6 pb-3">
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setCurrentView('businesses')}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setCurrentView('businesses')}
             className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-              currentView === 'businesses'
-                ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-            }`}
-          >
-            🏢 Negocios
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setCurrentView('banners')}
+                currentView === 'businesses'
+                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+              }`}
+            >
+              🏢 Negocios
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setCurrentView('banners')}
             className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-              currentView === 'banners'
-                ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-            }`}
-          >
-            📢 Banners
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setCurrentView('subscriptions')}
+                currentView === 'banners'
+                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+              }`}
+            >
+              📢 Banners
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setCurrentView('subscriptions')}
             className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-              currentView === 'subscriptions'
-                ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-            }`}
-          >
-            👑 Suscripciones
-          </motion.button>
-        </div>
+                currentView === 'subscriptions'
+                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+              }`}
+            >
+              👑 Suscripciones
+            </motion.button>
+          </div>
 
         {/* Mobile Navigation - Scrollable Tabs */}
         <div className="lg:hidden overflow-x-auto scrollbar-hide pb-3 px-4">
@@ -233,7 +233,7 @@ function SuperAdminDashboard() {
             >
               📢 Banners
             </motion.button>
-            <motion.button
+          <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => {
                 setCurrentView('subscriptions');
@@ -267,11 +267,11 @@ function SuperAdminDashboard() {
                     setMobileMenuOpen(false);
                   }}
                   className="w-full flex items-center gap-2 px-4 py-2 bg-[#5FF9B4] text-[#051C2C] rounded-lg hover:bg-[#5FF9B4]/90 transition-colors font-semibold"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  Cambiar contraseña
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            </svg>
+            Cambiar contraseña
                 </button>
                 <button
                   onClick={() => {
@@ -279,13 +279,13 @@ function SuperAdminDashboard() {
                     setMobileMenuOpen(false);
                   }}
                   className="w-full flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
-                  </svg>
-                  Salir
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+            </svg>
+            Salir
                 </button>
-              </div>
+        </div>
             </motion.div>
           )}
         </AnimatePresence>

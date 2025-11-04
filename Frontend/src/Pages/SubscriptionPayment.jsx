@@ -31,19 +31,68 @@ const SubscriptionPayment = () => {
   // Formulario
   const [formData, setFormData] = useState({
     monthsPurchased: 1,
-    amount: 27000,
+    amount: 25000, // Precio con descuento: 27,000 - 2,000 = 25,000
     paymentMethod: 'Nequi',
     proof: null
   });
   
   const [errors, setErrors] = useState({});
   
-  // Precios por meses
+  // Precio base mensual
+  const MONTHLY_PRICE = 25000;
+  
+  // Comisión fija (se suma al total)
+  const COMMISSION = 2000;
+  
+  // Descuento por usar medios de pago manuales
+  const PAYMENT_DISCOUNT = 2000;
+  
+  // Descuentos adicionales por volumen
+  const VOLUME_DISCOUNTS = {
+    1: 0,      // Sin descuento por volumen
+    3: 5000,   // $5,000 de descuento por volumen
+    6: 10000,  // $10,000 de descuento por volumen
+    12: 15000  // $15,000 de descuento por volumen
+  };
+  
+  // Precios base (meses × precio mensual + comisión)
+  const PRICING_BASE = {
+    1: (MONTHLY_PRICE * 1) + COMMISSION,    // $25,000 + $2,000 = $27,000
+    3: (MONTHLY_PRICE * 3) + COMMISSION,    // $75,000 + $2,000 = $77,000
+    6: (MONTHLY_PRICE * 6) + COMMISSION,    // $150,000 + $2,000 = $152,000
+    12: (MONTHLY_PRICE * 12) + COMMISSION   // $300,000 + $2,000 = $302,000
+  };
+  
+  // Precios originales sin comisión ni descuentos (para mostrar tachado)
+  const PRICING_ORIGINAL = {
+    1: MONTHLY_PRICE * 1,    // $25,000
+    3: MONTHLY_PRICE * 3,    // $75,000
+    6: MONTHLY_PRICE * 6,    // $150,000
+    12: MONTHLY_PRICE * 12   // $300,000
+  };
+  
+  // Precios finales con descuentos aplicados
+  // Precio base (con comisión) - descuento pago manual - descuento por volumen
   const PRICING = {
-    1: 27000,
-    3: 81000,
-    6: 162000,
-    12: 308000
+    1: PRICING_BASE[1] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[1],   // 27,000 - 2,000 - 0 = 25,000
+    3: PRICING_BASE[3] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[3],   // 77,000 - 2,000 - 5,000 = 70,000
+    6: PRICING_BASE[6] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[6],   // 152,000 - 2,000 - 10,000 = 140,000
+    12: PRICING_BASE[12] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[12] // 302,000 - 2,000 - 15,000 = 285,000
+  };
+  
+  // Calcular ahorros por pagar más meses (comparado con pagar mensual)
+  const calculateSavings = (months) => {
+    if (months === 1) return 0;
+    const monthlyPriceWithDiscount = PRICING[1]; // $23,000 (25,000 - 2,000)
+    const totalIfMonthly = monthlyPriceWithDiscount * months;
+    const actualPrice = PRICING[months];
+    const savings = totalIfMonthly - actualPrice;
+    return savings > 0 ? savings : 0;
+  };
+  
+  // Calcular descuento total (volumen + pago manual)
+  const getTotalDiscount = (months) => {
+    return VOLUME_DISCOUNTS[months] + PAYMENT_DISCOUNT;
   };
   
   // Medios de pago
@@ -237,7 +286,7 @@ const SubscriptionPayment = () => {
         alert('Solicitud de pago enviada correctamente. Será revisada por nuestro equipo.');
         setFormData({
           monthsPurchased: 1,
-          amount: PRICING[1],
+          amount: PRICING[1] || 25000,
           paymentMethod: 'Nequi',
           proof: null
         });
@@ -355,38 +404,116 @@ const SubscriptionPayment = () => {
               Selecciona la duración
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[1, 3, 6, 12].map(months => (
-                <button
-                  key={months}
-                  type="button"
-                  onClick={() => handleMonthsChange(months)}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    formData.monthsPurchased === months
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="font-bold text-lg">{months}</div>
-                  <div className="text-xs text-gray-600">
-                    {months === 1 ? 'mes' : 'meses'}
-                  </div>
-                  <div className="text-sm font-semibold mt-1">
-                    ${PRICING[months].toLocaleString('es-CO')}
-                  </div>
-                </button>
-              ))}
+              {[1, 3, 6, 12].map(months => {
+                const savings = calculateSavings(months);
+                const isSelected = formData.monthsPurchased === months;
+                const totalDiscount = getTotalDiscount(months);
+                return (
+                  <button
+                    key={months}
+                    type="button"
+                    onClick={() => handleMonthsChange(months)}
+                    className={`p-4 rounded-lg border-2 transition-all relative ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    {/* Badge de descuento siempre visible */}
+                    <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
+                      -${totalDiscount.toLocaleString('es-CO')}
+                    </div>
+                    
+                    <div className="font-bold text-lg">{months}</div>
+                    <div className="text-xs text-gray-600">
+                      {months === 1 ? 'mes' : 'meses'}
+                    </div>
+                    <div className="mt-2">
+                      {PRICING_BASE[months] !== PRICING[months] && (
+                        <div className="text-xs text-gray-400 line-through mb-1">
+                          ${PRICING_BASE[months].toLocaleString('es-CO')}
+                        </div>
+                      )}
+                      <div className="text-sm font-semibold text-green-600">
+                        ${PRICING[months].toLocaleString('es-CO')}
+                      </div>
+                    </div>
+                    
+                    {/* Mostrar ahorro si es mayor a 0 */}
+                    {savings > 0 && (
+                      <div className="mt-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
+                        💰 Ahorras ${savings.toLocaleString('es-CO')}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {/* Monto */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700 font-medium">Total a Pagar:</span>
-              <span className="text-2xl font-bold text-gray-900">
-                ${formData.amount.toLocaleString('es-CO')} COP
-              </span>
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border-2 border-green-200">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-700 font-medium">Total a Pagar:</span>
+                <div className="text-right">
+                  {PRICING_BASE[formData.monthsPurchased] !== formData.amount && (
+                      <div className="text-sm text-gray-400 line-through mb-1">
+                        ${PRICING_BASE[formData.monthsPurchased].toLocaleString('es-CO')}
+                      </div>
+                    )}
+                  <span className="text-2xl font-bold text-green-600">
+                    ${formData.amount.toLocaleString('es-CO')} COP
+                  </span>
+                </div>
+              </div>
+              
+              {/* Mostrar descuentos aplicados */}
+              <div className="flex items-center justify-between pt-2 border-t border-green-200">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 font-semibold text-sm">✓ Descuento pago manual:</span>
+                    <span className="text-green-700 font-bold">-${PAYMENT_DISCOUNT.toLocaleString('es-CO')}</span>
+                  </div>
+                  {VOLUME_DISCOUNTS[formData.monthsPurchased] > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-600 font-semibold text-sm">✓ Descuento por volumen:</span>
+                      <span className="text-green-700 font-bold">-${VOLUME_DISCOUNTS[formData.monthsPurchased].toLocaleString('es-CO')}</span>
+                    </div>
+                  )}
+                </div>
+                {calculateSavings(formData.monthsPurchased) > 0 && (
+                  <div className="flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                    <span>💰</span>
+                    <span>Ahorras ${calculateSavings(formData.monthsPurchased).toLocaleString('es-CO')}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Aviso de ahorro adicional */}
+          {formData.monthsPurchased === 1 && (
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-semibold text-blue-800 mb-1">
+                    💡 ¡Ahorra más pagando por adelantado!
+                  </h3>
+                  <div className="text-sm text-blue-700 space-y-1">
+                    <p>• <strong>3 meses:</strong> ${PRICING[3].toLocaleString('es-CO')} (descuento total de ${getTotalDiscount(3).toLocaleString('es-CO')}) - Ahorras ${calculateSavings(3).toLocaleString('es-CO')} vs. mensual</p>
+                    <p>• <strong>6 meses:</strong> ${PRICING[6].toLocaleString('es-CO')} (descuento total de ${getTotalDiscount(6).toLocaleString('es-CO')}) - Ahorras ${calculateSavings(6).toLocaleString('es-CO')} vs. mensual</p>
+                    <p>• <strong>12 meses:</strong> ${PRICING[12].toLocaleString('es-CO')} (descuento total de ${getTotalDiscount(12).toLocaleString('es-CO')}) - Ahorras ${calculateSavings(12).toLocaleString('es-CO')} vs. mensual</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Método de Pago */}
           <div>
