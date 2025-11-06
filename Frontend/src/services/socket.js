@@ -11,11 +11,6 @@ const isLocalDev = !isProd && window.location.hostname === 'localhost';
 
 // Configurar Socket.io para conectarse al backend con la URL correcta
 const getSocketUrl = () => {
-  // En desarrollo local, no conectar WebSocket para evitar errores
-  if (isLocalDev) {
-    return null;
-  }
-  
   const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
   if (envSocketUrl) {
     return envSocketUrl;
@@ -25,6 +20,7 @@ const getSocketUrl = () => {
     return 'https://157-245-125-216.nip.io';
   }
   
+  // En desarrollo local, conectar al backend local
   return 'http://localhost:5000';
 };
 
@@ -37,8 +33,8 @@ const getAuthToken = () => {
   return token || null;
 };
 
-// Crear socket solo si tenemos una URL válida
-export const socket = socketUrl ? io(socketUrl, {
+// Crear socket siempre (incluso en desarrollo local)
+export const socket = io(socketUrl, {
   autoConnect: false,
   reconnection: true,
   reconnectionAttempts: 5,
@@ -60,7 +56,7 @@ export const socket = socketUrl ? io(socketUrl, {
   auth: {
     token: getAuthToken()
   }
-}) : null;
+});
 
 // Sistema de logging centralizado
 let systemStatus = {
@@ -82,9 +78,8 @@ const logSystemStatus = () => {
   }
 };
 
-// Configurar eventos para logging y manejo de errores solo si socket existe
-if (socket) {
-  socket.on('connect', () => {
+// Configurar eventos para logging y manejo de errores
+socket.on('connect', () => {
     systemStatus.socket = 'connected';
     systemStatus.lastError = null;
     systemStatus.lastUpdate = new Date();
@@ -127,18 +122,9 @@ if (socket) {
     }
     logSystemStatus();
   });
-} else {
-  // En desarrollo local, marcar como OK sin WebSocket
-  systemStatus.socket = 'local_dev';
-  systemStatus.lastError = null;
-  systemStatus.lastUpdate = new Date();
-  logSystemStatus();
-}
 
 // Función para unirse a un canal de negocio específico
 export const joinBusiness = (businessId) => {
-  if (!socket) return; // No hacer nada en desarrollo local
-  
   if (!businessId) {
     systemStatus.lastError = 'businessId no proporcionado';
     systemStatus.lastUpdate = new Date();
@@ -158,8 +144,6 @@ export const joinBusiness = (businessId) => {
 
 // Función para unirse al canal de superadmin
 export const joinSuperAdmin = () => {
-  if (!socket) return; // No hacer nada en desarrollo local
-  
   if (socket.connected) {
     socket.emit('joinSuperAdmin');
   } else {
@@ -172,8 +156,6 @@ export const joinSuperAdmin = () => {
 
 // Función para forzar reconexión
 export const forceReconnect = () => {
-  if (!socket) return; // No hacer nada en desarrollo local
-  
   socket.disconnect();
   setTimeout(() => {
     socket.connect();
@@ -184,8 +166,8 @@ export const forceReconnect = () => {
 export const getSystemStatus = () => {
   return {
     ...systemStatus,
-    connected: socket ? socket.connected : false,
-    id: socket ? socket.id : null
+    connected: socket.connected,
+    id: socket.id
   };
 };
 

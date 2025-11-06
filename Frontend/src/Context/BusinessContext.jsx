@@ -86,8 +86,11 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           }
           
           if (response.data) {
-            // Establecer el businessId con el _id real del negocio
-            setBusinessId(response.data._id);
+            // Establecer el businessId con el _id real del negocio SOLO si aún no está seteado
+            // Esto evita el loop infinito entre slug y ObjectId
+            if (!businessId || businessId !== response.data._id) {
+              setBusinessId(response.data._id);
+            }
             
             const theme = response.data.theme || { 
               buttonColor: '#2563eb', 
@@ -127,12 +130,12 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
     fetchBusiness();
   }, [propBusinessId, onError, onLoaded]);
 
-  // Update businessId if prop changes
+  // Update businessId if prop changes - SOLO cuando la prop cambia, NO cuando cambia el state
   useEffect(() => {
     if (propBusinessId && propBusinessId !== businessId) {
       setBusinessId(propBusinessId);
     }
-  }, [propBusinessId, businessId]);
+  }, [propBusinessId]); // ✅ Eliminado businessId de dependencias para evitar loop infinito
 
   useEffect(() => {
     if (!businessId) return;

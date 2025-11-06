@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import BusinessSettings from "../Components/BusinessSettings";
 import CategorySettings from "../Components/CategorySettings";
 import ToppingGroupsManager from '../Components/ToppingGroupsManager';
@@ -18,7 +18,8 @@ import BannerApproval from '../Components/Catalog/BannerApproval';
 import RestaurantBannerView from '../Components/Catalog/RestaurantBannerView';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import ChangePassword from "../Components/ChangePassword";
-import { socket } from '../services/socket';
+import { socket, joinBusiness, socketDiagnostic } from '../services/socket';
+import { SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
 import { isValidObjectId, isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import TableSettings from "../Components/TableSettings";
 import ModernOrdersDashboard from "../Components/ModernOrdersDashboard";
@@ -86,68 +87,68 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) =>
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-[#333F50]/95 rounded-2xl shadow-2xl p-6 max-w-md w-full border border-[#333F50]"
+        className="bg-[#333F50]/95 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 max-w-md w-full border border-[#333F50] mx-3"
       >
-        <h2 className="text-xl font-bold text-white mb-6 flex items-center">
-          <svg className="w-6 h-6 text-[#3A7AFF] mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6 flex items-center">
+          <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#3A7AFF] mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
-          Confirmar Cambios
+          <span className="text-sm sm:text-lg">Confirmar Cambios</span>
         </h2>
         
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <p className="text-[#D1D9FF] font-medium">Nombre:</p>
-            <div className="flex items-center">
-              <p className={`${product.name !== formData.name ? 'line-through text-red-400' : 'text-white'} mr-2`}>
+        <div className="space-y-3 sm:space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+            <p className="text-[#D1D9FF] font-medium text-xs sm:text-sm">Nombre:</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className={`${product.name !== formData.name ? 'line-through text-red-400' : 'text-white'} text-xs sm:text-sm`}>
                 {product.name}
               </p>
               {product.name !== formData.name && (
-                <p className="text-[#5FF9B4]">{formData.name}</p>
+                <p className="text-[#5FF9B4] text-xs sm:text-sm font-medium">{formData.name}</p>
               )}
             </div>
           </div>
           
-          <div className="flex items-center justify-between">
-            <p className="text-[#D1D9FF] font-medium">Descripción:</p>
-            <div className="flex items-center">
-              <p className={`${product.description !== formData.description ? 'line-through text-red-400' : 'text-white'} mr-2`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+            <p className="text-[#D1D9FF] font-medium text-xs sm:text-sm">Descripción:</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className={`${product.description !== formData.description ? 'line-through text-red-400' : 'text-white'} text-xs sm:text-sm truncate max-w-[150px]`}>
                 {product.description || "Sin descripción"}
               </p>
               {product.description !== formData.description && (
-                <p className="text-[#5FF9B4]">{formData.description || "Sin descripción"}</p>
+                <p className="text-[#5FF9B4] text-xs sm:text-sm truncate max-w-[150px]">{formData.description || "Sin descripción"}</p>
               )}
             </div>
           </div>
           
-          <div className="flex items-center justify-between">
-            <p className="text-[#D1D9FF] font-medium">Precio:</p>
-            <div className="flex items-center">
-              <p className={`${product.price !== formData.price ? 'line-through text-red-400' : 'text-white'} mr-2`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+            <p className="text-[#D1D9FF] font-medium text-xs sm:text-sm">Precio:</p>
+            <div className="flex items-center gap-2">
+              <p className={`${product.price !== formData.price ? 'line-through text-red-400' : 'text-white'} text-xs sm:text-sm`}>
                 ${product.price}
               </p>
               {product.price !== formData.price && (
-                <p className="text-[#5FF9B4]">${formData.price}</p>
+                <p className="text-[#5FF9B4] text-xs sm:text-sm font-semibold">${formData.price}</p>
               )}
             </div>
           </div>
         </div>
         
-        <div className="flex justify-end space-x-3 mt-6">
+        <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-white bg-[#333F50] hover:bg-[#333F50]/80 transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-white bg-[#333F50] hover:bg-[#333F50]/80 transition-colors text-sm sm:text-base order-2 sm:order-1"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded-lg text-white bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-white bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 transition-colors text-sm sm:text-base order-1 sm:order-2"
           >
             Confirmar Cambios
           </button>
@@ -157,54 +158,54 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) =>
   );
 };
 
-// Componente de Modal de Confirmación para eliminación
+// Componente de Modal de Confirmación para eliminación - Responsive
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, product }) => {
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-[#333F50]/95 rounded-2xl shadow-2xl p-6 max-w-md w-full border border-[#333F50]"
+        className="bg-[#333F50]/95 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 max-w-md w-full border border-[#333F50] mx-3"
       >
-        <div className="flex items-center mb-4 text-red-400">
-          <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <div className="flex items-center mb-3 sm:mb-4 text-red-400">
+          <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h2 className="text-xl font-bold text-white">Eliminar Producto</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-white">Eliminar Producto</h2>
         </div>
         
-        <p className="text-[#D1D9FF] mb-6">
+        <p className="text-[#D1D9FF] mb-4 sm:mb-6 text-sm sm:text-base">
           ¿Estás seguro de que deseas eliminar el producto <span className="font-bold text-white">{product.name}</span>? Esta acción no se puede deshacer.
         </p>
         
-        <div className="bg-[#051C2C]/30 p-4 rounded-lg mb-6 border border-[#333F50]">
-          <div className="flex">
-            <p className="text-[#A5B9FF] w-32">Nombre:</p>
-            <p className="text-white font-medium">{product.name}</p>
+        <div className="bg-[#051C2C]/30 p-3 sm:p-4 rounded-lg mb-4 sm:mb-6 border border-[#333F50]">
+          <div className="flex flex-col sm:flex-row gap-1 sm:gap-0">
+            <p className="text-[#A5B9FF] sm:w-32 text-xs sm:text-sm">Nombre:</p>
+            <p className="text-white font-medium text-sm sm:text-base break-words">{product.name}</p>
           </div>
-          <div className="flex mt-2">
-            <p className="text-[#A5B9FF] w-32">Precio:</p>
-            <p className="text-white font-medium">${product.price}</p>
+          <div className="flex flex-col sm:flex-row mt-2 gap-1 sm:gap-0">
+            <p className="text-[#A5B9FF] sm:w-32 text-xs sm:text-sm">Precio:</p>
+            <p className="text-white font-medium text-sm sm:text-base">${product.price}</p>
           </div>
-          <div className="flex mt-2">
-            <p className="text-[#A5B9FF] w-32">Categoría:</p>
-            <p className="text-white font-medium">{product.categoryName || "Sin categoría"}</p>
+          <div className="flex flex-col sm:flex-row mt-2 gap-1 sm:gap-0">
+            <p className="text-[#A5B9FF] sm:w-32 text-xs sm:text-sm">Categoría:</p>
+            <p className="text-white font-medium text-sm sm:text-base">{product.categoryName || "Sin categoría"}</p>
           </div>
         </div>
         
-        <div className="flex justify-end space-x-3">
+        <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg text-white bg-[#333F50] hover:bg-[#333F50]/80 transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-white bg-[#333F50] hover:bg-[#333F50]/80 transition-colors text-sm sm:text-base order-2 sm:order-1"
           >
             Cancelar
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-white bg-red-500 hover:bg-red-600 transition-colors text-sm sm:text-base order-1 sm:order-2"
           >
             Eliminar Producto
           </button>
@@ -219,8 +220,16 @@ function Admin() {
   const { businessConfig } = useBusinessConfig();
   const navigate = useNavigate();
   const location = useLocation();
-  const { businessId } = useBusinessConfig();
-  const [activeTab, setActiveTab] = useState('products');
+  const { businessId: rawBusinessId } = useBusinessConfig();
+  
+  // Memoizar businessId para evitar cambios innecesarios
+  const businessId = useMemo(() => rawBusinessId, [rawBusinessId]);
+  
+  // Inicializar activeTab según el tamaño de pantalla
+  const [activeTab, setActiveTab] = useState(() => {
+    // En desktop (lg+), iniciar en 'orders', en mobile en 'dashboard'
+    return window.innerWidth >= 1024 ? 'orders' : 'dashboard';
+  });
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   
   // Listener para navegación desde componentes (evento custom)
@@ -268,6 +277,11 @@ function Admin() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sseEnabled, setSseEnabled] = useState(false);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [newOrderNotification, setNewOrderNotification] = useState(null);
+  const [showOrderBanner, setShowOrderBanner] = useState(false);
+  const socketListenersRegistered = useRef(false);
+  const lastJoinedBusiness = useRef(null);
+  const notificationAudioRef = useRef(null); // Audio para notificaciones de pedidos
   const redirectionCountRef = useRef(0);
   const initialRenderRef = useRef(true);
   
@@ -493,54 +507,105 @@ function Admin() {
     }
   }, [businessId]);
 
-  // Configurar WebSocket
+  // Registrar listeners de socket UNA SOLA VEZ
   useEffect(() => {
-    // Usar la nueva función de validación
-    if (!isValidBusinessIdentifier(businessId)) return;
+    if (socketListenersRegistered.current) return;
     
-    // --- WebSocket: Conexión y listeners ---
-    try {
-      if (socket && !socket.connected) {
-        socket.connect();
-      }
-      if (socket) {
-        socket.emit('joinBusiness', businessId);
-      }
+    console.log('🔌 Registering socket listeners ONCE');
+    
+    // Listener para nuevos pedidos
+    socket.on(SOCKET_EVENTS.ORDER_CREATED, (newOrder) => {
+      console.log('🔔 New order received in Admin:', newOrder);
+      console.log('📊 Order details:', {
+        id: newOrder._id,
+        orderNumber: newOrder.orderNumber,
+        status: newOrder.status,
+        isPending: newOrder.status === ORDER_STATUS.PENDING
+      });
       
-      // Definir listeners para los eventos
-      const handleProductsUpdate = (data) => {
-        setProducts(data);
-      };
-      
-      const handleCategoriesUpdate = (data) => {
-        setCategories(data.categories || data);
-      };
-      
-      const handleToppingGroupsUpdate = (data) => {
-        setToppingGroups(data);
-        console.log('Estado de toppingGroups actualizado:', data);
-      };
-      
-      // Registrar listeners solo si socket existe
-      if (socket) {
-        socket.on('products_update', handleProductsUpdate);
-        socket.on('categories_update', handleCategoriesUpdate);
-        socket.on('topping_groups_update', handleToppingGroupsUpdate);
-      }
-      
-      // Cleanup function
-      return () => {
-        console.log('Admin: Cerrando conexión SSE');
-        if (socket) {
-          socket.off('products_update', handleProductsUpdate);
-          socket.off('categories_update', handleCategoriesUpdate);
-          socket.off('topping_groups_update', handleToppingGroupsUpdate);
-          socket.emit('leaveBusiness', businessId);
+      // Mostrar notificación banner solo si el pedido está pendiente
+      if (newOrder.status === ORDER_STATUS.PENDING) {
+        console.log('✅ Showing banner for pending order');
+        setNewOrderNotification(newOrder);
+        setShowOrderBanner(true);
+        
+        // Reproducir sonido de notificación
+        if (notificationAudioRef.current) {
+          const audio = notificationAudioRef.current;
+          if (audio.readyState >= 2) { // Audio listo para reproducir
+            audio.currentTime = 0; // Reiniciar desde el inicio
+            audio.play().catch(e => {
+              console.error('Error playing notification sound:', e);
+            });
+          }
         }
-      };
-    } catch (error) {
-      console.error('Error en la configuración de WebSocket:', error);
+        
+        // Auto-ocultar después de 10 segundos
+        setTimeout(() => {
+          setShowOrderBanner(false);
+        }, 10000);
+        
+        // Actualizar contador de pedidos pendientes
+        setPendingOrdersCount(prev => prev + 1);
+      } else {
+        console.log('⏭️ Order not pending, skipping banner');
+      }
+    });
+    
+    socket.on(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
+      console.log('Order updated:', updatedOrder);
+      if (updatedOrder.status !== ORDER_STATUS.PENDING) {
+        setPendingOrdersCount(prev => Math.max(0, prev - 1));
+      }
+    });
+    
+    socket.on('products_update', (data) => {
+      setProducts(data);
+    });
+    
+    socket.on('categories_update', (data) => {
+      setCategories(data.categories || data);
+    });
+    
+    socket.on('topping_groups_update', (data) => {
+      setToppingGroups(data);
+    });
+    
+    socketListenersRegistered.current = true;
+    console.log('✅ Socket listeners registered permanently');
+    console.log('🔌 Socket connected:', socket.connected);
+    
+    // Si no está conectado, conectar ahora
+    if (!socket.connected) {
+      console.log('🔌 Connecting socket...');
+      socket.connect();
     }
+    
+    // Cleanup solo cuando el componente se desmonte COMPLETAMENTE
+    return () => {
+      console.log('🧹 Component unmounting, cleaning up socket listeners');
+      socket.off(SOCKET_EVENTS.ORDER_CREATED);
+      socket.off(SOCKET_EVENTS.ORDER_UPDATED);
+      socket.off('products_update');
+      socket.off('categories_update');
+      socket.off('topping_groups_update');
+      socketListenersRegistered.current = false;
+    };
+  }, []); // Array vacío - solo al montar/desmontar
+
+  // Unirse al business cuando cambie (sin afectar los listeners)
+  useEffect(() => {
+    if (!businessId || !isValidBusinessIdentifier(businessId)) return;
+    
+    // Solo hacer joinBusiness si cambió realmente
+    if (lastJoinedBusiness.current === businessId) {
+      return;
+    }
+    
+    console.log('🏢 Joining business:', businessId);
+    socketDiagnostic();
+    joinBusiness(businessId);
+    lastJoinedBusiness.current = businessId;
   }, [businessId]);
 
   // SSE Connection - Opcional y desactivado por defecto
@@ -998,24 +1063,40 @@ function Admin() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* SuperAdmin Banner */}
+      {/* SuperAdmin Badge - Discreto */}
       {isSuperAdminMode && (
         <motion.div 
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="fixed top-0 left-0 w-full bg-gradient-to-r from-yellow-400 to-orange-500 text-white py-3 px-4 text-center font-semibold z-[60] flex items-center justify-center shadow-lg"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="fixed top-4 right-4 z-[60] group"
+          title="Modo SuperAdmin - Visualización del panel de administración"
         >
-          <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Modo SuperAdmin - Visualización del panel de administración
+          <div className="relative">
+            <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-2 rounded-full shadow-lg flex items-center space-x-2 cursor-help">
+              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <span className="text-xs sm:text-sm font-semibold hidden sm:inline">SuperAdmin</span>
+            </div>
+            
+            {/* Tooltip en hover - solo desktop */}
+            <div className="hidden group-hover:block absolute top-full right-0 mt-2 w-64 bg-slate-900 text-white text-xs p-3 rounded-lg shadow-xl">
+              <div className="flex items-start space-x-2">
+                <svg className="h-4 w-4 mt-0.5 shrink-0 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p>Estás viendo el panel como SuperAdmin. Los cambios aquí son solo de visualización.</p>
+              </div>
+              <div className="absolute -top-1 right-4 w-2 h-2 bg-slate-900 transform rotate-45"></div>
+            </div>
+          </div>
         </motion.div>
       )}
       
       {/* Multi-Session Warning */}
       <MultiSessionWarning />
       
-      <div className="flex">
+      <div className="flex min-h-screen">
         {/* Modern Sidebar */}
         <ModernAdminSidebar 
           activeTab={activeTab}
@@ -1026,17 +1107,18 @@ function Admin() {
         />
 
         {/* Main Content Area */}
-        <div className="flex-1 ml-0">
-          {/* Top Header */}
+        <div className="flex-1 w-full lg:ml-0">
+          {/* Top Header - Oculto en mobile, visible en desktop */}
         <motion.div 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40 ${isSuperAdminMode ? 'mt-12' : ''}`}
+            className="hidden md:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
           >
-            <div className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-slate-900 capitalize">
+            <div className="px-3 sm:px-4 md:px-6 py-3 md:py-4 ml-0 lg:ml-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mt-12 lg:mt-0">
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 capitalize truncate">
+                    {activeTab === 'dashboard' && 'Panel Principal'}
                     {activeTab === 'products' && 'Gestión de Productos'}
                     {activeTab === 'product-order' && 'Orden de Productos'}
                     {activeTab === 'orders' && 'Panel de Pedidos'}
@@ -1055,7 +1137,8 @@ function Admin() {
                     {activeTab === 'change-password' && 'Cambiar Contraseña'}
                     {activeTab === 'completed_orders' && 'Pedidos Completados'}
                   </h1>
-                  <p className="text-slate-600 mt-1">
+                  <p className="text-slate-600 mt-1 text-xs sm:text-sm hidden sm:block">
+                    {activeTab === 'dashboard' && 'Acceso rápido a todas las funciones'}
                     {activeTab === 'products' && 'Administra tu menú y productos'}
                     {activeTab === 'product-order' && 'Reordena cómo aparecen los productos en el menú'}
                     {activeTab === 'orders' && 'Gestiona pedidos en tiempo real'}
@@ -1075,31 +1158,138 @@ function Admin() {
                     {activeTab === 'completed_orders' && 'Historial y resumen de pedidos'}
                   </p>
                 </div>
-                
-        {isSuperAdminMode ? (
-          <motion.button 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-            onClick={() => window.close()} 
-                    className="px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-xl hover:from-yellow-500 hover:to-orange-600 transition-all duration-200 font-semibold shadow-lg flex items-center space-x-2"
-          >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-                    <span>Cerrar Vista</span>
-          </motion.button>
-                ) : null}
           </div>
         </div>
           </motion.div>
 
-          {/* Content Container */}
-          <div className="p-6">
+          {/* Audio element for notifications */}
+          <audio 
+            ref={notificationAudioRef} 
+            preload="auto"
+            onError={(e) => {
+              console.error('Audio loading error:', e);
+            }}
+            onCanPlay={() => {
+              console.log('Audio ready to play');
+            }}
+          >
+            <source src="/audio/new-order-notification.mp3" type="audio/mpeg" />
+            Tu navegador no soporta el elemento de audio.
+          </audio>
+
+          {/* Content Container - Responsive Padding */}
+          <div className="p-3 sm:p-4 md:p-6">
+            
+            {/* Banner de Notificación de Nuevo Pedido */}
+            <AnimatePresence>
+              {showOrderBanner && newOrderNotification && activeTab !== 'orders' && (
+                <motion.div
+                  initial={{ y: -100, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -100, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="mb-4 relative"
+                >
+                  <button
+                    onClick={() => {
+                      setActiveTab('orders');
+                      setShowOrderBanner(false);
+                    }}
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 rounded-xl sm:rounded-2xl p-4 sm:p-5 shadow-lg hover:shadow-xl transition-all duration-300 group"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      {/* Icono animado */}
+                      <div className="shrink-0">
+                        <motion.div
+                          animate={{ 
+                            scale: [1, 1.2, 1],
+                            rotate: [0, 10, -10, 0]
+                          }}
+                          transition={{ 
+                            duration: 0.5,
+                            repeat: Infinity,
+                            repeatDelay: 1
+                          }}
+                          className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"
+                        >
+                          <span className="text-2xl sm:text-3xl">🔔</span>
+                        </motion.div>
+                      </div>
+
+                      {/* Contenido */}
+                      <div className="flex-1 text-left min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="text-white font-bold text-base sm:text-lg">
+                            ¡Nuevo Pedido!
+                          </h3>
+                          <motion.span
+                            animate={{ opacity: [1, 0.5, 1] }}
+                            transition={{ duration: 1.5, repeat: Infinity }}
+                            className="inline-block w-2 h-2 bg-white rounded-full"
+                          />
+                        </div>
+                        <p className="text-white/90 text-xs sm:text-sm truncate">
+                          Pedido #{newOrderNotification.orderNumber || newOrderNotification._id?.slice(-6)} 
+                          {newOrderNotification.customer?.name && ` - ${newOrderNotification.customer.name}`}
+                        </p>
+                        <p className="text-white/80 text-[10px] sm:text-xs mt-0.5">
+                          Toca aquí para gestionar el pedido
+                        </p>
+                      </div>
+
+                      {/* Flecha indicadora */}
+                      <div className="shrink-0">
+                        <motion.div
+                          animate={{ x: [0, 5, 0] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                        >
+                          <svg 
+                            className="w-5 h-5 sm:w-6 sm:h-6 text-white" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              strokeWidth={2} 
+                              d="M9 5l7 7-7 7" 
+                            />
+                          </svg>
+                        </motion.div>
+                      </div>
+                    </div>
+                  </button>
+
+                  {/* Botón cerrar */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowOrderBanner(false);
+                    }}
+                    className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-lg transition-colors group"
+                  >
+                    <svg 
+                      className="w-4 h-4 text-white" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M6 18L18 6M6 6l12 12" 
+                      />
+                    </svg>
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Subscription Status */}
             {businessConfig && businessConfig._id && (
-              <div className="mb-6">
+              <div className="mb-4 md:mb-6">
                 <SubscriptionStatus 
                   businessId={businessConfig._id}
                   onNavigateToSubscription={() => setActiveTab('subscription')}
@@ -1116,8 +1306,298 @@ function Admin() {
                 className="w-full"
               >
                 {/* Render Components Based on Active Tab */}
+                
+                {/* Dashboard Principal - Solo visible en móvil */}
+                {activeTab === 'dashboard' && (
+                  <div className="space-y-6 lg:hidden">{/* Solo en mobile/tablet */}
+                    {/* Header del Dashboard */}
+                    <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 md:p-8 text-white">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h1 className="text-2xl md:text-3xl font-bold mb-2">
+                            Bienvenido de nuevo 👋
+                          </h1>
+                          <p className="text-blue-100">
+                            Panel de administración - {businessConfig?.businessName || 'Tu Restaurante'}
+                          </p>
+                        </div>
+                        <div className="hidden md:block">
+                          <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+                            {businessConfig?.logo ? (
+                              <img 
+                                src={businessConfig.logo} 
+                                alt="Logo" 
+                                className="w-16 h-16 rounded-xl object-cover"
+                              />
+                            ) : (
+                              <span className="text-4xl">🍔</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Grid de Funciones en Cuadrícula */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+                      {/* Pedidos */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('orders')}
+                        className="relative bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">📋</div>
+                          <h3 className="font-bold text-lg mb-1">Pedidos</h3>
+                          <p className="text-xs text-blue-100 opacity-90">Gestión en tiempo real</p>
+                        </div>
+                        {pendingOrdersCount > 0 && (
+                          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
+                            {pendingOrdersCount}
+                          </div>
+                        )}
+                      </motion.button>
+
+                      {/* Productos */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('products')}
+                        className="bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">🍔</div>
+                          <h3 className="font-bold text-lg mb-1">Productos</h3>
+                          <p className="text-xs text-orange-100 opacity-90">Administra tu menú</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Categorías */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('categories')}
+                        className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">📂</div>
+                          <h3 className="font-bold text-lg mb-1">Categorías</h3>
+                          <p className="text-xs text-yellow-100 opacity-90">Organiza productos</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Extras */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('toppings')}
+                        className="bg-gradient-to-br from-amber-500 to-yellow-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">🧀</div>
+                          <h3 className="font-bold text-lg mb-1">Extras</h3>
+                          <p className="text-xs text-amber-100 opacity-90">Toppings y opciones</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Clientes */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('customers')}
+                        className="bg-gradient-to-br from-teal-500 to-cyan-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">👥</div>
+                          <h3 className="font-bold text-lg mb-1">Clientes</h3>
+                          <p className="text-xs text-teal-100 opacity-90">Base de datos</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Cupones */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('coupons')}
+                        className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">🎫</div>
+                          <h3 className="font-bold text-lg mb-1">Cupones</h3>
+                          <p className="text-xs text-pink-100 opacity-90">Descuentos y ofertas</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Mesas */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('tables')}
+                        className="bg-gradient-to-br from-indigo-500 to-blue-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">🪑</div>
+                          <h3 className="font-bold text-lg mb-1">Mesas</h3>
+                          <p className="text-xs text-indigo-100 opacity-90">Códigos QR</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Zonas de Entrega */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('delivery-zones')}
+                        className="bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">🗺️</div>
+                          <h3 className="font-bold text-lg mb-1">Zonas</h3>
+                          <p className="text-xs text-green-100 opacity-90">Áreas de entrega</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Catálogo */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('catalog')}
+                        className="bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">📢</div>
+                          <h3 className="font-bold text-lg mb-1">Catálogo</h3>
+                          <p className="text-xs text-violet-100 opacity-90">Banners y promociones</p>
+                        </div>
+                      </motion.button>
+
+                      {/* WhatsApp */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('whatsapp')}
+                        className="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">💬</div>
+                          <h3 className="font-bold text-lg mb-1">WhatsApp</h3>
+                          <p className="text-xs text-green-100 opacity-90">Configurar mensajes</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Suscripción */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('subscription')}
+                        className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">💳</div>
+                          <h3 className="font-bold text-lg mb-1">Suscripción</h3>
+                          <p className="text-xs text-blue-100 opacity-90">Plan y pagos</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Configuración */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('business')}
+                        className="bg-gradient-to-br from-slate-600 to-slate-700 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">⚙️</div>
+                          <h3 className="font-bold text-lg mb-1">Configuración</h3>
+                          <p className="text-xs text-slate-100 opacity-90">Datos del negocio</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Tema */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('theme')}
+                        className="bg-gradient-to-br from-fuchsia-500 to-pink-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">🎨</div>
+                          <h3 className="font-bold text-lg mb-1">Tema</h3>
+                          <p className="text-xs text-fuchsia-100 opacity-90">Personalización</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Ubicación */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('location')}
+                        className="bg-gradient-to-br from-red-500 to-rose-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">📍</div>
+                          <h3 className="font-bold text-lg mb-1">Ubicación</h3>
+                          <p className="text-xs text-red-100 opacity-90">Dirección y mapa</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Orden de Productos */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('product-order')}
+                        className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">🔄</div>
+                          <h3 className="font-bold text-lg mb-1">Orden</h3>
+                          <p className="text-xs text-purple-100 opacity-90">Ordenar productos</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Pedidos Completados */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('completed_orders')}
+                        className="bg-gradient-to-br from-lime-500 to-green-500 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">✅</div>
+                          <h3 className="font-bold text-lg mb-1">Completados</h3>
+                          <p className="text-xs text-lime-100 opacity-90">Historial</p>
+                        </div>
+                      </motion.button>
+
+                      {/* Cambiar Contraseña */}
+                      <motion.button
+                        whileHover={{ scale: 1.02, y: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => setActiveTab('change-password')}
+                        className="bg-gradient-to-br from-gray-600 to-slate-600 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all"
+                      >
+                        <div className="text-white">
+                          <div className="text-4xl mb-3">🔒</div>
+                          <h3 className="font-bold text-lg mb-1">Contraseña</h3>
+                          <p className="text-xs text-gray-100 opacity-90">Cambiar acceso</p>
+                        </div>
+                      </motion.button>
+                    </div>
+                  </div>
+                )}
+
                 {activeTab === 'business' && (
                   <div className="space-y-6">
+                    {/* Botón Volver - Solo móvil */}
+                    <button
+                      onClick={() => setActiveTab('dashboard')}
+                      className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      <span className="font-medium">Volver al inicio</span>
+                    </button>
+                    
                     <BusinessSettings />
                     <PushNotificationToggle 
                       businessId={businessId} 
@@ -1125,34 +1605,120 @@ function Admin() {
                     />
                   </div>
                 )}
-          {activeTab === 'categories' && <CategorySettings categories={categories} />}
-          {activeTab === 'toppings' && <ToppingGroupsManager />}
-          {activeTab === 'tables' && <TableSettings />}
-          {activeTab === 'theme' && <ThemeSettings />}
-          {activeTab === 'location' && <LocationSettings />}
-          {activeTab === 'catalog' && (
+          {activeTab === 'categories' && (
             <div className="space-y-6">
-              {/* Tabs para alternar entre vistas */}
-              <div className="flex space-x-4 mb-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <CategorySettings categories={categories} />
+            </div>
+          )}
+          {activeTab === 'toppings' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <ToppingGroupsManager />
+            </div>
+          )}
+          {activeTab === 'tables' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <TableSettings />
+            </div>
+          )}
+          {activeTab === 'theme' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <ThemeSettings />
+            </div>
+          )}
+          {activeTab === 'location' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <LocationSettings />
+            </div>
+          )}
+          {activeTab === 'catalog' && (
+            <div className="space-y-4 md:space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              {/* Tabs para alternar entre vistas - Responsive */}
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4 md:mb-6">
                 <button
                   onClick={() => setActiveCatalogTab('upload')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                     activeCatalogTab === 'upload' 
                       ? 'bg-blue-500 text-white' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Subir Banners
+                  📤 Subir Banners
                 </button>
                 <button
                   onClick={() => setActiveCatalogTab('view')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-4 py-2 sm:py-2.5 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                     activeCatalogTab === 'view' 
                       ? 'bg-blue-500 text-white' 
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  Mis Banners
+                  👁️ Mis Banners
                 </button>
               </div>
               
@@ -1164,46 +1730,160 @@ function Admin() {
               )}
             </div>
           )}
-          {activeTab === 'change-password' && <ChangePassword />}
-                {activeTab === 'orders' && <ModernOrdersDashboard />}
-          {activeTab === 'completed_orders' && <EnhancedCompletedOrders />}
-          {activeTab === 'customers' && <CustomersManager />}
-          {activeTab === 'coupons' && <CouponsManager />}
-          {activeTab === 'delivery-zones' && <DeliveryZoneManager />}
+          {activeTab === 'change-password' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <ChangePassword />
+            </div>
+          )}
+                {activeTab === 'orders' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <ModernOrdersDashboard />
+            </div>
+          )}
+          {activeTab === 'completed_orders' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <EnhancedCompletedOrders />
+            </div>
+          )}
+          {activeTab === 'customers' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <CustomersManager />
+            </div>
+          )}
+          {activeTab === 'coupons' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <CouponsManager />
+            </div>
+          )}
+          {activeTab === 'delivery-zones' && (
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <DeliveryZoneManager />
+            </div>
+          )}
           {activeTab === 'subscription' && (
-            <SubscriptionPayment />
+            <div className="space-y-6">
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
+              <SubscriptionPayment />
+            </div>
           )}
                 
                 {/* Products Management */}
           {activeTab === 'products' && (
-                  <div className="space-y-6">
-                    {/* Modern Product Form */}
+                  <div className="space-y-4 md:space-y-6">
+                    {/* Botón Volver - Solo móvil */}
+                    <button
+                      onClick={() => setActiveTab('dashboard')}
+                      className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      <span className="font-medium">Volver al inicio</span>
+                    </button>
+                    
+                    {/* Modern Product Form - Responsive Optimized */}
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                      className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50 backdrop-blur-sm"
+                      className="bg-gradient-to-br from-white to-slate-50 rounded-2xl md:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-slate-200/50 backdrop-blur-sm"
               >
-                        {/* Form Header */}
-                        <div className="mb-8 text-center">
-                          <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                            <span className="text-2xl">🍔</span>
+                        {/* Form Header - Responsive */}
+                        <div className="mb-6 md:mb-8 text-center">
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
+                            <span className="text-xl sm:text-2xl">🍔</span>
                           </div>
-                          <h2 className="text-2xl font-bold text-slate-900 mb-2">
+                          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
                             {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
                           </h2>
-                          <p className="text-slate-600">
+                          <p className="text-slate-600 text-sm sm:text-base">
                             {editingProduct ? 'Actualiza la información del producto' : 'Agrega un nuevo producto a tu menú'}
                           </p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-8">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                             {/* Left Column */}
-                            <div className="space-y-6">
-                              {/* Product Name */}
+                            <div className="space-y-4 md:space-y-6">
+                              {/* Product Name - Responsive */}
                               <div className="group">
-                                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                <label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 mb-2 md:mb-3">
                                   <span className="mr-2">🏷️</span>
                         Nombre del Producto
                       </label>
@@ -1212,27 +1892,27 @@ function Admin() {
                         name="name"
                         value={form.name}
                         onChange={handleChange}
-                                    className={`w-full rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300 ${
+                                    className={`w-full rounded-xl md:rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-4 md:px-6 py-3 md:py-4 text-base md:text-lg transition-all duration-200 group-hover:border-slate-300 ${
                                       !form.name.trim() ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
                                     }`}
                                     placeholder="Ej: Hamburguesa Clásica"
                         required
                       />
-                                  <div className="absolute inset-y-0 right-0 flex items-center pr-4">
+                                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 md:pr-4">
                                     <span className="text-slate-400">✨</span>
                                   </div>
                                 </div>
                                 {!form.name.trim() && (
-                                  <p className="text-red-500 text-sm mt-1 flex items-center">
+                                  <p className="text-red-500 text-xs sm:text-sm mt-1 flex items-center">
                                     <span className="mr-1">⚠️</span>
                                     El nombre es obligatorio
                                   </p>
                                 )}
                               </div>
 
-                              {/* Description */}
+                              {/* Description - Responsive */}
                               <div className="group">
-                                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                <label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 mb-2 md:mb-3">
                                   <span className="mr-2">📝</span>
                         Descripción
                       </label>
@@ -1241,46 +1921,46 @@ function Admin() {
                         value={form.description}
                         onChange={handleChange}
                                   rows="4"
-                                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300 resize-none"
+                                  className="w-full rounded-xl md:rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-4 md:px-6 py-3 md:py-4 text-sm md:text-base transition-all duration-200 group-hover:border-slate-300 resize-none"
                                   placeholder="Describe tu producto de manera atractiva..."
                       ></textarea>
                     </div>
 
-                              {/* Price and Category Row */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {/* Price */}
+                              {/* Price and Category Row - Responsive Stack */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
+                                {/* Price - Responsive */}
                                 <div className="group">
-                                  <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                  <label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 mb-2 md:mb-3">
                                     <span className="mr-2">💰</span>
                         Precio
                       </label>
                                   <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 flex items-center pl-4">
-                                      <span className="text-slate-500 font-medium">$</span>
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 md:pl-4">
+                                      <span className="text-slate-500 font-medium text-sm md:text-base">$</span>
                                     </div>
                         <input
                           name="price"
                         type="text"
                           value={form.price}
                           onChange={handlePriceChange}
-                                      className={`w-full rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-12 pr-6 py-4 text-lg font-semibold transition-all duration-200 group-hover:border-slate-300 ${
+                                      className={`w-full rounded-xl md:rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-10 md:pl-12 pr-4 md:pr-6 py-3 md:py-4 text-base md:text-lg font-semibold transition-all duration-200 group-hover:border-slate-300 ${
                                         !form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, ''))) ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
                                       }`}
                           placeholder="29.000"
                           required
                         />
                     </div>
+                                  {(!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, '')))) && (
+                                    <p className="text-red-500 text-xs sm:text-sm mt-1 flex items-center">
+                                      <span className="mr-1">⚠️</span>
+                                      El precio debe ser mayor a 0
+                                    </p>
+                                  )}
                                 </div>
-                                {(!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, '')))) && (
-                                  <p className="text-red-500 text-sm mt-1 flex items-center">
-                                    <span className="mr-1">⚠️</span>
-                                    El precio debe ser mayor a 0
-                                  </p>
-                                )}
 
-                                {/* Category */}
+                                {/* Category - Responsive */}
                                 <div className="group">
-                                  <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
+                                  <label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 mb-2 md:mb-3">
                                     <span className="mr-2">📂</span>
                         Categoría
                       </label>
@@ -1288,7 +1968,7 @@ function Admin() {
                         name="category"
                         value={form.category}
                         onChange={handleChange}
-                                    className={`w-full rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 px-6 py-4 transition-all duration-200 group-hover:border-slate-300 ${
+                                    className={`w-full rounded-xl md:rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 px-4 md:px-6 py-3 md:py-4 text-sm md:text-base transition-all duration-200 group-hover:border-slate-300 ${
                                       !form.category ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
                                     }`}
                       >
@@ -1388,8 +2068,8 @@ function Admin() {
                             </div>
                           </div>
                           
-                          {/* Action Buttons */}
-                          <div className="flex justify-center space-x-4 pt-8 border-t border-slate-200">
+                          {/* Action Buttons - Responsive */}
+                          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pt-6 md:pt-8 border-t border-slate-200">
                             {editingProduct && (
                               <motion.button
                       type="button"
@@ -1399,7 +2079,7 @@ function Admin() {
                                   setEditingProduct(null);
                                   setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [] });
                                 }}
-                                className="px-8 py-4 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-lg"
+                                className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 border-2 border-slate-300 text-slate-700 rounded-xl md:rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center justify-center space-x-2 shadow-lg text-sm md:text-base"
                               >
                                 <span>❌</span>
                                 <span>Cancelar</span>
@@ -1409,7 +2089,7 @@ function Admin() {
                     type="submit"
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
-                              className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 font-semibold shadow-xl flex items-center space-x-2"
+                              className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl md:rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 font-semibold shadow-xl flex items-center justify-center space-x-2 text-sm md:text-base"
                   >
                               <span>{editingProduct ? '✏️' : '✨'}</span>
                               <span>{editingProduct ? 'Actualizar Producto' : 'Crear Producto'}</span>
@@ -1479,51 +2159,53 @@ function Admin() {
                           </div>
 
                           {/* Product Info */}
-                          <div className="p-4 flex-grow flex flex-col">
-                            <div className="mb-4 flex-grow">
-                              <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+                          <div className="p-3 sm:p-4 flex-grow flex flex-col">
+                            <div className="mb-3 sm:mb-4 flex-grow">
+                              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
                                 {product.name}
                               </h3>
-                              <p className="text-sm text-gray-600 leading-relaxed min-h-[60px]">
+                              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed min-h-[50px] sm:min-h-[60px] line-clamp-3">
                                 {product.description}
                               </p>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex gap-1 mt-auto">
+                            {/* Action Buttons - Responsive Touch-Friendly */}
+                            <div className="flex gap-1.5 sm:gap-2 mt-auto">
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => editProduct(product)}
-                                className="flex-1 bg-blue-500 text-white px-2 py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0"
+                                className="flex-1 bg-blue-500 text-white px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px]"
+                                title="Editar producto"
                               >
-                                <span>✏️</span>
-                                <span className="truncate">Editar</span>
+                                <span className="text-sm sm:text-base">✏️</span>
+                                <span className="truncate hidden xs:inline">Editar</span>
                               </motion.button>
                               
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => handleToggleProduct(product._id)}
-                                className={`flex-1 px-2 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0 ${
+                                className={`flex-1 px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px] ${
                                   product.active !== false
                                     ? 'bg-orange-500 text-white hover:bg-orange-600'
                                     : 'bg-green-500 text-white hover:bg-green-600'
                                 }`}
                                 title={product.active !== false ? 'Desactivar producto' : 'Activar producto'}
                               >
-                                <span>{product.active !== false ? '👁️‍🗨️' : '👁️'}</span>
-                                <span className="truncate">{product.active !== false ? 'Apagar' : 'Encender'}</span>
+                                <span className="text-sm sm:text-base">{product.active !== false ? '👁️‍🗨️' : '👁️'}</span>
+                                <span className="truncate hidden xs:inline">{product.active !== false ? 'Apagar' : 'Encender'}</span>
                               </motion.button>
                               
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => deleteProduct(product._id)}
-                                className="flex-1 bg-red-500 text-white px-2 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs min-w-0"
+                                className="flex-1 bg-red-500 text-white px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px]"
+                                title="Eliminar producto"
                               >
-                                <span>🗑️</span>
-                                <span className="truncate">Eliminar</span>
+                                <span className="text-sm sm:text-base">🗑️</span>
+                                <span className="truncate hidden xs:inline">Eliminar</span>
                               </motion.button>
                             </div>
                           </div>
@@ -1542,6 +2224,17 @@ function Admin() {
               transition={{ duration: 0.5 }}
               className="space-y-6"
             >
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
               <ProductOrderSelector 
                 products={products}
                 categories={categories}
@@ -1561,6 +2254,17 @@ function Admin() {
               transition={{ duration: 0.5 }}
               className="space-y-6"
             >
+              {/* Botón Volver - Solo móvil */}
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className="lg:hidden flex items-center space-x-2 text-slate-600 hover:text-slate-900 mb-4 px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-medium">Volver al inicio</span>
+              </button>
+              
               <WhatsAppCustomizer />
             </motion.div>
           )}
@@ -1573,25 +2277,31 @@ function Admin() {
         </div>
       </div>
 
-      {/* Success Message Banner */}
+      {/* Success Message Banner - Responsive */}
           {successMessage && (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="fixed top-20 left-1/2 transform -translate-x-1/2 p-3 bg-green-500/20 text-green-300 text-sm rounded-lg border border-green-500/30 z-50"
+              className="fixed top-16 sm:top-20 left-1/2 transform -translate-x-1/2 p-2 sm:p-3 bg-green-500/20 text-green-300 text-xs sm:text-sm rounded-lg border border-green-500/30 z-50 max-w-[90vw] sm:max-w-md mx-auto"
             >
-              {successMessage}
+              <div className="flex items-center justify-center gap-2">
+                <span className="hidden sm:inline">✅</span>
+                <span className="text-center">{successMessage}</span>
+              </div>
             </motion.div>
           )}
 
-      {/* Error Message Banner */}
+      {/* Error Message Banner - Responsive */}
           {errorMessage && (
             <motion.div 
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="fixed top-20 left-1/2 transform -translate-x-1/2 p-3 bg-red-500/20 text-red-300 text-sm rounded-lg border border-red-500/30 z-50"
+              className="fixed top-16 sm:top-20 left-1/2 transform -translate-x-1/2 p-2 sm:p-3 bg-red-500/20 text-red-300 text-xs sm:text-sm rounded-lg border border-red-500/30 z-50 max-w-[90vw] sm:max-w-md mx-auto"
             >
-              {errorMessage}
+              <div className="flex items-center justify-center gap-2">
+                <span className="hidden sm:inline">⚠️</span>
+                <span className="text-center">{errorMessage}</span>
+              </div>
             </motion.div>
           )}
           

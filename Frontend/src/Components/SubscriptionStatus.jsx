@@ -313,7 +313,7 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
             }
           } : {}
         }
-        className={`rounded-lg p-4 border-2 ${
+        className={`hidden md:block rounded-lg p-3 md:p-4 border-2 ${
           isExpired 
             ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-200 shadow-lg' 
             : isInGracePeriod
@@ -321,46 +321,46 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
             : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
         }`}
       >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="text-3xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
+          <div className="text-2xl sm:text-3xl shrink-0">
             {getPlanIcon(subscription.planType)}
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-lg font-bold text-gray-800">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center space-x-2 flex-wrap">
+              <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">
                 {getPlanText(subscription.planType)}
               </h3>
               {subscription.planType === 'annual' && (
-                <FaCrown className="text-yellow-500" />
+                <FaCrown className="text-yellow-500 text-sm sm:text-base shrink-0" />
               )}
             </div>
-            <p className={`text-sm font-medium ${getStatusColor(subscription.status, isInGracePeriod)}`}>
+            <p className={`text-xs sm:text-sm font-medium ${getStatusColor(subscription.status, isInGracePeriod)}`}>
               {getStatusText(subscription.status, isInGracePeriod)}
             </p>
-            <p className="text-gray-600 text-sm">
+            <p className="text-gray-600 text-xs sm:text-sm truncate">
               ${subscription.price?.toLocaleString('es-CO') || '0'} COP • Hasta {formatDate(subscription.periodEnd || subscription.endDate)}
             </p>
           </div>
         </div>
         
-        <div className="text-right">
+        <div className="text-right shrink-0">
           {isExpired ? (
             <div className="text-red-600">
-              <FaExclamationTriangle className="mx-auto mb-1" />
-              <p className="text-xs font-medium">MENÚ DESACTIVADO</p>
+              <FaExclamationTriangle className="mx-auto mb-1 text-base sm:text-xl" />
+              <p className="text-[10px] sm:text-xs font-medium">MENÚ DESACTIVADO</p>
             </div>
           ) : isInGracePeriod ? (
             <div className="text-yellow-600">
-              <FaCalendarAlt className="mx-auto mb-1" />
-              <p className="text-xs font-medium">
+              <FaCalendarAlt className="mx-auto mb-1 text-base sm:text-xl" />
+              <p className="text-[10px] sm:text-xs font-medium">
                 {subscription.daysRemaining < 0 ? 'EXPIRÓ' : `${subscription.daysRemaining} días`}
               </p>
             </div>
           ) : (
             <div className="text-green-600">
-              <FaCalendarAlt className="mx-auto mb-1" />
-              <p className="text-xs font-medium">
+              <FaCalendarAlt className="mx-auto mb-1 text-base sm:text-xl" />
+              <p className="text-[10px] sm:text-xs font-medium">
                 {subscription.daysRemaining > 0 ? `${subscription.daysRemaining} días` : 'ACTIVO'}
               </p>
             </div>
@@ -387,25 +387,38 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
                         ease: "easeInOut"
                       }
                     }}
-                    className={`mt-3 p-4 rounded-lg border-2 shadow-lg ${
+                    className={`mt-3 p-3 sm:p-4 rounded-lg border-2 shadow-lg ${
                       isLessThan24Hours 
                         ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-300' 
                         : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300'
                     }`}
                   >
-                  <div className="flex items-start space-x-3">
-                    <FaExclamationTriangle className={`${isLessThan24Hours ? 'text-red-600' : 'text-yellow-600'} text-xl flex-shrink-0 mt-0.5`} />
-                    <div className="flex-1">
-                        <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-sm mb-2`}>
+                  <div className="flex items-start space-x-2 sm:space-x-3">
+                    <FaExclamationTriangle className={`${isLessThan24Hours ? 'text-red-600' : 'text-yellow-600'} text-base sm:text-xl flex-shrink-0 mt-0.5`} />
+                    <div className="flex-1 min-w-0">
+                        <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-xs sm:text-sm mb-2`}>
                           ⏰ Período de Gracia
                         </p>
                         {graceUntilDate && (timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) ? (
                           <>
-                            <div className={`${isLessThan24Hours ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border-2 rounded-lg p-3 mb-3`}>
-                              <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-lg mb-1 text-center`}>
+                            <div className={`${isLessThan24Hours ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border-2 rounded-lg p-2 sm:p-3 mb-3`}>
+                              <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-sm sm:text-base mb-1 text-center hidden sm:block`}>
                                 Tiempo restante hasta desactivación:
                               </p>
-                              <div className="flex items-center justify-center space-x-2 text-center">
+                              {/* Mobile: Compact one-line countdown */}
+                              <div className="block sm:hidden text-center">
+                                <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-base mb-1`}>
+                                  {timeRemaining.days > 0 && `${timeRemaining.days}d `}
+                                  {String(timeRemaining.hours).padStart(2, '0')}:
+                                  {String(timeRemaining.minutes).padStart(2, '0')}:
+                                  {String(timeRemaining.seconds).padStart(2, '0')}
+                                </p>
+                                <p className={`${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'} text-[10px]`}>
+                                  hasta desactivación
+                                </p>
+                              </div>
+                              {/* Desktop: Full grid countdown */}
+                              <div className="hidden sm:flex items-center justify-center space-x-2 text-center">
                                 {timeRemaining.days > 0 && (
                                   <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
                                     <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{timeRemaining.days}</div>
@@ -425,8 +438,8 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
                                   <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>seg</div>
                                 </div>
                               </div>
-                              <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-xs mt-2 text-center`}>
-                                El menú se desactivará el: <strong>{formatDateTime(graceUntilDate)}</strong>
+                              <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-[10px] sm:text-xs mt-2 text-center`}>
+                                Desactivación: <strong className="hidden sm:inline">{formatDateTime(graceUntilDate)}</strong><strong className="inline sm:hidden">{formatDateTime(graceUntilDate).split(' ')[0]}</strong>
                               </p>
                             </div>
                           </>

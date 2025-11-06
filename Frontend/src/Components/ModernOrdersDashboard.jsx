@@ -750,142 +750,190 @@ function ModernOrdersDashboard() {
                     animate="visible"
                     exit="exit"
                     whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                    className={`bg-white rounded-2xl shadow-sm border-2 transition-all duration-200 overflow-hidden ${
+                    className={`bg-white rounded-2xl overflow-hidden transition-all duration-200 ${
                       isPending 
-                        ? 'border-yellow-200 shadow-yellow-100' 
-                        : 'border-slate-200 hover:border-blue-200 hover:shadow-lg'
-                    } ${viewMode === 'list' ? 'p-6' : 'p-0'} min-h-[280px]`}
+                        ? 'border-2 border-yellow-300 shadow-lg shadow-yellow-100 ring-2 ring-yellow-100' 
+                        : 'border border-slate-200 shadow-md hover:border-blue-300 hover:shadow-xl'
+                    } ${viewMode === 'list' ? 'p-6' : 'p-0'}`}
                   >
                     {viewMode === 'grid' ? (
                       <>
-                        {/* Card Header */}
-                        <div className={`px-5 lg:px-7 py-4 lg:py-5 ${statusInfo.bgColor} border-b border-slate-100`}>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
-                              <div className={`w-10 h-10 lg:w-12 lg:h-12 ${orderTypeInfo.color} rounded-xl flex items-center justify-center flex-shrink-0`}>
-                                <span className="text-base lg:text-lg">{orderTypeInfo.icon}</span>
+                        {/* Card Header - Mejorado */}
+                        <div className={`px-5 lg:px-6 py-4 ${
+                          isPending 
+                            ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-b-2 border-yellow-200' 
+                            : 'bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-200'
+                        }`}>
+                          <div className="flex items-start justify-between gap-3">
+                            {/* Left side: Type & Number */}
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className={`w-12 h-12 ${orderTypeInfo.color} rounded-xl flex items-center justify-center shadow-sm flex-shrink-0`}>
+                                <span className="text-xl">{orderTypeInfo.icon}</span>
                               </div>
                               <div className="min-w-0">
-                                <h3 className="font-bold text-slate-900 text-base lg:text-lg truncate">#{order.orderNumber}</h3>
-                                <p className="text-sm lg:text-base text-slate-600 truncate">{orderTypeInfo.label}</p>
+                                <h3 className="font-bold text-slate-900 text-lg truncate">#{order.orderNumber}</h3>
+                                <p className="text-sm text-slate-600 font-medium">{orderTypeInfo.label}</p>
                               </div>
                             </div>
+                            
+                            {/* Right side: Status & Time */}
                             <div className="text-right flex-shrink-0">
-                              <div className={`inline-flex items-center px-2 lg:px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.textColor} ${statusInfo.bgColor}`}>
-                                <span className="mr-1">{statusInfo.icon}</span>
-                                <span className="hidden sm:inline">{statusInfo.label}</span>
+                              <div className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
+                                isPending 
+                                  ? 'bg-yellow-400 text-yellow-900' 
+                                  : statusInfo.textColor + ' ' + statusInfo.bgColor
+                              }`}>
+                                <span className="text-sm">{statusInfo.icon}</span>
+                                <span>{statusInfo.label}</span>
                               </div>
-                              <p className="text-xs text-slate-500 mt-1">{timeElapsed}</p>
+                              <p className={`text-xs font-semibold mt-1.5 ${
+                                isPending ? 'text-yellow-700' : 'text-slate-500'
+                              }`}>
+                                ⏱️ {timeElapsed}
+                              </p>
                             </div>
                           </div>
                         </div>
 
-                        {/* Card Body */}
-                        <div className="p-5 lg:p-7">
-                          <div className="space-y-3 lg:space-y-4 mb-4 lg:mb-5">
-                            <div className="flex items-center space-x-3">
-                              <span className="text-sm lg:text-base flex-shrink-0">👤</span>
-                              <span className="text-sm lg:text-base font-medium text-slate-700 truncate">{order.customerName}</span>
+                        {/* Card Body - Información más clara */}
+                        <div className="p-5 lg:p-6">
+                          <div className="space-y-2.5 mb-5">
+                            {/* Cliente */}
+                            <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <span className="text-sm text-blue-700">👤</span>
+                              </div>
+                              <span className="text-sm font-semibold text-slate-800 truncate">{order.customerName}</span>
                             </div>
                             
+                            {/* Teléfono */}
                             {order.phone && (
-                              <div className="flex items-center space-x-3">
-                                <span className="text-sm lg:text-base flex-shrink-0">📞</span>
-                                <span className="text-sm lg:text-base text-slate-600 truncate">{order.phone}</span>
+                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm text-green-700">📞</span>
+                                </div>
+                                <a href={`tel:${order.phone}`} className="text-sm font-medium text-slate-700 hover:text-green-700 truncate">
+                                  {order.phone}
+                                </a>
                               </div>
                             )}
                             
+                            {/* Mesa */}
                             {order.tableNumber && (
-                              <div className="flex items-center space-x-3">
-                                <span className="text-sm lg:text-base flex-shrink-0">📍</span>
-                                <span className="text-sm lg:text-base text-slate-600">Mesa {order.tableNumber}</span>
+                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm text-indigo-700">📍</span>
+                                </div>
+                                <span className="text-sm font-semibold text-slate-700">Mesa {order.tableNumber}</span>
                               </div>
                             )}
                             
+                            {/* Dirección de delivery */}
                             {order.orderType === 'delivery' && order.address && (
-                              <div className="flex items-start space-x-3">
-                                <span className="text-sm lg:text-base flex-shrink-0 mt-0.5">🏠</span>
-                                <span className="text-sm lg:text-base text-slate-600 leading-tight">{order.address}</span>
+                              <div className="flex items-start gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <span className="text-sm text-purple-700">🏠</span>
+                                </div>
+                                <span className="text-sm font-medium text-slate-700 leading-snug">{order.address}</span>
                               </div>
                             )}
                             
+                            {/* Zona de delivery */}
                             {order.orderType === 'delivery' && order.deliveryZoneName && (
-                              <div className="flex items-center space-x-3">
-                                <span className="text-sm lg:text-base flex-shrink-0">📍</span>
-                                <span className="text-sm lg:text-base text-slate-600">Zona: {order.deliveryZoneName}</span>
+                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                                <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm text-teal-700">📍</span>
+                                </div>
+                                <span className="text-sm font-medium text-slate-700">Zona: {order.deliveryZoneName}</span>
                               </div>
                             )}
                             
+                            {/* Costo de envío */}
                             {order.orderType === 'delivery' && order.deliveryFee && (
-                              <div className="flex items-center space-x-3">
-                                <span className="text-sm lg:text-base flex-shrink-0">🚚</span>
-                                <span className="text-sm lg:text-base text-slate-600">Envío: ${order.deliveryFee.toLocaleString()}</span>
+                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                  <span className="text-sm text-orange-700">🚚</span>
+                                </div>
+                                <span className="text-sm font-semibold text-slate-700">Envío: ${order.deliveryFee.toLocaleString()}</span>
                               </div>
                             )}
                             
+                            {/* Warning de confirmación */}
                             {order.orderType === 'delivery' && order.deliveryNeedsConfirmation && (
-                              <div className="flex items-start space-x-3 bg-amber-50 p-2 rounded-lg">
-                                <span className="text-sm lg:text-base flex-shrink-0 mt-0.5">⚠️</span>
-                                <span className="text-xs lg:text-sm text-amber-800 leading-tight font-medium">Costo de envío por confirmar</span>
+                              <div className="flex items-start gap-3 bg-amber-50 p-3 rounded-lg border border-amber-200">
+                                <div className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  <span className="text-xs text-amber-800">⚠️</span>
+                                </div>
+                                <span className="text-xs font-semibold text-amber-800 leading-snug">Costo de envío por confirmar</span>
                               </div>
                             )}
                             
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                              <span className="text-sm lg:text-base text-slate-600 font-medium">{order.items?.length || 0} productos</span>
+                            {/* Total - Mejorado */}
+                            <div className={`flex items-center justify-between pt-4 mt-4 border-t-2 ${
+                              isPending ? 'border-yellow-200' : 'border-slate-200'
+                            }`}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-slate-200 rounded-full flex items-center justify-center">
+                                  <span className="text-xs">🛍️</span>
+                                </div>
+                                <span className="text-sm font-semibold text-slate-600">{order.items?.length || 0} productos</span>
+                              </div>
                               <div className="text-right">
                                 {order.couponCode ? (
                                   <div>
-                                    <span className="text-lg lg:text-xl font-bold text-green-600">${((order.totalAmount || 0) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
-                                    <div className="text-sm text-slate-500">
+                                    <span className="text-xl font-bold text-green-600">${((order.totalAmount || 0) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
+                                    <div className="text-xs text-slate-500 mt-0.5">
                                       <span className="line-through">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</span>
-                                      <span className="ml-1 text-green-600">🎫 {order.couponCode}</span>
+                                      <span className="ml-1.5 text-green-600 font-semibold">🎫 {order.couponCode}</span>
                                     </div>
                                   </div>
                                 ) : order.deliveryNeedsConfirmation ? (
                                   <div>
-                                    <span className="text-lg lg:text-xl font-bold text-slate-900">${order.totalAmount}</span>
-                                    <div className="text-xs text-amber-700 font-medium">+ envío</div>
+                                    <span className="text-xl font-bold text-slate-900">${order.totalAmount.toLocaleString()}</span>
+                                    <div className="text-xs text-amber-700 font-semibold mt-0.5">+ envío</div>
                                   </div>
                                 ) : (
-                                  <span className="text-lg lg:text-xl font-bold text-slate-900">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</span>
+                                  <span className="text-xl font-bold text-slate-900">
+                                    ${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}
+                                  </span>
                                 )}
                               </div>
                             </div>
                           </div>
 
-                          {/* Action buttons */}
-                          <div className="flex space-x-3">
+                          {/* Action buttons - Mejorados */}
+                          <div className="flex gap-2">
                             <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
                               onClick={() => showOrderDetails(order)}
-                              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-3 rounded-xl text-sm lg:text-base font-medium transition-colors flex items-center justify-center space-x-2"
+                              className="flex-1 bg-white hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 border-2 border-slate-200 hover:border-slate-300"
                             >
                               <span className="text-base">👁️</span>
-                              <span>Ver</span>
+                              <span className="text-sm">Ver detalles</span>
                             </motion.button>
                             
                             {order.status === ORDER_STATUS.PENDING && (
                               <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl text-sm lg:text-base font-medium transition-colors flex items-center justify-center space-x-2"
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
                               >
-                                    <span className="text-base">▶️</span>
-                                <span>Iniciar</span>
+                                <span className="text-base">▶️</span>
+                                <span className="text-sm">Iniciar</span>
                               </motion.button>
                             )}
                             
                             {order.status === ORDER_STATUS.IN_PROGRESS && (
                               <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-xl text-sm lg:text-base font-medium transition-colors flex items-center justify-center space-x-2"
+                                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
                               >
-                                    <span className="text-base">✅</span>
-                                <span>Completar</span>
+                                <span className="text-base">✅</span>
+                                <span className="text-sm">Completar</span>
                               </motion.button>
                             )}
                           </div>
