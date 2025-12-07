@@ -52,33 +52,33 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-orange-50 to-yellow-50 border-b border-orange-200 py-6 px-4"
+      className="bg-gradient-to-br from-orange-50 to-yellow-50 border-b border-orange-200 py-3 px-4"
     >
       <div className="container mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-4">
+        {/* Header compacto */}
+        <div className="flex items-center gap-2 mb-2">
           <div 
-            className="p-2 rounded-lg"
+            className="p-1.5 rounded-lg"
             style={{ backgroundColor: buttonColor }}
           >
-            <FaStar className="text-xl" style={{ color: buttonTextColor }} />
+            <FaStar className="text-base" style={{ color: buttonTextColor }} />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-gray-800">Productos Destacados</h3>
-            <p className="text-sm text-gray-600">Los favoritos de la casa</p>
+            <h3 className="text-base font-bold text-gray-800">Destacados</h3>
+            <p className="text-xs text-gray-500">Los favoritos de la casa</p>
           </div>
         </div>
 
-        {/* Horizontal scroll de productos */}
-        <div className="flex overflow-x-auto gap-4 pb-2 snap-x snap-mandatory scrollbar-hide">
+        {/* Horizontal scroll de productos - más compacto */}
+        <div className="flex overflow-x-auto gap-3 pb-2 snap-x snap-mandatory scrollbar-hide">
           {featuredProducts.map((product) => (
             <motion.div
               key={product._id}
               whileHover={{ scale: 1.02 }}
-              className="flex-shrink-0 w-64 bg-white rounded-xl shadow-md overflow-hidden snap-start"
+              className="flex-shrink-0 w-52 bg-white rounded-lg shadow-md overflow-hidden snap-start"
             >
-              {/* Imagen */}
-              <div className="relative h-40 bg-gray-200 overflow-hidden">
+              {/* Imagen más pequeña */}
+              <div className="relative h-28 bg-gray-200 overflow-hidden">
                 {product.image ? (
                   <img
                     src={product.image}
@@ -87,38 +87,38 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme }) => {
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <FaStar className="text-4xl" />
+                    <FaStar className="text-3xl" />
                   </div>
                 )}
-                <div className="absolute top-2 right-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                <div className="absolute top-1.5 right-1.5 bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded-full text-xs font-bold flex items-center gap-1">
                   <FaStar className="text-xs" />
                   Destacado
                 </div>
               </div>
 
-              {/* Contenido */}
-              <div className="p-4">
-                <h4 className="font-bold text-gray-800 mb-1 truncate">{product.name}</h4>
+              {/* Contenido compacto */}
+              <div className="p-3">
+                <h4 className="font-bold text-sm text-gray-800 mb-1 truncate">{product.name}</h4>
                 {product.description && (
-                  <p className="text-xs text-gray-500 mb-3 line-clamp-2">{product.description}</p>
+                  <p className="text-xs text-gray-500 mb-2 line-clamp-1">{product.description}</p>
                 )}
                 
                 <div className="flex items-center justify-between">
                   <span 
-                    className="text-xl font-bold"
+                    className="text-lg font-bold"
                     style={{ color: buttonColor }}
                   >
                     ${product.price.toLocaleString()}
                   </span>
                   <button
                     onClick={() => handleAddToCart(product)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold transition-all hover:shadow-md hover:opacity-90"
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all hover:shadow-md hover:opacity-90"
                     style={{
                       backgroundColor: buttonColor,
                       color: buttonTextColor
                     }}
                   >
-                    <FaShoppingCart className="text-sm" />
+                    <FaShoppingCart className="text-xs" />
                     Agregar
                   </button>
                 </div>
@@ -137,9 +137,9 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme }) => {
           -ms-overflow-style: none;
           scrollbar-width: none;
         }
-        .line-clamp-2 {
+        .line-clamp-1 {
           display: -webkit-box;
-          -webkit-line-clamp: 2;
+          -webkit-line-clamp: 1;
           -webkit-box-orient: vertical;
           overflow: hidden;
         }
