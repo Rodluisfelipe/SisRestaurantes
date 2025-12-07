@@ -8,6 +8,9 @@ import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
 import OrderConfirmationModal from "../Components/OrderConfirmationModal";
 import CartBar from "../Components/CartBar";
+import FavoritesModal from "../Components/FavoritesModal";
+import OrderHistoryModal from "../Components/OrderHistoryModal";
+import FeaturedProducts from "../Components/FeaturedProducts";
 // import SpecialOffers from "../Components/SpecialOffers"; // Este componente no existe, se comenta para evitar errores
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -81,6 +84,10 @@ export default function Menu() {
   const [businessNotFound, setBusinessNotFound] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null); // null, 'active', 'grace', 'suspended'
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  
+  // Estados para modales de favoritos e historial
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -1080,6 +1087,53 @@ export default function Menu() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <BusinessHeader comesFromCatalog={comesFromCatalog} />
       
+      {/* Botones de Favoritos e Historial */}
+      {orderInfo.phone && (businessConfig?.features?.favoritesEnabled || businessConfig?.features?.orderHistoryEnabled) && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white border-b border-gray-200 py-3 px-4 sticky top-0 z-40 shadow-sm"
+        >
+          <div className="container mx-auto flex justify-center space-x-3">
+            {businessConfig?.features?.favoritesEnabled !== false && (
+              <motion.button
+                onClick={() => setShowFavorites(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                style={{
+                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                  color: businessConfig?.theme?.buttonTextColor || '#ffffff'
+                }}
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                </svg>
+                <span className="font-medium text-sm">Favoritos</span>
+              </motion.button>
+            )}
+            
+            {businessConfig?.features?.orderHistoryEnabled !== false && (
+              <motion.button
+                onClick={() => setShowHistory(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                style={{
+                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                  color: businessConfig?.theme?.buttonTextColor || '#ffffff'
+                }}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="font-medium text-sm">Historial</span>
+              </motion.button>
+            )}
+          </div>
+        </motion.div>
+      )}
+      
       {/* Aviso discreto de servicio temporalmente no disponible */}
       {subscriptionStatus === 'suspended' && (
         <div className="bg-gradient-to-r from-red-50 to-pink-50 border-b border-red-200 px-4 py-3">
@@ -1122,6 +1176,8 @@ export default function Menu() {
         products={products}
         categories={categories}
         addToCart={addToCart}
+        businessId={businessId}
+        businessConfig={businessConfig}
         onToppingsOpen={() => setIsSelectingToppings(true)}
         onToppingsClose={() => setIsSelectingToppings(false)}
         subscriptionStatus={subscriptionStatus}
@@ -1185,6 +1241,79 @@ export default function Menu() {
           subscriptionStatus={subscriptionStatus}
         />
       )}
+
+      {/* Modal de Favoritos */}
+      <FavoritesModal
+        show={showFavorites}
+        onClose={() => setShowFavorites(false)}
+        businessId={businessId}
+        customerPhone={orderInfo.phone}
+        theme={businessConfig?.theme}
+        onAddToCart={(favoriteItem) => {
+          // Convertir favorito a formato de carrito y agregarlo
+          const cartItem = {
+            ...favoriteItem,
+            quantity: 1,
+            itemId: Date.now() + Math.random()
+          };
+          addToCart(cartItem);
+          setShowFavorites(false);
+        }}
+      />
+
+      {/* Modal de Historial de Pedidos */}
+      <OrderHistoryModal
+        show={showHistory}
+        onClose={() => setShowHistory(false)}
+        businessId={businessId}
+        customerPhone={orderInfo.phone}
+        theme={businessConfig?.theme}
+        onReorder={(orderItems) => {
+          console.log('[Menu] Reordering items:', orderItems);
+          console.log('[Menu] Current products:', products);
+          
+          // Enriquecer items con datos actuales de productos
+          const cartItems = orderItems.map((item, index) => {
+            // Buscar el producto actual en el catálogo
+            const currentProduct = products.find(p => p._id === item.productId);
+            
+            console.log('[Menu] Enriching item:', { 
+              itemName: item.name, 
+              productId: item.productId,
+              foundProduct: !!currentProduct,
+              currentProductImage: currentProduct?.image 
+            });
+            
+            // Si encontramos el producto actual, usar su imagen y datos actualizados
+            if (currentProduct) {
+              return {
+                ...item,
+                _id: currentProduct._id,
+                image: currentProduct.image,
+                category: currentProduct.category,
+                description: currentProduct.description,
+                isAvailable: currentProduct.isAvailable,
+                itemId: Date.now() + index,
+                uniqueId: `${currentProduct._id}-${JSON.stringify(item.selectedToppings || {}).replace(/[{}",:]/g, '')}`
+              };
+            }
+            
+            // Si no encontramos el producto (fue eliminado), usar datos del pedido original
+            return {
+              ...item,
+              _id: item.productId,
+              itemId: Date.now() + index,
+              uniqueId: `${item.productId}-${JSON.stringify(item.selectedToppings || {}).replace(/[{}",:]/g, '')}`
+            };
+          });
+          
+          console.log('[Menu] Enriched cart items:', cartItems);
+          setCart(cartItems);
+          SessionManager.saveToSession('cart', cartItems);
+          setShowHistory(false);
+          setShowCartSummary(true);
+        }}
+      />
     </div>
   );
 } 

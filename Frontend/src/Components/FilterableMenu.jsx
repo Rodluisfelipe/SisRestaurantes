@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import FeaturedProducts from './FeaturedProducts';
 
 // Función para obtener emoji basado en el nombre de la categoría
 const getCategoryEmoji = (categoryName) => {
@@ -148,7 +149,9 @@ const FilterableMenu = ({
   addToCart, 
   onToppingsOpen, 
   onToppingsClose,
-  subscriptionStatus = null
+  subscriptionStatus = null,
+  businessId,
+  businessConfig: businessConfigProp
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -156,7 +159,8 @@ const FilterableMenu = ({
   const [viewMode, setViewMode] = useState('grid');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showToppings, setShowToppings] = useState(false);
-  const { businessConfig } = useBusinessConfig();
+  const { businessConfig: businessConfigContext } = useBusinessConfig();
+  const businessConfig = businessConfigProp || businessConfigContext;
 
   // Animation variants for stagger effect
   const containerVariants = {
@@ -497,6 +501,15 @@ const FilterableMenu = ({
           ))}
         </div>
       </motion.div>
+
+      {/* Productos Destacados */}
+      {businessId && (
+        <FeaturedProducts
+          businessId={businessId}
+          onAddToCart={addToCart}
+          theme={businessConfig?.theme}
+        />
+      )}
 
       {/* Modern Products Display */}
       <AnimatePresence mode="wait">

@@ -20,39 +20,39 @@ const DynamicManifest = () => {
         categories: ['business', 'food', 'productivity'],
         icons: [
           {
-            src: businessConfig.logo || '/icon.svg',
+            src: businessConfig.logo || '/logo.jpeg',
             sizes: '192x192',
-            type: businessConfig.logo ? 'image/png' : 'image/svg+xml',
+            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
             purpose: 'maskable any'
           },
           {
-            src: businessConfig.logo || '/icon.svg',
+            src: businessConfig.logo || '/logo.jpeg',
             sizes: '512x512',
-            type: businessConfig.logo ? 'image/png' : 'image/svg+xml',
+            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
             purpose: 'maskable any'
           },
           {
-            src: businessConfig.logo || '/icon.svg',
+            src: businessConfig.logo || '/logo.jpeg',
             sizes: '180x180',
-            type: businessConfig.logo ? 'image/png' : 'image/svg+xml',
+            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
             purpose: 'any'
           },
           {
-            src: businessConfig.logo || '/icon.svg',
+            src: businessConfig.logo || '/logo.jpeg',
             sizes: '167x167',
-            type: businessConfig.logo ? 'image/png' : 'image/svg+xml',
+            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
             purpose: 'any'
           },
           {
-            src: businessConfig.logo || '/icon.svg',
+            src: businessConfig.logo || '/logo.jpeg',
             sizes: '152x152',
-            type: businessConfig.logo ? 'image/png' : 'image/svg+xml',
+            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
             purpose: 'any'
           },
           {
-            src: businessConfig.logo || '/icon.svg',
+            src: businessConfig.logo || '/logo.jpeg',
             sizes: '120x120',
-            type: businessConfig.logo ? 'image/png' : 'image/svg+xml',
+            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
             purpose: 'any'
           }
         ],
@@ -61,11 +61,12 @@ const DynamicManifest = () => {
             name: 'Panel Admin',
             short_name: 'Admin',
             description: 'Acceso directo al panel de administración',
-            url: '/admin',
+            url: `/${businessConfig.slug || ''}/admin`,
             icons: [
               {
-                src: businessConfig.logo || '/icon.svg',
-                sizes: '96x96'
+                src: businessConfig.logo || '/logo.jpeg',
+                sizes: '96x96',
+                type: businessConfig.logo ? 'image/png' : 'image/jpeg'
               }
             ]
           },
@@ -76,8 +77,9 @@ const DynamicManifest = () => {
             url: `/${businessConfig.slug || ''}`,
             icons: [
               {
-                src: businessConfig.logo || '/icon.svg',
-                sizes: '96x96'
+                src: businessConfig.logo || '/logo.jpeg',
+                sizes: '96x96',
+                type: businessConfig.logo ? 'image/png' : 'image/jpeg'
               }
             ]
           }

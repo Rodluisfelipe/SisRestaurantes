@@ -46,6 +46,14 @@ const ProductSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  featuredOrder: {
+    type: Number,
+    default: 0
+  },
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',
@@ -59,5 +67,8 @@ ProductSchema.index({ businessId: 1, category: 1, active: 1 });
 
 // Índice compuesto para ordenamiento eficiente por displayOrder dentro de un negocio
 ProductSchema.index({ businessId: 1, displayOrder: 1 });
+
+// Índice para productos destacados
+ProductSchema.index({ businessId: 1, isFeatured: 1, featuredOrder: 1 });
 
 module.exports = mongoose.models.Product || mongoose.model("Product", ProductSchema);

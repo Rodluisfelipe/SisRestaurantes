@@ -126,6 +126,11 @@ const businessConfigSchema = new mongoose.Schema({
     buttonColor: { type: String, default: "#2563eb" },
     buttonTextColor: { type: String, default: "#ffffff" }
   },
+  // Feature flags
+  features: {
+    favoritesEnabled: { type: Boolean, default: true },
+    orderHistoryEnabled: { type: Boolean, default: true }
+  },
   isActive: {
     type: Boolean,
     default: true

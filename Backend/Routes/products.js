@@ -69,6 +69,37 @@ router.get("/", async (req, res) => {
   }
 });
 
+// GET featured products (productos destacados) - DEBE estar ANTES de /:id
+router.get("/featured", async (req, res) => {
+  try {
+    let { businessId } = req.query;
+    
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, "businessId es requerido", 400));
+    }
+
+    businessId = await resolveBusinessId(businessId);
+
+    const featuredProducts = await Product.find({ 
+      businessId,
+      isFeatured: true,
+      active: true
+    })
+    .populate({
+      path: 'toppingGroups',
+      match: { active: true },
+      select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+    })
+    .sort({ featuredOrder: 1, displayOrder: 1 });
+
+    logger.info(`Found ${featuredProducts.length} featured products for business ${businessId}`);
+    res.json(featuredProducts);
+  } catch (error) {
+    logger.error("Error getting featured products", error, req);
+    res.status(500).json(formatHttpError(req, "Error al obtener productos destacados", 500));
+  }
+});
+
 // GET /products/:id (si existe)
 router.get("/:id", async (req, res) => {
   try {
@@ -230,6 +261,122 @@ router.put("/reorder", async (req, res) => {
   } catch (error) {
     logger.error("Error en endpoint simplificado", error, req);
     res.status(500).json(formatHttpError(req, "Error en endpoint simplificado", 500));
+  }
+});
+
+// PUT reorder featured products
+router.put("/reorder-featured", async (req, res) => {
+  try {
+    logger.info('Reorder featured products endpoint called', { body: req.body });
+    const { orderedIds } = req.body;
+
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      logger.warn('Invalid orderedIds', { orderedIds, type: typeof orderedIds });
+      return res.status(400).json(formatHttpError(req, "orderedIds debe ser un array no vacío", 400));
+    }
+
+    // Actualizar el featuredOrder de cada producto
+    const updatePromises = orderedIds.map((id, index) => 
+      Product.findByIdAndUpdate(id, { featuredOrder: index + 1 })
+    );
+
+    await Promise.all(updatePromises);
+
+    logger.info(`Reordered ${orderedIds.length} featured products`);
+
+    // Obtener businessId del primer producto para el socket
+    const firstProduct = await Product.findById(orderedIds[0]);
+    if (firstProduct) {
+      emitToBusiness(req, firstProduct.businessId, "products_reordered", {
+        type: "featured_reordered",
+        count: orderedIds.length
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `${orderedIds.length} productos destacados reordenados correctamente`
+    });
+  } catch (error) {
+    logger.error("Error reordering featured products", error, req);
+    res.status(500).json(formatHttpError(req, "Error al reordenar productos destacados", 500));
+  }
+});
+
+// PUT toggle featured status (DEBE estar ANTES de /:id genérico)
+router.put("/:id/toggle-featured", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { featuredOrder } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json(formatHttpError(req, "ID de producto inválido", 400));
+    }
+
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json(formatHttpError(req, "Producto no encontrado", 404));
+    }
+
+    // Si está activando featured, verificar límite de 5
+    if (!product.isFeatured) {
+      const featuredCount = await Product.countDocuments({
+        businessId: product.businessId,
+        isFeatured: true,
+        _id: { $ne: product._id }
+      });
+
+      if (featuredCount >= 5) {
+        return res.status(400).json({
+          success: false,
+          message: 'No puedes tener más de 5 productos destacados. Remueve uno primero.',
+          limit: 5,
+          current: featuredCount
+        });
+      }
+    }
+
+    product.isFeatured = !product.isFeatured;
+    
+    // Si se está marcando como destacado y no tiene orden, asignar el siguiente
+    if (product.isFeatured) {
+      if (featuredOrder !== undefined) {
+        product.featuredOrder = featuredOrder;
+      } else if (product.featuredOrder === 0) {
+        const maxOrder = await Product.findOne({
+          businessId: product.businessId,
+          isFeatured: true,
+          _id: { $ne: product._id }
+        }).sort('-featuredOrder').select('featuredOrder');
+        product.featuredOrder = maxOrder ? maxOrder.featuredOrder + 1 : 1;
+      }
+    }
+
+    await product.save();
+
+    logger.info(`Product ${id} featured status toggled to ${product.isFeatured}`);
+
+    // Emit update
+    emitToBusiness(req, product.businessId, "product_featured_update", {
+      type: "featured_toggled",
+      productId: product._id,
+      isFeatured: product.isFeatured
+    });
+
+    res.json({
+      success: true,
+      message: `Producto ${product.isFeatured ? 'marcado como destacado' : 'removido de destacados'}`,
+      product: {
+        _id: product._id,
+        name: product.name,
+        isFeatured: product.isFeatured,
+        featuredOrder: product.featuredOrder
+      }
+    });
+  } catch (error) {
+    logger.error("Error toggling featured status", error, req);
+    res.status(500).json(formatHttpError(req, "Error al cambiar estado destacado", 500));
   }
 });
 

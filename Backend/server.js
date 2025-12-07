@@ -122,6 +122,7 @@ app.use("/api/coupons", require("./Routes/coupons"));
 app.use("/api/auth", require("./Routes/auth"));
 app.use("/api/tables", require("./Routes/tables"));
 app.use("/api/orders", require("./Routes/orders"));
+app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/push", require("./Routes/push")); // Push notifications (PWA)
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot

@@ -59,14 +59,8 @@ if (typeof window !== 'undefined') {
     }
   };
 
-  // Deshabilitar React DevTools
-  window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
-    isDisabled: true,
-    supportsFiber: true,
-    inject: () => {},
-    onCommitFiberRoot: () => {},
-    onCommitFiberUnmount: () => {},
-  };
+  // No intentar modificar React DevTools - solo filtrar sus mensajes en console
+  // Si DevTools está instalado, dejarlo funcionar normalmente
 }
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";

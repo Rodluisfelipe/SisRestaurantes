@@ -955,6 +955,64 @@ function Admin() {
     }
   };
 
+  // Función para marcar/desmarcar producto como destacado
+  const handleToggleFeatured = async (productId) => {
+    try {
+      const response = await api.put(`/products/${productId}/toggle-featured`);
+      
+      // Actualizar el estado local del producto
+      setProducts(prevProducts => 
+        prevProducts.map(product => 
+          product._id === productId 
+            ? { ...product, isFeatured: response.data.product.isFeatured, featuredOrder: response.data.product.featuredOrder }
+            : product
+        )
+      );
+      
+      showSuccessMessage(response.data.message);
+    } catch (error) {
+      console.error('Error al cambiar estado destacado:', error);
+      if (error.response?.data?.message) {
+        showSuccessMessage(error.response.data.message);
+      } else {
+        showSuccessMessage('Error al cambiar el estado destacado');
+      }
+    }
+  };
+
+  // Función para reordenar productos destacados
+  const handleReorderFeatured = async (newOrder) => {
+    try {
+      const orderedIds = newOrder.map(p => p._id);
+      console.log('Reordenando productos destacados:', { newOrder, orderedIds });
+      
+      if (!orderedIds || orderedIds.length === 0) {
+        console.error('orderedIds está vacío');
+        showSuccessMessage('Error: no hay productos para reordenar');
+        return;
+      }
+      
+      await api.put('/products/reorder-featured', { orderedIds });
+      
+      // Actualizar el estado local
+      setProducts(prevProducts => 
+        prevProducts.map(product => {
+          const index = orderedIds.indexOf(product._id);
+          if (index !== -1) {
+            return { ...product, featuredOrder: index + 1 };
+          }
+          return product;
+        })
+      );
+      
+      showSuccessMessage('Orden de productos destacados actualizado');
+    } catch (error) {
+      console.error('Error al reordenar destacados:', error);
+      console.error('Error details:', error.response?.data);
+      showSuccessMessage(error.response?.data?.message || 'Error al reordenar productos destacados');
+    }
+  };
+
   // Función para editar producto
   const editProduct = (product) => {
     setEditingId(product._id);  // ✅ Agregar esta línea que faltaba
@@ -2097,6 +2155,97 @@ function Admin() {
                 </div>
                         </form>
               </motion.div>
+
+              {/* Sección de Productos Destacados */}
+              {(() => {
+                const featuredProducts = Array.isArray(products) 
+                  ? products.filter(p => p.isFeatured).sort((a, b) => (a.featuredOrder || 0) - (b.featuredOrder || 0))
+                  : [];
+                
+                if (featuredProducts.length === 0) return null;
+
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-xl border-2 border-yellow-200 p-6 mb-8"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-yellow-400 p-2 rounded-lg">
+                          <span className="text-2xl">⭐</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-800">Productos Destacados</h3>
+                          <p className="text-sm text-gray-600">{featuredProducts.length} de 5 productos (Máximo permitido)</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 space-y-2">
+                      {featuredProducts.map((product, index) => (
+                        <motion.div
+                          key={product._id}
+                          className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-200"
+                          whileHover={{ x: 4 }}
+                        >
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="text-2xl font-bold text-yellow-600 w-8 text-center">
+                              {index + 1}
+                            </span>
+                            {product.image && (
+                              <img 
+                                src={product.image} 
+                                alt={product.name}
+                                className="w-12 h-12 object-cover rounded-lg"
+                              />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-800 truncate">{product.name}</p>
+                              <p className="text-sm text-gray-500">${product.price.toLocaleString()}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            {index > 0 && (
+                              <button
+                                onClick={() => {
+                                  const newOrder = [...featuredProducts];
+                                  [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+                                  handleReorderFeatured(newOrder);
+                                }}
+                                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                title="Subir"
+                              >
+                                ⬆️
+                              </button>
+                            )}
+                            {index < featuredProducts.length - 1 && (
+                              <button
+                                onClick={() => {
+                                  const newOrder = [...featuredProducts];
+                                  [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+                                  handleReorderFeatured(newOrder);
+                                }}
+                                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                title="Bajar"
+                              >
+                                ⬇️
+                              </button>
+                            )}
+                            <button
+                              onClick={() => handleToggleFeatured(product._id)}
+                              className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                              title="Quitar de destacados"
+                            >
+                              ❌
+                            </button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </motion.div>
+                );
+              })()}
               
                     {/* Modern Products Grid - Responsive Optimized */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
@@ -2136,6 +2285,15 @@ function Admin() {
 
                             {/* Status and Category Badges */}
                             <div className="absolute top-3 right-3 flex flex-col gap-2">
+                              {/* Featured Badge */}
+                              {product.isFeatured && (
+                                <div className="flex justify-end">
+                                  <span className="bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold shadow-md flex items-center gap-1">
+                                    ⭐ Destacado
+                                  </span>
+                                </div>
+                              )}
+                              
                               {/* Status Badge */}
                               <div className="flex justify-end">
                                 <span className={`px-2 py-1 rounded-full text-xs font-bold shadow-md ${
@@ -2170,42 +2328,61 @@ function Admin() {
                             </div>
 
                             {/* Action Buttons - Responsive Touch-Friendly */}
-                            <div className="flex gap-1.5 sm:gap-2 mt-auto">
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => editProduct(product)}
-                                className="flex-1 bg-blue-500 text-white px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px]"
-                                title="Editar producto"
-                              >
-                                <span className="text-sm sm:text-base">✏️</span>
-                                <span className="truncate hidden xs:inline">Editar</span>
-                              </motion.button>
+                            <div className="space-y-2 mt-auto">
+                              {/* Primera fila de botones */}
+                              <div className="flex gap-1.5 sm:gap-2">
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => editProduct(product)}
+                                  className="flex-1 bg-blue-500 text-white px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px]"
+                                  title="Editar producto"
+                                >
+                                  <span className="text-sm sm:text-base">✏️</span>
+                                  <span className="truncate hidden xs:inline">Editar</span>
+                                </motion.button>
+                                
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => handleToggleProduct(product._id)}
+                                  className={`flex-1 px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px] ${
+                                    product.active !== false
+                                      ? 'bg-orange-500 text-white hover:bg-orange-600'
+                                      : 'bg-green-500 text-white hover:bg-green-600'
+                                  }`}
+                                  title={product.active !== false ? 'Desactivar producto' : 'Activar producto'}
+                                >
+                                  <span className="text-sm sm:text-base">{product.active !== false ? '👁️‍🗨️' : '👁️'}</span>
+                                  <span className="truncate hidden xs:inline">{product.active !== false ? 'Apagar' : 'Encender'}</span>
+                                </motion.button>
+                                
+                                <motion.button
+                                  whileHover={{ scale: 1.02 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => deleteProduct(product._id)}
+                                  className="flex-1 bg-red-500 text-white px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px]"
+                                  title="Eliminar producto"
+                                >
+                                  <span className="text-sm sm:text-base">🗑️</span>
+                                  <span className="truncate hidden xs:inline">Eliminar</span>
+                                </motion.button>
+                              </div>
                               
+                              {/* Segunda fila - Botón destacado */}
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => handleToggleProduct(product._id)}
-                                className={`flex-1 px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px] ${
-                                  product.active !== false
-                                    ? 'bg-orange-500 text-white hover:bg-orange-600'
-                                    : 'bg-green-500 text-white hover:bg-green-600'
+                                onClick={() => handleToggleFeatured(product._id)}
+                                className={`w-full px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-h-[44px] ${
+                                  product.isFeatured
+                                    ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500'
+                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
-                                title={product.active !== false ? 'Desactivar producto' : 'Activar producto'}
+                                title={product.isFeatured ? 'Quitar de destacados' : 'Marcar como destacado'}
                               >
-                                <span className="text-sm sm:text-base">{product.active !== false ? '👁️‍🗨️' : '👁️'}</span>
-                                <span className="truncate hidden xs:inline">{product.active !== false ? 'Apagar' : 'Encender'}</span>
-                              </motion.button>
-                              
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => deleteProduct(product._id)}
-                                className="flex-1 bg-red-500 text-white px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px]"
-                                title="Eliminar producto"
-                              >
-                                <span className="text-sm sm:text-base">🗑️</span>
-                                <span className="truncate hidden xs:inline">Eliminar</span>
+                                <span className="text-sm sm:text-base">⭐</span>
+                                <span className="truncate">{product.isFeatured ? 'Quitar Destacado' : 'Destacar Producto'}</span>
                               </motion.button>
                             </div>
                           </div>
