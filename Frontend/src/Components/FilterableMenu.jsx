@@ -508,6 +508,8 @@ const FilterableMenu = ({
           businessId={businessId}
           onAddToCart={addToCart}
           theme={businessConfig?.theme}
+          onToppingsOpen={onToppingsOpen}
+          onToppingsClose={onToppingsClose}
         />
       )}
 
