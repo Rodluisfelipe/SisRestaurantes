@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * Model for customer favorite products
+ * Model for customer favorite products Schema
  * Allows customers to save their preferred items for quick reordering
  */
 const favoriteSchema = new mongoose.Schema({
