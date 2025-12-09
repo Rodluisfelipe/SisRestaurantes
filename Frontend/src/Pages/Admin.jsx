@@ -560,7 +560,17 @@ function Admin() {
     });
     
     socket.on('products_update', (data) => {
-      setProducts(data);
+      // Manejar diferentes formatos de actualización
+      if (data.type === 'created' && data.product) {
+        setProducts(prev => [...prev, data.product]);
+      } else if (data.type === 'deleted' && data.productId) {
+        setProducts(prev => prev.filter(p => p._id !== data.productId));
+      } else if (data.type === 'updated' && data.product) {
+        setProducts(prev => prev.map(p => p._id === data.product._id ? data.product : p));
+      } else if (Array.isArray(data)) {
+        // Si es un array completo, reemplazar
+        setProducts(data);
+      }
     });
     
     socket.on('categories_update', (data) => {

@@ -119,7 +119,7 @@ router.get("/:id", async (req, res) => {
 // Validación de entrada para crear/actualizar producto
 const validateProductInput = (req, res, next) => {
   const errors = [];
-  const { name, price, businessId } = req.body;
+  let { name, price, businessId } = req.body;
   
   // Validar name
   if (!name) {
@@ -128,11 +128,19 @@ const validateProductInput = (req, res, next) => {
     errors.push({ field: 'name', message: 'name debe ser un string no vacío' });
   }
   
-  // Validar price
+  // Validar y convertir price (puede venir como string desde FormData)
   if (price === undefined || price === null) {
     errors.push({ field: 'price', message: 'price es requerido' });
-  } else if (typeof price !== 'number' || isNaN(price) || price < 0) {
-    errors.push({ field: 'price', message: 'price debe ser un número >= 0' });
+  } else {
+    // Convertir a número si viene como string (FormData)
+    if (typeof price === 'string') {
+      price = parseFloat(price);
+      req.body.price = price; // Actualizar el valor en req.body
+    }
+    
+    if (typeof price !== 'number' || isNaN(price) || price < 0) {
+      errors.push({ field: 'price', message: 'price debe ser un número >= 0' });
+    }
   }
   
   // Validar businessId (solo para POST, en PUT se valida en el endpoint)
