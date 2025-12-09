@@ -313,6 +313,10 @@ router.put("/reorder-featured", async (req, res) => {
 
 // PUT toggle featured status (DEBE estar ANTES de /:id genérico)
 router.put("/:id/toggle-featured", async (req, res) => {
+  console.log('\n🌟🌟🌟 TOGGLE FEATURED ENDPOINT LLAMADO 🌟🌟🌟');
+  console.log('Product ID:', req.params.id);
+  console.log('Request body:', req.body);
+  console.log('Timestamp:', new Date().toISOString());
   try {
     const { id } = req.params;
     const { featuredOrder } = req.body;
@@ -321,21 +325,27 @@ router.put("/:id/toggle-featured", async (req, res) => {
       return res.status(400).json(formatHttpError(req, "ID de producto inválido", 400));
     }
 
+    console.log('🔍 Buscando producto...');
     const product = await Product.findById(id);
 
     if (!product) {
+      console.log('❌ Producto no encontrado');
       return res.status(404).json(formatHttpError(req, "Producto no encontrado", 404));
     }
+    console.log('✅ Producto encontrado:', product.name, '- isFeatured actual:', product.isFeatured);
 
     // Si está activando featured, verificar límite de 5
     if (!product.isFeatured) {
+      console.log('➕ Marcando como destacado - verificando límite...');
       const featuredCount = await Product.countDocuments({
         businessId: product.businessId,
         isFeatured: true,
         _id: { $ne: product._id }
       });
+      console.log('📊 Productos destacados actuales:', featuredCount);
 
       if (featuredCount >= 5) {
+        console.log('⚠️ Límite alcanzado - ya hay 5 productos destacados');
         return res.status(400).json({
           success: false,
           message: 'No puedes tener más de 5 productos destacados. Remueve uno primero.',
@@ -345,10 +355,12 @@ router.put("/:id/toggle-featured", async (req, res) => {
       }
     }
 
+    console.log('🔄 Cambiando isFeatured de', product.isFeatured, 'a', !product.isFeatured);
     product.isFeatured = !product.isFeatured;
     
     // Si se está marcando como destacado y no tiene orden, asignar el siguiente
     if (product.isFeatured) {
+      console.log('📋 Asignando featuredOrder...');
       if (featuredOrder !== undefined) {
         product.featuredOrder = featuredOrder;
       } else if (product.featuredOrder === 0) {
@@ -361,7 +373,9 @@ router.put("/:id/toggle-featured", async (req, res) => {
       }
     }
 
+    console.log('💾 Guardando producto con isFeatured:', product.isFeatured, 'featuredOrder:', product.featuredOrder);
     await product.save();
+    console.log('✅ Producto guardado exitosamente en la base de datos');
 
     logger.info(`Product ${id} featured status toggled to ${product.isFeatured}`);
 
@@ -372,6 +386,7 @@ router.put("/:id/toggle-featured", async (req, res) => {
       isFeatured: product.isFeatured
     });
 
+    console.log('✅ Enviando respuesta exitosa al cliente');
     res.json({
       success: true,
       message: `Producto ${product.isFeatured ? 'marcado como destacado' : 'removido de destacados'}`,
@@ -382,7 +397,10 @@ router.put("/:id/toggle-featured", async (req, res) => {
         featuredOrder: product.featuredOrder
       }
     });
+    console.log('🌟🌟🌟 TOGGLE FEATURED COMPLETADO EXITOSAMENTE 🌟🌟🌟\n');
   } catch (error) {
+    console.error('❌❌❌ ERROR EN TOGGLE FEATURED:', error);
+    console.error('Stack trace:', error.stack);
     logger.error("Error toggling featured status", error, req);
     res.status(500).json(formatHttpError(req, "Error al cambiar estado destacado", 500));
   }

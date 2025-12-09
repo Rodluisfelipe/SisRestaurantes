@@ -967,8 +967,12 @@ function Admin() {
 
   // Función para marcar/desmarcar producto como destacado
   const handleToggleFeatured = async (productId) => {
+    console.log('🌟 handleToggleFeatured LLAMADO - ProductId:', productId);
+    console.log('🌟 Intentando hacer PUT a:', `/products/${productId}/toggle-featured`);
     try {
+      console.log('🌟 Enviando request PUT...');
       const response = await api.put(`/products/${productId}/toggle-featured`);
+      console.log('🌟 Respuesta recibida:', response.data);
       
       // Actualizar el estado local del producto
       setProducts(prevProducts => 
@@ -979,9 +983,11 @@ function Admin() {
         )
       );
       
+      console.log('🌟 Producto actualizado exitosamente en el estado local');
       showSuccessMessage(response.data.message);
     } catch (error) {
-      console.error('Error al cambiar estado destacado:', error);
+      console.error('❌ Error al cambiar estado destacado:', error);
+      console.error('❌ Error completo:', error.response || error);
       if (error.response?.data?.message) {
         showSuccessMessage(error.response.data.message);
       } else {
