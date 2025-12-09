@@ -184,15 +184,15 @@ const BusinessHoursSettings = () => {
 
   const getStatusColor = () => {
     if (businessStatus.isOpen) return 'text-green-600';
-    if (!businessStatus.isOpenByHours) return 'text-orange-600';
+    if (!businessStatus.isOpenByHours) return 'text-red-600';
     if (!businessStatus.isMenuActive) return 'text-red-600';
     return 'text-gray-600';
   };
 
   const getStatusText = () => {
     if (businessStatus.isOpen) return '🟢 Abierto';
-    if (!businessStatus.isOpenByHours) return '🟠 Cerrado por horario';
-    if (!businessStatus.isMenuActive) return '🔴 Menú pausado';
+    if (!businessStatus.isOpenByHours) return '🔴 Cerrado';
+    if (!businessStatus.isMenuActive) return '🔴 Cerrado';
     return '🔴 Cerrado';
   };
 
@@ -241,15 +241,15 @@ const BusinessHoursSettings = () => {
             
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <span className="font-medium text-gray-700">Horarios:</span>
-              <span className={`font-semibold ${businessStatus.isOpenByHours ? 'text-green-600' : 'text-orange-600'}`}>
-                {businessStatus.isOpenByHours ? '🟢 Dentro del horario' : '🟠 Fuera del horario'}
+              <span className={`font-semibold ${businessStatus.isOpenByHours ? 'text-green-600' : 'text-red-600'}`}>
+                {businessStatus.isOpenByHours ? '🟢 Abierto' : '🔴 Cerrado'}
               </span>
             </div>
             
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <span className="font-medium text-gray-700">Menú:</span>
               <span className={`font-semibold ${businessStatus.isMenuActive ? 'text-green-600' : 'text-red-600'}`}>
-                {businessStatus.isMenuActive ? '🟢 Activo' : '🔴 Pausado'}
+                {businessStatus.isMenuActive ? '🟢 Activo' : '🔴 Cerrado'}
               </span>
             </div>
           </div>

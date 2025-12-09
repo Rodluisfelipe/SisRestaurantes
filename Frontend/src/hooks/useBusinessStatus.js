@@ -117,22 +117,6 @@ export const useBusinessStatus = (businessId) => {
       };
     }
     
-    if (!businessStatus.isOpenByHours) {
-      return {
-        text: 'Cerrado por horario',
-        color: 'bg-orange-500',
-        icon: '🟠'
-      };
-    }
-    
-    if (!businessStatus.isMenuActive) {
-      return {
-        text: 'Menú pausado',
-        color: 'bg-red-500',
-        icon: '🔴'
-      };
-    }
-    
     return {
       text: 'Cerrado',
       color: 'bg-red-500',

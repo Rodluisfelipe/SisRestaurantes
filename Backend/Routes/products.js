@@ -363,19 +363,46 @@ router.put("/:id/toggle-featured", async (req, res) => {
       console.log('📋 Asignando featuredOrder...');
       if (featuredOrder !== undefined) {
         product.featuredOrder = featuredOrder;
-      } else if (product.featuredOrder === 0) {
+      } else if (!product.featuredOrder || product.featuredOrder === 0) {
+        // Buscar el orden más alto actual
         const maxOrder = await Product.findOne({
           businessId: product.businessId,
           isFeatured: true,
           _id: { $ne: product._id }
         }).sort('-featuredOrder').select('featuredOrder');
-        product.featuredOrder = maxOrder ? maxOrder.featuredOrder + 1 : 1;
+        product.featuredOrder = maxOrder && maxOrder.featuredOrder ? maxOrder.featuredOrder + 1 : 1;
+        console.log('📋 featuredOrder asignado:', product.featuredOrder);
       }
+    } else {
+      // Si se está quitando de destacados, limpiar el orden
+      product.featuredOrder = 0;
+      console.log('📋 featuredOrder reseteado a 0');
     }
 
-    console.log('💾 Guardando producto con isFeatured:', product.isFeatured, 'featuredOrder:', product.featuredOrder);
-    await product.save();
-    console.log('✅ Producto guardado exitosamente en la base de datos');
+    console.log('💾 Actualizando producto con isFeatured:', product.isFeatured, 'featuredOrder:', product.featuredOrder);
+    
+    // Usar updateOne directamente para forzar la actualización de campos que no existen
+    const updateResult = await Product.updateOne(
+      { _id: id },
+      { 
+        $set: { 
+          isFeatured: product.isFeatured, 
+          featuredOrder: product.featuredOrder 
+        } 
+      }
+    );
+    
+    console.log('✅ UpdateOne result:', updateResult);
+    
+    // Recargar el producto para obtener los valores actualizados
+    const updatedProduct = await Product.findById(id);
+    console.log('🔍 Verificación post-update:');
+    console.log('   isFeatured en DB:', updatedProduct.isFeatured);
+    console.log('   featuredOrder en DB:', updatedProduct.featuredOrder);
+    
+    // Actualizar el objeto product con los valores confirmados
+    product.isFeatured = updatedProduct.isFeatured;
+    product.featuredOrder = updatedProduct.featuredOrder;
 
     logger.info(`Product ${id} featured status toggled to ${product.isFeatured}`);
 

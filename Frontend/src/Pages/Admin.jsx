@@ -87,71 +87,90 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) =>
   if (!isOpen) return null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
       <motion.div 
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-[#333F50]/95 rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 max-w-md w-full border border-[#333F50] mx-3"
+        className="bg-gradient-to-b from-white to-slate-50 rounded-2xl shadow-2xl border border-slate-200/50 p-4 sm:p-6 max-w-md w-full mx-3"
       >
-        <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6 flex items-center">
-          <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#3A7AFF] mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          <span className="text-sm sm:text-lg">Confirmar Cambios</span>
-        </h2>
+        <div className="flex items-center gap-3 mb-4 sm:mb-6 pb-3 border-b border-slate-200">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+            Confirmar Cambios
+          </h2>
+        </div>
         
-        <div className="space-y-3 sm:space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-            <p className="text-[#D1D9FF] font-medium text-xs sm:text-sm">Nombre:</p>
+        <div className="space-y-3">
+          {/* Nombre */}
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <p className="text-slate-600 font-medium text-xs mb-1.5">Nombre:</p>
             <div className="flex items-center gap-2 flex-wrap">
-              <p className={`${product.name !== formData.name ? 'line-through text-red-400' : 'text-white'} text-xs sm:text-sm`}>
-                {product.name}
-              </p>
-              {product.name !== formData.name && (
-                <p className="text-[#5FF9B4] text-xs sm:text-sm font-medium">{formData.name}</p>
+              {product.name !== formData.name ? (
+                <>
+                  <p className="line-through text-red-500 text-sm">{product.name}</p>
+                  <span className="text-slate-400">→</span>
+                  <p className="text-green-600 text-sm font-semibold">{formData.name}</p>
+                </>
+              ) : (
+                <p className="text-slate-900 text-sm font-medium">{product.name}</p>
               )}
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-            <p className="text-[#D1D9FF] font-medium text-xs sm:text-sm">Descripción:</p>
-            <div className="flex items-center gap-2 flex-wrap">
-              <p className={`${product.description !== formData.description ? 'line-through text-red-400' : 'text-white'} text-xs sm:text-sm truncate max-w-[150px]`}>
-                {product.description || "Sin descripción"}
-              </p>
-              {product.description !== formData.description && (
-                <p className="text-[#5FF9B4] text-xs sm:text-sm truncate max-w-[150px]">{formData.description || "Sin descripción"}</p>
+          {/* Descripción */}
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <p className="text-slate-600 font-medium text-xs mb-1.5">Descripción:</p>
+            <div className="flex flex-col gap-1.5">
+              {product.description !== formData.description ? (
+                <>
+                  <p className="line-through text-red-500 text-xs">{product.description || "Sin descripción"}</p>
+                  <p className="text-green-600 text-xs font-medium">{formData.description || "Sin descripción"}</p>
+                </>
+              ) : (
+                <p className="text-slate-900 text-xs">{product.description || "Sin descripción"}</p>
               )}
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-            <p className="text-[#D1D9FF] font-medium text-xs sm:text-sm">Precio:</p>
+          {/* Precio */}
+          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+            <p className="text-slate-600 font-medium text-xs mb-1.5">Precio:</p>
             <div className="flex items-center gap-2">
-              <p className={`${product.price !== formData.price ? 'line-through text-red-400' : 'text-white'} text-xs sm:text-sm`}>
-                ${product.price}
-              </p>
-              {product.price !== formData.price && (
-                <p className="text-[#5FF9B4] text-xs sm:text-sm font-semibold">${formData.price}</p>
+              {product.price !== formData.price ? (
+                <>
+                  <p className="line-through text-red-500 text-sm">${product.price}</p>
+                  <span className="text-slate-400">→</span>
+                  <p className="text-green-600 text-base font-bold">${formData.price}</p>
+                </>
+              ) : (
+                <p className="text-slate-900 text-base font-bold">${product.price}</p>
               )}
             </div>
           </div>
         </div>
         
-        <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
-          <button
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 mt-5 pt-4 border-t border-slate-200">
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-white bg-[#333F50] hover:bg-[#333F50]/80 transition-colors text-sm sm:text-base order-2 sm:order-1"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-all duration-200 text-sm shadow-sm border border-slate-200"
           >
-            Cancelar
-          </button>
-          <button
+            ❌ Cancelar
+          </motion.button>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onConfirm}
-            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg text-white bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 transition-colors text-sm sm:text-base order-1 sm:order-2"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold transition-all duration-200 text-sm shadow-lg"
           >
-            Confirmar Cambios
-          </button>
+            ✅ Confirmar Cambios
+          </motion.button>
         </div>
       </motion.div>
     </div>
@@ -267,6 +286,7 @@ function Admin() {
     image: '',
     toppingGroups: []
   });
+  const [touchedFields, setTouchedFields] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -279,9 +299,18 @@ function Admin() {
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [newOrderNotification, setNewOrderNotification] = useState(null);
   const [showOrderBanner, setShowOrderBanner] = useState(false);
+  const [draggedFeaturedItem, setDraggedFeaturedItem] = useState(null);
+  const [showToppingsSection, setShowToppingsSection] = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1); // Wizard: 1=Info, 2=Precio/Imagen, 3=Extras
   const socketListenersRegistered = useRef(false);
   const lastJoinedBusiness = useRef(null);
   const notificationAudioRef = useRef(null); // Audio para notificaciones de pedidos
+  
+  // Refs para auto-focus en campos del wizard
+  const nameInputRef = useRef(null);
+  const priceInputRef = useRef(null);
+  const toppingsSectionRef = useRef(null);
   const redirectionCountRef = useRef(0);
   const initialRenderRef = useRef(true);
   
@@ -430,6 +459,23 @@ function Admin() {
       navigate("/", { replace: true });
     }
   }, [businessId, navigate]);
+
+  // Auto-focus en campos cuando cambia el paso del wizard
+  useEffect(() => {
+    if (showProductModal) {
+      // Pequeño delay para asegurar que el DOM esté listo
+      const timer = setTimeout(() => {
+        if (currentStep === 1 && nameInputRef.current) {
+          nameInputRef.current.focus();
+        } else if (currentStep === 2 && priceInputRef.current) {
+          priceInputRef.current.focus();
+        } else if (currentStep === 3 && toppingsSectionRef.current) {
+          toppingsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentStep, showProductModal]);
   
   // Validación de autenticación (con protección contra bucles)
   useEffect(() => {
@@ -716,6 +762,13 @@ function Admin() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Mark all fields as touched when submitting
+    setTouchedFields({
+      name: true,
+      price: true,
+      category: true
+    });
+    
     // Validación del lado del cliente
     if (!form.name.trim()) {
       showErrorMessage('El nombre del producto es obligatorio');
@@ -767,7 +820,7 @@ function Admin() {
       } else {
         console.log('Enviando datos para crear producto:', Object.fromEntries(formData.entries()));
         const response = await api.post('/products', formData);
-        showSuccessMessage('Producto creado exitosamente');
+        showSuccessMessage('✨ Producto creado exitosamente');
         setForm({
           name: '',
           description: '',
@@ -776,12 +829,17 @@ function Admin() {
           image: '',
           toppingGroups: []
         });
+        setTouchedFields({});
+        // Cerrar el modal después de crear
+        setTimeout(() => {
+          setShowProductModal(false);
+        }, 500);
         // Actualizar la lista de productos con el nuevo producto
         setProducts(prevProducts => [...prevProducts, response.data]);
         // Recargar datos para asegurar sincronización
         setTimeout(() => {
           loadData();
-        }, 500);
+        }, 800);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -849,16 +907,22 @@ function Admin() {
       
       // Limpiar el formulario y cerrar el modal
       setForm({ name: "", description: "", price: "", category: "", image: "", toppingGroups: [] });
+      setTouchedFields({});
       setEditingId(null);
       setEditingProduct(null);
       setShowConfirmModal(false);
       
+      // Cerrar el modal después de actualizar
+      setTimeout(() => {
+        setShowProductModal(false);
+      }, 500);
+      
       // Mostrar mensaje de éxito
-      showSuccessMessage("Producto actualizado correctamente");
+      showSuccessMessage("✅ Producto actualizado correctamente");
       // Recargar datos para asegurar sincronización
       setTimeout(() => {
         loadData();
-      }, 500);
+      }, 800);
     } catch (error) {
       console.error("Error al actualizar producto:", error);
     }
@@ -866,6 +930,10 @@ function Admin() {
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleBlur = (fieldName) => {
+    setTouchedFields(prev => ({ ...prev, [fieldName]: true }));
   };
 
   const handlePriceChange = (e) => {
@@ -933,7 +1001,7 @@ function Admin() {
     try {
       await api.delete(`/products/${productToDelete._id}`);
       setProducts(products.filter(product => product._id !== productToDelete._id));
-      showSuccessMessage('Producto eliminado exitosamente');
+      showSuccessMessage('🗑️ Producto eliminado exitosamente');
       setShowDeleteModal(false);
       setProductToDelete(null);
       // Recargar datos para asegurar sincronización
@@ -950,18 +1018,23 @@ function Admin() {
       const response = await api.patch(`/products/${productId}/toggle`);
       
       // Actualizar el estado local del producto
+      const updatedProduct = response.data.product;
       setProducts(prevProducts => 
         prevProducts.map(product => 
           product._id === productId 
-            ? { ...product, active: response.data.product.active }
+            ? { ...product, active: updatedProduct.active }
             : product
         )
       );
       
-      showSuccessMessage(response.data.message);
+      // Mensaje personalizado según el estado
+      const message = updatedProduct.active 
+        ? '✅ Producto activado correctamente' 
+        : '⏸️ Producto pausado correctamente';
+      showSuccessMessage(message);
     } catch (error) {
       console.error('Error al cambiar estado del producto:', error);
-      showSuccessMessage('Error al cambiar el estado del producto');
+      showErrorMessage('❌ Error al cambiar el estado del producto');
     }
   };
 
@@ -984,14 +1057,19 @@ function Admin() {
       );
       
       console.log('🌟 Producto actualizado exitosamente en el estado local');
-      showSuccessMessage(response.data.message);
+      
+      // Mensaje personalizado según el estado destacado
+      const message = response.data.product.isFeatured
+        ? '⭐ Producto marcado como destacado'
+        : '✅ Producto removido de destacados';
+      showSuccessMessage(message);
     } catch (error) {
       console.error('❌ Error al cambiar estado destacado:', error);
       console.error('❌ Error completo:', error.response || error);
       if (error.response?.data?.message) {
-        showSuccessMessage(error.response.data.message);
+        showErrorMessage(error.response.data.message);
       } else {
-        showSuccessMessage('Error al cambiar el estado destacado');
+        showErrorMessage('❌ Error al cambiar el estado destacado');
       }
     }
   };
@@ -1004,7 +1082,7 @@ function Admin() {
       
       if (!orderedIds || orderedIds.length === 0) {
         console.error('orderedIds está vacío');
-        showSuccessMessage('Error: no hay productos para reordenar');
+        showErrorMessage('⚠️ No hay productos para reordenar');
         return;
       }
       
@@ -1021,12 +1099,35 @@ function Admin() {
         })
       );
       
-      showSuccessMessage('Orden de productos destacados actualizado');
+      showSuccessMessage('🔄 Orden de destacados actualizado');
     } catch (error) {
       console.error('Error al reordenar destacados:', error);
       console.error('Error details:', error.response?.data);
-      showSuccessMessage(error.response?.data?.message || 'Error al reordenar productos destacados');
+      showErrorMessage(error.response?.data?.message || '❌ Error al reordenar destacados');
     }
+  };
+
+  // Drag handlers para productos destacados
+  const handleFeaturedDragStart = (e, index) => {
+    setDraggedFeaturedItem(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleFeaturedDragOver = (e, index, featuredProducts) => {
+    e.preventDefault();
+    if (draggedFeaturedItem === null || draggedFeaturedItem === index) return;
+
+    const newOrder = [...featuredProducts];
+    const draggedProduct = newOrder[draggedFeaturedItem];
+    newOrder.splice(draggedFeaturedItem, 1);
+    newOrder.splice(index, 0, draggedProduct);
+
+    setDraggedFeaturedItem(index);
+    handleReorderFeatured(newOrder);
+  };
+
+  const handleFeaturedDragEnd = () => {
+    setDraggedFeaturedItem(null);
   };
 
   // Función para editar producto
@@ -1041,6 +1142,10 @@ function Admin() {
       image: product.image,
       toppingGroups: product.toppingGroups || []
     });
+    setTouchedFields({}); // Reset validation when editing
+    setCurrentStep(1); // Reset to first step
+    setShowProductModal(true); // Open modal for editing
+    setShowToppingsSection(false); // Reset toppings section
   };
 
   // Función para eliminar producto (alias de handleDelete)
@@ -1111,16 +1216,54 @@ function Admin() {
 
   if (dataLoading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-[#051C2C]">
-        <div className="relative flex flex-col items-center">
-          <div className="w-16 h-16 flex items-center justify-center mb-4">
-            <svg className="animate-spin h-12 w-12 text-[#3A7AFF]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          {/* Spinner limpio */}
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            {/* Base */}
+            <div className="absolute inset-0 rounded-full border-4 border-red-100" />
+            {/* Anillo principal */}
+            <motion.div
+              className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+            />
+            {/* Anillo secundario */}
+            <motion.div
+              className="absolute inset-2 rounded-full border-4 border-transparent border-b-red-600"
+              animate={{ rotate: -360 }}
+              transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+            />
+            {/* Centro */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <motion.div
+                className="w-5 h-5 rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg"
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+            </div>
           </div>
-          <div className="mt-2 text-lg font-semibold text-white tracking-wide animate-pulse">Cargando...</div>
-        </div>
+
+          {/* Texto */}
+          <h2 className="text-xl font-bold text-red-600 mb-1">Panel de Administración</h2>
+          <p className="text-slate-600 text-sm font-medium">Cargando...</p>
+
+          {/* Puntos */}
+          <div className="flex justify-center space-x-1.5 mt-4">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-red-500"
+                animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+              />
+            ))}
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -1361,15 +1504,17 @@ function Admin() {
               )}
             </AnimatePresence>
 
-            {/* Subscription Status */}
+            {/* Subscription Status - Aparece en TODAS las secciones cuando está vencida o en período de gracia */}
             {businessConfig && businessConfig._id && (
-              <div className="mb-4 md:mb-6">
+              <div className="mb-6">
                 <SubscriptionStatus 
                   businessId={businessConfig._id}
                   onNavigateToSubscription={() => setActiveTab('subscription')}
+                  compact={false}
                 />
               </div>
             )}
+
             <AnimatePresence mode="wait">
             <motion.div 
                 key={activeTab}
@@ -1381,9 +1526,9 @@ function Admin() {
               >
                 {/* Render Components Based on Active Tab */}
                 
-                {/* Dashboard Principal - Solo visible en móvil */}
+                {/* Dashboard Principal */}
                 {activeTab === 'dashboard' && (
-                  <div className="space-y-6 lg:hidden">{/* Solo en mobile/tablet */}
+                  <div className="space-y-6">
                     {/* Header del Dashboard */}
                     <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-6 md:p-8 text-white">
                       <div className="flex items-center justify-between mb-4">
@@ -1931,339 +2076,508 @@ function Admin() {
                       <span className="font-medium">Volver al inicio</span>
                     </button>
                     
-                    {/* Modern Product Form - Responsive Optimized */}
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                      className="bg-gradient-to-br from-white to-slate-50 rounded-2xl md:rounded-3xl shadow-xl p-4 sm:p-6 md:p-8 border border-slate-200/50 backdrop-blur-sm"
-              >
-                        {/* Form Header - Responsive */}
-                        <div className="mb-6 md:mb-8 text-center">
-                          <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl md:rounded-2xl flex items-center justify-center mx-auto mb-3 md:mb-4 shadow-lg">
-                            <span className="text-xl sm:text-2xl">🍔</span>
+                    {/* Create Product Button */}
+                    <motion.button
+                      onClick={() => {
+                        setShowProductModal(true);
+                        setEditingProduct(null);
+                        setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [] });
+                        setTouchedFields({});
+                        setCurrentStep(1); // Reset to first step
+                        setShowToppingsSection(false);
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full mb-6 bg-gradient-to-r from-orange-500 to-red-500 text-white px-6 py-4 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-3 font-bold text-lg"
+                    >
+                      <span className="text-2xl">🍔</span>
+                      <span>Nuevo Producto</span>
+                      <span className="text-2xl">+</span>
+                    </motion.button>
+
+                    {/* Product Form Modal */}
+                    <AnimatePresence>
+                      {showProductModal && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4"
+                          onClick={() => {
+                            setShowProductModal(false);
+                            setEditingProduct(null);
+                          }}
+                        >
+                          <motion.div
+                            initial={{ scale: 0.95, y: 30, opacity: 0 }}
+                            animate={{ scale: 1, y: 0, opacity: 1 }}
+                            exit={{ scale: 0.95, y: 30, opacity: 0 }}
+                            transition={{ type: "spring", duration: 0.4, bounce: 0.3 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-gradient-to-b from-white to-slate-50 rounded-2xl shadow-2xl border border-slate-200/50 max-w-4xl w-full h-[95vh] overflow-hidden flex flex-col"
+                          >
+                        {/* Modal Header with Close Button */}
+                        <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 px-6 py-4 shadow-lg relative overflow-hidden flex-shrink-0">
+                          <div className="absolute inset-0 bg-white/10 backdrop-blur-sm"></div>
+                          <div className="relative flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <motion.div 
+                                initial={{ rotate: -10, scale: 0.9 }}
+                                animate={{ rotate: 0, scale: 1 }}
+                                transition={{ type: "spring", delay: 0.1 }}
+                                className="w-7 h-7 bg-white/25 rounded-lg flex items-center justify-center shadow-lg backdrop-blur-sm border border-white/30"
+                              >
+                                <span className="text-base">{editingProduct ? '✏️' : '🍔'}</span>
+                              </motion.div>
+                              <div>
+                                <h2 className="text-lg font-bold text-white drop-shadow-sm">
+                                  {editingProduct ? 'Editar Producto' : 'Crear Producto'}
+                                </h2>
+                              </div>
+                            </div>
+                            <motion.button
+                              whileHover={{ scale: 1.1, rotate: 90 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={() => {
+                                setShowProductModal(false);
+                                setEditingProduct(null);
+                                setCurrentStep(1); // Reset wizard
+                              }}
+                              className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 transition-colors text-white shadow-lg backdrop-blur-sm border border-white/30"
+                            >
+                              <span className="text-base font-light">×</span>
+                            </motion.button>
                           </div>
-                          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-2">
-                            {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
-                          </h2>
-                          <p className="text-slate-600 text-sm sm:text-base">
-                            {editingProduct ? 'Actualiza la información del producto' : 'Agrega un nuevo producto a tu menú'}
-                          </p>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-6 md:space-y-8">
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-                            {/* Left Column */}
-                            <div className="space-y-4 md:space-y-6">
-                              {/* Product Name - Responsive */}
-                              <div className="group">
-                                <label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 mb-2 md:mb-3">
-                                  <span className="mr-2">🏷️</span>
-                        Nombre del Producto
-                      </label>
-                                <div className="relative">
-                      <input
-                        name="name"
-                        value={form.name}
-                        onChange={handleChange}
-                                    className={`w-full rounded-xl md:rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-4 md:px-6 py-3 md:py-4 text-base md:text-lg transition-all duration-200 group-hover:border-slate-300 ${
-                                      !form.name.trim() ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
-                                    }`}
-                                    placeholder="Ej: Hamburguesa Clásica"
-                        required
-                      />
-                                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 md:pr-4">
-                                    <span className="text-slate-400">✨</span>
-                                  </div>
+                        {/* Step Indicator */}
+                        <div className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 flex-shrink-0">
+                          {[
+                            { num: 1, label: 'Info Básica', icon: '📋' },
+                            { num: 2, label: 'Precio e Imagen', icon: '💵' },
+                            { num: 3, label: 'Extras', icon: '🍟' }
+                          ].map((step, idx) => (
+                            <div key={step.num} className="flex items-center gap-2">
+                              <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+                                  currentStep === step.num
+                                    ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md scale-105'
+                                    : currentStep > step.num
+                                    ? 'bg-green-500 text-white shadow-sm'
+                                    : 'bg-white text-slate-400 border border-slate-200'
+                                }`}
+                              >
+                                <span className="text-xs">{step.icon}</span>
+                                <span className="text-[11px] font-semibold hidden sm:inline">{step.label}</span>
+                                <span className={`text-[10px] font-bold ${
+                                  currentStep >= step.num ? 'opacity-100' : 'opacity-50'
+                                }`}>
+                                  {currentStep > step.num ? '✓' : step.num}
+                                </span>
+                              </motion.div>
+                              {idx < 2 && (
+                                <div className={`h-0.5 w-8 transition-all ${
+                                  currentStep > step.num ? 'bg-green-500' : 'bg-slate-200'
+                                }`}></div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
+                          <div className="p-4 space-y-3">
+                            
+                            {/* PASO 1: Información Básica */}
+                            {currentStep === 1 && (
+                              <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-3"
+                              >
+                                <div className="text-center mb-3">
+                                  <h3 className="text-lg font-bold text-slate-800 mb-1">📋 Información Básica</h3>
+                                  <p className="text-sm text-slate-600">Completa los datos principales del producto</p>
                                 </div>
-                                {!form.name.trim() && (
-                                  <p className="text-red-500 text-xs sm:text-sm mt-1 flex items-center">
-                                    <span className="mr-1">⚠️</span>
-                                    El nombre es obligatorio
-                                  </p>
-                                )}
-                              </div>
 
-                              {/* Description - Responsive */}
-                              <div className="group">
-                                <label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 mb-2 md:mb-3">
-                                  <span className="mr-2">📝</span>
-                        Descripción
-                      </label>
-                      <textarea
-                        name="description"
-                        value={form.description}
-                        onChange={handleChange}
-                                  rows="4"
-                                  className="w-full rounded-xl md:rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-4 md:px-6 py-3 md:py-4 text-sm md:text-base transition-all duration-200 group-hover:border-slate-300 resize-none"
-                                  placeholder="Describe tu producto de manera atractiva..."
-                      ></textarea>
-                    </div>
-
-                              {/* Price and Category Row - Responsive Stack */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-                                {/* Price - Responsive */}
-                                <div className="group">
-                                  <label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 mb-2 md:mb-3">
-                                    <span className="mr-2">💰</span>
-                        Precio
-                      </label>
-                                  <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 md:pl-4">
-                                      <span className="text-slate-500 font-medium text-sm md:text-base">$</span>
-                                    </div>
-                        <input
-                          name="price"
-                        type="text"
-                          value={form.price}
-                          onChange={handlePriceChange}
-                                      className={`w-full rounded-xl md:rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-10 md:pl-12 pr-4 md:pr-6 py-3 md:py-4 text-base md:text-lg font-semibold transition-all duration-200 group-hover:border-slate-300 ${
-                                        !form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, ''))) ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
-                                      }`}
-                          placeholder="29.000"
-                          required
-                        />
-                    </div>
-                                  {(!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, '')))) && (
-                                    <p className="text-red-500 text-xs sm:text-sm mt-1 flex items-center">
-                                      <span className="mr-1">⚠️</span>
-                                      El precio debe ser mayor a 0
-                                    </p>
+                                {/* Product Name */}
+                                <div className="space-y-1">
+                                  <label className="flex items-center text-sm font-semibold text-slate-700">
+                                    <span className="mr-2">🏷️</span>
+                                    Nombre del Producto*
+                                  </label>
+                                  <input
+                                    ref={nameInputRef}
+                                    name="name"
+                                    value={form.name}
+                                    onChange={handleChange}
+                                    onBlur={() => handleBlur('name')}
+                                    className={`w-full rounded-lg border-2 bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-900 placeholder-slate-400 px-3 py-2 text-sm transition-all ${
+                                      touchedFields.name && !form.name.trim() ? 'border-red-400 bg-red-50/50' : 'border-slate-200'
+                                    }`}
+                                    placeholder="Ej: Hamburguesa Clásica, Pizza Margarita..."
+                                    required
+                                  />
+                                  {touchedFields.name && !form.name.trim() && (
+                                    <motion.p 
+                                      initial={{ opacity: 0, y: -5 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className="text-red-600 text-sm flex items-center gap-2 font-medium"
+                                    >
+                                      <span>⚠️</span>
+                                      Este campo es obligatorio
+                                    </motion.p>
                                   )}
                                 </div>
 
-                                {/* Category - Responsive */}
-                                <div className="group">
-                                  <label className="flex items-center text-xs sm:text-sm font-semibold text-slate-700 mb-2 md:mb-3">
-                                    <span className="mr-2">📂</span>
-                        Categoría
-                      </label>
-                      <select
-                        name="category"
-                        value={form.category}
-                        onChange={handleChange}
-                                    className={`w-full rounded-xl md:rounded-2xl border-2 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 px-4 md:px-6 py-3 md:py-4 text-sm md:text-base transition-all duration-200 group-hover:border-slate-300 ${
-                                      !form.category ? 'border-red-300 bg-red-50/50' : 'border-slate-200'
-                                    }`}
-                      >
-                        <option value="">Selecciona una categoría *</option>
-                        {categories.map(category => (
-                          <option key={category._id} value={category._id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </select>
-                      {!form.category && (
-                        <p className="text-red-500 text-sm mt-1 flex items-center">
-                          <span className="mr-1">⚠️</span>
-                          La categoría es obligatoria
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                            </div>
-
-                            {/* Right Column */}
-                            <div className="space-y-6">
-                              {/* Image URL */}
-                              <div className="group">
-                                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                                  <span className="mr-2">🖼️</span>
-                                  Imagen del Producto
-                      </label>
-                        <input
-                          name="image"
-                          value={form.image}
-                          onChange={handleChange}
-                                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
-                        placeholder="https://ejemplo.com/imagen.jpg"
-                        />
-                      </div>
-
-                              {/* Image Preview */}
-                    {form.image && (
-                                <motion.div 
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  className="group"
-                                >
-                                  <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                                    <span className="mr-2">👀</span>
-                                    Vista Previa
+                                {/* Description */}
+                                <div className="space-y-1">
+                                  <label className="flex items-center text-sm font-semibold text-slate-700">
+                                    <span className="mr-2">📝</span>
+                                    Descripción
                                   </label>
-                                  <div className="relative w-full h-48 rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-100 shadow-lg">
-                          <img
-                            src={form.image}
-                            alt="Vista previa"
-                                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                            onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        e.target.nextSibling.style.display = 'flex';
-                            }}
-                          />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                    <div style={{ display: 'none' }} className="w-full h-full flex items-center justify-center">
-                                      <span className="text-4xl">🖼️</span>
-                        </div>
-                      </div>
-                                </motion.div>
-                              )}
-
-                              {/* Toppings */}
-                              <div className="group">
-                                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                                  <span className="mr-2">🧀</span>
-                                  Extras Disponibles
-                                </label>
-                                <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-slate-200 p-4">
-                                  <ProductFormToppingSelector 
-                                    toppingGroups={toppingGroups} 
-                                    selectedToppings={form.toppingGroups} 
-                                    onChange={handleToppingGroupsChange}
-                                  />
+                                  <textarea
+                                    name="description"
+                                    value={form.description}
+                                    onChange={handleChange}
+                                    rows="2"
+                                    className="w-full rounded-lg border-2 border-slate-200 bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-900 placeholder-slate-400 px-3 py-2 text-sm transition-all resize-none"
+                                    placeholder="Describe tu producto de forma atractiva..."
+                                  ></textarea>
                                 </div>
-                              </div>
 
-                              {/* Reordenamiento de Toppings */}
-                              {form.toppingGroups && form.toppingGroups.length > 0 && (
-                                <div className="group">
-                                  <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                                    <span className="mr-2">🔄</span>
-                                    Orden de los Extras
+                                {/* Category */}
+                                <div className="space-y-1">
+                                  <label className="flex items-center text-sm font-semibold text-slate-700">
+                                    <span className="mr-2">📂</span>
+                                    Categoría*
                                   </label>
-                                  <div className="bg-white/60 backdrop-blur-sm rounded-2xl border-2 border-slate-200 p-4">
-                                    <ProductToppingOrderSelector 
-                                      selectedToppings={form.toppingGroups} 
-                                      onChange={handleToppingGroupsChange}
+                                  <select
+                                    name="category"
+                                    value={form.category}
+                                    onChange={handleChange}
+                                    onBlur={() => handleBlur('category')}
+                                    className={`w-full rounded-lg border-2 bg-white focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-900 px-3 py-2 text-sm transition-all cursor-pointer appearance-none bg-no-repeat bg-right pr-10 ${
+                                      touchedFields.category && !form.category ? 'border-red-400 bg-red-50/50' : 'border-slate-200'
+                                    }`}
+                                    style={{
+                                      backgroundImage: "url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e')",
+                                      backgroundPosition: 'right 1rem center',
+                                      backgroundSize: '1.5rem 1.5rem'
+                                    }}
+                                  >
+                                    <option value="">Seleccionar categoría...</option>
+                                    {categories.map(category => (
+                                      <option key={category._id} value={category._id}>
+                                        {category.name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {touchedFields.category && !form.category && (
+                                    <motion.p 
+                                      initial={{ opacity: 0, y: -5 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className="text-red-600 text-sm flex items-center gap-2 font-medium"
+                                    >
+                                      <span>⚠️</span>
+                                      Selecciona una categoría
+                                    </motion.p>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+
+                            {/* PASO 2: Precio e Imagen */}
+                            {currentStep === 2 && (
+                              <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-6"
+                              >
+                                <div className="text-center mb-8">
+                                  <h3 className="text-2xl font-bold text-slate-800 mb-2">💵 Precio e Imagen</h3>
+                                  <p className="text-slate-600">Define el precio y añade una imagen atractiva</p>
+                                </div>
+
+                                {/* Precio */}
+                                <div className="space-y-2">
+                                  <label className="flex items-center text-sm font-semibold text-slate-700">
+                                    <span className="mr-2">💰</span>
+                                    Precio*
+                                  </label>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-4">
+                                      <span className="text-slate-600 font-bold text-lg">$</span>
+                                    </div>
+                                    <input
+                                      ref={priceInputRef}
+                                      name="price"
+                                      type="text"
+                                      value={form.price}
+                                      onChange={handlePriceChange}
+                                      onBlur={() => handleBlur('price')}
+                                      className={`w-full rounded-xl border-2 bg-white focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 text-slate-900 placeholder-slate-400 pl-12 pr-4 py-3 text-base font-bold transition-all shadow-sm hover:shadow-md ${
+                                        touchedFields.price && (!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, '')))) ? 'border-red-400 bg-red-50/50' : 'border-slate-200'
+                                      }`}
+                                      placeholder="29.000"
+                                      required
                                     />
                                   </div>
+                                  {touchedFields.price && (!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0 || isNaN(parseFloat(form.price.replace(/\./g, '')))) && (
+                                    <motion.p 
+                                      initial={{ opacity: 0, y: -5 }}
+                                      animate={{ opacity: 1, y: 0 }}
+                                      className="text-red-600 text-sm flex items-center gap-2 font-medium"
+                                    >
+                                      <span>⚠️</span>
+                                      Precio inválido
+                                    </motion.p>
+                                  )}
                                 </div>
-                              )}
-                            </div>
+
+                                {/* Imagen URL */}
+                                <div className="space-y-2">
+                                  <label className="flex items-center text-sm font-semibold text-slate-700">
+                                    <span className="mr-2">🔗</span>
+                                    URL de Imagen
+                                  </label>
+                                  <input
+                                    name="image"
+                                    value={form.image}
+                                    onChange={handleChange}
+                                    className="w-full rounded-xl border-2 border-slate-200 bg-white focus:ring-4 focus:ring-orange-500/20 focus:border-orange-500 text-slate-900 placeholder-slate-400 px-4 py-3 text-base transition-all"
+                                    placeholder="https://ejemplo.com/imagen-producto.jpg"
+                                  />
+                                </div>
+
+                                {/* Image Preview */}
+                                {form.image && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    transition={{ type: "spring", duration: 0.4 }}
+                                    className="relative w-full h-64 rounded-xl overflow-hidden border-2 border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100"
+                                  >
+                                    <img
+                                      src={form.image}
+                                      alt="Preview"
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        e.target.nextSibling.style.display = 'flex';
+                                      }}
+                                    />
+                                    <div style={{ display: 'none' }} className="w-full h-full flex flex-col items-center justify-center bg-slate-100">
+                                      <span className="text-6xl mb-3">🖼️</span>
+                                      <span className="text-base text-slate-500 font-medium">No se pudo cargar la imagen</span>
+                                    </div>
+                                    <div className="absolute top-3 right-3 bg-green-500/90 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg">
+                                      ✓ Vista previa
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </motion.div>
+                            )}
+
+                            {/* PASO 3: Extras/Toppings */}
+                            {currentStep === 3 && (
+                              <motion.div
+                                initial={{ opacity: 0, x: 20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -20 }}
+                                className="space-y-6"
+                              >
+                                <div className="text-center mb-8">
+                                  <h3 className="text-2xl font-bold text-slate-800 mb-2">🍟 Extras Opcionales</h3>
+                                  <p className="text-slate-600">Selecciona los complementos que se pueden agregar</p>
+                                </div>
+
+                                <div ref={toppingsSectionRef} className="bg-white rounded-xl border-2 border-slate-200 overflow-hidden shadow-sm">
+                                  <motion.button
+                                    type="button"
+                                    onClick={() => setShowToppingsSection(!showToppingsSection)}
+                                    whileHover={{ backgroundColor: 'rgb(248 250 252)' }}
+                                    whileTap={{ scale: 0.99 }}
+                                    className="w-full flex items-center justify-between px-5 py-4 bg-white transition-colors"
+                                  >
+                                    <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                                        <span className="text-2xl">🧀</span>
+                                      </div>
+                                      <div className="text-left">
+                                        <span className="text-base font-bold text-slate-800 block">Extras Disponibles</span>
+                                        <span className="text-sm text-slate-500">Agrega complementos opcionales al producto</span>
+                                      </div>
+                                      {form.toppingGroups && form.toppingGroups.length > 0 && (
+                                        <motion.span 
+                                          initial={{ scale: 0 }}
+                                          animate={{ scale: 1 }}
+                                          className="bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm px-3 py-1.5 rounded-full font-bold shadow-md"
+                                        >
+                                          {form.toppingGroups.length} seleccionados
+                                        </motion.span>
+                                      )}
+                                    </div>
+                                    <motion.svg 
+                                      animate={{ rotate: showToppingsSection ? 180 : 0 }}
+                                      transition={{ duration: 0.3 }}
+                                      className="w-6 h-6 text-slate-600"
+                                      fill="none" 
+                                      stroke="currentColor" 
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                    </motion.svg>
+                                  </motion.button>
+                                  
+                                  <AnimatePresence>
+                                    {showToppingsSection && (
+                                      <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="border-t-2 border-slate-200"
+                                      >
+                                        <div className="p-6 bg-slate-50/50 space-y-5">
+                                          <ProductFormToppingSelector 
+                                            toppingGroups={toppingGroups} 
+                                            selectedToppings={form.toppingGroups} 
+                                            onChange={handleToppingGroupsChange}
+                                          />
+                                          
+                                          {/* Reordenamiento de Toppings */}
+                                          {form.toppingGroups && form.toppingGroups.length > 0 && (
+                                            <div className="pt-5 border-t-2 border-slate-200">
+                                              <div className="flex items-center gap-3 mb-4">
+                                                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                                                  <span className="text-lg">🔄</span>
+                                                </div>
+                                                <div>
+                                                  <span className="text-base font-bold text-slate-800 block">Orden de Extras</span>
+                                                  <span className="text-sm text-slate-500">Arrastra para reordenar</span>
+                                                </div>
+                                              </div>
+                                              <ProductToppingOrderSelector 
+                                                selectedToppings={form.toppingGroups} 
+                                                onChange={handleToppingGroupsChange}
+                                              />
+                                            </div>
+                                          )}
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+                                </div>
+
+                                {(!form.toppingGroups || form.toppingGroups.length === 0) && !showToppingsSection && (
+                                  <div className="text-center py-8 text-slate-500">
+                                    <p className="text-sm">No se han seleccionado extras. Haz clic arriba para agregar.</p>
+                                    <p className="text-xs mt-1">Esto es opcional - puedes continuar sin extras.</p>
+                                  </div>
+                                )}
+                              </motion.div>
+                            )}
                           </div>
+                        </form>
                           
-                          {/* Action Buttons - Responsive */}
-                          <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 pt-6 md:pt-8 border-t border-slate-200">
-                            {editingProduct && (
+                        {/* Wizard Navigation - Sticky Footer */}
+                        <div className="border-t border-slate-200 bg-white p-4 shadow-lg flex-shrink-0">
+                          <div className="flex gap-3">
+                            {/* Botón Anterior (solo en pasos 2 y 3) */}
+                            {currentStep > 1 && (
                               <motion.button
-                      type="button"
+                                type="button"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setCurrentStep(prev => prev - 1)}
+                                className="flex-1 px-4 py-2 border-2 border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-all font-semibold flex items-center justify-center gap-2 text-sm"
+                              >
+                                <span className="text-xl">←</span>
+                                <span>Anterior</span>
+                              </motion.button>
+                            )}
+
+                            {/* Botón Cancelar (solo cuando está editando y en paso 1) */}
+                            {editingProduct && currentStep === 1 && (
+                              <motion.button
+                                type="button"
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => {
                                   setEditingProduct(null);
                                   setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [] });
+                                  setTouchedFields({});
+                                  setCurrentStep(1);
+                                  setShowToppingsSection(false);
+                                  setShowProductModal(false);
                                 }}
-                                className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 border-2 border-slate-300 text-slate-700 rounded-xl md:rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center justify-center space-x-2 shadow-lg text-sm md:text-base"
+                                className="flex-1 px-5 py-3 border-2 border-red-300 text-red-700 rounded-xl hover:bg-red-50 hover:border-red-400 transition-all font-semibold flex items-center justify-center gap-2 text-base"
                               >
-                                <span>❌</span>
+                                <span className="text-xl">❌</span>
                                 <span>Cancelar</span>
                               </motion.button>
                             )}
-                            <motion.button
-                    type="submit"
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              className="w-full sm:w-auto px-6 md:px-8 py-3 md:py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl md:rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 font-semibold shadow-xl flex items-center justify-center space-x-2 text-sm md:text-base"
-                  >
-                              <span>{editingProduct ? '✏️' : '✨'}</span>
-                              <span>{editingProduct ? 'Actualizar Producto' : 'Crear Producto'}</span>
-                            </motion.button>
-                </div>
-                        </form>
-              </motion.div>
-
-              {/* Sección de Productos Destacados */}
-              {(() => {
-                const featuredProducts = Array.isArray(products) 
-                  ? products.filter(p => p.isFeatured).sort((a, b) => (a.featuredOrder || 0) - (b.featuredOrder || 0))
-                  : [];
-                
-                if (featuredProducts.length === 0) return null;
-
-                return (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-xl border-2 border-yellow-200 p-6 mb-8"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-yellow-400 p-2 rounded-lg">
-                          <span className="text-2xl">⭐</span>
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-800">Productos Destacados</h3>
-                          <p className="text-sm text-gray-600">{featuredProducts.length} de 5 productos (Máximo permitido)</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 space-y-2">
-                      {featuredProducts.map((product, index) => (
-                        <motion.div
-                          key={product._id}
-                          className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border border-gray-200"
-                          whileHover={{ x: 4 }}
-                        >
-                          <div className="flex items-center gap-2 flex-1">
-                            <span className="text-2xl font-bold text-yellow-600 w-8 text-center">
-                              {index + 1}
-                            </span>
-                            {product.image && (
-                              <img 
-                                src={product.image} 
-                                alt={product.name}
-                                className="w-12 h-12 object-cover rounded-lg"
-                              />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 truncate">{product.name}</p>
-                              <p className="text-sm text-gray-500">${product.price.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            {index > 0 && (
-                              <button
+                            
+                            {/* Botón Siguiente (pasos 1 y 2) o Crear/Actualizar (paso 3) */}
+                            {currentStep < 3 ? (
+                              <motion.button
+                                type="button"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() => {
-                                  const newOrder = [...featuredProducts];
-                                  [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
-                                  handleReorderFeatured(newOrder);
+                                  // Validar paso actual antes de avanzar
+                                  if (currentStep === 1) {
+                                    if (!form.name.trim() || !form.category) {
+                                      // Marcar campos como tocados para mostrar errores
+                                      setTouchedFields(prev => ({ ...prev, name: true, category: true }));
+                                      return;
+                                    }
+                                  } else if (currentStep === 2) {
+                                    if (!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0) {
+                                      setTouchedFields(prev => ({ ...prev, price: true }));
+                                      return;
+                                    }
+                                  }
+                                  setCurrentStep(prev => prev + 1);
                                 }}
-                                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                                title="Subir"
+                                className="flex-1 px-5 py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl hover:from-orange-600 hover:to-red-600 transition-all font-semibold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-base"
                               >
-                                ⬆️
-                              </button>
-                            )}
-                            {index < featuredProducts.length - 1 && (
-                              <button
-                                onClick={() => {
-                                  const newOrder = [...featuredProducts];
-                                  [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
-                                  handleReorderFeatured(newOrder);
+                                <span>Siguiente</span>
+                                <span className="text-xl">→</span>
+                              </motion.button>
+                            ) : (
+                              <motion.button
+                                type="button"
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  const modalContent = e.target.closest('.bg-gradient-to-b');
+                                  const formElement = modalContent.querySelector('form');
+                                  if (formElement) {
+                                    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                                    formElement.dispatchEvent(submitEvent);
+                                  }
                                 }}
-                                className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-                                title="Bajar"
+                                className="flex-1 px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 transition-all font-semibold shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-base"
                               >
-                                ⬇️
-                              </button>
+                                <span>{editingProduct ? '✏️' : '✨'}</span>
+                                <span>{editingProduct ? 'Actualizar Producto' : 'Crear Producto'}</span>
+                              </motion.button>
                             )}
-                            <button
-                              onClick={() => handleToggleFeatured(product._id)}
-                              className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
-                              title="Quitar de destacados"
-                            >
-                              ❌
-                            </button>
                           </div>
+                        </div>
+                          </motion.div>
                         </motion.div>
-                      ))}
-                    </div>
-                  </motion.div>
-                );
-              })()}
-              
-                    {/* Modern Products Grid - Responsive Optimized */}
+                      )}
+                    </AnimatePresence>
+
+              {/* Modern Products Grid - Responsive Optimized */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                       {(() => {
                         console.log('Render - Tipo de products:', typeof products, products);
@@ -2333,72 +2647,73 @@ function Admin() {
                           </div>
 
                           {/* Product Info */}
-                          <div className="p-3 sm:p-4 flex-grow flex flex-col">
-                            <div className="mb-3 sm:mb-4 flex-grow">
-                              <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
-                                {product.name}
-                              </h3>
-                              <p className="text-xs sm:text-sm text-gray-600 leading-relaxed min-h-[50px] sm:min-h-[60px] line-clamp-3">
-                                {product.description}
-                              </p>
-                            </div>
+                          <div className="p-4 flex-grow flex flex-col">
+                            {/* Product Name */}
+                            <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">
+                              {product.name}
+                            </h3>
+                            
+                            {/* Description */}
+                            <p className="text-sm text-gray-600 leading-relaxed mb-4 line-clamp-2 flex-grow">
+                              {product.description}
+                            </p>
 
-                            {/* Action Buttons - Responsive Touch-Friendly */}
-                            <div className="space-y-2 mt-auto">
-                              {/* Primera fila de botones */}
-                              <div className="flex gap-1.5 sm:gap-2">
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => editProduct(product)}
-                                  className="flex-1 bg-blue-500 text-white px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium hover:bg-blue-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px]"
-                                  title="Editar producto"
-                                >
-                                  <span className="text-sm sm:text-base">✏️</span>
-                                  <span className="truncate hidden xs:inline">Editar</span>
-                                </motion.button>
-                                
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => handleToggleProduct(product._id)}
-                                  className={`flex-1 px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px] ${
-                                    product.active !== false
-                                      ? 'bg-orange-500 text-white hover:bg-orange-600'
-                                      : 'bg-green-500 text-white hover:bg-green-600'
-                                  }`}
-                                  title={product.active !== false ? 'Desactivar producto' : 'Activar producto'}
-                                >
-                                  <span className="text-sm sm:text-base">{product.active !== false ? '👁️‍🗨️' : '👁️'}</span>
-                                  <span className="truncate hidden xs:inline">{product.active !== false ? 'Apagar' : 'Encender'}</span>
-                                </motion.button>
-                                
-                                <motion.button
-                                  whileHover={{ scale: 1.02 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => deleteProduct(product._id)}
-                                  className="flex-1 bg-red-500 text-white px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-w-0 min-h-[44px]"
-                                  title="Eliminar producto"
-                                >
-                                  <span className="text-sm sm:text-base">🗑️</span>
-                                  <span className="truncate hidden xs:inline">Eliminar</span>
-                                </motion.button>
-                              </div>
-                              
-                              {/* Segunda fila - Botón destacado */}
+                            {/* Action Buttons - Improved Layout */}
+                            <div className="grid grid-cols-2 gap-2 mt-auto">
+                              {/* Editar */}
                               <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => editProduct(product)}
+                                className="bg-blue-500 text-white px-3 py-2.5 rounded-lg font-semibold hover:bg-blue-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                                title="Editar producto"
+                              >
+                                <span className="text-base">✏️</span>
+                                <span className="text-sm">Editar</span>
+                              </motion.button>
+                              
+                              {/* Toggle Activo/Inactivo */}
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleToggleProduct(product._id)}
+                                className={`px-3 py-2.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 ${
+                                  product.active !== false
+                                    ? 'bg-orange-500 text-white hover:bg-orange-600'
+                                    : 'bg-green-500 text-white hover:bg-green-600'
+                                }`}
+                                title={product.active !== false ? 'Desactivar' : 'Activar'}
+                              >
+                                <span className="text-base">{product.active !== false ? '⏸️' : '▶️'}</span>
+                                <span className="text-sm">{product.active !== false ? 'Pausar' : 'Activar'}</span>
+                              </motion.button>
+                              
+                              {/* Eliminar */}
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => deleteProduct(product._id)}
+                                className="bg-red-500 text-white px-3 py-2.5 rounded-lg font-semibold hover:bg-red-600 transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+                                title="Eliminar producto"
+                              >
+                                <span className="text-base">🗑️</span>
+                                <span className="text-sm">Eliminar</span>
+                              </motion.button>
+                              
+                              {/* Destacar - Full width */}
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => handleToggleFeatured(product._id)}
-                                className={`w-full px-2 sm:px-3 py-2.5 sm:py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm min-h-[44px] ${
+                                className={`px-3 py-2.5 rounded-lg font-semibold transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 ${
                                   product.isFeatured
                                     ? 'bg-yellow-400 text-yellow-900 hover:bg-yellow-500'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                                 }`}
-                                title={product.isFeatured ? 'Quitar de destacados' : 'Marcar como destacado'}
+                                title={product.isFeatured ? 'Quitar destacado' : 'Destacar'}
                               >
-                                <span className="text-sm sm:text-base">⭐</span>
-                                <span className="truncate">{product.isFeatured ? 'Quitar Destacado' : 'Destacar Producto'}</span>
+                                <span className="text-base">⭐</span>
+                                <span className="text-sm">{product.isFeatured ? 'Destacado' : 'Destacar'}</span>
                               </motion.button>
                             </div>
                           </div>
@@ -2427,6 +2742,93 @@ function Admin() {
                 </svg>
                 <span className="font-medium">Volver al inicio</span>
               </button>
+
+              {/* Sección de Productos Destacados */}
+              {(() => {
+                const featuredProducts = Array.isArray(products) 
+                  ? products.filter(p => p.isFeatured).sort((a, b) => (a.featuredOrder || 0) - (b.featuredOrder || 0))
+                  : [];
+
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-2xl shadow-xl border-2 border-yellow-200 p-6"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-yellow-400 p-2 rounded-lg">
+                          <span className="text-2xl">⭐</span>
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-800">Productos Destacados</h3>
+                          <p className="text-sm text-gray-600">
+                            Arrastra y suelta para cambiar el orden • {featuredProducts.length} de 5 productos
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {featuredProducts.length === 0 ? (
+                      <div className="bg-white/60 backdrop-blur-sm rounded-xl p-8 text-center">
+                        <div className="text-6xl mb-4">⭐</div>
+                        <p className="text-gray-600 font-medium">No hay productos destacados</p>
+                        <p className="text-sm text-gray-500 mt-2">Ve a la sección de productos y marca hasta 5 productos como destacados</p>
+                      </div>
+                    ) : (
+                      <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 space-y-2">
+                        {featuredProducts.map((product, index) => (
+                          <motion.div
+                            key={product._id}
+                            draggable
+                            onDragStart={(e) => handleFeaturedDragStart(e, index)}
+                            onDragOver={(e) => handleFeaturedDragOver(e, index, featuredProducts)}
+                            onDragEnd={handleFeaturedDragEnd}
+                            className={`flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm border-2 transition-all ${
+                              draggedFeaturedItem === index 
+                                ? 'border-yellow-400 opacity-50' 
+                                : 'border-gray-200 hover:border-yellow-300'
+                            } cursor-move`}
+                            whileHover={{ scale: 1.02 }}
+                          >
+                            {/* Drag Handle */}
+                            <div className="text-gray-400 hover:text-yellow-500 transition-colors cursor-grab active:cursor-grabbing">
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M7 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 2zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 7 14zm6-8a2 2 0 1 0-.001-4.001A2 2 0 0 0 13 6zm0 2a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 8zm0 6a2 2 0 1 0 .001 4.001A2 2 0 0 0 13 14z"></path>
+                              </svg>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-2xl font-bold text-yellow-600 w-8 text-center">
+                                {index + 1}
+                              </span>
+                              {product.image && (
+                                <img 
+                                  src={product.image} 
+                                  alt={product.name}
+                                  className="w-12 h-12 object-cover rounded-lg"
+                                />
+                              )}
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-800 truncate">{product.name}</p>
+                                <p className="text-sm text-gray-500">${product.price.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            
+                            <button
+                              onClick={() => handleToggleFeatured(product._id)}
+                              className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition-colors"
+                              title="Quitar de destacados"
+                            >
+                              ❌
+                            </button>
+                          </motion.div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })()}
               
               <ProductOrderSelector 
                 products={products}
@@ -2470,33 +2872,95 @@ function Admin() {
         </div>
       </div>
 
-      {/* Success Message Banner - Responsive */}
-          {successMessage && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="fixed top-16 sm:top-20 left-1/2 transform -translate-x-1/2 p-2 sm:p-3 bg-green-500/20 text-green-300 text-xs sm:text-sm rounded-lg border border-green-500/30 z-50 max-w-[90vw] sm:max-w-md mx-auto"
-            >
-              <div className="flex items-center justify-center gap-2">
-                <span className="hidden sm:inline">✅</span>
-                <span className="text-center">{successMessage}</span>
-              </div>
-            </motion.div>
-          )}
+      {/* Success Message Toast - Improved UX */}
+          <AnimatePresence>
+            {successMessage && (
+              <motion.div 
+                initial={{ opacity: 0, x: 100, scale: 0.8 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 100, scale: 0.8 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="fixed top-20 right-4 sm:right-6 z-50 max-w-[90vw] sm:max-w-md"
+              >
+                <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl shadow-2xl overflow-hidden">
+                  <div className="p-4 flex items-center gap-3">
+                    {/* Icon Container */}
+                    <div className="flex-shrink-0 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">✅</span>
+                    </div>
+                    
+                    {/* Message */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm sm:text-base leading-tight">
+                        {successMessage}
+                      </p>
+                    </div>
+                    
+                    {/* Close button */}
+                    <button
+                      onClick={() => setSuccessMessage('')}
+                      className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+                    >
+                      <span className="text-lg">×</span>
+                    </button>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <motion.div
+                    initial={{ width: "100%" }}
+                    animate={{ width: "0%" }}
+                    transition={{ duration: 3, ease: "linear" }}
+                    className="h-1 bg-white/30"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-      {/* Error Message Banner - Responsive */}
-          {errorMessage && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="fixed top-16 sm:top-20 left-1/2 transform -translate-x-1/2 p-2 sm:p-3 bg-red-500/20 text-red-300 text-xs sm:text-sm rounded-lg border border-red-500/30 z-50 max-w-[90vw] sm:max-w-md mx-auto"
-            >
-              <div className="flex items-center justify-center gap-2">
-                <span className="hidden sm:inline">⚠️</span>
-                <span className="text-center">{errorMessage}</span>
-              </div>
-            </motion.div>
-          )}
+      {/* Error Message Toast - Improved UX */}
+          <AnimatePresence>
+            {errorMessage && (
+              <motion.div 
+                initial={{ opacity: 0, x: 100, scale: 0.8 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: 100, scale: 0.8 }}
+                transition={{ type: "spring", duration: 0.5 }}
+                className="fixed top-20 right-4 sm:right-6 z-50 max-w-[90vw] sm:max-w-md"
+              >
+                <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl shadow-2xl overflow-hidden">
+                  <div className="p-4 flex items-center gap-3">
+                    {/* Icon Container */}
+                    <div className="flex-shrink-0 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">⚠️</span>
+                    </div>
+                    
+                    {/* Message */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm sm:text-base leading-tight">
+                        {errorMessage}
+                      </p>
+                    </div>
+                    
+                    {/* Close button */}
+                    <button
+                      onClick={() => setErrorMessage('')}
+                      className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+                    >
+                      <span className="text-lg">×</span>
+                    </button>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <motion.div
+                    initial={{ width: "100%" }}
+                    animate={{ width: "0%" }}
+                    transition={{ duration: 3, ease: "linear" }}
+                    className="h-1 bg-white/30"
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           
       {/* Modals */}
           <ConfirmationModal

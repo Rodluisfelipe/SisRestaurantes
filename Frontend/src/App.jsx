@@ -90,8 +90,31 @@ function BusinessProviderWrapper({ children }) {
     >
       <DynamicManifest />
       {loading ? (
-        <div className="min-h-screen bg-[#051C2C] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3A7AFF]"></div>
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="text-center">
+            {/* Spinner limpio */}
+            <div className="relative w-20 h-20 mx-auto mb-6">
+              <div className="absolute inset-0 rounded-full border-4 border-red-100" />
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500 animate-spin" style={{ animationDuration: '0.8s' }} />
+              <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-red-600 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }} />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg animate-pulse" />
+              </div>
+            </div>
+            
+            <h2 className="text-xl font-bold text-red-600 mb-1">MenuBy</h2>
+            <p className="text-slate-600 text-sm font-medium">Cargando...</p>
+            
+            <div className="flex justify-center space-x-1.5 mt-4">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce"
+                  style={{ animationDelay: `${i * 150}ms`, animationDuration: '1s' }}
+                />
+              ))}
+            </div>
+          </div>
         </div>
       ) : children}
     </BusinessProvider>

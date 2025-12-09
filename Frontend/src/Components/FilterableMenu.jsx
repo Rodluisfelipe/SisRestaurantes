@@ -156,7 +156,6 @@ const FilterableMenu = ({
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [viewMode, setViewMode] = useState('grid');
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showToppings, setShowToppings] = useState(false);
   const { businessConfig: businessConfigContext } = useBusinessConfig();
@@ -244,11 +243,6 @@ const FilterableMenu = ({
   // Clear search
   const clearSearch = () => {
     setSearchTerm('');
-  };
-
-  // Toggle view mode
-  const toggleViewMode = (mode) => {
-    setViewMode(mode);
   };
 
   // Handle showing toppings selector
@@ -364,66 +358,7 @@ const FilterableMenu = ({
                 </motion.button>
               )}
             </AnimatePresence>
-            
-            {/* Modern View Mode Toggle */}
-            <div className="absolute inset-y-0 right-0 flex items-center pr-2 sm:pr-3">
-              <div className="flex bg-gradient-to-r from-slate-100 to-slate-200 rounded-lg sm:rounded-xl p-0.5 sm:p-1 shadow-inner">
-                <motion.button
-              onClick={() => toggleViewMode('grid')}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg transition-all duration-200 ${
-                viewMode === 'grid' 
-                      ? 'text-white shadow-lg' 
-                      : 'text-slate-600 hover:bg-white/50'
-                  }`}
-                  style={{
-                    backgroundColor: viewMode === 'grid' ? (businessConfig?.theme?.buttonColor || '#f97316') : 'transparent',
-                    color: viewMode === 'grid' ? (businessConfig?.theme?.buttonTextColor || '#ffffff') : undefined
-                  }}
-                  onMouseEnter={(e) => {
-                    if (viewMode !== 'grid') {
-                      e.target.style.color = businessConfig?.theme?.buttonColor || '#f97316';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (viewMode !== 'grid') {
-                      e.target.style.color = '#475569';
-                    }
-                  }}
-                  aria-label="Vista en cuadrícula"
-                >
-                  <span className="text-sm sm:text-lg">⚏</span>
-                </motion.button>
-                <motion.button
-              onClick={() => toggleViewMode('list')}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg transition-all duration-200 ${
-                viewMode === 'list' 
-                      ? 'text-white shadow-lg' 
-                      : 'text-slate-600 hover:bg-white/50'
-                  }`}
-                  style={{
-                    backgroundColor: viewMode === 'list' ? (businessConfig?.theme?.buttonColor || '#f97316') : 'transparent',
-                    color: viewMode === 'list' ? (businessConfig?.theme?.buttonTextColor || '#ffffff') : undefined
-                  }}
-                  onMouseEnter={(e) => {
-                if (viewMode !== 'list') {
-                      e.target.style.color = businessConfig?.theme?.buttonColor || '#f97316';
-                }
-              }}
-                  onMouseLeave={(e) => {
-                if (viewMode !== 'list') {
-                      e.target.style.color = '#475569';
-                    }
-                  }}
-                  aria-label="Vista en lista"
-                >
-                  <span className="text-sm sm:text-lg">⚏</span>
-                </motion.button>
-              </div>
-          </div>
+
           </motion.div>
         </div>
       </motion.div>
@@ -515,7 +450,6 @@ const FilterableMenu = ({
 
       {/* Modern Products Display */}
       <AnimatePresence mode="wait">
-      {viewMode === 'grid' ? (
           <motion.div
             key="grid"
             initial={{ opacity: 0 }}
@@ -629,91 +563,6 @@ const FilterableMenu = ({
               </motion.div>
             )}
           </motion.div>
-        ) : (
-          // List View
-          <motion.div
-            key="list"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="space-y-2 sm:space-y-4"
-          >
-            {filteredProducts.map((product, index) => (
-              <motion.div
-                key={product._id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                onClick={() => {
-                  // Verificar si la suscripción está suspendida antes de abrir toppings
-                  if (subscriptionStatus === 'suspended') {
-                    return;
-                  }
-                  handleShowToppings(product);
-                }}
-                className={`bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200/50 flex overflow-hidden ${
-                  subscriptionStatus === 'suspended' ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'
-                }`}
-              >
-                {/* Product Image */}
-                <div className="w-16 h-16 sm:w-24 sm:h-24 relative flex-shrink-0">
-                      {product.image ? (
-                        <img 
-                          src={product.image} 
-                          alt={product.name}
-                      className="w-full h-full object-contain"
-                        />
-                      ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-orange-100 to-red-100 flex items-center justify-center">
-                      <span className="text-lg sm:text-2xl opacity-60">🍽️</span>
-                        </div>
-                      )}
-                    </div>
-
-                {/* Product Info */}
-                <div className="p-3 sm:p-4 flex-1 flex justify-between items-center">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm sm:text-lg font-bold text-slate-800 mb-1 leading-tight">{product.name}</h3>
-                    {product.description && (
-                      <p className="text-xs sm:text-sm text-slate-600 line-clamp-1 mb-1 sm:mb-2 hidden sm:block">{product.description}</p>
-                    )}
-                    <span 
-                      className="text-base sm:text-xl font-bold"
-                      style={{
-                        color: businessConfig?.theme?.buttonColor || '#f97316'
-                      }}
-                    >
-                      ${Number(product.price).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                        </span>
-                      </div>
-
-                  <motion.button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Evita que se propague al div padre
-                      handleShowToppings(product);
-                    }}
-                    whileHover={subscriptionStatus !== 'suspended' ? { scale: 1.1 } : {}}
-                    whileTap={subscriptionStatus !== 'suspended' ? { scale: 0.9 } : {}}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 text-white rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg ml-2 sm:ml-4 flex-shrink-0 relative z-10 ${
-                      subscriptionStatus === 'suspended' ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                    style={{
-                      backgroundColor: subscriptionStatus === 'suspended'
-                        ? '#9ca3af'
-                        : (businessConfig?.theme?.buttonColor || '#f97316'),
-                      color: businessConfig?.theme?.buttonTextColor || '#ffffff'
-                    }}
-                    disabled={subscriptionStatus === 'suspended'}
-                    aria-label={subscriptionStatus === 'suspended' ? "Menú desactivado" : "Agregar al carrito"}
-                      >
-                    <span className="text-sm sm:text-lg">➕</span>
-                  </motion.button>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
       </AnimatePresence>
 
       {/* Toppings Selector Modal */}

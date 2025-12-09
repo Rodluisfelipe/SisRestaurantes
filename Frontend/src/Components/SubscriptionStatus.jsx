@@ -6,7 +6,7 @@ import api from '../services/api';
 import { useAuth } from '../Context/AuthContext';
 import { useBusinessSocket } from '../hooks/useBusinessSocket';
 
-const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
+const SubscriptionStatus = ({ businessId, onNavigateToSubscription, compact = false }) => {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -271,6 +271,33 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
   const isInGracePeriod = currentStatus === 'grace';
   const isActive = currentStatus === 'active';
   
+  // Debug: Log para verificar el estado
+  console.log('SubscriptionStatus Debug:', {
+    compact,
+    currentStatus,
+    isActive,
+    isInGracePeriod,
+    isExpired,
+    periodEnd,
+    graceUntil,
+    now: now.toISOString(),
+    subscription
+  });
+  
+  // En modo compacto (sidebar), solo mostrar si está activa
+  if (compact && !isActive) {
+    console.log('Ocultando en modo compacto porque no está activa');
+    return null;
+  }
+  
+  // En modo normal/completo (dashboard), solo mostrar si está vencida o en período de gracia
+  if (!compact && isActive) {
+    console.log('Ocultando en modo normal porque está activa');
+    return null;
+  }
+  
+  console.log('Mostrando componente:', compact ? 'COMPACTO' : 'COMPLETO');
+  
   // Calcular días restantes de gracia (normalizando fechas para comparar solo días)
   let graceDaysRemaining = 0;
   
@@ -297,23 +324,61 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
     graceDaysRemaining = subscription.graceDaysRemaining;
   }
 
-      return (
+  // Versión compacta para sidebar (solo cuando está activa)
+  if (compact) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-green-200"
+      >
+        <div className="flex items-center space-x-3">
+          <div className="text-2xl sm:text-3xl">
+            {getPlanIcon(subscription.planType)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2">
+              <h3 className="text-sm sm:text-base font-bold text-gray-800">
+                {getPlanText(subscription.planType)}
+              </h3>
+              {subscription.planType === 'annual' && (
+                <FaCrown className="text-yellow-500 text-sm" />
+              )}
+            </div>
+            <p className="text-xs sm:text-sm font-medium text-green-600">
+              Activo
+            </p>
+            <p className="text-gray-600 text-xs truncate">
+              ${subscription.price?.toLocaleString('es-CO') || '0'} COP
+            </p>
+          </div>
+          <div className="text-green-600">
+            <FaCalendarAlt className="text-lg sm:text-xl" />
+            <p className="text-[10px] sm:text-xs font-medium text-center">
+              {subscription.daysRemaining > 0 ? `${subscription.daysRemaining}d` : 'OK'}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Versión completa para dashboard (solo cuando está vencida o en período de gracia)
+  return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ 
-          opacity: (isExpired || isInGracePeriod) ? [1, 0.9, 1] : 1,
+          opacity: [1, 0.9, 1],
           y: 0
         }}
-        transition={
-          (isExpired || isInGracePeriod) ? {
-            opacity: {
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }
-          } : {}
-        }
-        className={`hidden md:block rounded-lg p-3 md:p-4 border-2 ${
+        transition={{
+          opacity: {
+            duration: 3,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }
+        }}
+        className={`rounded-lg p-2 md:p-3 border-2 ${
           isExpired 
             ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-200 shadow-lg' 
             : isInGracePeriod
@@ -321,24 +386,24 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
             : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
         }`}
       >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
-        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
-          <div className="text-2xl sm:text-3xl shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+          <div className="text-xl sm:text-2xl shrink-0">
             {getPlanIcon(subscription.planType)}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center space-x-2 flex-wrap">
-              <h3 className="text-base sm:text-lg font-bold text-gray-800 truncate">
+            <div className="flex items-center space-x-1.5 flex-wrap">
+              <h3 className="text-sm sm:text-base font-bold text-gray-800 truncate">
                 {getPlanText(subscription.planType)}
               </h3>
               {subscription.planType === 'annual' && (
-                <FaCrown className="text-yellow-500 text-sm sm:text-base shrink-0" />
+                <FaCrown className="text-yellow-500 text-xs sm:text-sm shrink-0" />
               )}
             </div>
-            <p className={`text-xs sm:text-sm font-medium ${getStatusColor(subscription.status, isInGracePeriod)}`}>
+            <p className={`text-[10px] sm:text-xs font-medium ${getStatusColor(subscription.status, isInGracePeriod)}`}>
               {getStatusText(subscription.status, isInGracePeriod)}
             </p>
-            <p className="text-gray-600 text-xs sm:text-sm truncate">
+            <p className="text-gray-600 text-[10px] sm:text-xs truncate">
               ${subscription.price?.toLocaleString('es-CO') || '0'} COP • Hasta {formatDate(subscription.periodEnd || subscription.endDate)}
             </p>
           </div>
@@ -387,98 +452,92 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription }) => {
                         ease: "easeInOut"
                       }
                     }}
-                    className={`mt-3 p-3 sm:p-4 rounded-lg border-2 shadow-lg ${
+                    className={`mt-2 p-2 sm:p-3 rounded-lg border-2 shadow-lg ${
                       isLessThan24Hours 
                         ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-300' 
                         : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300'
                     }`}
                   >
-                  <div className="flex items-start space-x-2 sm:space-x-3">
-                    <FaExclamationTriangle className={`${isLessThan24Hours ? 'text-red-600' : 'text-yellow-600'} text-base sm:text-xl flex-shrink-0 mt-0.5`} />
-                    <div className="flex-1 min-w-0">
-                        <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-xs sm:text-sm mb-2`}>
+                  {/* Layout de 2 columnas: Izquierda (Contador) | Derecha (Info y Botón) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Columna Izquierda: Contador */}
+                    <div className="flex flex-col">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <FaExclamationTriangle className={`${isLessThan24Hours ? 'text-red-600' : 'text-yellow-600'} text-sm flex-shrink-0`} />
+                        <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-xs`}>
                           ⏰ Período de Gracia
                         </p>
-                        {graceUntilDate && (timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) ? (
-                          <>
-                            <div className={`${isLessThan24Hours ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border-2 rounded-lg p-2 sm:p-3 mb-3`}>
-                              <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-sm sm:text-base mb-1 text-center hidden sm:block`}>
-                                Tiempo restante hasta desactivación:
-                              </p>
-                              {/* Mobile: Compact one-line countdown */}
-                              <div className="block sm:hidden text-center">
-                                <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-base mb-1`}>
-                                  {timeRemaining.days > 0 && `${timeRemaining.days}d `}
-                                  {String(timeRemaining.hours).padStart(2, '0')}:
-                                  {String(timeRemaining.minutes).padStart(2, '0')}:
-                                  {String(timeRemaining.seconds).padStart(2, '0')}
-                                </p>
-                                <p className={`${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'} text-[10px]`}>
-                                  hasta desactivación
-                                </p>
+                      </div>
+                      
+                      {graceUntilDate && (timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) ? (
+                        <div className={`${isLessThan24Hours ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border-2 rounded-lg p-2`}>
+                          <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-[10px] mb-1 text-center`}>
+                            Tiempo restante:
+                          </p>
+                          <div className="flex items-center justify-center space-x-1.5 text-center">
+                            {timeRemaining.days > 0 && (
+                              <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-2 py-0.5 rounded`}>
+                                <div className={`text-lg font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{timeRemaining.days}</div>
+                                <div className={`text-[10px] ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>días</div>
                               </div>
-                              {/* Desktop: Full grid countdown */}
-                              <div className="hidden sm:flex items-center justify-center space-x-2 text-center">
-                                {timeRemaining.days > 0 && (
-                                  <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
-                                    <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{timeRemaining.days}</div>
-                                    <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>{timeRemaining.days === 1 ? 'día' : 'días'}</div>
-                                  </div>
-                                )}
-                                <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
-                                  <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.hours).padStart(2, '0')}</div>
-                                  <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>horas</div>
-                                </div>
-                                <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
-                                  <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.minutes).padStart(2, '0')}</div>
-                                  <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>min</div>
-                                </div>
-                                <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-3 py-1 rounded`}>
-                                  <div className={`text-2xl font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.seconds).padStart(2, '0')}</div>
-                                  <div className={`text-xs ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>seg</div>
-                                </div>
-                              </div>
-                              <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-[10px] sm:text-xs mt-2 text-center`}>
-                                Desactivación: <strong className="hidden sm:inline">{formatDateTime(graceUntilDate)}</strong><strong className="inline sm:hidden">{formatDateTime(graceUntilDate).split(' ')[0]}</strong>
-                              </p>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="bg-red-100 border-2 border-red-300 rounded-lg p-3 mb-3">
-                            <p className="text-red-900 font-bold text-center">
-                              ⚠️ El menú se desactivará muy pronto
-                            </p>
-                            {graceUntilDate && (
-                              <p className="text-red-800 text-xs mt-1 text-center">
-                                Fecha de desactivación: <strong>{formatDateTime(graceUntilDate)}</strong>
-                              </p>
                             )}
+                            <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-2 py-0.5 rounded`}>
+                              <div className={`text-lg font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.hours).padStart(2, '0')}</div>
+                              <div className={`text-[10px] ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>hrs</div>
+                            </div>
+                            <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-2 py-0.5 rounded`}>
+                              <div className={`text-lg font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.minutes).padStart(2, '0')}</div>
+                              <div className={`text-[10px] ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>min</div>
+                            </div>
+                            <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-2 py-0.5 rounded`}>
+                              <div className={`text-lg font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.seconds).padStart(2, '0')}</div>
+                              <div className={`text-[10px] ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>seg</div>
+                            </div>
                           </div>
-                        )}
-                        <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-sm mb-3`}>
+                          <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-[9px] mt-1.5 text-center`}>
+                            Desactivación: {formatDateTime(graceUntilDate)}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-red-100 border-2 border-red-300 rounded-lg p-2">
+                          <p className="text-red-900 font-bold text-xs text-center">
+                            ⚠️ Desactivación inminente
+                          </p>
+                          {graceUntilDate && (
+                            <p className="text-red-800 text-[10px] mt-1 text-center">
+                              {formatDateTime(graceUntilDate)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Columna Derecha: Información y Botón */}
+                    <div className="flex flex-col justify-between">
+                      <div>
+                        <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-xs mb-1.5`}>
                           Tu suscripción expiró el {formatDate(subscription.periodEnd || subscription.endDate)}. 
-                          Tienes <strong>{graceDaysRemaining} días de gracia</strong> para renovar antes de que tu menú se desactive.
+                          Tienes <strong>{graceDaysRemaining} días de gracia</strong> para renovar.
                         </p>
-                        <p className={`${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'} text-xs mb-3 font-medium`}>
-                          ⚠️ Después del período de gracia, el menú quedará desactivado para seleccionar o ver órdenes. Los usuarios solo podrán ver el menú, pero no podrán realizar pedidos.
+                        <p className={`${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'} text-[10px] mb-2 font-medium`}>
+                          ⚠️ Después del período de gracia, el menú quedará desactivado. Los usuarios solo podrán verlo, pero no realizar pedidos.
                         </p>
+                      </div>
                       <button
                         onClick={() => {
                           if (onNavigateToSubscription) {
                             onNavigateToSubscription();
                           } else if (location.pathname.includes('/admin')) {
-                            // Si estamos en el panel admin, usar evento custom o scroll
                             window.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'subscription' }));
-                            // También intentar scroll al inicio
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           } else {
                             navigate('/admin');
                           }
                         }}
-                        className={`w-full sm:w-auto mt-2 px-4 py-2 ${isLessThan24Hours ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5`}
+                        className={`w-full px-3 py-1.5 ${isLessThan24Hours ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center space-x-1.5 shadow-md hover:shadow-lg`}
                       >
                         <span>Renovar Ahora</span>
-                        <FaArrowRight className="text-sm" />
+                        <FaArrowRight className="text-xs" />
                       </button>
                     </div>
                   </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import SubscriptionStatus from './SubscriptionStatus';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount }) => {
   const menuItems = [
@@ -54,11 +55,14 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
             </div>
           </div>
           
-          {/* Admin Panel Title */}
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-blue-100">
-            <h2 className="text-sm sm:text-lg font-bold text-slate-900 mb-0.5 sm:mb-1">Panel de Administración</h2>
-            <p className="text-xs sm:text-sm text-slate-600">Gestiona tu restaurante desde aquí</p>
-          </div>
+          {/* Subscription Status - Solo cuando está activa */}
+          {businessConfig && businessConfig._id && (
+            <SubscriptionStatus 
+              businessId={businessConfig._id}
+              onNavigateToSubscription={() => setActiveTab('subscription')}
+              compact={true}
+            />
+          )}
         </motion.div>
 
         {/* Navigation Menu */}

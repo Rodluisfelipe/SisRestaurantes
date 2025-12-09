@@ -69,10 +69,45 @@ import { ThemeProvider } from "./Context/ThemeContext";
 import ErrorBoundary from "./Components/ErrorBoundary";
 import App from "./App.jsx";
 
-// Lazy loading del componente App
+// Spinner MenuBy - Liviano y Profesional
 const LoadingSpinner = () => (
-  <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-90">
-    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+  <div className="fixed inset-0 flex items-center justify-center bg-white">
+    <div className="text-center">
+      {/* Spinner limpio con doble anillo */}
+      <div className="relative w-20 h-20 mx-auto mb-6">
+        {/* Anillo exterior */}
+        <div className="absolute inset-0 rounded-full border-4 border-red-100" />
+        {/* Anillo giratorio principal */}
+        <div 
+          className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500 animate-spin"
+          style={{ animationDuration: '0.8s' }}
+        />
+        {/* Anillo giratorio secundario */}
+        <div 
+          className="absolute inset-2 rounded-full border-4 border-transparent border-b-red-600 animate-spin"
+          style={{ animationDuration: '1.2s', animationDirection: 'reverse' }}
+        />
+        {/* Centro */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-5 h-5 rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg animate-pulse" />
+        </div>
+      </div>
+
+      {/* Texto */}
+      <h1 className="text-3xl font-bold text-red-600 mb-2">MenuBy</h1>
+      <p className="text-slate-600 text-sm font-medium">Cargando...</p>
+
+      {/* Puntos */}
+      <div className="flex justify-center space-x-1.5 mt-4">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce"
+            style={{ animationDelay: `${i * 0.15}s`, animationDuration: '1s' }}
+          />
+        ))}
+      </div>
+    </div>
   </div>
 );
 

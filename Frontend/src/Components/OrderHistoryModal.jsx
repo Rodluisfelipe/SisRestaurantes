@@ -186,8 +186,23 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
           <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-                <p className="mt-4 text-gray-600">Cargando historial...</p>
+                <div className="relative w-16 h-16">
+                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500 animate-spin" />
+                  <div className="absolute inset-2 rounded-full border-4 border-transparent border-b-red-600 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-red-500 to-red-600 shadow-lg animate-pulse" />
+                  </div>
+                </div>
+                <p className="mt-4 text-slate-700 font-semibold">Cargando historial...</p>
+                <div className="flex space-x-2 mt-2">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-red-500 animate-bounce"
+                      style={{ animationDelay: `${i * 150}ms` }}
+                    />
+                  ))}
+                </div>
               </div>
             ) : error ? (
               <div className="text-center py-12">

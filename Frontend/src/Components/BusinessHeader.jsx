@@ -7,7 +7,13 @@ import { socket } from '../services/socket';
 import AccountManagementModal from './AccountManagementModal';
 import { useCustomerData } from '../hooks/useCustomerData';
 
-const BusinessHeader = ({ comesFromCatalog = false }) => {
+const BusinessHeader = ({ 
+  comesFromCatalog = false,
+  onShowFavorites,
+  onShowHistory,
+  showFavoritesButton = false,
+  showHistoryButton = false
+}) => {
   const [businessConfig, setBusinessConfig] = useState({
     businessName: '',
     logo: '',
@@ -162,8 +168,8 @@ const BusinessHeader = ({ comesFromCatalog = false }) => {
       
       {/* Content Container */}
       <div className={`relative z-10 pt-4 pb-3 ${businessConfig.coverImage ? 'text-white' : 'text-gray-800'}`}>
-        {/* Account Button */}
-        <div className="absolute right-2 top-4 z-20">
+        {/* Account Button and Quick Actions */}
+        <div className="absolute right-2 top-4 z-20 flex flex-col items-end space-y-2">
           <button
             onClick={() => setShowAccountModal(true)}
             style={
@@ -197,6 +203,45 @@ const BusinessHeader = ({ comesFromCatalog = false }) => {
               </>
             )}
           </button>
+          
+          {/* Botones de Favoritos e Historial - Debajo de Cuenta */}
+          {(showFavoritesButton || showHistoryButton) && (
+            <div className="flex flex-col space-y-2">
+              {showFavoritesButton && (
+                <button
+                  onClick={onShowFavorites}
+                  style={{
+                    backgroundColor: businessConfig.theme?.buttonColor || '#f97316',
+                    color: businessConfig.theme?.buttonTextColor || '#ffffff'
+                  }}
+                  className={`flex items-center space-x-1 ${comesFromCatalog ? 'px-2 py-1' : 'px-3 py-1.5'} rounded-full transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5`}
+                  title="Favoritos"
+                >
+                  <svg className={`${comesFromCatalog ? 'w-3 h-3' : 'w-4 h-4'}`} fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                  </svg>
+                  <span className={`font-medium ${comesFromCatalog ? 'text-xs' : 'text-xs'}`}>Favoritos</span>
+                </button>
+              )}
+              
+              {showHistoryButton && (
+                <button
+                  onClick={onShowHistory}
+                  style={{
+                    backgroundColor: businessConfig.theme?.buttonColor || '#f97316',
+                    color: businessConfig.theme?.buttonTextColor || '#ffffff'
+                  }}
+                  className={`flex items-center space-x-1 ${comesFromCatalog ? 'px-2 py-1' : 'px-3 py-1.5'} rounded-full transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5`}
+                  title="Historial"
+                >
+                  <svg className={`${comesFromCatalog ? 'w-3 h-3' : 'w-4 h-4'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className={`font-medium ${comesFromCatalog ? 'text-xs' : 'text-xs'}`}>Historial</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Status Indicator */}

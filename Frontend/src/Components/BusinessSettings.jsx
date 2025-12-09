@@ -24,6 +24,7 @@ const BusinessSettings = () => {
   };
 
   const [settings, setSettings] = useState(initialSettings);
+  const [originalSettings, setOriginalSettings] = useState(initialSettings);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
@@ -31,6 +32,7 @@ const BusinessSettings = () => {
   const [statusLoading, setStatusLoading] = useState(false);
   const { businessId } = useBusinessConfig();
   const [isEditingLogo, setIsEditingLogo] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchBusinessConfig = async () => {
     try {
@@ -55,7 +57,10 @@ const BusinessSettings = () => {
           }
         };
         console.log('Datos cargados:', data);
-        if (!isEditingLogo) setSettings(data);
+        if (!isEditingLogo) {
+          setSettings(data);
+          setOriginalSettings(data);
+        }
         if (!isEditingLogo) setPreviewLogo(response.data?.logo || '');
       }
     } catch (error) {
@@ -105,8 +110,24 @@ const BusinessSettings = () => {
     }
   };
 
+  // Detectar si hay cambios pendientes
+  const hasChanges = () => {
+    return JSON.stringify(settings) !== JSON.stringify(originalSettings);
+  };
+
+  // Calcular progreso del contador de descripción
+  const getDescriptionProgress = () => {
+    const length = settings.description.length;
+    const percentage = (length / 300) * 100;
+    if (percentage < 50) return { color: 'bg-green-500', textColor: 'text-green-600' };
+    if (percentage < 80) return { color: 'bg-yellow-500', textColor: 'text-yellow-600' };
+    return { color: 'bg-red-500', textColor: 'text-red-600' };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSaving(true);
+    setError(null);
     try {
       const dataToSend = {
         businessId,
@@ -146,20 +167,24 @@ const BusinessSettings = () => {
       console.log('URL de Google Maps recibida:', response.data.googleMapsUrl);
       
       // Actualizar el estado con los datos recibidos
-      setSettings(prevSettings => ({
-        ...prevSettings,
+      const updatedData = {
+        ...settings,
         ...response.data,
         // Asegurarse de que los nuevos campos estén presentes incluso si no vienen en la respuesta
-        address: response.data.address || prevSettings.address || "",
-        googleMapsUrl: response.data.googleMapsUrl || prevSettings.googleMapsUrl || ""
-      }));
+        address: response.data.address || settings.address || "",
+        googleMapsUrl: response.data.googleMapsUrl || settings.googleMapsUrl || ""
+      };
+      setSettings(updatedData);
+      setOriginalSettings(updatedData);
       
-      setSuccessMessage(`Configuración actualizada correctamente. WhatsApp: ${response.data.whatsappNumber || 'no configurado'}`);
-      setTimeout(() => setSuccessMessage(''), 5000);
+      setSuccessMessage('✅ Configuración guardada exitosamente');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error al actualizar la configuración:', error);
-      setError('Error al actualizar la configuración');
+      setError('❌ Error al actualizar la configuración');
       setTimeout(() => setError(null), 3000);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -275,35 +300,9 @@ const BusinessSettings = () => {
           <span className="text-2xl">⚙️</span>
         </div>
         <h2 className="text-3xl font-bold text-slate-900 mb-2">Configuración del Negocio</h2>
-        <p className="text-slate-600">Información y configuración general de tu restaurante</p>
       </motion.div>
       
-      {/* Messages */}
-      <AnimatePresence>
-        {error && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
-          >
-            <span className="text-xl">❌</span>
-            <span className="font-medium">{error}</span>
-          </motion.div>
-        )}
-        
-        {successMessage && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-green-50 border-2 border-green-200 text-green-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
-          >
-            <span className="text-xl">✅</span>
-            <span className="font-medium">{successMessage}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Los mensajes ahora se muestran como toasts flotantes */}
 
       <motion.form 
         initial={{ opacity: 0, y: 20 }}
@@ -323,8 +322,7 @@ const BusinessSettings = () => {
             <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
               <span className="text-xl">🏢</span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">Información Básica</h3>
-            <p className="text-slate-600">Configura los datos principales de tu negocio</p>
+            <h3 className="text-2xl font-bold text-slate-900">Información Básica</h3>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -361,8 +359,17 @@ const BusinessSettings = () => {
                   className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-base transition-all duration-200 group-hover:border-slate-300 resize-none"
                   placeholder="Ej: Deliciosa comida casera con ingredientes frescos y servicio de calidad. Especialistas en hamburguesas gourmet y comida rápida."
                 />
-                <div className="mt-2 text-xs text-slate-500 text-right">
-                  {settings.description.length}/300 caracteres
+                <div className="mt-3 space-y-2">
+                  <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                    <motion.div
+                      className={`h-full ${getDescriptionProgress().color} transition-all duration-300`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(settings.description.length / 300) * 100}%` }}
+                    />
+                  </div>
+                  <div className={`text-sm font-semibold ${getDescriptionProgress().textColor} text-right`}>
+                    {settings.description.length}/300 caracteres
+                  </div>
                 </div>
               </div>
 
@@ -472,8 +479,7 @@ const BusinessSettings = () => {
             <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
               <span className="text-xl">📱</span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">Redes Sociales</h3>
-            <p className="text-slate-600">Conecta tus redes sociales con tu negocio</p>
+            <h3 className="text-2xl font-bold text-slate-900">Redes Sociales</h3>
           </div>
           
           <div className="space-y-6">
@@ -601,24 +607,14 @@ const BusinessSettings = () => {
           </div>
         </motion.div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-center space-x-4 pt-8">
-          <motion.button
-            type="submit"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 font-semibold shadow-xl flex items-center space-x-2"
-          >
-            <span>💾</span>
-            <span>Guardar Cambios</span>
-          </motion.button>
-          
+        {/* Botón Reparar Configuración */}
+        <div className="flex justify-center pt-4">
           <motion.button
             type="button"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleFixSchema}
-            className="px-8 py-4 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-lg"
+            className="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-lg"
           >
             <span>🔧</span>
             <span>Reparar Configuración</span>
@@ -637,8 +633,7 @@ const BusinessSettings = () => {
             <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <span className="text-xl">👁️</span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">Vista Previa del Logo</h3>
-            <p className="text-slate-600 mb-6">Así se verá tu logo en el sistema</p>
+            <h3 className="text-2xl font-bold text-slate-900 mb-6">Vista Previa del Logo</h3>
             
             <div className="flex justify-center">
               <div className="w-32 h-32 rounded-2xl overflow-hidden border-4 border-gradient-to-r from-blue-500 to-purple-600 shadow-2xl bg-white p-2">
@@ -655,6 +650,134 @@ const BusinessSettings = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Botón Flotante Sticky - Solo visible cuando hay cambios */}
+      <AnimatePresence>
+        {hasChanges() && (
+          <motion.div
+            initial={{ y: 100, opacity: 0, scale: 0.8 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 100, opacity: 0, scale: 0.8 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50"
+          >
+            <motion.button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSaving}
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              className={`
+                relative overflow-hidden
+                px-10 py-5 rounded-full font-bold text-base shadow-2xl
+                flex items-center space-x-3
+                ${
+                  isSaving
+                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-[0_0_30px_rgba(168,85,247,0.6)]'
+                }
+                text-white transition-all duration-300
+                border-2 border-white/20
+              `}
+            >
+              {/* Efecto de brillo animado */}
+              {!isSaving && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+              )}
+              
+              <div className="relative flex items-center space-x-3">
+                {isSaving ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="text-xl"
+                    >
+                      ⏳
+                    </motion.div>
+                    <span>Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <motion.span
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 0.6, repeat: Infinity }}
+                      className="text-xl"
+                    >
+                      💾
+                    </motion.span>
+                    <span>Guardar Cambios</span>
+                    <motion.div
+                      animate={{ 
+                        scale: [1, 1.5, 1],
+                        opacity: [1, 0.5, 1]
+                      }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="w-2 h-2 bg-red-400 rounded-full"
+                    />
+                  </>
+                )}
+              </div>
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast de Confirmación Mejorado */}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            className="fixed top-24 right-8 z-50 max-w-sm"
+          >
+            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 backdrop-blur-lg">
+              <motion.span
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ duration: 0.5 }}
+                className="text-2xl"
+              >
+                ✅
+              </motion.span>
+              <div>
+                <p className="font-bold text-lg">¡Éxito!</p>
+                <p className="text-sm text-green-50">{successMessage}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast de Error Mejorado */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ x: 300, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 300, opacity: 0 }}
+            className="fixed top-24 right-8 z-50 max-w-sm"
+          >
+            <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 backdrop-blur-lg">
+              <motion.span
+                animate={{ rotate: [0, 10, -10, 0] }}
+                transition={{ duration: 0.5, repeat: 2 }}
+                className="text-2xl"
+              >
+                ❌
+              </motion.span>
+              <div>
+                <p className="font-bold text-lg">Error</p>
+                <p className="text-sm text-red-50">{error}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

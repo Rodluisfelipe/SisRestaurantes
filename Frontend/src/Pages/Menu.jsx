@@ -1085,54 +1085,13 @@ export default function Menu() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
-      <BusinessHeader comesFromCatalog={comesFromCatalog} />
-      
-      {/* Botones de Favoritos e Historial */}
-      {orderInfo.phone && (businessConfig?.features?.favoritesEnabled || businessConfig?.features?.orderHistoryEnabled) && (
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white border-b border-gray-200 py-3 px-4 sticky top-0 z-40 shadow-sm"
-        >
-          <div className="container mx-auto flex justify-center space-x-3">
-            {businessConfig?.features?.favoritesEnabled !== false && (
-              <motion.button
-                onClick={() => setShowFavorites(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-                style={{
-                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
-                  color: businessConfig?.theme?.buttonTextColor || '#ffffff'
-                }}
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                </svg>
-                <span className="font-medium text-sm">Favoritos</span>
-              </motion.button>
-            )}
-            
-            {businessConfig?.features?.orderHistoryEnabled !== false && (
-              <motion.button
-                onClick={() => setShowHistory(true)}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-                style={{
-                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
-                  color: businessConfig?.theme?.buttonTextColor || '#ffffff'
-                }}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="font-medium text-sm">Historial</span>
-              </motion.button>
-            )}
-          </div>
-        </motion.div>
-      )}
+      <BusinessHeader 
+        comesFromCatalog={comesFromCatalog}
+        onShowFavorites={() => setShowFavorites(true)}
+        onShowHistory={() => setShowHistory(true)}
+        showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
+        showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
+      />
       
       {/* Aviso discreto de servicio temporalmente no disponible */}
       {subscriptionStatus === 'suspended' && (
@@ -1314,6 +1273,29 @@ export default function Menu() {
           setShowCartSummary(true);
         }}
       />
+
+      {/* Footer - MenuBy Branding */}
+      <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-4 mt-8">
+        <div className="container mx-auto px-4 text-center">
+          <a 
+            href="https://www.menuby.tech" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 text-slate-600 hover:text-red-600 transition-colors duration-300 text-sm font-medium group"
+          >
+            <span>Crea tu menú digital con</span>
+            <span className="font-bold text-red-600 group-hover:text-red-700">MenuBy</span>
+            <svg 
+              className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </a>
+        </div>
+      </footer>
     </div>
   );
 } 
