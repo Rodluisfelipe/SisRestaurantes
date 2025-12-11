@@ -92,19 +92,29 @@ router.get('/', async (req, res) => {
 
     console.log(`[Customers] Found ${customers.length} customers out of ${totalCustomers} total`);
 
-    // Calcular estadísticas (solo las necesarias)
+    // Calcular estadísticas
+    const allCustomersForStats = await Customer.find({ businessId: filter.businessId });
+    
     const stats = {
       totalCustomers: totalCustomers,
-      vipCustomers: 0
+      vipCustomers: 0,
+      totalRevenue: 0,
+      averageOrders: 0
     };
 
-    // Calcular solo clientes VIP
-    const vipCount = await Customer.countDocuments({
-      ...filter,
-      status: 'vip'
+    // Calcular VIP (10+ pedidos), ingresos totales y promedio de pedidos
+    let totalOrdersSum = 0;
+    allCustomersForStats.forEach(customer => {
+      if ((customer.totalOrders || 0) >= 10) {
+        stats.vipCustomers++;
+      }
+      stats.totalRevenue += customer.totalSpent || 0;
+      totalOrdersSum += customer.totalOrders || 0;
     });
-    
-    stats.vipCustomers = vipCount;
+
+    stats.averageOrders = allCustomersForStats.length > 0 
+      ? (totalOrdersSum / allCustomersForStats.length).toFixed(1) 
+      : 0;
 
     console.log(`[Customers] Calculated stats:`, stats);
 
