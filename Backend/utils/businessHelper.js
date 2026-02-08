@@ -1,42 +1,19 @@
-const mongoose = require('mongoose');
-const BusinessConfig = require('../Models/BusinessConfig');
-const logger = require('./logger');
+/**
+ * Re-exports from businessResolver and businessValidator to avoid duplicate implementations.
+ * Keep this file for backward-compatibility with existing imports.
+ */
+const { resolveBusiness } = require('./businessResolver');
+const { createBusinessFilter } = require('./businessValidator');
 
 /**
- * Utility function to find a business by ID or slug
- * @param {string} identifier - Can be either a MongoDB ObjectId or a slug
- * @returns {Promise<Object>} - The business document or null if not found
+ * Compat wrapper: returns null instead of throwing (like original findBusinessByIdentifier)
  */
 async function findBusinessByIdentifier(identifier) {
-  if (!identifier) return null;
-  
   try {
-    // First try to find by ObjectId (if valid)
-    if (mongoose.Types.ObjectId.isValid(identifier)) {
-      const business = await BusinessConfig.findById(identifier);
-      if (business) return business;
-    }
-    
-    // If not found or not a valid ObjectId, try to find by slug
-    return await BusinessConfig.findOne({ slug: identifier });
-  } catch (error) {
-    logger.error('Error finding business by identifier', error);
+    return await resolveBusiness(identifier);
+  } catch {
     return null;
   }
-}
-
-/**
- * Utility function to create a filter object for queries based on businessId or slug
- * @param {string} identifier - Can be either a MongoDB ObjectId or a slug
- * @returns {Promise<Object>} - A filter object for mongoose queries
- */
-async function createBusinessFilter(identifier) {
-  if (!identifier) return {};
-  
-  const business = await findBusinessByIdentifier(identifier);
-  if (!business) return { businessId: null }; // Will return no results
-  
-  return { businessId: business._id };
 }
 
 module.exports = {

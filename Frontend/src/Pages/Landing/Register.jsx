@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { registerUser } from '../../services/authService';
 
 const Register = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -16,6 +18,7 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -23,28 +26,49 @@ const Register = () => {
       ...formData,
       [name]: type === 'checkbox' ? checked : value
     });
+    setError('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     
     if (formData.password !== formData.confirmPassword) {
-      alert('Las contraseñas no coinciden');
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres');
       return;
     }
     
     if (!formData.acceptTerms) {
-      alert('Debes aceptar los términos y condiciones');
+      setError('Debes aceptar los términos y condiciones');
       return;
     }
     
     setIsLoading(true);
     
-    // Simular registro
-    setTimeout(() => {
+    try {
+      await registerUser({
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        businessName: formData.businessName,
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone
+      });
+      
+      // Redirect to login on success
+      navigate('/login', { 
+        state: { message: '¡Cuenta creada exitosamente! Inicia sesión para comenzar.' }
+      });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Error al crear la cuenta. Intenta nuevamente.';
+      setError(errorMessage);
+    } finally {
       setIsLoading(false);
-      // Aquí iría la lógica de registro
-    }, 2000);
+    }
   };
 
   return (
@@ -79,6 +103,12 @@ const Register = () => {
               className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8"
             >
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Error display */}
+                {error && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                    {error}
+                  </div>
+                )}
                 {/* Name Fields */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>

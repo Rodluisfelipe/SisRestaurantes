@@ -6,6 +6,7 @@ const { emitToBusiness } = require("../services/socketService");
 const { resolveBusiness, resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
+const { tenantAuth } = require("../middleware/tenantAuth");
 
 // Obtener la configuración
 router.get("/", async (req, res) => {
@@ -34,7 +35,7 @@ router.get("/", async (req, res) => {
 });
 
 // Actualizar la configuración (por businessId en body)
-router.put("/", async (req, res) => {
+router.put("/", tenantAuth, async (req, res) => {
     const { businessId, ...updateData } = req.body;
     if (!businessId) {
       return res.status(400).json({ message: "businessId es requerido" });
@@ -76,18 +77,29 @@ router.put("/", async (req, res) => {
 });
 
 // Ruta específica para actualizar solo el estado del negocio (para actualizaciones rápidas)
-router.put("/status", async (req, res) => {
+router.put("/status", tenantAuth, async (req, res) => {
   try {
-    const { isOpen } = req.body;
+    const { isOpen, businessId } = req.body;
     
     if (isOpen === undefined) {
       return res.status(400).json({ message: "Se requiere el estado del negocio" });
     }
     
-    const config = await BusinessConfig.findOneAndUpdate(
-      {},
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId es requerido" });
+    }
+
+    let business;
+    try {
+      business = await resolveBusiness(businessId);
+    } catch (error) {
+      return res.status(404).json({ message: 'Negocio no encontrado' });
+    }
+    
+    const config = await BusinessConfig.findByIdAndUpdate(
+      business._id,
       { isOpen },
-      { new: true, upsert: true }
+      { new: true }
     );
     
     res.json(config);
@@ -98,10 +110,22 @@ router.put("/status", async (req, res) => {
 });
 
 // Ruta específica para actualizar/reparar el esquema
-router.post("/fix-schema", async (req, res) => {
+router.post("/fix-schema", tenantAuth, async (req, res) => {
   try {
+    const { businessId } = req.body;
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId es requerido" });
+    }
+
+    let business;
+    try {
+      business = await resolveBusiness(businessId);
+    } catch (error) {
+      return res.status(404).json({ message: 'Negocio no encontrado' });
+    }
+
     // Buscar la configuración existente
-    let config = await BusinessConfig.findOne();
+    let config = business;
     
     if (!config) {
       // Si no existe, crear una nueva con todos los campos
@@ -154,7 +178,7 @@ router.post("/fix-schema", async (req, res) => {
 });
 
 // Endpoint para actualizar isActive (activar/desactivar negocio desde superadmin)
-router.put("/active", async (req, res) => {
+router.put("/active", tenantAuth, async (req, res) => {
     const { businessId, isActive } = req.body;
     if (!businessId || typeof isActive !== 'boolean') {
       return res.status(400).json({ message: "businessId y isActive son requeridos" });
@@ -229,7 +253,7 @@ router.get("/status/:businessId", async (req, res) => {
 });
 
 // Actualizar horarios del negocio
-router.put("/hours", async (req, res) => {
+router.put("/hours", tenantAuth, async (req, res) => {
   const { businessId, businessHours } = req.body;
   
   if (!businessId || !businessHours) {
@@ -281,7 +305,7 @@ router.put("/hours", async (req, res) => {
 });
 
 // Actualizar estado del menú (pausar/activar)
-router.put("/menu-status", async (req, res) => {
+router.put("/menu-status", tenantAuth, async (req, res) => {
   const { businessId, menuStatus } = req.body;
   
   if (!businessId || !menuStatus) {
@@ -318,7 +342,7 @@ router.put("/menu-status", async (req, res) => {
 
 // Actualizar la configuración (por businessId en URL)
 // IMPORTANTE: Esta ruta debe estar AL FINAL porque captura cualquier PUT con un parámetro
-router.put("/:businessId", async (req, res) => {
+router.put("/:businessId", tenantAuth, async (req, res) => {
     const { businessId } = req.params;
     const updateData = req.body;
     

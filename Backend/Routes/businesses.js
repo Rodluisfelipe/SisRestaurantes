@@ -264,9 +264,10 @@ router.get('/search', async (req, res) => {
     const filters = { isActive: true };
     
     if (q) {
+      const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filters.$or = [
-        { businessName: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } }
+        { businessName: { $regex: escapedQ, $options: 'i' } },
+        { description: { $regex: escapedQ, $options: 'i' } }
       ];
     }
 

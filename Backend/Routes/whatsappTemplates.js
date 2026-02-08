@@ -4,6 +4,7 @@ const WhatsAppTemplate = require("../Models/WhatsAppTemplate");
 const { validateAndResolveBusinessId } = require("../utils/businessValidator");
 const { isValidObjectId } = require("../utils/validators");
 const logger = require("../utils/logger");
+const { tenantAuth } = require("../middleware/tenantAuth");
 
 /**
  * API de Templates de WhatsApp
@@ -50,7 +51,7 @@ router.get("/", async (req, res) => {
 });
 
 // POST - Crear o actualizar template de WhatsApp
-router.post("/", async (req, res) => {
+router.post("/", tenantAuth, async (req, res) => {
   try {
     const { businessId, messageTemplate, settings, availableVariables } = req.body;
     
@@ -95,7 +96,7 @@ router.post("/", async (req, res) => {
 });
 
 // DELETE - Restaurar template por defecto
-router.delete("/", async (req, res) => {
+router.delete("/", tenantAuth, async (req, res) => {
   try {
     let { businessId } = req.query;
     

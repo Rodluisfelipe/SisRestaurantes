@@ -69,7 +69,7 @@ const SOCKET_EVENTS = {
 // Configuración por defecto
 const DEFAULTS = {
   BUSINESS_NAME: 'Mi Restaurante',
-  ADMIN_PASSWORD: 'admin123',
+  ADMIN_PASSWORD: null, // Must be generated randomly at runtime - use crypto.randomBytes
   THEME: {
     BUTTON_COLOR: '#2563eb',
     BUTTON_TEXT_COLOR: '#ffffff',

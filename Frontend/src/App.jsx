@@ -3,31 +3,33 @@ import { Routes, Route, Navigate, useParams, useLocation } from "react-router-do
 import { useAuth } from "./Context/AuthContext";
 import { useState } from "react";
 
-// Lazy load components
+// Lazy load heavy components for code-splitting
 const HealthCheckLazy = lazy(() => import('./Pages/HealthCheck'));
-import Menu from "./Pages/Menu";
-import Admin from "./Pages/Admin";
+const Menu = lazy(() => import("./Pages/Menu"));
+const Admin = lazy(() => import("./Pages/Admin"));
+const Kitchen = lazy(() => import("./Pages/Kitchen"));
+const SuperAdminDashboard = lazy(() => import("./Pages/SuperAdmin/SuperAdminDashboard"));
+const MenuByCatalog = lazy(() => import("./Pages/Catalog/MenuByCatalog"));
+const RestaurantDetail = lazy(() => import("./Pages/Catalog/RestaurantDetail"));
+const LeadCapturePage = lazy(() => import("./Pages/LeadCapturePage"));
+
+// Lazy load landing pages (solo se usan en la landing, no en app de restaurante)
+const LandingHome = lazy(() => import("./Pages/Landing/Home"));
+const LandingLogin = lazy(() => import("./Pages/Landing/Login"));
+const LandingRegister = lazy(() => import("./Pages/Landing/Register"));
+const LandingFeatures = lazy(() => import("./Pages/Landing/Features"));
+const LandingDemo = lazy(() => import("./Pages/Landing/Demo"));
+const LandingContact = lazy(() => import("./Pages/Landing/Contact"));
+const LandingPricing = lazy(() => import("./Pages/Landing/Pricing"));
+
 import Login from "./Pages/Login";
-import Kitchen from "./Pages/Kitchen";
 import CustomerOrderDisplay from "./Components/CustomerOrderDisplay";
-import SuperAdminDashboard from "./Pages/SuperAdmin/SuperAdminDashboard";
 import { BusinessProvider } from './Context/BusinessContext';
-import { AuthProvider } from './Context/AuthContext';
-import LandingHome from "./Pages/Landing/Home";
-import LandingLogin from "./Pages/Landing/Login";
-import LandingRegister from "./Pages/Landing/Register";
-import LandingFeatures from "./Pages/Landing/Features";
-import LandingDemo from "./Pages/Landing/Demo";
-import LandingContact from "./Pages/Landing/Contact";
-import LandingPricing from "./Pages/Landing/Pricing";
 import LandingLayout from "./Layouts/LandingLayout";
 import CatalogLayout from "./Layouts/CatalogLayout";
 import NotFound from "./Pages/NotFound";
 import TableValidator from "./Components/TableValidator";
-import MenuByCatalog from "./Pages/Catalog/MenuByCatalog";
-import RestaurantDetail from "./Pages/Catalog/RestaurantDetail";
 import DynamicManifest from "./Components/DynamicManifest";
-import LeadCapturePage from "./Pages/LeadCapturePage";
 
 // Componente protegido para rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
@@ -126,16 +128,15 @@ const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pri
 
 function App() {
   return (
-    <AuthProvider>
       <Routes>
         {/* Rutas de administración - SuperAdmin */}
-        <Route path="/superadmin/*" element={<SuperAdminDashboard />} />
-        <Route path="/reset-password/:token" element={<SuperAdminDashboard />} />
+        <Route path="/superadmin/*" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><SuperAdminDashboard /></Suspense>} />
+        <Route path="/reset-password/:token" element={<Suspense fallback={<div>Loading...</div>}><SuperAdminDashboard /></Suspense>} />
         
         {/* Rutas del Catálogo MenuBy */}
         <Route element={<CatalogLayout />}>
-          <Route path="/restaurantes" element={<MenuByCatalog />} />
-          <Route path="/restaurantes/restaurant/:restaurantId" element={<RestaurantDetail />} />
+          <Route path="/restaurantes" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><MenuByCatalog /></Suspense>} />
+          <Route path="/restaurantes/restaurant/:restaurantId" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><RestaurantDetail /></Suspense>} />
         </Route>
 
         {/* Redirección de rutas antiguas para compatibilidad */}
@@ -171,7 +172,7 @@ function App() {
           element={
             <BusinessProviderWrapper>
               <TableValidator>
-                <Menu />
+                <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><Menu /></Suspense>
               </TableValidator>
             </BusinessProviderWrapper>
           }
@@ -182,7 +183,7 @@ function App() {
             element={
             <BusinessProviderWrapper>
               <ProtectedRoute>
-                <Admin />
+                <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><Admin /></Suspense>
               </ProtectedRoute>
             </BusinessProviderWrapper>
             } 
@@ -193,7 +194,7 @@ function App() {
             element={
               <BusinessProviderWrapper>
                 <ProtectedRoute>
-                  <Kitchen />
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><Kitchen /></Suspense>
                 </ProtectedRoute>
               </BusinessProviderWrapper>
             } 
@@ -223,15 +224,14 @@ function App() {
           path="/:businessId/*"
           element={
             <BusinessProviderWrapper>
-              <Menu />
+              <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><Menu /></Suspense>
             </BusinessProviderWrapper>
           }
         />
         
         {/* Ruta para captura de leads - URLs no encontradas se convierten en oportunidades */}
-        <Route path="*" element={<LeadCapturePage />} />
+        <Route path="*" element={<Suspense fallback={<div>Loading...</div>}><LeadCapturePage /></Suspense>} />
         </Routes>
-    </AuthProvider>
   );
 }
 

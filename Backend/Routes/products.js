@@ -7,6 +7,7 @@ const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils
 const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
+const { tenantAuth } = require("../middleware/tenantAuth");
 
 /**
  * API de Productos
@@ -162,7 +163,7 @@ const validateProductInput = (req, res, next) => {
 };
 
 // POST a product
-router.post("/", validateProductInput, async (req, res) => {
+router.post("/", tenantAuth, validateProductInput, async (req, res) => {
   try {
     let productData = req.body;
     
@@ -213,13 +214,13 @@ router.post("/", validateProductInput, async (req, res) => {
 });
 
 // Test endpoint without middleware
-router.put("/reorder-simple", async (req, res) => {
+router.put("/reorder-simple", tenantAuth, async (req, res) => {
   logger.debug("Simple test endpoint hit", { timestamp: new Date().toISOString() }, req);
   res.json({ success: true, message: "Simple endpoint working", timestamp: new Date().toISOString() });
 });
 
 // Reorder products (working endpoint)
-router.put("/products-reorder", async (req, res) => {
+router.put("/products-reorder", tenantAuth, async (req, res) => {
   logger.debug("PRODUCTS-REORDER ENDPOINT CALLED", { timestamp: new Date().toISOString() }, req);
   
   try {
@@ -261,7 +262,7 @@ router.put("/products-reorder", async (req, res) => {
 });
 
 // Reorder products
-router.put("/reorder", async (req, res) => {
+router.put("/reorder", tenantAuth, async (req, res) => {
   logger.debug("REORDER ENDPOINT CALLED", { timestamp: new Date().toISOString() }, req);
   
   try {
@@ -273,7 +274,7 @@ router.put("/reorder", async (req, res) => {
 });
 
 // PUT reorder featured products
-router.put("/reorder-featured", async (req, res) => {
+router.put("/reorder-featured", tenantAuth, async (req, res) => {
   try {
     logger.info('Reorder featured products endpoint called', { body: req.body });
     const { orderedIds } = req.body;
@@ -295,7 +296,7 @@ router.put("/reorder-featured", async (req, res) => {
     // Obtener businessId del primer producto para el socket
     const firstProduct = await Product.findById(orderedIds[0]);
     if (firstProduct) {
-      emitToBusiness(req, firstProduct.businessId, "products_reordered", {
+      emitToBusiness(firstProduct.businessId?.toString(), "products_reordered", {
         type: "featured_reordered",
         count: orderedIds.length
       });
@@ -312,11 +313,11 @@ router.put("/reorder-featured", async (req, res) => {
 });
 
 // PUT toggle featured status (DEBE estar ANTES de /:id genérico)
-router.put("/:id/toggle-featured", async (req, res) => {
-  console.log('\n🌟🌟🌟 TOGGLE FEATURED ENDPOINT LLAMADO 🌟🌟🌟');
-  console.log('Product ID:', req.params.id);
-  console.log('Request body:', req.body);
-  console.log('Timestamp:', new Date().toISOString());
+router.put("/:id/toggle-featured", tenantAuth, async (req, res) => {
+
+
+
+
   try {
     const { id } = req.params;
     const { featuredOrder } = req.body;
@@ -325,27 +326,27 @@ router.put("/:id/toggle-featured", async (req, res) => {
       return res.status(400).json(formatHttpError(req, "ID de producto inválido", 400));
     }
 
-    console.log('🔍 Buscando producto...');
+
     const product = await Product.findById(id);
 
     if (!product) {
-      console.log('❌ Producto no encontrado');
+
       return res.status(404).json(formatHttpError(req, "Producto no encontrado", 404));
     }
-    console.log('✅ Producto encontrado:', product.name, '- isFeatured actual:', product.isFeatured);
+
 
     // Si está activando featured, verificar límite de 5
     if (!product.isFeatured) {
-      console.log('➕ Marcando como destacado - verificando límite...');
+
       const featuredCount = await Product.countDocuments({
         businessId: product.businessId,
         isFeatured: true,
         _id: { $ne: product._id }
       });
-      console.log('📊 Productos destacados actuales:', featuredCount);
+
 
       if (featuredCount >= 5) {
-        console.log('⚠️ Límite alcanzado - ya hay 5 productos destacados');
+
         return res.status(400).json({
           success: false,
           message: 'No puedes tener más de 5 productos destacados. Remueve uno primero.',
@@ -355,12 +356,12 @@ router.put("/:id/toggle-featured", async (req, res) => {
       }
     }
 
-    console.log('🔄 Cambiando isFeatured de', product.isFeatured, 'a', !product.isFeatured);
+
     product.isFeatured = !product.isFeatured;
     
     // Si se está marcando como destacado y no tiene orden, asignar el siguiente
     if (product.isFeatured) {
-      console.log('📋 Asignando featuredOrder...');
+
       if (featuredOrder !== undefined) {
         product.featuredOrder = featuredOrder;
       } else if (!product.featuredOrder || product.featuredOrder === 0) {
@@ -371,15 +372,15 @@ router.put("/:id/toggle-featured", async (req, res) => {
           _id: { $ne: product._id }
         }).sort('-featuredOrder').select('featuredOrder');
         product.featuredOrder = maxOrder && maxOrder.featuredOrder ? maxOrder.featuredOrder + 1 : 1;
-        console.log('📋 featuredOrder asignado:', product.featuredOrder);
+
       }
     } else {
       // Si se está quitando de destacados, limpiar el orden
       product.featuredOrder = 0;
-      console.log('📋 featuredOrder reseteado a 0');
+
     }
 
-    console.log('💾 Actualizando producto con isFeatured:', product.isFeatured, 'featuredOrder:', product.featuredOrder);
+
     
     // Usar updateOne directamente para forzar la actualización de campos que no existen
     const updateResult = await Product.updateOne(
@@ -392,13 +393,13 @@ router.put("/:id/toggle-featured", async (req, res) => {
       }
     );
     
-    console.log('✅ UpdateOne result:', updateResult);
+
     
     // Recargar el producto para obtener los valores actualizados
     const updatedProduct = await Product.findById(id);
-    console.log('🔍 Verificación post-update:');
-    console.log('   isFeatured en DB:', updatedProduct.isFeatured);
-    console.log('   featuredOrder en DB:', updatedProduct.featuredOrder);
+
+
+
     
     // Actualizar el objeto product con los valores confirmados
     product.isFeatured = updatedProduct.isFeatured;
@@ -413,7 +414,7 @@ router.put("/:id/toggle-featured", async (req, res) => {
       isFeatured: product.isFeatured
     });
 
-    console.log('✅ Enviando respuesta exitosa al cliente');
+
     res.json({
       success: true,
       message: `Producto ${product.isFeatured ? 'marcado como destacado' : 'removido de destacados'}`,
@@ -424,7 +425,7 @@ router.put("/:id/toggle-featured", async (req, res) => {
         featuredOrder: product.featuredOrder
       }
     });
-    console.log('🌟🌟🌟 TOGGLE FEATURED COMPLETADO EXITOSAMENTE 🌟🌟🌟\n');
+
   } catch (error) {
     console.error('❌❌❌ ERROR EN TOGGLE FEATURED:', error);
     console.error('Stack trace:', error.stack);
@@ -434,7 +435,7 @@ router.put("/:id/toggle-featured", async (req, res) => {
 });
 
 // PUT a product
-router.put("/:id", validateProductInput, async (req, res) => {
+router.put("/:id", tenantAuth, validateProductInput, async (req, res) => {
   try {
     const productId = req.params.id;
     const { name, description, price, category, image, toppingGroups, businessId } = req.body;
@@ -503,7 +504,7 @@ router.put("/:id", validateProductInput, async (req, res) => {
 });
 
 // DELETE a product
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", tenantAuth, async (req, res) => {
   try {
     const { businessId } = req.query;
     let resolvedBusinessId;
@@ -527,7 +528,7 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Toggle active status of a product
-router.patch("/:id/toggle", async (req, res) => {
+router.patch("/:id/toggle", tenantAuth, async (req, res) => {
   try {
     const productId = req.params.id;
     

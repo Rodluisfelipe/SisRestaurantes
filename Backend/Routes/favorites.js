@@ -68,7 +68,7 @@ router.post('/', async (req, res) => {
       return res.status(404).json(formatHttpError(req, 'Product not found', 404));
     }
 
-    if (!product.available) {
+    if (!product.active) {
       return res.status(400).json(formatHttpError(req, 'Product is not available', 400));
     }
 

@@ -1,36 +1,17 @@
-const { verifyToken } = require('../config/jwt');
+/**
+ * DEPRECATED: Este archivo es un alias de authMiddleware.js
+ * Usar directamente: const authMiddleware = require('./authMiddleware');
+ * Se mantiene por compatibilidad hacia atrás.
+ */
+const authMiddleware = require('./authMiddleware');
 
-const authenticateToken = async (req, res, next) => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
+const authenticateToken = authMiddleware;
 
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
-
-    req.user = decoded;
-    req.userId = decoded.id;
-    req.user.businessId = decoded.businessId;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: 'Authentication failed' });
+const requireSuperAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'superadmin') {
+    return res.status(403).json({ message: 'SuperAdmin access required' });
   }
-};
-
-const requireSuperAdmin = async (req, res, next) => {
-  try {
-    if (!req.user || req.user.role !== 'superadmin') {
-      return res.status(403).json({ message: 'SuperAdmin access required' });
-    }
-    next();
-  } catch (error) {
-    res.status(403).json({ message: 'Access denied' });
-  }
+  next();
 };
 
 module.exports = {

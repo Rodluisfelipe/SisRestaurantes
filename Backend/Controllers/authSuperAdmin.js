@@ -5,7 +5,10 @@ const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 // Configuración de JWT
-const JWT_SECRET = process.env.JWT_SECRET || 'superadmin-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 const JWT_EXPIRES_IN = '24h'; // Token válido por 24 horas
 
 // Configuración del servicio de email para Gmail

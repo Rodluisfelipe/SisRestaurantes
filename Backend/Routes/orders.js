@@ -10,6 +10,8 @@ const socketService = require("../services/socketService");
 const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
 const { isValidObjectId } = require("../utils/validators");
 const logger = require("../utils/logger");
+const { getSubscriptionForBusiness } = require('../utils/subscriptionHelper');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // Helper function to get order number
 const generateOrderNumber = async (businessId) => {
@@ -27,7 +29,7 @@ const generateOrderNumber = async (businessId) => {
     const lastNumber = parseInt(latestOrder.orderNumber, 10);
     return (lastNumber + 1).toString();
   } catch (error) {
-    console.error("Error generating order number:", error);
+
     // Fallback to timestamp-based order number
     return Date.now().toString();
   }
@@ -63,8 +65,8 @@ router.get("/", async (req, res) => {
 // Create a new order
 router.post("/", async (req, res) => {
   try {
-    console.log('=== POST /orders - DATOS RECIBIDOS ===');
-    console.log('req.body completo:', JSON.stringify(req.body, null, 2));
+
+
     
     const { 
       businessId, 
@@ -84,23 +86,42 @@ router.post("/", async (req, res) => {
       deliveryNeedsConfirmation
     } = req.body;
     
-    console.log('businessId:', businessId, 'tipo:', typeof businessId);
-    console.log('customerName:', customerName, 'tipo:', typeof customerName);
-    console.log('orderType:', orderType, 'tipo:', typeof orderType);
-    console.log('items:', items, 'tipo:', typeof items, 'length:', items?.length);
-    console.log('totalAmount:', totalAmount, 'tipo:', typeof totalAmount);
+
+
+
+
+
     
     // Convertir totalAmount a número si es string
     const numericTotalAmount = typeof totalAmount === 'string' ? parseFloat(totalAmount) : totalAmount;
     
+    // Input validation
     if (!businessId || !customerName || !orderType || !items || numericTotalAmount === undefined || numericTotalAmount === null || isNaN(numericTotalAmount)) {
-      console.log('ERROR: Campos requeridos faltantes');
-      console.log('businessId válido:', !!businessId);
-      console.log('customerName válido:', !!customerName);
-      console.log('orderType válido:', !!orderType);
-      console.log('items válido:', !!items);
-      console.log('totalAmount válido:', numericTotalAmount !== undefined && numericTotalAmount !== null && !isNaN(numericTotalAmount), 'valor:', totalAmount, 'convertido:', numericTotalAmount);
       return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Validate items array
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Items must be a non-empty array" });
+    }
+    for (const item of items) {
+      if (!item.name || typeof item.name !== 'string' || !item.quantity || !item.price) {
+        return res.status(400).json({ message: "Each item must have name (string), quantity and price" });
+      }
+    }
+
+    // Validate orderType
+    const validOrderTypes = ['dine-in', 'takeout', 'delivery', 'table'];
+    if (!validOrderTypes.includes(orderType)) {
+      return res.status(400).json({ message: `orderType must be one of: ${validOrderTypes.join(', ')}` });
+    }
+
+    // Validate string lengths
+    if (customerName.length > 100) {
+      return res.status(400).json({ message: "customerName exceeds max length (100)" });
+    }
+    if (address && address.length > 500) {
+      return res.status(400).json({ message: "address exceeds max length (500)" });
     }
     
     // Use centralized business validation
@@ -112,55 +133,23 @@ router.post("/", async (req, res) => {
     const businessObjectId = businessResult.businessId;
     
     // Verificar estado de la suscripción antes de permitir crear órdenes
-    const Subscription = require('../Models/Subscription');
-    const subscription = await Subscription.findOne({ businessId: businessObjectId })
-      .sort({ createdAt: -1 }); // Tomar la más reciente
+    const { subscription, status: subscriptionStatus, isSuspended, periodEnd: periodEndDate, graceUntil: graceUntilDate } = await getSubscriptionForBusiness(businessObjectId);
     
     if (subscription) {
-      // Calcular estado explícitamente con validación de fechas
-      const now = new Date();
-      const periodEndDate = subscription.periodEnd || subscription.endDate;
-      const graceUntilDate = subscription.graceUntil || (subscription.calculateGraceUntil ? subscription.calculateGraceUntil() : null);
-      
-      let subscriptionStatus = 'active';
-      
-      // Si tenemos periodEnd, verificar el estado
-      if (periodEndDate) {
-        if (now > periodEndDate) {
-          // Pasó el periodo de pago
-          if (graceUntilDate && now <= graceUntilDate) {
-            subscriptionStatus = 'grace'; // En período de gracia
-          } else {
-            subscriptionStatus = 'suspended'; // Período de gracia vencido
-          }
-        }
-      }
-      
-      // También verificar usando el método del modelo si está disponible
-      if (subscription.getCurrentStatus) {
-        const modelStatus = subscription.getCurrentStatus();
-        // Si el método del modelo dice 'suspended', usar ese
-        if (modelStatus === 'suspended') {
-          subscriptionStatus = 'suspended';
-        }
-      }
-      
       logger.info('Verificación de suscripción al crear orden', {
         businessId: businessObjectId,
         subscriptionId: subscription._id,
         periodEnd: periodEndDate,
         graceUntil: graceUntilDate,
-        now: now.toISOString(),
         subscriptionStatus,
-        isSuspended: subscriptionStatus === 'suspended'
+        isSuspended
       });
       
-      if (subscriptionStatus === 'suspended') {
+      if (isSuspended) {
         logger.warn('Intento de crear orden con suscripción suspendida', { 
           businessId: businessObjectId,
           periodEnd: periodEndDate,
-          graceUntil: graceUntilDate,
-          now: now.toISOString()
+          graceUntil: graceUntilDate
         });
         return res.status(403).json({ 
           message: 'El menú está desactivado. La suscripción ha expirado y el período de gracia ha finalizado. Por favor, contacta al restaurante para renovar la suscripción.',
@@ -176,16 +165,16 @@ router.post("/", async (req, res) => {
     // Find or create customer
     let customer = null;
     if (phone) {
-      console.log(`[Orders] Looking for customer with phone: "${phone}" and businessId: ${businessObjectId}`);
+
       
       customer = await Customer.findOne({ phone, businessId: businessObjectId });
       
       if (customer) {
-        console.log(`[Orders] Found existing customer: ${customer.name} (${customer.phone})`);
+
         // Update existing customer stats
         await customer.updateStats(numericTotalAmount);
       } else {
-        console.log(`[Orders] Creating new customer: ${customerName} (${phone})`);
+
         // Create new customer
         customer = new Customer({
           businessId: businessObjectId,
@@ -196,7 +185,7 @@ router.post("/", async (req, res) => {
           lastOrderDate: new Date()
         });
         await customer.save();
-        console.log(`[Orders] New customer created with ID: ${customer._id}`);
+
       }
     }
 
@@ -265,7 +254,7 @@ router.post("/", async (req, res) => {
       updatedAt: new Date()
     });
     
-    console.log('📦 Orden creada con datos de delivery:', {
+    logger.debug('Orden creada con datos de delivery', {
       deliveryFee,
       deliveryZoneName,
       deliveryCalculated,
@@ -303,37 +292,52 @@ router.post("/", async (req, res) => {
 // Get all completed orders for a business (historical view)
 router.get("/completed", async (req, res) => {
   try {
-    const { businessId } = req.query;
-    console.log(`[Orders/Completed] Received request with businessId: ${businessId}`);
+    const { businessId, page, limit: queryLimit } = req.query;
     
     if (!businessId) {
-      console.log('[Orders/Completed] No businessId provided');
       return res.status(400).json({ message: "Business ID is required" });
     }
     
     // Use centralized business validation
-    console.log(`[Orders/Completed] Validating businessId: ${businessId}`);
     const businessResult = await validateAndResolveBusinessId(businessId);
-    console.log(`[Orders/Completed] Validation result:`, businessResult);
     
     if (!businessResult.success) {
-      console.log(`[Orders/Completed] Validation failed: ${businessResult.error}`);
       return res.status(404).json({ message: businessResult.error });
     }
     
     const businessObjectId = businessResult.businessId;
-    console.log(`[Orders/Completed] Resolved businessObjectId: ${businessObjectId}`);
     
-    // Get all completed orders sorted by completion date (newest first)
-    const completedOrders = await CompletedOrder.find({
+    // Pagination (optional — without params returns all for backward compat)
+    const pageNum = parseInt(page) || 0;
+    const limitNum = parseInt(queryLimit) || 0;
+    
+    let query = CompletedOrder.find({
       businessId: businessObjectId
     }).sort({ completedAt: -1 });
     
-    console.log(`[Orders/Completed] Found ${completedOrders.length} completed orders`);
+    if (limitNum > 0) {
+      query = query.limit(limitNum).skip(pageNum > 0 ? (pageNum - 1) * limitNum : 0);
+    }
+    
+    const completedOrders = await query;
+    
+    // If paginated, include total count
+    if (limitNum > 0) {
+      const total = await CompletedOrder.countDocuments({ businessId: businessObjectId });
+      return res.json({
+        orders: completedOrders,
+        pagination: {
+          current: pageNum || 1,
+          total: Math.ceil(total / limitNum),
+          limit: limitNum,
+          totalOrders: total
+        }
+      });
+    }
+    
     logger.info(`Retrieved ${completedOrders.length} completed orders for business ${businessId}`);
     res.json(completedOrders);
   } catch (error) {
-    console.error(`[Orders/Completed] Error:`, error);
     logger.error("Error fetching completed orders", error);
     res.status(500).json({ message: error.message });
   }
@@ -356,13 +360,13 @@ router.get("/:id", async (req, res) => {
     
     res.json(order);
   } catch (error) {
-    console.error("Error fetching order:", error);
+
     res.status(500).json({ message: error.message });
   }
 });
 
-// Update order status
-router.patch("/:id/status", async (req, res) => {
+// Update order status (admin only)
+router.patch("/:id/status", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -423,24 +427,24 @@ router.patch("/:id/status", async (req, res) => {
             await Order.findByIdAndDelete(id);
             socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_deleted", { _id: id });
           } catch (err) {
-            console.error("Error removing completed order from active orders:", err);
+
           }
         }, 5000); // 5 seconds delay
       } catch (err) {
-        console.error("Error saving to CompletedOrder:", err);
+
         // Continue with response even if saving to CompletedOrder fails
       }
     }
     
     res.json(updatedOrder);
   } catch (error) {
-    console.error("Error updating order status:", error);
+
     res.status(500).json({ message: error.message });
   }
 });
 
-// Send order to kitchen without changing status
-router.patch("/:id/send-to-kitchen", async (req, res) => {
+// Send order to kitchen without changing status (admin only)
+router.patch("/:id/send-to-kitchen", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -467,13 +471,13 @@ router.patch("/:id/send-to-kitchen", async (req, res) => {
     
     res.json(updatedOrder);
   } catch (error) {
-    console.error("Error sending order to kitchen:", error);
+
     res.status(500).json({ message: error.message });
   }
 });
 
-// Delete an order
-router.delete("/:id", async (req, res) => {
+// Delete an order (admin only)
+router.delete("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -495,13 +499,13 @@ router.delete("/:id", async (req, res) => {
     
     res.json({ message: "Order deleted successfully" });
   } catch (error) {
-    console.error("Error deleting order:", error);
+
     res.status(500).json({ message: error.message });
   }
 });
 
-// Generate daily sales report and close day
-router.post("/daily-closing", async (req, res) => {
+// Generate daily sales report and close day (admin only)
+router.post("/daily-closing", authMiddleware, async (req, res) => {
   try {
     const { businessId } = req.body;
     
@@ -618,13 +622,13 @@ router.post("/daily-closing", async (req, res) => {
       stats
     });
   } catch (error) {
-    console.error("Error generating daily closing report:", error);
+
     res.status(500).json({ message: error.message });
   }
 });
 
-// Cleanup completed orders after viewing report
-router.post("/cleanup-completed", async (req, res) => {
+// Cleanup completed orders after viewing report (admin only)
+router.post("/cleanup-completed", authMiddleware, async (req, res) => {
   try {
     const { businessId, orderIds } = req.body;
     
@@ -665,7 +669,7 @@ router.post("/cleanup-completed", async (req, res) => {
       deletedCount: result.deletedCount
     });
   } catch (error) {
-    console.error("Error cleaning up completed orders:", error);
+
     res.status(500).json({ message: error.message });
   }
 });

@@ -10,6 +10,7 @@ const { isValidObjectId } = require('../utils/validators');
 const { resolveBusinessId } = require('../utils/businessResolver');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
+const { calculateSubscriptionStatus } = require('../utils/subscriptionHelper');
 
 // Validación de entrada para crear/actualizar suscripción
 const validateSubscriptionInput = (req, res, next) => {
@@ -104,16 +105,9 @@ router.get('/check/:businessId', async (req, res) => {
       });
     }
     
-    // Calcular días restantes
-    const now = new Date();
-    const isActive = subscription.isSubscriptionActive();
-    const isInGracePeriod = subscription.isInGracePeriod();
-    const daysRemaining = subscription.getDaysRemaining();
-    
-    // Usar el nuevo sistema de estados
-    const currentStatus = subscription.getCurrentStatus ? subscription.getCurrentStatus() : (isActive ? 'active' : (isInGracePeriod ? 'grace' : 'suspended'));
-    const periodEndDate = subscription.periodEnd || subscription.endDate;
-    const graceUntilDate = subscription.graceUntil || subscription.gracePeriodEnd || (subscription.calculateGraceUntil ? subscription.calculateGraceUntil() : null);
+    // Calcular estado usando helper centralizado
+    const { status: currentStatus, periodEnd: periodEndDate, graceUntil: graceUntilDate } = calculateSubscriptionStatus(subscription);
+    const daysRemaining = subscription.getDaysRemaining ? subscription.getDaysRemaining() : 0;
     
     res.json({
       success: true,

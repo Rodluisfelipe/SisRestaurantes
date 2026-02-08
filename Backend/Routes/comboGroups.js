@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const ComboGroup = require("../Models/ComboGroup");
+const { emitToBusiness } = require("../services/socketService");
+const { tenantAuth } = require("../middleware/tenantAuth");
 
 // Obtener todos los grupos de combos
 router.get("/", async (req, res) => {
@@ -16,17 +18,18 @@ router.get("/", async (req, res) => {
 });
 
 // Crear un nuevo grupo de combo
-router.post("/", async (req, res) => {
+router.post("/", tenantAuth, async (req, res) => {
   const comboGroup = new ComboGroup({
     name: req.body.name,
     basePrice: req.body.basePrice,
     description: req.body.description,
-    subGroups: req.body.subGroups
+    subGroups: req.body.subGroups,
+    businessId: req.body.businessId
   });
 
   try {
     const newComboGroup = await comboGroup.save();
-    req.emitEvent('combo_groups_update', await ComboGroup.find({ active: true }));
+    emitToBusiness(newComboGroup.businessId?.toString(), 'combo_groups_update', await ComboGroup.find({ active: true, businessId: newComboGroup.businessId }));
     res.status(201).json(newComboGroup);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -34,7 +37,7 @@ router.post("/", async (req, res) => {
 });
 
 // Actualizar un grupo de combo
-router.patch("/:id", async (req, res) => {
+router.patch("/:id", tenantAuth, async (req, res) => {
   try {
     const comboGroup = await ComboGroup.findById(req.params.id);
     if (!comboGroup) {
@@ -43,7 +46,7 @@ router.patch("/:id", async (req, res) => {
 
     Object.assign(comboGroup, req.body);
     const updatedComboGroup = await comboGroup.save();
-    req.emitEvent('combo_groups_update', await ComboGroup.find({ active: true }));
+    emitToBusiness(updatedComboGroup.businessId?.toString(), 'combo_groups_update', await ComboGroup.find({ active: true, businessId: updatedComboGroup.businessId }));
     res.json(updatedComboGroup);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -51,7 +54,7 @@ router.patch("/:id", async (req, res) => {
 });
 
 // Eliminar un grupo de combo (soft delete)
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", tenantAuth, async (req, res) => {
   try {
     const comboGroup = await ComboGroup.findById(req.params.id);
     if (!comboGroup) {
@@ -60,7 +63,7 @@ router.delete("/:id", async (req, res) => {
 
     comboGroup.active = false;
     await comboGroup.save();
-    req.emitEvent('combo_groups_update', await ComboGroup.find({ active: true }));
+    emitToBusiness(comboGroup.businessId?.toString(), 'combo_groups_update', await ComboGroup.find({ active: true, businessId: comboGroup.businessId }));
     res.json({ message: "Combo eliminado" });
   } catch (error) {
     res.status(500).json({ message: error.message });

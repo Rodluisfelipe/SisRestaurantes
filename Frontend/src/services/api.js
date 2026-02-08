@@ -92,16 +92,12 @@ api.interceptors.response.use(
         onRefreshed(newToken);
         return api(originalRequest);
       } catch (refreshError) {
-        // Si falla el refresh, NO hacer logout forzado
-        // Solo registramos el error, pero no cerramos sesión
+        // If refresh fails, clean up stale tokens and redirect to login
         console.error('Error al refrescar el token:', refreshError);
-        // Ya no hacemos logout automático ni borramos tokens
-        /*
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        */
+        sessionStorage.removeItem('accessToken');
+        sessionStorage.removeItem('refreshToken');
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

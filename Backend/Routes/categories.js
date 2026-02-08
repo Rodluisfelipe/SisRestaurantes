@@ -7,6 +7,7 @@ const { createBusinessFilter } = require("../utils/businessHelper");
 const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
+const { tenantAuth } = require("../middleware/tenantAuth");
 
 // Función auxiliar para obtener todas las categorías
 const getAllCategories = async (businessId = null) => {
@@ -32,7 +33,7 @@ router.get("/", async (req, res) => {
 });
 
 // Crear nueva categoría
-router.post("/", async (req, res) => {
+router.post("/", tenantAuth, async (req, res) => {
   try {
     // Si se proporciona un _id, actualizar en lugar de crear
     if (req.body._id) {
@@ -91,7 +92,7 @@ router.post("/", async (req, res) => {
 });
 
 // Reordenar categorías (debe ir antes de /:id para evitar conflictos)
-router.put("/reorder", async (req, res) => {
+router.put("/reorder", tenantAuth, async (req, res) => {
   try {
     const { businessId, categories } = req.body;
     
@@ -132,7 +133,7 @@ router.put("/reorder", async (req, res) => {
 });
 
 // Actualizar categoría (mejorado para manejar displayOrder)
-router.put("/:id", async (req, res) => {
+router.put("/:id", tenantAuth, async (req, res) => {
   try {
     logger.debug('Updating category', { id: req.params.id }, req);
     
@@ -167,7 +168,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // Eliminar categoría
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", tenantAuth, async (req, res) => {
   try {
     const { businessId } = req.query;
     let resolvedBusinessId;
@@ -191,7 +192,7 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Actualizar el orden de múltiples categorías
-router.post("/update-order", async (req, res) => {
+router.post("/update-order", tenantAuth, async (req, res) => {
   try {
     const { categories } = req.body;
     

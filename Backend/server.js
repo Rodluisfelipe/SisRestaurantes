@@ -3,6 +3,9 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const http = require("http");
 const path = require("path");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const mongoSanitize = require("express-mongo-sanitize");
 
 // Cargar variables de entorno - ESTO DEBE IR PRIMERO
 require('dotenv').config();
@@ -42,7 +45,7 @@ const io = new Server(server, {
         callback(null, true);
       } else {
         console.log(`Origen no permitido (Socket.io): ${origin}`);
-        callback(null, true); // Permitir cualquier origen en producción para mayor flexibilidad
+        callback(new Error('Not allowed by CORS'));
       }
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -68,7 +71,7 @@ app.use(cors({
       callback(null, true);
     } else {
       console.log(`Origen no permitido: ${origin}`);
-      callback(null, true); // Permitir cualquier origen en producción para mayor flexibilidad
+      callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -81,7 +84,21 @@ app.use(cors({
 // Manejar peticiones OPTIONS explícitamente
 app.options('*', cors());
 
+// Security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: false // Handled by frontend
+}));
+
+// Request logging
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('combined'));
+}
+
 app.use(express.json());
+
+// NoSQL injection sanitization
+app.use(mongoSanitize());
 
 // Servir archivos estáticos desde la carpeta uploads
 app.use('/uploads', express.static('uploads'));
@@ -126,7 +143,10 @@ app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
 app.use("/api/push", require("./Routes/push")); // Push notifications (PWA)
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot
-app.use("/api/debug", require("./Routes/debug")); // Debug endpoints para Socket.IO
+// Debug endpoints - solo disponibles en desarrollo
+if (process.env.NODE_ENV !== 'production') {
+  app.use("/api/debug", require("./Routes/debug"));
+}
 
 // Rutas específicas para superadmin (integradas desde BackendSA)
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
@@ -135,7 +155,6 @@ app.use("/api/superadmin", require("./Routes/superadmin"));
 app.use("/api", require("./Routes/paymentRequests"));
 app.use("/api/subscriptions", require("./Routes/subscriptions"));
 app.use("/api/admin/subscriptions", require("./Routes/adminSubscriptions"));
-app.use("/api/coupons", require("./Routes/coupons"));
 app.use("/api/whatsapp-templates", require("./Routes/whatsappTemplates"));
 
 // Servir archivos de comprobantes

@@ -88,6 +88,17 @@ couponSchema.methods.canBeUsed = function(businessId) {
   return { valid: true };
 };
 
+// Alias methods used in orders.js
+couponSchema.methods.validateForOrder = function(businessId) {
+  return this.canBeUsed(businessId);
+};
+
+couponSchema.methods.calculateDiscount = function(totalAmount) {
+  // Coupon gives N months free - it's a subscription coupon, not an order discount
+  // Return 0 discount for order total (coupon affects subscription, not order price)
+  return 0;
+};
+
 // Método estático para generar código único
 couponSchema.statics.generateCode = async function() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin I, O, 0, 1 para evitar confusión

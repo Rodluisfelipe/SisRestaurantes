@@ -15,9 +15,7 @@ const { resolveBusinessId } = require('../utils/businessResolver');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const socketService = require('../services/socketService');
-
-// Constante de gracia (5 días)
-const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 5);
+const { calculateSubscriptionStatus, GRACE_DAYS } = require('../utils/subscriptionHelper');
 
 // Configurar multer para subida de comprobantes
 const storage = multer.diskStorage({
@@ -98,9 +96,7 @@ router.get('/subscription/me', authMiddleware, async (req, res) => {
       });
     }
     
-    const currentStatus = subscription.getCurrentStatus ? subscription.getCurrentStatus() : 'active';
-    const periodEndDate = subscription.periodEnd || subscription.endDate;
-    const graceUntilDate = subscription.graceUntil || (subscription.calculateGraceUntil ? subscription.calculateGraceUntil() : null);
+    const { status: currentStatus, periodEnd: periodEndDate, graceUntil: graceUntilDate } = calculateSubscriptionStatus(subscription);
     
     res.json({
       success: true,

@@ -1,9 +1,15 @@
 const BusinessConfig = require('../Models/BusinessConfig');
 const Admin = require('../Models/Admin');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { DEFAULTS, ERROR_MESSAGES, HTTP_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
+
+// Generate a secure random password
+function generateSecurePassword() {
+  return crypto.randomBytes(12).toString('base64url').slice(0, 16);
+}
 
 // Crear nuevo negocio y admin
 exports.crearNegocio = async (req, res) => {
@@ -17,8 +23,8 @@ exports.crearNegocio = async (req, res) => {
     const business = await BusinessConfig.create({ businessName, logo, whatsappNumber, slug });
     logger.info(`Created new business: ${businessName} with slug: ${slug}`);
     
-    // 2. Crear admin con contraseña por defecto
-    const defaultPassword = DEFAULTS.ADMIN_PASSWORD;
+    // 2. Crear admin con contraseña segura generada aleatoriamente
+    const defaultPassword = generateSecurePassword();
     const admin = new Admin({
       username: adminUsername,
       password: defaultPassword,

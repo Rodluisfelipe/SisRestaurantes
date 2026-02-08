@@ -5,6 +5,7 @@ const BusinessConfig = require("../Models/BusinessConfig");
 const mongoose = require("mongoose");
 // Import the validators utilities
 const { isValidObjectId, isValidBusinessIdentifier } = require("../utils/validators");
+const { tenantAuth } = require("../middleware/tenantAuth");
 
 // Middleware to validate businessId
 router.use(async (req, res, next) => {
@@ -18,33 +19,33 @@ router.use(async (req, res, next) => {
     // Store the original businessId value (useful for QR code generation)
     req.originalBusinessId = businessId;
     
-    console.log(`Processing businessId: "${businessId}"`);
+
     
     // If it's already a valid ObjectId, proceed
     if (isValidObjectId(businessId)) {
-      console.log(`BusinessId is a valid ObjectId: ${businessId}`);
+
       return next();
     }
     
     // At this point, we're dealing with a slug
-    console.log(`Looking up business with slug: "${businessId}"`);
+
     
     try {
       // First check if the slug exists in any business
       const business = await BusinessConfig.findOne({ slug: businessId });
       
       if (!business) {
-        console.log(`No business found with slug: "${businessId}"`);
+
         // For debugging, let's see what business slugs actually exist
         const allBusinesses = await BusinessConfig.find({}, 'slug');
-        console.log('Available slugs:', allBusinesses.map(b => b.slug));
+
         
         // For now, temporarily allow any slug to pass for testing
-        console.log('Proceeding with original slug (temporary workaround)');
+
         return next();
       }
       
-      console.log(`Found business: ${business._id} with slug: ${business.slug}`);
+
       
       // Replace the slug with the _id of the business document
       if (req.query.businessId) {
@@ -58,7 +59,7 @@ router.use(async (req, res, next) => {
     } catch (innerError) {
       console.error("Error during business lookup:", innerError);
       // Allow to proceed with original businessId for testing
-      console.log('Proceeding with original businessId due to lookup error');
+
       return next();
     }
   } catch (error) {
@@ -74,21 +75,17 @@ router.use(async (req, res, next) => {
 router.get("/", async (req, res) => {
   try {
     const { businessId } = req.query;
-    console.log(`GET /tables with businessId: ${businessId}`);
+
     
     // El middleware ya debería haber convertido el slug a ObjectId si es necesario
     if (!isValidObjectId(businessId)) {
-      console.log(`Warning: businessId is still not a valid ObjectId after middleware: ${businessId}`);
-      // Esto no debería ocurrir si el middleware funcionó correctamente
-      // En este caso, buscamos todas las mesas (solo para debugging)
-      const allTables = await Table.find({});
-      console.log(`Returning all tables (${allTables.length}) for debugging`);
-      return res.status(200).json(allTables);
+
+      return res.status(400).json({ message: "Invalid businessId" });
     }
     
     // Normal query with validated businessId
     const tables = await Table.find({ businessId });
-    console.log(`Found ${tables.length} tables for businessId: ${businessId}`);
+
     res.status(200).json(tables);
   } catch (error) {
     console.error("Error fetching tables:", error);
@@ -105,18 +102,18 @@ router.get("/validate", async (req, res) => {
       return res.status(400).json({ message: "BusinessId and tableNumber are required" });
     }
     
-    console.log(`Validating table number ${tableNumber} for business: ${businessId}`);
+
     
     // Buscar el negocio primero si no es un ObjectId válido
     let finalBusinessId = businessId;
     if (!isValidObjectId(businessId)) {
-      console.log(`Looking up business with slug: "${businessId}"`);
+
       const business = await BusinessConfig.findOne({ slug: businessId });
       if (business) {
         finalBusinessId = business._id;
-        console.log(`Found business with ID: ${finalBusinessId} for slug: ${businessId}`);
+
       } else {
-        console.log(`No business found with slug: "${businessId}"`);
+
         return res.status(404).json({ 
           message: "Business not found",
           exists: false 
@@ -126,14 +123,14 @@ router.get("/validate", async (req, res) => {
     
     // Check if table exists - make sure we're comparing strings
     // El tableNumber no es un ObjectId, es simplemente un número de mesa (string o número)
-    console.log(`Searching for table with businessId: ${finalBusinessId}, tableNumber: ${tableNumber}`);
+
     const table = await Table.findOne({ 
       businessId: finalBusinessId, 
       tableNumber: tableNumber.toString().trim() 
     });
     
     if (!table) {
-      console.log(`Table ${tableNumber} not found for business: ${finalBusinessId}`);
+
       // For debugging, log all tables for this business
       const allTables = await Table.find({ businessId: finalBusinessId });
       console.log(`Available tables for business ${finalBusinessId}:`, 
@@ -145,7 +142,7 @@ router.get("/validate", async (req, res) => {
       });
     }
     
-    console.log(`Table ${tableNumber} found for business: ${finalBusinessId}`, table);
+
     res.status(200).json({ 
       message: "Table found",
       exists: true,
@@ -182,13 +179,13 @@ router.get("/:id", async (req, res) => {
 });
 
 // Create a new table
-router.post("/", async (req, res) => {
+router.post("/", tenantAuth, async (req, res) => {
   try {
     const { businessId, tableNumber, tableName, notes } = req.body;
     // Use the original slug for the QR code URL but the ObjectId for database operations
     const originalBusinessId = req.originalBusinessId || businessId;
     
-    console.log(`Creating table for business: ${businessId}, original: ${originalBusinessId}`);
+
     
     // Ensure businessId is a valid ObjectId for DB operations
     if (!isValidObjectId(businessId)) {
@@ -225,7 +222,7 @@ router.post("/", async (req, res) => {
 });
 
 // Update a table
-router.put("/:id", async (req, res) => {
+router.put("/:id", tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { businessId, tableNumber, tableName, notes, isActive } = req.body;
@@ -266,12 +263,12 @@ router.put("/:id", async (req, res) => {
 });
 
 // Delete a table
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { businessId } = req.query;
     
-    console.log(`DELETE /tables/${id} with businessId: ${businessId}`);
+
     
     if (!isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid table ID format" });
@@ -279,21 +276,21 @@ router.delete("/:id", async (req, res) => {
     
     // El middleware ya debería haber convertido el slug a ObjectId si es necesario
     if (!isValidObjectId(businessId)) {
-      console.log(`Warning: businessId is still not a valid ObjectId after middleware: ${businessId}`);
+
       return res.status(400).json({ 
         message: "Invalid businessId format. The businessId might not have been properly converted from slug to ObjectId."
       });
     }
     
-    console.log(`Attempting to delete table ${id} for business ${businessId}`);
+
     const result = await Table.findOneAndDelete({ _id: id, businessId });
     
     if (!result) {
-      console.log(`Table ${id} not found for business ${businessId}`);
+
       return res.status(404).json({ message: "Table not found" });
     }
     
-    console.log(`Table ${id} deleted successfully`);
+
     res.status(200).json({ message: "Table deleted successfully" });
   } catch (error) {
     console.error("Error deleting table:", error);

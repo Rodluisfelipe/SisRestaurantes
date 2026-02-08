@@ -4,6 +4,7 @@ const Customer = require('../Models/Customer');
 const Order = require('../Models/Order');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const { isValidObjectId } = require('../utils/isValidObjectId');
+const { tenantAuth } = require('../middleware/tenantAuth');
 
 // GET /api/customers - Listar clientes con filtros
 router.get('/', async (req, res) => {
@@ -18,26 +19,26 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    console.log(`[Customers] Received request with businessId: ${businessId}`);
-    console.log(`[Customers] Query params:`, { businessId, page, limit, search, status, sortBy, sortOrder });
+
+
 
     // Construir filtro
     const filter = {
       businessId: isValidObjectId(businessId) ? businessId : null
     };
 
-    console.log(`[Customers] Filter before businessId resolution:`, filter);
+
 
     // Si businessId no es un ObjectId válido, intentar resolverlo como slug
     if (!isValidObjectId(businessId)) {
-      console.log(`[Customers] businessId is not ObjectId, trying to resolve as slug: ${businessId}`);
+
       const BusinessConfig = require('../Models/BusinessConfig');
       const business = await BusinessConfig.findOne({ slug: businessId });
       if (business) {
         filter.businessId = business._id;
-        console.log(`[Customers] Resolved slug to ObjectId: ${business._id}`);
+
       } else {
-        console.log(`[Customers] Business not found with slug: ${businessId}`);
+
         return res.json({
           customers: [],
           pagination: {
@@ -50,19 +51,20 @@ router.get('/', async (req, res) => {
       }
     }
 
-    console.log(`[Customers] Final filter:`, filter);
+
 
     // Filtro por estado
     if (status !== 'all') {
       filter.status = status;
     }
 
-    // Filtro por búsqueda
+    // Filtro por búsqueda (escapar regex para prevenir ReDoS)
     if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
+        { name: { $regex: escapedSearch, $options: 'i' } },
+        { phone: { $regex: escapedSearch, $options: 'i' } },
+        { email: { $regex: escapedSearch, $options: 'i' } }
       ];
     }
 
@@ -80,7 +82,7 @@ router.get('/', async (req, res) => {
       sort.createdAt = -1; // Default sort
     }
 
-    console.log(`[Customers] Sort:`, sort);
+
 
     // Obtener clientes con paginación
     const customers = await Customer.find(filter)
@@ -90,33 +92,28 @@ router.get('/', async (req, res) => {
 
     const totalCustomers = await Customer.countDocuments(filter);
 
-    console.log(`[Customers] Found ${customers.length} customers out of ${totalCustomers} total`);
 
-    // Calcular estadísticas
-    const allCustomersForStats = await Customer.find({ businessId: filter.businessId });
-    
+
+    // Calcular estadísticas usando MongoDB aggregation (evita cargar todos los docs en memoria)
+    const [statsResult] = await Customer.aggregate([
+      { $match: { businessId: filter.businessId } },
+      { $group: {
+        _id: null,
+        totalRevenue: { $sum: { $ifNull: ['$totalSpent', 0] } },
+        totalOrdersSum: { $sum: { $ifNull: ['$totalOrders', 0] } },
+        count: { $sum: 1 },
+        vipCustomers: { $sum: { $cond: [{ $gte: [{ $ifNull: ['$totalOrders', 0] }, 10] }, 1, 0] } }
+      }}
+    ]);
+
     const stats = {
       totalCustomers: totalCustomers,
-      vipCustomers: 0,
-      totalRevenue: 0,
-      averageOrders: 0
+      vipCustomers: statsResult?.vipCustomers || 0,
+      totalRevenue: statsResult?.totalRevenue || 0,
+      averageOrders: statsResult?.count > 0 
+        ? (statsResult.totalOrdersSum / statsResult.count).toFixed(1) 
+        : 0
     };
-
-    // Calcular VIP (10+ pedidos), ingresos totales y promedio de pedidos
-    let totalOrdersSum = 0;
-    allCustomersForStats.forEach(customer => {
-      if ((customer.totalOrders || 0) >= 10) {
-        stats.vipCustomers++;
-      }
-      stats.totalRevenue += customer.totalSpent || 0;
-      totalOrdersSum += customer.totalOrders || 0;
-    });
-
-    stats.averageOrders = allCustomersForStats.length > 0 
-      ? (totalOrdersSum / allCustomersForStats.length).toFixed(1) 
-      : 0;
-
-    console.log(`[Customers] Calculated stats:`, stats);
 
     res.json({
       customers,
@@ -135,7 +132,7 @@ router.get('/', async (req, res) => {
 });
 
 // PUT /api/customers/:phone - Actualizar datos del cliente
-router.put('/:phone', async (req, res) => {
+router.put('/:phone', tenantAuth, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -234,7 +231,7 @@ router.get('/:phone/orders', async (req, res) => {
     // Construir filtro para pedidos
     const orderFilter = {
       businessId: isValidObjectId(businessId) ? businessId : null,
-      'customerInfo.phone': phone
+      phone: phone
     };
 
     if (status) {
@@ -301,7 +298,7 @@ router.put('/:phone/settings', async (req, res) => {
 });
 
 // DELETE /api/customers/:phone - Eliminar cliente
-router.delete('/:phone', async (req, res) => {
+router.delete('/:phone', tenantAuth, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -327,12 +324,12 @@ router.delete('/:phone', async (req, res) => {
 });
 
 // DELETE /api/customers/by-id/:id - Eliminar cliente por ID
-router.delete('/by-id/:id', async (req, res) => {
+router.delete('/by-id/:id', tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { businessId } = req.query;
 
-    console.log(`[Customers] DELETE by ID - Received id: ${id}, businessId: ${businessId}`);
+
 
     if (!id) {
       return res.status(400).json({ error: 'ID del cliente requerido' });
@@ -345,12 +342,12 @@ router.delete('/by-id/:id', async (req, res) => {
     // Resolver businessId si es un slug
     let resolvedBusinessId = businessId;
     if (!isValidObjectId(businessId)) {
-      console.log(`[Customers] Resolving businessId slug: ${businessId}`);
+
       const BusinessConfig = require('../Models/BusinessConfig');
       const business = await BusinessConfig.findOne({ slug: businessId });
       if (business) {
         resolvedBusinessId = business._id;
-        console.log(`[Customers] Resolved businessId to: ${resolvedBusinessId}`);
+
       } else {
         return res.status(404).json({ error: 'Negocio no encontrado' });
       }
@@ -362,11 +359,11 @@ router.delete('/by-id/:id', async (req, res) => {
     });
 
     if (!customer) {
-      console.log(`[Customers] Customer not found with id: ${id} and businessId: ${resolvedBusinessId}`);
+
       return res.status(404).json({ error: 'Cliente no encontrado' });
     }
 
-    console.log(`[Customers] Customer deleted successfully: ${customer.name}`);
+
     res.json({ message: 'Cliente eliminado exitosamente' });
   } catch (error) {
     console.error('[Customers] Error al eliminar cliente por ID:', error);

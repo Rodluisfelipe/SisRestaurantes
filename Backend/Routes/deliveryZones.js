@@ -18,9 +18,18 @@ const { validatePolygon } = require("../utils/geospatial");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 
-// Middleware vacío para no romper compatibilidad (rate limiting deshabilitado temporalmente)
-const geocodeLimiter = (req, res, next) => next();
-const zoneLimiter = (req, res, next) => next();
+// Rate limiting para geocodificación y zonas (previene abuso de APIs externas)
+const rateLimit = require('express-rate-limit');
+const geocodeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minuto
+  max: 30, // 30 peticiones por minuto
+  message: { success: false, message: 'Demasiadas peticiones de geocodificación. Intenta de nuevo en un minuto.' }
+});
+const zoneLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { success: false, message: 'Demasiadas peticiones. Intenta de nuevo en un minuto.' }
+});
 
 // ============================================
 // GEOCODIFICACIÓN (DEBE IR ANTES DE LAS RUTAS CON :id)

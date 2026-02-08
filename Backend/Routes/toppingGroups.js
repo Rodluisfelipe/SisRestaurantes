@@ -8,6 +8,7 @@ const { createBusinessFilter } = require("../utils/businessHelper");
 const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
+const { tenantAuth } = require("../middleware/tenantAuth");
 
 // Endpoint de prueba para verificar que el servidor esté funcionando
 router.get("/test", (req, res) => {
@@ -57,7 +58,7 @@ router.get("/", async (req, res) => {
 });
 
 // Create new topping group
-router.post("/", async (req, res) => {
+router.post("/", tenantAuth, async (req, res) => {
   try {
     logger.debug('Creating topping group', { name: req.body.name }, req);
     
@@ -113,7 +114,7 @@ router.post("/", async (req, res) => {
 });
 
 // Update topping group - Versión simplificada y robusta
-router.put("/:id", async (req, res) => {
+router.put("/:id", tenantAuth, async (req, res) => {
   try {
     // Validar que el ID sea válido
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -188,7 +189,7 @@ router.put("/:id", async (req, res) => {
 });
 
 // Delete topping group (soft delete)
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", tenantAuth, async (req, res) => {
   try {
     const { businessId } = req.query;
     let resolvedBusinessId;
@@ -211,7 +212,7 @@ router.delete("/:id", async (req, res) => {
 });
 
 // Toggle active status of a specific option
-router.patch("/:groupId/options/:optionId/toggle", async (req, res) => {
+router.patch("/:groupId/options/:optionId/toggle", tenantAuth, async (req, res) => {
   try {
     const { groupId, optionId } = req.params;
     

@@ -3,7 +3,10 @@ const SuperAdmin = require('../Models/SuperAdmin');
 const logger = require('../utils/logger');
 
 // Configuración de JWT (debe coincidir con la del controlador)
-const JWT_SECRET = process.env.JWT_SECRET || 'superadmin-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 /**
  * Middleware para proteger rutas que requieren autenticación de SuperAdmin
