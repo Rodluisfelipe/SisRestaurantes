@@ -4,82 +4,144 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const Product = require('../Models/Product');
 const Category = require('../Models/Category');
 const DeliveryZone = require('../Models/DeliveryZone');
+const Order = require('../Models/Order');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
 
-// Función para obtener categorías reales basadas en productos
-const getBusinessCategories = async (businessId) => {
-  try {
-    // Obtener todos los productos activos del negocio
-    const products = await Product.find({ businessId, active: true })
-      .select('name description')
-      .lean();
-    
-    if (products.length === 0) {
-      logger.debug('No active products', { businessId });
-      return [];
-    }
-    
-    // Categorías GENÉRICAS del catálogo (como Rappi, DiDi)
-    const categoryKeywords = {
-      'hamburguesas': ['hamburguesa', 'burger', 'whopper', 'big mac', 'mcpollo', 'cheeseburger', 'carne de res'],
-      'pollo': ['pollo', 'chicken', 'alitas', 'wings', 'nuggets', 'broaster', 'pechuga', 'mcnuggets'],
-      'pizza': ['pizza', 'pizzeta', 'pepperoni', 'hawaiana', 'margarita', 'quattro'],
-      'bebidas': ['coca', 'pepsi', 'gaseosa', 'jugo', 'agua', 'bebida', 'refresco', 'limonada', 'té', 'cafe', 'soda', 'sprite', 'fanta'],
-      'postres': ['postre', 'helado', 'pastel', 'torta', 'brownie', 'flan', 'dulce', 'sundae', 'mcflurry', 'oreo', 'cheesecake'],
-      'sandwich': ['sandwich', 'sándwich', 'sub', 'bocadillo', 'mccrispy'],
-      'papas': ['papa', 'fries', 'papas fritas'],
-      'ensaladas': ['ensalada', 'salad', 'vegetal'],
-      'combos': ['combo', 'menu', 'cajita feliz']
-    };
+// Palabras clave para categorías genéricas del catálogo (estilo Rappi/DiDi)
+const categoryKeywords = {
+  'hamburguesas': ['hamburguesa', 'burger', 'whopper', 'big mac', 'mcpollo', 'cheeseburger', 'carne de res'],
+  'pollo': ['pollo', 'chicken', 'alitas', 'wings', 'nuggets', 'broaster', 'pechuga', 'mcnuggets'],
+  'pizza': ['pizza', 'pizzeta', 'pepperoni', 'hawaiana', 'margarita', 'quattro'],
+  'bebidas': ['coca', 'pepsi', 'gaseosa', 'jugo', 'agua', 'bebida', 'refresco', 'limonada', 'té', 'cafe', 'soda', 'sprite', 'fanta'],
+  'postres': ['postre', 'helado', 'pastel', 'torta', 'brownie', 'flan', 'dulce', 'sundae', 'mcflurry', 'oreo', 'cheesecake'],
+  'sandwich': ['sandwich', 'sándwich', 'sub', 'bocadillo', 'mccrispy'],
+  'papas': ['papa', 'fries', 'papas fritas'],
+  'ensaladas': ['ensalada', 'salad', 'vegetal'],
+  'combos': ['combo', 'menu', 'cajita feliz']
+};
 
-    const foundCategories = new Set();
-    
-    // Analizar cada producto por nombre Y descripción
-    products.forEach(product => {
-      const productText = `${product.name} ${product.description || ''}`.toLowerCase();
-      
-      // Buscar coincidencias con palabras clave de categorías genéricas
-      for (const [category, keywords] of Object.entries(categoryKeywords)) {
-        const hasMatch = keywords.some(keyword => productText.includes(keyword));
-        if (hasMatch) {
-          foundCategories.add(category);
+/**
+ * Obtener categorías + productCount + minPrice + topProducts + popularityScore
+ * para MULTIPLES negocios. Elimina el problema N+1.
+ */
+const getBatchBusinessInfo = async (businessIds) => {
+  try {
+    if (!businessIds.length) return {};
+
+    // Queries en paralelo: productos + órdenes recientes (30 días)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [products, orderCounts] = await Promise.all([
+      Product.find({
+        businessId: { $in: businessIds },
+        active: true
+      }).select('businessId name description price image isFeatured').lean(),
+      Order.aggregate([
+        {
+          $match: {
+            businessId: { $in: businessIds },
+            status: { $in: ['completed', 'delivered'] },
+            createdAt: { $gte: thirtyDaysAgo }
+          }
+        },
+        {
+          $group: {
+            _id: '$businessId',
+            orderCount: { $sum: 1 },
+            avgOrderValue: { $avg: '$totalAmount' },
+            totalRevenue: { $sum: '$totalAmount' }
+          }
+        }
+      ])
+    ]);
+
+    // Map de order stats
+    const orderStats = {};
+    for (const stat of orderCounts) {
+      orderStats[stat._id.toString()] = stat;
+    }
+
+    const byBusiness = {};
+    for (const id of businessIds) {
+      byBusiness[id.toString()] = {
+        categories: new Set(),
+        productCount: 0,
+        minPrice: Infinity,
+        topProducts: [],
+        orderCount: 0,
+        avgOrderValue: 0,
+        popularityScore: 0
+      };
+    }
+
+    for (const product of products) {
+      const bid = product.businessId.toString();
+      if (!byBusiness[bid]) continue;
+      const entry = byBusiness[bid];
+      entry.productCount++;
+
+      if (product.price < entry.minPrice) {
+        entry.minPrice = product.price;
+      }
+
+      if (entry.topProducts.length < 3) {
+        if (product.isFeatured || product.image) {
+          entry.topProducts.push({
+            name: product.name,
+            price: product.price,
+            image: product.image || null
+          });
         }
       }
-    });
 
-    const categories = Array.from(foundCategories);
-    logger.debug('Generic categories found', { businessId, categories, productCount: products.length });
-    
-    return categories;
+      const text = `${product.name} ${product.description || ''}`.toLowerCase();
+      for (const [category, keywords] of Object.entries(categoryKeywords)) {
+        if (keywords.some(kw => text.includes(kw))) {
+          entry.categories.add(category);
+        }
+      }
+    }
+
+    for (const bid of Object.keys(byBusiness)) {
+      byBusiness[bid].categories = Array.from(byBusiness[bid].categories);
+      if (byBusiness[bid].minPrice === Infinity) byBusiness[bid].minPrice = 0;
+      // Calcular popularidad real
+      const stats = orderStats[bid];
+      if (stats) {
+        byBusiness[bid].orderCount = stats.orderCount;
+        byBusiness[bid].avgOrderValue = Math.round(stats.avgOrderValue || 0);
+        // Score: órdenes * 10 + productos * 2 (ponderado)
+        byBusiness[bid].popularityScore = stats.orderCount * 10 + byBusiness[bid].productCount * 2;
+      } else {
+        byBusiness[bid].popularityScore = byBusiness[bid].productCount * 2;
+      }
+    }
+
+    return byBusiness;
   } catch (error) {
-    logger.error('Error getting business categories:', error);
-    return [];
+    logger.error('Error in getBatchBusinessInfo:', error);
+    return {};
   }
 };
 
 /**
  * GET /api/businesses
  * Obtener todos los negocios activos para el catálogo
- * Si se proporcionan lat/lon, filtra solo los que cubren esa ubicación
+ * Query params: lat, lon, limit, offset, open (filtro abierto ahora)
  */
 router.get('/', async (req, res) => {
   try {
-    const { lat, lon } = req.query;
+    const { lat, lon, limit = 50, offset = 0, open } = req.query;
     const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
     
-    logger.info('GET /api/businesses - Obteniendo lista de negocios', {
-      withLocation: hasLocation,
-      lat,
-      lon
-    });
+    logger.info('GET /api/businesses', { withLocation: hasLocation, lat, lon, limit, offset, open });
 
     // Obtener todos los negocios activos
     const businesses = await BusinessConfig.find({ 
       isActive: true
-    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location createdAt updatedAt');
+    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location businessHours createdAt updatedAt');
 
     // Si hay ubicación, filtrar por cobertura
     let businessesToShow = businesses;
@@ -87,32 +149,22 @@ router.get('/', async (req, res) => {
     if (hasLocation) {
       const userPoint = {
         lat: parseFloat(lat),
-        lon: parseFloat(lon)  // Cambiar lng a lon para coincidir con geospatial.js
+        lon: parseFloat(lon)
       };
       
-      logger.debug('Filtrando por ubicación del usuario', { userPoint }, req);
-      
-      // Verificar cobertura para cada negocio
       const businessesWithCoverage = await Promise.all(
         businesses.map(async (business) => {
-          // Buscar zonas activas del negocio
           const zones = await DeliveryZone.find({
             businessId: business._id,
             isActive: true
           });
           
-          if (zones.length === 0) {
-            return null; // No tiene zonas configuradas
-          }
+          if (zones.length === 0) return null;
           
-          // Verificar si el usuario está en alguna zona y obtener la zona con mayor prioridad
           let matchedZone = null;
-          
           for (const zone of zones.sort((a, b) => b.priority - a.priority)) {
             let isInZone = false;
-            
             if (zone.type === 'polygon') {
-              // GeoJSON Polygon: coordinates es [[...]], necesitamos el array interno [0]
               const polygonRing = zone.geometry.coordinates[0];
               isInZone = pointInPolygon(userPoint, polygonRing);
             } else if (zone.type === 'circle') {
@@ -122,38 +174,52 @@ router.get('/', async (req, res) => {
               };
               isInZone = pointInRadius(userPoint, center, zone.geometry.radius);
             }
-            
-            if (isInZone) {
-              matchedZone = zone;
-              break; // Tomar la primera zona que coincida (ya están ordenadas por prioridad)
-            }
+            if (isInZone) { matchedZone = zone; break; }
           }
           
           if (matchedZone) {
-            logger.debug(`Usuario en cobertura`, { businessId: business._id, zoneName: matchedZone.name }, req);
-            // Agregar información de la zona al negocio
             business._doc.deliveryZone = {
               name: matchedZone.name,
               estimatedTime: matchedZone.estimatedTime,
               pricing: matchedZone.pricing
             };
             return business;
-          } else {
-            return null;
           }
+          return null;
         })
       );
       
-      // Filtrar solo los que tienen cobertura
       businessesToShow = businessesWithCoverage.filter(b => b !== null);
-      logger.debug(`Restaurantes con cobertura filtrados`, { count: businessesToShow.length, total: businesses.length }, req);
     }
-    
-    // Formatear respuesta para el catálogo con categorías reales
-    const formattedBusinesses = await Promise.all(businessesToShow.map(async (business) => {
-      const categories = await getBusinessCategories(business._id);
+
+    // Filtro "abierto ahora" — usa horarios reales
+    if (open === 'true') {
+      businessesToShow = businessesToShow.filter(b => {
+        if (!b.isOpen) return false;
+        if (typeof b.isCurrentlyOpen === 'function') return b.isCurrentlyOpen();
+        return b.isOpen;
+      });
+    }
+
+    // Batch: obtener categorías + productCount en UN solo query (elimina N+1)
+    const businessIds = businessesToShow.map(b => b._id);
+    const batchInfo = await getBatchBusinessInfo(businessIds);
+
+    // Paginación
+    const total = businessesToShow.length;
+    const paginatedBusinesses = businessesToShow.slice(
+      parseInt(offset),
+      parseInt(offset) + parseInt(limit)
+    );
+
+    // Formatear respuesta
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const formattedBusinesses = paginatedBusinesses.map(business => {
+      const bid = business._id.toString();
+      const info = batchInfo[bid] || { categories: [], productCount: 0, minPrice: 0, topProducts: [] };
       
-      // Extraer coordenadas del campo location
       let coordinates = null;
       if (business.location && business.location.coordinates) {
         coordinates = {
@@ -161,6 +227,11 @@ router.get('/', async (req, res) => {
           lng: business.location.coordinates.lng
         };
       }
+
+      // Obtener horario de hoy
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const todayKey = dayNames[now.getDay()];
+      const todayHours = business.businessHours?.[todayKey] || null;
       
       return {
         _id: business._id,
@@ -175,21 +246,32 @@ router.get('/', async (req, res) => {
         socialMedia: business.socialMedia,
         department: business.department,
         city: business.city,
-        coordinates: coordinates, // Coordenadas para calcular distancia
+        coordinates,
         createdAt: business.createdAt,
         updatedAt: business.updatedAt,
-        // Usar el campo real isOpen del modelo
         isOpen: business.isOpen,
-        // Agregar campos calculados
-        rating: 5.0, // Rating fijo de 5 estrellas
-        categories: categories, // Categorías reales basadas en productos
-        deliveryZone: business._doc?.deliveryZone || business.deliveryZone || null // Información de zona de entrega
+        isCurrentlyOpen: typeof business.isCurrentlyOpen === 'function' ? business.isCurrentlyOpen() : business.isOpen,
+        businessHours: business.businessHours,
+        todayHours,
+        productCount: info.productCount,
+        minPrice: info.minPrice,
+        topProducts: info.topProducts,
+        isNew: business.createdAt >= thirtyDaysAgo,
+        popularityScore: info.popularityScore || 0,
+        orderCount: info.orderCount || 0,
+        categories: info.categories,
+        deliveryZone: business._doc?.deliveryZone || business.deliveryZone || null
       };
-    }));
+    });
 
-    logger.info(`Found ${formattedBusinesses.length} businesses`, { count: formattedBusinesses.length }, req);
+    logger.info(`Found ${formattedBusinesses.length} businesses (total: ${total})`, { count: formattedBusinesses.length, total });
     
-    res.json(formattedBusinesses);
+    res.json({
+      data: formattedBusinesses,
+      total,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
   } catch (error) {
     logger.error('GET /api/businesses - Error', error, req);
     res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
@@ -197,56 +279,166 @@ router.get('/', async (req, res) => {
 });
 
 /**
- * GET /api/businesses/:id
- * Obtener un negocio específico por ID
+ * GET /api/businesses/featured
+ * Secciones curadas: trending, envio gratis, precio bajo, mejor valorados
  */
-router.get('/:id', async (req, res) => {
+router.get('/featured', async (req, res) => {
   try {
-    const { id } = req.params;
+    const { lat, lon } = req.query;
+    const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
 
-    // Validar y resolver el ID del negocio
-    const businessResult = await validateAndResolveBusinessId(id);
-    if (!businessResult.success) {
-      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
-    }
+    const businesses = await BusinessConfig.find({ isActive: true })
+      .select('businessName slug logo coverImage description isOpen businessHours location department city createdAt').lean();
 
-    const businessId = businessResult.businessId;
+    const businessIds = businesses.map(b => b._id);
+    const batchInfo = await getBatchBusinessInfo(businessIds);
 
-    // Buscar el negocio
-    const business = await BusinessConfig.findOne({ 
-      _id: businessId,
-      isActive: true 
-    }).select('businessName slug logo description theme isOpen address whatsappNumber socialMedia createdAt updatedAt');
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayKey = dayNames[now.getDay()];
 
-    if (!business) {
-      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
-    }
+    // Formatear todos
+    let allFormatted = businesses.map(b => {
+      const bid = b._id.toString();
+      const info = batchInfo[bid] || { categories: [], productCount: 0, minPrice: 0, topProducts: [], popularityScore: 0, orderCount: 0 };
+      let coordinates = null;
+      if (b.location?.coordinates) {
+        coordinates = { lat: b.location.coordinates.lat, lng: b.location.coordinates.lng };
+      }
+      return {
+        _id: b._id,
+        businessName: b.businessName,
+        slug: b.slug,
+        logo: b.logo,
+        coverImage: b.coverImage,
+        description: b.description,
+        isOpen: b.isOpen,
+        todayHours: b.businessHours?.[todayKey] || null,
+        coordinates,
+        isNew: b.createdAt >= thirtyDaysAgo,
+        productCount: info.productCount,
+        minPrice: info.minPrice,
+        topProducts: info.topProducts,
+        popularityScore: info.popularityScore,
+        orderCount: info.orderCount,
+        categories: info.categories
+      };
+    });
 
-    // Formatear respuesta
-    const formattedBusiness = {
-      _id: business._id,
-      businessName: business.businessName,
-      slug: business.slug,
-      logo: business.logo,
-      description: business.description,
-      theme: business.theme,
-      address: business.address,
-      whatsappNumber: business.whatsappNumber,
-      socialMedia: business.socialMedia,
-      createdAt: business.createdAt,
-      updatedAt: business.updatedAt,
-      // Usar el campo real isOpen del modelo
-      isOpen: business.isOpen,
-      // Agregar campos calculados
-      rating: 4.5,
-      categories: []
-    };
+    // Secciones
+    const trending = [...allFormatted]
+      .sort((a, b) => b.popularityScore - a.popularityScore)
+      .filter(b => b.popularityScore > 0)
+      .slice(0, 8);
 
-    logger.info(`Business found`, { id: business._id, name: business.businessName }, req);
-    
-    res.json(formattedBusiness);
+    const cheapEats = [...allFormatted]
+      .filter(b => b.minPrice > 0 && b.minPrice <= 15000)
+      .sort((a, b) => a.minPrice - b.minPrice)
+      .slice(0, 8);
+
+    const newOnes = allFormatted.filter(b => b.isNew).slice(0, 8);
+
+    const bigMenus = [...allFormatted]
+      .filter(b => b.productCount >= 5)
+      .sort((a, b) => b.productCount - a.productCount)
+      .slice(0, 8);
+
+    res.json({
+      success: true,
+      sections: {
+        trending: { title: '🔥 Trending', subtitle: 'Los más pedidos esta semana', data: trending },
+        cheapEats: { title: '💰 Comer barato', subtitle: 'Precios desde $5.000', data: cheapEats },
+        newOnes: { title: '✨ Recién llegados', subtitle: 'Nuevos en MenuBy', data: newOnes },
+        bigMenus: { title: '📋 Menús grandes', subtitle: 'Más variedad para elegir', data: bigMenus }
+      }
+    });
   } catch (error) {
-    logger.error(`GET /api/businesses/${req.params.id} - Error`, error, req);
+    logger.error('GET /api/businesses/featured - Error', error, req);
+    res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
+  }
+});
+
+/**
+ * GET /api/businesses/search/products
+ * Buscar restaurantes por nombre de PRODUCTO (ej: "hamburguesa" → restaurantes que la venden)
+ * Retorna restaurantes + los productos que matchearon
+ */
+router.get('/search/products', async (req, res) => {
+  try {
+    const { q, limit = 20 } = req.query;
+    if (!q || q.trim().length < 2) {
+      return res.json({ success: true, data: [], total: 0 });
+    }
+
+    const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Buscar productos que matcheen
+    const matchingProducts = await Product.find({
+      active: true,
+      $or: [
+        { name: { $regex: escapedQ, $options: 'i' } },
+        { description: { $regex: escapedQ, $options: 'i' } }
+      ]
+    }).select('businessId name price image').limit(200).lean();
+
+    if (matchingProducts.length === 0) {
+      return res.json({ success: true, data: [], total: 0, query: q });
+    }
+
+    // Agrupar productos por negocio
+    const productsByBusiness = {};
+    for (const p of matchingProducts) {
+      const bid = p.businessId.toString();
+      if (!productsByBusiness[bid]) productsByBusiness[bid] = [];
+      if (productsByBusiness[bid].length < 4) {
+        productsByBusiness[bid].push({ name: p.name, price: p.price, image: p.image || null });
+      }
+    }
+
+    const businessIds = Object.keys(productsByBusiness);
+
+    // Obtener datos de los negocios
+    const businesses = await BusinessConfig.find({
+      _id: { $in: businessIds },
+      isActive: true
+    }).select('businessName slug logo coverImage description theme isOpen address department city location businessHours createdAt').lean();
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayKey = dayNames[now.getDay()];
+
+    const results = businesses.map(b => {
+      const bid = b._id.toString();
+      let coordinates = null;
+      if (b.location?.coordinates) {
+        coordinates = { lat: b.location.coordinates.lat, lng: b.location.coordinates.lng };
+      }
+      return {
+        _id: b._id,
+        businessName: b.businessName,
+        slug: b.slug,
+        logo: b.logo,
+        coverImage: b.coverImage,
+        description: b.description,
+        theme: b.theme,
+        address: b.address,
+        department: b.department,
+        city: b.city,
+        coordinates,
+        isOpen: b.isOpen,
+        todayHours: b.businessHours?.[todayKey] || null,
+        isNew: b.createdAt >= thirtyDaysAgo,
+        createdAt: b.createdAt,
+        matchingProducts: productsByBusiness[bid] || [],
+        matchCount: (productsByBusiness[bid] || []).length
+      };
+    }).sort((a, b) => b.matchCount - a.matchCount).slice(0, parseInt(limit));
+
+    res.json({ success: true, data: results, total: results.length, query: q });
+  } catch (error) {
+    logger.error('GET /api/businesses/search/products - Error', error, req);
     res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
   }
 });
@@ -254,13 +446,13 @@ router.get('/:id', async (req, res) => {
 /**
  * GET /api/businesses/search
  * Buscar negocios por nombre o descripción
+ * IMPORTANTE: Debe estar ANTES de /:id para que Express no lo capture como parámetro
  */
 router.get('/search', async (req, res) => {
   try {
-    const { q, category, limit = 20, offset = 0 } = req.query;
-    logger.debug('Searching businesses', { query: q, category }, req);
+    const { q, limit = 20, offset = 0 } = req.query;
+    logger.debug('Searching businesses', { query: q }, req);
 
-    // Construir filtros de búsqueda
     const filters = { isActive: true };
     
     if (q) {
@@ -271,17 +463,22 @@ router.get('/search', async (req, res) => {
       ];
     }
 
-    // Buscar negocios
     const businesses = await BusinessConfig.find(filters)
-      .select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia createdAt')
+      .select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours createdAt')
       .limit(parseInt(limit))
       .skip(parseInt(offset))
       .sort({ createdAt: -1 });
 
-    // Formatear respuesta
-    const formattedBusinesses = await Promise.all(businesses.map(async (business) => {
-      const categories = await getBusinessCategories(business._id);
-      
+    const businessIds = businesses.map(b => b._id);
+    const batchInfo = await getBatchBusinessInfo(businessIds);
+
+    const formattedBusinesses = businesses.map(business => {
+      const bid = business._id.toString();
+      const info = batchInfo[bid] || { categories: [], productCount: 0 };
+      let coordinates = null;
+      if (business.location?.coordinates) {
+        coordinates = { lat: business.location.coordinates.lat, lng: business.location.coordinates.lng };
+      }
       return {
         _id: business._id,
         businessName: business.businessName,
@@ -293,20 +490,24 @@ router.get('/search', async (req, res) => {
         address: business.address,
         whatsappNumber: business.whatsappNumber,
         socialMedia: business.socialMedia,
+        department: business.department,
+        city: business.city,
+        coordinates,
         createdAt: business.createdAt,
-        // Usar el campo real isOpen del modelo
         isOpen: business.isOpen,
-        rating: 5.0, // Rating fijo de 5 estrellas
-        categories: categories // Categorías reales
+        isCurrentlyOpen: typeof business.isCurrentlyOpen === 'function' ? business.isCurrentlyOpen() : business.isOpen,
+        businessHours: business.businessHours,
+        productCount: info.productCount,
+        categories: info.categories
       };
-    }));
+    });
 
-    logger.info(`Found ${formattedBusinesses.length} businesses in search`, { count: formattedBusinesses.length }, req);
-    
+    const total = await BusinessConfig.countDocuments(filters);
+
     res.json({
       success: true,
       data: formattedBusinesses,
-      total: formattedBusinesses.length,
+      total,
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
@@ -318,29 +519,84 @@ router.get('/search', async (req, res) => {
 
 /**
  * GET /api/businesses/debug/all
- * Endpoint temporal para debug - obtener todos los negocios sin filtros
+ * Solo disponible en desarrollo
  */
-router.get('/debug/all', async (req, res) => {
+if (process.env.NODE_ENV !== 'production') {
+  router.get('/debug/all', async (req, res) => {
+    try {
+      const allBusinesses = await BusinessConfig.find({});
+      const businessesInfo = allBusinesses.map(b => ({
+        _id: b._id, businessName: b.businessName, slug: b.slug, isActive: b.isActive, createdAt: b.createdAt
+      }));
+      res.json({ success: true, total: allBusinesses.length, businesses: businessesInfo });
+    } catch (error) {
+      logger.error('GET /api/businesses/debug/all - Error', error, req);
+      res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
+    }
+  });
+}
+
+/**
+ * GET /api/businesses/:id
+ * Obtener un negocio específico por ID o slug — con datos completos
+ */
+router.get('/:id', async (req, res) => {
   try {
-    const allBusinesses = await BusinessConfig.find({});
-    
-    const businessesInfo = allBusinesses.map(business => ({
+    const { id } = req.params;
+
+    const businessResult = await validateAndResolveBusinessId(id);
+    if (!businessResult.success) {
+      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
+    }
+
+    const businessId = businessResult.businessId;
+
+    const business = await BusinessConfig.findOne({ 
+      _id: businessId,
+      isActive: true 
+    }).select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours createdAt updatedAt');
+
+    if (!business) {
+      return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
+    }
+
+    // Obtener categorías y productCount
+    const batchInfo = await getBatchBusinessInfo([business._id]);
+    const info = batchInfo[business._id.toString()] || { categories: [], productCount: 0 };
+
+    let coordinates = null;
+    if (business.location?.coordinates) {
+      coordinates = { lat: business.location.coordinates.lat, lng: business.location.coordinates.lng };
+    }
+
+    const formattedBusiness = {
       _id: business._id,
       businessName: business.businessName,
       slug: business.slug,
-      isActive: business.isActive,
-      createdAt: business.createdAt
-    }));
+      logo: business.logo,
+      coverImage: business.coverImage,
+      description: business.description,
+      theme: business.theme,
+      address: business.address,
+      whatsappNumber: business.whatsappNumber,
+      socialMedia: business.socialMedia,
+      department: business.department,
+      city: business.city,
+      coordinates,
+      createdAt: business.createdAt,
+      updatedAt: business.updatedAt,
+      isOpen: business.isOpen,
+      isCurrentlyOpen: typeof business.isCurrentlyOpen === 'function' ? business.isCurrentlyOpen() : business.isOpen,
+      businessHours: business.businessHours,
+      productCount: info.productCount,
+      categories: info.categories
+    };
+
+    logger.info(`Business found`, { id: business._id, name: business.businessName }, req);
     
-    logger.info(`Found ${allBusinesses.length} total businesses (debug)`, { count: allBusinesses.length }, req);
-    
-    res.json({
-      success: true,
-      total: allBusinesses.length,
-      businesses: businessesInfo
-    });
+    res.json(formattedBusiness);
   } catch (error) {
-    logger.error('GET /api/businesses/debug/all - Error', error, req);
+    logger.error(`GET /api/businesses/${req.params.id} - Error`, error, req);
     res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
   }
 });
