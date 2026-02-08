@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useBusinessStatus } from '../../hooks/useBusinessStatus';
 
-// Hook para favoritos (localStorage)
+// ── Favorites hook ──
 const useFavorites = () => {
   const [favorites, setFavorites] = useState(() => {
     try { return JSON.parse(localStorage.getItem('favoriteRestaurants') || '[]'); } catch { return []; }
@@ -24,126 +24,86 @@ const useFavorites = () => {
   }, []);
   return { toggle, isFav };
 };
-
 export { useFavorites };
-
-// Haptic feedback helper
-const haptic = () => { try { navigator?.vibrate?.(10); } catch {} };
 
 const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
   const { businessStatus } = useBusinessStatus(restaurant._id);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [imgError, setImgError] = useState(false);
-  const [shareToast, setShareToast] = useState(false);
   const [favBounce, setFavBounce] = useState(false);
   const { toggle, isFav } = useFavorites();
   const isFavorite = isFav(restaurant._id);
 
-  // Guardar en recientes al hacer click
-  const handleRestaurantClick = () => {
+  const handleClick = () => {
     sessionStorage.setItem('fromCatalog', 'true');
     try {
       const recent = JSON.parse(localStorage.getItem('recentRestaurants') || '[]');
       const filtered = recent.filter(r => r._id !== restaurant._id);
-      filtered.unshift({
-        _id: restaurant._id, slug: restaurant.slug,
-        businessName: restaurant.businessName, logo: restaurant.logo,
-        coverImage: restaurant.coverImage, timestamp: Date.now()
-      });
+      filtered.unshift({ _id: restaurant._id, slug: restaurant.slug, businessName: restaurant.businessName, logo: restaurant.logo, coverImage: restaurant.coverImage, timestamp: Date.now() });
       localStorage.setItem('recentRestaurants', JSON.stringify(filtered.slice(0, 10)));
-    } catch { /* ignore */ }
+    } catch {}
   };
 
-  // Compartir
-  const handleShare = async (e) => {
-    e.preventDefault(); e.stopPropagation();
-    haptic();
-    const url = `${window.location.origin}/${restaurant.slug}`;
-    const text = `¡Mira ${restaurant.businessName} en MenuBy! 🍽️`;
-    if (navigator.share) {
-      try { await navigator.share({ title: restaurant.businessName, text, url }); } catch { /* cancelled */ }
-    } else {
-      try {
-        await navigator.clipboard.writeText(url);
-        setShareToast(true);
-        setTimeout(() => setShareToast(false), 2000);
-      } catch { /* ignore */ }
-    }
-  };
-
-  // Favorito con animación
   const handleFavorite = (e) => {
     e.preventDefault(); e.stopPropagation();
-    haptic();
+    try { navigator?.vibrate?.(10); } catch {}
     setFavBounce(true);
     setTimeout(() => setFavBounce(false), 400);
     toggle(restaurant._id);
   };
 
-  // Tiempo de entrega
-  const getDeliveryTime = () => {
-    if (restaurant.deliveryZone?.estimatedTime) {
-      const { min, max } = restaurant.deliveryZone.estimatedTime;
-      return `${min}-${max}`;
-    }
-    if (restaurant.distance != null) {
-      const est = Math.round(15 + (restaurant.distance * 2));
-      return `${est}-${est + 10}`;
-    }
+  const deliveryTime = (() => {
+    if (restaurant.deliveryZone?.estimatedTime) { const { min, max } = restaurant.deliveryZone.estimatedTime; return `${min}-${max}`; }
+    if (restaurant.distance != null) { const est = Math.round(15 + (restaurant.distance * 2)); return `${est}-${est + 10}`; }
     return '25-35';
-  };
+  })();
 
-  // Precio de envío
-  const getDeliveryInfo = () => {
+  const delivery = (() => {
     if (!restaurant.deliveryZone?.pricing) return null;
     const { pricing } = restaurant.deliveryZone;
     let price = pricing.basePrice || 0;
-    if (pricing.mode === 'distance' && price === 0 && pricing.pricePerKm > 0) {
-      return { text: `$${pricing.pricePerKm.toLocaleString('es-CO')}/km`, free: false };
-    }
-    if (pricing.mode === 'tiered' && pricing.tiers?.length > 0) {
-      price = pricing.tiers[0].price || 0;
-    }
-    if (price === 0) return { text: 'Gratis', free: true };
+    if (pricing.mode === 'distance' && price === 0 && pricing.pricePerKm > 0) return { text: `$${pricing.pricePerKm.toLocaleString('es-CO')}/km`, free: false };
+    if (pricing.mode === 'tiered' && pricing.tiers?.length > 0) price = pricing.tiers[0].price || 0;
+    if (price === 0) return { text: 'Envío gratis', free: true };
     return { text: `$${price.toLocaleString('es-CO')}`, free: false };
-  };
+  })();
 
   const isOpen = restaurant.isCurrentlyOpen ?? businessStatus?.isOpen ?? restaurant.isOpen;
-  const delivery = getDeliveryInfo();
-  const deliveryTime = getDeliveryTime();
+  const distanceText = restaurant.distance != null ? (restaurant.distance < 1 ? `${Math.round(restaurant.distance * 1000)} m` : `${restaurant.distance.toFixed(1)} km`) : null;
 
-  // ─── COMPACT ───
+  const rating = restaurant.rating ?? (restaurant.popularityScore ? Math.min(5, 3.5 + (restaurant.popularityScore / 100) * 1.5).toFixed(1) : null);
+
+  // ═══ COMPACT ═══
   if (variant === 'compact') {
     return (
-      <Link to={`/${restaurant.slug}`} onClick={handleRestaurantClick}
-        className="flex-shrink-0 w-[164px] active:scale-[0.97] transition-transform duration-150">
-        <div className={`relative rounded-2xl overflow-hidden bg-white shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-md transition-shadow ${!isOpen ? 'opacity-50' : ''}`}>
-          <div className="relative h-[130px]">
+      <Link to={`/${restaurant.slug}`} onClick={handleClick} className="flex-shrink-0 w-[156px] snap-start group">
+        <div className={`${!isOpen ? 'opacity-50' : ''}`}>
+          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100">
             {restaurant.coverImage && !imgError ? (
-              <>
-                {!imgLoaded && <div className="absolute inset-0 bg-gray-100 animate-pulse" />}
-                <img src={restaurant.coverImage} alt={restaurant.businessName}
-                  className={`w-full h-full object-cover transition-opacity ${imgLoaded ? '' : 'opacity-0'}`}
-                  onLoad={() => setImgLoaded(true)} onError={() => setImgError(true)} loading="lazy" />
-              </>
+              <img src={restaurant.coverImage} alt="" className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${imgLoaded ? '' : 'opacity-0'}`}
+                onLoad={() => setImgLoaded(true)} onError={() => setImgError(true)} loading="lazy" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                <span className="text-2xl font-bold text-gray-300">{restaurant.businessName.charAt(0)}</span>
+              <div className="w-full h-full bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
+                <span className="text-2xl font-bold text-red-300">{restaurant.businessName.charAt(0)}</span>
               </div>
             )}
-            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/60 to-transparent" />
-            {!isOpen && (
-              <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-gray-900/80 backdrop-blur-sm rounded text-[10px] text-white font-medium">Cerrado</div>
-            )}
+            {/* Time badge */}
+            <div className="absolute bottom-2 left-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-0.5 shadow-sm">
+              <span className="text-[10px] font-bold text-gray-800">{deliveryTime} min</span>
+            </div>
             {delivery?.free && (
-              <div className="absolute top-2 right-2 px-1.5 py-0.5 bg-emerald-500 rounded text-[10px] text-white font-bold">Gratis</div>
-            )}
-            <div className="absolute bottom-2 left-2.5 right-2.5">
-              <p className="text-white text-[13px] font-semibold truncate leading-tight drop-shadow-sm">{restaurant.businessName}</p>
-              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-white/80">
-                <span>{deliveryTime} min</span>
-                {delivery && !delivery.free && <><span className="text-white/40">·</span><span>{delivery.text}</span></>}
+              <div className="absolute top-2 left-2 bg-red-500 rounded-lg px-1.5 py-0.5">
+                <span className="text-[9px] font-bold text-white">GRATIS</span>
               </div>
+            )}
+            {!isOpen && <div className="absolute inset-0 bg-white/60 flex items-center justify-center"><span className="text-[10px] font-bold text-gray-500 bg-white px-2 py-0.5 rounded-full">Cerrado</span></div>}
+          </div>
+          <div className="mt-2 px-0.5">
+            <p className="text-[13px] font-bold text-gray-900 truncate leading-tight">{restaurant.businessName}</p>
+            <div className="flex items-center gap-1 mt-0.5">
+              {rating && <span className="text-[11px] font-semibold text-gray-900">{rating}</span>}
+              {rating && <svg className="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>}
+              <span className="text-[11px] text-gray-400">{distanceText || ''}</span>
             </div>
           </div>
         </div>
@@ -151,123 +111,111 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
     );
   }
 
-  // ─── DEFAULT ───
+  // ═══ DEFAULT ═══
   return (
-    <Link to={`/${restaurant.slug}`} className="block group" onClick={handleRestaurantClick}>
-      <div className={`bg-white rounded-2xl overflow-hidden transition-all duration-300 shadow-[0_1px_4px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)] ${!isOpen ? 'opacity-60' : ''}`}>
+    <Link to={`/${restaurant.slug}`} onClick={handleClick} className="block group">
+      <div className={`bg-white rounded-2xl overflow-hidden transition-shadow duration-200 hover:shadow-lg hover:shadow-red-500/5 ${!isOpen ? 'opacity-60' : ''}`}>
         {/* Image */}
-        <div className="relative h-[195px] overflow-hidden bg-gray-100">
+        <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">
           {restaurant.coverImage && !imgError ? (
             <>
-              {!imgLoaded && (
-                <div className="absolute inset-0 bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-white/60 to-gray-100" />
-              )}
+              {!imgLoaded && <div className="absolute inset-0 bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-white to-gray-100" />}
               <img src={restaurant.coverImage} alt={restaurant.businessName}
-                className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-[600ms] ease-out ${imgLoaded ? '' : 'opacity-0'}`}
+                className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03] ${imgLoaded ? '' : 'opacity-0'}`}
                 onLoad={() => setImgLoaded(true)} onError={() => setImgError(true)} loading="lazy" />
             </>
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-              {restaurant.logo ? (
-                <img src={restaurant.logo} alt="" className="w-14 h-14 object-contain rounded-xl bg-white p-1 shadow-md" />
-              ) : (
-                <span className="text-4xl font-bold text-gray-300">{restaurant.businessName.charAt(0)}</span>
-              )}
+            <div className="w-full h-full bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
+              {restaurant.logo ? <img src={restaurant.logo} alt="" className="w-14 h-14 object-contain rounded-xl" /> : <span className="text-4xl font-bold text-red-200">{restaurant.businessName.charAt(0)}</span>}
             </div>
           )}
 
-          {/* Promo tag */}
-          {restaurant.orderCount > 5 && (
-            <div className="absolute top-3 left-3 px-2 py-0.5 rounded-md bg-orange-500 text-white text-[11px] font-bold shadow-md flex items-center gap-1">
-              🔥 Popular
+          {/* Top bar */}
+          <div className="absolute top-0 left-0 right-0 p-3 flex items-start justify-between">
+            {/* Promo / Free delivery badge */}
+            {delivery?.free ? (
+              <div className="bg-red-500 text-white px-2.5 py-1 rounded-lg shadow-lg shadow-red-500/30">
+                <span className="text-[11px] font-bold tracking-wide">ENVÍO GRATIS</span>
+              </div>
+            ) : <div />}
+            {/* Favorite */}
+            <motion.button onClick={handleFavorite}
+              animate={favBounce ? { scale: [1, 1.3, 0.9, 1.05, 1] } : {}} transition={{ duration: 0.35 }}
+              className={`w-9 h-9 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-all ${isFavorite ? 'bg-red-500 text-white shadow-red-500/30' : 'bg-white/90 text-gray-500 hover:text-red-500 hover:bg-white'}`}>
+              <svg className="w-4 h-4" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </motion.button>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="absolute bottom-0 left-0 right-0 p-3 flex items-end justify-between">
+            {/* Time badge */}
+            <div className="bg-white rounded-xl px-2.5 py-1 shadow-lg">
+              <span className="text-[12px] font-bold text-gray-900">{deliveryTime} min</span>
             </div>
-          )}
+            {/* Rating badge */}
+            {rating && (
+              <div className="bg-white rounded-xl px-2 py-1 shadow-lg flex items-center gap-1">
+                <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
+                <span className="text-[12px] font-bold text-gray-900">{rating}</span>
+              </div>
+            )}
+          </div>
 
-          {/* Favorite */}
-          <motion.button onClick={handleFavorite}
-            animate={favBounce ? { scale: [1, 1.2, 0.95, 1.05, 1] } : {}}
-            transition={{ duration: 0.35 }}
-            className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${
-              isFavorite ? 'bg-white text-red-500' : 'bg-black/20 backdrop-blur-sm text-white/90 hover:bg-black/30'
-            }`}>
-            <svg className="w-4 h-4" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24" strokeWidth={isFavorite ? 0 : 2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-          </motion.button>
-
-          {/* Free delivery badge */}
-          {delivery?.free && (
-            <div className="absolute bottom-3 left-3 px-2 py-1 rounded-md bg-emerald-500 text-white text-[11px] font-bold shadow-md">
-              Envío gratis
-            </div>
-          )}
-
-          {/* Closed */}
+          {/* Closed overlay */}
           {!isOpen && (
-            <div className="absolute inset-0 bg-white/40 flex items-center justify-center">
-              <span className="px-3.5 py-1 bg-gray-900/90 text-white text-xs font-semibold rounded-full">Cerrado</span>
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center">
+              <span className="bg-white px-4 py-1.5 rounded-full text-[13px] font-bold text-gray-600 shadow-md">Cerrado ahora</span>
             </div>
           )}
         </div>
 
         {/* Content */}
-        <div className="px-3.5 py-3">
-          <div className="flex items-start justify-between gap-2">
+        <div className="p-3.5">
+          <div className="flex items-start gap-3">
+            {/* Logo */}
+            {restaurant.logo && (
+              <div className="w-11 h-11 rounded-xl overflow-hidden bg-white border-2 border-red-50 flex-shrink-0 -mt-8 shadow-lg relative z-10">
+                <img src={restaurant.logo} alt="" className="w-full h-full object-cover" loading="lazy" />
+              </div>
+            )}
             <div className="min-w-0 flex-1">
-              <h3 className="font-bold text-[15px] text-gray-900 truncate">{restaurant.businessName}</h3>
-              {restaurant.categories?.length > 0 && (
-                <p className="text-[12px] text-gray-400 truncate mt-0.5">
-                  {restaurant.categories.slice(0, 3).map(c => c.charAt(0).toUpperCase() + c.slice(1)).join(' · ')}
-                </p>
-              )}
-            </div>
-            <div className="relative flex-shrink-0">
-              <button onClick={handleShare} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-300 hover:text-gray-500 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                </svg>
-              </button>
-              <AnimatePresence>
-                {shareToast && (
-                  <motion.span initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: -6 }} exit={{ opacity: 0 }}
-                    className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[9px] px-2 py-0.5 rounded whitespace-nowrap">
-                    ¡Copiado!
-                  </motion.span>
-                )}
-              </AnimatePresence>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-[15px] font-bold text-gray-900 truncate">{restaurant.businessName}</h3>
+              </div>
+
+              {/* Meta */}
+              <div className="flex items-center gap-1.5 mt-0.5 text-[13px] text-gray-500">
+                {delivery && !delivery.free && <span>Envío {delivery.text}</span>}
+                {distanceText && <><span className="text-red-200">•</span><span>{distanceText}</span></>}
+              </div>
             </div>
           </div>
 
-          {/* Search match */}
-          {restaurant.matchingProducts?.length > 0 && (
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
-              <span>🔍</span>
-              <span className="truncate">
-                Tiene: {restaurant.matchingProducts.slice(0, 3).map(p => p.name).join(', ')}
-                {restaurant.matchCount > 3 && ` +${restaurant.matchCount - 3}`}
-              </span>
+          {/* Categories */}
+          {restaurant.categories?.length > 0 && (
+            <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
+              {restaurant.categories.slice(0, 3).map(c => (
+                <span key={c} className="text-[11px] font-medium text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
+                  {c.charAt(0).toUpperCase() + c.slice(1)}
+                </span>
+              ))}
             </div>
           )}
 
-          {/* Info row */}
-          <div className="flex items-center gap-1 mt-2.5 text-[12px] text-gray-500 flex-wrap">
-            {restaurant.orderCount > 0 && (
-              <>
-                <span className="text-orange-500 font-semibold">{restaurant.orderCount > 50 ? '50+' : restaurant.orderCount} pedidos</span>
-                <span className="text-gray-200">·</span>
-              </>
-            )}
-            <span className="flex items-center gap-0.5">
-              <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              {deliveryTime} min
-            </span>
-            {delivery && !delivery.free && (
-              <><span className="text-gray-200">·</span><span>Envío {delivery.text}</span></>
-            )}
-            {restaurant.distance != null && (
-              <><span className="text-gray-200">·</span><span>{restaurant.distance < 1 ? `${Math.round(restaurant.distance * 1000)}m` : `${restaurant.distance.toFixed(1)} km`}</span></>
-            )}
-          </div>
+          {/* Search match */}
+          {restaurant.matchingProducts?.length > 0 && (
+            <div className="mt-2 flex items-center gap-1.5 bg-red-50 rounded-lg px-2.5 py-1.5">
+              <svg className="w-3.5 h-3.5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <p className="text-[11px] text-red-600 font-medium truncate">
+                {restaurant.matchingProducts.slice(0, 2).map(p => p.name).join(', ')}
+                {restaurant.matchCount > 2 && ` +${restaurant.matchCount - 2} más`}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </Link>

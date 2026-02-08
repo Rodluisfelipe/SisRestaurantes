@@ -6,64 +6,35 @@ import RestaurantCard, { useFavorites } from '../../Components/Catalog/Restauran
 import BannerCarousel from '../../Components/Catalog/BannerCarousel';
 import { useUserLocation } from '../../hooks/useUserLocation';
 
-// ─── Icons ─────────────────────────────────────────
-const SearchIcon = () => (
-  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-  </svg>
-);
-
-const LocationIcon = () => (
-  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
-
 // ─── Skeleton ──────────────────────────────────────
 const CardSkeleton = () => (
-  <div className="bg-white rounded-2xl overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-    <div className="h-[180px] bg-gray-100 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100" />
+  <div className="bg-white rounded-2xl overflow-hidden">
+    <div className="aspect-[16/9] bg-gray-100">
+      <div className="w-full h-full bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-white to-gray-100" />
     </div>
     <div className="p-3.5">
-      <div className="h-4 bg-gray-100 rounded-lg w-3/4 mb-2" />
-      <div className="h-3 bg-gray-50 rounded-md w-full mb-3" />
-      <div className="flex gap-2">
-        <div className="h-5 bg-gray-50 rounded-md w-16" />
-        <div className="h-5 bg-gray-50 rounded-md w-20" />
-        <div className="h-5 bg-gray-50 rounded-md w-14" />
+      <div className="flex gap-3 items-start">
+        <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 -mt-8" />
+        <div className="flex-1 space-y-2 pt-0.5">
+          <div className="h-4 bg-gray-100 rounded-lg w-3/4" />
+          <div className="h-3 bg-gray-50 rounded-lg w-1/2" />
+        </div>
       </div>
     </div>
   </div>
 );
 
 // ─── Horizontal Scroll Section ─────────────────────
-const HorizontalSection = ({ title, subtitle, icon, children, onSeeAll }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 16 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.4 }}
-    className="mb-7"
-  >
+const HorizontalSection = ({ title, children }) => (
+  <div className="mb-6">
     <div className="flex items-center justify-between mb-3 px-0.5">
-      <div>
-        <h3 className="text-[15px] font-bold text-gray-900 flex items-center gap-1.5">
-          {icon && <span className="text-base">{icon}</span>}
-          {title}
-        </h3>
-        {subtitle && <p className="text-[11px] text-gray-400 mt-0.5">{subtitle}</p>}
-      </div>
-      {onSeeAll && (
-        <button onClick={onSeeAll} className="text-xs text-red-500 font-semibold hover:text-red-600 active:text-red-700 transition-colors px-2 py-1 -mr-2 rounded-lg hover:bg-red-50">
-          Ver todos →
-        </button>
-      )}
+      <h3 className="text-[16px] font-bold text-gray-900">{title}</h3>
+      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+      </svg>
     </div>
-    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1 snap-x snap-mandatory">
-      {children}
-    </div>
-  </motion.div>
+    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">{children}</div>
+  </div>
 );
 
 const ITEMS_PER_PAGE = 12;
@@ -410,431 +381,299 @@ const MenuByCatalog = () => {
 
   const hasMore = visibleCount < filteredRestaurants.length;
 
-  const getGreeting = () => {
-    const h = new Date().getHours();
-    if (h >= 5 && h < 12) return 'Buenos días';
-    if (h >= 12 && h < 18) return 'Buenas tardes';
-    return 'Buenas noches';
-  };
-
   return (
-    <div className="min-h-screen bg-[#FAFAFA]">
-      {/* ═══ STICKY HEADER ═══ */}
-      <header className={`sticky top-0 z-40 transition-all duration-300 bg-white ${headerCompact ? 'shadow-sm' : ''}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Greeting + Location */}
-          {!headerCompact ? (
-            <div className="pt-4 pb-1">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[13px] text-gray-400 font-medium">{getGreeting()} 👋</p>
-                  <h1 className="text-[22px] font-extrabold text-gray-900 leading-tight mt-0.5">¿Qué quieres comer?</h1>
-                </div>
-                <div className="w-9 h-9 rounded-xl overflow-hidden ring-1 ring-gray-100 flex-shrink-0">
-                  <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover" />
-                </div>
+    <div className="min-h-screen bg-gray-50">
+      {/* ═══ HEADER ═══ */}
+      <header className="sticky top-0 z-40">
+        {/* Red top bar */}
+        <div className={`transition-all duration-300 ${headerCompact ? 'bg-white border-b border-gray-100' : 'bg-gradient-to-b from-red-500 to-red-600'}`}>
+          <div className="max-w-3xl mx-auto px-4">
+            {/* Top row: Logo + Location + Avatar */}
+            <div className={`flex items-center justify-between gap-3 transition-all ${headerCompact ? 'py-2' : 'pt-3.5 pb-2'}`}>
+              {/* Left: Logo */}
+              <div className={`flex-shrink-0 transition-all ${headerCompact ? 'w-7 h-7' : 'w-8 h-8'}`}>
+                <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover rounded-xl" />
               </div>
-              <button onClick={updateLocation} className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-red-500 transition-colors mt-1">
-                <LocationIcon />
-                <span className="truncate max-w-[250px]">{locationLoading ? 'Detectando ubicación...' : location.address}</span>
-                <svg className="w-2.5 h-2.5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+
+              {/* Center: Location */}
+              <button onClick={updateLocation} className="flex items-center gap-1.5 min-w-0 flex-1 justify-center">
+                <svg className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${headerCompact ? 'text-red-500' : 'text-white/80'}`} fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+                <span className={`text-[13px] font-semibold truncate max-w-[200px] transition-colors ${headerCompact ? 'text-gray-900' : 'text-white'}`}>
+                  {locationLoading ? 'Ubicando...' : (location.address || 'Seleccionar dirección')}
+                </span>
+                <svg className={`w-3 h-3 flex-shrink-0 transition-colors ${headerCompact ? 'text-gray-400' : 'text-white/50'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between py-2">
-              <button onClick={updateLocation} className="flex items-center gap-1 text-[13px] text-gray-600 font-medium truncate min-w-0">
-                <LocationIcon />
-                <span className="truncate max-w-[200px]">{locationLoading ? 'Detectando...' : location.address}</span>
-              </button>
-              <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-gray-100 flex-shrink-0 ml-3">
-                <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover" />
+
+              {/* Right: Notification-like icon */}
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${headerCompact ? 'bg-red-50' : 'bg-white/15'}`}>
+                <svg className={`w-[18px] h-[18px] transition-colors ${headerCompact ? 'text-red-500' : 'text-white'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
               </div>
             </div>
-          )}
 
-          {/* Search bar */}
-          <div className={`relative transition-all duration-300 ${headerCompact ? 'pb-2' : 'pb-3'}`}>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                <SearchIcon />
+            {/* Search bar */}
+            <div className={`relative transition-all ${headerCompact ? 'pb-2' : 'pb-3.5'}`}>
+              <div className="relative">
+                <svg className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] pointer-events-none transition-colors ${headerCompact ? 'text-gray-400' : 'text-red-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="¿Qué se te antoja hoy?"
+                  value={searchTerm}
+                  onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                  className={`w-full pl-11 pr-10 py-2.5 rounded-xl text-[14px] placeholder-gray-400 focus:outline-none transition-all ${
+                    headerCompact
+                      ? 'bg-gray-100 text-gray-900 focus:bg-white focus:ring-2 focus:ring-red-100 focus:shadow-md'
+                      : 'bg-white/95 text-gray-900 shadow-lg shadow-black/5 focus:bg-white focus:ring-2 focus:ring-white/60'
+                  }`}
+                />
+                {searchTerm && (
+                  <button onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center transition-colors">
+                    <svg className="w-3 h-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+                {isSearchingProducts && (
+                  <div className="absolute right-10 top-1/2 -translate-y-1/2">
+                    <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
               </div>
-              <input
-                ref={searchInputRef}
-                type="text"
-                placeholder="Buscar restaurantes, platos, antojos..."
-                value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
-                onFocus={() => setShowSuggestions(true)}
-                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                className={`w-full pl-10 pr-10 bg-gray-100/80 border border-transparent rounded-xl text-gray-900 placeholder-gray-400 
-                  focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-300 focus:bg-white focus:shadow-lg focus:shadow-red-500/5 
-                  transition-all duration-200 ${headerCompact ? 'py-2 text-sm' : 'py-2.5 text-[15px]'}`}
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-300 hover:text-gray-500 active:text-gray-700 transition-colors"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-              {isSearchingProducts && (
-                <div className="absolute inset-y-0 right-8 flex items-center">
-                  <div className="w-4 h-4 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
-                </div>
-              )}
-            </div>
 
-            {/* Suggestions dropdown */}
-            <AnimatePresence>
-              {showSuggestions && searchSuggestions.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-xl shadow-2xl shadow-black/10 border border-gray-100 overflow-hidden z-50"
-                >
-                  <div className="p-1.5">
-                    <p className="text-[9px] text-gray-400 font-semibold tracking-wider px-2.5 py-1 uppercase">Sugerencias</p>
+              {/* Suggestions */}
+              <AnimatePresence>
+                {showSuggestions && searchSuggestions.length > 0 && (
+                  <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.15 }}
+                    className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl shadow-xl shadow-black/8 border border-gray-100/80 overflow-hidden z-50 py-1">
                     {searchSuggestions.map((s, i) => (
-                      <button
-                        key={i}
-                        onMouseDown={(e) => { e.preventDefault(); setSearchTerm(s); setShowSuggestions(false); }}
-                        className="w-full text-left px-2.5 py-2 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 rounded-lg transition-colors flex items-center gap-2.5"
-                      >
-                        <span className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+                      <button key={i} onMouseDown={(e) => { e.preventDefault(); setSearchTerm(s); setShowSuggestions(false); }}
+                        className="w-full text-left px-4 py-2.5 text-[14px] text-gray-700 hover:bg-red-50 active:bg-red-100 transition-colors flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
                           <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                           </svg>
-                        </span>
+                        </div>
                         <span className="font-medium">{s}</span>
                       </button>
                     ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </header>
 
-      {/* ═══ MAIN CONTENT ═══ */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
+      {/* ═══ CONTENT ═══ */}
+      <main className="max-w-3xl mx-auto px-4 pb-10">
         {/* Banner */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="mb-5">
+        <div className="mb-5 -mx-4 px-4 pt-4">
           <BannerCarousel />
-        </motion.div>
+        </div>
 
-        {/* ─── DISCOVERY SECTIONS ─── */}
+        {/* Categories */}
+        {categories.length > 0 && (
+          <div className="mb-6 -mx-4 px-4">
+            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+              {categories.map(cat => (
+                <button key={cat} onClick={() => setSelectedCategory(cat)} className="flex flex-col items-center gap-1.5 flex-shrink-0 min-w-[60px]">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-all duration-200 ${
+                    selectedCategory === cat
+                      ? 'bg-red-500 shadow-lg shadow-red-500/25 scale-105'
+                      : 'bg-white shadow-sm hover:shadow-md'
+                  }`}>
+                    <span className={selectedCategory === cat ? 'grayscale brightness-200' : ''}>{getCategoryIcon(cat)}</span>
+                  </div>
+                  <span className={`text-[11px] font-semibold whitespace-nowrap transition-colors ${
+                    selectedCategory === cat ? 'text-red-500' : 'text-gray-500'
+                  }`}>
+                    {getCategoryName(cat)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* Favorites */}
+        {/* Featured sections */}
         {favoriteRestaurants.length > 0 && (
-          <HorizontalSection title="Mis favoritos" subtitle={`${favoriteRestaurants.length} restaurantes`} icon="❤️">
-            {favoriteRestaurants.map(r => (
-              <div key={`fav-${r._id}`} className="snap-start"><RestaurantCard restaurant={r} userLocation={location.coordinates} variant="compact" /></div>
-            ))}
+          <HorizontalSection title="Tus favoritos ❤️">
+            {favoriteRestaurants.map(r => <RestaurantCard key={`fav-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
-        {/* Trending */}
         {featuredSections?.trending?.data?.length > 0 && (
-          <HorizontalSection title={featuredSections.trending.title} subtitle={featuredSections.trending.subtitle}>
-            {featuredSections.trending.data.map(r => (
-              <div key={`trend-${r._id}`} className="snap-start"><RestaurantCard restaurant={r} userLocation={location.coordinates} variant="compact" /></div>
-            ))}
+          <HorizontalSection title="Populares 🔥">
+            {featuredSections.trending.data.map(r => <RestaurantCard key={`t-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
-        {/* New arrivals */}
         {!loading && restaurants.filter(r => r.isNew).length > 0 && (
-          <HorizontalSection title="Recién llegados" subtitle="Nuevos en MenuBy" icon="✨">
-            {restaurants.filter(r => r.isNew).map(r => (
-              <div key={`new-${r._id}`} className="snap-start"><RestaurantCard restaurant={r} userLocation={location.coordinates} variant="compact" /></div>
-            ))}
+          <HorizontalSection title="Nuevos en MenuBy ✨">
+            {restaurants.filter(r => r.isNew).map(r => <RestaurantCard key={`n-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
-        {/* Cheap eats */}
         {featuredSections?.cheapEats?.data?.length > 0 && (
-          <HorizontalSection title={featuredSections.cheapEats.title} subtitle={featuredSections.cheapEats.subtitle} icon="💰">
-            {featuredSections.cheapEats.data.map(r => (
-              <div key={`cheap-${r._id}`} className="snap-start"><RestaurantCard restaurant={r} userLocation={location.coordinates} variant="compact" /></div>
-            ))}
+          <HorizontalSection title="Los más económicos 💰">
+            {featuredSections.cheapEats.data.map(r => <RestaurantCard key={`c-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
-        {/* Recently visited */}
         {recentRestaurants.length > 0 && (
-          <HorizontalSection title="Visitados recientemente" icon="🕐">
-            {recentRestaurants.map((recent) => (
-              <Link key={`recent-${recent._id}`} to={`/${recent.slug}`}
-                className="snap-start flex-shrink-0 flex items-center gap-2 bg-white rounded-xl px-3 py-2 shadow-sm border border-gray-100/80 hover:shadow-md hover:border-red-200 active:scale-[0.97] transition-all group">
-                <div className="w-8 h-8 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                  {recent.logo ? (
-                    <img src={recent.logo} alt="" className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-red-400 to-red-500 flex items-center justify-center">
-                      <span className="text-white text-[10px] font-bold">{recent.businessName?.charAt(0)}</span>
-                    </div>
-                  )}
+          <HorizontalSection title="Pediste hace poco">
+            {recentRestaurants.map(r => (
+              <Link key={`re-${r._id}`} to={`/${r.slug}`} className="flex-shrink-0 flex items-center gap-2.5 bg-white rounded-2xl pl-1.5 pr-4 py-1.5 shadow-sm hover:shadow-md transition-all">
+                <div className="w-9 h-9 rounded-xl overflow-hidden bg-red-50 flex-shrink-0">
+                  {r.logo ? <img src={r.logo} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-[11px] text-red-300 font-bold">{r.businessName?.charAt(0)}</div>}
                 </div>
-                <span className="text-xs font-medium text-gray-600 group-hover:text-red-600 transition-colors whitespace-nowrap max-w-[80px] truncate">
-                  {recent.businessName}
-                </span>
+                <span className="text-[13px] font-semibold text-gray-700 whitespace-nowrap">{r.businessName}</span>
               </Link>
             ))}
           </HorizontalSection>
         )}
 
-        {/* ─── CATEGORIES ─── */}
-        <div className="mb-5 -mx-4 px-4">
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
-              >
-                <div className={`w-[56px] h-[56px] rounded-2xl flex items-center justify-center text-2xl transition-all duration-200 ${
-                  selectedCategory === category
-                    ? 'bg-red-50 ring-2 ring-red-500 shadow-sm shadow-red-500/10'
-                    : 'bg-gray-50 group-hover:bg-gray-100 group-active:scale-95'
-                }`}>
-                  {getCategoryIcon(category)}
-                </div>
-                <span className={`text-[11px] font-medium transition-colors whitespace-nowrap ${
-                  selectedCategory === category ? 'text-red-500' : 'text-gray-500'
-                }`}>
-                  {getCategoryName(category)}
-                </span>
-              </button>
-            ))}
-          </div>
+        {/* Divider + title */}
+        <div className="flex items-center justify-between mt-2 mb-4">
+          <h2 className="text-[18px] font-bold text-gray-900">Restaurantes</h2>
+          <span className="text-[12px] font-medium text-red-400 bg-red-50 px-2.5 py-1 rounded-full">{filteredRestaurants.length} disponibles</span>
         </div>
 
-        {/* ─── FILTERS & SORT BAR ─── */}
-        <div className="mb-5 space-y-3">
-          <div className="flex items-baseline justify-between">
-            <h2 className="text-[17px] font-bold text-gray-900">Restaurantes</h2>
-            <span className="text-[12px] text-gray-400">{filteredRestaurants.length} disponibles</span>
-          </div>
-
-          {/* Filter + Sort row */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5 -mx-1 px-1">
-            {/* Open now toggle */}
-            <button
-              onClick={() => setOnlyOpen(!onlyOpen)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
-                onlyOpen
-                  ? 'bg-green-500 text-white shadow-md shadow-green-500/25'
-                  : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-gray-300'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${onlyOpen ? 'bg-white' : 'bg-green-500'}`} />
-              Abierto
+        {/* Filter bar */}
+        <div className="mb-5 -mx-4 px-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button onClick={() => setSortBy('popularity')}
+              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                sortBy === 'popularity' ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
+              }`}>
+              🔥 Populares
             </button>
-
-            {/* Free delivery toggle */}
-            <button
-              onClick={() => setOnlyFreeDelivery(!onlyFreeDelivery)}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
-                onlyFreeDelivery
-                  ? 'bg-blue-500 text-white shadow-md shadow-blue-500/25'
-                  : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-gray-300'
-              }`}
-            >
+            <button onClick={() => setOnlyOpen(!onlyOpen)}
+              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                onlyOpen ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
+              }`}>
+              Abierto ahora
+            </button>
+            <button onClick={() => setOnlyFreeDelivery(!onlyFreeDelivery)}
+              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                onlyFreeDelivery ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
+              }`}>
               🛵 Envío gratis
             </button>
-
-            {/* Divider */}
-            <div className="w-px h-5 bg-gray-200 flex-shrink-0" />
-
-            {/* Sort options */}
-            {[
-              ...(hasLocation ? [{ key: 'distance', label: '📍 Cercanos' }] : []),
-              { key: 'popularity', label: '🔥 Populares' },
-              { key: 'name', label: 'A-Z' },
-              { key: 'delivery_time', label: '⚡ Rápidos' },
-              { key: 'delivery_price', label: 'Envío ↓' },
-              { key: 'min_price', label: '💰 Baratos' },
-            ].map(opt => (
-              <button
-                key={opt.key}
-                onClick={() => setSortBy(opt.key)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
-                  sortBy === opt.key
-                    ? 'bg-gray-900 text-white shadow-sm'
-                    : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:ring-gray-300 hover:text-gray-700'
-                }`}
-              >{opt.label}</button>
-            ))}
-          </div>
-
-          {/* Active filters summary */}
-          {(onlyOpen || onlyFreeDelivery || selectedCategory !== 'todo') && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-400">Filtros:</span>
-              <div className="flex gap-1.5 flex-wrap">
-                {onlyOpen && (
-                  <button onClick={() => setOnlyOpen(false)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-[10px] font-medium hover:bg-green-100 transition-colors">
-                    Abierto <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                )}
-                {onlyFreeDelivery && (
-                  <button onClick={() => setOnlyFreeDelivery(false)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 text-[10px] font-medium hover:bg-blue-100 transition-colors">
-                    Envío gratis <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                )}
-                {selectedCategory !== 'todo' && (
-                  <button onClick={() => setSelectedCategory('todo')} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[10px] font-medium hover:bg-gray-200 transition-colors">
-                    {getCategoryName(selectedCategory)} <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                )}
-              </div>
-              <button
-                onClick={() => { setOnlyOpen(false); setOnlyFreeDelivery(false); setSelectedCategory('todo'); setSearchTerm(''); }}
-                className="text-[10px] text-red-500 font-medium hover:text-red-600 ml-auto"
-              >
-                Limpiar todo
+            {hasLocation && (
+              <button onClick={() => setSortBy('distance')}
+                className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                  sortBy === 'distance' ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
+                }`}>
+                📍 Cercanos
               </button>
-            </motion.div>
-          )}
+            )}
+            <button onClick={() => setSortBy('delivery_time')}
+              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                sortBy === 'delivery_time' ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
+              }`}>
+              ⚡ Rápido
+            </button>
+            <button onClick={() => setSortBy('min_price')}
+              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                sortBy === 'min_price' ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
+              }`}>
+              💰 Precio ↓
+            </button>
+          </div>
         </div>
 
-        {/* ─── PRODUCT SEARCH RESULTS ─── */}
+        {/* Product search results */}
         {searchTerm && productSearchResults.length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+          <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
-                <span className="text-sm">🔍</span>
+              <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center">
+                <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-gray-900">Restaurantes con "{searchTerm}"</h3>
-                <p className="text-[10px] text-gray-400">{productSearchResults.length} encontrados</p>
+                <p className="text-[14px] font-bold text-gray-900">Resultados para "{searchTerm}"</p>
+                <p className="text-[11px] text-gray-400">{productSearchResults.length} restaurantes</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {productSearchResults.map((restaurant) => (
-                <RestaurantCard key={`pm-${restaurant._id}`} restaurant={restaurant} userLocation={location.coordinates} />
-              ))}
+            <div className="space-y-4">
+              {productSearchResults.map(r => <RestaurantCard key={`pm-${r._id}`} restaurant={r} userLocation={location.coordinates} />)}
             </div>
-            {filteredRestaurants.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-gray-100">
-                <p className="text-xs text-gray-400 font-medium">Todos los restaurantes</p>
-              </div>
-            )}
-          </motion.div>
+            {filteredRestaurants.length > 0 && <div className="border-t border-gray-200 mt-6 pt-4"><p className="text-[13px] text-gray-400 font-semibold">Todos los restaurantes</p></div>}
+          </div>
         )}
 
-        {/* ═══ MAIN GRID ═══ */}
+        {/* Main list */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={`sk-${i}`} />)}
+          <div className="space-y-4">
+            {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
           </div>
         ) : filteredRestaurants.length === 0 ? (
-          /* ─── Empty State ─── */
-          <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center py-20 px-4"
-          >
-            <div className="bg-white rounded-2xl p-8 text-center max-w-xs shadow-sm border border-gray-100">
-              <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
-                <motion.span
-                  animate={{ rotate: [0, -8, 8, -8, 0] }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-4xl"
-                >
-                  {searchTerm ? '🔍' : onlyOpen ? '🕐' : '🍽️'}
-                </motion.span>
-              </div>
-              <h3 className="text-base font-bold text-gray-900 mb-1.5">No encontramos restaurantes</h3>
-              <p className="text-gray-500 text-xs mb-5 leading-relaxed">
-                {searchTerm ? (
-                  productSearchResults.length > 0
-                    ? <>Sin coincidencias por nombre, pero hay productos arriba ☝️</>
-                    : <>No hay resultados para "<strong>{searchTerm}</strong>". Prueba: pizza, hamburguesa, pollo...</>
-                ) : onlyOpen
-                  ? <>No hay restaurantes abiertos ahora. Prueba más tarde.</>
-                  : onlyFreeDelivery
-                    ? <>Sin restaurantes con envío gratis actualmente.</>
-                    : selectedCategory !== 'todo'
-                      ? <>No hay restaurantes en <strong>{getCategoryName(selectedCategory)}</strong></>
-                      : <>Pronto tendremos más restaurantes.</>
-                }
-              </p>
-              <button
-                onClick={() => { setSearchTerm(''); setSelectedCategory('todo'); setOnlyOpen(false); setOnlyFreeDelivery(false); }}
-                className="w-full bg-gray-900 hover:bg-gray-800 active:bg-black text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
-              >Ver todos</button>
+          <div className="text-center py-20">
+            <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">{searchTerm ? '🔍' : '🍽️'}</span>
             </div>
-          </motion.div>
+            <p className="text-[16px] font-bold text-gray-900 mb-1">No hay restaurantes</p>
+            <p className="text-[13px] text-gray-500 mb-6 max-w-[240px] mx-auto">
+              {searchTerm ? `No encontramos resultados para "${searchTerm}"` : 'Intenta ajustar los filtros para ver más opciones'}
+            </p>
+            <button onClick={() => { setSearchTerm(''); setSelectedCategory('todo'); setOnlyOpen(false); setOnlyFreeDelivery(false); }}
+              className="px-6 py-2.5 bg-red-500 text-white text-[14px] font-bold rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-95 transition-all">
+              Ver todos
+            </button>
+          </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {visibleRestaurants.map((restaurant, index) => (
-                <motion.div
-                  key={restaurant._id}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(index * 0.04, 0.2), duration: 0.3 }}
-                >
-                  <RestaurantCard restaurant={restaurant} userLocation={location.coordinates} />
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Load more trigger */}
-            {hasMore && (
-              <div ref={loadMoreRef} className="flex flex-col items-center py-10 gap-3">
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce [animation-delay:0ms]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce [animation-delay:150ms]" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-gray-300 animate-bounce [animation-delay:300ms]" />
-                </div>
-                <button
-                  onClick={() => setVisibleCount(prev => prev + ITEMS_PER_PAGE)}
-                  className="text-xs text-gray-400 hover:text-gray-600 font-medium transition-colors"
-                >
-                  Cargar más ({filteredRestaurants.length - visibleCount} restantes)
-                </button>
-              </div>
-            )}
-
-            {/* End of list indicator */}
-            {!hasMore && filteredRestaurants.length > ITEMS_PER_PAGE && (
-              <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                className="text-center py-8"
-              >
-                <p className="text-xs text-gray-400">Mostrando {filteredRestaurants.length} restaurantes</p>
-                <button
-                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                  className="mt-2 text-xs text-red-500 hover:text-red-600 font-medium transition-colors"
-                >↑ Volver arriba</button>
+          <div className="space-y-4">
+            {visibleRestaurants.map((restaurant, i) => (
+              <motion.div key={restaurant._id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.04, 0.2), duration: 0.3 }}>
+                <RestaurantCard restaurant={restaurant} userLocation={location.coordinates} />
               </motion.div>
-            )}
-          </>
+            ))}
+          </div>
+        )}
+
+        {/* Load more */}
+        {hasMore && (
+          <div ref={loadMoreRef} className="flex justify-center py-10">
+            <div className="flex gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-red-300 animate-bounce [animation-delay:0ms]" />
+              <div className="w-2 h-2 rounded-full bg-red-400 animate-bounce [animation-delay:150ms]" />
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-bounce [animation-delay:300ms]" />
+            </div>
+          </div>
+        )}
+
+        {!hasMore && filteredRestaurants.length > ITEMS_PER_PAGE && (
+          <div className="text-center py-10">
+            <p className="text-[12px] text-gray-400 font-medium">{filteredRestaurants.length} restaurantes</p>
+            <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="mt-2 text-[12px] text-red-500 font-bold hover:text-red-600 transition-colors">↑ Volver arriba</button>
+          </div>
         )}
       </main>
 
       {/* ═══ FOOTER ═══ */}
-      <footer className="border-t border-gray-100 mt-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-center gap-2 text-[11px] text-gray-400">
-            <div className="w-5 h-5 rounded-md overflow-hidden ring-1 ring-gray-100">
-              <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover" />
-            </div>
-            <span className="font-semibold text-gray-500">MenuBy</span>
-            <span>·</span>
-            <span>{totalCount || restaurants.length} restaurantes</span>
-            <span>·</span>
-            <span>{location.city || 'Colombia'}</span>
+      <footer className="bg-white border-t border-gray-100 py-6">
+        <div className="max-w-3xl mx-auto px-4 flex items-center justify-center gap-2">
+          <div className="w-6 h-6 rounded-lg overflow-hidden">
+            <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover" />
           </div>
-          <p className="text-[9px] text-gray-300 text-center mt-3">© {new Date().getFullYear()} MenuBy</p>
+          <span className="text-[13px] font-bold text-red-500">MenuBy</span>
+          <span className="text-gray-300">·</span>
+          <span className="text-[12px] text-gray-400">{location.city || 'Colombia'}</span>
         </div>
       </footer>
     </div>

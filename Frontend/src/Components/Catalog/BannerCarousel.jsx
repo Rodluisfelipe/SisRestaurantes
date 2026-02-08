@@ -88,20 +88,23 @@ const BannerCarousel = () => {
 
   if (loading) {
     return (
-      <div className="w-full aspect-[2.5/1] md:aspect-[3/1] bg-gray-100 rounded-2xl overflow-hidden">
-        <div className="w-full h-full bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100" />
+      <div className="w-full aspect-[2.5/1] md:aspect-[3/1] bg-white rounded-2xl overflow-hidden shadow-sm">
+        <div className="w-full h-full bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-white to-gray-100" />
       </div>
     );
   }
 
   if (banners.length === 0) {
     return (
-      <div className="relative w-full aspect-[2.5/1] md:aspect-[3/1] rounded-2xl overflow-hidden bg-gradient-to-r from-red-500 via-red-600 to-orange-500 shadow-lg shadow-red-500/20">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9zdmc+')] opacity-50" />
+      <div className="relative w-full aspect-[2.5/1] md:aspect-[3/1] rounded-2xl overflow-hidden bg-gradient-to-br from-red-500 to-red-600 shadow-lg shadow-red-500/20">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_70%)]" />
         <div className="relative h-full flex items-center justify-center text-white px-6">
           <div className="text-center">
-            <h3 className="text-xl md:text-2xl font-extrabold mb-1 tracking-tight">MenuBy</h3>
-            <p className="text-xs md:text-sm opacity-80 font-medium">Descubre los mejores restaurantes cerca de ti</p>
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mx-auto mb-3">
+              <img src="/logo.jpeg" alt="" className="w-8 h-8 rounded-lg object-cover" />
+            </div>
+            <h3 className="text-lg md:text-xl font-bold mb-0.5">MenuBy</h3>
+            <p className="text-[13px] text-white/70 font-medium">Los mejores restaurantes cerca de ti</p>
           </div>
         </div>
       </div>
@@ -110,7 +113,7 @@ const BannerCarousel = () => {
 
   return (
     <div
-      className="relative w-full aspect-[2.5/1] md:aspect-[3/1] rounded-2xl overflow-hidden shadow-lg shadow-black/5 group"
+      className="relative w-full aspect-[2.5/1] md:aspect-[3/1] rounded-2xl overflow-hidden shadow-lg shadow-black/8 group"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -148,8 +151,8 @@ const BannerCarousel = () => {
             <button
               key={i}
               onClick={() => goTo(i)}
-              className={`h-1 rounded-full transition-all duration-300 ${
-                i === currentIndex ? 'bg-white w-5 shadow-sm' : 'bg-white/50 w-1.5 hover:bg-white/70'
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === currentIndex ? 'bg-red-500 w-5 shadow-sm shadow-red-500/50' : 'bg-white/60 w-1.5 hover:bg-white/80'
               }`}
             />
           ))}
@@ -161,17 +164,17 @@ const BannerCarousel = () => {
         <>
           <button
             onClick={() => { prev(); startAutoplay(); }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 hover:bg-white active:bg-gray-100 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-white/90 hover:bg-white active:bg-gray-50 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
           >
-            <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <button
             onClick={() => { next(); startAutoplay(); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 hover:bg-white active:bg-gray-100 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-white/90 hover:bg-white active:bg-gray-50 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
           >
-            <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </button>
