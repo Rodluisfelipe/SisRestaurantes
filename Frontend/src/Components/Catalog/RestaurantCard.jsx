@@ -79,14 +79,29 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
       <Link to={`/${restaurant.slug}`} onClick={handleClick} className="flex-shrink-0 w-[156px] snap-start group">
         <div className={`${!isOpen ? 'opacity-50' : ''}`}>
           <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100">
+            {/* Cover as background */}
             {restaurant.coverImage && !imgError ? (
               <img src={restaurant.coverImage} alt="" className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${imgLoaded ? '' : 'opacity-0'}`}
                 onLoad={() => setImgLoaded(true)} onError={() => setImgError(true)} loading="lazy" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center">
-                <span className="text-2xl font-bold text-red-300">{restaurant.businessName.charAt(0)}</span>
-              </div>
+              <div className="w-full h-full bg-gradient-to-br from-red-50 to-red-100" />
             )}
+            {/* Dark overlay for contrast */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+
+            {/* Logo centered */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {restaurant.logo ? (
+                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-white shadow-lg shadow-black/20 border-2 border-white/80">
+                  <img src={restaurant.logo} alt="" className="w-full h-full object-cover" loading="lazy" />
+                </div>
+              ) : (
+                <div className="w-14 h-14 rounded-2xl bg-white shadow-lg shadow-black/20 border-2 border-white/80 flex items-center justify-center">
+                  <span className="text-xl font-bold text-red-500">{restaurant.businessName.charAt(0)}</span>
+                </div>
+              )}
+            </div>
+
             {/* Time badge */}
             <div className="absolute bottom-2 left-2 bg-white/95 backdrop-blur-sm rounded-lg px-2 py-0.5 shadow-sm">
               <span className="text-[10px] font-bold text-gray-800">{deliveryTime} min</span>
