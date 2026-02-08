@@ -410,44 +410,49 @@ const MenuByCatalog = () => {
 
   const hasMore = visibleCount < filteredRestaurants.length;
 
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return 'Buenos días';
+    if (h >= 12 && h < 18) return 'Buenas tardes';
+    return 'Buenas noches';
+  };
+
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
       {/* ═══ STICKY HEADER ═══ */}
-      <header className={`sticky top-0 z-40 transition-all duration-300 ${
-        headerCompact
-          ? 'bg-white/80 backdrop-blur-2xl shadow-[0_1px_3px_rgba(0,0,0,0.05)]'
-          : 'bg-white shadow-none'
-      }`}>
+      <header className={`sticky top-0 z-40 transition-all duration-300 bg-white ${headerCompact ? 'shadow-sm' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Top bar: Brand + Location */}
-          <div className={`flex items-center justify-between transition-all duration-300 ${headerCompact ? 'py-2' : 'py-3'}`}>
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className={`rounded-xl overflow-hidden bg-white flex-shrink-0 transition-all duration-300 ring-1 ring-gray-100 ${headerCompact ? 'w-7 h-7' : 'w-10 h-10'}`}>
+          {/* Greeting + Location */}
+          {!headerCompact ? (
+            <div className="pt-4 pb-1">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[13px] text-gray-400 font-medium">{getGreeting()} 👋</p>
+                  <h1 className="text-[22px] font-extrabold text-gray-900 leading-tight mt-0.5">¿Qué quieres comer?</h1>
+                </div>
+                <div className="w-9 h-9 rounded-xl overflow-hidden ring-1 ring-gray-100 flex-shrink-0">
+                  <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover" />
+                </div>
+              </div>
+              <button onClick={updateLocation} className="flex items-center gap-1 text-[12px] text-gray-500 hover:text-red-500 transition-colors mt-1">
+                <LocationIcon />
+                <span className="truncate max-w-[250px]">{locationLoading ? 'Detectando ubicación...' : location.address}</span>
+                <svg className="w-2.5 h-2.5 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between py-2">
+              <button onClick={updateLocation} className="flex items-center gap-1 text-[13px] text-gray-600 font-medium truncate min-w-0">
+                <LocationIcon />
+                <span className="truncate max-w-[200px]">{locationLoading ? 'Detectando...' : location.address}</span>
+              </button>
+              <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-gray-100 flex-shrink-0 ml-3">
                 <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover" />
               </div>
-              <div className="min-w-0">
-                <h1 className={`font-extrabold text-gray-900 tracking-tight transition-all duration-300 ${headerCompact ? 'text-base' : 'text-lg'}`}>
-                  MenuBy
-                </h1>
-                {!headerCompact && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                    <button onClick={updateLocation} className="flex items-center gap-1 text-[11px] text-gray-500 hover:text-red-500 transition-colors group">
-                      <LocationIcon />
-                      {locationLoading ? (
-                        <span className="animate-pulse">Detectando...</span>
-                      ) : (
-                        <span className="truncate max-w-[200px]">{location.address}</span>
-                      )}
-                      <svg className="w-2.5 h-2.5 text-gray-300 group-hover:text-red-400 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                  </motion.div>
-                )}
-              </div>
             </div>
-            <span className="px-2 py-0.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white text-[9px] font-black rounded-full tracking-wider flex-shrink-0">BETA</span>
-          </div>
+          )}
 
           {/* Search bar */}
           <div className={`relative transition-all duration-300 ${headerCompact ? 'pb-2' : 'pb-3'}`}>
@@ -588,19 +593,25 @@ const MenuByCatalog = () => {
 
         {/* ─── CATEGORIES ─── */}
         <div className="mb-5 -mx-4 px-4">
-          <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide snap-x snap-mandatory">
+          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
             {categories.map((category) => (
               <button
                 key={category}
                 onClick={() => setSelectedCategory(category)}
-                className={`snap-start flex items-center gap-1.5 px-3.5 py-2 rounded-xl font-semibold whitespace-nowrap text-[13px] transition-all duration-200 active:scale-95 ${
-                  selectedCategory === category
-                    ? 'bg-gray-900 text-white shadow-lg shadow-gray-900/20'
-                    : 'bg-white text-gray-600 shadow-sm border border-gray-100 hover:bg-gray-50 active:bg-gray-100'
-                }`}
+                className="flex flex-col items-center gap-1.5 flex-shrink-0 group"
               >
-                <span className="text-sm">{getCategoryIcon(category)}</span>
-                <span>{getCategoryName(category)}</span>
+                <div className={`w-[56px] h-[56px] rounded-2xl flex items-center justify-center text-2xl transition-all duration-200 ${
+                  selectedCategory === category
+                    ? 'bg-red-50 ring-2 ring-red-500 shadow-sm shadow-red-500/10'
+                    : 'bg-gray-50 group-hover:bg-gray-100 group-active:scale-95'
+                }`}>
+                  {getCategoryIcon(category)}
+                </div>
+                <span className={`text-[11px] font-medium transition-colors whitespace-nowrap ${
+                  selectedCategory === category ? 'text-red-500' : 'text-gray-500'
+                }`}>
+                  {getCategoryName(category)}
+                </span>
               </button>
             ))}
           </div>
@@ -608,14 +619,9 @@ const MenuByCatalog = () => {
 
         {/* ─── FILTERS & SORT BAR ─── */}
         <div className="mb-5 space-y-3">
-          {/* Title */}
-          <div>
-            <h2 className="text-lg font-bold text-gray-900 leading-tight">
-              Restaurantes {location.city ? `en ${location.city}` : ''}
-            </h2>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              {filteredRestaurants.length} disponibles{totalCount > filteredRestaurants.length && ` de ${totalCount}`}
-            </p>
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-[17px] font-bold text-gray-900">Restaurantes</h2>
+            <span className="text-[12px] text-gray-400">{filteredRestaurants.length} disponibles</span>
           </div>
 
           {/* Filter + Sort row */}
@@ -623,10 +629,10 @@ const MenuByCatalog = () => {
             {/* Open now toggle */}
             <button
               onClick={() => setOnlyOpen(!onlyOpen)}
-              className={`flex items-center gap-1.5 px-3 py-[7px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
                 onlyOpen
                   ? 'bg-green-500 text-white shadow-md shadow-green-500/25'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+                  : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-gray-300'
               }`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${onlyOpen ? 'bg-white' : 'bg-green-500'}`} />
@@ -636,10 +642,10 @@ const MenuByCatalog = () => {
             {/* Free delivery toggle */}
             <button
               onClick={() => setOnlyFreeDelivery(!onlyFreeDelivery)}
-              className={`flex items-center gap-1.5 px-3 py-[7px] rounded-lg text-xs font-semibold whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
                 onlyFreeDelivery
                   ? 'bg-blue-500 text-white shadow-md shadow-blue-500/25'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
+                  : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:ring-gray-300'
               }`}
             >
               🛵 Envío gratis
@@ -660,10 +666,10 @@ const MenuByCatalog = () => {
               <button
                 key={opt.key}
                 onClick={() => setSortBy(opt.key)}
-                className={`px-3 py-[7px] rounded-lg text-xs font-medium whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all active:scale-95 flex-shrink-0 ${
                   sortBy === opt.key
                     ? 'bg-gray-900 text-white shadow-sm'
-                    : 'bg-white text-gray-500 border border-gray-200 hover:border-gray-300 hover:text-gray-700'
+                    : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:ring-gray-300 hover:text-gray-700'
                 }`}
               >{opt.label}</button>
             ))}
@@ -816,24 +822,19 @@ const MenuByCatalog = () => {
       </main>
 
       {/* ═══ FOOTER ═══ */}
-      <footer className="bg-white border-t border-gray-100 mt-4">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg overflow-hidden ring-1 ring-gray-100">
-                <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover" />
-              </div>
-              <span className="text-base font-extrabold text-gray-900 tracking-tight">MenuBy</span>
+      <footer className="border-t border-gray-100 mt-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-center gap-2 text-[11px] text-gray-400">
+            <div className="w-5 h-5 rounded-md overflow-hidden ring-1 ring-gray-100">
+              <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full object-cover" />
             </div>
-            <p className="text-[11px] text-gray-400 mb-3">Pide comida a domicilio en tu ciudad</p>
-            <div className="flex justify-center gap-4 text-[11px] text-gray-400">
-              <span>{totalCount || restaurants.length} restaurantes</span>
-              <span>·</span>
-              <span>{location.city || 'Colombia'}</span>
-              {favoriteRestaurants.length > 0 && (<><span>·</span><span>{favoriteRestaurants.length} favoritos</span></>)}
-            </div>
-            <p className="text-[9px] text-gray-300 mt-5">© {new Date().getFullYear()} MenuBy. Todos los derechos reservados.</p>
+            <span className="font-semibold text-gray-500">MenuBy</span>
+            <span>·</span>
+            <span>{totalCount || restaurants.length} restaurantes</span>
+            <span>·</span>
+            <span>{location.city || 'Colombia'}</span>
           </div>
+          <p className="text-[9px] text-gray-300 text-center mt-3">© {new Date().getFullYear()} MenuBy</p>
         </div>
       </footer>
     </div>
