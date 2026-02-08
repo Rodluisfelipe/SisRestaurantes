@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { API_URL } from '../../config';
 
@@ -7,10 +7,12 @@ const BannerCarousel = () => {
   const [banners, setBanners] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [direction, setDirection] = useState(0);
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+  const autoplayRef = useRef(null);
 
-  useEffect(() => {
-    loadBanners();
-  }, []);
+  useEffect(() => { loadBanners(); }, []);
 
   const loadBanners = async () => {
     try {
@@ -27,45 +29,79 @@ const BannerCarousel = () => {
   };
 
   const handleBannerClick = async (bannerId) => {
-    try {
-      await fetch(`${API_URL}/banners/${bannerId}/click`, {
-        method: 'PUT'
-      });
-    } catch (error) {
-      console.error('Error tracking click:', error);
-    }
+    try { await fetch(`${API_URL}/banners/${bannerId}/click`, { method: 'PUT' }); } catch {}
   };
 
-  // Auto-rotate banners every 5 seconds
-  useEffect(() => {
-    if (banners.length > 1) {
-      const interval = setInterval(() => {
-        setCurrentIndex((prevIndex) => 
-          prevIndex === banners.length - 1 ? 0 : prevIndex + 1
-        );
-      }, 5000);
+  const goTo = useCallback((idx) => {
+    setDirection(idx > currentIndex ? 1 : -1);
+    setCurrentIndex(idx);
+  }, [currentIndex]);
 
-      return () => clearInterval(interval);
-    }
+  const next = useCallback(() => {
+    if (banners.length <= 1) return;
+    setDirection(1);
+    setCurrentIndex(prev => prev === banners.length - 1 ? 0 : prev + 1);
   }, [banners.length]);
+
+  const prev = useCallback(() => {
+    if (banners.length <= 1) return;
+    setDirection(-1);
+    setCurrentIndex(prev => prev === 0 ? banners.length - 1 : prev - 1);
+  }, [banners.length]);
+
+  // Autoplay with pause on interaction
+  const startAutoplay = useCallback(() => {
+    if (autoplayRef.current) clearInterval(autoplayRef.current);
+    if (banners.length > 1) {
+      autoplayRef.current = setInterval(next, 5000);
+    }
+  }, [banners.length, next]);
+
+  useEffect(() => {
+    startAutoplay();
+    return () => { if (autoplayRef.current) clearInterval(autoplayRef.current); };
+  }, [startAutoplay]);
+
+  // Touch handling for swipe
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+    if (autoplayRef.current) clearInterval(autoplayRef.current);
+  };
+
+  const handleTouchMove = (e) => {
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  };
+
+  const handleTouchEnd = () => {
+    const threshold = 50;
+    if (touchDeltaX.current < -threshold) next();
+    else if (touchDeltaX.current > threshold) prev();
+    startAutoplay();
+  };
+
+  const slideVariants = {
+    enter: (dir) => ({ x: dir > 0 ? '100%' : '-100%', opacity: 0.5 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir) => ({ x: dir > 0 ? '-100%' : '100%', opacity: 0.5 }),
+  };
 
   if (loading) {
     return (
-      <div className="w-full h-32 bg-slate-100 rounded-2xl animate-pulse mb-6"></div>
+      <div className="w-full aspect-[2.5/1] md:aspect-[3/1] bg-gray-100 rounded-2xl overflow-hidden">
+        <div className="w-full h-full bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100" />
+      </div>
     );
   }
 
   if (banners.length === 0) {
-    // Mostrar banner promocional por defecto
     return (
-      <div className="relative w-full mb-6">
-        <div className="relative w-full h-32 md:h-40 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r from-red-500 via-red-600 to-orange-500">
-          <div className="absolute inset-0 bg-black/20" />
-          <div className="relative h-full flex items-center justify-center text-white">
-            <div className="text-center">
-              <h3 className="text-2xl md:text-3xl font-bold mb-2">🚀 MenuBy BETA</h3>
-              <p className="text-sm md:text-base opacity-90">Descubre los mejores restaurantes de Chía</p>
-            </div>
+      <div className="relative w-full aspect-[2.5/1] md:aspect-[3/1] rounded-2xl overflow-hidden bg-gradient-to-r from-red-500 via-red-600 to-orange-500 shadow-lg shadow-red-500/20">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9zdmc+')] opacity-50" />
+        <div className="relative h-full flex items-center justify-center text-white px-6">
+          <div className="text-center">
+            <h3 className="text-xl md:text-2xl font-extrabold mb-1 tracking-tight">MenuBy</h3>
+            <p className="text-xs md:text-sm opacity-80 font-medium">Descubre los mejores restaurantes cerca de ti</p>
           </div>
         </div>
       </div>
@@ -73,70 +109,70 @@ const BannerCarousel = () => {
   }
 
   return (
-    <div className="relative w-full mb-6">
-      {/* Banner Container */}
-      <div className="relative w-full h-32 md:h-40 rounded-2xl overflow-hidden shadow-lg">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={currentIndex}
-            initial={{ opacity: 0, x: 300 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -300 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            className="absolute inset-0"
+    <div
+      className="relative w-full aspect-[2.5/1] md:aspect-[3/1] rounded-2xl overflow-hidden shadow-lg shadow-black/5 group"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <AnimatePresence initial={false} custom={direction} mode="popLayout">
+        <motion.div
+          key={currentIndex}
+          custom={direction}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ x: { type: 'spring', stiffness: 350, damping: 35 }, opacity: { duration: 0.2 } }}
+          className="absolute inset-0"
+        >
+          <Link
+            to={`/${banners[currentIndex].businessSlug}`}
+            onClick={() => handleBannerClick(banners[currentIndex]._id)}
+            className="block w-full h-full relative"
           >
-            <Link
-              to={`/${banners[currentIndex].businessSlug}`}
-              onClick={() => handleBannerClick(banners[currentIndex]._id)}
-              className="block w-full h-full relative group cursor-pointer"
-            >
-              <img
-                src={`${API_URL.replace('/api', '')}${banners[currentIndex].image}`}
-                alt={banners[currentIndex].title}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
-              
-              {/* Overlay removed - clean image only */}
-            </Link>
-          </motion.div>
-        </AnimatePresence>
-      </div>
+            <img
+              src={`${API_URL.replace('/api', '')}${banners[currentIndex].image}`}
+              alt={banners[currentIndex].title}
+              className="w-full h-full object-cover"
+              loading={currentIndex === 0 ? 'eager' : 'lazy'}
+            />
+          </Link>
+        </motion.div>
+      </AnimatePresence>
 
-      {/* Navigation Dots */}
+      {/* Progress dots */}
       {banners.length > 1 && (
-        <div className="flex justify-center space-x-2 mt-4">
-          {banners.map((_, index) => (
+        <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+          {banners.map((_, i) => (
             <button
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                index === currentIndex
-                  ? 'bg-blue-500 w-6'
-                  : 'bg-slate-300 hover:bg-slate-400'
+              key={i}
+              onClick={() => goTo(i)}
+              className={`h-1 rounded-full transition-all duration-300 ${
+                i === currentIndex ? 'bg-white w-5 shadow-sm' : 'bg-white/50 w-1.5 hover:bg-white/70'
               }`}
             />
           ))}
         </div>
       )}
 
-      {/* Navigation Arrows */}
+      {/* Nav arrows (show on hover / desktop) */}
       {banners.length > 1 && (
         <>
           <button
-            onClick={() => setCurrentIndex(currentIndex === 0 ? banners.length - 1 : currentIndex - 1)}
-            className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-slate-600 hover:text-slate-800 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg"
+            onClick={() => { prev(); startAutoplay(); }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 hover:bg-white active:bg-gray-100 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          
           <button
-            onClick={() => setCurrentIndex(currentIndex === banners.length - 1 ? 0 : currentIndex + 1)}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-slate-600 hover:text-slate-800 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg"
+            onClick={() => { next(); startAutoplay(); }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 hover:bg-white active:bg-gray-100 flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </>
