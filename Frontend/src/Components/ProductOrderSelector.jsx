@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  FaGripVertical, FaChevronDown, FaChevronRight,
+  FaSyncAlt, FaCheck, FaExclamationTriangle, FaBoxOpen, FaSortAmountDown
+} from 'react-icons/fa';
 import api from '../services/api';
 
 const ProductOrderSelector = ({ products = [], categories = [], businessId, onOrderChange }) => {
@@ -122,7 +125,7 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
       });
 
       setSaveLoading(false);
-      setSuccessMessage('✅ Orden guardado automáticamente');
+      setSuccessMessage('Orden guardado correctamente');
       setHasChanges(false);
       
       // Reconstruir el array completo para el componente padre
@@ -148,192 +151,157 @@ const ProductOrderSelector = ({ products = [], categories = [], businessId, onOr
 
   const getCategoryName = (categoryId) => {
     if (categoryId === 'uncategorized') return 'Sin Categoría';
-    
     const category = categories.find(cat => cat._id === categoryId);
     return category ? category.name : 'Categoría Desconocida';
   };
 
   if (orderedProducts.length === 0) {
     return (
-      <div className="p-6 bg-white rounded-xl border border-dashed border-gray-300 text-center text-gray-500">
-        <div className="text-4xl mb-3">📦</div>
-        <p>No hay productos para reordenar.</p>
-        <p className="text-sm mt-2">Agrega productos primero para poder reordenarlos.</p>
+      <div className="bg-white rounded-xl border border-slate-200 flex flex-col items-center justify-center py-10 text-center">
+        <FaBoxOpen className="text-2xl text-slate-300 mb-2" />
+        <p className="text-sm text-slate-500 font-medium">Sin productos para reordenar</p>
+        <p className="text-xs text-slate-400 mt-1">Agrega productos primero</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 w-full max-w-full overflow-hidden">
-      <div className="flex items-start mb-4 lg:mb-6 w-full">
-        <div className="w-full min-w-0">
-          <h3 className="text-base lg:text-lg font-semibold text-gray-800 flex items-center mb-2">
-            <span className="mr-2 flex-shrink-0">🔄</span>
-            <span className="truncate">Reordenar Productos</span>
-          </h3>
-          <p className="text-xs lg:text-sm text-gray-600 leading-tight">
-            Arrastra y suelta para cambiar el orden en que aparecen los productos en el menú
-          </p>
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        <FaSortAmountDown className="text-blue-500 text-sm" />
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800">Reordenar Productos</h3>
+          <p className="text-[11px] text-slate-500">Arrastra para cambiar el orden en el menú</p>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Status messages */}
       <AnimatePresence>
         {saveLoading && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mb-4 p-3 bg-blue-100 text-blue-800 rounded-lg border border-blue-200"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-4 py-2 bg-blue-50 text-blue-700 text-xs font-medium flex items-center gap-2 border-b border-blue-100"
           >
-            💾 Guardando orden automáticamente...
+            <FaSyncAlt className="text-[10px] animate-spin" /> Guardando...
           </motion.div>
         )}
-        
         {successMessage && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mb-4 p-3 bg-green-100 text-green-800 rounded-lg border border-green-200"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-4 py-2 bg-emerald-50 text-emerald-700 text-xs font-medium flex items-center gap-2 border-b border-emerald-100"
           >
-            ✅ {successMessage}
+            <FaCheck className="text-[10px]" /> {successMessage}
           </motion.div>
         )}
-        
         {error && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mb-4 p-3 bg-red-100 text-red-800 rounded-lg border border-red-200"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-4 py-2 bg-red-50 text-red-700 text-xs font-medium flex items-center gap-2 border-b border-red-100"
           >
-            ❌ {error}
+            <FaExclamationTriangle className="text-[10px]" /> {error}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Products List by Category */}
-      <div className="space-y-3 lg:space-y-4 max-h-[50vh] lg:max-h-[60vh] overflow-y-auto overflow-x-hidden w-full max-w-full min-w-0">
+      {/* Categories */}
+      <div className="max-h-[55vh] overflow-y-auto divide-y divide-slate-100">
         {Object.keys(productsByCategory)
           .sort((a, b) => {
-            // Ordenar categorías: uncategorized al final, resto por displayOrder
             if (a === 'uncategorized') return 1;
             if (b === 'uncategorized') return -1;
-            
             const catA = categories.find(cat => cat._id === a);
             const catB = categories.find(cat => cat._id === b);
-            
             const orderA = catA?.displayOrder !== undefined ? catA.displayOrder : 999;
             const orderB = catB?.displayOrder !== undefined ? catB.displayOrder : 999;
-            
             return orderA - orderB;
           })
           .map(categoryId => {
-          const categoryProducts = productsByCategory[categoryId];
-          const isExpanded = expandedCategories[categoryId];
-          
-           return (
-             <div key={categoryId} className="border border-gray-200 rounded-lg overflow-hidden w-full max-w-full">
-               {/* Category Header */}
-               <motion.div
-                 whileHover={{ backgroundColor: '#f3f4f6' }}
-                 className="flex items-center justify-between p-3 lg:p-4 bg-gray-50 border-b border-gray-200 cursor-pointer min-w-0"
-                 onClick={() => toggleCategory(categoryId)}
-               >
-                 <div className="flex items-center space-x-2 lg:space-x-3 min-w-0 flex-1">
-                   <div className="text-base lg:text-lg flex-shrink-0">
-                     {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                   </div>
-                   <h3 className="font-semibold text-gray-800 text-sm lg:text-base truncate">{getCategoryName(categoryId)}</h3>
-                   <span className="bg-blue-100 text-blue-800 text-xs lg:text-sm px-2 py-1 rounded-full flex-shrink-0">
-                     {categoryProducts.length}
-                   </span>
-                 </div>
-               </motion.div>
-              
-              {/* Category Products */}
-              <AnimatePresence>
-                {isExpanded && (
-                  <motion.div
-                    initial={{ height: 0 }}
-                    animate={{ height: 'auto' }}
-                    exit={{ height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                     <div className="p-3 lg:p-4 space-y-2 lg:space-y-3 w-full max-w-full">
-                       <AnimatePresence>
-                         {categoryProducts.map((product, productIndex) => (
-                           <motion.div
-                             key={product._id}
-                             layout
-                             initial={{ opacity: 0, y: 20 }}
-                             animate={{ opacity: 1, y: 0 }}
-                             exit={{ opacity: 0, x: -20 }}
-                             transition={{ duration: 0.2 }}
-                             draggable
-                             onDragStart={(e) => handleDragStart(e, categoryId, productIndex)}
-                             onDragOver={(e) => handleDragOver(e, categoryId, productIndex)}
-                             onDragEnd={handleDragEnd}
-                             className={`flex items-center bg-white border border-gray-200 rounded-lg p-2 lg:p-3 shadow-sm cursor-grab active:cursor-grabbing hover:bg-gray-50 transition-all duration-150 w-full max-w-full min-w-0 overflow-hidden ${
-                               draggedItem?.categoryId === categoryId && draggedItem?.productIndex === productIndex ? 'opacity-50' : ''
-                             }`}
-                           >
-                             <GripVertical className="text-gray-400 mr-1 lg:mr-2 flex-shrink-0" size={12} />
-                             
-                             <div className="flex items-center flex-1 min-w-0 overflow-hidden">
-                               <div className="bg-blue-100 text-blue-800 font-semibold text-xs px-1 lg:px-1.5 py-0.5 rounded mr-1 lg:mr-2 flex-shrink-0 text-center min-w-[20px]">
-                                 {productIndex + 1}
-                               </div>
-                               
-                               <div className="flex items-center flex-1 min-w-0 overflow-hidden">
-                                 {product.image && (
-                                   <img 
-                                     src={product.image} 
-                                     alt={product.name}
-                                     className="w-5 h-5 lg:w-8 lg:h-8 object-cover rounded flex-shrink-0 mr-1 lg:mr-2"
-                                   />
-                                 )}
-                                 
-                                 <div className="flex-1 min-w-0 overflow-hidden mr-1 lg:mr-2">
-                                   <h4 className="font-medium text-gray-800 truncate text-xs lg:text-sm leading-tight">{product.name}</h4>
-                                 </div>
-                                 
-                                 <div className="flex items-center space-x-0.5 lg:space-x-1 flex-shrink-0">
-                                   <span className="font-semibold text-green-600 text-xs whitespace-nowrap">
-                                     ${(product.price || 0).toLocaleString()}
-                                   </span>
-                                   
-                                   <div className={`w-4 h-4 lg:w-5 lg:h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 ${
-                                     product.active !== false 
-                                       ? 'bg-green-100 text-green-800' 
-                                       : 'bg-red-100 text-red-800'
-                                   }`}>
-                                     {product.active !== false ? '●' : '○'}
-                                   </div>
-                                 </div>
-                               </div>
-                             </div>
-                           </motion.div>
+            const categoryProducts = productsByCategory[categoryId];
+            const isExpanded = expandedCategories[categoryId];
+
+            return (
+              <div key={categoryId}>
+                {/* Category Header */}
+                <button
+                  className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 transition-colors"
+                  onClick={() => toggleCategory(categoryId)}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    {isExpanded
+                      ? <FaChevronDown className="text-[10px] text-slate-400 flex-shrink-0" />
+                      : <FaChevronRight className="text-[10px] text-slate-400 flex-shrink-0" />
+                    }
+                    <span className="text-xs font-semibold text-slate-700 truncate">{getCategoryName(categoryId)}</span>
+                  </div>
+                  <span className="bg-blue-50 text-blue-600 text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0">
+                    {categoryProducts.length}
+                  </span>
+                </button>
+
+                {/* Products */}
+                <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0 }}
+                      animate={{ height: 'auto' }}
+                      exit={{ height: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="py-1 px-2 space-y-0.5">
+                        {categoryProducts.map((product, productIndex) => (
+                          <div
+                            key={product._id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, categoryId, productIndex)}
+                            onDragOver={(e) => handleDragOver(e, categoryId, productIndex)}
+                            onDragEnd={handleDragEnd}
+                            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-all ${
+                              draggedItem?.categoryId === categoryId && draggedItem?.productIndex === productIndex ? 'opacity-40 bg-blue-50' : ''
+                            }`}
+                          >
+                            <FaGripVertical className="text-slate-300 text-[10px] flex-shrink-0" />
+
+                            <span className="bg-slate-100 text-slate-500 font-semibold text-[10px] w-5 h-5 rounded flex items-center justify-center flex-shrink-0">
+                              {productIndex + 1}
+                            </span>
+
+                            {product.image && (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-7 h-7 object-cover rounded flex-shrink-0"
+                              />
+                            )}
+
+                            <span className="flex-1 min-w-0 text-xs font-medium text-slate-700 truncate">
+                              {product.name}
+                            </span>
+
+                            <span className="text-xs font-semibold text-slate-500 flex-shrink-0">
+                              ${(product.price || 0).toLocaleString()}
+                            </span>
+
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                              product.active !== false ? 'bg-emerald-400' : 'bg-red-400'
+                            }`} />
+                          </div>
                         ))}
-                      </AnimatePresence>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
       </div>
-      
-      
-      {/* Debug info */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-2 p-2 bg-gray-100 text-xs text-gray-600">
-          Debug: hasChanges = {hasChanges.toString()}
-        </div>
-      )}
     </div>
   );
 };

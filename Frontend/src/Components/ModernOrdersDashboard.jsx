@@ -6,22 +6,12 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import { useNavigate } from 'react-router-dom';
 import { generateDailyReportPDF } from './DailyReportPDF';
 import { TIME_INTERVALS, SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
-
-// Iconos con emojis - más confiables y universales
-const Icons = {
-  Clock: ({ className }) => <span className={`${className} flex items-center justify-center`}>⏰</span>,
-  User: ({ className }) => <span className={`${className} flex items-center justify-center`}>👤</span>,
-  Phone: ({ className }) => <span className={`${className} flex items-center justify-center`}>📞</span>,
-  MapPin: ({ className }) => <span className={`${className} flex items-center justify-center`}>📍</span>,
-  ShoppingBag: ({ className }) => <span className={`${className} flex items-center justify-center`}>🛍️</span>,
-  Truck: ({ className }) => <span className={`${className} flex items-center justify-center`}>🚚</span>,
-  Kitchen: ({ className }) => <span className={`${className} flex items-center justify-center`}>👨‍🍳</span>,
-  Eye: ({ className }) => <span className={`${className} flex items-center justify-center`}>👁️</span>,
-  Check: ({ className }) => <span className={`${className} flex items-center justify-center`}>✅</span>,
-  X: ({ className }) => <span className={`${className} flex items-center justify-center`}>❌</span>,
-  Play: ({ className }) => <span className={`${className} flex items-center justify-center`}>▶️</span>,
-  Refresh: ({ className }) => <span className={`${className} flex items-center justify-center`}>🔄</span>
-};
+import {
+  FaClipboardList, FaSync, FaCircle, FaSearch, FaTh, FaList,
+  FaUtensils, FaTv, FaShoppingBag, FaEye, FaPlay, FaCheck,
+  FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaClock, FaTimes,
+  FaChair, FaHome, FaTag, FaExclamationTriangle, FaWifi
+} from 'react-icons/fa';
 
 function ModernOrdersDashboard() {
   const [orders, setOrders] = useState([]);
@@ -441,289 +431,229 @@ function ModernOrdersDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"
+            transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
+            className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"
           />
-          <p className="text-slate-600 text-lg font-medium">Cargando pedidos...</p>
-        </motion.div>
+          <p className="text-slate-500 text-sm font-medium">Cargando pedidos...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center"
-      >
-        <div className="bg-white p-8 rounded-2xl shadow-xl border border-red-200">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">❌</span>
-            </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">Error al cargar pedidos</h3>
-            <p className="text-slate-600 mb-6">{error}</p>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={fetchOrders}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-            >
-              Intentar de nuevo
-            </motion.button>
+      <div className="flex items-center justify-center py-20">
+        <div className="bg-white p-6 rounded-xl border border-red-100 text-center max-w-sm">
+          <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3">
+            <FaTimes className="text-red-400 text-lg" />
           </div>
+          <h3 className="text-sm font-semibold text-slate-800 mb-1">Error al cargar pedidos</h3>
+          <p className="text-slate-500 text-xs mb-4">{error}</p>
+          <button
+            onClick={fetchOrders}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            Intentar de nuevo
+          </button>
         </div>
-      </motion.div>
+      </div>
     );
   }
 
+  const statusFilters = [
+    { value: 'all', label: 'Todos', icon: FaClipboardList },
+    { value: ORDER_STATUS.PENDING, label: 'Pendientes', icon: FaClock },
+    { value: ORDER_STATUS.IN_PROGRESS, label: 'En curso', icon: FaUtensils },
+    { value: ORDER_STATUS.COMPLETED, label: 'Listos', icon: FaCheck },
+  ];
+
+  const orderCounts = {
+    all: filteredOrders.length,
+    [ORDER_STATUS.PENDING]: orders.filter(o => o.status === ORDER_STATUS.PENDING).length,
+    [ORDER_STATUS.IN_PROGRESS]: orders.filter(o => o.status === ORDER_STATUS.IN_PROGRESS).length,
+    [ORDER_STATUS.COMPLETED]: orders.filter(o => o.status === ORDER_STATUS.COMPLETED).length,
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="space-y-4">
       {/* Audio element for notifications */}
       <audio 
         ref={notificationAudioRef} 
         preload="auto"
         onError={(e) => {
           console.error('Audio loading error:', e);
-          console.error('Audio element:', e.target);
-          console.error('Audio src:', e.target.src);
         }}
         onCanPlay={() => {
           console.log('Audio ready to play');
         }}
       >
         <source src="/audio/new-order-notification.mp3" type="audio/mpeg" />
-        Tu navegador no soporta el elemento de audio.
       </audio>
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-3 lg:space-x-4">
+      {/* Top Bar — Actions */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          {/* Pending badge */}
+          {pendingNotifications.length > 0 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-full"
+            >
               <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="flex items-center space-x-2"
-              >
-                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                  <span className="text-sm lg:text-lg">👨‍🍳</span>
-                </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-lg lg:text-xl font-bold text-slate-900">Panel de Pedidos</h1>
-                  <p className="text-xs lg:text-sm text-slate-500">{businessConfig?.businessName}</p>
-                </div>
-              </motion.div>
-            </div>
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className="w-2 h-2 rounded-full bg-red-500"
+              />
+              <span className="text-xs font-bold">{pendingNotifications.length} pendiente{pendingNotifications.length > 1 ? 's' : ''}</span>
+            </motion.div>
+          )}
+        </div>
 
-            <div className="flex items-center space-x-2 lg:space-x-3">
-              {/* Pending notifications badge */}
-              {pendingNotifications.length > 0 && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="relative"
+        <div className="flex items-center gap-2">
+          {/* Kitchen */}
+          <button
+            onClick={goToKitchenScreen}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors"
+          >
+            <FaUtensils className="text-[10px]" />
+            <span className="hidden sm:inline">Cocina</span>
+          </button>
+
+          {/* Customer Display */}
+          <button
+            onClick={() => {
+              const currentPath = window.location.pathname;
+              const match = currentPath.match(/^\/([^/]+)/);
+              const businessSlug = match ? match[1] : '';
+              window.open(`/${businessSlug}/orders`, '_blank');
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
+          >
+            <FaTv className="text-[10px]" />
+            <span className="hidden sm:inline">Pantalla</span>
+          </button>
+
+          {/* Refresh */}
+          <motion.button
+            whileTap={{ rotate: 180 }}
+            onClick={fetchOrders}
+            className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            title="Actualizar pedidos"
+          >
+            <FaSync className="text-sm" />
+          </motion.button>
+
+          {/* Socket status */}
+          <button
+            onClick={() => {
+              socketDiagnostic();
+              if (socket && !socket.connected) {
+                forceReconnect();
+              }
+            }}
+            className={`p-2 rounded-lg transition-colors ${
+              socket && socket.connected
+                ? 'text-emerald-500 hover:bg-emerald-50'
+                : 'text-red-400 hover:bg-red-50'
+            }`}
+            title={socket && socket.connected ? 'Conectado en tiempo real' : 'Desconectado — Click para reconectar'}
+          >
+            <FaWifi className="text-sm" />
+          </button>
+        </div>
+      </div>
+
+      {/* Search + Filters */}
+      <div className="space-y-3">
+        {/* Search */}
+        <div className="relative">
+          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm" />
+          <input
+            type="text"
+            placeholder="Buscar por cliente o # de pedido..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+          />
+        </div>
+
+        {/* Status filter pills + View toggle */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+            {statusFilters.map(f => {
+              const isActive = statusFilter === f.value;
+              const FilterIcon = f.icon;
+              const count = orderCounts[f.value] || 0;
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setStatusFilter(f.value)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-blue-500 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+                  }`}
                 >
-                  <motion.div
-                    animate={{ 
-                      scale: [1, 1.1, 1],
-                      boxShadow: [
-                        "0 0 0 0 rgba(239, 68, 68, 0.7)",
-                        "0 0 0 10px rgba(239, 68, 68, 0)",
-                        "0 0 0 0 rgba(239, 68, 68, 0)"
-                      ]
-                    }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="bg-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold"
-                  >
-                    {pendingNotifications.length} pedidos pendientes
-                  </motion.div>
-                </motion.div>
-              )}
+                  <FilterIcon className="text-[10px]" />
+                  <span>{f.label}</span>
+                  {count > 0 && (
+                    <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
-              {/* Kitchen button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={goToKitchenScreen}
-                className="text-white px-3 lg:px-4 py-2 rounded-lg font-medium flex items-center space-x-1 lg:space-x-2 shadow-lg"
-                style={{
-                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
-                  color: businessConfig?.theme?.buttonTextColor || '#ffffff'
-                }}
-              >
-                <span className="hidden sm:inline">Cocina</span>
-              </motion.button>
-
-              {/* Customer Display button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  const currentPath = window.location.pathname;
-                  const match = currentPath.match(/^\/([^/]+)/);
-                  const businessSlug = match ? match[1] : '';
-                  window.open(`/${businessSlug}/orders`, '_blank');
-                }}
-                className="text-white px-3 lg:px-4 py-2 rounded-lg font-medium flex items-center space-x-1 lg:space-x-2 shadow-lg"
-                style={{
-                  backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
-                  color: businessConfig?.theme?.buttonTextColor || '#ffffff'
-                }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <span className="hidden md:inline">Pantalla</span>
-                <span className="hidden lg:inline">Cliente</span>
-              </motion.button>
-
-              {/* Refresh button */}
-              <motion.button
-                whileHover={{ scale: 1.05, rotate: 180 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={fetchOrders}
-                className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg transition-colors"
-              >
-                <span className="text-lg">🔄</span>
-              </motion.button>
-
-              {/* Socket diagnostic button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  socketDiagnostic();
-                  if (socket && !socket.connected) {
-                    forceReconnect();
-                  }
-                }}
-                className={`p-2 rounded-lg transition-colors ${
-                  socket && socket.connected 
-                    ? 'bg-green-100 hover:bg-green-200 text-green-700' 
-                    : 'bg-red-100 hover:bg-red-200 text-red-700'
-                }`}
-                title={socket && socket.connected ? 'Socket conectado - Click para diagnóstico' : 'Socket desconectado - Click para reconectar'}
-              >
-                <span className="text-lg">{socket && socket.connected ? '🟢' : '🔴'}</span>
-              </motion.button>
-            </div>
+          {/* View toggle */}
+          <div className="flex bg-slate-100 rounded-lg p-0.5 shrink-0">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-md transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white text-slate-700 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <FaTh className="text-xs" />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-md transition-all ${
+                viewMode === 'list'
+                  ? 'bg-white text-slate-700 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'
+              }`}
+            >
+              <FaList className="text-xs" />
+            </button>
           </div>
         </div>
-      </motion.div>
-
-      {/* Filters and controls */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
-      >
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 lg:p-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 gap-4">
-            {/* Search */}
-            <div className="flex-1 max-w-md">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Buscar por cliente o número de pedido..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-white placeholder-slate-500 focus:outline-none focus:placeholder-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-              {/* Status filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-slate-300 rounded-xl px-3 lg:px-4 py-2 lg:py-3 bg-white text-sm lg:text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">Todos</option>
-                <option value={ORDER_STATUS.PENDING}>Pendientes</option>
-                <option value={ORDER_STATUS.IN_PROGRESS}>En progreso</option>
-                <option value={ORDER_STATUS.COMPLETED}>Completados</option>
-              </select>
-
-              {/* View mode toggle */}
-              <div className="flex bg-slate-100 rounded-lg p-1 self-start">
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setViewMode('grid')}
-                  className={`px-2 lg:px-3 py-2 rounded-md text-xs lg:text-sm font-medium transition-colors ${
-                    viewMode === 'grid' 
-                      ? 'bg-white text-slate-900 shadow-sm' 
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="Vista en cuadrícula"
-                >
-                  <svg className="w-4 h-4 lg:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                  </svg>
-                  <span className="hidden lg:inline">Grid</span>
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setViewMode('list')}
-                  className={`px-2 lg:px-3 py-2 rounded-md text-xs lg:text-sm font-medium transition-colors ${
-                    viewMode === 'list' 
-                      ? 'bg-white text-slate-900 shadow-sm' 
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                  title="Vista en lista"
-                >
-                  <svg className="w-4 h-4 lg:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                  <span className="hidden lg:inline">Lista</span>
-                </motion.button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
+      </div>
 
       {/* Orders grid/list */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+      <div>
         {filteredOrders.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center"
-          >
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">🛍️</span>
+          <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
+            <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <FaShoppingBag className="text-slate-300 text-xl" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">No hay pedidos</h3>
-            <p className="text-slate-500">
+            <h3 className="text-sm font-semibold text-slate-700 mb-1">No hay pedidos</h3>
+            <p className="text-xs text-slate-400">
               {searchTerm || statusFilter !== 'all' 
                 ? 'No se encontraron pedidos con los filtros aplicados' 
-                : 'Aún no hay pedidos para mostrar'
+                : 'Los nuevos pedidos aparecerán aquí en tiempo real'
               }
             </p>
-          </motion.div>
+          </div>
         ) : (
           <motion.div
             variants={containerVariants}
@@ -750,69 +680,62 @@ function ModernOrdersDashboard() {
                     animate="visible"
                     exit="exit"
                     whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                    className={`bg-white rounded-2xl overflow-hidden transition-all duration-200 ${
+                    className={`bg-white rounded-xl overflow-hidden transition-all duration-200 ${
                       isPending 
-                        ? 'border-2 border-yellow-300 shadow-lg shadow-yellow-100 ring-2 ring-yellow-100' 
-                        : 'border border-slate-200 shadow-md hover:border-blue-300 hover:shadow-xl'
-                    } ${viewMode === 'list' ? 'p-6' : 'p-0'}`}
+                        ? 'border-2 border-yellow-300 shadow-md ring-1 ring-yellow-100' 
+                        : 'border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300'
+                    } ${viewMode === 'list' ? 'p-4' : 'p-0'}`}
                   >
                     {viewMode === 'grid' ? (
                       <>
-                        {/* Card Header - Mejorado */}
-                        <div className={`px-5 lg:px-6 py-4 ${
+                        {/* Card Header */}
+                        <div className={`px-4 py-3 ${
                           isPending 
-                            ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border-b-2 border-yellow-200' 
-                            : 'bg-gradient-to-r from-slate-50 to-gray-50 border-b border-slate-200'
+                            ? 'bg-yellow-50 border-b border-yellow-200' 
+                            : 'bg-slate-50 border-b border-slate-100'
                         }`}>
-                          <div className="flex items-start justify-between gap-3">
-                            {/* Left side: Type & Number */}
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className={`w-12 h-12 ${orderTypeInfo.color} rounded-xl flex items-center justify-center shadow-sm flex-shrink-0`}>
-                                <span className="text-xl">{orderTypeInfo.icon}</span>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div className={`w-9 h-9 ${orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
+                                <span className="text-base">{orderTypeInfo.icon}</span>
                               </div>
                               <div className="min-w-0">
-                                <h3 className="font-bold text-slate-900 text-lg truncate">#{order.orderNumber}</h3>
-                                <p className="text-sm text-slate-600 font-medium">{orderTypeInfo.label}</p>
+                                <h3 className="font-bold text-slate-800 text-sm">#{order.orderNumber}</h3>
+                                <p className="text-[11px] text-slate-500">{orderTypeInfo.label}</p>
                               </div>
                             </div>
                             
-                            {/* Right side: Status & Time */}
-                            <div className="text-right flex-shrink-0">
-                              <div className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ${
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 isPending 
                                   ? 'bg-yellow-400 text-yellow-900' 
                                   : statusInfo.textColor + ' ' + statusInfo.bgColor
                               }`}>
-                                <span className="text-sm">{statusInfo.icon}</span>
-                                <span>{statusInfo.label}</span>
-                              </div>
-                              <p className={`text-xs font-semibold mt-1.5 ${
-                                isPending ? 'text-yellow-700' : 'text-slate-500'
+                                {statusInfo.icon} {statusInfo.label}
+                              </span>
+                              <span className={`text-[10px] font-semibold ${
+                                isPending ? 'text-yellow-600' : 'text-slate-400'
                               }`}>
-                                ⏱️ {timeElapsed}
-                              </p>
+                                {timeElapsed}
+                              </span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Card Body - Información más clara */}
-                        <div className="p-5 lg:p-6">
-                          <div className="space-y-2.5 mb-5">
+                        {/* Card Body */}
+                        <div className="p-4">
+                          <div className="space-y-2 mb-4">
                             {/* Cliente */}
-                            <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <span className="text-sm text-blue-700">👤</span>
-                              </div>
-                              <span className="text-sm font-semibold text-slate-800 truncate">{order.customerName}</span>
+                            <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
+                              <FaUser className="text-xs text-slate-400 shrink-0" />
+                              <span className="text-sm font-medium text-slate-700 truncate">{order.customerName}</span>
                             </div>
                             
                             {/* Teléfono */}
                             {order.phone && (
-                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <span className="text-sm text-green-700">📞</span>
-                                </div>
-                                <a href={`tel:${order.phone}`} className="text-sm font-medium text-slate-700 hover:text-green-700 truncate">
+                              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
+                                <FaPhone className="text-xs text-slate-400 shrink-0" />
+                                <a href={`tel:${order.phone}`} className="text-sm font-medium text-slate-600 hover:text-blue-600 truncate">
                                   {order.phone}
                                 </a>
                               </div>
@@ -820,80 +743,65 @@ function ModernOrdersDashboard() {
                             
                             {/* Mesa */}
                             {order.tableNumber && (
-                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <span className="text-sm text-indigo-700">📍</span>
-                                </div>
-                                <span className="text-sm font-semibold text-slate-700">Mesa {order.tableNumber}</span>
+                              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
+                                <FaChair className="text-xs text-slate-400 shrink-0" />
+                                <span className="text-sm font-medium text-slate-700">Mesa {order.tableNumber}</span>
                               </div>
                             )}
                             
                             {/* Dirección de delivery */}
                             {order.orderType === 'delivery' && order.address && (
-                              <div className="flex items-start gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                                  <span className="text-sm text-purple-700">🏠</span>
-                                </div>
-                                <span className="text-sm font-medium text-slate-700 leading-snug">{order.address}</span>
+                              <div className="flex items-start gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
+                                <FaHome className="text-xs text-slate-400 shrink-0 mt-0.5" />
+                                <span className="text-sm font-medium text-slate-600 leading-snug">{order.address}</span>
                               </div>
                             )}
                             
                             {/* Zona de delivery */}
                             {order.orderType === 'delivery' && order.deliveryZoneName && (
-                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                                <div className="w-8 h-8 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <span className="text-sm text-teal-700">📍</span>
-                                </div>
-                                <span className="text-sm font-medium text-slate-700">Zona: {order.deliveryZoneName}</span>
+                              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
+                                <FaMapMarkerAlt className="text-xs text-slate-400 shrink-0" />
+                                <span className="text-sm font-medium text-slate-600">Zona: {order.deliveryZoneName}</span>
                               </div>
                             )}
                             
                             {/* Costo de envío */}
                             {order.orderType === 'delivery' && order.deliveryFee && (
-                              <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
-                                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                  <span className="text-sm text-orange-700">🚚</span>
-                                </div>
-                                <span className="text-sm font-semibold text-slate-700">Envío: ${order.deliveryFee.toLocaleString()}</span>
+                              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
+                                <FaTruck className="text-xs text-slate-400 shrink-0" />
+                                <span className="text-sm font-medium text-slate-700">Envío: ${order.deliveryFee.toLocaleString()}</span>
                               </div>
                             )}
                             
                             {/* Warning de confirmación */}
                             {order.orderType === 'delivery' && order.deliveryNeedsConfirmation && (
-                              <div className="flex items-start gap-3 bg-amber-50 p-3 rounded-lg border border-amber-200">
-                                <div className="w-6 h-6 bg-amber-200 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                                  <span className="text-xs text-amber-800">⚠️</span>
-                                </div>
-                                <span className="text-xs font-semibold text-amber-800 leading-snug">Costo de envío por confirmar</span>
+                              <div className="flex items-center gap-2 bg-amber-50 px-2.5 py-2 rounded-lg border border-amber-200">
+                                <FaExclamationTriangle className="text-xs text-amber-500 shrink-0" />
+                                <span className="text-xs font-semibold text-amber-700">Costo de envío por confirmar</span>
                               </div>
                             )}
                             
-                            {/* Total - Mejorado */}
-                            <div className={`flex items-center justify-between pt-4 mt-4 border-t-2 ${
-                              isPending ? 'border-yellow-200' : 'border-slate-200'
+                            {/* Total */}
+                            <div className={`flex items-center justify-between pt-3 mt-3 border-t ${
+                              isPending ? 'border-yellow-200' : 'border-slate-100'
                             }`}>
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 bg-slate-200 rounded-full flex items-center justify-center">
-                                  <span className="text-xs">🛍️</span>
-                                </div>
-                                <span className="text-sm font-semibold text-slate-600">{order.items?.length || 0} productos</span>
-                              </div>
+                              <span className="text-xs text-slate-500">{order.items?.length || 0} productos</span>
                               <div className="text-right">
                                 {order.couponCode ? (
                                   <div>
-                                    <span className="text-xl font-bold text-green-600">${((order.totalAmount || 0) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
-                                    <div className="text-xs text-slate-500 mt-0.5">
+                                    <span className="text-base font-bold text-emerald-600">${((order.totalAmount || 0) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
+                                    <div className="text-[10px] text-slate-400 mt-0.5">
                                       <span className="line-through">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</span>
-                                      <span className="ml-1.5 text-green-600 font-semibold">🎫 {order.couponCode}</span>
+                                      <span className="ml-1 text-emerald-500 font-semibold">{order.couponCode}</span>
                                     </div>
                                   </div>
                                 ) : order.deliveryNeedsConfirmation ? (
                                   <div>
-                                    <span className="text-xl font-bold text-slate-900">${order.totalAmount.toLocaleString()}</span>
-                                    <div className="text-xs text-amber-700 font-semibold mt-0.5">+ envío</div>
+                                    <span className="text-base font-bold text-slate-800">${order.totalAmount.toLocaleString()}</span>
+                                    <div className="text-[10px] text-amber-600 font-semibold mt-0.5">+ envío</div>
                                   </div>
                                 ) : (
-                                  <span className="text-xl font-bold text-slate-900">
+                                  <span className="text-base font-bold text-slate-800">
                                     ${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}
                                   </span>
                                 )}
@@ -901,114 +809,88 @@ function ModernOrdersDashboard() {
                             </div>
                           </div>
 
-                          {/* Action buttons - Mejorados */}
+                          {/* Action buttons */}
                           <div className="flex gap-2">
-                            <motion.button
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
+                            <button
                               onClick={() => showOrderDetails(order)}
-                              className="flex-1 bg-white hover:bg-slate-50 text-slate-700 px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 border-2 border-slate-200 hover:border-slate-300"
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 py-2.5 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
                             >
-                              <span className="text-base">👁️</span>
-                              <span className="text-sm">Ver detalles</span>
-                            </motion.button>
+                              <FaEye className="text-[10px]" />
+                              <span>Detalles</span>
+                            </button>
                             
                             {order.status === ORDER_STATUS.PENDING && (
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                              <button
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors"
                               >
-                                <span className="text-base">▶️</span>
-                                <span className="text-sm">Iniciar</span>
-                              </motion.button>
+                                <FaPlay className="text-[10px]" />
+                                <span>Iniciar</span>
+                              </button>
                             )}
                             
                             {order.status === ORDER_STATUS.IN_PROGRESS && (
-                              <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
+                              <button
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors"
                               >
-                                <span className="text-base">✅</span>
-                                <span className="text-sm">Completar</span>
-                              </motion.button>
+                                <FaCheck className="text-[10px]" />
+                                <span>Completar</span>
+                              </button>
                             )}
                           </div>
                         </div>
                       </>
                     ) : (
                       // List view
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className={`w-12 h-12 ${orderTypeInfo.color} rounded-xl flex items-center justify-center`}>
-                            <span className="text-xl">{orderTypeInfo.icon}</span>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className={`w-9 h-9 ${orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
+                            <span className="text-base">{orderTypeInfo.icon}</span>
                           </div>
-                          <div>
-                            <div className="flex items-center space-x-3">
-                              <h3 className="font-bold text-slate-900">#{order.orderNumber}</h3>
-                              <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.textColor} ${statusInfo.bgColor}`}>
-                                <span className="mr-1">{statusInfo.icon}</span>
-                                {statusInfo.label}
-                              </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-slate-800 text-sm">#{order.orderNumber}</h3>
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusInfo.textColor} ${statusInfo.bgColor}`}>
+                                {statusInfo.icon} {statusInfo.label}
+                              </span>
                             </div>
-                            <p className="text-sm text-slate-600 mt-1">
-                              {order.customerName} • {orderTypeInfo.label} • {timeElapsed}
+                            <p className="text-xs text-slate-500 mt-0.5 truncate">
+                              {order.customerName} · {orderTypeInfo.label} · {timeElapsed}
                             </p>
                           </div>
                         </div>
                         
-                        <div className="flex items-center space-x-4">
+                        <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
-                            {order.couponCode ? (
-                              <div>
-                                <p className="text-lg font-bold text-green-600">${order.finalAmount || order.totalAmount}</p>
-                                <p className="text-sm text-slate-500">
-                                  <span className="line-through">${order.totalAmount}</span>
-                                  <span className="ml-2 text-green-600">🎫 {order.couponCode}</span>
-                                </p>
-                                <p className="text-sm text-slate-600">{order.items?.length || 0} productos</p>
-                              </div>
-                            ) : (
-                              <div>
-                                <p className="text-lg font-bold text-slate-900">${order.totalAmount}</p>
-                                <p className="text-sm text-slate-600">{order.items?.length || 0} productos</p>
-                              </div>
-                            )}
+                            <p className="text-sm font-bold text-slate-800">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</p>
+                            <p className="text-[10px] text-slate-400">{order.items?.length || 0} items</p>
                           </div>
                           
-                          <div className="flex space-x-2">
-                            <motion.button
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
+                          <div className="flex gap-1.5">
+                            <button
                               onClick={() => showOrderDetails(order)}
-                              className="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-lg transition-colors"
+                              className="p-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-500 transition-colors"
                             >
-                              <span className="text-sm">👁️</span>
-                            </motion.button>
+                              <FaEye className="text-xs" />
+                            </button>
                             
                             {order.status === ORDER_STATUS.PENDING && (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                              <button
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition-colors"
+                                className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
                               >
-                                    <span className="text-sm">▶️</span>
-                              </motion.button>
+                                <FaPlay className="text-xs" />
+                              </button>
                             )}
                             
                             {order.status === ORDER_STATUS.IN_PROGRESS && (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                              <button
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-lg transition-colors"
+                                className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
                               >
-                                    <span className="text-sm">✅</span>
-                              </motion.button>
+                                <FaCheck className="text-xs" />
+                              </button>
                             )}
                           </div>
                         </div>

@@ -1,5 +1,3 @@
-import { motion } from "framer-motion";
-
 /**
  * Configuración de tabs — títulos y descripciones para el header.
  * Elimina los 18+ líneas repetidas de {activeTab === 'x' && 'Title'}.
@@ -29,24 +27,14 @@ export default function AdminHeader({ activeTab }) {
   const config = TAB_CONFIG[activeTab] || { title: '', desc: '' };
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="hidden md:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
-    >
-      <div className="px-3 sm:px-4 md:px-6 py-3 md:py-4 ml-0 lg:ml-0">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mt-12 lg:mt-0">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-slate-900 capitalize truncate">
-              {config.title}
-            </h1>
-            <p className="text-slate-600 mt-1 text-xs sm:text-sm hidden sm:block">
-              {config.desc}
-            </p>
-          </div>
-        </div>
+    <div className="hidden md:block bg-white border-b border-slate-200 sticky top-0 z-40">
+      <div className="px-4 md:px-6 py-2 mt-12 lg:mt-0 flex items-center justify-between">
+        <h1 className="text-sm font-semibold text-slate-700 truncate">
+          {config.title}
+          <span className="ml-2 text-xs font-normal text-slate-400">{config.desc}</span>
+        </h1>
       </div>
-    </motion.div>
+    </div>
   );
 }
 

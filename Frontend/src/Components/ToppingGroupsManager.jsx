@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaCheese, FaPlus, FaTrash, FaTag, FaAlignLeft, FaDollarSign, FaCog, FaListUl, FaExclamationTriangle, FaCheck, FaTimes, FaEdit, FaBoxOpen, FaSyncAlt, FaEye, FaEyeSlash, FaLayerGroup } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
@@ -229,593 +230,489 @@ function ToppingGroupsManager() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <div className="w-16 h-16 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-          <span className="text-2xl">🧀</span>
-        </div>
-        <h2 className="text-3xl font-bold text-slate-900 mb-2">Gestión de Extras</h2>
-        <p className="text-slate-600">Configura grupos de extras y complementos para tus productos</p>
-      </motion.div>
-
-      {/* Messages */}
+    <div className="space-y-4">
+      {/* Status messages */}
       <AnimatePresence>
         {error && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-3 py-2 bg-red-50 text-red-700 text-xs font-medium flex items-center gap-2 rounded-lg border border-red-100"
           >
-            <span className="text-xl">❌</span>
-            <span className="font-medium">{error}</span>
+            <FaExclamationTriangle className="text-[10px] flex-shrink-0" /> {error}
           </motion.div>
         )}
       </AnimatePresence>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-500 border-t-transparent"></div>
+        <div className="flex items-center justify-center py-10 text-sm text-slate-400">
+          <FaSyncAlt className="animate-spin mr-2 text-xs" /> Cargando extras...
         </div>
       ) : (
         <>
-          {/* Modern Form */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
-          >
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <span className="text-2xl">{isEditing ? '✏️' : '✨'}</span>
+          {/* Create / Edit Form */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              {isEditing ? <FaEdit className="text-amber-500 text-sm" /> : <FaPlus className="text-blue-500 text-sm" />}
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">
+                  {isEditing ? 'Editar Grupo de Extras' : 'Nuevo Grupo de Extras'}
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  {isEditing ? 'Actualiza la información del grupo' : 'Crea un nuevo grupo de extras para tus productos'}
+                </p>
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">
-                {isEditing ? 'Editar Grupo de Extras' : 'Nuevo Grupo de Extras'}
-              </h3>
-              <p className="text-slate-600">
-                {isEditing ? 'Actualiza la información del grupo' : 'Crea un nuevo grupo de extras para tus productos'}
-              </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Left Column */}
-                <div className="space-y-6">
-                  {/* Group Name */}
-                  <div className="group">
-                    <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                      <span className="mr-2">🏷️</span>
-                      Nombre del Grupo
+                <div className="space-y-3">
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
+                      <FaTag className="text-[10px] text-slate-400" /> Nombre del Grupo
                     </label>
-            <input
-              type="text"
-              value={currentGroup.name}
-              onChange={(e) => setCurrentGroup({ ...currentGroup, name: e.target.value })}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
+                    <input
+                      type="text"
+                      value={currentGroup.name}
+                      onChange={(e) => setCurrentGroup({ ...currentGroup, name: e.target.value })}
+                      className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-400 px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                       placeholder="Ej: Quesos, Salsas, Vegetales..."
-              required
-            />
-          </div>
+                      required
+                    />
+                  </div>
 
-                  {/* Description */}
-                  <div className="group">
-                    <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                      <span className="mr-2">📝</span>
-                      Descripción
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
+                      <FaAlignLeft className="text-[10px] text-slate-400" /> Descripción
                     </label>
-            <input
-              type="text"
-              value={currentGroup.description}
-              onChange={(e) => setCurrentGroup({ ...currentGroup, description: e.target.value })}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                    <input
+                      type="text"
+                      value={currentGroup.description}
+                      onChange={(e) => setCurrentGroup({ ...currentGroup, description: e.target.value })}
+                      className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-400 px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                       placeholder="Descripción opcional del grupo..."
-            />
-          </div>
+                    />
+                  </div>
 
-                  {/* Base Price */}
-                  <div className="group">
-                    <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                      <span className="mr-2">💰</span>
-                      Precio Base
+                  <div>
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
+                      <FaDollarSign className="text-[10px] text-slate-400" /> Precio Base
                     </label>
                     <div className="relative">
-                      <div className="absolute inset-y-0 left-0 flex items-center pl-4">
-                        <span className="text-slate-500 font-medium">$</span>
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={currentGroup.basePrice || 0}
-                    onChange={(e) => setCurrentGroup({
-                      ...currentGroup,
-                      basePrice: e.target.value === '' ? 0 : parseFloat(e.target.value)
-                    })}
-                        className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-12 pr-6 py-4 text-lg font-semibold transition-all duration-200 group-hover:border-slate-300"
-                    placeholder="0.00"
-                  />
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={currentGroup.basePrice || 0}
+                        onChange={(e) => setCurrentGroup({
+                          ...currentGroup,
+                          basePrice: e.target.value === '' ? 0 : parseFloat(e.target.value)
+                        })}
+                        className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 font-semibold pl-8 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                        placeholder="0.00"
+                      />
                     </div>
-                    <p className="mt-2 text-sm text-slate-500 flex items-center">
-                      <span className="mr-1">💡</span>
-                      Este precio se aplicará al seleccionar cualquier opción de este grupo
-                    </p>
+                    <p className="mt-1 text-[11px] text-slate-400">Se aplica al seleccionar cualquier opción de este grupo</p>
                   </div>
-          </div>
+                </div>
 
-                {/* Right Column */}
-                <div className="space-y-6">
-                  {/* Options */}
-                  <div className="bg-slate-50 rounded-2xl p-6 border-2 border-slate-200">
-                    <h4 className="flex items-center text-lg font-bold text-slate-900 mb-4">
-                      <span className="mr-2">⚙️</span>
-                      Configuración
+                {/* Right Column - Config */}
+                <div className="space-y-3">
+                  <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                    <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
+                      <FaCog className="text-[10px] text-slate-400" /> Configuración
                     </h4>
-                    
-                    <div className="space-y-4">
-                      <div className="flex items-center p-4 bg-white rounded-2xl border border-slate-200 hover:border-blue-300 transition-colors">
-              <input
-                type="checkbox"
-                checked={currentGroup.isMultipleChoice}
-                onChange={(e) => setCurrentGroup({ ...currentGroup, isMultipleChoice: e.target.checked })}
-                          className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-blue-300 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={currentGroup.isMultipleChoice}
+                          onChange={(e) => setCurrentGroup({ ...currentGroup, isMultipleChoice: e.target.checked })}
+                          className="w-4 h-4 text-blue-500 rounded border-slate-300 focus:ring-blue-500"
                         />
-                        <div className="ml-4">
-                          <label className="text-sm font-semibold text-slate-900">Selección múltiple</label>
-                          <p className="text-xs text-slate-500">Permite elegir varias opciones del grupo</p>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium text-slate-700 block">Selección múltiple</span>
+                          <span className="text-[11px] text-slate-400">Permite elegir varias opciones</span>
                         </div>
-                        <span className="ml-auto text-xl">📋</span>
-            </div>
-
-                      <div className="flex items-center p-4 bg-white rounded-2xl border border-slate-200 hover:border-red-300 transition-colors">
-              <input
-                type="checkbox"
-                checked={currentGroup.isRequired}
-                onChange={(e) => setCurrentGroup({ ...currentGroup, isRequired: e.target.checked })}
-                          className="w-5 h-5 text-red-600 bg-gray-100 border-gray-300 rounded focus:ring-red-500 focus:ring-2"
+                      </label>
+                      <label className="flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-red-300 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={currentGroup.isRequired}
+                          onChange={(e) => setCurrentGroup({ ...currentGroup, isRequired: e.target.checked })}
+                          className="w-4 h-4 text-red-500 rounded border-slate-300 focus:ring-red-500"
                         />
-                        <div className="ml-4">
-                          <label className="text-sm font-semibold text-slate-900">Obligatorio</label>
-                          <p className="text-xs text-slate-500">El cliente debe elegir al menos una opción</p>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-medium text-slate-700 block">Obligatorio</span>
+                          <span className="text-[11px] text-slate-400">Debe elegir al menos una opción</span>
                         </div>
-                        <span className="ml-auto text-xl">⚠️</span>
-                      </div>
+                      </label>
                     </div>
-                  </div>
-            </div>
-          </div>
-
-              {/* Modern Options Section */}
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 border-2 border-blue-200">
-                  <h4 className="flex items-center text-lg font-bold text-slate-900 mb-4">
-                    <span className="mr-2">🍟</span>
-                    Opciones del Grupo
-                  </h4>
-                  
-                  <div className="space-y-4">
-                    {currentGroup.options.length === 0 ? (
-                      <div className="text-center py-8 bg-white rounded-2xl border-2 border-dashed border-blue-300">
-                        <span className="text-3xl mb-2 block">🍽️</span>
-                        <p className="text-slate-600">No hay opciones agregadas</p>
-                        <p className="text-sm text-slate-500">Agrega opciones para este grupo de extras</p>
-                      </div>
-                    ) : (
-                      currentGroup.options.map((option, index) => (
-                        <motion.div 
-                          key={index}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="flex gap-3 p-4 bg-white rounded-2xl border border-slate-200 hover:border-blue-300 transition-colors group"
-                        >
-                          <div className="flex-1">
-                            <input
-                              type="text"
-                              value={option.name}
-                              onChange={(e) => handleOptionChange(index, 'name', e.target.value)}
-                              placeholder="Ej: Queso Cheddar, Salsa BBQ..."
-                              className="w-full rounded-xl border-2 border-slate-200 bg-white/80 shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-4 py-3 transition-all duration-200"
-                            />
-                          </div>
-                          <div className="w-32">
-                            <div className="relative">
-                              <div className="absolute inset-y-0 left-0 flex items-center pl-3">
-                                <span className="text-slate-500 text-sm">$</span>
-                              </div>
-                              <input
-                                type="number"
-                                value={option.price}
-                                onChange={(e) => handleOptionChange(index, 'price', e.target.value)}
-                                placeholder="0.00"
-                                className="w-full rounded-xl border-2 border-slate-200 bg-white/80 shadow-sm focus:ring-4 focus:ring-green-500/20 focus:border-green-500 text-slate-900 placeholder-slate-400 pl-8 pr-3 py-3 font-semibold transition-all duration-200"
-                              />
-                            </div>
-                          </div>
-                          <motion.button
-                            type="button"
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDeleteOption(index)}
-                            className="w-12 h-12 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors flex items-center justify-center"
-                          >
-                            <span className="text-lg">🗑️</span>
-                          </motion.button>
-                        </motion.div>
-                      ))
-                    )}
-                    
-                    <motion.button
-                      type="button"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleAddOption}
-                      className="w-full py-4 border-2 border-dashed border-blue-300 text-blue-600 rounded-2xl hover:border-blue-400 hover:bg-blue-50 transition-all duration-200 font-semibold flex items-center justify-center space-x-2"
-                    >
-                      <span className="text-xl">➕</span>
-                      <span>Agregar Opción</span>
-                    </motion.button>
                   </div>
                 </div>
               </div>
 
-              {/* Modern Subgroups Section */}
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 border-2 border-purple-200">
-                  <h4 className="flex items-center text-lg font-bold text-slate-900 mb-4">
-                    Subgrupos
-                  </h4>
-                  
-                  <div className="space-y-4">
-                    {currentGroup.subGroups.length === 0 ? (
-                      <div className="text-center py-8 bg-white rounded-2xl border-2 border-dashed border-purple-300">
-                        <span className="text-3xl mb-2 block">📋</span>
-                        <p className="text-slate-600">No hay subgrupos creados</p>
-                        <p className="text-sm text-slate-500">Los subgrupos te permiten organizar mejor las opciones</p>
-                      </div>
-                    ) : (
-                      currentGroup.subGroups.map((subGroup, subGroupIndex) => (
-                  <div key={`subgroup-${subGroupIndex}`} className="bg-gray-50 p-4 rounded-lg mb-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <input
-                        type="text"
-                        value={subGroup.title || ''}
-                        onChange={(e) => handleSubGroupTitleChange(subGroupIndex, e.target.value)}
-                        placeholder="Título del subgrupo"
-                        className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteSubGroup(subGroupIndex)}
-                        className="ml-2 p-1 text-red-600 hover:text-red-800 bg-white rounded-full"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    {/* Controles para selección única/múltiple y obligatoriedad */}
-                    <div className="flex gap-4 mb-3">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={subGroup.isMultipleChoice}
-                          onChange={(e) => handleSubGroupPropertyChange(subGroupIndex, 'isMultipleChoice', e.target.checked)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">Selección múltiple</label>
-                      </div>
+              {/* Options Section */}
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
+                  <FaListUl className="text-[10px] text-slate-400" /> Opciones del Grupo
+                </h4>
 
-                      <div className="flex items-center">
+                {currentGroup.options.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center bg-white rounded-lg border border-dashed border-slate-200">
+                    <FaBoxOpen className="text-lg text-slate-300 mb-1" />
+                    <p className="text-xs text-slate-500">Sin opciones agregadas</p>
+                    <p className="text-[11px] text-slate-400">Agrega opciones para este grupo</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    {currentGroup.options.map((option, index) => (
+                      <div key={index} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
                         <input
-                          type="checkbox"
-                          checked={subGroup.isRequired}
-                          onChange={(e) => handleSubGroupPropertyChange(subGroupIndex, 'isRequired', e.target.checked)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          type="text"
+                          value={option.name}
+                          onChange={(e) => handleOptionChange(index, 'name', e.target.value)}
+                          placeholder="Ej: Queso Cheddar..."
+                          className="flex-1 min-w-0 rounded-md border border-slate-200 text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                         />
-                        <label className="ml-2 text-sm text-gray-700">Obligatorio</label>
-                      </div>
-                    </div>
-                    
-                    {/* Opciones del subgrupo */}
-                    <div className="pl-4 border-l-2 border-gray-300">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Opciones</p>
-                      {subGroup.options.map((option, optionIndex) => (
-                        <div key={optionIndex} className="flex gap-2 mb-2">
-                          <input
-                            type="text"
-                            value={option.name}
-                            onChange={(e) => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'name', e.target.value)}
-                            placeholder="Nombre de la opción"
-                            className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                          />
+                        <div className="relative w-24 flex-shrink-0">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 text-[10px]">$</span>
                           <input
                             type="number"
                             value={option.price}
-                            onChange={(e) => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'price', e.target.value)}
-                            placeholder="Precio"
-                            className="w-24 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            onChange={(e) => handleOptionChange(index, 'price', e.target.value)}
+                            placeholder="0"
+                            className="w-full rounded-md border border-slate-200 text-xs text-slate-800 font-semibold pl-6 pr-2 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOption(index)}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors flex-shrink-0"
+                        >
+                          <FaTimes className="text-[10px]" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAddOption}
+                  className="mt-2 w-full py-2 border border-dashed border-slate-300 text-slate-500 rounded-lg hover:border-blue-300 hover:text-blue-500 hover:bg-blue-50/50 transition-colors text-xs font-medium flex items-center justify-center gap-1.5"
+                >
+                  <FaPlus className="text-[10px]" /> Agregar Opción
+                </button>
+              </div>
+
+              {/* Subgroups Section */}
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                <h4 className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
+                  <FaLayerGroup className="text-[10px] text-slate-400" /> Subgrupos
+                </h4>
+
+                {currentGroup.subGroups.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center bg-white rounded-lg border border-dashed border-slate-200">
+                    <FaBoxOpen className="text-lg text-slate-300 mb-1" />
+                    <p className="text-xs text-slate-500">Sin subgrupos</p>
+                    <p className="text-[11px] text-slate-400">Organiza mejor las opciones con subgrupos</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {currentGroup.subGroups.map((subGroup, subGroupIndex) => (
+                      <div key={`subgroup-${subGroupIndex}`} className="bg-white rounded-lg border border-slate-200 p-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <input
+                            type="text"
+                            value={subGroup.title || ''}
+                            onChange={(e) => handleSubGroupTitleChange(subGroupIndex, e.target.value)}
+                            placeholder="Título del subgrupo"
+                            className="flex-1 rounded-md border border-slate-200 text-xs text-slate-800 placeholder-slate-400 px-2.5 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                            required
                           />
                           <button
                             type="button"
-                            onClick={() => handleDeleteSubGroupOption(subGroupIndex, optionIndex)}
-                            className="p-2 text-red-600 hover:text-red-800"
+                            onClick={() => handleDeleteSubGroup(subGroupIndex)}
+                            className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
+                            <FaTimes className="text-[10px]" />
                           </button>
                         </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => handleAddSubGroupOption(subGroupIndex)}
-                        className="mt-1 px-3 py-1 border border-gray-300 rounded-md text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        + Agregar opción
-                      </button>
-                    </div>
+
+                        <div className="flex gap-3 mb-2">
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={subGroup.isMultipleChoice}
+                              onChange={(e) => handleSubGroupPropertyChange(subGroupIndex, 'isMultipleChoice', e.target.checked)}
+                              className="w-3.5 h-3.5 text-blue-500 rounded border-slate-300 focus:ring-blue-500"
+                            />
+                            <span className="text-[11px] text-slate-600">Múltiple</span>
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={subGroup.isRequired}
+                              onChange={(e) => handleSubGroupPropertyChange(subGroupIndex, 'isRequired', e.target.checked)}
+                              className="w-3.5 h-3.5 text-red-500 rounded border-slate-300 focus:ring-red-500"
+                            />
+                            <span className="text-[11px] text-slate-600">Obligatorio</span>
+                          </label>
+                        </div>
+
+                        <div className="pl-3 border-l-2 border-slate-200 space-y-1">
+                          <p className="text-[11px] font-medium text-slate-500 mb-1">Opciones</p>
+                          {subGroup.options.map((option, optionIndex) => (
+                            <div key={optionIndex} className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={option.name}
+                                onChange={(e) => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'name', e.target.value)}
+                                placeholder="Nombre"
+                                className="flex-1 rounded-md border border-slate-200 text-xs text-slate-800 placeholder-slate-400 px-2 py-1 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                              />
+                              <div className="relative w-20 flex-shrink-0">
+                                <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 text-[10px]">$</span>
+                                <input
+                                  type="number"
+                                  value={option.price}
+                                  onChange={(e) => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'price', e.target.value)}
+                                  placeholder="0"
+                                  className="w-full rounded-md border border-slate-200 text-xs text-slate-800 font-semibold pl-5 pr-1 py-1 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSubGroupOption(subGroupIndex, optionIndex)}
+                                className="p-1 text-red-400 hover:text-red-600 rounded transition-colors"
+                              >
+                                <FaTimes className="text-[9px]" />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => handleAddSubGroupOption(subGroupIndex)}
+                            className="text-[11px] text-blue-500 hover:text-blue-600 font-medium mt-1"
+                          >
+                            + Agregar opción
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                      ))
-                    )}
-                    
-                    <motion.button
-                      type="button"
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={handleAddSubGroup}
-                      className="w-full py-4 border-2 border-dashed border-purple-300 text-purple-600 rounded-2xl hover:border-purple-400 hover:bg-purple-50 transition-all duration-200 font-semibold flex items-center justify-center space-x-2"
-                    >
-                      <span className="text-xl">➕</span>
-                      <span>Agregar Subgrupo</span>
-                    </motion.button>
-                  </div>
-                </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAddSubGroup}
+                  className="mt-2 w-full py-2 border border-dashed border-slate-300 text-slate-500 rounded-lg hover:border-purple-300 hover:text-purple-500 hover:bg-purple-50/50 transition-colors text-xs font-medium flex items-center justify-center gap-1.5"
+                >
+                  <FaPlus className="text-[10px]" /> Agregar Subgrupo
+                </button>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-center space-x-4 pt-8 border-t border-slate-200">
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                 {isEditing && (
-                  <motion.button
+                  <button
                     type="button"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
                     onClick={resetForm}
-                    className="px-8 py-4 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-lg"
+                    className="px-3 py-2 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
                   >
-                    <span>❌</span>
-                    <span>Cancelar</span>
-                  </motion.button>
+                    Cancelar
+                  </button>
                 )}
-                <motion.button
+                <button
                   type="submit"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl hover:from-orange-600 hover:to-red-600 transition-all duration-200 font-semibold shadow-xl flex items-center space-x-2"
+                  className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-xs font-semibold flex items-center justify-center gap-1.5"
                 >
-                  <span>{isEditing ? '✏️' : '✨'}</span>
-                  <span>{isEditing ? 'Actualizar' : 'Crear'} Grupo</span>
-                </motion.button>
+                  {isEditing ? <FaEdit className="text-[10px]" /> : <FaPlus className="text-[10px]" />}
+                  {isEditing ? 'Actualizar Grupo' : 'Crear Grupo'}
+                </button>
               </div>
             </form>
-          </motion.div>
+          </div>
 
-          {/* Modern Groups List */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-6"
-          >
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">Grupos de Extras Existentes</h3>
-              <p className="text-slate-600">Gestiona tus grupos de extras configurados</p>
+          {/* Existing Groups List */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              <FaCheese className="text-amber-500 text-sm" />
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Grupos de Extras Existentes</h3>
+                <p className="text-[11px] text-slate-500">Gestiona tus grupos de extras configurados</p>
+              </div>
             </div>
-            
-            {toppingGroups.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-12 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border-2 border-dashed border-slate-300"
-              >
-                <span className="text-4xl mb-4 block">🧀</span>
-                <h4 className="text-xl font-semibold text-slate-700 mb-2">No hay grupos de extras</h4>
-                <p className="text-slate-500">Crea tu primer grupo para organizar los extras de tus productos</p>
-              </motion.div>
-            ) : (
-              <div className="grid gap-6">
-                {toppingGroups.map((group, index) => (
-                  <motion.div
-                    key={group._id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                    className="group bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-lg border border-slate-200/50 overflow-hidden hover:shadow-xl transition-all duration-300"
-                  >
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-                            <span className="text-xl">🧀</span>
-                          </div>
-                          <div>
-                            <h4 className="text-xl font-bold text-slate-900 group-hover:text-orange-600 transition-colors">
-                              {group.name}
-                            </h4>
-                            {group.basePrice > 0 && (
-                              <div className="flex items-center space-x-1 mt-1">
-                                <span className="text-sm text-green-600 font-semibold">💰 Precio base:</span>
-                                <span className="text-sm font-bold text-green-700">${group.basePrice.toFixed(2)}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex space-x-2">
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleEdit(group)}
-                            className="w-10 h-10 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-colors flex items-center justify-center"
-                          >
-                            <span className="text-lg">✏️</span>
-                          </motion.button>
-                          <motion.button
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                            onClick={() => handleDelete(group._id)}
-                            className="w-10 h-10 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-colors flex items-center justify-center"
-                          >
-                            <span className="text-lg">🗑️</span>
-                          </motion.button>
-                        </div>
-                      </div>
 
-                      {group.description && (
-                        <p className="text-slate-600 mb-4 leading-relaxed">{group.description}</p>
-                      )}
-                      
-                      {/* Configuration Badges */}
-                      <div className="flex gap-2 mb-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          group.isMultipleChoice 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-slate-100 text-slate-800'
-                        }`}>
-                          {group.isMultipleChoice ? 'Selección múltiple' : 'Selección única'}
-                        </span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          group.isRequired 
-                            ? 'bg-red-100 text-red-800' 
-                            : 'bg-slate-100 text-slate-800'
-                        }`}>
-                          {group.isRequired ? '⚠️ Obligatorio' : '🔄 Opcional'}
-                        </span>
-                      </div>
-                      
-                      {/* Main Options */}
-                      {group.options && group.options.length > 0 && (
-                        <div className="mb-4">
-                          <h5 className="text-sm font-semibold text-slate-700 mb-2 flex items-center">
-                            <span className="mr-1">🍟</span>
-                            Opciones principales:
-                          </h5>
-                          <div className="bg-slate-50 rounded-2xl p-4 space-y-2">
-                            {group.options.map((option, idx) => (
-                              <div key={idx} className={`flex justify-between items-center py-2 px-3 rounded-lg transition-all duration-200 ${
-                                option.active !== false ? 'bg-white border border-gray-200' : 'bg-red-50 border border-red-200 opacity-60'
-                              }`}>
-                                <div className="flex items-center space-x-2">
-                                  <span className={`text-sm ${option.active !== false ? 'text-slate-700' : 'text-red-600 line-through'}`}>
-                                    {option.name}
-                                  </span>
-                                  {option.active === false && (
-                                    <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Agotado</span>
-                                  )}
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <span className={`text-sm font-semibold ${option.active !== false ? 'text-green-600' : 'text-red-500'}`}>
-                                    ${option.price.toFixed(2)}
-                                  </span>
-                                  <button
-                                    onClick={() => handleToggleOption(group._id, option._id)}
-                                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
-                                      option.active !== false 
-                                        ? 'bg-green-100 hover:bg-green-200 text-green-600' 
-                                        : 'bg-red-100 hover:bg-red-200 text-red-600'
-                                    }`}
-                                    title={option.active !== false ? 'Desactivar opción' : 'Activar opción'}
-                                  >
-                                    {option.active !== false ? '👁️' : '👁️‍🗨️'}
-                                  </button>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+            {toppingGroups.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <FaBoxOpen className="text-2xl text-slate-300 mb-2" />
+                <p className="text-sm text-slate-500 font-medium">Sin grupos de extras</p>
+                <p className="text-xs text-slate-400 mt-1">Crea tu primer grupo para organizar los extras</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {toppingGroups.map((group) => (
+                  <div key={group._id} className="px-4 py-3 hover:bg-slate-50/50 transition-colors">
+                    {/* Group header row */}
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FaCheese className="text-amber-500 text-xs" />
                         </div>
-                      )}
-                      
-                      {/* Subgroups */}
-                      {group.subGroups && group.subGroups.length > 0 && (
-                        <div>
-                          <h5 className="text-sm font-semibold text-slate-700 mb-2 flex items-center">
-                            Subgrupos:
-                          </h5>
-                          <div className="space-y-3">
-                            {group.subGroups.map((subGroup, idx) => (
-                              <div key={`subgroup-${idx}`} className="bg-purple-50 rounded-2xl p-4 border-l-4 border-purple-400">
-                                <div className="flex items-center justify-between mb-2">
-                                  <h6 className="font-medium text-slate-900">{subGroup.title}</h6>
-                                  <div className="flex space-x-1">
-                                    <span className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
-                                      {subGroup.isMultipleChoice ? 'Múltiple' : 'Única'}
-                                    </span>
-                                    {subGroup.isRequired && (
-                                      <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">
-                                        Obligatorio
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                {subGroup.options && subGroup.options.length > 0 && (
-                                  <div className="space-y-1">
-                                    {subGroup.options.map((option, optIdx) => (
-                                      <div key={`suboption-${optIdx}`} className={`flex justify-between items-center py-2 px-3 rounded-lg transition-all duration-200 ${
-                                        option.active !== false ? 'bg-white border border-gray-200' : 'bg-red-50 border border-red-200 opacity-60'
-                                      }`}>
-                                        <div className="flex items-center space-x-2">
-                                          <span className={`text-sm ${option.active !== false ? 'text-slate-600' : 'text-red-600 line-through'}`}>
-                                            • {option.name}
-                                          </span>
-                                          {option.active === false && (
-                                            <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">Agotado</span>
-                                          )}
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                          <span className={`text-sm font-semibold ${option.active !== false ? 'text-green-600' : 'text-red-500'}`}>
-                                            ${option.price.toFixed(2)}
-                                          </span>
-                                          <button
-                                            onClick={() => handleToggleOption(group._id, option._id)}
-                                            className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-200 text-xs ${
-                                              option.active !== false 
-                                                ? 'bg-green-100 hover:bg-green-200 text-green-600' 
-                                                : 'bg-red-100 hover:bg-red-200 text-red-600'
-                                            }`}
-                                            title={option.active !== false ? 'Desactivar opción' : 'Activar opción'}
-                                          >
-                                            {option.active !== false ? '👁️' : '👁️‍🗨️'}
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-semibold text-slate-800 truncate">{group.name}</h4>
+                          {group.basePrice > 0 && (
+                            <span className="text-[11px] text-emerald-600 font-medium">
+                              ${group.basePrice.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={() => handleEdit(group)}
+                          className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <FaEdit className="text-xs" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(group._id)}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Eliminar"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {group.description && (
+                      <p className="text-[11px] text-slate-400 mb-1.5">{group.description}</p>
+                    )}
+
+                    {/* Badges */}
+                    <div className="flex gap-1.5 mb-2">
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        group.isMultipleChoice ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {group.isMultipleChoice ? 'Múltiple' : 'Única'}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        group.isRequired ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500'
+                      }`}>
+                        {group.isRequired ? 'Obligatorio' : 'Opcional'}
+                      </span>
+                    </div>
+
+                    {/* Main Options */}
+                    {group.options && group.options.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Opciones</p>
+                        <div className="space-y-0.5">
+                          {group.options.map((option, idx) => (
+                            <div key={idx} className={`flex items-center justify-between py-1 px-2 rounded text-xs ${
+                              option.active !== false ? 'bg-slate-50' : 'bg-red-50/50 opacity-60'
+                            }`}>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className={`${option.active !== false ? 'text-slate-700' : 'text-red-500 line-through'} truncate`}>
+                                  {option.name}
+                                </span>
+                                {option.active === false && (
+                                  <span className="text-[9px] bg-red-100 text-red-600 px-1 py-0.5 rounded flex-shrink-0">Agotado</span>
                                 )}
                               </div>
-                            ))}
-                          </div>
+                              <div className="flex items-center gap-1.5 flex-shrink-0">
+                                <span className={`font-semibold ${option.active !== false ? 'text-emerald-600' : 'text-red-400'}`}>
+                                  ${option.price.toFixed(0)}
+                                </span>
+                                <button
+                                  onClick={() => handleToggleOption(group._id, option._id)}
+                                  className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+                                    option.active !== false
+                                      ? 'text-emerald-500 hover:bg-emerald-50'
+                                      : 'text-red-400 hover:bg-red-50'
+                                  }`}
+                                  title={option.active !== false ? 'Desactivar' : 'Activar'}
+                                >
+                                  {option.active !== false ? <FaEye className="text-[9px]" /> : <FaEyeSlash className="text-[9px]" />}
+                                </button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Hover Effect Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                  </motion.div>
+                      </div>
+                    )}
+
+                    {/* Subgroups */}
+                    {group.subGroups && group.subGroups.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Subgrupos</p>
+                        <div className="space-y-1.5">
+                          {group.subGroups.map((subGroup, idx) => (
+                            <div key={`subgroup-${idx}`} className="bg-purple-50/50 rounded-lg p-2 border-l-2 border-purple-300">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-slate-700">{subGroup.title}</span>
+                                <div className="flex gap-1">
+                                  <span className="text-[9px] px-1 py-0.5 bg-purple-100 text-purple-600 rounded">
+                                    {subGroup.isMultipleChoice ? 'Múltiple' : 'Única'}
+                                  </span>
+                                  {subGroup.isRequired && (
+                                    <span className="text-[9px] px-1 py-0.5 bg-red-100 text-red-600 rounded">Req</span>
+                                  )}
+                                </div>
+                              </div>
+                              {subGroup.options && subGroup.options.length > 0 && (
+                                <div className="space-y-0.5">
+                                  {subGroup.options.map((option, optIdx) => (
+                                    <div key={`suboption-${optIdx}`} className={`flex items-center justify-between py-0.5 px-1.5 rounded text-[11px] ${
+                                      option.active !== false ? 'bg-white' : 'bg-red-50/50 opacity-60'
+                                    }`}>
+                                      <div className="flex items-center gap-1 min-w-0">
+                                        <span className="text-slate-300">•</span>
+                                        <span className={`${option.active !== false ? 'text-slate-600' : 'text-red-500 line-through'} truncate`}>
+                                          {option.name}
+                                        </span>
+                                        {option.active === false && (
+                                          <span className="text-[8px] bg-red-100 text-red-600 px-1 rounded flex-shrink-0">Agotado</span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-1 flex-shrink-0">
+                                        <span className={`font-semibold ${option.active !== false ? 'text-emerald-600' : 'text-red-400'}`}>
+                                          ${option.price.toFixed(0)}
+                                        </span>
+                                        <button
+                                          onClick={() => handleToggleOption(group._id, option._id)}
+                                          className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
+                                            option.active !== false
+                                              ? 'text-emerald-500 hover:bg-emerald-50'
+                                              : 'text-red-400 hover:bg-red-50'
+                                          }`}
+                                          title={option.active !== false ? 'Desactivar' : 'Activar'}
+                                        >
+                                          {option.active !== false ? <FaEye className="text-[8px]" /> : <FaEyeSlash className="text-[8px]" />}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
-          </motion.div>
+          </div>
         </>
       )}
     </div>
   );
 }
 
-export default ToppingGroupsManager; 
+export default ToppingGroupsManager;

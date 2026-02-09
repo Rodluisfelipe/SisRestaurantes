@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaTicketAlt, FaCheckCircle, FaChartBar, FaDollarSign, FaSearch, FaPlus, FaEye, FaEdit, FaTrash, FaTimes, FaSyncAlt, FaBoxOpen, FaPercent, FaTruck, FaChevronLeft, FaChevronRight, FaDice, FaCalendarAlt, FaTag } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { getBusinessSlug } from '../utils/getBusinessId';
@@ -232,120 +233,73 @@ const CouponsManager = () => {
   // Get discount type icon
   const getDiscountIcon = (type) => {
     const icons = {
-      percentage: '%',
-      fixed: '$',
-      free_delivery: '🚚'
+      percentage: FaPercent,
+      fixed: FaDollarSign,
+      free_delivery: FaTruck
     };
-    return icons[type] || '%';
+    return icons[type] || FaPercent;
+  };
+
+  const discountIconColors = {
+    percentage: 'text-blue-500 bg-blue-50',
+    fixed: 'text-emerald-500 bg-emerald-50',
+    free_delivery: 'text-orange-500 bg-orange-50'
   };
 
   return (
-    <div className="p-6">
+    <div className="space-y-3">
       {/* Header */}
-      <div className="mb-6 flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Gestión de Cupones</h2>
-          <p className="text-gray-600">Crea y administra cupones de descuento para tus clientes</p>
-        </div>
+      <div className="flex items-center justify-between">
         <button
           onClick={() => {
             resetForm();
             setEditingCoupon(null);
             setShowCreateModal(true);
           }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors"
         >
-          + Crear Cupón
+          <FaPlus className="text-[9px]" /> Crear Cupón
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-4 rounded-lg shadow-sm border"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <span className="text-2xl">🎫</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+        {[
+          { icon: FaTicketAlt, label: 'Total Cupones', value: stats.totalCoupons || 0, color: 'text-blue-500 bg-blue-50' },
+          { icon: FaCheckCircle, label: 'Activos', value: stats.activeCoupons || 0, color: 'text-emerald-500 bg-emerald-50' },
+          { icon: FaChartBar, label: 'Total Usos', value: stats.totalUsage || 0, color: 'text-purple-500 bg-purple-50' },
+          { icon: FaDollarSign, label: 'Descuento Total', value: formatCurrency(stats.totalDiscountGiven || 0), color: 'text-amber-500 bg-amber-50' },
+        ].map(({ icon: Icon, label, value, color }) => (
+          <div key={label} className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center flex-shrink-0`}>
+              <Icon className="text-xs" />
             </div>
-            <div className="ml-3">
-              <p className="text-sm text-gray-600">Total Cupones</p>
-              <p className="text-xl font-semibold">{stats.totalCoupons || 0}</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white p-4 rounded-lg shadow-sm border"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <span className="text-2xl">✅</span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-gray-600">Cupones Activos</p>
-              <p className="text-xl font-semibold">{stats.activeCoupons || 0}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 font-medium">{label}</p>
+              <p className="text-sm font-bold text-slate-800 truncate">{value}</p>
             </div>
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white p-4 rounded-lg shadow-sm border"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <span className="text-2xl">📊</span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-gray-600">Total Usos</p>
-              <p className="text-xl font-semibold">{stats.totalUsage || 0}</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white p-4 rounded-lg shadow-sm border"
-        >
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <span className="text-2xl">💰</span>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-gray-600">Descuento Total</p>
-              <p className="text-xl font-semibold">{formatCurrency(stats.totalDiscountGiven || 0)}</p>
-            </div>
-          </div>
-        </motion.div>
+        ))}
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
+      <div className="bg-white rounded-xl border border-slate-200 p-3">
+        <div className="flex flex-col md:flex-row gap-2">
+          <div className="flex-1 relative">
+            <FaSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400" />
             <input
               type="text"
               placeholder="Buscar por código, nombre o descripción..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300 outline-none"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600"
             >
               <option value="all">Todos los estados</option>
               <option value="active">Activos</option>
@@ -355,7 +309,7 @@ const CouponsManager = () => {
             <select
               value={discountTypeFilter}
               onChange={(e) => setDiscountTypeFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600"
             >
               <option value="all">Todos los tipos</option>
               <option value="percentage">Porcentaje</option>
@@ -369,7 +323,7 @@ const CouponsManager = () => {
                 setSortBy(field);
                 setSortOrder(order);
               }}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600"
             >
               <option value="createdAt-desc">Más recientes</option>
               <option value="createdAt-asc">Más antiguos</option>
@@ -381,173 +335,188 @@ const CouponsManager = () => {
       </div>
 
       {/* Coupons Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <p className="mt-2 text-gray-600">Cargando cupones...</p>
+          <div className="flex items-center justify-center py-10 text-sm text-slate-400">
+            <FaSyncAlt className="animate-spin mr-2 text-xs" /> Cargando cupones...
+          </div>
+        ) : coupons.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <FaBoxOpen className="text-2xl text-slate-300 mb-2" />
+            <p className="text-sm text-slate-500 font-medium">No se encontraron cupones</p>
+            <p className="text-xs text-slate-400 mt-1">Crea tu primer cupón de descuento</p>
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-100">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cupón
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Descuento
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Condiciones
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Uso
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Cupón</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Descuento</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Condiciones</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Uso</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  <AnimatePresence>
-                    {coupons.map((coupon, index) => (
-                      <motion.tr
-                        key={coupon._id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="hover:bg-gray-50"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {coupon.code}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {coupon.name}
-                            </div>
-                          </div>
+                <tbody className="divide-y divide-slate-50">
+                  {coupons.map((coupon) => {
+                    const DiscIcon = getDiscountIcon(coupon.discountType);
+                    return (
+                      <tr key={coupon._id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-4 py-2.5">
+                          <p className="text-xs font-bold text-slate-800 font-mono tracking-wider">{coupon.code}</p>
+                          <p className="text-[10px] text-slate-400">{coupon.name}</p>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <span className="text-lg mr-1">{getDiscountIcon(coupon.discountType)}</span>
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-6 h-6 rounded flex items-center justify-center ${discountIconColors[coupon.discountType] || 'text-slate-500 bg-slate-50'}`}>
+                              <DiscIcon className="text-[9px]" />
+                            </div>
                             <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {coupon.discountType === 'percentage' 
+                              <p className="text-xs font-semibold text-slate-800">
+                                {coupon.discountType === 'percentage'
                                   ? `${coupon.discountValue}%`
                                   : coupon.discountType === 'fixed'
                                   ? formatCurrency(coupon.discountValue)
-                                  : 'Envío gratis'
-                                }
-                              </div>
+                                  : 'Envío gratis'}
+                              </p>
                               {coupon.maxDiscountAmount && (
-                                <div className="text-xs text-gray-500">
-                                  Máx: {formatCurrency(coupon.maxDiscountAmount)}
-                                </div>
+                                <p className="text-[10px] text-slate-400">Máx: {formatCurrency(coupon.maxDiscountAmount)}</p>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            Mín: {formatCurrency(coupon.minimumOrderAmount)}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {coupon.usageLimit ? `Límite: ${coupon.usageLimit}` : 'Sin límite'}
-                          </div>
+                        <td className="px-4 py-2.5">
+                          <p className="text-xs text-slate-700">Mín: {formatCurrency(coupon.minimumOrderAmount)}</p>
+                          <p className="text-[10px] text-slate-400">{coupon.usageLimit ? `Límite: ${coupon.usageLimit}` : 'Sin límite'}</p>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(coupon)}`}>
+                        <td className="px-4 py-2.5">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStatusBadge(coupon)}`}>
                             {getStatusText(coupon)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div>{coupon.usageCount} usos</div>
-                          <div>{formatCurrency(coupon.totalDiscountGiven)}</div>
+                        <td className="px-4 py-2.5">
+                          <p className="text-xs font-medium text-slate-700">{coupon.usageCount} usos</p>
+                          <p className="text-[10px] text-emerald-600">{formatCurrency(coupon.totalDiscountGiven)}</p>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex space-x-2">
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-1">
                             <button
-                              onClick={() => {
-                                setSelectedCoupon(coupon);
-                                setShowCouponModal(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-900"
+                              onClick={() => { setSelectedCoupon(coupon); setShowCouponModal(true); }}
+                              className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Ver"
                             >
-                              Ver
+                              <FaEye className="text-xs" />
                             </button>
                             <button
                               onClick={() => handleEdit(coupon)}
-                              className="text-green-600 hover:text-green-900"
+                              className="p-1.5 text-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              title="Editar"
                             >
-                              Editar
+                              <FaEdit className="text-xs" />
                             </button>
                             <button
                               onClick={() => handleDelete(coupon._id)}
-                              className="text-red-600 hover:text-red-900"
+                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Eliminar"
                             >
-                              Eliminar
+                              <FaTrash className="text-xs" />
                             </button>
                           </div>
                         </td>
-                      </motion.tr>
-                    ))}
-                  </AnimatePresence>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
+            {/* Mobile Card View */}
+            <div className="md:hidden divide-y divide-slate-100">
+              {coupons.map((coupon) => {
+                const DiscIcon = getDiscountIcon(coupon.discountType);
+                return (
+                  <div key={coupon._id} className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${discountIconColors[coupon.discountType] || 'text-slate-500 bg-slate-50'}`}>
+                          <DiscIcon className="text-[10px]" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-slate-800 font-mono">{coupon.code}</p>
+                          <p className="text-[10px] text-slate-400">{coupon.name}</p>
+                        </div>
+                      </div>
+                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStatusBadge(coupon)}`}>
+                        {getStatusText(coupon)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-700">
+                        {coupon.discountType === 'percentage'
+                          ? `${coupon.discountValue}%`
+                          : coupon.discountType === 'fixed'
+                          ? formatCurrency(coupon.discountValue)
+                          : 'Envío gratis'}
+                      </span>
+                      <span className="text-slate-400">{coupon.usageCount} usos · {formatCurrency(coupon.totalDiscountGiven)}</span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => { setSelectedCoupon(coupon); setShowCouponModal(true); }} className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[11px] font-medium hover:bg-blue-100 transition-colors">Ver</button>
+                      <button onClick={() => handleEdit(coupon)} className="flex-1 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-[11px] font-medium hover:bg-emerald-100 transition-colors">Editar</button>
+                      <button onClick={() => handleDelete(coupon._id)} className="py-1.5 px-3 bg-red-50 text-red-500 rounded-lg text-[11px] font-medium hover:bg-red-100 transition-colors"><FaTrash className="text-[10px]" /></button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             {/* Pagination */}
             {pagination.pages > 1 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
-                <div className="flex-1 flex justify-between sm:hidden">
+              <div className="px-4 py-3 border-t border-slate-100">
+                <div className="flex items-center justify-between sm:hidden">
                   <button
                     onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg disabled:opacity-40 hover:bg-slate-200 transition-colors"
                   >
-                    Anterior
+                    <FaChevronLeft className="text-[9px]" /> Anterior
                   </button>
+                  <span className="text-xs text-slate-500">{currentPage} / {pagination.pages}</span>
                   <button
                     onClick={() => setCurrentPage(Math.min(pagination.pages, currentPage + 1))}
                     disabled={currentPage === pagination.pages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg disabled:opacity-40 hover:bg-slate-200 transition-colors"
                   >
-                    Siguiente
+                    Siguiente <FaChevronRight className="text-[9px]" />
                   </button>
                 </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      Mostrando <span className="font-medium">{((currentPage - 1) * 20) + 1}</span> a{' '}
-                      <span className="font-medium">
-                        {Math.min(currentPage * 20, pagination.total)}
-                      </span>{' '}
-                      de <span className="font-medium">{pagination.total}</span> resultados
-                    </p>
-                  </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                      {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((page) => (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            page === currentPage
-                              ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                              : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                          }`}
-                        >
-                          {page}
+                <div className="hidden sm:flex items-center justify-between">
+                  <p className="text-xs text-slate-500">
+                    Mostrando <span className="font-semibold text-slate-700">{((currentPage - 1) * 20) + 1}</span> a <span className="font-semibold text-slate-700">{Math.min(currentPage * 20, pagination.total)}</span> de <span className="font-semibold text-slate-700">{pagination.total}</span>
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 transition-colors">
+                      <FaChevronLeft className="text-[10px]" />
+                    </button>
+                    {Array.from({ length: Math.min(pagination.pages, 7) }, (_, i) => {
+                      let pageNum;
+                      if (pagination.pages <= 7) pageNum = i + 1;
+                      else if (currentPage <= 4) pageNum = i + 1;
+                      else if (currentPage >= pagination.pages - 3) pageNum = pagination.pages - 6 + i;
+                      else pageNum = currentPage - 3 + i;
+                      return (
+                        <button key={pageNum} onClick={() => setCurrentPage(pageNum)} className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors ${pageNum === currentPage ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+                          {pageNum}
                         </button>
-                      ))}
-                    </nav>
+                      );
+                    })}
+                    <button onClick={() => setCurrentPage(Math.min(pagination.pages, currentPage + 1))} disabled={currentPage === pagination.pages} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 disabled:opacity-40 transition-colors">
+                      <FaChevronRight className="text-[10px]" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -563,124 +532,119 @@ const CouponsManager = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
             onClick={() => setShowCreateModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col border border-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">
-                  {editingCoupon ? 'Editar Cupón' : 'Crear Nuevo Cupón'}
-                </h3>
+              {/* Modal Header */}
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <FaTicketAlt className="text-xs text-blue-500" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-800">
+                    {editingCoupon ? 'Editar Cupón' : 'Crear Nuevo Cupón'}
+                  </h3>
+                </div>
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                 >
-                  ✕
+                  <FaTimes className="text-xs" />
                 </button>
               </div>
               
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+                {/* Code + Name */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Código del Cupón
-                    </label>
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Código</label>
                     <div className="flex">
                       <input
                         type="text"
                         value={formData.code}
                         onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="flex-1 px-2.5 py-1.5 text-xs border border-slate-200 rounded-l-lg focus:ring-1 focus:ring-slate-300 outline-none font-mono"
                         placeholder="Ej: DESCUENTO20"
                         required
                       />
                       <button
                         type="button"
                         onClick={generateCode}
-                        className="px-3 py-2 bg-gray-100 border border-l-0 border-gray-300 rounded-r-lg hover:bg-gray-200"
+                        className="px-2 py-1.5 bg-slate-100 border border-l-0 border-slate-200 rounded-r-lg hover:bg-slate-200 transition-colors"
+                        title="Generar código"
                       >
-                        Generar
+                        <FaDice className="text-xs text-slate-500" />
                       </button>
                     </div>
                   </div>
-                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nombre
-                    </label>
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Nombre</label>
                     <input
                       type="text"
                       value={formData.name}
                       onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none"
                       placeholder="Ej: Descuento del 20%"
                       required
                     />
                   </div>
                 </div>
 
+                {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descripción
-                  </label>
+                  <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Descripción</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none resize-none"
                     rows="2"
                     placeholder="Descripción del cupón..."
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                {/* Discount Type + Value + Max */}
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tipo de Descuento
-                    </label>
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Tipo</label>
                     <select
                       value={formData.discountType}
                       onChange={(e) => setFormData(prev => ({ ...prev, discountType: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none"
                     >
                       <option value="percentage">Porcentaje</option>
                       <option value="fixed">Monto fijo</option>
                       <option value="free_delivery">Envío gratis</option>
                     </select>
                   </div>
-                  
                   {formData.discountType !== 'free_delivery' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Valor del Descuento
-                      </label>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Valor</label>
                       <input
                         type="number"
                         value={formData.discountValue}
                         onChange={(e) => setFormData(prev => ({ ...prev, discountValue: parseFloat(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none"
                         min="0"
                         step="0.01"
                         required
                       />
                     </div>
                   )}
-                  
                   {formData.discountType === 'percentage' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Descuento Máximo
-                      </label>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Desc. Máximo</label>
                       <input
                         type="number"
                         value={formData.maxDiscountAmount || ''}
                         onChange={(e) => setFormData(prev => ({ ...prev, maxDiscountAmount: parseFloat(e.target.value) || null }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none"
                         min="0"
                         step="0.01"
                         placeholder="Sin límite"
@@ -689,88 +653,79 @@ const CouponsManager = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Min Order + Usage Limit */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Monto Mínimo del Pedido
-                    </label>
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Monto Mínimo</label>
                     <input
                       type="number"
                       value={formData.minimumOrderAmount}
                       onChange={(e) => setFormData(prev => ({ ...prev, minimumOrderAmount: parseFloat(e.target.value) || 0 }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none"
                       min="0"
                       step="0.01"
                     />
                   </div>
-                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Límite de Usos
-                    </label>
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Límite de Usos</label>
                     <input
                       type="number"
                       value={formData.usageLimit || ''}
                       onChange={(e) => setFormData(prev => ({ ...prev, usageLimit: parseInt(e.target.value) || null }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none"
                       min="1"
                       placeholder="Sin límite"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                {/* Dates */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Válido Desde
-                    </label>
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Válido Desde</label>
                     <input
                       type="date"
                       value={formData.validFrom}
                       onChange={(e) => setFormData(prev => ({ ...prev, validFrom: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none"
                       required
                     />
                   </div>
-                  
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Válido Hasta
-                    </label>
+                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Válido Hasta</label>
                     <input
                       type="date"
                       value={formData.validUntil}
                       onChange={(e) => setFormData(prev => ({ ...prev, validUntil: e.target.value }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center">
+                {/* Active Toggle */}
+                <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    id="isActive"
                     checked={formData.isActive}
                     onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    className="h-3.5 w-3.5 text-slate-800 focus:ring-slate-300 border-slate-300 rounded"
                   />
-                  <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-                    Cupón activo
-                  </label>
-                </div>
+                  <span className="text-xs text-slate-700 font-medium">Cupón activo</span>
+                </label>
 
-                <div className="flex justify-end space-x-3 pt-4">
+                {/* Actions */}
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200"
+                    className="px-3 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700"
+                    className="px-3 py-1.5 text-xs font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 transition-colors"
                   >
                     {editingCoupon ? 'Actualizar' : 'Crear'} Cupón
                   </button>
@@ -788,81 +743,95 @@ const CouponsManager = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
             onClick={() => setShowCouponModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
+              initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              exit={{ scale: 0.97, opacity: 0 }}
+              className="bg-white rounded-xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col border border-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold">Detalles del Cupón</h3>
+              {/* Modal Header */}
+              <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <FaEye className="text-xs text-blue-500" />
+                  </div>
+                  <h3 className="text-sm font-bold text-slate-800">Detalles del Cupón</h3>
+                </div>
                 <button
                   onClick={() => setShowCouponModal(false)}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                 >
-                  ✕
+                  <FaTimes className="text-xs" />
                 </button>
               </div>
               
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                {/* Code + Name */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Código</label>
-                    <p className="mt-1 text-lg font-semibold text-gray-900">{selectedCoupon.code}</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Código</p>
+                    <p className="text-sm font-bold text-slate-800 font-mono">{selectedCoupon.code}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Nombre</label>
-                    <p className="mt-1 text-lg font-semibold text-gray-900">{selectedCoupon.name}</p>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Nombre</p>
+                    <p className="text-xs font-semibold text-slate-800">{selectedCoupon.name}</p>
                   </div>
+                </div>
+
+                {/* Discount + Status */}
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Tipo de Descuento</label>
-                    <p className="mt-1 text-lg font-semibold text-gray-900">
-                      {selectedCoupon.discountType === 'percentage' 
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Descuento</p>
+                    <p className="text-sm font-bold text-slate-800">
+                      {selectedCoupon.discountType === 'percentage'
                         ? `${selectedCoupon.discountValue}%`
                         : selectedCoupon.discountType === 'fixed'
                         ? formatCurrency(selectedCoupon.discountValue)
-                        : 'Envío gratis'
-                      }
+                        : 'Envío gratis'}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Estado</label>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadge(selectedCoupon)}`}>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Estado</p>
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStatusBadge(selectedCoupon)}`}>
                       {getStatusText(selectedCoupon)}
                     </span>
                   </div>
                 </div>
 
-                <div className="border-t pt-4">
-                  <h4 className="text-md font-medium text-gray-900 mb-3">Estadísticas de Uso</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Total de Usos</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{selectedCoupon.usageCount}</p>
+                {/* Usage Stats */}
+                <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <FaChartBar className="text-[8px]" /> Estadísticas de Uso
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                      <p className="text-[10px] text-slate-400">Total de Usos</p>
+                      <p className="text-sm font-bold text-slate-800">{selectedCoupon.usageCount}</p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Descuento Total Dado</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(selectedCoupon.totalDiscountGiven)}</p>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                      <p className="text-[10px] text-slate-400">Descuento Dado</p>
+                      <p className="text-xs font-bold text-emerald-600">{formatCurrency(selectedCoupon.totalDiscountGiven)}</p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Válido Desde</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatDate(selectedCoupon.validFrom)}</p>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                      <p className="text-[10px] text-slate-400">Válido Desde</p>
+                      <p className="text-xs font-semibold text-slate-700">{formatDate(selectedCoupon.validFrom)}</p>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Válido Hasta</label>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{formatDate(selectedCoupon.validUntil)}</p>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-100">
+                      <p className="text-[10px] text-slate-400">Válido Hasta</p>
+                      <p className="text-xs font-semibold text-slate-700">{formatDate(selectedCoupon.validUntil)}</p>
                     </div>
                   </div>
                 </div>
 
+                {/* Description */}
                 {selectedCoupon.description && (
-                  <div className="border-t pt-4">
-                    <label className="block text-sm font-medium text-gray-700">Descripción</label>
-                    <p className="mt-1 text-sm text-gray-900">{selectedCoupon.description}</p>
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Descripción</p>
+                    <p className="text-xs text-slate-600">{selectedCoupon.description}</p>
                   </div>
                 )}
               </div>

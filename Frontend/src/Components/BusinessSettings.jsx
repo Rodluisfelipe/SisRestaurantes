@@ -4,6 +4,12 @@ import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
 import BusinessHoursSettings from './BusinessHoursSettings';
+import { 
+  FaCog, FaStore, FaImage, FaWhatsapp, FaMapMarkerAlt, FaMap,
+  FaInfoCircle, FaShareAlt, FaFacebook, FaInstagram, FaMusic, FaLink,
+  FaEye, FaEyeSlash, FaWrench, FaSave, FaSyncAlt, FaCheckCircle,
+  FaExclamationCircle, FaFileAlt, FaBell
+} from 'react-icons/fa';
 
 const BusinessSettings = () => {
   const initialSettings = {
@@ -177,11 +183,11 @@ const BusinessSettings = () => {
       setSettings(updatedData);
       setOriginalSettings(updatedData);
       
-      setSuccessMessage('✅ Configuración guardada exitosamente');
+      setSuccessMessage('Configuración guardada exitosamente');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error al actualizar la configuración:', error);
-      setError('❌ Error al actualizar la configuración');
+      setError('Error al actualizar la configuración');
       setTimeout(() => setError(null), 3000);
     } finally {
       setIsSaving(false);
@@ -285,53 +291,30 @@ const BusinessSettings = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-4">Cargando configuración...</div>;
+    return (
+      <div className="flex items-center justify-center h-40 text-sm text-slate-400">
+        <FaSyncAlt className="animate-spin mr-2 text-xs" /> Cargando configuración...
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-          <span className="text-2xl">⚙️</span>
-        </div>
-        <h2 className="text-3xl font-bold text-slate-900 mb-2">Configuración del Negocio</h2>
-      </motion.div>
-      
-      {/* Los mensajes ahora se muestran como toasts flotantes */}
-
-      <motion.form 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        onSubmit={handleSubmit} 
-        className="space-y-8"
-      >
-        {/* Basic Information Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
-        >
-          <div className="text-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-              <span className="text-xl">🏢</span>
+    <div className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Información Básica */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+            <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+              <FaStore className="text-[10px] text-slate-500" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-900">Información Básica</h3>
+            <h3 className="text-sm font-bold text-slate-800">Información Básica</h3>
           </div>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left Column */}
-            <div className="space-y-6">
-              {/* Business Name */}
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">🏪</span>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Nombre del Negocio
                 </label>
                 <input
@@ -339,15 +322,13 @@ const BusinessSettings = () => {
                   name="businessName"
                   value={settings.businessName}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="Ej: GO BURGER"
                 />
               </div>
 
-              {/* Description */}
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">📝</span>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Descripción del Negocio
                 </label>
                 <textarea
@@ -356,27 +337,24 @@ const BusinessSettings = () => {
                   onChange={handleChange}
                   rows={3}
                   maxLength={300}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-base transition-all duration-200 group-hover:border-slate-300 resize-none"
-                  placeholder="Ej: Deliciosa comida casera con ingredientes frescos y servicio de calidad. Especialistas en hamburguesas gourmet y comida rápida."
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300 resize-none"
+                  placeholder="Descripción de tu negocio..."
                 />
-                <div className="mt-3 space-y-2">
-                  <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                    <motion.div
-                      className={`h-full ${getDescriptionProgress().color} transition-all duration-300`}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(settings.description.length / 300) * 100}%` }}
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${getDescriptionProgress().color}`}
+                      style={{ width: `${(settings.description.length / 300) * 100}%` }}
                     />
                   </div>
-                  <div className={`text-sm font-semibold ${getDescriptionProgress().textColor} text-right`}>
-                    {settings.description.length}/300 caracteres
-                  </div>
+                  <span className={`text-[10px] font-medium ${getDescriptionProgress().textColor}`}>
+                    {settings.description.length}/300
+                  </span>
                 </div>
               </div>
 
-              {/* Logo URL */}
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">🖼️</span>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   URL del Logo
                 </label>
                 <input
@@ -386,34 +364,30 @@ const BusinessSettings = () => {
                   onChange={handleChange}
                   onFocus={() => setIsEditingLogo(true)}
                   onBlur={() => setIsEditingLogo(false)}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="https://ejemplo.com/logo.png"
                 />
               </div>
 
-              {/* Cover Image URL */}
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">🌄</span>
-                  URL de la Imagen de Portada
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  URL de Imagen de Portada
                 </label>
                 <input
                   type="text"
                   name="coverImage"
                   value={settings.coverImage}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="https://ejemplo.com/portada.jpg"
                 />
               </div>
             </div>
 
             {/* Right Column */}
-            <div className="space-y-6">
-              {/* WhatsApp Number */}
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">📱</span>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Número de WhatsApp
                 </label>
                 <input
@@ -421,15 +395,13 @@ const BusinessSettings = () => {
                   name="whatsappNumber"
                   value={settings.whatsappNumber}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-green-500/20 focus:border-green-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="Ej: +1234567890"
                 />
               </div>
 
-              {/* Address */}
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">📍</span>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Dirección
                 </label>
                 <input
@@ -437,15 +409,13 @@ const BusinessSettings = () => {
                   name="address"
                   value={settings.address}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="Ej: Calle Principal #123, Ciudad"
                 />
               </div>
 
-              {/* Google Maps URL */}
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">🗺️</span>
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   URL de Google Maps
                 </label>
                 <input
@@ -453,129 +423,118 @@ const BusinessSettings = () => {
                   name="googleMapsUrl"
                   value={settings.googleMapsUrl}
                   onChange={handleChange}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="https://maps.google.com/?q=..."
                 />
-                <p className="mt-2 text-sm text-slate-500 flex items-center">
-                  <span className="mr-1">💡</span>
-                  Ingresa el enlace de la ubicación del negocio en Google Maps
+                <p className="mt-1 text-[10px] text-slate-400 flex items-center gap-1">
+                  <FaInfoCircle className="text-[8px]" />
+                  Enlace de ubicación en Google Maps
                 </p>
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Horarios y Estado del Negocio */}
         <BusinessHoursSettings />
 
-        {/* Social Media Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
-        >
-          <div className="text-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-              <span className="text-xl">📱</span>
+        {/* Redes Sociales */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+            <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+              <FaShareAlt className="text-[10px] text-slate-500" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-900">Redes Sociales</h3>
+            <h3 className="text-sm font-bold text-slate-800">Redes Sociales</h3>
           </div>
           
-          <div className="space-y-6">
+          <div className="p-4 space-y-3">
             {/* Facebook */}
-            <div className="group">
-              <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                <span className="mr-2">📘</span>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 Facebook
               </label>
-              <div className="flex gap-4">
+              <div className="flex gap-2">
                 <input
                   type="url"
                   value={settings.socialMedia.facebook.url}
                   onChange={(e) => handleSocialMediaChange('facebook', 'url', e.target.value)}
                   placeholder="https://facebook.com/tu-negocio"
-                  className="flex-1 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                 />
-              <button
-                type="button"
-                onClick={() => handleSocialMediaChange('facebook', 'isVisible', !settings.socialMedia.facebook.isVisible)}
-                className={`px-4 py-2 rounded-md ${
-                  settings.socialMedia.facebook.isVisible ? 'bg-green-500' : 'bg-gray-500'
-                } text-white`}
-              >
-                {settings.socialMedia.facebook.isVisible ? 'Visible' : 'Oculto'}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleSocialMediaChange('facebook', 'isVisible', !settings.socialMedia.facebook.isVisible)}
+                  className={`px-3 py-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${
+                    settings.socialMedia.facebook.isVisible 
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                      : 'bg-slate-50 text-slate-500 border border-slate-200'
+                  }`}
+                >
+                  {settings.socialMedia.facebook.isVisible ? <><FaEye className="text-[9px]" /> Visible</> : <><FaEyeSlash className="text-[9px]" /> Oculto</>}
+                </button>
+              </div>
             </div>
-          </div>
 
             {/* Instagram */}
-            <div className="group">
-              <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                <span className="mr-2">📸</span>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 Instagram
               </label>
-              <div className="flex gap-4">
+              <div className="flex gap-2">
                 <input
                   type="url"
                   value={settings.socialMedia.instagram.url}
                   onChange={(e) => handleSocialMediaChange('instagram', 'url', e.target.value)}
                   placeholder="https://instagram.com/tu-negocio"
-                  className="flex-1 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                 />
-                <motion.button
+                <button
                   type="button"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleSocialMediaChange('instagram', 'isVisible', !settings.socialMedia.instagram.isVisible)}
-                  className={`px-6 py-4 rounded-2xl font-semibold transition-all duration-200 ${
+                  className={`px-3 py-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${
                     settings.socialMedia.instagram.isVisible 
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' 
-                      : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                      : 'bg-slate-50 text-slate-500 border border-slate-200'
                   }`}
                 >
-                  {settings.socialMedia.instagram.isVisible ? '👁️ Visible' : '🙈 Oculto'}
-                </motion.button>
+                  {settings.socialMedia.instagram.isVisible ? <><FaEye className="text-[9px]" /> Visible</> : <><FaEyeSlash className="text-[9px]" /> Oculto</>}
+                </button>
               </div>
             </div>
 
             {/* TikTok */}
-            <div className="group">
-              <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                <span className="mr-2">🎵</span>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 TikTok
               </label>
-              <div className="flex gap-4">
+              <div className="flex gap-2">
                 <input
                   type="url"
                   value={settings.socialMedia.tiktok.url}
                   onChange={(e) => handleSocialMediaChange('tiktok', 'url', e.target.value)}
                   placeholder="https://tiktok.com/@tu-negocio"
-                  className="flex-1 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                 />
-                <motion.button
+                <button
                   type="button"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => handleSocialMediaChange('tiktok', 'isVisible', !settings.socialMedia.tiktok.isVisible)}
-                  className={`px-6 py-4 rounded-2xl font-semibold transition-all duration-200 ${
+                  className={`px-3 py-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${
                     settings.socialMedia.tiktok.isVisible 
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' 
-                      : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                      : 'bg-slate-50 text-slate-500 border border-slate-200'
                   }`}
                 >
-                  {settings.socialMedia.tiktok.isVisible ? '👁️ Visible' : '🙈 Oculto'}
-                </motion.button>
+                  {settings.socialMedia.tiktok.isVisible ? <><FaEye className="text-[9px]" /> Visible</> : <><FaEyeSlash className="text-[9px]" /> Oculto</>}
+                </button>
               </div>
             </div>
 
             {/* Enlace Extra */}
-            <div className="group">
-              <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                <span className="mr-2">🔗</span>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 Enlace Extra
               </label>
-              <div className="flex gap-4">
+              <div className="flex gap-2">
                 <input
                   type="url"
                   value={settings.extraLink.url}
@@ -584,196 +543,122 @@ const BusinessSettings = () => {
                     extraLink: { ...settings.extraLink, url: e.target.value }
                   })}
                   placeholder="https://tu-sitio-web.com"
-                  className="flex-1 rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300"
+                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                 />
-                <motion.button
+                <button
                   type="button"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                   onClick={() => setSettings({
                     ...settings,
                     extraLink: { ...settings.extraLink, isVisible: !settings.extraLink.isVisible }
                   })}
-                  className={`px-6 py-4 rounded-2xl font-semibold transition-all duration-200 ${
+                  className={`px-3 py-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${
                     settings.extraLink.isVisible 
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg' 
-                      : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg'
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                      : 'bg-slate-50 text-slate-500 border border-slate-200'
                   }`}
                 >
-                  {settings.extraLink.isVisible ? '👁️ Visible' : '🙈 Oculto'}
-                </motion.button>
+                  {settings.extraLink.isVisible ? <><FaEye className="text-[9px]" /> Visible</> : <><FaEyeSlash className="text-[9px]" /> Oculto</>}
+                </button>
               </div>
             </div>
           </div>
-        </motion.div>
-
-        {/* Botón Reparar Configuración */}
-        <div className="flex justify-center pt-4">
-          <motion.button
-            type="button"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={handleFixSchema}
-            className="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold flex items-center space-x-2 shadow-lg"
-          >
-            <span>🔧</span>
-            <span>Reparar Configuración</span>
-          </motion.button>
         </div>
-      </motion.form>
 
-      {/* Modern Logo Preview */}
+        {/* Reparar Configuración */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={handleFixSchema}
+            className="px-4 py-2 text-xs font-medium text-slate-500 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5"
+          >
+            <FaWrench className="text-[10px]" />
+            Reparar Configuración
+          </button>
+        </div>
+      </form>
+
+      {/* Vista Previa del Logo */}
       {previewLogo && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
-        >
-          <div className="text-center">
-            <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <span className="text-xl">👁️</span>
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+            <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
+              <FaImage className="text-[10px] text-slate-500" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-6">Vista Previa del Logo</h3>
-            
-            <div className="flex justify-center">
-              <div className="w-32 h-32 rounded-2xl overflow-hidden border-4 border-gradient-to-r from-blue-500 to-purple-600 shadow-2xl bg-white p-2">
-                <img
-                  src={previewLogo}
-                  alt="Vista previa del logo"
-                  className="w-full h-full object-cover rounded-xl"
-                  onError={(e) => {
-                    e.target.src = 'https://placehold.co/150x150?text=🏪';
-                  }}
-                />
-              </div>
+            <h3 className="text-sm font-bold text-slate-800">Vista Previa del Logo</h3>
+          </div>
+          <div className="p-4 flex justify-center">
+            <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-white">
+              <img
+                src={previewLogo}
+                alt="Vista previa del logo"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.target.src = 'https://placehold.co/150x150?text=Logo';
+                }}
+              />
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
-      {/* Botón Flotante Sticky - Solo visible cuando hay cambios */}
+      {/* Botón Flotante Guardar */}
       <AnimatePresence>
         {hasChanges() && (
           <motion.div
-            initial={{ y: 100, opacity: 0, scale: 0.8 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 100, opacity: 0, scale: 0.8 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
             className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50"
           >
-            <motion.button
+            <button
               type="button"
               onClick={handleSubmit}
               disabled={isSaving}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              className={`
-                relative overflow-hidden
-                px-10 py-5 rounded-full font-bold text-base shadow-2xl
-                flex items-center space-x-3
-                ${
-                  isSaving
-                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:shadow-[0_0_30px_rgba(168,85,247,0.6)]'
-                }
-                text-white transition-all duration-300
-                border-2 border-white/20
-              `}
+              className={`px-6 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors ${
+                isSaving
+                  ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                  : 'bg-slate-800 hover:bg-slate-900 text-white'
+              }`}
             >
-              {/* Efecto de brillo animado */}
-              {!isSaving && (
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                  animate={{ x: ['-100%', '200%'] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                />
+              {isSaving ? (
+                <><FaSyncAlt className="animate-spin text-[10px]" /> Guardando...</>
+              ) : (
+                <><FaSave className="text-[10px]" /> Guardar Cambios</>
               )}
-              
-              <div className="relative flex items-center space-x-3">
-                {isSaving ? (
-                  <>
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="text-xl"
-                    >
-                      ⏳
-                    </motion.div>
-                    <span>Guardando...</span>
-                  </>
-                ) : (
-                  <>
-                    <motion.span
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 0.6, repeat: Infinity }}
-                      className="text-xl"
-                    >
-                      💾
-                    </motion.span>
-                    <span>Guardar Cambios</span>
-                    <motion.div
-                      animate={{ 
-                        scale: [1, 1.5, 1],
-                        opacity: [1, 0.5, 1]
-                      }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                      className="w-2 h-2 bg-red-400 rounded-full"
-                    />
-                  </>
-                )}
-              </div>
-            </motion.button>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Toast de Confirmación Mejorado */}
+      {/* Toast de Confirmación */}
       <AnimatePresence>
         {successMessage && (
           <motion.div
             initial={{ x: 300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 300, opacity: 0 }}
-            className="fixed top-24 right-8 z-50 max-w-sm"
+            className="fixed top-20 right-4 z-50"
           >
-            <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 backdrop-blur-lg">
-              <motion.span
-                animate={{ scale: [1, 1.3, 1] }}
-                transition={{ duration: 0.5 }}
-                className="text-2xl"
-              >
-                ✅
-              </motion.span>
-              <div>
-                <p className="font-bold text-lg">¡Éxito!</p>
-                <p className="text-sm text-green-50">{successMessage}</p>
-              </div>
+            <div className="bg-white border border-emerald-200 px-4 py-3 rounded-xl flex items-center gap-2">
+              <FaCheckCircle className="text-xs text-emerald-500 flex-shrink-0" />
+              <p className="text-xs font-medium text-slate-700">{successMessage}</p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Toast de Error Mejorado */}
+      {/* Toast de Error */}
       <AnimatePresence>
         {error && (
           <motion.div
             initial={{ x: 300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 300, opacity: 0 }}
-            className="fixed top-24 right-8 z-50 max-w-sm"
+            className="fixed top-20 right-4 z-50"
           >
-            <div className="bg-gradient-to-r from-red-500 to-rose-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 backdrop-blur-lg">
-              <motion.span
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 0.5, repeat: 2 }}
-                className="text-2xl"
-              >
-                ❌
-              </motion.span>
-              <div>
-                <p className="font-bold text-lg">Error</p>
-                <p className="text-sm text-red-50">{error}</p>
-              </div>
+            <div className="bg-white border border-red-200 px-4 py-3 rounded-xl flex items-center gap-2">
+              <FaExclamationCircle className="text-xs text-red-500 flex-shrink-0" />
+              <p className="text-xs font-medium text-slate-700">{error}</p>
             </div>
           </motion.div>
         )}
@@ -782,4 +667,4 @@ const BusinessSettings = () => {
   );
 };
 
-export default BusinessSettings; 
+export default BusinessSettings;

@@ -1,56 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaFolderOpen, FaPlus, FaTrash, FaTag, FaAlignLeft, FaGripVertical, FaSave, FaTimes, FaExclamationTriangle, FaCheck, FaSyncAlt, FaBoxOpen } from 'react-icons/fa';
 import api from '../services/api';
 import { useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
 
 const LOCAL_STORAGE_KEY = 'categoryOrderSettings';
 
-// Modern Delete Category Modal
+// Delete Category Modal
 const DeleteCategoryModal = ({ isOpen, onClose, onConfirm, category }) => {
   if (!isOpen) return null;
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl"
-        >
-          <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-2xl">🗑️</span>
-        </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Eliminar Categoría</h2>
-            <p className="text-slate-600">
-              ¿Estás seguro de que deseas eliminar la categoría{' '}
-              <span className="font-bold text-red-600">{category?.name}</span>?{' '}
-              Esta acción no se puede deshacer.
-            </p>
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+      <div
+        className="bg-white rounded-xl p-5 max-w-sm w-full mx-4 shadow-lg border border-slate-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 bg-red-50 rounded-lg flex items-center justify-center">
+            <FaExclamationTriangle className="text-red-500 text-sm" />
           </div>
-          
-          <div className="flex space-x-4">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+          <div>
+            <h2 className="text-sm font-semibold text-slate-800">Eliminar Categoría</h2>
+            <p className="text-xs text-slate-500">Esta acción no se puede deshacer</p>
+          </div>
+        </div>
+        <p className="text-xs text-slate-600 mb-4">
+          ¿Eliminar <span className="font-semibold text-red-600">{category?.name}</span>?
+        </p>
+        <div className="flex gap-2">
+          <button
             onClick={onClose}
-              className="flex-1 px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 font-semibold"
+            className="flex-1 px-3 py-2 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
           >
             Cancelar
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+          </button>
+          <button
             onClick={onConfirm}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold shadow-lg"
+            className="flex-1 px-3 py-2 text-xs font-medium bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
           >
-              Eliminar
-            </motion.button>
+            Eliminar
+          </button>
         </div>
-        </motion.div>
       </div>
-    </AnimatePresence>
+    </div>
   );
 };
 
@@ -243,277 +236,217 @@ const CategorySettings = () => {
   };
 
   if (loading) {
-    return <div className="text-center py-4">Cargando categorías...</div>;
+    return (
+      <div className="flex items-center justify-center py-10 text-sm text-slate-400">
+        <FaSyncAlt className="animate-spin mr-2 text-xs" /> Cargando categorías...
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-          <span className="text-2xl">📂</span>
-        </div>
-        <h2 className="text-3xl font-bold text-slate-900 mb-2">Gestión de Categorías</h2>
-        <p className="text-slate-600">Organiza tu menú por categorías para una mejor experiencia</p>
-      </motion.div>
-      
-      {/* Messages */}
+    <div className="space-y-4">
+      {/* Status messages */}
       <AnimatePresence>
-      {error && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-red-50 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-3 py-2 bg-red-50 text-red-700 text-xs font-medium flex items-center gap-2 rounded-lg border border-red-100"
           >
-            <span className="text-xl">❌</span>
-            <span className="font-medium">{error}</span>
+            <FaExclamationTriangle className="text-[10px]" /> {error}
           </motion.div>
-      )}
-      
-      {successMessage && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-green-50 border-2 border-green-200 text-green-700 px-6 py-4 rounded-2xl flex items-center space-x-3"
+        )}
+        {successMessage && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="px-3 py-2 bg-emerald-50 text-emerald-700 text-xs font-medium flex items-center gap-2 rounded-lg border border-emerald-100"
           >
-            <span className="text-xl">✅</span>
-            <span className="font-medium">{successMessage}</span>
+            <FaCheck className="text-[10px]" /> {successMessage}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Sort Mode Toggle */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex justify-end"
-      >
+      {/* Sort mode toggle */}
+      <div className="flex justify-end">
         {sortMode ? (
-          <div className="flex space-x-3">
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+          <div className="flex gap-2">
+            <button
               onClick={saveOrder}
               disabled={saveLoading}
-              className={`px-6 py-3 ${saveLoading ? 'bg-gray-400' : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'} text-white rounded-2xl font-semibold shadow-lg flex items-center space-x-2 transition-all duration-200`}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors ${
+                saveLoading
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
             >
-              <span>{saveLoading ? '⏳' : '💾'}</span>
-              <span>{saveLoading ? 'Guardando...' : 'Guardar Orden'}</span>
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              <FaSave className="text-[10px]" />
+              {saveLoading ? 'Guardando...' : 'Guardar Orden'}
+            </button>
+            <button
               onClick={() => setSortMode(false)}
               disabled={saveLoading}
-              className="px-6 py-3 border-2 border-slate-300 text-slate-700 rounded-2xl hover:bg-slate-50 hover:border-slate-400 font-semibold transition-all duration-200"
+              className="px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-50 transition-colors"
             >
               Cancelar
-            </motion.button>
+            </button>
           </div>
         ) : (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+          <button
             onClick={() => setSortMode(true)}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl hover:from-blue-600 hover:to-purple-700 font-semibold shadow-lg flex items-center space-x-2 transition-all duration-200"
+            className="px-3 py-1.5 text-xs font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-1.5"
           >
-            <span>🔄</span>
-            <span>Reordenar Categorías</span>
-          </motion.button>
+            <FaGripVertical className="text-[10px]" />
+            Reordenar Categorías
+          </button>
         )}
-      </motion.div>
+      </div>
 
       {sortMode ? (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-8 border border-blue-200"
-        >
-          <div className="text-center mb-6">
-            <span className="text-3xl mb-2 block">🔄</span>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Reordenar Categorías</h3>
-            <p className="text-slate-600">
-            Arrastra y suelta las categorías para cambiar su orden de aparición en el menú
-          </p>
+        /* Reorder mode */
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+            <FaGripVertical className="text-blue-500 text-sm" />
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800">Reordenar Categorías</h3>
+              <p className="text-[11px] text-slate-500">Arrastra para cambiar el orden en el menú</p>
+            </div>
           </div>
-          
-          <div className="space-y-3">
+          <div className="p-2 space-y-1">
             {categories.map((category, index) => (
-              <motion.div
+              <div
                 key={category._id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
                 draggable
                 onDragStart={(e) => handleDragStart(e, index)}
                 onDragOver={(e) => handleDragOver(e, index)}
                 onDragEnd={handleDragEnd}
-                className="p-6 bg-white rounded-2xl border-2 border-blue-200 cursor-move hover:border-blue-300 hover:shadow-lg transition-all duration-200 group"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-grab active:cursor-grabbing hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-lg">{category.name}</h4>
-                    {category.description && (
-                      <p className="text-slate-600 mt-1">{category.description}</p>
-                    )}
-                    <p className="text-sm text-blue-600 font-medium mt-2">Orden: {index + 1}</p>
-                  </div>
-                  <div className="text-blue-400 group-hover:text-blue-600 transition-colors">
-                    <span className="text-2xl">⋮⋮</span>
-                  </div>
+                <FaGripVertical className="text-slate-300 text-[10px] flex-shrink-0" />
+                <span className="bg-blue-50 text-blue-600 font-semibold text-[10px] w-5 h-5 rounded flex items-center justify-center flex-shrink-0">
+                  {index + 1}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium text-slate-700 truncate block">{category.name}</span>
+                  {category.description && (
+                    <span className="text-[11px] text-slate-400 truncate block">{category.description}</span>
+                  )}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
-        </motion.div>
+        </div>
       ) : (
         <>
-          {/* Modern Category Form */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
-          >
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <span className="text-2xl">✨</span>
+          {/* Create category form */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              <FaPlus className="text-blue-500 text-sm" />
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Nueva Categoría</h3>
+                <p className="text-[11px] text-slate-500">Crea una nueva categoría para organizar tus productos</p>
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">Nueva Categoría</h3>
-              <p className="text-slate-600">Crea una nueva categoría para organizar tus productos</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">🏷️</span>
+            <form onSubmit={handleSubmit} className="p-4 space-y-3">
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
+                  <FaTag className="text-[10px] text-slate-400" />
                   Nombre de la Categoría
                 </label>
                 <input
                   type="text"
                   value={newCategory.name}
                   onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 text-lg transition-all duration-200 group-hover:border-slate-300"
+                  className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-400 px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
                   placeholder="Ej: Hamburguesas, Bebidas, Postres..."
                   required
                 />
               </div>
-              
-              <div className="group">
-                <label className="flex items-center text-sm font-semibold text-slate-700 mb-3">
-                  <span className="mr-2">📝</span>
+
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 mb-1.5">
+                  <FaAlignLeft className="text-[10px] text-slate-400" />
                   Descripción
                 </label>
                 <textarea
                   value={newCategory.description}
                   onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                  className="w-full rounded-2xl border-2 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-6 py-4 transition-all duration-200 group-hover:border-slate-300 resize-none"
-                  rows="3"
+                  className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-400 px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors resize-none"
+                  rows="2"
                   placeholder="Descripción opcional de la categoría..."
                 />
               </div>
-              
-              <motion.button
-                type="submit"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full bg-gradient-to-r from-green-500 to-blue-600 text-white py-4 rounded-2xl hover:from-green-600 hover:to-blue-700 transition-all duration-200 font-semibold shadow-xl flex items-center justify-center space-x-2"
-              >
-                <span>✨</span>
-                <span>Crear Categoría</span>
-              </motion.button>
-            </form>
-          </motion.div>
 
-          {/* Modern Categories List */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="space-y-6"
-          >
-            <div className="text-center">
-              <h3 className="text-2xl font-bold text-slate-900 mb-2">Categorías Existentes</h3>
-              <p className="text-slate-600">Gestiona las categorías de tu menú</p>
-            </div>
-            
-            {categories.length === 0 ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-12 bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl border-2 border-dashed border-slate-300"
+              <button
+                type="submit"
+                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-xs font-semibold flex items-center justify-center gap-1.5"
               >
-                <span className="text-4xl mb-4 block">📂</span>
-                <h4 className="text-xl font-semibold text-slate-700 mb-2">No hay categorías</h4>
-                <p className="text-slate-500">Crea tu primera categoría para organizar tu menú</p>
-              </motion.div>
-            ) : (
-              <div className="grid gap-6">
-              {categories.map((category, index) => {
-                // Obtener el orden guardado para esta categoría
-                const orderMap = getSavedOrder();
-                const displayOrder = orderMap[category._id] !== undefined ? orderMap[category._id] + 1 : 'No definido';
-                
-                return (
-                    <motion.div
-                    key={category._id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                      className="group bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-lg border border-slate-200/50 overflow-hidden hover:shadow-xl transition-all duration-300"
-                    >
-                      <div className="p-6">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-3 mb-3">
-                              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <span className="text-xl">📂</span>
-                              </div>
-                    <div>
-                                <h4 className="text-xl font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-                                  {category.name}
-                                </h4>
-                                <p className="text-sm text-blue-600 font-medium">
-                                  Orden: {displayOrder}
-                                </p>
-                              </div>
-                            </div>
-                            
-                      {category.description && (
-                              <p className="text-slate-600 leading-relaxed">
-                                {category.description}
-                              </p>
-                      )}
-                    </div>
-                          
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                      onClick={() => handleDelete(category._id)}
-                            className="ml-4 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl hover:from-red-600 hover:to-red-700 transition-all duration-200 font-semibold shadow-lg flex items-center space-x-2"
-                          >
-                            <span>🗑️</span>
-                            <span>Eliminar</span>
-                          </motion.button>
-                        </div>
-                  </div>
-                      
-                      {/* Hover Effect Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
-                    </motion.div>
-                );
-              })}
+                <FaPlus className="text-[10px]" />
+                Crear Categoría
+              </button>
+            </form>
+          </div>
+
+          {/* Existing categories list */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              <FaFolderOpen className="text-blue-500 text-sm" />
+              <div>
+                <h3 className="text-sm font-semibold text-slate-800">Categorías Existentes</h3>
+                <p className="text-[11px] text-slate-500">Gestiona las categorías de tu menú</p>
+              </div>
             </div>
+
+            {categories.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <FaBoxOpen className="text-2xl text-slate-300 mb-2" />
+                <p className="text-sm text-slate-500 font-medium">Sin categorías</p>
+                <p className="text-xs text-slate-400 mt-1">Crea tu primera categoría para organizar tu menú</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {categories.map((category) => {
+                  const orderMap = getSavedOrder();
+                  const displayOrder = orderMap[category._id] !== undefined ? orderMap[category._id] + 1 : '—';
+
+                  return (
+                    <div
+                      key={category._id}
+                      className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <FaFolderOpen className="text-blue-500 text-xs" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-xs font-semibold text-slate-800 truncate">{category.name}</h4>
+                          {category.description && (
+                            <p className="text-[11px] text-slate-400 truncate">{category.description}</p>
+                          )}
+                        </div>
+                        <span className="bg-slate-100 text-slate-500 text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0">
+                          #{displayOrder}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleDelete(category._id)}
+                        className="ml-3 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                        title="Eliminar"
+                      >
+                        <FaTrash className="text-xs" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             )}
-          </motion.div>
+          </div>
         </>
       )}
+
       <DeleteCategoryModal
         isOpen={showDeleteModal}
         onClose={() => { setShowDeleteModal(false); setCategoryToDelete(null); }}
@@ -524,4 +457,4 @@ const CategorySettings = () => {
   );
 };
 
-export default CategorySettings; 
+export default CategorySettings;

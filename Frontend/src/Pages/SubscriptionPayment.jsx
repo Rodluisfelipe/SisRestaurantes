@@ -14,7 +14,11 @@ import {
   FaExclamationTriangle,
   FaCalendarAlt,
   FaMobile,
-  FaWallet
+  FaWallet,
+  FaSyncAlt,
+  FaTag,
+  FaInfoCircle,
+  FaChevronRight
 } from 'react-icons/fa';
 
 const SubscriptionPayment = () => {
@@ -368,8 +372,8 @@ const SubscriptionPayment = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center h-40 text-sm text-slate-400">
+        <FaSyncAlt className="animate-spin mr-2 text-xs" /> Cargando...
       </div>
     );
   }
@@ -377,188 +381,160 @@ const SubscriptionPayment = () => {
   const subStatus = getSubscriptionStatus();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Estado de Suscripción */}
       {subscription && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`p-6 rounded-lg border-2 ${
-            subStatus?.color === 'red' 
-              ? 'bg-red-50 border-red-200'
-              : subStatus?.color === 'yellow'
-              ? 'bg-yellow-50 border-yellow-200'
-              : 'bg-green-50 border-green-200'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">
-                Estado de Suscripción
-              </h3>
-              <p className={`text-sm font-medium ${
-                subStatus?.color === 'red' ? 'text-red-700' :
-                subStatus?.color === 'yellow' ? 'text-yellow-700' :
-                'text-green-700'
-              }`}>
-                {subStatus?.text}
+        <div className={`rounded-xl border p-3 flex items-center justify-between ${
+          subStatus?.color === 'red'
+            ? 'bg-red-50 border-red-200'
+            : subStatus?.color === 'yellow'
+            ? 'bg-amber-50 border-amber-200'
+            : 'bg-emerald-50 border-emerald-200'
+        }`}>
+          <div>
+            <p className={`text-xs font-bold ${
+              subStatus?.color === 'red' ? 'text-red-700' :
+              subStatus?.color === 'yellow' ? 'text-amber-700' :
+              'text-emerald-700'
+            }`}>
+              {subStatus?.text}
+            </p>
+            {subscription.periodEnd && (
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                {subStatus?.status === 'grace' && subscription.graceDaysRemaining > 0 ? (
+                  <>Período de gracia: {subscription.graceDaysRemaining} días restantes</>
+                ) : (
+                  <>Vence: {new Date(subscription.periodEnd).toLocaleDateString('es-CO')}</>
+                )}
               </p>
-              {subscription.periodEnd && (
-                <p className="text-sm text-gray-600 mt-1">
-                  {subStatus?.status === 'grace' && subscription.graceDaysRemaining > 0 ? (
-                    <>Período de gracia: {subscription.graceDaysRemaining} días restantes</>
-                  ) : (
-                    <>Vence: {new Date(subscription.periodEnd).toLocaleDateString('es-CO')}</>
-                  )}
-                </p>
-              )}
-            </div>
-            <FaCalendarAlt className={`text-3xl ${
-              subStatus?.color === 'red' ? 'text-red-500' :
-              subStatus?.color === 'yellow' ? 'text-yellow-500' :
-              'text-green-500'
-            }`} />
+            )}
           </div>
-        </motion.div>
+          <FaCalendarAlt className={`text-sm ${
+            subStatus?.color === 'red' ? 'text-red-400' :
+            subStatus?.color === 'yellow' ? 'text-amber-400' :
+            'text-emerald-400'
+          }`} />
+        </div>
       )}
 
       {/* Formulario de Pago */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-lg shadow-lg p-6"
-      >
-        <h2 className="text-2xl font-bold text-gray-800 mb-6">
-          Renovar Suscripción
-        </h2>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h2 className="text-sm font-bold text-slate-800">Renovar Suscripción</h2>
+          <p className="text-[10px] text-slate-400 mt-0.5">Selecciona la duración</p>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
           {/* Selector de Meses */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Selecciona la duración
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[1, 3, 6, 12].map(months => {
-                const savings = calculateSavings(months);
-                const isSelected = formData.monthsPurchased === months;
-                const totalDiscount = getTotalDiscount(months);
-                return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {[1, 3, 6, 12].map(months => {
+              const savings = calculateSavings(months);
+              const isSelected = formData.monthsPurchased === months;
+              const totalDiscount = getTotalDiscount(months);
+              return (
                 <button
                   key={months}
                   type="button"
                   onClick={() => handleMonthsChange(months)}
-                    className={`p-4 rounded-lg border-2 transition-all relative ${
-                      isSelected
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 hover:border-gray-300'
+                  className={`relative p-3 rounded-lg border-2 transition-all text-center ${
+                    isSelected
+                      ? 'border-slate-800 bg-slate-50'
+                      : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                    {/* Badge de descuento siempre visible */}
-                    <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-md">
-                      -${totalDiscount.toLocaleString('es-CO')}
-                    </div>
-                    
-                  <div className="font-bold text-lg">{months}</div>
-                  <div className="text-xs text-gray-600">
-                    {months === 1 ? 'mes' : 'meses'}
+                  <div className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                    -${totalDiscount.toLocaleString('es-CO')}
                   </div>
-                    <div className="mt-2">
-                      {PRICING_BASE[months] !== PRICING[months] && (
-                        <div className="text-xs text-gray-400 line-through mb-1">
-                          ${PRICING_BASE[months].toLocaleString('es-CO')}
-                        </div>
-                      )}
-                      <div className="text-sm font-semibold text-green-600">
-                    ${PRICING[months].toLocaleString('es-CO')}
-                  </div>
-                    </div>
-                    
-                    {/* Mostrar ahorro si es mayor a 0 */}
-                    {savings > 0 && (
-                      <div className="mt-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">
-                        💰 Ahorras ${savings.toLocaleString('es-CO')}
+                  <div className="text-lg font-bold text-slate-800">{months}</div>
+                  <div className="text-[10px] text-slate-400">{months === 1 ? 'mes' : 'meses'}</div>
+                  <div className="mt-1.5">
+                    {PRICING_BASE[months] !== PRICING[months] && (
+                      <div className="text-[10px] text-slate-300 line-through">
+                        ${PRICING_BASE[months].toLocaleString('es-CO')}
                       </div>
                     )}
-                </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Monto */}
-          <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border-2 border-green-200">
-            <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-700 font-medium">Total a Pagar:</span>
-                <div className="text-right">
-                  {PRICING_BASE[formData.monthsPurchased] !== formData.amount && (
-                      <div className="text-sm text-gray-400 line-through mb-1">
-                        ${PRICING_BASE[formData.monthsPurchased].toLocaleString('es-CO')}
-                      </div>
-                    )}
-                  <span className="text-2xl font-bold text-green-600">
-                ${formData.amount.toLocaleString('es-CO')} COP
-              </span>
-            </div>
-          </div>
-              
-              {/* Mostrar descuentos aplicados */}
-              <div className="flex items-center justify-between pt-2 border-t border-green-200">
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600 font-semibold text-sm">✓ Descuento pago manual:</span>
-                    <span className="text-green-700 font-bold">-${PAYMENT_DISCOUNT.toLocaleString('es-CO')}</span>
+                    <div className="text-xs font-bold text-emerald-600">
+                      ${PRICING[months].toLocaleString('es-CO')}
+                    </div>
                   </div>
-                  {VOLUME_DISCOUNTS[formData.monthsPurchased] > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-600 font-semibold text-sm">✓ Descuento por volumen:</span>
-                      <span className="text-green-700 font-bold">-${VOLUME_DISCOUNTS[formData.monthsPurchased].toLocaleString('es-CO')}</span>
+                  {savings > 0 && (
+                    <div className="mt-1 text-[9px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-semibold">
+                      Ahorras ${savings.toLocaleString('es-CO')}
                     </div>
                   )}
-                </div>
-                {calculateSavings(formData.monthsPurchased) > 0 && (
-                  <div className="flex items-center gap-1 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
-                    <span>💰</span>
-                    <span>Ahorras ${calculateSavings(formData.monthsPurchased).toLocaleString('es-CO')}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Monto Total */}
+          <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-medium text-slate-500">Total a Pagar:</span>
+              <div className="text-right">
+                {PRICING_BASE[formData.monthsPurchased] !== formData.amount && (
+                  <div className="text-[10px] text-slate-300 line-through">
+                    ${PRICING_BASE[formData.monthsPurchased].toLocaleString('es-CO')}
                   </div>
                 )}
+                <span className="text-base font-bold text-slate-800">
+                  ${formData.amount.toLocaleString('es-CO')} COP
+                </span>
               </div>
+            </div>
+            
+            {/* Descuentos aplicados */}
+            <div className="mt-2 pt-2 border-t border-slate-200 space-y-1">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-emerald-600 font-medium flex items-center gap-1">
+                  <FaCheckCircle className="text-[8px]" /> Descuento pago manual
+                </span>
+                <span className="text-emerald-700 font-bold">-${PAYMENT_DISCOUNT.toLocaleString('es-CO')}</span>
+              </div>
+              {VOLUME_DISCOUNTS[formData.monthsPurchased] > 0 && (
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-emerald-600 font-medium flex items-center gap-1">
+                    <FaCheckCircle className="text-[8px]" /> Descuento por volumen
+                  </span>
+                  <span className="text-emerald-700 font-bold">-${VOLUME_DISCOUNTS[formData.monthsPurchased].toLocaleString('es-CO')}</span>
+                </div>
+              )}
+              {calculateSavings(formData.monthsPurchased) > 0 && (
+                <div className="flex justify-end mt-1">
+                  <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded font-semibold">
+                    Ahorras ${calculateSavings(formData.monthsPurchased).toLocaleString('es-CO')}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Aviso de ahorro adicional */}
+          {/* Tip de ahorro */}
           {formData.monthsPurchased === 1 && (
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-semibold text-blue-800 mb-1">
-                    💡 ¡Ahorra más pagando por adelantado!
-                  </h3>
-                  <div className="text-sm text-blue-700 space-y-1">
-                    <p>• <strong>3 meses:</strong> ${PRICING[3].toLocaleString('es-CO')} (descuento total de ${getTotalDiscount(3).toLocaleString('es-CO')}) - Ahorras ${calculateSavings(3).toLocaleString('es-CO')} vs. mensual</p>
-                    <p>• <strong>6 meses:</strong> ${PRICING[6].toLocaleString('es-CO')} (descuento total de ${getTotalDiscount(6).toLocaleString('es-CO')}) - Ahorras ${calculateSavings(6).toLocaleString('es-CO')} vs. mensual</p>
-                    <p>• <strong>12 meses:</strong> ${PRICING[12].toLocaleString('es-CO')} (descuento total de ${getTotalDiscount(12).toLocaleString('es-CO')}) - Ahorras ${calculateSavings(12).toLocaleString('es-CO')} vs. mensual</p>
+            <div className="bg-slate-50 rounded-lg border border-slate-200 p-3">
+              <div className="flex items-start gap-2">
+                <FaInfoCircle className="text-xs text-slate-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-[11px] font-semibold text-slate-700 mb-1">Ahorra mas pagando por adelantado</p>
+                  <div className="text-[10px] text-slate-500 space-y-0.5">
+                    <p><strong>3 meses:</strong> ${PRICING[3].toLocaleString('es-CO')} (-${getTotalDiscount(3).toLocaleString('es-CO')})</p>
+                    <p><strong>6 meses:</strong> ${PRICING[6].toLocaleString('es-CO')} (-${getTotalDiscount(6).toLocaleString('es-CO')})</p>
+                    <p><strong>12 meses:</strong> ${PRICING[12].toLocaleString('es-CO')} (-${getTotalDiscount(12).toLocaleString('es-CO')})</p>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Método de Pago */}
+          {/* Metodo de Pago */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Método de Pago
+            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+              Metodo de Pago
             </label>
             <select
               value={formData.paymentMethod}
               onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
             >
               {PAYMENT_METHODS.map(method => (
                 <option key={method.value} value={method.value}>
@@ -567,41 +543,36 @@ const SubscriptionPayment = () => {
               ))}
             </select>
             
-            {/* Información del método seleccionado */}
-            <div className="mt-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            {/* Info del metodo seleccionado */}
+            <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
               {(() => {
                 const selectedMethod = PAYMENT_METHODS.find(m => m.value === formData.paymentMethod);
                 return (
-                  <>
+                  <div className="space-y-1.5">
                     {selectedMethod?.logo && (
-                      <div className="mb-3 flex justify-center">
+                      <div className="flex justify-center mb-2">
                         <img 
                           src={selectedMethod.logo} 
                           alt={selectedMethod.label}
-                          className="h-12 object-contain"
-                          onError={(e) => {
-                            e.target.style.display = 'none';
-                          }}
+                          className="h-8 object-contain"
+                          onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       </div>
                     )}
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold text-gray-800">
-                        {selectedMethod?.label}
+                    <p className="text-xs font-semibold text-slate-700">{selectedMethod?.label}</p>
+                    <p className="text-[11px] text-slate-600">
+                      <span className="font-medium">Numero:</span> {selectedMethod?.details?.replace('Numero: ', '')}
+                    </p>
+                    {selectedMethod?.code && (
+                      <p className="text-[11px] text-slate-600">
+                        <span className="font-medium">Llave:</span>{' '}
+                        <span className="font-mono bg-white px-1.5 py-0.5 rounded text-[10px] border border-slate-200">{selectedMethod.code}</span>
                       </p>
-                      <p className="text-sm text-gray-700">
-                        <strong>Número:</strong> {selectedMethod?.details?.replace('Número: ', '')}
-                      </p>
-                      {selectedMethod?.code && (
-                        <p className="text-sm text-gray-700">
-                          <strong>Llave:</strong> <span className="font-mono bg-white px-2 py-1 rounded">{selectedMethod.code}</span>
-                        </p>
-                      )}
-                      <p className="text-xs text-gray-600 mt-2 italic">
-                        Realiza el pago y luego sube el comprobante
-                      </p>
-                    </div>
-                  </>
+                    )}
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Realiza el pago y luego sube el comprobante
+                    </p>
+                  </div>
                 );
               })()}
             </div>
@@ -609,169 +580,137 @@ const SubscriptionPayment = () => {
 
           {/* Subir Comprobante */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
               Comprobante de Pago *
             </label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg hover:border-gray-400 transition-colors">
-              <div className="space-y-1 text-center">
-                <FaUpload className="mx-auto h-12 w-12 text-gray-400" />
-                <div className="flex text-sm text-gray-600">
-                  <label htmlFor="proof-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500">
-                    <span>Subir archivo</span>
-                    <input
-                      id="proof-upload"
-                      name="proof-upload"
-                      type="file"
-                      className="sr-only"
-                      accept="image/jpeg,image/jpg,image/png,application/pdf"
-                      onChange={handleFileChange}
-                    />
-                  </label>
-                  <p className="pl-1">o arrastra y suelta</p>
-                </div>
-                <p className="text-xs text-gray-500">
-                  PNG, JPG, PDF hasta 5MB
-                </p>
-                {formData.proof && (
-                  <p className="text-sm text-green-600 mt-2">
-                    ✓ {formData.proof.name}
-                  </p>
-                )}
+            <div className="flex items-center gap-3 p-3 border border-dashed border-slate-300 rounded-lg hover:border-slate-400 transition-colors">
+              <div className="w-9 h-9 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <FaUpload className="text-slate-400 text-xs" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <label htmlFor="proof-upload" className="text-xs font-medium text-slate-700 cursor-pointer hover:text-slate-900">
+                  {formData.proof ? (
+                    <span className="text-emerald-600 flex items-center gap-1">
+                      <FaCheckCircle className="text-[10px]" /> {formData.proof.name}
+                    </span>
+                  ) : (
+                    'Subir archivo'
+                  )}
+                  <input
+                    id="proof-upload"
+                    name="proof-upload"
+                    type="file"
+                    className="sr-only"
+                    accept="image/jpeg,image/jpg,image/png,application/pdf"
+                    onChange={handleFileChange}
+                  />
+                </label>
+                <p className="text-[10px] text-slate-400">PNG, JPG, PDF hasta 5MB</p>
               </div>
             </div>
             {errors.proof && (
-              <p className="mt-2 text-sm text-red-600">{errors.proof}</p>
+              <p className="mt-1 text-[11px] text-red-500">{errors.proof}</p>
             )}
           </div>
 
-          {/* Botón Enviar */}
+          {/* Boton Enviar */}
           <button
             type="submit"
             disabled={submitting || !formData.proof}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 disabled:transform-none"
+            className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white text-xs font-semibold rounded-lg transition-colors"
           >
             {submitting ? 'Enviando...' : 'Enviar Comprobante'}
           </button>
         </form>
-      </motion.div>
+      </div>
 
       {/* Historial de Solicitudes */}
       {paymentRequests.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-lg p-6"
-        >
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            Mis Solicitudes de Pago
-          </h2>
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h2 className="text-sm font-bold text-slate-800">Mis Solicitudes de Pago</h2>
+          </div>
           
-          <div className="space-y-4">
+          <div className="divide-y divide-slate-100">
             {paymentRequests.map((request) => {
               const badge = getStatusBadge(request.status);
               const BadgeIcon = badge.icon;
               
               return (
-                <div
-                  key={request._id}
-                  className="p-4 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
-                >
+                <div key={request._id} className="px-4 py-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <BadgeIcon className={`text-${badge.color}-500`} />
-                        <span className={`text-sm font-semibold text-${badge.color}-700`}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <BadgeIcon className={`text-xs text-${badge.color}-500`} />
+                        <span className={`text-xs font-semibold text-${badge.color}-700`}>
                           {badge.text}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600">
-                        {request.monthsPurchased} {request.monthsPurchased === 1 ? 'mes' : 'meses'} • 
-                        ${request.amount?.toLocaleString('es-CO')} • 
+                      <p className="text-[11px] text-slate-500">
+                        {request.monthsPurchased} {request.monthsPurchased === 1 ? 'mes' : 'meses'} | 
+                        ${request.amount?.toLocaleString('es-CO')} | 
                         {request.paymentMethod}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-[10px] text-slate-400 mt-0.5">
                         {new Date(request.createdAt).toLocaleString('es-CO')}
                       </p>
                       {request.status === 'rejected' && request.rejectionReason && (
-                        <div className="mt-2 p-2 bg-red-50 rounded text-sm text-red-700">
-                          <strong>Motivo:</strong> {request.rejectionReason}
+                        <div className="mt-1.5 p-2 bg-red-50 rounded text-[11px] text-red-600">
+                          <span className="font-medium">Motivo:</span> {request.rejectionReason}
                         </div>
                       )}
                     </div>
+                    <FaChevronRight className="text-[10px] text-slate-300 flex-shrink-0" />
                   </div>
                 </div>
               );
             })}
           </div>
-        </motion.div>
+        </div>
       )}
 
-      {/* Modal de éxito */}
+      {/* Modal de exito */}
       <AnimatePresence>
         {showSuccessModal && (
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
             onClick={() => setShowSuccessModal(false)}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
+              exit={{ opacity: 0, scale: 0.95 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative overflow-hidden"
+              className="bg-white rounded-xl border border-slate-200 max-w-sm w-full p-5"
             >
-            {/* Decoración de fondo */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 rounded-full -mr-16 -mt-16 opacity-50"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-100 rounded-full -ml-12 -mb-12 opacity-50"></div>
-            
-            <div className="relative z-10">
-              {/* Icono de éxito animado */}
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", duration: 0.5 }}
-                className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4"
-              >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring", duration: 0.5 }}
-                >
-                  <FaCheckCircle className="text-green-500 text-5xl" />
-                </motion.div>
-              </motion.div>
-              
-              {/* Título */}
-              <h3 className="text-2xl font-bold text-gray-800 text-center mb-2">
-                ¡Solicitud Enviada!
-              </h3>
-              
-              {/* Mensaje */}
-              <p className="text-gray-600 text-center mb-6">
-                Tu solicitud de pago ha sido enviada correctamente. Será revisada por nuestro equipo y recibirás una notificación cuando sea procesada.
-              </p>
-              
-              {/* Información adicional */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <div className="flex items-start space-x-3">
-                  <FaClock className="text-blue-500 mt-1 flex-shrink-0" />
-                  <div className="text-sm text-blue-800">
-                    <p className="font-semibold mb-1">Tiempo estimado de revisión:</p>
-                    <p>Tu solicitud será revisada en un plazo máximo de 24 horas.</p>
+              <div className="text-center">
+                <div className="mx-auto w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mb-3">
+                  <FaCheckCircle className="text-emerald-500 text-lg" />
+                </div>
+                
+                <h3 className="text-sm font-bold text-slate-800 mb-1">Solicitud Enviada</h3>
+                <p className="text-[11px] text-slate-500 mb-4">
+                  Tu solicitud sera revisada por nuestro equipo. Recibiras una notificacion cuando sea procesada.
+                </p>
+                
+                <div className="bg-slate-50 rounded-lg border border-slate-200 p-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <FaClock className="text-xs text-slate-400 flex-shrink-0" />
+                    <p className="text-[11px] text-slate-600">
+                      <span className="font-medium">Tiempo estimado:</span> maximo 24 horas
+                    </p>
                   </div>
                 </div>
+                
+                <button
+                  onClick={() => setShowSuccessModal(false)}
+                  className="w-full py-2 px-4 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-lg transition-colors"
+                >
+                  Entendido
+                </button>
               </div>
-              
-              {/* Botón de cierre */}
-              <button
-                onClick={() => setShowSuccessModal(false)}
-                className="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                Entendido
-              </button>
-            </div>
-          </motion.div>
-        </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

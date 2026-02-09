@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
 import { logSystem } from '../utils/systemLogger';
+import {
+  FaClipboardList, FaDollarSign, FaChartBar, FaHamburger,
+  FaCalendarDay, FaHistory, FaSync, FaSearch,
+  FaTrophy, FaLightbulb, FaTruck, FaChair, FaShoppingBag,
+  FaUser, FaPhone, FaMapMarkerAlt, FaTimes, FaEye,
+  FaFileInvoiceDollar, FaInfoCircle, FaArrowUp, FaArrowDown
+} from 'react-icons/fa';
 
 function EnhancedCompletedOrders() {
   const [completedOrders, setCompletedOrders] = useState([]);
@@ -25,7 +32,7 @@ function EnhancedCompletedOrders() {
   const [searchTerm, setSearchTerm] = useState('');
   const [generatingReport, setGeneratingReport] = useState(false);
   const [showNoOrdersModal, setShowNoOrdersModal] = useState(false);
-  const [viewMode, setViewMode] = useState('today'); // 'today' or 'all'
+  const [viewMode, setViewMode] = useState('today');
   const [topSellingItems, setTopSellingItems] = useState([]);
   const [insights, setInsights] = useState([]);
 
@@ -88,10 +95,10 @@ function EnhancedCompletedOrders() {
     
     // Insight 1: Total sales performance
     if (stats.totalSales > 0) {
-      if (stats.totalSales > 1000000) { // > $1M COP
+      if (stats.totalSales > 1000000) {
         newInsights.push({
           type: 'success',
-          icon: '🎉',
+          icon: 'trophy',
           title: '¡Excelente día!',
           message: `Has generado $${stats.totalSales.toLocaleString()} en ventas. ¡Sigue así!`,
           recommendation: 'Considera ofrecer promociones especiales para mantener este momentum.'
@@ -99,7 +106,7 @@ function EnhancedCompletedOrders() {
       } else if (stats.totalSales > 500000) { // > $500K COP
         newInsights.push({
           type: 'good',
-          icon: '👍',
+          icon: 'up',
           title: 'Buen día de ventas',
           message: `Has generado $${stats.totalSales.toLocaleString()} en ventas.`,
           recommendation: 'Podrías mejorar promocionando tus productos más populares.'
@@ -107,7 +114,7 @@ function EnhancedCompletedOrders() {
       } else {
         newInsights.push({
           type: 'info',
-          icon: '💡',
+          icon: 'lightbulb',
           title: 'Oportunidad de mejora',
           message: `Has generado $${stats.totalSales.toLocaleString()} en ventas.`,
           recommendation: 'Considera ofrecer combos o promociones para aumentar el ticket promedio.'
@@ -122,7 +129,7 @@ function EnhancedCompletedOrders() {
       if (deliveryPercentage > 60) {
         newInsights.push({
           type: 'info',
-          icon: '🚚',
+          icon: 'truck',
           title: 'Alto volumen de delivery',
           message: `${deliveryPercentage.toFixed(1)}% de tus pedidos son a domicilio.`,
           recommendation: 'Considera optimizar tus rutas de delivery o implementar un sistema de delivery propio.'
@@ -135,7 +142,7 @@ function EnhancedCompletedOrders() {
     if (avgOrderValue > 50000) {
       newInsights.push({
         type: 'success',
-        icon: '💰',
+        icon: 'dollar',
         title: 'Ticket promedio excelente',
         message: `Tu ticket promedio es de $${avgOrderValue.toLocaleString()}.`,
         recommendation: '¡Excelente! Los clientes están comprando productos de alto valor.'
@@ -143,7 +150,7 @@ function EnhancedCompletedOrders() {
     } else if (avgOrderValue < 25000) {
       newInsights.push({
         type: 'warning',
-        icon: '📈',
+        icon: 'chart',
         title: 'Oportunidad de aumentar ticket promedio',
         message: `Tu ticket promedio es de $${avgOrderValue.toLocaleString()}.`,
         recommendation: 'Ofrece combos, bebidas o postres para aumentar el valor por pedido.'
@@ -155,7 +162,7 @@ function EnhancedCompletedOrders() {
       const topItem = topSellingItems[0];
       newInsights.push({
         type: 'success',
-        icon: '🏆',
+        icon: 'trophy',
         title: 'Producto estrella',
         message: `"${topItem.name}" es tu producto más vendido con ${topItem.count} unidades.`,
         recommendation: 'Asegúrate de tener suficiente stock y considera crear variaciones de este producto.'
@@ -168,7 +175,7 @@ function EnhancedCompletedOrders() {
     if (hour >= 12 && hour <= 14) {
       newInsights.push({
         type: 'info',
-        icon: '🍽️',
+        icon: 'food',
         title: 'Hora pico del almuerzo',
         message: 'Estás en la hora pico del almuerzo.',
         recommendation: 'Asegúrate de tener suficiente personal y productos preparados.'
@@ -176,7 +183,7 @@ function EnhancedCompletedOrders() {
     } else if (hour >= 18 && hour <= 20) {
       newInsights.push({
         type: 'info',
-        icon: '🌅',
+        icon: 'food',
         title: 'Hora pico de la cena',
         message: 'Estás en la hora pico de la cena.',
         recommendation: 'Prepara tu cocina para el aumento de pedidos.'
@@ -264,114 +271,103 @@ function EnhancedCompletedOrders() {
     
     const formattedDate = selectedOrder.completedAt 
       ? new Date(selectedOrder.completedAt).toLocaleString('es-ES', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+          year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
         })
       : new Date(selectedOrder.createdAt).toLocaleString('es-ES', {
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
+          year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
         });
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
-            <div className="flex items-start justify-between mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Detalles del Pedido #{selectedOrder.orderNumber}
-                </h2>
-                <p className="mt-1 text-gray-600">
-                  {formattedDate}
-                </p>
+      <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
+          {/* Modal header */}
+          <div className="flex items-center justify-between p-4 border-b border-slate-100">
+            <div>
+              <h2 className="text-base font-bold text-slate-900">
+                Pedido #{selectedOrder.orderNumber}
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">{formattedDate}</p>
+            </div>
+            <button
+              onClick={() => { setSelectedOrder(null); setOrderDetails(null); }}
+              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <FaTimes className="text-sm" />
+            </button>
+          </div>
+
+          <div className="p-4 space-y-4">
+            {/* Customer info */}
+            <div className="bg-slate-50 rounded-lg p-3">
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Cliente</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex items-center gap-2 text-slate-700">
+                  <FaUser className="text-slate-400 text-xs" />
+                  <span>{selectedOrder.customerName || 'No especificado'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-slate-700">
+                  <FaPhone className="text-slate-400 text-xs" />
+                  <span>{selectedOrder.phone || 'No especificado'}</span>
+                </div>
+                {selectedOrder.orderType === 'delivery' && (
+                  <div className="col-span-2 flex items-center gap-2 text-slate-700">
+                    <FaMapMarkerAlt className="text-slate-400 text-xs" />
+                    <span>{selectedOrder.address}</span>
+                  </div>
+                )}
+                {selectedOrder.tableNumber && (
+                  <div className="flex items-center gap-2 text-slate-700">
+                    <FaChair className="text-slate-400 text-xs" />
+                    <span>Mesa #{selectedOrder.tableNumber}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    selectedOrder.orderType === 'delivery' ? 'bg-purple-100 text-purple-700' :
+                    selectedOrder.orderType === 'takeaway' ? 'bg-amber-100 text-amber-700' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    {selectedOrder.orderType === 'delivery' ? 'Delivery' :
+                     selectedOrder.orderType === 'takeaway' ? 'Para llevar' : 'En sitio'}
+                  </span>
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  setSelectedOrder(null);
-                  setOrderDetails(null);
-                }}
-                className="text-gray-400 hover:text-gray-500"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">Información del Cliente</h3>
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Nombre</p>
-                    <p className="mt-1">{selectedOrder.customerName || 'No especificado'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Teléfono</p>
-                    <p className="mt-1">{selectedOrder.phone || 'No especificado'}</p>
-                  </div>
-                  {selectedOrder.orderType === 'delivery' && (
-                    <div className="sm:col-span-2">
-                      <p className="text-sm font-medium text-gray-500">Dirección</p>
-                      <p className="mt-1">{selectedOrder.address}</p>
-                    </div>
-                  )}
-                  {selectedOrder.tableNumber && (
+            {/* Products */}
+            <div>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Productos</h3>
+              <div className="space-y-2">
+                {selectedOrder.items && selectedOrder.items.map((item, index) => (
+                  <div key={index} className="flex justify-between items-start py-2 border-b border-slate-100 last:border-0">
                     <div>
-                      <p className="text-sm font-medium text-gray-500">Mesa</p>
-                      <p className="mt-1">#{selectedOrder.tableNumber}</p>
-                    </div>
-                  )}
-                  <div>
-                    <p className="text-sm font-medium text-gray-500">Tipo de Pedido</p>
-                    <p className="mt-1">
-                      {selectedOrder.orderType === 'delivery' ? 'Delivery' :
-                       selectedOrder.orderType === 'takeaway' ? 'Para llevar' : 'En sitio'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium text-gray-900">Productos</h3>
-                <div className="mt-4 space-y-4">
-                  {selectedOrder.items && selectedOrder.items.map((item, index) => (
-                    <div key={index} className="border-b border-gray-200 pb-4 last:border-b-0 last:pb-0">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {item.quantity}x {item.name}
-                          </p>
-                          {item.selectedToppings && item.selectedToppings.length > 0 && (
-                            <ul className="mt-1 space-y-1">
-                              {item.selectedToppings.map((topping, idx) => (
-                                <li key={idx} className="text-sm text-gray-500">
-                                  • {topping.groupName}: {topping.optionName}
-                                  {topping.price > 0 && ` (+$${topping.price.toFixed(2)})`}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
+                      <p className="text-sm font-medium text-slate-800">
+                        {item.quantity}x {item.name}
+                      </p>
+                      {item.selectedToppings && item.selectedToppings.length > 0 && (
+                        <div className="mt-1 space-y-0.5">
+                          {item.selectedToppings.map((topping, idx) => (
+                            <p key={idx} className="text-xs text-slate-500">
+                              + {topping.groupName}: {topping.optionName}
+                              {topping.price > 0 && ` (+$${topping.price.toFixed(2)})`}
+                            </p>
+                          ))}
                         </div>
-                        <p className="text-sm font-medium text-gray-900">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </p>
-                      </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-                <div className="mt-6 flex justify-between items-center border-t border-gray-200 pt-4">
-                  <p className="text-base font-medium text-gray-900">Total</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    ${selectedOrder.totalAmount.toFixed(2)}
-                  </p>
-                </div>
+                    <span className="text-sm font-medium text-slate-700">
+                      ${(item.price * item.quantity).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex justify-between items-center pt-3 border-t border-slate-200">
+                <span className="text-sm font-semibold text-slate-900">Total</span>
+                <span className="text-base font-bold text-slate-900">
+                  ${selectedOrder.totalAmount.toFixed(2)}
+                </span>
               </div>
             </div>
           </div>
@@ -380,45 +376,52 @@ function EnhancedCompletedOrders() {
     );
   };
 
+  // Insight icon resolver
+  const getInsightIcon = (iconKey) => {
+    const iconMap = {
+      trophy: <FaTrophy />,
+      up: <FaArrowUp />,
+      lightbulb: <FaLightbulb />,
+      truck: <FaTruck />,
+      dollar: <FaDollarSign />,
+      chart: <FaChartBar />,
+      food: <FaHamburger />,
+    };
+    return iconMap[iconKey] || <FaLightbulb />;
+  };
+
   // Top Selling Items Component
   const TopSellingItems = () => {
     if (topSellingItems.length === 0) return null;
 
     return (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="bg-white rounded-lg shadow-sm overflow-hidden"
-      >
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <span className="mr-2">🏆</span>
-            Productos Más Vendidos
-          </h3>
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+          <FaTrophy className="text-amber-500 text-sm" />
+          <h3 className="text-sm font-semibold text-slate-800">Productos Más Vendidos</h3>
         </div>
-        <div className="p-6">
-          <div className="space-y-4">
-            {topSellingItems.slice(0, 5).map((item, index) => (
-              <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <span className="text-sm font-bold text-blue-600">#{index + 1}</span>
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-sm font-medium text-gray-900">{item.name}</p>
-                    <p className="text-sm text-gray-500">{item.count} unidades vendidas</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">${item.total.toLocaleString()}</p>
-                  <p className="text-xs text-gray-500">en ventas</p>
+        <div className="divide-y divide-slate-100">
+          {topSellingItems.slice(0, 5).map((item, index) => (
+            <div key={index} className="flex items-center justify-between px-4 py-2.5">
+              <div className="flex items-center gap-3">
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  index === 0 ? 'bg-amber-100 text-amber-700' :
+                  index === 1 ? 'bg-slate-200 text-slate-600' :
+                  index === 2 ? 'bg-orange-100 text-orange-600' :
+                  'bg-slate-100 text-slate-500'
+                }`}>
+                  {index + 1}
+                </span>
+                <div>
+                  <p className="text-sm font-medium text-slate-800">{item.name}</p>
+                  <p className="text-xs text-slate-500">{item.count} uds</p>
                 </div>
               </div>
-            ))}
-          </div>
+              <span className="text-sm font-semibold text-slate-700">${item.total.toLocaleString()}</span>
+            </div>
+          ))}
         </div>
-      </motion.div>
+      </div>
     );
   };
 
@@ -427,303 +430,278 @@ function EnhancedCompletedOrders() {
     if (insights.length === 0) return null;
 
     return (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="space-y-4"
-      >
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          <span className="mr-2">💡</span>
-          Insights y Recomendaciones
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2 mb-1">
+          <FaLightbulb className="text-amber-500 text-xs" />
+          <h3 className="text-sm font-semibold text-slate-800">Insights</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {insights.map((insight, index) => (
-            <div key={index} className={`p-4 rounded-lg border-l-4 ${
-              insight.type === 'success' ? 'bg-green-50 border-green-400' :
-              insight.type === 'warning' ? 'bg-yellow-50 border-yellow-400' :
-              'bg-blue-50 border-blue-400'
+            <div key={index} className={`flex items-start gap-3 p-3 rounded-lg border ${
+              insight.type === 'success' ? 'bg-emerald-50 border-emerald-200' :
+              insight.type === 'warning' ? 'bg-amber-50 border-amber-200' :
+              insight.type === 'good' ? 'bg-blue-50 border-blue-200' :
+              'bg-slate-50 border-slate-200'
             }`}>
-              <div className="flex items-start">
-                <span className="text-2xl mr-3">{insight.icon}</span>
-                <div>
-                  <h4 className="font-medium text-gray-900">{insight.title}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{insight.message}</p>
-                  <p className="text-xs text-gray-500 mt-2 italic">{insight.recommendation}</p>
-                </div>
+              <span className={`mt-0.5 text-sm ${
+                insight.type === 'success' ? 'text-emerald-500' :
+                insight.type === 'warning' ? 'text-amber-500' :
+                insight.type === 'good' ? 'text-blue-500' :
+                'text-slate-500'
+              }`}>
+                {getInsightIcon(insight.icon)}
+              </span>
+              <div className="min-w-0">
+                <h4 className="text-xs font-semibold text-slate-800">{insight.title}</h4>
+                <p className="text-xs text-slate-600 mt-0.5">{insight.message}</p>
+                <p className="text-[11px] text-slate-400 mt-1">{insight.recommendation}</p>
               </div>
             </div>
           ))}
         </div>
-      </motion.div>
+      </div>
     );
   };
 
   const filteredOrders = getFilteredOrders();
 
-  return (
-    <div className="space-y-8">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center"
-      >
-        <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-          <span className="text-2xl">✅</span>
-        </div>
-        <h2 className="text-3xl font-bold text-slate-900 mb-2">Pedidos Completados</h2>
-        <p className="text-slate-600">Historial y análisis de ventas</p>
-      </motion.div>
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
-      {/* View Mode Toggle */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex justify-center"
-      >
-        <div className="bg-gray-100 p-1 rounded-lg">
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <FaInfoCircle className="text-3xl text-red-400 mb-3" />
+        <p className="text-slate-600 text-sm">{error}</p>
+        <button onClick={fetchCompletedOrders} className="mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium">
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Action Bar: view toggle + search + refresh */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        {/* View mode pills */}
+        <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
           <button
             onClick={() => setViewMode('today')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'today' 
-                ? 'bg-white text-gray-900 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              viewMode === 'today'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            📅 Cierre del Día
+            <FaCalendarDay className="text-[10px]" />
+            <span>Cierre del Día</span>
           </button>
           <button
             onClick={() => setViewMode('all')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              viewMode === 'all' 
-                ? 'bg-white text-gray-900 shadow-sm' 
-                : 'text-gray-500 hover:text-gray-700'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              viewMode === 'all'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            📊 Historial Completo
+            <FaHistory className="text-[10px]" />
+            <span>Historial</span>
           </button>
         </div>
-      </motion.div>
 
-      {/* Stats Cards */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-      >
-        <motion.div 
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-3xl text-white shadow-xl"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold opacity-90">Total de Pedidos</h3>
-              <p className="text-3xl font-bold mt-2">{filteredOrders.length}</p>
-            </div>
-            <span className="text-3xl opacity-80">📋</span>
+        {/* Search + refresh */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none">
+            <FaSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+            <input
+              type="text"
+              placeholder="Buscar..."
+              className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        </motion.div>
-        
-        <motion.div 
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          className="bg-gradient-to-br from-green-500 to-emerald-600 p-6 rounded-3xl text-white shadow-xl"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold opacity-90">Total Ventas</h3>
-              <p className="text-3xl font-bold mt-2">
-                ${filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}
-              </p>
-            </div>
-            <span className="text-3xl opacity-80">💰</span>
-          </div>
-        </motion.div>
-        
-        <motion.div 
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-3xl text-white shadow-xl"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold opacity-90">Promedio por Pedido</h3>
-              <p className="text-3xl font-bold mt-2">
-                ${(filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (filteredOrders.length || 1)).toLocaleString()}
-              </p>
-            </div>
-            <span className="text-3xl opacity-80">📊</span>
-          </div>
-        </motion.div>
-        
-        <motion.div 
-          whileHover={{ y: -4, transition: { duration: 0.2 } }}
-          className="bg-gradient-to-br from-orange-500 to-red-500 p-6 rounded-3xl text-white shadow-xl"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold opacity-90">Productos Vendidos</h3>
-              <p className="text-3xl font-bold mt-2">
-                {filteredOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)}
-              </p>
-            </div>
-            <span className="text-3xl opacity-80">🍔</span>
-          </div>
-        </motion.div>
-      </motion.div>
-
-      {/* Insights Section */}
-      {viewMode === 'today' && <InsightsSection />}
-
-      {/* Top Selling Items */}
-      {viewMode === 'today' && <TopSellingItems />}
-
-      {/* Orders Table */}
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-gray-200">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {viewMode === 'today' ? 'Pedidos Completados del Día' : 'Historial Completo de Pedidos'}
-            </h2>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-none">
-                <input
-                  type="text"
-                  placeholder="Buscar pedido..."
-                  className="w-full sm:w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <svg className="h-5 w-5 text-gray-400 absolute left-3 top-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-              {viewMode === 'today' && (
-                <button
-                  onClick={generateDailyClosingReport}
-                  disabled={generatingReport}
-                  className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
-                >
-                  {generatingReport ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      <span>Generando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span>Actualizar Cierre</span>
-                    </>
-                  )}
-                </button>
+          {viewMode === 'today' && (
+            <button
+              onClick={generateDailyClosingReport}
+              disabled={generatingReport}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {generatingReport ? (
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+              ) : (
+                <FaSync className="text-[10px]" />
               )}
-            </div>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Pedido #
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Cliente
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Tipo
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Mesa/Dirección
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Total
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Fecha/Hora
-                </th>
-                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredOrders.map((order) => (
-                <tr key={order._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    #{order.orderNumber}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.customerName || 'Cliente sin nombre'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      order.orderType === 'delivery' 
-                        ? 'bg-purple-100 text-purple-800'
-                        : order.orderType === 'takeaway'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {order.orderType === 'delivery' 
-                        ? 'Delivery'
-                        : order.orderType === 'takeaway'
-                        ? 'Para llevar'
-                        : 'En sitio'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.orderType === 'delivery' 
-                      ? order.address
-                      : order.orderType === 'inSite'
-                      ? `Mesa ${order.tableNumber}`
-                      : 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                    ${order.totalAmount.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(order.completedAt || order.createdAt).toLocaleString('es-ES', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => showOrderDetails(order)}
-                      className="text-blue-600 hover:text-blue-900"
-                    >
-                      Ver detalles
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              <span>Actualizar</span>
+            </button>
+          )}
         </div>
       </div>
 
+      {/* Stats Row — compact flat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+            <FaClipboardList className="text-blue-500 text-sm" />
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-500 font-medium">Pedidos</p>
+            <p className="text-lg font-bold text-slate-900">{filteredOrders.length}</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
+            <FaDollarSign className="text-emerald-500 text-sm" />
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-500 font-medium">Ventas</p>
+            <p className="text-lg font-bold text-slate-900">
+              ${filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center">
+            <FaChartBar className="text-violet-500 text-sm" />
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-500 font-medium">Promedio</p>
+            <p className="text-lg font-bold text-slate-900">
+              ${(filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (filteredOrders.length || 1)).toLocaleString()}
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center">
+            <FaHamburger className="text-orange-500 text-sm" />
+          </div>
+          <div>
+            <p className="text-[11px] text-slate-500 font-medium">Productos</p>
+            <p className="text-lg font-bold text-slate-900">
+              {filteredOrders.reduce((sum, order) => sum + order.items.reduce((s, item) => s + item.quantity, 0), 0)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Insights + Top Selling — side by side on larger screens */}
+      {viewMode === 'today' && (insights.length > 0 || topSellingItems.length > 0) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <InsightsSection />
+          <TopSellingItems />
+        </div>
+      )}
+
+      {/* Orders Table */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        {/* Table header */}
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-800">
+            {viewMode === 'today' ? 'Pedidos del Día' : 'Todos los Pedidos'}
+          </h2>
+          <span className="text-xs text-slate-500">{filteredOrders.length} pedidos</span>
+        </div>
+
+        {filteredOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <FaShoppingBag className="text-3xl text-slate-300 mb-3" />
+            <p className="text-sm text-slate-500 font-medium">Sin pedidos completados</p>
+            <p className="text-xs text-slate-400 mt-1">Los pedidos completados aparecerán aquí</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-100">
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">#</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Tipo</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Detalle</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Hora</th>
+                  <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {filteredOrders.map((order) => (
+                  <tr key={order._id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">
+                      #{order.orderNumber}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm text-slate-600">
+                      {order.customerName || 'Sin nombre'}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                        order.orderType === 'delivery'
+                          ? 'bg-purple-50 text-purple-700'
+                          : order.orderType === 'takeaway'
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'bg-blue-50 text-blue-700'
+                      }`}>
+                        {order.orderType === 'delivery' ? <><FaTruck className="text-[9px]" /> Delivery</> :
+                         order.orderType === 'takeaway' ? <><FaShoppingBag className="text-[9px]" /> Llevar</> :
+                         <><FaChair className="text-[9px]" /> En sitio</>}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell max-w-[150px] truncate">
+                      {order.orderType === 'delivery'
+                        ? order.address
+                        : order.orderType === 'inSite'
+                        ? `Mesa ${order.tableNumber}`
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">
+                      ${order.totalAmount.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell">
+                      {new Date(order.completedAt || order.createdAt).toLocaleString('es-ES', {
+                        day: 'numeric', month: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => showOrderDetails(order)}
+                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"
+                        title="Ver detalles"
+                      >
+                        <FaEye className="text-xs" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* Modals */}
-      {selectedOrder && <OrderDetailsModal />}
+      <AnimatePresence>
+        {selectedOrder && <OrderDetailsModal />}
+      </AnimatePresence>
       
       {showNoOrdersModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-sm w-full p-6 text-center">
-            <div className="mb-4">
-              <svg className="mx-auto h-12 w-12 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold mb-2">No hay pedidos completados</h3>
-            <p className="text-gray-600 mb-6">No hay pedidos completados para generar el reporte de cierre del día.</p>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 text-center">
+            <FaInfoCircle className="mx-auto text-3xl text-blue-400 mb-3" />
+            <h3 className="text-base font-semibold text-slate-900 mb-1">Sin pedidos completados</h3>
+            <p className="text-sm text-slate-500 mb-5">No hay pedidos para generar el cierre del día.</p>
             <button
               onClick={() => setShowNoOrdersModal(false)}
-              className="w-full py-2 rounded-lg text-white font-medium bg-blue-600 hover:bg-blue-700 shadow-sm"
+              className="w-full py-2 rounded-lg text-sm text-white font-medium bg-blue-600 hover:bg-blue-700 transition-colors"
             >
               Entendido
             </button>
