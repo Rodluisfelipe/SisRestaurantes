@@ -327,39 +327,22 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription, compact = fa
   // Versión compacta para sidebar (solo cuando está activa)
   if (compact) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg sm:rounded-xl p-3 sm:p-4 border border-green-200"
+      <div
+        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200/80"
       >
-        <div className="flex items-center space-x-3">
-          <div className="text-2xl sm:text-3xl">
-            {getPlanIcon(subscription.planType)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center space-x-2">
-              <h3 className="text-sm sm:text-base font-bold text-gray-800">
-                {getPlanText(subscription.planType)}
-              </h3>
-              {subscription.planType === 'annual' && (
-                <FaCrown className="text-yellow-500 text-sm" />
-              )}
-            </div>
-            <p className="text-xs sm:text-sm font-medium text-green-600">
-              Activo
-            </p>
-            <p className="text-gray-600 text-xs truncate">
-              ${subscription.price?.toLocaleString('es-CO') || '0'} COP
-            </p>
-          </div>
-          <div className="text-green-600">
-            <FaCalendarAlt className="text-lg sm:text-xl" />
-            <p className="text-[10px] sm:text-xs font-medium text-center">
-              {subscription.daysRemaining > 0 ? `${subscription.daysRemaining}d` : 'OK'}
-            </p>
-          </div>
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          <span className="text-xs">{getPlanIcon(subscription.planType)}</span>
+          <span className="text-[11px] font-semibold text-slate-700 truncate">
+            {getPlanText(subscription.planType)}
+          </span>
+          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full uppercase leading-none">
+            Activo
+          </span>
         </div>
-      </motion.div>
+        <span className="text-[11px] font-bold text-slate-500 tabular-nums shrink-0">
+          {subscription.daysRemaining > 0 ? `${subscription.daysRemaining}d` : '✓'}
+        </span>
+      </div>
     );
   }
 
