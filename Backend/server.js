@@ -156,9 +156,11 @@ app.use("/api", require("./Routes/paymentRequests"));
 app.use("/api/subscriptions", require("./Routes/subscriptions"));
 app.use("/api/admin/subscriptions", require("./Routes/adminSubscriptions"));
 app.use("/api/whatsapp-templates", require("./Routes/whatsappTemplates"));
+app.use("/api/announcements", require("./Routes/announcements")); // Sistema de anuncios/novedades
 
 // Servir archivos de comprobantes
 app.use('/uploads/proofs', express.static(path.join(__dirname, 'uploads/proofs')));
+app.use('/uploads/announcements', express.static(path.join(__dirname, 'uploads/announcements')));
   
 // Ruta específica para SSE
 app.use("/events", require("./Routes/events"));

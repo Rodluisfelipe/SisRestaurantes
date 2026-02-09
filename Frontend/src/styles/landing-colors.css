@@ -1,77 +1,41 @@
-/* Estilos personalizados para sobrescribir Tailwind CSS */
+/* ═══════════════════════════════════════════
+   Menuby Landing — Custom Styles
+   ═══════════════════════════════════════════ */
 
-/* CTA Section - Fondo claro con gradiente rojo */
-.cta-section-dark {
-  background: linear-gradient(135deg, #fee2e2 0%, #fef2f2 50%, #fff 100%) !important;
+/* CTA Section */
+.cta-section {
+  background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
 }
 
-.cta-section-dark h2 {
-  color: #111827 !important;
+.cta-section h2 {
+  color: #ffffff;
 }
 
-.cta-section-dark p {
-  color: #4b5563 !important;
+.cta-section p {
+  color: #9ca3af;
 }
 
-.cta-section-dark .btn-primary {
-  background-color: #E31E24 !important;
-  background: #E31E24 !important;
+.cta-section .btn-primary {
+  background-color: #dc2626;
+  background: #dc2626;
 }
 
-.cta-section-dark .btn-secondary {
-  color: #E31E24 !important;
-  border-color: #E31E24 !important;
+.cta-section .btn-primary:hover {
+  background-color: #ef4444;
+  background: #ef4444;
 }
 
-.cta-section-dark .btn-secondary:hover {
-  background-color: #E31E24 !important;
-  color: #ffffff !important;
+.cta-section .btn-secondary {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Footer - Fondo claro moderno */
-.footer-dark {
-  background-color: #f9fafb !important;
-  background: #f9fafb !important;
-  color: #111827 !important;
+.cta-section .btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
-.footer-dark h3 {
-  color: #111827 !important;
-}
-
-.footer-dark p {
-  color: #4b5563 !important;
-}
-
-.footer-dark a {
-  color: #6b7280 !important;
-}
-
-.footer-dark a:hover {
-  color: #E31E24 !important;
-}
-
-.footer-dark .logo-bg {
-  background-color: #E31E24 !important;
-  background: #E31E24 !important;
-}
-
-.footer-dark .social-bg {
-  background-color: #e5e7eb !important;
-  background: #e5e7eb !important;
-  color: #4b5563 !important;
-}
-
-.footer-dark .social-bg:hover {
-  background-color: #E31E24 !important;
-  background: #E31E24 !important;
-  color: #ffffff !important;
-}
-
-.footer-dark .border-top {
-  border-color: #e5e7eb !important;
-}
-
-.footer-dark .copyright {
-  color: #6b7280 !important;
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
 }

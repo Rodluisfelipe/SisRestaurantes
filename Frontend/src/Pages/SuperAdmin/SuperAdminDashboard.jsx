@@ -7,6 +7,7 @@ import ResetPasswordSuperAdmin from "./ResetPasswordSuperAdmin";
 import ChangePasswordSuperAdmin from "./ChangePasswordSuperAdmin";
 import SuperAdminBannerManagement from "../../Components/Catalog/SuperAdminBannerManagement";
 import SubscriptionManagement from "../../Components/SuperAdmin/SubscriptionManagement";
+import AnnouncementManagement from "../../Components/SuperAdmin/AnnouncementManagement";
 import PaymentsDashboard from "./PaymentsDashboard";
 import PaymentRequestsReview from "./PaymentRequestsReview";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
@@ -17,7 +18,7 @@ function SuperAdminDashboard() {
   const [showCreate, setShowCreate] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [authView, setAuthView] = useState('login'); // 'login' | 'forgot' | 'change'
-  const [currentView, setCurrentView] = useState('businesses'); // 'businesses' | 'banners' | 'subscriptions'
+  const [currentView, setCurrentView] = useState('businesses'); // 'businesses' | 'banners' | 'subscriptions' | 'announcements'
   const [subscriptionSubTab, setSubscriptionSubTab] = useState('payments'); // 'payments' | 'management'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const params = useParams();
@@ -200,6 +201,18 @@ function SuperAdminDashboard() {
             >
               👑 Suscripciones
             </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setCurrentView('announcements')}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
+                currentView === 'announcements'
+                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
+              }`}
+            >
+              📋 Anuncios
+            </motion.button>
           </div>
 
         {/* Mobile Navigation - Scrollable Tabs */}
@@ -246,6 +259,20 @@ function SuperAdminDashboard() {
               }`}
             >
               👑 Suscripciones
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                setCurrentView('announcements');
+                setMobileMenuOpen(false);
+              }}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm ${
+                currentView === 'announcements'
+                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
+                  : 'bg-[#333F50] text-white'
+              }`}
+            >
+              📋 Anuncios
             </motion.button>
           </div>
         </div>
@@ -422,6 +449,37 @@ function SuperAdminDashboard() {
                   <SubscriptionManagement />
                 </motion.div>
               )}
+            </>
+          )}
+
+          {currentView === 'announcements' && (
+            <>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+                <motion.h1 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="text-2xl font-bold text-white drop-shadow"
+                >
+                  Gestión de Anuncios
+                </motion.h1>
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="text-white/80 text-sm"
+                >
+                  Novedades y avisos para los negocios
+                </motion.div>
+              </div>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
+              >
+                <AnnouncementManagement />
+              </motion.div>
             </>
           )}
         </motion.div>

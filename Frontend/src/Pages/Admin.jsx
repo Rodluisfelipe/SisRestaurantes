@@ -33,6 +33,7 @@ import DeleteConfirmationModal from "../Components/Admin/DeleteConfirmationModal
 import OrderNotificationBanner from "../Components/Admin/OrderNotificationBanner";
 import SubscriptionManagementWrapper from "../Components/Admin/SubscriptionManagementWrapper";
 import AdminSectionErrorBoundary from "../Components/Admin/AdminSectionErrorBoundary";
+import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -204,6 +205,9 @@ function Admin() {
       )}
 
       <MultiSessionWarning />
+
+      {/* Popup de anuncios/novedades — solo para dueños, no superadmin */}
+      {!isSuperAdminMode && <AnnouncementPopup />}
 
       <div className="flex min-h-screen">
         {/* Sidebar */}

@@ -136,7 +136,7 @@ const Pricing = () => {
               <div className="text-center mb-12">
                 <h2 className="text-4xl font-bold text-gray-900 mb-4">Plan Completo</h2>
                 <div className="mb-6">
-                  <span className="text-7xl font-bold text-[#E31E24]">$25,000</span>
+                  <span className="text-7xl font-bold text-[#E31E24]">$30,000</span>
                   <span className="text-2xl text-gray-600 ml-2">/mes</span>
                 </div>
                 <p className="text-gray-600 text-xl mb-4">
@@ -247,7 +247,7 @@ const Pricing = () => {
                 ROI del 1,800% anual
               </div>
               <p className="text-gray-600">
-                Inversión: $25,000/mes • Retorno: $45,000/mes adicionales
+                Inversión: $30,000/mes • Retorno: $45,000/mes adicionales
               </p>
             </div>
           </motion.div>

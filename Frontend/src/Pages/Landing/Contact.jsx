@@ -113,7 +113,7 @@ const Contact = () => {
                       ¿Hay costo de configuración?
                     </h3>
                     <p className="text-gray-600">
-                      No, la configuración es completamente gratuita. Solo pagas la suscripción mensual de $25,000.
+                      No, la configuración es completamente gratuita. Solo pagas la suscripción mensual de $30,000.
                     </p>
                 </div>
                 

@@ -32,7 +32,7 @@ const SubscriptionPayment = () => {
   // Formulario
   const [formData, setFormData] = useState({
     monthsPurchased: 1,
-    amount: 25000, // Precio con descuento: 27,000 - 2,000 = 25,000
+    amount: 30000, // Precio con descuento: 32,000 - 2,000 = 30,000
     paymentMethod: 'Nequi',
     proof: null
   });
@@ -40,7 +40,7 @@ const SubscriptionPayment = () => {
   const [errors, setErrors] = useState({});
   
   // Precio base mensual
-  const MONTHLY_PRICE = 25000;
+  const MONTHLY_PRICE = 30000;
   
   // Comisión fija (se suma al total)
   const COMMISSION = 2000;
@@ -58,33 +58,33 @@ const SubscriptionPayment = () => {
   
   // Precios base (meses × precio mensual + comisión)
   const PRICING_BASE = {
-    1: (MONTHLY_PRICE * 1) + COMMISSION,    // $25,000 + $2,000 = $27,000
-    3: (MONTHLY_PRICE * 3) + COMMISSION,    // $75,000 + $2,000 = $77,000
-    6: (MONTHLY_PRICE * 6) + COMMISSION,    // $150,000 + $2,000 = $152,000
-    12: (MONTHLY_PRICE * 12) + COMMISSION   // $300,000 + $2,000 = $302,000
+    1: (MONTHLY_PRICE * 1) + COMMISSION,    // $30,000 + $2,000 = $32,000
+    3: (MONTHLY_PRICE * 3) + COMMISSION,    // $90,000 + $2,000 = $92,000
+    6: (MONTHLY_PRICE * 6) + COMMISSION,    // $180,000 + $2,000 = $182,000
+    12: (MONTHLY_PRICE * 12) + COMMISSION   // $360,000 + $2,000 = $362,000
   };
   
   // Precios originales sin comisión ni descuentos (para mostrar tachado)
   const PRICING_ORIGINAL = {
-    1: MONTHLY_PRICE * 1,    // $25,000
-    3: MONTHLY_PRICE * 3,    // $75,000
-    6: MONTHLY_PRICE * 6,    // $150,000
-    12: MONTHLY_PRICE * 12   // $300,000
+    1: MONTHLY_PRICE * 1,    // $30,000
+    3: MONTHLY_PRICE * 3,    // $90,000
+    6: MONTHLY_PRICE * 6,    // $180,000
+    12: MONTHLY_PRICE * 12   // $360,000
   };
   
   // Precios finales con descuentos aplicados
   // Precio base (con comisión) - descuento pago manual - descuento por volumen
   const PRICING = {
-    1: PRICING_BASE[1] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[1],   // 27,000 - 2,000 - 0 = 25,000
-    3: PRICING_BASE[3] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[3],   // 77,000 - 2,000 - 5,000 = 70,000
-    6: PRICING_BASE[6] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[6],   // 152,000 - 2,000 - 10,000 = 140,000
-    12: PRICING_BASE[12] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[12] // 302,000 - 2,000 - 15,000 = 285,000
+    1: PRICING_BASE[1] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[1],   // 32,000 - 2,000 - 0 = 30,000
+    3: PRICING_BASE[3] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[3],   // 92,000 - 2,000 - 5,000 = 85,000
+    6: PRICING_BASE[6] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[6],   // 182,000 - 2,000 - 10,000 = 170,000
+    12: PRICING_BASE[12] - PAYMENT_DISCOUNT - VOLUME_DISCOUNTS[12] // 362,000 - 2,000 - 15,000 = 345,000
   };
   
   // Calcular ahorros por pagar más meses (comparado con pagar mensual)
   const calculateSavings = (months) => {
     if (months === 1) return 0;
-    const monthlyPriceWithDiscount = PRICING[1]; // $23,000 (25,000 - 2,000)
+    const monthlyPriceWithDiscount = PRICING[1]; // $30,000 (30,000 - 2,000 + 2,000)
     const totalIfMonthly = monthlyPriceWithDiscount * months;
     const actualPrice = PRICING[months];
     const savings = totalIfMonthly - actualPrice;

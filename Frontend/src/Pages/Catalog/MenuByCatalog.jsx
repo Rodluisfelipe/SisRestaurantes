@@ -66,11 +66,16 @@ const MenuByCatalog = () => {
   // Hook de ubicación dinámica
   const { location, updateLocation, hasLocation, isLoading: locationLoading } = useUserLocation();
 
-  // Cargar restaurantes cuando la ubicación esté lista
+  // Cargar restaurantes solo si tenemos coordenadas reales (cobertura)
   useEffect(() => {
-    if (!locationLoading) {
+    if (!locationLoading && location.coordinates) {
       loadRestaurants();
       loadFeaturedSections();
+    } else if (!locationLoading && !location.coordinates) {
+      // Sin ubicación → no cargar restaurantes
+      setRestaurants([]);
+      setCategories([]);
+      setLoading(false);
     }
   }, [location.coordinates, locationLoading]);
 
@@ -483,7 +488,7 @@ const MenuByCatalog = () => {
         </div>
 
         {/* Categories */}
-        {categories.length > 0 && (
+        {location.coordinates && categories.length > 0 && (
           <div className="mb-6 -mx-4 px-4">
             <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
               {categories.map(cat => (
@@ -507,31 +512,31 @@ const MenuByCatalog = () => {
         )}
 
         {/* Featured sections */}
-        {favoriteRestaurants.length > 0 && (
+        {location.coordinates && favoriteRestaurants.length > 0 && (
           <HorizontalSection title="Tus favoritos ❤️">
             {favoriteRestaurants.map(r => <RestaurantCard key={`fav-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
-        {featuredSections?.trending?.data?.length > 0 && (
+        {location.coordinates && featuredSections?.trending?.data?.length > 0 && (
           <HorizontalSection title="Populares 🔥">
             {featuredSections.trending.data.map(r => <RestaurantCard key={`t-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
-        {!loading && restaurants.filter(r => r.isNew).length > 0 && (
+        {location.coordinates && !loading && restaurants.filter(r => r.isNew).length > 0 && (
           <HorizontalSection title="Nuevos en MenuBy ✨">
             {restaurants.filter(r => r.isNew).map(r => <RestaurantCard key={`n-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
-        {featuredSections?.cheapEats?.data?.length > 0 && (
+        {location.coordinates && featuredSections?.cheapEats?.data?.length > 0 && (
           <HorizontalSection title="Los más económicos 💰">
             {featuredSections.cheapEats.data.map(r => <RestaurantCard key={`c-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
-        {recentRestaurants.length > 0 && (
+        {location.coordinates && recentRestaurants.length > 0 && (
           <HorizontalSection title="Pediste hace poco">
             {recentRestaurants.map(r => (
               <Link key={`re-${r._id}`} to={`/${r.slug}`} className="flex-shrink-0 flex items-center gap-2.5 bg-white rounded-2xl pl-1.5 pr-4 py-1.5 shadow-sm hover:shadow-md transition-all">
@@ -545,12 +550,15 @@ const MenuByCatalog = () => {
         )}
 
         {/* Divider + title */}
-        <div className="flex items-center justify-between mt-2 mb-4">
-          <h2 className="text-[18px] font-bold text-gray-900">Restaurantes</h2>
-          <span className="text-[12px] font-medium text-red-400 bg-red-50 px-2.5 py-1 rounded-full">{filteredRestaurants.length} disponibles</span>
-        </div>
+        {location.coordinates && (
+          <div className="flex items-center justify-between mt-2 mb-4">
+            <h2 className="text-[18px] font-bold text-gray-900">Restaurantes</h2>
+            <span className="text-[12px] font-medium text-red-400 bg-red-50 px-2.5 py-1 rounded-full">{filteredRestaurants.length} disponibles</span>
+          </div>
+        )}
 
         {/* Filter bar */}
+        {location.coordinates && (
         <div className="mb-5 -mx-4 px-4">
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             <button onClick={() => setSortBy('popularity')}
@@ -593,6 +601,7 @@ const MenuByCatalog = () => {
             </button>
           </div>
         </div>
+        )}
 
         {/* Product search results */}
         {searchTerm && productSearchResults.length > 0 && (
@@ -615,23 +624,51 @@ const MenuByCatalog = () => {
           </div>
         )}
 
+        {/* No-location state */}
+        {!locationLoading && !location.coordinates && (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-9 h-9 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+              </svg>
+            </div>
+            <p className="text-[16px] font-bold text-gray-900 mb-1">Necesitamos tu ubicación</p>
+            <p className="text-[13px] text-gray-500 mb-6 max-w-[260px] mx-auto leading-relaxed">
+              Para mostrarte los restaurantes con cobertura en tu zona, activa tu ubicación
+            </p>
+            <button onClick={updateLocation}
+              className="px-6 py-3 bg-red-500 text-white text-[14px] font-bold rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-95 transition-all flex items-center gap-2 mx-auto">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+              </svg>
+              Activar ubicación
+            </button>
+          </div>
+        )}
+
         {/* Main list */}
-        {loading ? (
+        {location.coordinates && loading ? (
           <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
           </div>
-        ) : filteredRestaurants.length === 0 ? (
+        ) : location.coordinates && filteredRestaurants.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">{searchTerm ? '🔍' : '🍽️'}</span>
+              <span className="text-3xl">{searchTerm ? '🔍' : '📍'}</span>
             </div>
-            <p className="text-[16px] font-bold text-gray-900 mb-1">No hay restaurantes</p>
-            <p className="text-[13px] text-gray-500 mb-6 max-w-[240px] mx-auto">
-              {searchTerm ? `No encontramos resultados para "${searchTerm}"` : 'Intenta ajustar los filtros para ver más opciones'}
+            <p className="text-[16px] font-bold text-gray-900 mb-1">Sin cobertura en tu zona</p>
+            <p className="text-[13px] text-gray-500 mb-6 max-w-[260px] mx-auto">
+              {searchTerm ? `No encontramos resultados para "${searchTerm}"` : 'No hay restaurantes con cobertura en tu ubicación actual. Prueba otra dirección.'}
             </p>
             <button onClick={() => { setSearchTerm(''); setSelectedCategory('todo'); setOnlyOpen(false); setOnlyFreeDelivery(false); }}
+              className="px-6 py-2.5 bg-white text-gray-700 text-[14px] font-bold rounded-2xl shadow-sm border border-gray-200 hover:bg-gray-50 active:scale-95 transition-all mr-2">
+              Limpiar filtros
+            </button>
+            <button onClick={updateLocation}
               className="px-6 py-2.5 bg-red-500 text-white text-[14px] font-bold rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-95 transition-all">
-              Ver todos
+              Cambiar ubicación
             </button>
           </div>
         ) : (
