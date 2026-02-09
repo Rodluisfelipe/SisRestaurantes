@@ -31,7 +31,7 @@ import FeaturedProductsManager from "../Components/Admin/FeaturedProductsManager
 import ConfirmationModal from "../Components/Admin/ConfirmationModal";
 import DeleteConfirmationModal from "../Components/Admin/DeleteConfirmationModal";
 import OrderNotificationBanner from "../Components/Admin/OrderNotificationBanner";
-import SubscriptionManagementWrapper from "../Components/Admin/SubscriptionManagementWrapper";
+import SubscriptionPayment from "./SubscriptionPayment";
 import AdminSectionErrorBoundary from "../Components/Admin/AdminSectionErrorBoundary";
 import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 
@@ -353,7 +353,7 @@ function Admin() {
                 )}
                 {activeTab === 'subscription' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
-                    <SubscriptionManagementWrapper />
+                    <SubscriptionPayment />
                   </AdminTabWrapper>
                 )}
                 {activeTab === 'products' && (

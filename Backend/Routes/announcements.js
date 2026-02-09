@@ -60,7 +60,7 @@ router.post('/', protectSuperAdmin, upload.single('image'), async (req, res) => 
       title: title.trim(),
       body: body.trim(),
       priority: priority || 'medium',
-      createdBy: req.superAdmin._id,
+      createdBy: req.user.id,
       isActive: true
     };
     
@@ -71,7 +71,7 @@ router.post('/', protectSuperAdmin, upload.single('image'), async (req, res) => 
     const announcement = new Announcement(announcementData);
     await announcement.save();
     
-    logger.info(`Anuncio creado: "${title}" por SuperAdmin ${req.superAdmin._id}`);
+    logger.info(`Anuncio creado: "${title}" por SuperAdmin ${req.user.id}`);
     
     res.status(201).json({
       message: 'Anuncio creado exitosamente',
@@ -248,7 +248,7 @@ router.put('/:id', protectSuperAdmin, upload.single('image'), async (req, res) =
     
     await announcement.save();
     
-    logger.info(`Anuncio actualizado: "${announcement.title}" por SuperAdmin ${req.superAdmin._id}`);
+    logger.info(`Anuncio actualizado: "${announcement.title}" por SuperAdmin ${req.user.id}`);
     
     res.json({
       message: 'Anuncio actualizado exitosamente',
@@ -278,7 +278,7 @@ router.delete('/:id', protectSuperAdmin, async (req, res) => {
     
     await Announcement.findByIdAndDelete(req.params.id);
     
-    logger.info(`Anuncio eliminado: "${announcement.title}" por SuperAdmin ${req.superAdmin._id}`);
+    logger.info(`Anuncio eliminado: "${announcement.title}" por SuperAdmin ${req.user.id}`);
     
     res.json({ message: 'Anuncio eliminado exitosamente' });
   } catch (error) {
