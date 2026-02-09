@@ -122,7 +122,7 @@ const Register = () => {
                       value={formData.firstName}
                   onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
                       placeholder="Tu nombre"
                     />
                   </div>
@@ -137,7 +137,7 @@ const Register = () => {
                       value={formData.lastName}
                   onChange={handleChange}
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
                       placeholder="Tu apellido"
                 />
                   </div>
@@ -155,7 +155,7 @@ const Register = () => {
                   value={formData.email}
                   onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
                     placeholder="tu@email.com"
                   />
                   </div>
@@ -172,7 +172,7 @@ const Register = () => {
                     value={formData.businessName}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
                     placeholder="Mi Restaurante"
                   />
               </div>
@@ -189,7 +189,7 @@ const Register = () => {
                     value={formData.phone}
                     onChange={handleChange}
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
                     placeholder="+57 300 123 4567"
                   />
                 </div>
@@ -208,7 +208,7 @@ const Register = () => {
                   value={formData.password}
                   onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
                   placeholder="Mínimo 8 caracteres"
                       />
                       <button
@@ -241,7 +241,7 @@ const Register = () => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                         required
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200"
+                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
                         placeholder="Repite tu contraseña"
                       />
                       <button
