@@ -28,6 +28,19 @@ export default function useAdminData(businessId) {
   const lastJoinedBusiness = useRef(null);
   const notificationAudioRef = useRef(null);
 
+  // Audio global que siempre está disponible, sin depender del DOM
+  const globalAudioRef = useRef(null);
+  useEffect(() => {
+    const audio = new Audio('/audio/new-order-notification.mp3');
+    audio.preload = 'auto';
+    globalAudioRef.current = audio;
+    return () => {
+      audio.pause();
+      audio.src = '';
+      globalAudioRef.current = null;
+    };
+  }, []);
+
   // --- Cargar conteo inicial de pedidos pendientes desde el backend ---
   const loadPendingOrdersCount = useCallback(async () => {
     if (!businessId || !isValidBusinessIdentifier(businessId)) return;
@@ -98,13 +111,11 @@ export default function useAdminData(businessId) {
         setNewOrderNotification(newOrder);
         setShowOrderBanner(true);
 
-        // Reproducir sonido
-        if (notificationAudioRef.current) {
-          const audio = notificationAudioRef.current;
-          if (audio.readyState >= 2) {
-            audio.currentTime = 0;
-            audio.play().catch(e => console.error('Error playing notification sound:', e));
-          }
+        // Reproducir sonido (siempre, sin importar la sección activa)
+        const audio = globalAudioRef.current;
+        if (audio) {
+          audio.currentTime = 0;
+          audio.play().catch(e => console.error('Error playing notification sound:', e));
         }
 
         setTimeout(() => setShowOrderBanner(false), 10000);
