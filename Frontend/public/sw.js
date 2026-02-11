@@ -48,13 +48,15 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // NO interceptar peticiones a APIs (backend)
+  // NO interceptar: APIs, socket.io, otros dominios, chrome-extension, etc.
   if (url.pathname.startsWith('/api/') || 
-      url.hostname !== self.location.hostname) {
-    return; // Dejar que la petición pase directamente sin interceptar
+      url.pathname.startsWith('/socket.io/') ||
+      url.hostname !== self.location.hostname ||
+      !url.protocol.startsWith('http')) {
+    return;
   }
   
-  // Solo cachear GET requests del mismo dominio
+  // Solo cachear GET requests
   if (event.request.method !== 'GET') {
     return;
   }
@@ -62,7 +64,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Si la respuesta es válida, guardar en cache
         if (response && response.status === 200) {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -72,8 +73,10 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // Si falla la red, intentar desde cache
-        return caches.match(event.request);
+        // Si falla la red, intentar desde cache; si tampoco hay cache, devolver respuesta vacía
+        return caches.match(event.request).then((cached) => {
+          return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+        });
       })
   );
 });

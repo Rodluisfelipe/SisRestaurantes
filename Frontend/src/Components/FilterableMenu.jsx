@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaSearch, FaTimes } from 'react-icons/fa';
 import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import FeaturedProducts from './FeaturedProducts';
+import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
 
 // Función para obtener emoji basado en el nombre de la categoría
 const getCategoryEmoji = (categoryName) => {
@@ -161,6 +163,17 @@ const FilterableMenu = ({
   const { businessConfig: businessConfigContext } = useBusinessConfig();
   const businessConfig = businessConfigProp || businessConfigContext;
 
+  // ── Scroll-spy + sticky state ──
+  const [spyCategory, setSpyCategory] = useState('all');  // category visible by scroll
+  const [isSticky, setIsSticky] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [userTapped, setUserTapped] = useState(false);     // true while programmatic scroll
+  const pillBarRef = useRef(null);
+  const pillBarSentinelRef = useRef(null);
+  const sectionRefs = useRef({});                           // { categoryId: HTMLDivElement }
+  const pillRefs = useRef({});                              // { categoryId: HTMLButtonElement }
+  const userTapTimer = useRef(null);
+
   // Animation variants for stagger effect
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -211,6 +224,91 @@ const FilterableMenu = ({
     // Return empty string to remove all emojis for professional look
     return '';
   };
+
+  // ── Sticky detection via sentinel ──
+  useEffect(() => {
+    const sentinel = pillBarSentinelRef.current;
+    if (!sentinel) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setIsSticky(!entry.isIntersecting),
+      { threshold: 0 }
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, []);
+
+  // ── Scroll-spy: IntersectionObserver watches each category section ──
+  useEffect(() => {
+    if (activeCategory !== 'all' || userTapped) return; // only spy when showing all categories
+    const sections = Object.entries(sectionRefs.current).filter(([, el]) => el);
+    if (sections.length === 0) return;
+
+    const obs = new IntersectionObserver(
+      (entries) => {
+        // Find the topmost visible section
+        let topEntry = null;
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            if (!topEntry || entry.boundingClientRect.top < topEntry.boundingClientRect.top) {
+              topEntry = entry;
+            }
+          }
+        });
+        if (topEntry) {
+          setSpyCategory(topEntry.target.getAttribute('data-category-id'));
+        }
+      },
+      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
+    );
+
+    sections.forEach(([, el]) => obs.observe(el));
+    return () => obs.disconnect();
+  }, [activeCategory, userTapped, filteredProducts]);
+
+  // ── Scroll progress (how far through the menu) ──
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (docHeight > 0) {
+        setScrollProgress(Math.min(scrollTop / docHeight, 1));
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // ── Auto-scroll the active pill into view ──
+  const activePillId = activeCategory === 'all' ? spyCategory : activeCategory;
+  useEffect(() => {
+    const pillEl = pillRefs.current[activePillId] || pillRefs.current['all'];
+    if (pillEl) {
+      pillEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activePillId]);
+
+  // ── Click a pill: set category + scroll to section (when "all") ──
+  const handlePillClick = useCallback((categoryId) => {
+    setActiveCategory(categoryId);
+    if (categoryId === 'all') return;
+
+    // Scroll to the section if we're in "all" mode or switching
+    const section = sectionRefs.current[categoryId];
+    if (section) {
+      // Temporarily disable spy so it doesn't fight with programmatic scroll
+      setUserTapped(true);
+      clearTimeout(userTapTimer.current);
+
+      const offset = pillBarRef.current ? pillBarRef.current.offsetHeight + 12 : 60;
+      const top = section.getBoundingClientRect().top + window.scrollY - offset;
+      window.scrollTo({ top, behavior: 'smooth' });
+
+      userTapTimer.current = setTimeout(() => {
+        setUserTapped(false);
+        setActiveCategory('all'); // return to "all" so spy takes over
+      }, 800);
+    }
+  }, []);
 
   // Filter products based on search and category
   useEffect(() => {
@@ -284,158 +382,125 @@ const FilterableMenu = ({
 
   // Total product count
   const totalProductCount = Array.isArray(products) ? products.length : 0;
+
+  const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
+  const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
+
+  // Determine which pill is "active" visually
+  // If user manually picked a category, use that; otherwise use scroll-spy
+  const visualActive = activeCategory !== 'all' ? activeCategory : spyCategory;
   
   return (
-    <div className="container mx-auto px-2 sm:px-4 lg:px-6 py-1">
-      {/* Modern Search and View Options Bar */}
+    <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2">
+      {/* Search Bar */}
       <motion.div 
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-4 sm:mb-6 lg:mb-8"
+        className="mb-4 sm:mb-5"
       >
-        {/* Enhanced Search Bar */}
-        <div className="relative flex w-full">
-          <motion.div 
-            className="relative flex-1"
-            whileHover={{ scale: 1.01 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
+        <div className="relative">
+          <FaSearch 
+            className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-sm sm:text-base pointer-events-none"
+            style={{ color: searchTerm ? themeColor : '#94a3b8' }}
+          />
           <input
             type="text"
-              placeholder="Buscar productos..."
+            placeholder="Buscar productos..."
             value={searchTerm}
             onChange={handleSearchChange}
-              className="w-full px-3 sm:px-6 py-3 sm:py-4 pl-10 sm:pl-14 pr-20 sm:pr-32 bg-white border-2 border-slate-200 rounded-xl sm:rounded-2xl focus:outline-none focus:ring-4 transition-all duration-300 text-sm sm:text-base text-slate-700 placeholder-slate-400 shadow-lg backdrop-blur-sm"
-              style={{
-                '--tw-ring-color': `${businessConfig?.theme?.buttonColor || '#f97316'}20`,
-                borderColor: searchTerm ? (businessConfig?.theme?.buttonColor || '#f97316') : undefined
-              }}
-            />
-            {/* Enhanced Search icon */}
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 sm:pl-5 pointer-events-none">
-              <motion.div
-                animate={{ rotate: searchTerm ? 360 : 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <svg 
-                  className="w-5 h-5 sm:w-6 sm:h-6" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                  style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </motion.div>
-          </div>
-          
-            {/* Clear button */}
-            <AnimatePresence>
-            {searchTerm && (
-                <motion.button 
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0 }}
-                onClick={clearSearch}
-                  className="absolute inset-y-0 right-16 sm:right-24 flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 my-auto text-slate-400 rounded-full transition-all duration-200"
-                  style={{
-                    '--hover-color': businessConfig?.theme?.buttonColor || '#f97316',
-                    '--hover-bg': `${businessConfig?.theme?.buttonColor || '#f97316'}10`
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.color = businessConfig?.theme?.buttonColor || '#f97316';
-                    e.target.style.backgroundColor = `${businessConfig?.theme?.buttonColor || '#f97316'}10`;
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.color = '#94a3b8';
-                    e.target.style.backgroundColor = 'transparent';
-                  }}
-                  aria-label="Limpiar búsqueda"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </motion.button>
-              )}
-            </AnimatePresence>
-
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* Modern Category Filter Pills */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="mb-4 sm:mb-6 lg:mb-8 overflow-x-auto scrollbar-thin scrollbar-thumb-orange-300 scrollbar-track-orange-100"
-      >
-        <div className="flex space-x-2 sm:space-x-3 pb-2 px-1 min-w-max">
-          {/* "All" category pill */}
-          <motion.button
-            onClick={() => setActiveCategory('all')}
-            whileHover={{ scale: 1.05, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            className={`px-3 sm:px-6 py-2 sm:py-3 rounded-full whitespace-nowrap font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 shadow-lg backdrop-blur-sm ${
-              activeCategory === 'all'
-                ? 'text-white'
-                : 'bg-white/80 text-slate-700 hover:bg-white hover:shadow-xl border-2 border-slate-200'
-            }`}
+            className="w-full pl-10 sm:pl-12 pr-10 py-3 sm:py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-400"
             style={{
-              backgroundColor: activeCategory === 'all' ? (businessConfig?.theme?.buttonColor || '#f97316') : undefined,
-              color: activeCategory === 'all' ? (businessConfig?.theme?.buttonTextColor || '#ffffff') : undefined,
-              boxShadow: activeCategory === 'all' ? `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25` : undefined
+              '--tw-ring-color': `${themeColor}40`,
+              borderColor: searchTerm ? themeColor : undefined
             }}
-            onMouseEnter={(e) => {
-              if (activeCategory !== 'all') {
-                e.target.style.borderColor = businessConfig?.theme?.buttonColor || '#f97316';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeCategory !== 'all') {
-                e.target.style.borderColor = '#e2e8f0';
-              }
-            }}
-          >
-            Todos ({totalProductCount})
-          </motion.button>
-
-          {/* Category pills */}
-          {categoriesWithProducts.map((category, index) => (
-            <motion.button
-              key={category._id}
-              onClick={() => setActiveCategory(category._id)}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 + (index * 0.05) }}
-              className={`px-3 sm:px-6 py-2 sm:py-3 rounded-full whitespace-nowrap font-medium sm:font-semibold text-sm sm:text-base transition-all duration-300 shadow-lg backdrop-blur-sm ${
-                activeCategory === category._id
-                  ? 'text-white'
-                  : 'bg-white/80 text-slate-700 hover:bg-white hover:shadow-xl border-2 border-slate-200'
-              }`}
-              style={{
-                backgroundColor: activeCategory === category._id ? (businessConfig?.theme?.buttonColor || '#f97316') : undefined,
-                color: activeCategory === category._id ? (businessConfig?.theme?.buttonTextColor || '#ffffff') : undefined,
-                boxShadow: activeCategory === category._id ? `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25` : undefined
-              }}
-              onMouseEnter={(e) => {
-                if (activeCategory !== category._id) {
-                  e.target.style.borderColor = businessConfig?.theme?.buttonColor || '#f97316';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeCategory !== category._id) {
-                  e.target.style.borderColor = '#e2e8f0';
-                }
-              }}
-            >
-              {category.name} ({category.count})
-            </motion.button>
-          ))}
+          />
+          <AnimatePresence>
+            {searchTerm && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0 }}
+                onClick={clearSearch}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors"
+                aria-label="Limpiar búsqueda"
+              >
+                <FaTimes className="text-xs" />
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
       </motion.div>
+
+      {/* Sentinel — when this scrolls out of view, the pill bar becomes sticky */}
+      <div ref={pillBarSentinelRef} className="h-0" />
+
+      {/* ── Sticky Category Filter Pills + Progress Bar ── */}
+      <div
+        ref={pillBarRef}
+        className={`transition-shadow duration-200 z-40 ${
+          isSticky
+            ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6 py-2'
+            : 'mb-4 sm:mb-5'
+        }`}
+      >
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex gap-2 pb-1 px-0.5 min-w-max">
+            {/* "All" pill */}
+            <motion.button
+              ref={el => (pillRefs.current['all'] = el)}
+              onClick={() => { setActiveCategory('all'); setSpyCategory('all'); }}
+              whileTap={{ scale: 0.93 }}
+              className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-all duration-200 ${
+                activeCategory === 'all' && visualActive === 'all'
+                  ? 'shadow-lg'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 shadow-sm'
+              }`}
+              style={activeCategory === 'all' && visualActive === 'all' ? {
+                backgroundColor: themeColor,
+                color: themeTextColor,
+                boxShadow: `0 4px 14px ${themeColor}35`
+              } : undefined}
+            >
+              🍽️ Todos ({totalProductCount})
+            </motion.button>
+
+            {/* Category pills */}
+            {categoriesWithProducts.map((category) => {
+              const isActive = visualActive === category._id;
+              return (
+                <motion.button
+                  key={category._id}
+                  ref={el => (pillRefs.current[category._id] = el)}
+                  onClick={() => handlePillClick(category._id)}
+                  whileTap={{ scale: 0.93 }}
+                  className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-all duration-200 ${
+                    isActive
+                      ? 'shadow-lg'
+                      : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 shadow-sm'
+                  }`}
+                  style={isActive ? {
+                    backgroundColor: themeColor,
+                    color: themeTextColor,
+                    boxShadow: `0 4px 14px ${themeColor}35`
+                  } : undefined}
+                >
+                  {getCategoryEmoji(category.name)} {category.name} ({category.count})
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── Scroll progress line ── */}
+        <div className="h-[2px] bg-gray-100 mt-1.5 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full rounded-full"
+            style={{ backgroundColor: themeColor }}
+            animate={{ width: `${scrollProgress * 100}%` }}
+            transition={{ duration: 0.1, ease: 'linear' }}
+          />
+        </div>
+      </div>
 
       {/* Productos Destacados */}
       {businessId && (
@@ -448,57 +513,115 @@ const FilterableMenu = ({
         />
       )}
 
-      {/* Modern Products Display */}
+      {/* Products Display */}
       <AnimatePresence mode="wait">
+        {/* ── No results state ── */}
+        {filteredProducts.length === 0 ? (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="flex flex-col items-center py-10 px-4 text-center"
+          >
+            {searchTerm ? (
+              <>
+                <NoSearchResultsIllustration themeColor={themeColor} size={150} />
+                <h3 className="mt-4 text-lg font-bold text-gray-700">
+                  No encontramos resultados
+                </h3>
+                <p className="mt-1.5 text-sm text-gray-400 max-w-xs">
+                  No hay productos que coincidan con <span className="font-semibold text-gray-500">"{searchTerm}"</span>
+                </p>
+                <button
+                  onClick={clearSearch}
+                  className="mt-4 px-5 py-2 text-sm font-semibold rounded-full transition-colors"
+                  style={{ backgroundColor: `${themeColor}15`, color: themeColor }}
+                >
+                  Limpiar búsqueda
+                </button>
+
+                {/* Suggest popular categories */}
+                {categoriesWithProducts.length > 0 && (
+                  <div className="mt-6 w-full">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Explora categorías</p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {categoriesWithProducts.slice(0, 4).map(cat => (
+                        <motion.button
+                          key={cat._id}
+                          whileTap={{ scale: 0.93 }}
+                          onClick={() => { clearSearch(); handlePillClick(cat._id); }}
+                          className="px-3.5 py-2 rounded-full text-sm font-medium border border-gray-200 bg-white text-gray-700 shadow-sm hover:shadow-md transition-all"
+                        >
+                          {getCategoryEmoji(cat.name)} {cat.name}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <EmptyMenuIllustration themeColor={themeColor} size={150} />
+                <h3 className="mt-4 text-lg font-bold text-gray-700">
+                  Menú vacío
+                </h3>
+                <p className="mt-1.5 text-sm text-gray-400 max-w-xs">
+                  Aún no hay productos disponibles en esta categoría.
+                </p>
+              </>
+            )}
+          </motion.div>
+        ) : (
           <motion.div
             key="grid"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.2 }}
           >
           {activeCategory === 'all' ? (
-              // When "All" is selected, group products by category with animations
+              // Group products by category
               categoriesWithProducts.map((category, categoryIndex) => {
               const categoryProducts = filteredProducts.filter(product => product.category === category._id);
-              
-              // Only render category if it has products after filtering
               if (categoryProducts.length === 0) return null;
               
               return (
-                  <motion.div 
-                    key={category._id} 
-                    className="mb-6 sm:mb-8 lg:mb-12"
-                    initial={{ opacity: 0, y: 30 }}
+                  <motion.div
+                    key={category._id}
+                    ref={el => (sectionRefs.current[category._id] = el)}
+                    data-category-id={category._id}
+                    className="mb-6 sm:mb-8"
+                    initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: categoryIndex * 0.1 }}
+                    transition={{ delay: categoryIndex * 0.06 }}
                   >
-                    <motion.div 
-                      className="flex items-center mb-4 sm:mb-6"
-                      whileHover={{ x: 10 }}
-                    >
+                    {/* Category Header */}
+                    <div className="flex items-center gap-3 mb-3 sm:mb-4">
                       <div 
-                        className="w-2 h-8 sm:h-12 rounded-lg mr-3 sm:mr-4 shadow-lg"
+                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-base sm:text-lg shadow-sm"
                         style={{
-                          backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
+                          backgroundColor: `${themeColor}15`
                         }}
                       >
+                        {getCategoryEmoji(category.name)}
                       </div>
-                      <h2 className="text-lg sm:text-2xl font-bold text-slate-800">{category.name}</h2>
+                      <h2 className="text-base sm:text-lg font-bold text-gray-800">{category.name}</h2>
                       <div 
-                        className="flex-1 h-px ml-4"
+                        className="flex-1 h-px"
                         style={{
-                          background: `linear-gradient(to right, ${businessConfig?.theme?.buttonColor || '#f97316'}40, transparent)`
+                          background: `linear-gradient(to right, ${themeColor}30, transparent)`
                         }}
-                      ></div>
-                    </motion.div>
+                      />
+                    </div>
                     <motion.div 
-                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-8"
+                      className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4"
                       variants={containerVariants}
                       initial="hidden"
                       animate="visible"
                     >
-                      {categoryProducts.map((product, productIndex) => (
+                      {categoryProducts.map((product) => (
                         <ProductCard
                           key={product._id}
                           product={product}
@@ -513,43 +636,42 @@ const FilterableMenu = ({
               );
             })
           ) : (
-              // When a specific category is selected
+              // Specific category selected
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
               >
                 {/* Category Header */}
                 {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => (
-                  <motion.div 
+                  <div 
                     key={category._id}
-                    className="flex items-center mb-4 sm:mb-6"
-                    whileHover={{ x: 10 }}
+                    className="flex items-center gap-3 mb-3 sm:mb-4"
                   >
                     <div 
-                      className="w-8 h-8 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mr-3 sm:mr-4 shadow-lg"
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-lg sm:text-xl shadow-sm"
                       style={{
-                        backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
+                        backgroundColor: `${themeColor}15`
                       }}
                     >
-                      <span className="text-sm sm:text-xl">{getCategoryEmoji(category.name)}</span>
+                      {getCategoryEmoji(category.name)}
                     </div>
-                    <h2 className="text-lg sm:text-2xl font-bold text-slate-800">{category.name}</h2>
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-800">{category.name}</h2>
                     <div 
-                      className="flex-1 h-px ml-4"
+                      className="flex-1 h-px"
                       style={{
-                        background: `linear-gradient(to right, ${businessConfig?.theme?.buttonColor || '#f97316'}40, transparent)`
+                        background: `linear-gradient(to right, ${themeColor}30, transparent)`
                       }}
-                    ></div>
-                  </motion.div>
+                    />
+                  </div>
                 ))}
                 
                 <motion.div 
-                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-8"
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4"
                   variants={containerVariants}
                   initial="hidden"
                   animate="visible"
                 >
-                  {filteredProducts.map((product, index) => (
+                  {filteredProducts.map((product) => (
                     <ProductCard
                       key={product._id}
                       product={product}
@@ -563,6 +685,7 @@ const FilterableMenu = ({
               </motion.div>
             )}
           </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Toppings Selector Modal */}

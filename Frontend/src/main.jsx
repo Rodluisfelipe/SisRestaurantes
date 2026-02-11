@@ -125,7 +125,7 @@ const Root = () => {
 // Service Worker temporal para limpiar caché
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=3')
+    navigator.serviceWorker.register('/sw.js?v=4')
       .then((registration) => {
         // Service Worker registrado para limpiar caché
         registration.update();

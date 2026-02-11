@@ -39,6 +39,7 @@ import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 import useAdminAuth from "../hooks/useAdminAuth";
 import useAdminData from "../hooks/useAdminData";
 import useProductHandlers from "../hooks/useProductHandlers";
+import useSubscriptionData from "../hooks/useSubscriptionData";
 
 function Admin() {
   const { businessConfig } = useBusinessConfig();
@@ -47,6 +48,9 @@ function Admin() {
 
   // --- Auth (SuperAdmin token, validacion, redirecciones) ---
   const { isAuthenticated, user, loading, logout, isSuperAdminMode } = useAdminAuth(businessId);
+
+  // --- Subscription (una sola instancia, se pasa a sidebar + dashboard) ---
+  const subscriptionData = useSubscriptionData(businessConfig?._id);
 
   // --- Data (productos, categorias, toppings, socket, SSE) ---
   const {
@@ -217,6 +221,7 @@ function Admin() {
           businessConfig={businessConfig}
           handleLogout={logout}
           pendingOrdersCount={pendingOrdersCount}
+          subscriptionData={subscriptionData}
         />
 
         {/* Main Content */}
@@ -248,7 +253,7 @@ function Admin() {
             {businessConfig && businessConfig._id && (
               <div className="mb-6">
                 <SubscriptionStatus
-                  businessId={businessConfig._id}
+                  {...subscriptionData}
                   onNavigateToSubscription={() => setActiveTab('subscription')}
                   compact={false}
                 />

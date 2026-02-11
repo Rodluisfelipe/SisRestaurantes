@@ -1,23 +1,48 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaPlus, FaCheck, FaSlidersH } from 'react-icons/fa';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import ErrorBoundary from './ErrorBoundary';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import BusinessClosedModal from './BusinessClosedModal';
+import { useFlyToCart } from './FlyToCart';
+import ProductPeekWrapper from './ProductPeekWrapper';
 
 function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus }) {
   const [showToppings, setShowToppings] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
+  const [justAdded, setJustAdded] = useState(false);
   const { businessConfig, businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
+  const flyToCart = useFlyToCart();
+
+  const buttonColor = businessConfig?.theme?.buttonColor || '#f97316';
+  const buttonTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
+  const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
+  const isDisabled = subscriptionStatus === 'suspended' || !businessStatus?.isOpen;
+
+  const flashAdded = useCallback(() => {
+    setJustAdded(true);
+    setTimeout(() => setJustAdded(false), 1200);
+  }, []);
 
   const handleAddToCart = (productWithToppings) => {
     addToCart(productWithToppings);
     setShowToppings(false);
     onToppingsClose();
-    document.body.classList.remove('modal-open'); // ✅ Restaurar scroll
+    flashAdded();
+    document.body.classList.remove('modal-open');
+    // Fly animation for toppings products — launch from center of viewport
+    if (flyToCart?.triggerFly) {
+      flyToCart.triggerFly({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+        image: productWithToppings.image,
+        color: buttonColor
+      });
+    }
   };
 
   const handleShowToppings = () => {
@@ -52,132 +77,135 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   };
 
   return (
-    <>
+    <ProductPeekWrapper product={product} buttonColor={buttonColor} buttonTextColor={buttonTextColor}>
       <motion.div 
         onClick={() => {
-          // Verificar si la suscripción está suspendida antes de abrir toppings
-          if (subscriptionStatus === 'suspended') {
-            return;
-          }
+          if (subscriptionStatus === 'suspended') return;
           handleShowToppings();
         }}
-        whileHover={subscriptionStatus !== 'suspended' ? { y: -8, scale: 1.02 } : {}}
-        whileTap={subscriptionStatus !== 'suspended' ? { scale: 0.98 } : {}}
-        className={`group bg-white rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border border-slate-200/50 overflow-hidden backdrop-blur-sm ${
-          subscriptionStatus === 'suspended' ? 'opacity-75 cursor-not-allowed' : 'cursor-pointer'
+        whileHover={!isDisabled ? { y: -4, scale: 1.01 } : {}}
+        whileTap={!isDisabled ? { scale: 0.97 } : {}}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 border border-gray-100 overflow-hidden ${
+          isDisabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
-        {/* Premium Product Image */}
-        <div className="relative w-full h-44 overflow-hidden bg-white">
+        {/* Product Image — aspect ratio based */}
+        <div className="relative aspect-square overflow-hidden bg-gray-50">
           {product.image ? (
             <motion.img 
               src={product.image} 
               alt={product.name}
-              className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
-              whileHover={{ scale: 1.1 }}
-              onError={(e) => {
-                // Si la imagen falla al cargar, ocultar y mostrar fallback
-                e.target.style.display = 'none';
-              }}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              onError={(e) => { e.target.style.display = 'none'; }}
             />
           ) : (
             <div 
               className="w-full h-full flex items-center justify-center"
               style={{
-                background: `linear-gradient(135deg, ${businessConfig?.theme?.buttonColor || '#f97316'}20, ${businessConfig?.theme?.buttonColor || '#f97316'}10)`
+                background: `linear-gradient(135deg, ${buttonColor}15, ${buttonColor}05)`
               }}
             >
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <span className="text-4xl opacity-60">🍽️</span>
-              </motion.div>
+              <span className="text-5xl opacity-40 group-hover:opacity-60 transition-opacity duration-300">🍽️</span>
             </div>
           )}
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+          {/* Hover gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+          {/* "Personalizable" badge for products with toppings */}
+          {hasToppings && (
+            <div className="absolute top-2 left-2">
+              <span 
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold backdrop-blur-md shadow-sm"
+                style={{ backgroundColor: `${buttonColor}e6`, color: buttonTextColor }}
+              >
+                <FaSlidersH className="text-[8px] sm:text-[10px]" />
+                <span className="hidden sm:inline">Personalizable</span>
+              </span>
+            </div>
+          )}
+
+          {/* "Added" feedback overlay */}
+          <AnimatePresence>
+            {justAdded && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10 pointer-events-none"
+              >
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: [0, 1.3, 1] }}
+                  transition={{ duration: 0.5 }}
+                  className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl"
+                  style={{ backgroundColor: buttonColor }}
+                >
+                  <FaCheck className="text-xl" style={{ color: buttonTextColor }} />
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Premium Product Info */}
-        <div className="p-3 sm:p-6">
-          <div className="mb-3 sm:mb-4">
-            <h3 
-              className="text-sm sm:text-lg font-bold text-slate-800 mb-2 transition-colors duration-300 leading-tight"
-              style={{
-                '--hover-color': businessConfig?.theme?.buttonColor || '#f97316'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.color = businessConfig?.theme?.buttonColor || '#f97316';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.color = '#1e293b';
-              }}
-            >
-              {product.name}
-            </h3>
-            {product.description && (
-              <p className="text-xs sm:text-sm text-slate-600 line-clamp-2 mb-2 sm:mb-3 leading-tight">
-                {product.description}
-              </p>
-            )}
-          </div>
+        {/* Product Info */}
+        <div className="p-3 sm:p-4">
+          <h3 className="text-sm sm:text-base font-bold text-gray-800 leading-tight mb-1 line-clamp-2 group-hover:text-gray-900 transition-colors">
+            {product.name}
+          </h3>
+          {product.description && (
+            <p className="text-[11px] sm:text-xs text-gray-500 line-clamp-2 mb-2 leading-relaxed">
+              {product.description}
+            </p>
+          )}
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
+          <div className="flex items-end justify-between mt-auto">
+            {/* Price */}
+            <div>
               <span 
-                className="text-lg sm:text-2xl font-bold"
-                style={{
-                  color: businessConfig?.theme?.buttonColor || '#f97316'
-                }}
+                className="text-lg sm:text-xl font-extrabold tracking-tight"
+                style={{ color: buttonColor }}
               >
                 ${(() => {
                   const price = Number(product.price);
-                  const options = { minimumFractionDigits: 0, maximumFractionDigits: 0 };
-                  return price.toLocaleString('es-CO', options);
+                  return price.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
                 })()}
               </span>
             </div>
             
+            {/* Add button */}
             <motion.button
               onClick={(e) => {
-                e.stopPropagation(); // Evita que se propague al div padre
+                e.stopPropagation();
+                // Trigger fly-to-cart from the button position
+                if (flyToCart?.triggerFly && !hasToppings) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  flyToCart.triggerFly({
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    image: product.image,
+                    color: buttonColor
+                  });
+                }
                 handleShowToppings();
               }}
-              whileHover={businessStatus?.isOpen ? { scale: 1.1 } : {}}
-              whileTap={businessStatus?.isOpen ? { scale: 0.9 } : {}}
-              className={`w-10 h-10 sm:w-12 sm:h-12 text-white rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transition-all duration-300 relative z-10 ${
-                (subscriptionStatus === 'suspended' || !businessStatus?.isOpen) ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl cursor-pointer'
+              whileHover={!isDisabled ? { scale: 1.15 } : {}}
+              whileTap={!isDisabled ? { scale: 0.85 } : {}}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-md transition-all duration-200 ${
+                isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-lg active:shadow-sm'
               }`}
               style={{
-                backgroundColor: (subscriptionStatus === 'suspended' || !businessStatus?.isOpen)
-                  ? '#9ca3af'
-                  : (businessConfig?.theme?.buttonColor || '#f97316'),
-                color: businessConfig?.theme?.buttonTextColor || '#ffffff',
-                boxShadow: (subscriptionStatus === 'suspended' || !businessStatus?.isOpen)
-                  ? '0 5px 15px rgba(0,0,0,0.1)'
-                  : `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`
+                backgroundColor: isDisabled ? '#d1d5db' : buttonColor,
+                color: buttonTextColor,
+                boxShadow: isDisabled ? undefined : `0 4px 14px ${buttonColor}40`
               }}
-              onMouseEnter={(e) => {
-                if (businessStatus?.isOpen && subscriptionStatus !== 'suspended') {
-                  e.target.style.boxShadow = `0 15px 35px ${businessConfig?.theme?.buttonColor || '#f97316'}35`;
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (businessStatus?.isOpen && subscriptionStatus !== 'suspended') {
-                  e.target.style.boxShadow = `0 10px 25px ${businessConfig?.theme?.buttonColor || '#f97316'}25`;
-                }
-              }}
-              aria-label={subscriptionStatus === 'suspended' ? "Menú desactivado" : businessStatus?.isOpen ? "Agregar al carrito" : "Negocio cerrado"}
-              disabled={subscriptionStatus === 'suspended' || !businessStatus?.isOpen}
+              aria-label={isDisabled ? "No disponible" : "Agregar al carrito"}
+              disabled={isDisabled}
             >
-              <motion.span 
-                className="text-lg sm:text-xl font-bold"
-                whileHover={{ scale: 1.2 }}
-                transition={{ duration: 0.3 }}
-              >
-                +
-              </motion.span>
+              <FaPlus className="text-sm sm:text-base" />
             </motion.button>
           </div>
         </div>
@@ -225,7 +253,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
         onClose={() => setShowClosedModal(false)}
         businessStatus={businessStatus}
       />
-    </>
+    </ProductPeekWrapper>
   );
 }
 

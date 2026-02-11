@@ -11,7 +11,12 @@ import CartBar from "../Components/CartBar";
 import FavoritesModal from "../Components/FavoritesModal";
 import OrderHistoryModal from "../Components/OrderHistoryModal";
 import FeaturedProducts from "../Components/FeaturedProducts";
-// import SpecialOffers from "../Components/SpecialOffers"; // Este componente no existe, se comenta para evitar errores
+import { FlyToCartProvider } from "../Components/FlyToCart";
+import { FilterableMenuSkeleton, BusinessHeaderSkeleton } from "../Components/MenuSkeletons";
+import PullToRefresh from "../Components/PullToRefresh";
+import SplashScreen from "../Components/SplashScreen";
+import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
+import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
@@ -72,6 +77,7 @@ export default function Menu() {
   });
   
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true);
   const [showCartSummary, setShowCartSummary] = useState(false);
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
   const { businessConfig, businessId, error: businessError } = useBusinessConfig();
@@ -85,6 +91,10 @@ export default function Menu() {
   const [subscriptionStatus, setSubscriptionStatus] = useState(null); // null, 'active', 'grace', 'suspended'
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   
+  // Business hours status (open/closed)
+  const { businessStatus, loading: statusLoading } = useBusinessStatus(businessId);
+  const [closedOverlayDismissed, setClosedOverlayDismissed] = useState(false);
+
   // Estados para modales de favoritos e historial
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -402,9 +412,12 @@ export default function Menu() {
         logger.error("Error al obtener datos:", err);
       } finally {
         setLoading(false);
+        // Keep splash visible a moment for branding, then dismiss
+        setTimeout(() => setShowSplash(false), 800);
       }
     };
     fetchData();
+
 
     // Comentar temporalmente los SSE hasta que el backend los soporte
     /*
@@ -1060,14 +1073,15 @@ export default function Menu() {
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center min-h-screen bg-white">
-        <div className="relative flex flex-col items-center">
-          <div className="w-16 h-16 flex items-center justify-center mb-4">
-            <span className="inline-block w-12 h-12 border-4 border-[#3A7AFF] border-t-transparent rounded-full animate-spin"></span>
+      <>
+        <SplashScreen businessConfig={businessConfig} visible={showSplash} />
+        {!showSplash && (
+          <div className="min-h-screen bg-gray-50 pb-20">
+            <BusinessHeaderSkeleton />
+            <FilterableMenuSkeleton />
           </div>
-          <div className="mt-2 text-lg font-semibold text-[#1F2937] tracking-wide animate-pulse">Cargando...</div>
-        </div>
-      </div>
+        )}
+      </>
     );
   }
 
@@ -1083,7 +1097,23 @@ export default function Menu() {
     navigate('/restaurantes');
   };
 
+  // Pull-to-refresh handler — re-fetch products & categories
+  const handlePullRefresh = async () => {
+    try {
+      const [productsRes, categoriesRes] = await Promise.all([
+        api.get(`/products?businessId=${businessId}`),
+        api.get(`/categories?businessId=${businessId}`)
+      ]);
+      setProducts(productsRes.data);
+      setCategories(categoriesRes.data);
+    } catch (err) {
+      logger.error('Pull-to-refresh error:', err);
+    }
+  };
+
   return (
+    <FlyToCartProvider>
+    <PullToRefresh onRefresh={handlePullRefresh} themeColor={businessConfig?.theme?.buttonColor || '#f97316'}>
     <div className="min-h-screen bg-gray-50 pb-20">
       <BusinessHeader 
         comesFromCatalog={comesFromCatalog}
@@ -1129,6 +1159,15 @@ export default function Menu() {
             />
           </svg>
         </button>
+      )}
+
+      {/* Restaurant Closed overlay — shown when closed by business hours */}
+      {!businessStatus.isOpen && !closedOverlayDismissed && !statusLoading && (
+        <RestaurantClosedOverlay
+          businessConfig={businessConfig}
+          businessStatus={businessStatus}
+          onDismiss={() => setClosedOverlayDismissed(true)}
+        />
       )}
       
       <FilterableMenu 
@@ -1297,5 +1336,7 @@ export default function Menu() {
         </div>
       </footer>
     </div>
+    </PullToRefresh>
+    </FlyToCartProvider>
   );
 } 

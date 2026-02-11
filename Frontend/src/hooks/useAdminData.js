@@ -30,11 +30,36 @@ export default function useAdminData(businessId) {
 
   // Audio global que siempre está disponible, sin depender del DOM
   const globalAudioRef = useRef(null);
+  const audioUnlockedRef = useRef(false);
   useEffect(() => {
     const audio = new Audio('/audio/new-order-notification.mp3');
     audio.preload = 'auto';
+    audio.volume = 1.0;
     globalAudioRef.current = audio;
+
+    // Los navegadores bloquean audio.play() hasta que el usuario interactúe.
+    // Desbloqueamos el audio con el primer clic/toque en cualquier parte de la página.
+    const unlockAudio = () => {
+      if (audioUnlockedRef.current) return;
+      const a = globalAudioRef.current;
+      if (a) {
+        a.muted = true;
+        a.play().then(() => {
+          a.pause();
+          a.currentTime = 0;
+          a.muted = false;
+          audioUnlockedRef.current = true;
+          console.log('🔊 Audio desbloqueado por interacción del usuario');
+        }).catch(() => {});
+      }
+    };
+
+    document.addEventListener('click', unlockAudio, { once: false });
+    document.addEventListener('touchstart', unlockAudio, { once: false });
+
     return () => {
+      document.removeEventListener('click', unlockAudio);
+      document.removeEventListener('touchstart', unlockAudio);
       audio.pause();
       audio.src = '';
       globalAudioRef.current = null;
@@ -115,7 +140,18 @@ export default function useAdminData(businessId) {
         const audio = globalAudioRef.current;
         if (audio) {
           audio.currentTime = 0;
-          audio.play().catch(e => console.error('Error playing notification sound:', e));
+          audio.muted = false;
+          const playPromise = audio.play();
+          if (playPromise) {
+            playPromise.catch(e => {
+              console.warn('⚠️ No se pudo reproducir sonido de notificación:', e.message);
+              // Reintentar con un audio fresco
+              try {
+                const fallback = new Audio('/audio/new-order-notification.mp3');
+                fallback.play().catch(() => {});
+              } catch (_) {}
+            });
+          }
         }
 
         setTimeout(() => setShowOrderBanner(false), 10000);

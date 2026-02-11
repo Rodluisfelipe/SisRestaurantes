@@ -9,7 +9,7 @@ import {
   FaShoppingBag, FaStore, FaTools, FaCog
 } from 'react-icons/fa';
 
-const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount }) => {
+const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData }) => {
   // Grouped menu sections — same items as original sidebar
   const menuSections = [
     {
@@ -84,15 +84,11 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     return collapsedSections[sectionId] || false;
   };
 
-  const SidebarContent = () => (
+  const sidebarContent = (
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
       <div className="p-5 pb-4">
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3"
-        >
+        <div className="flex items-center gap-3">
           <div className="relative">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-md">
               {businessConfig?.logo ? (
@@ -113,14 +109,14 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
             </h1>
             <p className="text-[11px] text-slate-400 font-medium">Sistema de gestión</p>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Subscription Status */}
-      {businessConfig && businessConfig._id && (
+      {businessConfig && businessConfig._id && subscriptionData && (
         <div className="px-4 pb-3">
           <SubscriptionStatus 
-            businessId={businessConfig._id}
+            {...subscriptionData}
             onNavigateToSubscription={() => setActiveTab('subscription')}
             compact={true}
           />
@@ -289,7 +285,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className="hidden lg:block w-64 bg-white min-h-screen border-r border-slate-200 sticky top-0 shadow-sm"
       >
-        <SidebarContent />
+        {sidebarContent}
       </motion.div>
     </>
   );

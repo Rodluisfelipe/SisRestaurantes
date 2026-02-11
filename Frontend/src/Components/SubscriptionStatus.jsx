@@ -1,337 +1,133 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaCrown, FaCalendarAlt, FaExclamationTriangle, FaArrowRight } from 'react-icons/fa';
-import api from '../services/api';
-import { useAuth } from '../Context/AuthContext';
-import { useBusinessSocket } from '../hooks/useBusinessSocket';
+import { FaCrown, FaCalendarAlt, FaExclamationTriangle, FaArrowRight, FaClock } from 'react-icons/fa';
 
-const SubscriptionStatus = ({ businessId, onNavigateToSubscription, compact = false }) => {
-  const [subscription, setSubscription] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [timeRemaining, setTimeRemaining] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-  const [graceUntilDate, setGraceUntilDate] = useState(null);
+/**
+ * Componente de presentacion puro.
+ * Recibe toda la data de suscripcion via props (de useSubscriptionData).
+ * NO hace API calls, NO registra socket listeners, NO corre timers propios.
+ */
+const SubscriptionStatus = ({
+  subscription,
+  loading,
+  error,
+  timeRemaining,
+  graceUntilDate,
+  currentStatus,
+  isActive,
+  isInGracePeriod,
+  isExpired,
+  onNavigateToSubscription,
+  compact = false,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-  const socket = useBusinessSocket(businessId || user?.businessId);
 
-  useEffect(() => {
-    // Solo cargar si tenemos businessId o si el usuario está autenticado
-    if (businessId || user) {
-      loadSubscription();
-    } else {
-      setLoading(false);
-    }
-  }, [businessId, user]);
+  const getPlanIcon = (planType) => (planType === 'annual' ? FaCrown : FaCalendarAlt);
+  const getPlanText = (planType) => (planType === 'annual' ? 'Plan Anual' : 'Plan Mensual');
 
-  // Escuchar eventos de socket para actualización en tiempo real
-  useEffect(() => {
-    if (!socket) return;
-    
-    const handleSubscriptionActivated = (data) => {
-      console.log('Socket: Subscription activated', data);
-      loadSubscription();
-    };
-    
-    socket.on('subscription_activated', handleSubscriptionActivated);
-    
-    return () => {
-      socket.off('subscription_activated', handleSubscriptionActivated);
-    };
-  }, [socket]);
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  // Contador en tiempo real para el período de gracia
-  useEffect(() => {
-    if (!subscription) return;
-
-    const calculateTimeRemaining = () => {
-      const now = new Date();
-      const periodEnd = subscription.periodEnd ? new Date(subscription.periodEnd) : null;
-      let graceUntil = subscription.graceUntil || subscription.gracePeriodEnd 
-        ? new Date(subscription.graceUntil || subscription.gracePeriodEnd) 
-        : null;
-      
-      // Si no hay graceUntil pero tenemos periodEnd, calcularlo
-      if (!graceUntil && periodEnd) {
-        graceUntil = new Date(periodEnd);
-        graceUntil.setDate(graceUntil.getDate() + 5);
-      }
-
-      if (graceUntil && now <= graceUntil) {
-        setGraceUntilDate(graceUntil);
-        const diff = graceUntil - now;
-        
-        if (diff > 0) {
-          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-          
-          setTimeRemaining({ days, hours, minutes, seconds });
-        } else {
-          setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-        }
-      } else {
-        setGraceUntilDate(null);
-        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
-      }
-    };
-
-    calculateTimeRemaining();
-    const interval = setInterval(calculateTimeRemaining, 1000);
-
-    return () => clearInterval(interval);
-  }, [subscription]);
-
-  const loadSubscription = async () => {
-    try {
-      setLoading(true);
-      let response;
-      
-      // Si tenemos businessId y el usuario está autenticado, usar /subscriptions/me
-      // Si no, usar /subscriptions/check/:businessId (si tenemos businessId)
-      if (user && !businessId) {
-        // Usuario autenticado sin businessId específico
-        response = await api.get(`/subscriptions/me`);
-      } else if (businessId && user) {
-        // Usuario autenticado con businessId específico
-        response = await api.get(`/subscriptions/me?businessId=${businessId}`);
-      } else if (businessId) {
-        // Sin usuario autenticado pero con businessId (contexto público)
-        response = await api.get(`/subscriptions/check/${businessId}`);
-      } else {
-        setSubscription(null);
-        setLoading(false);
-        return;
-      }
-      
-      if (response.data.success) {
-        // Formato de /subscriptions/me
-        if (response.data.subscription) {
-          setSubscription(response.data.subscription);
-        }
-        // Formato de /subscriptions/check/:businessId
-        else if (response.data.hasSubscription && response.data.subscription) {
-          const sub = response.data.subscription;
-          // Convertir al formato esperado
-          const now = new Date();
-          const periodEnd = sub.periodEnd || sub.endDate;
-          const graceUntil = sub.graceUntil || (periodEnd ? new Date(new Date(periodEnd).getTime() + 5 * 24 * 60 * 60 * 1000) : null);
-          
-          let status = 'active';
-          if (periodEnd && now > graceUntil) {
-            status = 'suspended';
-          } else if (periodEnd && now > periodEnd) {
-            status = 'grace';
-          }
-          
-          setSubscription({
-            ...sub,
-            status,
-            periodEnd: periodEnd || sub.endDate,
-            graceUntil,
-            graceDaysRemaining: graceUntil && now <= graceUntil 
-              ? (() => {
-                  const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                  const graceNormalized = new Date(new Date(graceUntil).getFullYear(), new Date(graceUntil).getMonth(), new Date(graceUntil).getDate());
-                  const diffTime = graceNormalized - nowNormalized;
-                  const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                  return Math.max(0, daysDiff);
-                })()
-              : 0,
-            daysRemaining: periodEnd ? Math.ceil((new Date(periodEnd) - now) / (1000 * 60 * 60 * 24)) : 0
-          });
-        } else {
-          setSubscription(null);
-        }
-      } else {
-        setSubscription(null);
-      }
-    } catch (error) {
-      console.error('Error loading subscription:', error);
-      // Solo mostrar error si es un error crítico, no 403 (puede ser que el usuario no esté autenticado)
-      if (error.response?.status !== 403 && error.response?.status !== 401) {
-        setError('Error al cargar la información de suscripción');
-      }
-      setSubscription(null);
-    } finally {
-      setLoading(false);
-    }
+  const formatDateTime = (date) => {
+    if (!date) return '';
+    return new Date(date).toLocaleString('es-CO', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  const getStatusColor = (status, isInGracePeriod) => {
-    if (isInGracePeriod) return 'text-yellow-600';
-    if (status === 'active') return 'text-green-600';
+  const getStatusColor = (status, grace) => {
+    if (grace) return 'text-yellow-600';
+    if (status === 'active') return 'text-emerald-600';
     if (status === 'expired') return 'text-red-600';
-    return 'text-gray-600';
+    return 'text-slate-500';
   };
 
-  const getStatusText = (status, isInGracePeriod) => {
-    if (isInGracePeriod) return 'Período de Gracia';
+  const getStatusText = (status, grace) => {
+    if (grace) return 'Periodo de Gracia';
     if (status === 'active') return 'Activo';
     if (status === 'expired') return 'Expirado';
     return 'Inactivo';
   };
 
-  const getPlanIcon = (planType) => {
-    return planType === 'annual' ? '👑' : '📅';
-  };
-
-  const getPlanText = (planType) => {
-    return planType === 'annual' ? 'Plan Anual' : 'Plan Mensual';
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('es-CO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatDateTime = (date) => {
-    if (!date) return '';
-    return new Date(date).toLocaleString('es-CO', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleNavigate = () => {
+    if (onNavigateToSubscription) {
+      onNavigateToSubscription();
+    } else if (location.pathname.includes('/admin')) {
+      window.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'subscription' }));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate('/admin');
+    }
   };
 
   if (loading) {
+    if (compact) return null;
     return (
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-        <div className="flex items-center space-x-3">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-          <span className="text-blue-700 font-medium">Cargando información de suscripción...</span>
+      <div className="rounded-xl p-3 border border-slate-200 bg-slate-50">
+        <div className="flex items-center gap-2">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-300 border-t-slate-600" />
+          <span className="text-xs text-slate-500">Cargando suscripcion...</span>
         </div>
       </div>
     );
   }
 
   if (error) {
+    if (compact) return null;
     return (
-      <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-4 border border-red-200">
-        <div className="flex items-center space-x-3">
-          <FaExclamationTriangle className="text-red-500" />
-          <span className="text-red-700 font-medium">{error}</span>
+      <div className="rounded-xl p-3 border border-red-200 bg-red-50">
+        <div className="flex items-center gap-2">
+          <FaExclamationTriangle className="text-red-400 text-xs" />
+          <span className="text-xs text-red-600">{error}</span>
         </div>
       </div>
     );
   }
 
   if (!subscription) {
+    if (compact) return null;
     return (
-      <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200">
-        <div className="flex items-center space-x-3">
-          <div className="text-2xl">📋</div>
+      <div className="rounded-xl p-3 border border-slate-200 bg-slate-50">
+        <div className="flex items-center gap-2">
+          <FaCalendarAlt className="text-slate-400 text-xs" />
           <div>
-            <h3 className="text-gray-800 font-semibold">Sin Suscripción Activa</h3>
-            <p className="text-gray-600 text-sm">Contacta al administrador para activar tu plan</p>
+            <p className="text-xs font-semibold text-slate-700">Sin Suscripcion Activa</p>
+            <p className="text-[11px] text-slate-500">Contacta al administrador para activar tu plan</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Calcular estado basado en fechas (más confiable que el status del backend)
+  if (compact && !isActive) return null;
+  if (!compact && isActive) return null;
+
+  let graceDaysRemaining = 0;
   const now = new Date();
   const periodEnd = subscription.periodEnd ? new Date(subscription.periodEnd) : null;
-  const graceUntil = subscription.graceUntil || subscription.gracePeriodEnd ? new Date(subscription.graceUntil || subscription.gracePeriodEnd) : null;
-  
-  let currentStatus = subscription.status || 'active';
-  if (periodEnd && graceUntil) {
-    if (now > graceUntil) {
-      currentStatus = 'suspended';
-    } else if (now > periodEnd) {
-      currentStatus = 'grace';
-    } else {
-      currentStatus = 'active';
-    }
-  } else if (periodEnd) {
-    if (now > periodEnd) {
-              // Si no hay graceUntil, calcularlo
-        const calculatedGraceUntil = new Date(periodEnd);
-        calculatedGraceUntil.setDate(calculatedGraceUntil.getDate() + 5);
-        if (now > calculatedGraceUntil) {
-          currentStatus = 'suspended';
-        } else {
-          currentStatus = 'grace';
-        }
-    } else {
-      currentStatus = 'active';
-    }
-  }
-  
-  const isExpired = currentStatus === 'suspended';
-  const isInGracePeriod = currentStatus === 'grace';
-  const isActive = currentStatus === 'active';
-  
-  // Debug: Log para verificar el estado
-  console.log('SubscriptionStatus Debug:', {
-    compact,
-    currentStatus,
-    isActive,
-    isInGracePeriod,
-    isExpired,
-    periodEnd,
-    graceUntil,
-    now: now.toISOString(),
-    subscription
-  });
-  
-  // En modo compacto (sidebar), solo mostrar si está activa
-  if (compact && !isActive) {
-    console.log('Ocultando en modo compacto porque no está activa');
-    return null;
-  }
-  
-  // En modo normal/completo (dashboard), solo mostrar si está vencida o en período de gracia
-  if (!compact && isActive) {
-    console.log('Ocultando en modo normal porque está activa');
-    return null;
-  }
-  
-  console.log('Mostrando componente:', compact ? 'COMPACTO' : 'COMPLETO');
-  
-  // Calcular días restantes de gracia (normalizando fechas para comparar solo días)
-  let graceDaysRemaining = 0;
-  
-  // Si tenemos graceUntil, calcular basado en eso
+  const graceUntil = subscription.graceUntil || subscription.gracePeriodEnd
+    ? new Date(subscription.graceUntil || subscription.gracePeriodEnd)
+    : null;
+
   if (graceUntil) {
-    const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const graceNormalized = new Date(graceUntil.getFullYear(), graceUntil.getMonth(), graceUntil.getDate());
-    const diffTime = graceNormalized - nowNormalized;
-    const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    graceDaysRemaining = Math.max(0, daysDiff);
-  } 
-  // Si no hay graceUntil pero tenemos periodEnd y estamos en período de gracia, calcularlo
-  else if (periodEnd && isInGracePeriod) {
-    const calculatedGraceUntil = new Date(periodEnd);
-    calculatedGraceUntil.setDate(calculatedGraceUntil.getDate() + 5);
-    const nowNormalized = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const graceNormalized = new Date(calculatedGraceUntil.getFullYear(), calculatedGraceUntil.getMonth(), calculatedGraceUntil.getDate());
-    const diffTime = graceNormalized - nowNormalized;
-    const daysDiff = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    graceDaysRemaining = Math.max(0, daysDiff);
-  }
-  // Si el backend nos dio un valor, usarlo solo si no pudimos calcularlo nosotros
-  else if (subscription.graceDaysRemaining !== undefined && subscription.graceDaysRemaining !== null) {
+    const nowN = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const graceN = new Date(graceUntil.getFullYear(), graceUntil.getMonth(), graceUntil.getDate());
+    graceDaysRemaining = Math.max(0, Math.floor((graceN - nowN) / 86400000));
+  } else if (periodEnd && isInGracePeriod) {
+    const calc = new Date(periodEnd);
+    calc.setDate(calc.getDate() + 5);
+    const nowN = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const graceN = new Date(calc.getFullYear(), calc.getMonth(), calc.getDate());
+    graceDaysRemaining = Math.max(0, Math.floor((graceN - nowN) / 86400000));
+  } else if (subscription.graceDaysRemaining != null) {
     graceDaysRemaining = subscription.graceDaysRemaining;
   }
 
-  // Versión compacta para sidebar (solo cuando está activa)
   if (compact) {
+    const PlanIcon = getPlanIcon(subscription.planType);
     return (
-      <div
-        className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200/80"
-      >
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200/80">
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <span className="text-xs">{getPlanIcon(subscription.planType)}</span>
+          <PlanIcon className={`text-xs ${subscription.planType === 'annual' ? 'text-yellow-500' : 'text-slate-500'}`} />
           <span className="text-[11px] font-semibold text-slate-700 truncate">
             {getPlanText(subscription.planType)}
           </span>
@@ -340,245 +136,155 @@ const SubscriptionStatus = ({ businessId, onNavigateToSubscription, compact = fa
           </span>
         </div>
         <span className="text-[11px] font-bold text-slate-500 tabular-nums shrink-0">
-          {subscription.daysRemaining > 0 ? `${subscription.daysRemaining}d` : '✓'}
+          {subscription.daysRemaining > 0 ? `${subscription.daysRemaining}d` : <span className="text-emerald-500">OK</span>}
         </span>
       </div>
     );
   }
 
-  // Versión completa para dashboard (solo cuando está vencida o en período de gracia)
+  const PlanIcon = getPlanIcon(subscription.planType);
+
   return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ 
-          opacity: [1, 0.9, 1],
-          y: 0
-        }}
-        transition={{
-          opacity: {
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }
-        }}
-        className={`rounded-lg p-2 md:p-3 border-2 ${
-          isExpired 
-            ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-200 shadow-lg' 
-            : isInGracePeriod
-            ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 shadow-lg'
-            : 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
-        }`}
-      >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
-        <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-          <div className="text-xl sm:text-2xl shrink-0">
-            {getPlanIcon(subscription.planType)}
-          </div>
+    <div
+      className={`rounded-xl p-2 md:p-3 border ${
+        isExpired
+          ? 'bg-red-50 border-red-200'
+          : isInGracePeriod
+          ? 'bg-yellow-50 border-yellow-200'
+          : 'bg-emerald-50 border-emerald-200'
+      }`}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <PlanIcon className={`text-lg shrink-0 ${subscription.planType === 'annual' ? 'text-yellow-500' : 'text-slate-500'}`} />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center space-x-1.5 flex-wrap">
-              <h3 className="text-sm sm:text-base font-bold text-gray-800 truncate">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-sm font-bold text-slate-800 truncate">
                 {getPlanText(subscription.planType)}
               </h3>
-              {subscription.planType === 'annual' && (
-                <FaCrown className="text-yellow-500 text-xs sm:text-sm shrink-0" />
-              )}
             </div>
-            <p className={`text-[10px] sm:text-xs font-medium ${getStatusColor(subscription.status, isInGracePeriod)}`}>
+            <p className={`text-[11px] font-medium ${getStatusColor(subscription.status, isInGracePeriod)}`}>
               {getStatusText(subscription.status, isInGracePeriod)}
             </p>
-            <p className="text-gray-600 text-[10px] sm:text-xs truncate">
-              ${subscription.price?.toLocaleString('es-CO') || '0'} COP • Hasta {formatDate(subscription.periodEnd || subscription.endDate)}
+            <p className="text-slate-500 text-[11px] truncate">
+              ${subscription.price?.toLocaleString('es-CO') || '0'} COP · Hasta {formatDate(subscription.periodEnd || subscription.endDate)}
             </p>
           </div>
         </div>
-        
+
         <div className="text-right shrink-0">
           {isExpired ? (
             <div className="text-red-600">
-              <FaExclamationTriangle className="mx-auto mb-1 text-base sm:text-xl" />
-              <p className="text-[10px] sm:text-xs font-medium">MENÚ DESACTIVADO</p>
+              <FaExclamationTriangle className="mx-auto mb-0.5 text-sm" />
+              <p className="text-[10px] font-semibold">DESACTIVADO</p>
             </div>
           ) : isInGracePeriod ? (
             <div className="text-yellow-600">
-              <FaCalendarAlt className="mx-auto mb-1 text-base sm:text-xl" />
-              <p className="text-[10px] sm:text-xs font-medium">
-                {subscription.daysRemaining < 0 ? 'EXPIRÓ' : `${subscription.daysRemaining} días`}
+              <FaClock className="mx-auto mb-0.5 text-sm" />
+              <p className="text-[10px] font-semibold">
+                {subscription.daysRemaining < 0 ? 'EXPIRO' : `${subscription.daysRemaining}d`}
               </p>
             </div>
-          ) : (
-            <div className="text-green-600">
-              <FaCalendarAlt className="mx-auto mb-1 text-base sm:text-xl" />
-              <p className="text-[10px] sm:text-xs font-medium">
-                {subscription.daysRemaining > 0 ? `${subscription.daysRemaining} días` : 'ACTIVO'}
-              </p>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
-      
-              {isInGracePeriod && (() => {
-                // Calcular si quedan menos de 24 horas (menos de 1 día)
-                const totalHoursRemaining = (timeRemaining.days * 24) + timeRemaining.hours;
-                const isLessThan24Hours = totalHoursRemaining < 24 && timeRemaining.days === 0;
-                
-                return (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ 
-                      opacity: [1, 0.9, 1],
-                      y: 0
-                    }}
-                    transition={{
-                      opacity: {
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }
-                    }}
-                    className={`mt-2 p-2 sm:p-3 rounded-lg border-2 shadow-lg ${
-                      isLessThan24Hours 
-                        ? 'bg-gradient-to-r from-red-50 to-pink-50 border-red-300' 
-                        : 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-300'
-                    }`}
-                  >
-                  {/* Layout de 2 columnas: Izquierda (Contador) | Derecha (Info y Botón) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {/* Columna Izquierda: Contador */}
-                    <div className="flex flex-col">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <FaExclamationTriangle className={`${isLessThan24Hours ? 'text-red-600' : 'text-yellow-600'} text-sm flex-shrink-0`} />
-                        <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-xs`}>
-                          ⏰ Período de Gracia
-                        </p>
-                      </div>
-                      
-                      {graceUntilDate && (timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) ? (
-                        <div className={`${isLessThan24Hours ? 'bg-red-100 border-red-300' : 'bg-yellow-100 border-yellow-300'} border-2 rounded-lg p-2`}>
-                          <p className={`${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'} font-bold text-[10px] mb-1 text-center`}>
-                            Tiempo restante:
-                          </p>
-                          <div className="flex items-center justify-center space-x-1.5 text-center">
-                            {timeRemaining.days > 0 && (
-                              <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-2 py-0.5 rounded`}>
-                                <div className={`text-lg font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{timeRemaining.days}</div>
-                                <div className={`text-[10px] ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>días</div>
-                              </div>
-                            )}
-                            <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-2 py-0.5 rounded`}>
-                              <div className={`text-lg font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.hours).padStart(2, '0')}</div>
-                              <div className={`text-[10px] ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>hrs</div>
-                            </div>
-                            <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-2 py-0.5 rounded`}>
-                              <div className={`text-lg font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.minutes).padStart(2, '0')}</div>
-                              <div className={`text-[10px] ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>min</div>
-                            </div>
-                            <div className={`${isLessThan24Hours ? 'bg-red-200' : 'bg-yellow-200'} px-2 py-0.5 rounded`}>
-                              <div className={`text-lg font-bold ${isLessThan24Hours ? 'text-red-900' : 'text-yellow-900'}`}>{String(timeRemaining.seconds).padStart(2, '0')}</div>
-                              <div className={`text-[10px] ${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'}`}>seg</div>
-                            </div>
-                          </div>
-                          <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-[9px] mt-1.5 text-center`}>
-                            Desactivación: {formatDateTime(graceUntilDate)}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="bg-red-100 border-2 border-red-300 rounded-lg p-2">
-                          <p className="text-red-900 font-bold text-xs text-center">
-                            ⚠️ Desactivación inminente
-                          </p>
-                          {graceUntilDate && (
-                            <p className="text-red-800 text-[10px] mt-1 text-center">
-                              {formatDateTime(graceUntilDate)}
-                            </p>
-                          )}
+
+      {isInGracePeriod && (() => {
+        const totalHours = timeRemaining.days * 24 + timeRemaining.hours;
+        const isUrgent = totalHours < 24 && timeRemaining.days === 0;
+        const urgentBg = isUrgent ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200';
+        const urgentText = isUrgent ? 'text-red-800' : 'text-yellow-800';
+        const urgentAccent = isUrgent ? 'text-red-600' : 'text-yellow-600';
+        const urgentBadge = isUrgent ? 'bg-red-100' : 'bg-yellow-100';
+
+        return (
+          <div className={`mt-2 p-2.5 rounded-xl border ${urgentBg}`}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              <div>
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <FaClock className={`text-xs ${urgentAccent}`} />
+                  <span className={`text-[11px] font-bold ${urgentText}`}>Periodo de Gracia</span>
+                </div>
+
+                {graceUntilDate && (timeRemaining.days > 0 || timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) ? (
+                  <div className={`${urgentBadge} rounded-lg p-2`}>
+                    <p className={`text-[10px] font-medium ${urgentText} text-center mb-1`}>Tiempo restante:</p>
+                    <div className="flex items-center justify-center gap-1.5 tabular-nums">
+                      {timeRemaining.days > 0 && (
+                        <div className="text-center">
+                          <div className={`text-base font-bold ${urgentText}`}>{timeRemaining.days}</div>
+                          <div className={`text-[9px] ${urgentAccent}`}>dias</div>
                         </div>
                       )}
-                    </div>
-
-                    {/* Columna Derecha: Información y Botón */}
-                    <div className="flex flex-col justify-between">
-                      <div>
-                        <p className={`${isLessThan24Hours ? 'text-red-800' : 'text-yellow-800'} text-xs mb-1.5`}>
-                          Tu suscripción expiró el {formatDate(subscription.periodEnd || subscription.endDate)}. 
-                          Tienes <strong>{graceDaysRemaining} días de gracia</strong> para renovar.
-                        </p>
-                        <p className={`${isLessThan24Hours ? 'text-red-700' : 'text-yellow-700'} text-[10px] mb-2 font-medium`}>
-                          ⚠️ Después del período de gracia, el menú quedará desactivado. Los usuarios solo podrán verlo, pero no realizar pedidos.
-                        </p>
+                      <div className="text-center">
+                        <div className={`text-base font-bold ${urgentText}`}>{String(timeRemaining.hours).padStart(2, '0')}</div>
+                        <div className={`text-[9px] ${urgentAccent}`}>hrs</div>
                       </div>
-                      <button
-                        onClick={() => {
-                          if (onNavigateToSubscription) {
-                            onNavigateToSubscription();
-                          } else if (location.pathname.includes('/admin')) {
-                            window.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'subscription' }));
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                          } else {
-                            navigate('/admin');
-                          }
-                        }}
-                        className={`w-full px-3 py-1.5 ${isLessThan24Hours ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white text-sm font-semibold rounded-lg transition-all duration-200 flex items-center justify-center space-x-1.5 shadow-md hover:shadow-lg`}
-                      >
-                        <span>Renovar Ahora</span>
-                        <FaArrowRight className="text-xs" />
-                      </button>
+                      <div className="text-center">
+                        <div className={`text-base font-bold ${urgentText}`}>{String(timeRemaining.minutes).padStart(2, '0')}</div>
+                        <div className={`text-[9px] ${urgentAccent}`}>min</div>
+                      </div>
+                      <div className="text-center">
+                        <div className={`text-base font-bold ${urgentText}`}>{String(timeRemaining.seconds).padStart(2, '0')}</div>
+                        <div className={`text-[9px] ${urgentAccent}`}>seg</div>
+                      </div>
                     </div>
+                    <p className={`text-[9px] ${urgentAccent} mt-1 text-center`}>
+                      Desactivacion: {formatDateTime(graceUntilDate)}
+                    </p>
                   </div>
-                </motion.div>
-                  );
-                })()}
-      
-              {isExpired && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ 
-              opacity: [1, 0.9, 1],
-              y: 0
-            }}
-            transition={{
-              opacity: {
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }
-            }}
-            className="mt-3 p-4 bg-gradient-to-r from-red-50 to-pink-50 rounded-lg border-2 border-red-300 shadow-lg"
-          >
-          <div className="flex items-start space-x-3">
-            <FaExclamationTriangle className="text-red-600 text-xl flex-shrink-0 mt-0.5" />
+                ) : (
+                  <div className="bg-red-100 rounded-lg p-2 text-center">
+                    <p className="text-xs font-bold text-red-800">Desactivacion inminente</p>
+                    {graceUntilDate && <p className="text-[10px] text-red-600 mt-0.5">{formatDateTime(graceUntilDate)}</p>}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col justify-between">
+                <div>
+                  <p className={`text-[11px] ${urgentText} mb-1`}>
+                    Tu suscripcion expiro el {formatDate(subscription.periodEnd || subscription.endDate)}.
+                    Tienes <strong>{graceDaysRemaining} dias</strong> para renovar.
+                  </p>
+                  <p className={`text-[10px] ${urgentAccent} font-medium mb-2`}>
+                    Despues del periodo de gracia el menu quedara desactivado.
+                  </p>
+                </div>
+                <button
+                  onClick={handleNavigate}
+                  className={`w-full px-3 py-1.5 ${isUrgent ? 'bg-red-600 hover:bg-red-700' : 'bg-yellow-600 hover:bg-yellow-700'} text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5`}
+                >
+                  <span>Renovar Ahora</span>
+                  <FaArrowRight className="text-[10px]" />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {isExpired && (
+        <div className="mt-2 p-2.5 rounded-xl border bg-red-50 border-red-200">
+          <div className="flex items-start gap-2">
+            <FaExclamationTriangle className="text-red-500 text-sm shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-red-900 font-bold text-sm mb-2">
-                🔴 MENÚ DESACTIVADO
-              </p>
-              <p className="text-red-800 text-sm mb-2">
-                Tu suscripción expiró y el período de gracia de <strong>5 días</strong> ha finalizado.
-              </p>
-              <p className="text-red-700 text-xs mb-3 font-medium">
-                ❌ El menú está desactivado para seleccionar o ver órdenes. Los usuarios solo pueden ver el menú, pero no pueden realizar pedidos. Para reactivarlo completamente, debes renovar tu suscripción.
+              <p className="text-xs font-bold text-red-800 mb-1">Menu desactivado</p>
+              <p className="text-[11px] text-red-700 mb-1">
+                Tu suscripcion expiro y el periodo de gracia finalizo. Los usuarios pueden ver el menu pero no realizar pedidos.
               </p>
               <button
-                onClick={() => {
-                  if (onNavigateToSubscription) {
-                    onNavigateToSubscription();
-                  } else if (location.pathname.includes('/admin')) {
-                    // Si estamos en el panel admin, usar evento custom o scroll
-                    window.dispatchEvent(new CustomEvent('navigateToTab', { detail: 'subscription' }));
-                    // También intentar scroll al inicio
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  } else {
-                    navigate('/admin');
-                  }
-                }}
-                className="w-full sm:w-auto mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition-all duration-200 flex items-center justify-center space-x-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                onClick={handleNavigate}
+                className="w-full mt-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-1.5"
               >
-                <span>Renovar Suscripción</span>
-                <FaArrowRight className="text-sm" />
+                <span>Renovar Suscripcion</span>
+                <FaArrowRight className="text-[10px]" />
               </button>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 

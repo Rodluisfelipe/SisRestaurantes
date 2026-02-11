@@ -50,13 +50,13 @@ function ModernOrdersDashboard() {
   const getOrderTypeInfo = (orderType) => {
     switch (orderType) {
       case 'inSite':
-        return { icon: '🪑', color: 'bg-blue-500', label: 'En mesa' };
+        return { Icon: FaChair, color: 'bg-blue-500', label: 'En mesa' };
       case 'takeaway':
-        return { icon: '🥡', color: 'bg-orange-500', label: 'Para llevar' };
+        return { Icon: FaShoppingBag, color: 'bg-orange-500', label: 'Para llevar' };
       case 'delivery':
-        return { icon: '🚚', color: 'bg-green-500', label: 'Delivery' };
+        return { Icon: FaTruck, color: 'bg-emerald-500', label: 'Delivery' };
       default:
-        return { icon: '🍽️', color: 'bg-gray-500', label: 'Desconocido' };
+        return { Icon: FaUtensils, color: 'bg-slate-500', label: 'Desconocido' };
     }
   };
 
@@ -69,7 +69,7 @@ function ModernOrdersDashboard() {
           textColor: 'text-yellow-700',
           bgColor: 'bg-yellow-50',
           label: 'Pendiente',
-          icon: '⏳'
+          Icon: FaClock
         };
       case ORDER_STATUS.IN_PROGRESS:
         return { 
@@ -77,23 +77,23 @@ function ModernOrdersDashboard() {
           textColor: 'text-blue-700',
           bgColor: 'bg-blue-50',
           label: 'En progreso',
-          icon: '👨‍🍳'
+          Icon: FaUtensils
         };
       case ORDER_STATUS.COMPLETED:
         return { 
-          color: 'bg-green-500', 
-          textColor: 'text-green-700',
-          bgColor: 'bg-green-50',
+          color: 'bg-emerald-500', 
+          textColor: 'text-emerald-700',
+          bgColor: 'bg-emerald-50',
           label: 'Completado',
-          icon: '✅'
+          Icon: FaCheck
         };
       default:
         return { 
-          color: 'bg-gray-500', 
-          textColor: 'text-gray-700',
-          bgColor: 'bg-gray-50',
+          color: 'bg-slate-500', 
+          textColor: 'text-slate-700',
+          bgColor: 'bg-slate-50',
           label: 'Desconocido',
-          icon: '❓'
+          Icon: FaClipboardList
         };
     }
   };
@@ -661,14 +661,16 @@ function ModernOrdersDashboard() {
             animate="visible"
             className={
               viewMode === 'grid'
-                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 lg:gap-8'
-                : 'space-y-4'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3'
+                : 'space-y-2'
             }
           >
             <AnimatePresence>
               {filteredOrders.map((order) => {
                 const orderTypeInfo = getOrderTypeInfo(order.orderType);
                 const statusInfo = getStatusInfo(order.status);
+                const StatusIcon = statusInfo.Icon;
+                const TypeIcon = orderTypeInfo.Icon;
                 const timeElapsed = calculateTimeElapsed(order.createdAt);
                 const isPending = order.status === ORDER_STATUS.PENDING;
 
@@ -679,28 +681,27 @@ function ModernOrdersDashboard() {
                     initial="hidden"
                     animate="visible"
                     exit="exit"
-                    whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                    className={`bg-white rounded-xl overflow-hidden transition-all duration-200 ${
+                    className={`bg-white rounded-xl overflow-hidden transition-all duration-150 ${
                       isPending 
-                        ? 'border-2 border-yellow-300 shadow-md ring-1 ring-yellow-100' 
-                        : 'border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300'
-                    } ${viewMode === 'list' ? 'p-4' : 'p-0'}`}
+                        ? 'border border-yellow-300 ring-1 ring-yellow-100' 
+                        : 'border border-slate-200 hover:border-slate-300'
+                    } ${viewMode === 'list' ? 'p-3' : 'p-0'}`}
                   >
                     {viewMode === 'grid' ? (
                       <>
                         {/* Card Header */}
-                        <div className={`px-4 py-3 ${
+                        <div className={`px-3 py-2.5 ${
                           isPending 
-                            ? 'bg-yellow-50 border-b border-yellow-200' 
-                            : 'bg-slate-50 border-b border-slate-100'
+                            ? 'bg-yellow-50/80 border-b border-yellow-200' 
+                            : 'bg-slate-50/80 border-b border-slate-100'
                         }`}>
                           <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-9 h-9 ${orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
-                                <span className="text-base">{orderTypeInfo.icon}</span>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={`w-8 h-8 ${orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
+                                <TypeIcon className="text-white text-sm" />
                               </div>
                               <div className="min-w-0">
-                                <h3 className="font-bold text-slate-800 text-sm">#{order.orderNumber}</h3>
+                                <h3 className="font-bold text-slate-800 text-sm leading-tight">#{order.orderNumber}</h3>
                                 <p className="text-[11px] text-slate-500">{orderTypeInfo.label}</p>
                               </div>
                             </div>
@@ -708,12 +709,12 @@ function ModernOrdersDashboard() {
                             <div className="flex flex-col items-end gap-1 shrink-0">
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 isPending 
-                                  ? 'bg-yellow-400 text-yellow-900' 
-                                  : statusInfo.textColor + ' ' + statusInfo.bgColor
+                                  ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' 
+                                  : statusInfo.bgColor + ' ' + statusInfo.textColor
                               }`}>
-                                {statusInfo.icon} {statusInfo.label}
+                                <StatusIcon className="text-[8px]" /> {statusInfo.label}
                               </span>
-                              <span className={`text-[10px] font-semibold ${
+                              <span className={`text-[10px] font-medium tabular-nums ${
                                 isPending ? 'text-yellow-600' : 'text-slate-400'
                               }`}>
                                 {timeElapsed}
@@ -723,19 +724,18 @@ function ModernOrdersDashboard() {
                         </div>
 
                         {/* Card Body */}
-                        <div className="p-4">
-                          <div className="space-y-2 mb-4">
-                            {/* Cliente */}
-                            <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
-                              <FaUser className="text-xs text-slate-400 shrink-0" />
-                              <span className="text-sm font-medium text-slate-700 truncate">{order.customerName}</span>
+                        <div className="p-3">
+                          <div className="space-y-1.5 mb-3">
+                            {/* Cliente + Teléfono inline */}
+                            <div className="flex items-center gap-2 text-[13px]">
+                              <FaUser className="text-[10px] text-slate-400 shrink-0" />
+                              <span className="font-medium text-slate-700 truncate">{order.customerName}</span>
                             </div>
                             
-                            {/* Teléfono */}
                             {order.phone && (
-                              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
-                                <FaPhone className="text-xs text-slate-400 shrink-0" />
-                                <a href={`tel:${order.phone}`} className="text-sm font-medium text-slate-600 hover:text-blue-600 truncate">
+                              <div className="flex items-center gap-2 text-[13px]">
+                                <FaPhone className="text-[10px] text-slate-400 shrink-0" />
+                                <a href={`tel:${order.phone}`} className="font-medium text-slate-600 hover:text-blue-600 truncate">
                                   {order.phone}
                                 </a>
                               </div>
@@ -743,77 +743,77 @@ function ModernOrdersDashboard() {
                             
                             {/* Mesa */}
                             {order.tableNumber && (
-                              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
-                                <FaChair className="text-xs text-slate-400 shrink-0" />
-                                <span className="text-sm font-medium text-slate-700">Mesa {order.tableNumber}</span>
+                              <div className="flex items-center gap-2 text-[13px]">
+                                <FaChair className="text-[10px] text-slate-400 shrink-0" />
+                                <span className="font-medium text-slate-700">Mesa {order.tableNumber}</span>
                               </div>
                             )}
                             
                             {/* Dirección de delivery */}
                             {order.orderType === 'delivery' && order.address && (
-                              <div className="flex items-start gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
-                                <FaHome className="text-xs text-slate-400 shrink-0 mt-0.5" />
-                                <span className="text-sm font-medium text-slate-600 leading-snug">{order.address}</span>
+                              <div className="flex items-start gap-2 text-[13px]">
+                                <FaHome className="text-[10px] text-slate-400 shrink-0 mt-0.5" />
+                                <span className="font-medium text-slate-600 leading-snug">{order.address}</span>
                               </div>
                             )}
                             
                             {/* Zona de delivery */}
                             {order.orderType === 'delivery' && order.deliveryZoneName && (
-                              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
-                                <FaMapMarkerAlt className="text-xs text-slate-400 shrink-0" />
-                                <span className="text-sm font-medium text-slate-600">Zona: {order.deliveryZoneName}</span>
+                              <div className="flex items-center gap-2 text-[13px]">
+                                <FaMapMarkerAlt className="text-[10px] text-slate-400 shrink-0" />
+                                <span className="font-medium text-slate-600">Zona: {order.deliveryZoneName}</span>
                               </div>
                             )}
                             
                             {/* Costo de envío */}
                             {order.orderType === 'delivery' && order.deliveryFee && (
-                              <div className="flex items-center gap-2.5 px-2.5 py-2 bg-slate-50 rounded-lg">
-                                <FaTruck className="text-xs text-slate-400 shrink-0" />
-                                <span className="text-sm font-medium text-slate-700">Envío: ${order.deliveryFee.toLocaleString()}</span>
+                              <div className="flex items-center gap-2 text-[13px]">
+                                <FaTruck className="text-[10px] text-slate-400 shrink-0" />
+                                <span className="font-medium text-slate-700">Envío: ${order.deliveryFee.toLocaleString()}</span>
                               </div>
                             )}
                             
                             {/* Warning de confirmación */}
                             {order.orderType === 'delivery' && order.deliveryNeedsConfirmation && (
-                              <div className="flex items-center gap-2 bg-amber-50 px-2.5 py-2 rounded-lg border border-amber-200">
-                                <FaExclamationTriangle className="text-xs text-amber-500 shrink-0" />
-                                <span className="text-xs font-semibold text-amber-700">Costo de envío por confirmar</span>
+                              <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1.5 rounded-lg border border-amber-200">
+                                <FaExclamationTriangle className="text-[10px] text-amber-500 shrink-0" />
+                                <span className="text-[11px] font-semibold text-amber-700">Envío por confirmar</span>
                               </div>
                             )}
+                          </div>
                             
-                            {/* Total */}
-                            <div className={`flex items-center justify-between pt-3 mt-3 border-t ${
-                              isPending ? 'border-yellow-200' : 'border-slate-100'
-                            }`}>
-                              <span className="text-xs text-slate-500">{order.items?.length || 0} productos</span>
-                              <div className="text-right">
-                                {order.couponCode ? (
-                                  <div>
-                                    <span className="text-base font-bold text-emerald-600">${((order.totalAmount || 0) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
-                                    <div className="text-[10px] text-slate-400 mt-0.5">
-                                      <span className="line-through">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</span>
-                                      <span className="ml-1 text-emerald-500 font-semibold">{order.couponCode}</span>
-                                    </div>
+                          {/* Total */}
+                          <div className={`flex items-center justify-between py-2.5 border-t ${
+                            isPending ? 'border-yellow-200' : 'border-slate-100'
+                          }`}>
+                            <span className="text-[11px] text-slate-500">{order.items?.length || 0} productos</span>
+                            <div className="text-right">
+                              {order.couponCode ? (
+                                <div>
+                                  <span className="text-sm font-bold text-emerald-600">${((order.totalAmount || 0) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
+                                  <div className="text-[10px] text-slate-400">
+                                    <span className="line-through">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</span>
+                                    <span className="ml-1 text-emerald-500 font-semibold">{order.couponCode}</span>
                                   </div>
-                                ) : order.deliveryNeedsConfirmation ? (
-                                  <div>
-                                    <span className="text-base font-bold text-slate-800">${order.totalAmount.toLocaleString()}</span>
-                                    <div className="text-[10px] text-amber-600 font-semibold mt-0.5">+ envío</div>
-                                  </div>
-                                ) : (
-                                  <span className="text-base font-bold text-slate-800">
-                                    ${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}
-                                  </span>
-                                )}
-                              </div>
+                                </div>
+                              ) : order.deliveryNeedsConfirmation ? (
+                                <div>
+                                  <span className="text-sm font-bold text-slate-800">${order.totalAmount.toLocaleString()}</span>
+                                  <div className="text-[10px] text-amber-600 font-medium">+ envío</div>
+                                </div>
+                              ) : (
+                                <span className="text-sm font-bold text-slate-800">
+                                  ${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}
+                                </span>
+                              )}
                             </div>
                           </div>
 
                           {/* Action buttons */}
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 pt-1">
                             <button
                               onClick={() => showOrderDetails(order)}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 px-3 py-2.5 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
                             >
                               <FaEye className="text-[10px]" />
                               <span>Detalles</span>
@@ -822,9 +822,9 @@ function ModernOrdersDashboard() {
                             {order.status === ORDER_STATUS.PENDING && (
                               <button
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors"
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
                               >
-                                <FaPlay className="text-[10px]" />
+                                <FaPlay className="text-[9px]" />
                                 <span>Iniciar</span>
                               </button>
                             )}
@@ -832,9 +832,9 @@ function ModernOrdersDashboard() {
                             {order.status === ORDER_STATUS.IN_PROGRESS && (
                               <button
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2.5 rounded-lg text-xs font-semibold transition-colors"
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
                               >
-                                <FaCheck className="text-[10px]" />
+                                <FaCheck className="text-[9px]" />
                                 <span>Completar</span>
                               </button>
                             )}
@@ -844,15 +844,15 @@ function ModernOrdersDashboard() {
                     ) : (
                       // List view
                       <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-9 h-9 ${orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
-                            <span className="text-base">{orderTypeInfo.icon}</span>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-8 h-8 ${orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
+                            <TypeIcon className="text-white text-xs" />
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <h3 className="font-bold text-slate-800 text-sm">#{order.orderNumber}</h3>
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusInfo.textColor} ${statusInfo.bgColor}`}>
-                                {statusInfo.icon} {statusInfo.label}
+                                <StatusIcon className="text-[8px]" /> {statusInfo.label}
                               </span>
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5 truncate">
@@ -911,267 +911,257 @@ function ModernOrdersDashboard() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
             onClick={() => {
               setSelectedOrder(null);
               setOrderDetails(null);
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-xl border border-slate-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
             >
               {/* Modal Header */}
-              <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl">
+              <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3 rounded-t-xl">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-10 h-10 ${getOrderTypeInfo(orderDetails.orderType).color} rounded-xl flex items-center justify-center`}>
-                      <span className="text-lg">{getOrderTypeInfo(orderDetails.orderType).icon}</span>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    {(() => { const ModalTypeIcon = getOrderTypeInfo(orderDetails.orderType).Icon; return (
+                      <div className={`w-9 h-9 ${getOrderTypeInfo(orderDetails.orderType).color} rounded-lg flex items-center justify-center`}>
+                        <ModalTypeIcon className="text-white text-sm" />
+                      </div>
+                    ); })()}
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900">Pedido #{orderDetails.orderNumber} ({orderDetails._id?.slice(-6)})</h2>
-                      <p className="text-sm text-slate-600">{getOrderTypeInfo(orderDetails.orderType).label}</p>
+                      <h2 className="text-base font-bold text-slate-800">Pedido #{orderDetails.orderNumber}</h2>
+                      <p className="text-xs text-slate-500">{getOrderTypeInfo(orderDetails.orderType).label} · {orderDetails._id?.slice(-6)}</p>
                     </div>
                   </div>
                   
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
+                  <button
                     onClick={() => {
                       setSelectedOrder(null);
                       setOrderDetails(null);
                     }}
                     className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
                   >
-                    <span className="text-lg">❌</span>
-                  </motion.button>
+                    <FaTimes className="text-slate-400 text-xs" />
+                  </button>
                 </div>
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 space-y-6">
+              <div className="p-5 space-y-5">
                 {/* Order Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-base">👤</span>
-                      <span className="text-sm font-medium text-slate-700">Cliente:</span>
-                      <span className="text-sm text-slate-900">{orderDetails.customerName}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <FaUser className="text-xs text-slate-400" />
+                      <span className="text-[13px] text-slate-500">Cliente:</span>
+                      <span className="text-[13px] font-medium text-slate-800">{orderDetails.customerName}</span>
                     </div>
                     
                     {orderDetails.phone && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-base">📞</span>
-                        <span className="text-sm font-medium text-slate-700">Teléfono:</span>
-                        <span className="text-sm text-slate-900">{orderDetails.phone}</span>
+                      <div className="flex items-center gap-2">
+                        <FaPhone className="text-xs text-slate-400" />
+                        <span className="text-[13px] text-slate-500">Teléfono:</span>
+                        <span className="text-[13px] font-medium text-slate-800">{orderDetails.phone}</span>
                       </div>
                     )}
                     
                     {orderDetails.tableNumber && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-base">📍</span>
-                        <span className="text-sm font-medium text-slate-700">Mesa:</span>
-                        <span className="text-sm text-slate-900">{orderDetails.tableNumber}</span>
+                      <div className="flex items-center gap-2">
+                        <FaChair className="text-xs text-slate-400" />
+                        <span className="text-[13px] text-slate-500">Mesa:</span>
+                        <span className="text-[13px] font-medium text-slate-800">{orderDetails.tableNumber}</span>
                       </div>
                     )}
                     
                     {orderDetails.orderType === 'delivery' && orderDetails.address && (
-                      <div className="flex items-start space-x-2">
-                        <span className="text-base">🏠</span>
-                        <span className="text-sm font-medium text-slate-700">Dirección:</span>
-                        <span className="text-sm text-slate-900 leading-relaxed">{orderDetails.address}</span>
+                      <div className="flex items-start gap-2">
+                        <FaHome className="text-xs text-slate-400 mt-0.5" />
+                        <span className="text-[13px] text-slate-500">Dirección:</span>
+                        <span className="text-[13px] font-medium text-slate-800 leading-snug">{orderDetails.address}</span>
                       </div>
                     )}
                     
                     {orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-base">📍</span>
-                        <span className="text-sm font-medium text-slate-700">Zona:</span>
-                        <span className="text-sm text-slate-900">{orderDetails.deliveryZoneName}</span>
+                      <div className="flex items-center gap-2">
+                        <FaMapMarkerAlt className="text-xs text-slate-400" />
+                        <span className="text-[13px] text-slate-500">Zona:</span>
+                        <span className="text-[13px] font-medium text-slate-800">{orderDetails.deliveryZoneName}</span>
                       </div>
                     )}
                     
                     {orderDetails.orderType === 'delivery' && orderDetails.deliveryFee && (
-                      <div className="flex items-center space-x-2">
-                        <span className="text-base">🚚</span>
-                        <span className="text-sm font-medium text-slate-700">Costo de envío:</span>
-                        <span className="text-sm text-slate-900">${orderDetails.deliveryFee.toLocaleString()}</span>
+                      <div className="flex items-center gap-2">
+                        <FaTruck className="text-xs text-slate-400" />
+                        <span className="text-[13px] text-slate-500">Costo de envío:</span>
+                        <span className="text-[13px] font-medium text-slate-800">${orderDetails.deliveryFee.toLocaleString()}</span>
                       </div>
                     )}
                     
                     {orderDetails.orderType === 'delivery' && orderDetails.deliveryNeedsConfirmation && (
-                      <div className="flex items-start space-x-2 bg-amber-50 p-3 rounded-lg">
-                        <span className="text-base">⚠️</span>
+                      <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
+                        <FaExclamationTriangle className="text-xs text-amber-500 shrink-0" />
                         <div className="flex-1">
-                          <p className="text-sm font-semibold text-amber-900">Costo de envío por confirmar</p>
-                          <p className="text-xs text-amber-700 mt-1">Cliente fuera de zonas automáticas</p>
+                          <p className="text-[13px] font-semibold text-amber-800">Envío por confirmar</p>
+                          <p className="text-[11px] text-amber-600">Fuera de zonas automáticas</p>
                         </div>
                       </div>
                     )}
                   </div>
                   
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-base">⏰</span>
-                      <span className="text-sm font-medium text-slate-700">Tiempo:</span>
-                      <span className="text-sm text-slate-900">{calculateTimeElapsed(orderDetails.createdAt)}</span>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <FaClock className="text-xs text-slate-400" />
+                      <span className="text-[13px] text-slate-500">Tiempo:</span>
+                      <span className="text-[13px] font-medium text-slate-800">{calculateTimeElapsed(orderDetails.createdAt)}</span>
                     </div>
                     
-                    <div className="flex items-center space-x-2">
-                      <span className="text-base">{getStatusInfo(orderDetails.status).icon}</span>
-                      <span className="text-sm font-medium text-slate-700">Estado:</span>
-                      <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusInfo(orderDetails.status).textColor} ${getStatusInfo(orderDetails.status).bgColor}`}>
-                        {getStatusInfo(orderDetails.status).label}
+                    {(() => { const ModalStatusIcon = getStatusInfo(orderDetails.status).Icon; return (
+                      <div className="flex items-center gap-2">
+                        <ModalStatusIcon className="text-xs text-slate-400" />
+                        <span className="text-[13px] text-slate-500">Estado:</span>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusInfo(orderDetails.status).textColor} ${getStatusInfo(orderDetails.status).bgColor}`}>
+                          {getStatusInfo(orderDetails.status).label}
+                        </span>
                       </div>
-                    </div>
+                    ); })()}
                   </div>
                 </div>
 
                 {/* Order Items */}
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Productos del pedido</h3>
-                  <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2">Productos</h3>
+                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
                     {orderDetails.items?.map((item, index) => (
-                      <motion.div
+                      <div
                         key={index}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="bg-slate-50 rounded-xl p-4"
+                        className="flex justify-between items-start px-3 py-2.5 bg-white"
                       >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-slate-900">{item.name}</h4>
-                            <p className="text-sm text-slate-600">Cantidad: {item.quantity}</p>
-                            
-                            {item.selectedToppings && item.selectedToppings.length > 0 && (
-                              <div className="mt-2">
-                                <p className="text-xs font-medium text-slate-700 mb-1">Extras:</p>
-                                <div className="space-y-1">
-                                  {item.selectedToppings.map((topping, toppingIndex) => (
-                                    <p key={toppingIndex} className="text-xs text-slate-600">
-                                      • {topping.optionName} (+${topping.price})
-                                    </p>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
+                            <span className="text-[11px] text-slate-400">x{item.quantity}</span>
                           </div>
                           
-                          <div className="text-right">
-                            <p className="font-semibold text-slate-900">${(item.price * item.quantity).toFixed(2)}</p>
-                            <p className="text-sm text-slate-600">${item.price} c/u</p>
-                          </div>
+                          {item.selectedToppings && item.selectedToppings.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              {item.selectedToppings.map((topping, toppingIndex) => (
+                                <span key={toppingIndex} className="text-[11px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
+                                  + {topping.optionName} (${topping.price})
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </motion.div>
+                        
+                        <div className="text-right shrink-0 ml-3">
+                          <p className="text-[13px] font-semibold text-slate-800">${(item.price * item.quantity).toLocaleString()}</p>
+                          {item.quantity > 1 && <p className="text-[11px] text-slate-400">${item.price.toLocaleString()} c/u</p>}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Total */}
-                <div className="border-t border-slate-200 pt-4">
+                <div className="bg-slate-50 rounded-lg px-3 py-3 space-y-1.5">
                   {orderDetails.couponCode ? (
-                    <div className="space-y-2">
+                    <>
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600">Subtotal productos:</span>
-                        <span className="text-sm text-slate-900">${orderDetails.totalAmount}</span>
+                        <span className="text-[13px] text-slate-500">Subtotal</span>
+                        <span className="text-[13px] text-slate-700">${(orderDetails.totalAmount || 0).toLocaleString()}</span>
                       </div>
                       {orderDetails.deliveryFee && (
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-slate-600">Costo de envío:</span>
-                          <span className="text-sm text-slate-900">${orderDetails.deliveryFee.toLocaleString()}</span>
+                          <span className="text-[13px] text-slate-500">Envío</span>
+                          <span className="text-[13px] text-slate-700">${orderDetails.deliveryFee.toLocaleString()}</span>
                         </div>
                       )}
                       <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-600">Cupón aplicado ({orderDetails.couponCode}):</span>
-                        <span className="text-sm text-green-600">-${orderDetails.discountAmount || 0}</span>
+                        <span className="text-[13px] text-emerald-600">Cupón ({orderDetails.couponCode})</span>
+                        <span className="text-[13px] text-emerald-600">-${(orderDetails.discountAmount || 0).toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between items-center border-t border-slate-200 pt-2">
-                        <span className="text-xl font-bold text-slate-900">Total:</span>
-                        <span className="text-2xl font-bold text-green-600">${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0) - (orderDetails.discountAmount || 0)).toLocaleString()}</span>
+                      <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
+                        <span className="text-sm font-bold text-slate-800">Total</span>
+                        <span className="text-base font-bold text-emerald-600">${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0) - (orderDetails.discountAmount || 0)).toLocaleString()}</span>
                       </div>
-                    </div>
+                    </>
                   ) : (
-                    <div className="space-y-2">
+                    <>
                       {orderDetails.deliveryFee ? (
                         <>
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-slate-600">Subtotal productos:</span>
-                            <span className="text-sm text-slate-900">${orderDetails.totalAmount}</span>
+                            <span className="text-[13px] text-slate-500">Subtotal</span>
+                            <span className="text-[13px] text-slate-700">${(orderDetails.totalAmount || 0).toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-slate-600">Costo de envío:</span>
-                            <span className="text-sm text-slate-900">${orderDetails.deliveryFee.toLocaleString()}</span>
+                            <span className="text-[13px] text-slate-500">Envío</span>
+                            <span className="text-[13px] text-slate-700">${orderDetails.deliveryFee.toLocaleString()}</span>
                           </div>
-                          <div className="flex justify-between items-center border-t border-slate-200 pt-2">
-                            <span className="text-xl font-bold text-slate-900">Total:</span>
-                            <span className="text-2xl font-bold text-slate-900">${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0)).toLocaleString()}</span>
+                          <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
+                            <span className="text-sm font-bold text-slate-800">Total</span>
+                            <span className="text-base font-bold text-slate-800">${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0)).toLocaleString()}</span>
                           </div>
                         </>
                       ) : orderDetails.deliveryNeedsConfirmation ? (
                         <>
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-slate-600">Subtotal productos:</span>
-                            <span className="text-sm text-slate-900">${orderDetails.totalAmount}</span>
+                            <span className="text-[13px] text-slate-500">Subtotal</span>
+                            <span className="text-[13px] text-slate-700">${(orderDetails.totalAmount || 0).toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-sm text-amber-700 font-medium">Costo de envío:</span>
-                            <span className="text-sm text-amber-700 font-medium">Por confirmar</span>
+                            <span className="text-[13px] text-amber-600 font-medium">Envío</span>
+                            <span className="text-[13px] text-amber-600 font-medium">Por confirmar</span>
                           </div>
-                          <div className="flex justify-between items-center border-t border-slate-200 pt-2">
-                            <span className="text-xl font-bold text-slate-900">Total estimado:</span>
-                            <span className="text-2xl font-bold text-slate-900">${orderDetails.totalAmount} + envío</span>
+                          <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
+                            <span className="text-sm font-bold text-slate-800">Total estimado</span>
+                            <span className="text-base font-bold text-slate-800">${(orderDetails.totalAmount || 0).toLocaleString()} + envío</span>
                           </div>
                         </>
                       ) : (
                         <div className="flex justify-between items-center">
-                          <span className="text-lg font-semibold text-slate-900">Total:</span>
-                          <span className="text-2xl font-bold text-slate-900">${orderDetails.totalAmount}</span>
+                          <span className="text-sm font-bold text-slate-800">Total</span>
+                          <span className="text-base font-bold text-slate-800">${(orderDetails.totalAmount || 0).toLocaleString()}</span>
                         </div>
                       )}
-                    </div>
+                    </>
                   )}
                 </div>
 
                 {/* Action buttons */}
-                <div className="flex space-x-3">
+                <div className="flex gap-2">
                   {orderDetails.status === ORDER_STATUS.PENDING && (
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                    <button
                       onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
-                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
+                      className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                     >
-                      <span className="text-lg">▶️</span>
+                      <FaPlay className="text-xs" />
                       <span>Iniciar preparación</span>
-                    </motion.button>
+                    </button>
                   )}
                   
                   {orderDetails.status === ORDER_STATUS.IN_PROGRESS && (
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                    <button
                       onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}
-                      className="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
+                      className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                     >
-                      <span className="text-lg">✅</span>
+                      <FaCheck className="text-xs" />
                       <span>Marcar como completado</span>
-                    </motion.button>
+                    </button>
                   )}
                   
                   {!orderDetails.sentToKitchen && (
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                    <button
                       onClick={() => sendToKitchen(orderDetails._id)}
-                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white px-4 py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
+                      className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                     >
-                      <span className="text-lg">👨‍🍳</span>
+                      <FaUtensils className="text-xs" />
                       <span>Enviar a cocina</span>
-                    </motion.button>
+                    </button>
                   )}
                 </div>
               </div>

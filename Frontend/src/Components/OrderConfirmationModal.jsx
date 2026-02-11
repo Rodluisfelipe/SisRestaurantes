@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import * as SessionManager from '../utils/sessionManager';
 import logger from '../utils/logger';
 import api from '../services/api';
+import ConfettiBurst from './ConfettiBurst';
 
 const CancelConfirmationModal = ({ onConfirm, onCancel, isLoading }) => {
   return (
@@ -75,6 +76,7 @@ const OrderConfirmationModal = ({
   const [orderNumber, setOrderNumber] = useState('');
   const [countdown, setCountdown] = useState(15);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     // Obtener el número de orden del sessionStorage cuando se muestra el modal
@@ -84,6 +86,8 @@ const OrderConfirmationModal = ({
       // Iniciar countdown
       setCountdown(15);
       setIsCountdownActive(true);
+      // Launch confetti
+      setShowConfetti(true);
     } else {
       setIsCountdownActive(false);
     }
@@ -204,6 +208,7 @@ const OrderConfirmationModal = ({
   
   return (
     <>
+      <ConfettiBurst show={showConfetti} onComplete={() => setShowConfetti(false)} />
       <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
         <div className="bg-white rounded-2xl w-full max-w-xs sm:max-w-sm mx-auto shadow-2xl border border-slate-200/50 transform transition-all overflow-hidden max-h-[90vh] overflow-y-auto">
           {/* Encabezado mejorado */}
