@@ -111,7 +111,7 @@ router.post("/", async (req, res) => {
     }
 
     // Validate orderType
-    const validOrderTypes = ['dine-in', 'takeout', 'delivery', 'table'];
+    const validOrderTypes = ['inSite', 'takeaway', 'delivery'];
     if (!validOrderTypes.includes(orderType)) {
       return res.status(400).json({ message: `orderType must be one of: ${validOrderTypes.join(', ')}` });
     }

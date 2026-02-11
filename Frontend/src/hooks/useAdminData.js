@@ -28,6 +28,19 @@ export default function useAdminData(businessId) {
   const lastJoinedBusiness = useRef(null);
   const notificationAudioRef = useRef(null);
 
+  // --- Cargar conteo inicial de pedidos pendientes desde el backend ---
+  const loadPendingOrdersCount = useCallback(async () => {
+    if (!businessId || !isValidBusinessIdentifier(businessId)) return;
+    try {
+      const res = await api.get(`/orders?businessId=${businessId}&status=pending`);
+      const pending = Array.isArray(res.data) ? res.data.length : 0;
+      console.log('📊 Pending orders loaded from API:', pending);
+      setPendingOrdersCount(pending);
+    } catch (err) {
+      console.error('Error loading pending orders count:', err);
+    }
+  }, [businessId]);
+
   // Debug log para productos
   useEffect(() => {
     console.log('🔄 Estado de productos actualizado:', products.length, 'productos');
@@ -69,8 +82,9 @@ export default function useAdminData(businessId) {
     if (businessId && isValidBusinessIdentifier(businessId)) {
       console.log('Cargando datos para businessId:', businessId);
       loadData();
+      loadPendingOrdersCount();
     }
-  }, [businessId, loadData]);
+  }, [businessId, loadData, loadPendingOrdersCount]);
 
   // --- Socket listeners (una sola vez) ---
   useEffect(() => {
@@ -135,16 +149,35 @@ export default function useAdminData(businessId) {
     };
   }, []);
 
-  // --- Unirse al business ---
+  // --- Unirse al business (y re-unirse en reconexión) ---
   useEffect(() => {
     if (!businessId || !isValidBusinessIdentifier(businessId)) return;
-    if (lastJoinedBusiness.current === businessId) return;
 
-    console.log('🏢 Joining business:', businessId);
-    socketDiagnostic();
-    joinBusiness(businessId);
-    lastJoinedBusiness.current = businessId;
-  }, [businessId]);
+    const doJoin = () => {
+      console.log('🏢 Joining business:', businessId);
+      socketDiagnostic();
+      joinBusiness(businessId);
+      lastJoinedBusiness.current = businessId;
+    };
+
+    // Join on first mount or businessId change
+    if (lastJoinedBusiness.current !== businessId) {
+      doJoin();
+    }
+
+    // Re-join + reload count on every reconnect
+    const handleReconnect = () => {
+      console.log('🔄 Socket reconnected — re-joining business & reloading pending count');
+      doJoin();
+      loadPendingOrdersCount();
+    };
+
+    socket.on('connect', handleReconnect);
+
+    return () => {
+      socket.off('connect', handleReconnect);
+    };
+  }, [businessId, loadPendingOrdersCount]);
 
   // --- SSE (opcional, desactivado por defecto) ---
   useEffect(() => {
