@@ -127,6 +127,39 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         </div>
       )}
 
+      {/* Orders Indicator Card */}
+      <div className="px-4 pb-3">
+        <button
+          onClick={() => setActiveTab('orders')}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${
+            pendingOrdersCount > 0
+              ? 'bg-red-50 border-red-200/80 hover:bg-red-100'
+              : activeTab === 'orders'
+                ? 'bg-blue-50 border-blue-200/80'
+                : 'bg-slate-50 border-slate-200/80 hover:bg-slate-100'
+          }`}
+        >
+          <FaClipboardList className={`text-sm shrink-0 ${
+            pendingOrdersCount > 0 ? 'text-red-500' : 'text-slate-400'
+          }`} />
+          <span className="text-[11px] font-semibold text-slate-700 flex-1 text-left">
+            Pedidos
+          </span>
+          {pendingOrdersCount > 0 ? (
+            <motion.span
+              key={pendingOrdersCount}
+              initial={{ scale: 0.5 }}
+              animate={{ scale: 1 }}
+              className="flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold bg-red-500 text-white"
+            >
+              {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
+            </motion.span>
+          ) : (
+            <span className="text-[10px] font-medium text-slate-400">0</span>
+          )}
+        </button>
+      </div>
+
       {/* Divider */}
       <div className="mx-4 border-t border-slate-100" />
 
