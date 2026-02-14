@@ -278,30 +278,31 @@ const FilterableMenu = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ── Auto-scroll the active pill into view (horizontal only) ──
-  useEffect(() => {
-    const pillEl = pillRefs.current[spyCategory] || pillRefs.current['all'];
+  // ── Auto-scroll the active pill into view (horizontal only, on tap only) ──
+  const scrollPillIntoView = useCallback((categoryId) => {
+    const pillEl = pillRefs.current[categoryId] || pillRefs.current['all'];
     const container = pillBarRef.current?.querySelector('.overflow-x-auto');
     if (pillEl && container) {
       const containerRect = container.getBoundingClientRect();
       const pillRect = pillEl.getBoundingClientRect();
-      // Calculate scroll offset to center the pill in the container
       const scrollLeft = pillEl.offsetLeft - container.offsetLeft - (containerRect.width / 2) + (pillRect.width / 2);
-      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+      container.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' });
     }
-  }, [spyCategory]);
+  }, []);
 
   // ── Click a pill: scroll to section + highlight (stay in "all" mode) ──
   const handlePillClick = useCallback((categoryId) => {
     if (categoryId === 'all') {
       setActiveCategory('all');
       setSpyCategory('all');
+      scrollPillIntoView('all');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    // Immediately highlight this pill
+    // Immediately highlight this pill and scroll it into view
     setSpyCategory(categoryId);
+    scrollPillIntoView(categoryId);
     // Keep showing all sections so scroll targets exist
     setActiveCategory('all');
 
