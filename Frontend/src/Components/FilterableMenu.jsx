@@ -239,7 +239,7 @@ const FilterableMenu = ({
 
   // ── Scroll-spy: IntersectionObserver watches each category section ──
   useEffect(() => {
-    if (activeCategory !== 'all' || userTapped) return; // only spy when showing all categories
+    if (userTapped) return; // pause spy while programmatic scroll is in-flight
     const sections = Object.entries(sectionRefs.current).filter(([, el]) => el);
     if (sections.length === 0) return;
 
@@ -263,7 +263,7 @@ const FilterableMenu = ({
 
     sections.forEach(([, el]) => obs.observe(el));
     return () => obs.disconnect();
-  }, [activeCategory, userTapped, filteredProducts]);
+  }, [userTapped, filteredProducts]);
 
   // ── Scroll progress (how far through the menu) ──
   useEffect(() => {
@@ -278,21 +278,33 @@ const FilterableMenu = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ── Auto-scroll the active pill into view ──
-  const activePillId = activeCategory === 'all' ? spyCategory : activeCategory;
+  // ── Auto-scroll the active pill into view (horizontal only) ──
   useEffect(() => {
-    const pillEl = pillRefs.current[activePillId] || pillRefs.current['all'];
-    if (pillEl) {
-      pillEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    const pillEl = pillRefs.current[spyCategory] || pillRefs.current['all'];
+    const container = pillBarRef.current?.querySelector('.overflow-x-auto');
+    if (pillEl && container) {
+      const containerRect = container.getBoundingClientRect();
+      const pillRect = pillEl.getBoundingClientRect();
+      // Calculate scroll offset to center the pill in the container
+      const scrollLeft = pillEl.offsetLeft - container.offsetLeft - (containerRect.width / 2) + (pillRect.width / 2);
+      container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
     }
-  }, [activePillId]);
+  }, [spyCategory]);
 
-  // ── Click a pill: set category + scroll to section (when "all") ──
+  // ── Click a pill: scroll to section + highlight (stay in "all" mode) ──
   const handlePillClick = useCallback((categoryId) => {
-    setActiveCategory(categoryId);
-    if (categoryId === 'all') return;
+    if (categoryId === 'all') {
+      setActiveCategory('all');
+      setSpyCategory('all');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
-    // Scroll to the section if we're in "all" mode or switching
+    // Immediately highlight this pill
+    setSpyCategory(categoryId);
+    // Keep showing all sections so scroll targets exist
+    setActiveCategory('all');
+
     const section = sectionRefs.current[categoryId];
     if (section) {
       // Temporarily disable spy so it doesn't fight with programmatic scroll
@@ -303,10 +315,10 @@ const FilterableMenu = ({
       const top = section.getBoundingClientRect().top + window.scrollY - offset;
       window.scrollTo({ top, behavior: 'smooth' });
 
+      // Re-enable spy after scroll finishes (generous timeout for slow devices)
       userTapTimer.current = setTimeout(() => {
         setUserTapped(false);
-        setActiveCategory('all'); // return to "all" so spy takes over
-      }, 800);
+      }, 1200);
     }
   }, []);
 
@@ -386,9 +398,9 @@ const FilterableMenu = ({
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
 
-  // Determine which pill is "active" visually
-  // If user manually picked a category, use that; otherwise use scroll-spy
-  const visualActive = activeCategory !== 'all' ? activeCategory : spyCategory;
+  // The visually active pill is always based on spyCategory
+  // (either set by IntersectionObserver or explicitly by handlePillClick)
+  const visualActive = spyCategory;
   
   return (
     <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2">
@@ -448,14 +460,14 @@ const FilterableMenu = ({
             {/* "All" pill */}
             <motion.button
               ref={el => (pillRefs.current['all'] = el)}
-              onClick={() => { setActiveCategory('all'); setSpyCategory('all'); }}
+              onClick={() => handlePillClick('all')}
               whileTap={{ scale: 0.93 }}
               className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-all duration-200 ${
-                activeCategory === 'all' && visualActive === 'all'
+                visualActive === 'all'
                   ? 'shadow-lg'
                   : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 shadow-sm'
               }`}
-              style={activeCategory === 'all' && visualActive === 'all' ? {
+              style={visualActive === 'all' ? {
                 backgroundColor: themeColor,
                 color: themeTextColor,
                 boxShadow: `0 4px 14px ${themeColor}35`
