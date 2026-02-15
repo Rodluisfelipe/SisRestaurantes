@@ -1437,7 +1437,7 @@ function ModernOrdersDashboard() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="relative max-w-lg w-full"
+              className="relative max-w-lg w-full max-h-[90vh] flex flex-col items-center"
               onClick={(e) => e.stopPropagation()}
             >
               <button
@@ -1449,7 +1449,7 @@ function ModernOrdersDashboard() {
               <img
                 src={proofImageUrl}
                 alt="Comprobante de pago"
-                className="w-full rounded-xl shadow-2xl"
+                className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
               />
             </motion.div>
           </motion.div>
