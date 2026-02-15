@@ -37,7 +37,7 @@ const getAuthToken = () => {
 export const socket = io(socketUrl, {
   autoConnect: false,
   reconnection: true,
-  reconnectionAttempts: 5,
+  reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
   reconnectionDelayMax: 5000,
   randomizationFactor: 0.3,
@@ -79,6 +79,11 @@ const logSystemStatus = () => {
 };
 
 // Configurar eventos para logging y manejo de errores
+// Refresh auth token before each reconnection attempt
+socket.io.on('reconnect_attempt', () => {
+  socket.auth = { token: getAuthToken() };
+});
+
 socket.on('connect', () => {
     systemStatus.socket = 'connected';
     systemStatus.lastError = null;
@@ -131,6 +136,10 @@ export const joinBusiness = (businessId) => {
     logSystemStatus();
     return;
   }
+
+  // Always update auth token before joining
+  const freshToken = getAuthToken();
+  socket.auth = { token: freshToken };
 
   if (socket.connected) {
     socket.emit('joinBusiness', businessId);

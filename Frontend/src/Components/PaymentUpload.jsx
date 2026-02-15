@@ -30,8 +30,8 @@ const PaymentUpload = ({
     if (!file) return;
 
     // Validate file
-    if (file.size > 10 * 1024 * 1024) {
-      setError('La imagen no puede pesar más de 10MB');
+    if (file.size > 25 * 1024 * 1024) {
+      setError('La imagen no puede pesar más de 25MB');
       return;
     }
 

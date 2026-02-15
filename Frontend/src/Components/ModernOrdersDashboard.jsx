@@ -439,6 +439,26 @@ function ModernOrdersDashboard() {
           setOrderDetails(null);
         }
       });
+
+      // Listen for payment proof uploads — refresh order in-place
+      socket.on('payment_proof_uploaded', (data) => {
+        console.log('Payment proof uploaded:', data);
+        if (!data?.orderId) return;
+        // Re-fetch that specific order to get full updated data
+        api.get(`/orders/${data.orderId}`).then(res => {
+          const freshOrder = res.data;
+          setOrders(prevOrders =>
+            prevOrders.filter(Boolean).map(order =>
+              order?._id === freshOrder._id ? freshOrder : order
+            )
+          );
+          if (selectedOrder === freshOrder._id) {
+            setOrderDetails(freshOrder);
+          }
+          // Add to pending notifications
+          setPendingNotifications(prev => [...prev, freshOrder._id]);
+        }).catch(err => console.error('Error fetching updated order after payment proof:', err));
+      });
     }
 
     // Cleanup on unmount
@@ -447,6 +467,7 @@ function ModernOrdersDashboard() {
         socket.off(SOCKET_EVENTS.ORDER_CREATED);
         socket.off(SOCKET_EVENTS.ORDER_UPDATED);
         socket.off('order_deleted');
+        socket.off('payment_proof_uploaded');
       }
     };
   }, [businessId, selectedOrder]);

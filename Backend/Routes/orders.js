@@ -36,7 +36,7 @@ const proofStorage = multer.diskStorage({
 });
 const uploadProof = multer({
   storage: proofStorage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for mobile photos
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB for mobile photos
   fileFilter: (req, file, cb) => {
     const allowedMimes = [
       'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
@@ -566,9 +566,24 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
         // Convert Mongoose document to plain object
         const orderData = updatedOrder.toObject();
         
-        // Create a new completed order
+        // Delete payment proof file if exists
+        if (orderData.paymentProof) {
+          try {
+            const proofFilePath = path.join(__dirname, '..', orderData.paymentProof);
+            const fs = require('fs');
+            if (fs.existsSync(proofFilePath)) {
+              fs.unlinkSync(proofFilePath);
+              logger.info(`Payment proof deleted: ${proofFilePath}`);
+            }
+          } catch (fileErr) {
+            logger.warn('Could not delete payment proof file', { error: fileErr.message });
+          }
+        }
+        
+        // Create a new completed order (without proof path)
         const completedOrder = new CompletedOrder({
           ...orderData,
+          paymentProof: null,
           completedAt: new Date(),
           status: "completed"
         });
@@ -837,7 +852,7 @@ router.post('/:id/payment-proof', (req, res, next) => {
   uploadProof.single('proof')(req, res, (err) => {
     if (err) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ message: 'La imagen es muy grande. Máximo 10MB.' });
+        return res.status(400).json({ message: 'La imagen es muy grande. Máximo 25MB.' });
       }
       if (err.message) {
         return res.status(400).json({ message: err.message });
