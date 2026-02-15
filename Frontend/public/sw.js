@@ -1,27 +1,12 @@
 // Service Worker para notificaciones push PWA
-// Versión: 1.0.0
+// Versión: 1.1.0
 
-const CACHE_NAME = 'menuby-v1';
-const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+const CACHE_NAME = 'menuby-v2';
 
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('[SW] Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-      .catch((error) => {
-        console.error('[SW] Cache installation failed:', error);
-      })
-  );
-  // Activar inmediatamente
+  console.log('[SW] Installing service worker v1.1...');
+  // Skip cacheAll to avoid install failures on GitHub Pages
   self.skipWaiting();
 });
 
@@ -38,10 +23,8 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  // Tomar control inmediatamente
-  return self.clients.claim();
 });
 
 // Fetch: estrategia Network First con fallback a cache
@@ -88,8 +71,8 @@ self.addEventListener('push', (event) => {
   let data = {
     title: 'Nueva notificación',
     body: 'Tienes una actualización',
-    icon: '/icon-192x192.png',
-    badge: '/icon-96x96.png',
+    icon: '/logo.jpeg',
+    badge: '/logo.jpeg',
     clickUrl: '/',
     data: {}
   };
@@ -104,8 +87,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: data.icon || '/icon-192x192.png',
-    badge: data.badge || '/icon-96x96.png',
+    icon: data.icon || '/logo.jpeg',
+    badge: data.badge || '/logo.jpeg',
     vibrate: [200, 100, 200],
     tag: data.data?.orderId || 'notification',
     requireInteraction: true, // Mantener visible hasta que el usuario interactúe
