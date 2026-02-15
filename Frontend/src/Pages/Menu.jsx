@@ -1004,16 +1004,16 @@ export default function Menu() {
         setActiveOrderId(response.data._id);
         setActiveCustomerToken(response.data.customerToken);
 
-        // Request push notification permission and subscribe (non-blocking)
-        if (isPushSupported() && Notification.permission !== 'denied') {
+        // Request push notification permission and subscribe (only if already granted — user-gesture prompt is handled in OrderTracker)
+        if (isPushSupported() && Notification.permission === 'granted') {
           setTimeout(async () => {
             try {
               await subscribeToPush(businessId, null, response.data.customerToken);
-              logger.info('Customer subscribed to push notifications');
+              logger.info('Customer auto-subscribed to push notifications (already granted)');
             } catch (pushErr) {
               logger.warn('Customer push subscription failed (non-critical):', pushErr.message);
             }
-          }, 1500); // Small delay so the tracker opens first
+          }, 1500);
         }
       }
       

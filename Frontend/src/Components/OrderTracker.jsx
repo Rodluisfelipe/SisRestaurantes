@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { API_URL } from '../config';
 import logger from '../utils/logger';
+import { isPushSupported, subscribeToPush } from '../utils/pushNotifications';
 
 // Status configuration with labels, icons, colors
 const STATUS_CONFIG = {
@@ -108,11 +109,38 @@ const OrderTracker = ({
   const [proofPreview, setProofPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
+  const [pushState, setPushState] = useState('idle'); // idle | subscribed | dismissed
   const proofInputRef = useRef(null);
 
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const textColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
   const paymentInfo = businessConfig?.paymentInfo || {};
+  const businessId = businessConfig?.businessId || businessConfig?._id;
+
+  // Check push notification status on mount
+  useEffect(() => {
+    if (!isPushSupported()) {
+      setPushState('dismissed');
+    } else if (Notification.permission === 'granted') {
+      setPushState('subscribed');
+    } else if (Notification.permission === 'denied') {
+      setPushState('dismissed');
+    }
+  }, []);
+
+  // Handle enable notifications (user tap = user gesture → browser allows the prompt)
+  const handleEnableNotifications = async () => {
+    try {
+      await subscribeToPush(businessId, null, customerToken);
+      setPushState('subscribed');
+      logger.info('Customer push subscription succeeded from OrderTracker');
+    } catch (err) {
+      logger.warn('Push subscription failed:', err.message);
+      if (Notification.permission === 'denied') {
+        setPushState('dismissed');
+      }
+    }
+  };
 
   // Build available payment methods from config
   const paymentMethods = [
@@ -316,6 +344,35 @@ const OrderTracker = ({
               );
             })}
           </div>
+
+          {/* Push notification banner */}
+          {pushState === 'idle' && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl"
+            >
+              <span className="text-xl flex-shrink-0">🔔</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-blue-800">¿Recibir notificaciones?</p>
+                <p className="text-[10px] text-blue-600 mt-0.5">Te avisamos cuando tu pedido cambie de estado</p>
+              </div>
+              <button
+                onClick={handleEnableNotifications}
+                className="flex-shrink-0 px-3 py-1.5 bg-blue-600 text-white text-[11px] font-semibold rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Activar
+              </button>
+              <button
+                onClick={() => setPushState('dismissed')}
+                className="flex-shrink-0 p-1 text-blue-400 hover:text-blue-600"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </motion.div>
+          )}
 
           {/* Payment section - inline payment methods + upload */}
           {isInApp && order.status === 'pending_payment' && (
