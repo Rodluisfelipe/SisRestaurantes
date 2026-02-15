@@ -16,6 +16,32 @@ const urlBase64ToUint8Array = (base64String) => {
   return outputArray;
 };
 
+// Safe Uint8Array to base64 (mobile-safe, avoids stack overflow with large arrays)
+const uint8ArrayToBase64 = (uint8Array) => {
+  let binary = '';
+  const len = uint8Array.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(uint8Array[i]);
+  }
+  return window.btoa(binary);
+};
+
+/**
+ * Check if running as installed PWA (standalone)
+ */
+export const isInstalledPWA = () => {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+};
+
+/**
+ * Check if device is iOS
+ */
+export const isIOS = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
+
 /**
  * Verificar si el navegador soporta push notifications
  */
@@ -54,12 +80,13 @@ export const registerServiceWorker = async () => {
     const registration = await navigator.serviceWorker.register('/sw.js', {
       scope: '/'
     });
-    console.log('[Push] Service Worker registered:', registration);
+    console.log('[Push] Service Worker registered:', registration.scope);
     
-    // Esperar a que el SW esté activo
-    await navigator.serviceWorker.ready;
+    // Wait for the SW to be ready (active)
+    const ready = await navigator.serviceWorker.ready;
+    console.log('[Push] Service Worker is ready:', ready.scope);
     
-    return registration;
+    return ready;
   } catch (error) {
     console.error('[Push] Service Worker registration failed:', error);
     throw error;
@@ -95,22 +122,32 @@ export const subscribeToPush = async (businessId, userId = null, customerToken =
     }
 
     // 5. Suscribirse al push manager
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
-    });
+    let subscription = await registration.pushManager.getSubscription();
+    
+    if (!subscription) {
+      console.log('[Push] No existing subscription, creating new one...');
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+      });
+    } else {
+      console.log('[Push] Reusing existing push subscription');
+    }
 
-    console.log('[Push] Push subscription obtained:', subscription);
+    console.log('[Push] Push subscription obtained:', subscription.endpoint);
 
-    // 6. Enviar suscripción al backend
+    // 6. Enviar suscripción al backend (mobile-safe encoding)
+    const p256dhKey = new Uint8Array(subscription.getKey('p256dh'));
+    const authKey = new Uint8Array(subscription.getKey('auth'));
+    
     const response = await api.post('/push/subscribe', {
       businessId,
       userId,
       customerToken,
       endpoint: subscription.endpoint,
       keys: {
-        p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')))),
-        auth: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('auth'))))
+        p256dh: uint8ArrayToBase64(p256dhKey),
+        auth: uint8ArrayToBase64(authKey)
       }
     });
 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { API_URL } from '../config';
 import logger from '../utils/logger';
-import { isPushSupported, subscribeToPush } from '../utils/pushNotifications';
+import { isPushSupported, subscribeToPush, isIOS, isInstalledPWA } from '../utils/pushNotifications';
 
 // Status configuration with labels, icons, colors
 const STATUS_CONFIG = {
@@ -109,7 +109,7 @@ const OrderTracker = ({
   const [proofPreview, setProofPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
-  const [pushState, setPushState] = useState('idle'); // idle | subscribed | dismissed
+  const [pushState, setPushState] = useState('checking'); // checking | idle | subscribed | dismissed | ios-not-pwa
   const proofInputRef = useRef(null);
 
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
@@ -119,14 +119,40 @@ const OrderTracker = ({
 
   // Check push notification status on mount
   useEffect(() => {
-    if (!isPushSupported()) {
-      setPushState('dismissed');
-    } else if (Notification.permission === 'granted') {
-      setPushState('subscribed');
-    } else if (Notification.permission === 'denied') {
-      setPushState('dismissed');
-    }
-  }, []);
+    const checkPush = async () => {
+      // iOS without PWA install: push not supported
+      if (isIOS() && !isInstalledPWA()) {
+        setPushState('ios-not-pwa');
+        return;
+      }
+      if (!isPushSupported()) {
+        setPushState('dismissed');
+        return;
+      }
+      if (Notification.permission === 'denied') {
+        setPushState('dismissed');
+        return;
+      }
+      // Check if there's already an active push subscription
+      if (Notification.permission === 'granted') {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const existingSub = await reg.pushManager.getSubscription();
+          if (existingSub) {
+            // Already subscribed, but ensure backend knows about this customerToken
+            setPushState('subscribed');
+            // Re-register with current customerToken silently
+            try {
+              await subscribeToPush(businessId, null, customerToken);
+            } catch (e) { /* silent */ }
+            return;
+          }
+        } catch (e) { /* fall through to idle */ }
+      }
+      setPushState('idle');
+    };
+    checkPush();
+  }, [businessId, customerToken]);
 
   // Handle enable notifications (user tap = user gesture → browser allows the prompt)
   const handleEnableNotifications = async () => {
@@ -366,6 +392,31 @@ const OrderTracker = ({
               <button
                 onClick={() => setPushState('dismissed')}
                 className="flex-shrink-0 p-1 text-blue-400 hover:text-blue-600"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </motion.div>
+          )}
+
+          {/* iOS not-PWA hint */}
+          {pushState === 'ios-not-pwa' && (
+            <motion.div
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl"
+            >
+              <span className="text-xl flex-shrink-0">📲</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-gray-700">Recibe notificaciones</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  Toca <span className="inline-flex items-center"><svg className="w-3 h-3 inline text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg></span> y luego <strong>"Añadir a inicio"</strong> para activar notificaciones
+                </p>
+              </div>
+              <button
+                onClick={() => setPushState('dismissed')}
+                className="flex-shrink-0 p-1 text-gray-400 hover:text-gray-600"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
