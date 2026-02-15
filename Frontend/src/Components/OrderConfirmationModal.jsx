@@ -208,7 +208,7 @@ const OrderConfirmationModal = ({
     <>
       <ConfettiBurst show={showConfetti} onComplete={() => setShowConfetti(false)} />
       <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-50">
-        <div className="bg-white rounded-2xl w-full max-w-xs sm:max-w-sm mx-auto shadow-2xl border border-slate-200/50 transform transition-all overflow-hidden max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-2xl w-full max-w-xs sm:max-w-sm mx-auto shadow-2xl border border-slate-200/50 transform transition-all overflow-hidden overflow-y-auto modal-h-full pb-safe">
           {/* Encabezado mejorado */}
           <div 
             className="relative p-4 sm:p-6 text-center overflow-hidden" 

@@ -8,6 +8,51 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Mobile viewport fix (iOS Safari / Android Chrome) ── */
+/* dvh = dynamic viewport height: excludes browser chrome (URL bar, bottom bar) */
+/* Fallback to vh for older browsers */
+:root {
+  --vh-fallback: 1vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@supports (height: 1dvh) {
+  :root { --vh-fallback: 1dvh; }
+}
+
+/* Utility classes for mobile-safe modal heights */
+.modal-h-full {
+  max-height: 92vh;
+  max-height: 92dvh;
+}
+.modal-h-desktop {
+  max-height: 85vh;
+  max-height: 85dvh;
+}
+.modal-footer-max {
+  max-height: 55vh;
+  max-height: 55dvh;
+}
+
+/* Responsive: sm breakpoint (640px) overrides */
+@media (min-width: 640px) {
+  .sm\:modal-h-desktop {
+    max-height: 85vh;
+    max-height: 85dvh;
+  }
+}
+
+/* Safe-area padding for bottom-anchored elements */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 /* Ocultar scrollbar pero mantener funcionalidad */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */

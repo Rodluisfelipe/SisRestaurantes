@@ -524,7 +524,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
       onTouchEnd={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
         <div
-          className="bg-white rounded-2xl max-w-lg w-full h-[95vh] sm:h-[92vh] md:h-[95vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
+          className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col modal-h-full pb-safe"
           onClick={handleModalClick}
           onTouchStart={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}

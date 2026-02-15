@@ -18,6 +18,28 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const [deliveryFee, setDeliveryFee] = useState(null);
   const [deliveryZoneInfo, setDeliveryZoneInfo] = useState(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
+  const backdropRef = useRef(null);
+  const touchStartedOnBackdrop = useRef(false);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalTop = document.body.style.top;
+    const scrollY = window.scrollY;
+    
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.overflow = 'hidden';
+    document.body.style.width = '100%';
+    
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.top = originalTop;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
   const [locationChecked, setLocationChecked] = useState(false);
   const [formState, setFormState] = useState({
     tableNumber: '',
@@ -1079,242 +1101,147 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   };
 
   return (
-    <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-4 z-40">
-      <div className="bg-white rounded-2xl max-w-lg w-full h-[85vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col">
+    <div 
+      ref={backdropRef}
+      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-40"
+      onMouseDown={(e) => { if (e.target === backdropRef.current) touchStartedOnBackdrop.current = true; }}
+      onMouseUp={(e) => { if (e.target === backdropRef.current && touchStartedOnBackdrop.current) onClose(); touchStartedOnBackdrop.current = false; }}
+      onTouchStart={(e) => { if (e.target === backdropRef.current) touchStartedOnBackdrop.current = true; else touchStartedOnBackdrop.current = false; }}
+      onTouchEnd={(e) => { if (e.target === backdropRef.current && touchStartedOnBackdrop.current) onClose(); touchStartedOnBackdrop.current = false; }}
+    >
+      <div 
+        className="bg-white sm:rounded-2xl rounded-t-2xl max-w-lg w-full modal-h-full sm:modal-h-desktop shadow-2xl border border-slate-200/50 flex flex-col pb-safe"
+        onTouchStart={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+      >
+        {/* Drag handle (mobile sheet) */}
+        <div className="flex justify-center pt-2 pb-0 sm:hidden flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-slate-300" />
+        </div>
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-6 flex justify-between items-center z-10 backdrop-blur-lg rounded-t-2xl">
-          <div className="flex items-center space-x-3">
-            <div 
-              className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg"
-              style={{
-                backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
-              }}
-            >
-              <span className="text-white text-lg font-bold">🛒</span>
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">Resumen del Pedido</h2>
-              <p className="text-sm text-slate-500">{totalItems} {totalItems === 1 ? 'producto' : 'productos'}</p>
-              
-            </div>
+        <div className="sticky top-0 bg-white border-b border-slate-100 px-4 py-2.5 sm:px-6 sm:py-4 flex justify-between items-center z-10 rounded-t-2xl flex-shrink-0">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Tu pedido</h2>
+            <p className="text-xs text-slate-400">{totalItems} {totalItems === 1 ? 'producto' : 'productos'}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md"
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-all flex items-center justify-center"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
         {/* Cart Items - Scrollable Content */}
-        <div className="flex-1 overflow-y-auto px-6 pt-2 pb-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
-          {cart.map((item) => (
-            <div key={item.uniqueId || item._id} className="bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 mb-4 last:mb-0 shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-200">
-              <div className="flex justify-between items-start">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-2 min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+          {cart.map((item, itemIndex) => (
+            <div key={item.uniqueId || item._id} className={`py-3 ${itemIndex < cart.length - 1 ? 'border-b border-slate-100' : ''}`}>
+              <div className="flex items-start gap-3">
                 {/* Product image */}
-                <div className="w-16 h-16 mr-3 flex-shrink-0">
-                  <div className="relative w-full h-full rounded-lg overflow-hidden bg-white border border-slate-200">
-                    {item.image ? (
-                      <img 
-                        src={item.image} 
-                        alt={item.name}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                          e.target.nextSibling.style.display = 'flex';
-                        }}
-                      />
-                    ) : null}
-                    {/* Fallback cuando no hay imagen o falla la carga */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400 text-xs font-medium" style={{display: item.image ? 'none' : 'flex'}}>
-                      Sin imagen
-                    </div>
+                <div className="w-14 h-14 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100 border border-slate-200/60">
+                  {item.image ? (
+                    <img 
+                      src={item.image} 
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                  ) : null}
+                  <div className="w-full h-full flex items-center justify-center text-slate-300" style={{display: item.image ? 'none' : 'flex'}}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                   </div>
                 </div>
                 
-                {/* Item details */}
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800 text-base">{item.name}</h3>
-                  
-                  {/* Price information */}
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span 
-                      className="text-sm font-semibold px-3 py-1 rounded-full shadow-sm"
-                      style={{
-                        backgroundColor: `${businessConfig?.theme?.buttonColor || '#f97316'}20`,
-                        color: businessConfig?.theme?.buttonColor || '#f97316'
-                      }}
-                    >
-                      ${(item.finalPrice || item.price || 0).toLocaleString('es-CO')} c/u
-                    </span>
-                    <p className="text-sm font-medium" style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}>
-                      Subtotal: {calculateItemTotal(item).toLocaleString('es-CO')}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Quantity controls */}
-                <div className="flex flex-col items-end gap-2 ml-4">
-                  <div className="flex items-center gap-2 bg-white rounded-xl p-1 shadow-sm border border-slate-200">
+                {/* Item info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-slate-800 text-sm leading-tight truncate">{item.name}</h3>
                     <button
-                      onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) - 1)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:shadow-sm"
-                      style={{
-                        backgroundColor: `${businessConfig?.theme?.buttonColor || '#f97316'}15`,
-                        color: businessConfig?.theme?.buttonColor || '#f97316'
-                      }}
+                      onClick={() => removeFromCart(item.uniqueId || item._id)}
+                      className="p-1 text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M20 12H4" />
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
-                    <span className="w-8 text-center font-semibold text-gray-800">{item.quantity || 0}</span>
-                    <button
-                      onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) + 1)}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 hover:shadow-sm"
-                      style={{
-                        backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
-                        color: businessConfig?.theme?.buttonTextColor || '#ffffff'
-                      }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
                   </div>
-                  <button
-                    onClick={() => removeFromCart(item.uniqueId || item._id)}
-                    className="w-8 h-8 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 transition-all duration-200 rounded-lg shadow-sm hover:shadow-md"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-                </div>
-                
-                {/* Personalizaciones - Ancho completo */}
-                {item.selectedToppings && item.selectedToppings.length > 0 && (
-                  <div className="mt-4 p-4 bg-gradient-to-r from-slate-50 to-white rounded-xl border border-slate-200/50 shadow-sm">
-                    <p className="text-base font-semibold text-slate-700 mb-4 flex items-center">
-                      <svg 
-                        className="w-5 h-5 mr-2" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                        style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Personalizaciones
-                    </p>
-                    <div className="space-y-4">
+                  
+                  {/* Toppings as compact tags */}
+                  {item.selectedToppings && item.selectedToppings.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
                       {(() => {
-                        // Agrupar toppings por nombre de grupo para evitar repetición
-                        const groupedToppings = {};
-                        
+                        const tags = [];
                         item.selectedToppings.forEach((topping, idx) => {
-                          const groupName = topping.groupName;
-                          if (!groupedToppings[groupName]) {
-                            groupedToppings[groupName] = {
-                              groupName: groupName,
-                              basePrice: Number(topping.basePrice || 0),
-                              options: [],
-                              subGroups: []
-                            };
-                          }
-                          
-                          // Agregar opción si existe
                           if (topping.optionName) {
-                            groupedToppings[groupName].options.push({
-                              name: topping.optionName,
-                              price: Number(topping.price || 0)
+                            tags.push(
+                              <span key={`${item.uniqueId || item._id}-t-${idx}`} className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md leading-tight">
+                                {topping.optionName}{topping.price > 0 ? ` +$${Number(topping.price).toLocaleString('es-CO')}` : ''}
+                              </span>
+                            );
+                          }
+                          if (topping.subGroups) {
+                            topping.subGroups.forEach((sub, subIdx) => {
+                              tags.push(
+                                <span key={`${item.uniqueId || item._id}-s-${idx}-${subIdx}`} className="text-[10px] px-1.5 py-0.5 bg-orange-50 text-orange-500 rounded-md leading-tight">
+                                  {sub.optionName}{sub.price > 0 ? ` +$${Number(sub.price).toLocaleString('es-CO')}` : ''}
+                                </span>
+                              );
                             });
                           }
-                          
-                          // Agregar subgrupos si existen
-                          if (topping.subGroups && topping.subGroups.length > 0) {
-                            groupedToppings[groupName].subGroups.push(...topping.subGroups);
-                          }
                         });
-                        
-                        return Object.values(groupedToppings).map((group, groupIdx) => (
-                          <div key={`${item.uniqueId || item._id}-group-${groupIdx}`} className="bg-white rounded-lg p-4 border border-slate-100 shadow-sm">
-                            {/* Título del grupo */}
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
-                              <span 
-                                className="font-bold text-base sm:text-lg"
-                                style={{ color: businessConfig?.theme?.buttonColor || '#f97316' }}
-                              >
-                                {group.groupName}
-                              </span>
-                              {group.basePrice > 0 && (
-                                <span className="text-green-600 text-sm font-semibold bg-green-50 px-3 py-1 rounded-full">
-                                  +${group.basePrice.toLocaleString('es-CO')}
-                                </span>
-                              )}
-                            </div>
-                            
-                            {/* Opciones seleccionadas del grupo */}
-                            {group.options.length > 0 && (
-                              <div className="ml-2 sm:ml-4 space-y-2">
-                                {group.options.map((option, optionIdx) => (
-                                  <div key={`${item.uniqueId || item._id}-option-${optionIdx}`} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                    <span className="text-gray-800 text-base sm:text-lg font-medium">• {option.name}</span>
-                                    {option.price > 0 && (
-                                      <span className="text-green-600 text-sm font-semibold bg-green-50 px-3 py-1 rounded-full">
-                                        +${option.price.toLocaleString('es-CO')}
-                                      </span>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            
-                            {/* Subgrupos */}
-                            {group.subGroups.length > 0 && (
-                              <div className="mt-4 ml-2 sm:ml-4 pl-4 sm:pl-6 border-l-2 border-orange-200 space-y-3">
-                                <p className="text-sm font-bold text-orange-600 uppercase tracking-wide">Adiciones:</p>
-                                {group.subGroups.map((subItem, subIdx) => (
-                                  <div key={`${item.uniqueId || item._id}-subtopping-${subIdx}`} className="bg-orange-50 rounded-lg p-3 border border-orange-100">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                                      <span className="font-semibold text-orange-700 text-sm sm:text-base">{subItem.subGroupTitle}:</span>
-                                      <span className="text-gray-800 text-sm sm:text-base font-medium">{subItem.optionName}</span>
-                                      {subItem.price > 0 && (
-                                        <span className="text-green-600 text-sm font-semibold bg-green-50 px-3 py-1 rounded-full">
-                                          +${subItem.price.toLocaleString('es-CO')}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ));
+                        return tags;
                       })()}
                     </div>
+                  )}
+
+                  {/* Price + quantity row */}
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-sm font-bold text-slate-800">${calculateItemTotal(item).toLocaleString('es-CO')}</p>
+                    <div className="flex items-center gap-0 bg-slate-50 rounded-lg border border-slate-200">
+                      <button
+                        onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) - 1)}
+                        className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" /></svg>
+                      </button>
+                      <span className="w-6 text-center text-sm font-semibold text-slate-800">{item.quantity || 0}</span>
+                      <button
+                        onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) + 1)}
+                        className="w-7 h-7 flex items-center justify-center rounded-r-lg transition-colors"
+                        style={{
+                          backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
+                          color: businessConfig?.theme?.buttonTextColor || '#ffffff'
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                      </button>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
-            ))}
+            </div>
+          ))}
 
           {/* Empty cart state */}
           {cart.length === 0 && (
-            <div className="flex-1 flex items-center justify-center py-8">
+            <div className="flex-1 flex items-center justify-center py-12">
               <div className="text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                <p className="text-gray-500 mb-4">Tu carrito está vacío</p>
+                <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-slate-50 flex items-center justify-center">
+                  <span className="text-3xl">🛒</span>
+                </div>
+                <p className="text-slate-500 text-sm mb-1">Tu carrito está vacío</p>
+                <p className="text-slate-400 text-xs mb-4">Agrega productos para armar tu pedido</p>
                 <button
                   onClick={onClose}
-                  className="text-sm px-6 py-3 rounded-xl transition-colors duration-300 shadow-sm hover:shadow-md"
+                  className="text-sm px-5 py-2.5 rounded-xl transition-all font-medium"
                   style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
                 >
-                  Continuar comprando
+                  Explorar menú
                 </button>
               </div>
             </div>
@@ -1324,7 +1251,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
         {/* Footer con total y botones - SIEMPRE VISIBLE */}
         {cart.length > 0 && (
-          <div className="border-t border-slate-200/80 bg-white p-6 space-y-4 shadow-xl rounded-b-2xl flex-shrink-0">
+          <div className="border-t border-slate-200/80 bg-white px-4 py-3 sm:px-6 sm:py-4 space-y-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] sm:rounded-b-2xl flex-shrink-0 modal-footer-max overflow-y-auto overscroll-contain pb-safe" style={{ WebkitOverflowScrolling: 'touch' }}>
             {/* Coupon Input */}
             <CouponInput
               onCouponApplied={handleCouponApplied}
@@ -1340,48 +1267,42 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             />
 
             {/* Total amount */}
-            <div className="space-y-3">
-              {/* Mostrar costo de envío si está disponible */}
+            <div className="space-y-1.5">
+              {/* Subtotal + delivery fee breakdown */}
               {deliveryFee !== null && deliveryFee > 0 && (
-                <div className="flex justify-between items-center p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div>
-                    <p className="text-sm text-slate-700">Subtotal productos</p>
-                    <p className="text-lg font-semibold text-slate-800">${totalAmount.toLocaleString('es-CO')}</p>
+                <>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-slate-500">Subtotal</p>
+                    <p className="text-sm text-slate-600">${totalAmount.toLocaleString('es-CO')}</p>
                   </div>
-                </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-slate-500">🚚 Envío</p>
+                    <p className="text-sm text-slate-600">${deliveryFee.toLocaleString('es-CO')}</p>
+                  </div>
+                  <div className="border-t border-dashed border-slate-200 my-1"></div>
+                </>
               )}
               
-              {deliveryFee !== null && deliveryFee > 0 && (
-                <div className="flex justify-between items-center p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <p className="text-sm font-medium text-slate-700">🚚 Costo de envío</p>
-                  <p className="text-lg font-semibold text-green-700">${deliveryFee.toLocaleString('es-CO')}</p>
+              {/* Coupon discount */}
+              {appliedCoupon && (
+                <div className="flex justify-between items-center">
+                  <p className="text-sm text-green-600">🎉 Descuento</p>
+                  <p className="text-sm font-medium text-green-600">-${appliedCoupon.discountAmount.toLocaleString('es-CO')}</p>
                 </div>
               )}
               
               {/* Total final */}
-              <div className="flex justify-between items-center p-4 rounded-xl shadow-sm border border-slate-200/50"
-                   style={{
-                     background: `linear-gradient(135deg, ${businessConfig?.theme?.buttonColor || '#f97316'}10, ${businessConfig?.theme?.buttonColor || '#f97316'}05)`
-                   }}>
-                <div>
-                  <p className="text-sm text-slate-600">Total ({totalItems} {totalItems === 1 ? 'producto' : 'productos'})</p>
+              <div className="flex justify-between items-center pt-1">
+                <p className="text-base font-bold text-slate-800">Total</p>
+                <div className="text-right">
                   {appliedCoupon ? (
-                    <div>
-                      <p className="text-lg text-slate-600 line-through">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
-                      <p className="text-2xl font-bold text-green-600">${((deliveryFee || 0) + finalAmount).toLocaleString('es-CO')}</p>
-                      <p className="text-sm text-green-600">Ahorras: ${appliedCoupon.discountAmount.toLocaleString('es-CO')}</p>
-                    </div>
+                    <>
+                      <p className="text-xs text-slate-400 line-through">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
+                      <p className="text-xl font-bold text-slate-800">${((deliveryFee || 0) + finalAmount).toLocaleString('es-CO')}</p>
+                    </>
                   ) : (
-                    <p className="text-2xl font-bold text-slate-800">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
+                    <p className="text-xl font-bold text-slate-800">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
                   )}
-                </div>
-                <div 
-                  className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
-                  style={{
-                    backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
-                  }}
-                >
-                  <span className="text-white text-xl">💰</span>
                 </div>
               </div>
             </div>
