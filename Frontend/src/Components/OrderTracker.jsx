@@ -86,8 +86,8 @@ const STATUS_CONFIG = {
 };
 
 // Get the step sequence for in-app orders
-const INAPP_STEPS = ['pending_payment', 'payment_uploaded', 'payment_confirmed', 'preparing', 'ready'];
-const WHATSAPP_STEPS = ['pending', 'preparing', 'ready'];
+const INAPP_STEPS = ['pending_payment', 'payment_uploaded', 'payment_confirmed', 'inProgress', 'completed'];
+const WHATSAPP_STEPS = ['pending', 'inProgress', 'completed'];
 
 const OrderTracker = ({ 
   orderId, 
@@ -340,7 +340,7 @@ const OrderTracker = ({
           )}
 
           {/* Order ready celebration */}
-          {order.status === 'ready' && (
+          {(order.status === 'ready' || order.status === 'completed') && (
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}

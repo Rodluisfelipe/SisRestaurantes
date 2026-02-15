@@ -1216,30 +1216,47 @@ export default function Menu() {
       {/* Active order floating banner */}
       {isInAppMode && activeOrderId && activeCustomerToken && !showOrderTracker && !showPaymentUpload && (
         <motion.button
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
+          initial={{ y: 30, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ type: 'spring', damping: 20, stiffness: 300 }}
           onClick={() => setShowOrderTracker(true)}
-          className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-30 rounded-2xl p-3 shadow-lg border flex items-center gap-3"
+          className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-30 rounded-2xl overflow-hidden shadow-xl"
           style={{ 
-            backgroundColor: `${businessConfig?.theme?.buttonColor || '#f97316'}15`,
-            borderColor: `${businessConfig?.theme?.buttonColor || '#f97316'}40`
+            backgroundColor: businessConfig?.theme?.buttonColor || '#f97316'
           }}
         >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-            style={{ backgroundColor: `${businessConfig?.theme?.buttonColor || '#f97316'}20` }}
-          >
-            📋
+          <div className="flex items-center gap-3 p-3.5">
+            <div className="relative">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-lg">
+                🛒
+              </div>
+              <motion.div 
+                className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-white border-2"
+                style={{ borderColor: businessConfig?.theme?.buttonColor || '#f97316' }}
+                animate={{ scale: [1, 1.3, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+              />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-bold" style={{ color: businessConfig?.theme?.buttonTextColor || '#ffffff' }}>
+                Tu pedido está en curso
+              </p>
+              <p className="text-xs opacity-80" style={{ color: businessConfig?.theme?.buttonTextColor || '#ffffff' }}>
+                Toca para ver el estado
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+              <svg className="w-4 h-4" style={{ color: businessConfig?.theme?.buttonTextColor || '#ffffff' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
           </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-semibold text-gray-900">Pedido Activo</p>
-            <p className="text-xs text-gray-500">Toca para ver el estado</p>
-          </div>
-          <div className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: businessConfig?.theme?.buttonColor || '#f97316' }}
-          >
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+          <div className="h-1 bg-white/20">
+            <motion.div 
+              className="h-full bg-white/60 rounded-full"
+              animate={{ width: ['0%', '100%'] }}
+              transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+            />
           </div>
         </motion.button>
       )}
@@ -1351,6 +1368,7 @@ export default function Menu() {
           businessConfig={businessConfig}
           isSubmittingOrder={isSubmittingOrder}
           subscriptionStatus={subscriptionStatus}
+          isInAppMode={isInAppMode}
         />
       )}
 

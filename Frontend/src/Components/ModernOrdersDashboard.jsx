@@ -458,8 +458,11 @@ function ModernOrdersDashboard() {
 
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!order) return false;
+    const name = (order.customerName || '').toLowerCase();
+    const number = (order.orderNumber || '').toLowerCase();
+    const search = searchTerm.toLowerCase();
+    const matchesSearch = name.includes(search) || number.includes(search);
     
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     

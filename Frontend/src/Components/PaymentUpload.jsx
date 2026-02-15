@@ -265,7 +265,6 @@ const PaymentUpload = ({
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/jpg,image/png,image/webp"
-              capture="environment"
               onChange={handleFileSelect}
               className="hidden"
             />
