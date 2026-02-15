@@ -560,6 +560,17 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
     // Emit socket event
     socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_updated", updatedOrder);
     
+    // Send push notification to customer about status change
+    try {
+      const { sendCustomerOrderStatusPush } = require('../services/pushService');
+      const pushResult = await sendCustomerOrderStatusPush(updatedOrder, status);
+      if (pushResult.sent > 0) {
+        logger.info(`Customer push sent for order #${updatedOrder.orderNumber} -> ${status}`, pushResult);
+      }
+    } catch (pushErr) {
+      logger.warn('Failed to send customer push for status change', { error: pushErr.message });
+    }
+    
     // If order is completed, move it to CompletedOrders collection
     if (status === "completed") {
       try {
@@ -975,6 +986,15 @@ router.patch('/:id/confirm-payment', authMiddleware, async (req, res) => {
     });
 
     logger.info(`Payment confirmed for order ${updatedOrder.orderNumber}`);
+
+    // Push notification to customer
+    try {
+      const { sendCustomerOrderStatusPush } = require('../services/pushService');
+      await sendCustomerOrderStatusPush(updatedOrder, 'payment_confirmed');
+    } catch (pushErr) {
+      logger.warn('Failed to send customer push for payment confirmed', { error: pushErr.message });
+    }
+
     res.json(updatedOrder);
   } catch (error) {
     logger.error('Error confirming payment', error);
@@ -1021,6 +1041,22 @@ router.patch('/:id/reject-payment', authMiddleware, async (req, res) => {
     });
 
     logger.info(`Payment rejected for order ${updatedOrder.orderNumber}: ${reason}`);
+
+    // Push notification to customer about rejection
+    try {
+      const { sendPushToCustomer } = require('../services/pushService');
+      if (updatedOrder.customerToken) {
+        await sendPushToCustomer(updatedOrder.customerToken, {
+          title: `⚠️ Pedido #${updatedOrder.orderNumber} - Comprobante rechazado`,
+          body: reason || 'Tu comprobante fue rechazado. Por favor sube uno nuevo.',
+          clickUrl: '/',
+          data: { orderId: updatedOrder._id.toString(), orderNumber: updatedOrder.orderNumber, status: 'pending_payment' }
+        });
+      }
+    } catch (pushErr) {
+      logger.warn('Failed to send customer push for payment rejected', { error: pushErr.message });
+    }
+
     res.json(updatedOrder);
   } catch (error) {
     logger.error('Error rejecting payment', error);

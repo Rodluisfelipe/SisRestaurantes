@@ -69,9 +69,10 @@ export const registerServiceWorker = async () => {
 /**
  * Suscribirse a push notifications
  * @param {string} businessId - ID del negocio
- * @param {string} userId - ID del usuario (opcional)
+ * @param {string} userId - ID del usuario (opcional, for admin)
+ * @param {string} customerToken - Token del cliente (opcional, for customer order tracking)
  */
-export const subscribeToPush = async (businessId, userId = null) => {
+export const subscribeToPush = async (businessId, userId = null, customerToken = null) => {
   try {
     // 1. Verificar soporte
     if (!isPushSupported()) {
@@ -105,6 +106,7 @@ export const subscribeToPush = async (businessId, userId = null) => {
     const response = await api.post('/push/subscribe', {
       businessId,
       userId,
+      customerToken,
       endpoint: subscription.endpoint,
       keys: {
         p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(subscription.getKey('p256dh')))),

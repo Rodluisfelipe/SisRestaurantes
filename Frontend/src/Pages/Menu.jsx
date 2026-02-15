@@ -27,6 +27,7 @@ import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import * as SessionManager from '../utils/sessionManager';
 import { calculateItemPrice, calculateTotalAmount, calculateTotalItems, createWhatsAppMessage } from '../utils/orderUtils';
 import logger from '../utils/logger';
+import { isPushSupported, subscribeToPush } from '../utils/pushNotifications';
 import { useParams, useNavigate } from 'react-router-dom';
 import NotFound from './NotFound';
 import LeadCapturePage from './LeadCapturePage';
@@ -1002,6 +1003,18 @@ export default function Menu() {
         sessionStorage.setItem('activeCustomerToken', response.data.customerToken);
         setActiveOrderId(response.data._id);
         setActiveCustomerToken(response.data.customerToken);
+
+        // Request push notification permission and subscribe (non-blocking)
+        if (isPushSupported() && Notification.permission !== 'denied') {
+          setTimeout(async () => {
+            try {
+              await subscribeToPush(businessId, null, response.data.customerToken);
+              logger.info('Customer subscribed to push notifications');
+            } catch (pushErr) {
+              logger.warn('Customer push subscription failed (non-critical):', pushErr.message);
+            }
+          }, 1500); // Small delay so the tracker opens first
+        }
       }
       
       // Configurar mensaje específico según tipo de pedido

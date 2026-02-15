@@ -91,9 +91,72 @@ const sendOrderReadyPush = async (businessId, order) => {
   return sendPushToBusinessId(businessId, payload);
 };
 
+/**
+ * Send push notification to a customer by their customerToken
+ */
+const sendPushToCustomer = async (customerToken, payload) => {
+  if (!vapidConfigured) {
+    logger.debug('Push notifications disabled - VAPID not configured');
+    return { sent: 0, failed: 0, removed: 0 };
+  }
+  if (!customerToken || !payload.title || !payload.body) {
+    return { sent: 0, failed: 0, removed: 0 };
+  }
+
+  const subscriptions = await PushSubscription.find({ customerToken, role: 'customer', isActive: true });
+  let sent = 0, failed = 0, removed = 0;
+
+  for (const sub of subscriptions) {
+    try {
+      await webpush.sendNotification(sub, JSON.stringify(payload));
+      sent++;
+    } catch (error) {
+      failed++;
+      logger.error(`Failed to send customer push to ${sub._id}: ${error.message}`);
+      if (error.statusCode === 410 || error.statusCode === 404) {
+        await PushSubscription.findByIdAndUpdate(sub._id, { isActive: false });
+        removed++;
+      }
+    }
+  }
+  return { sent, failed, removed };
+};
+
+/**
+ * Send order status update push to a customer
+ */
+const sendCustomerOrderStatusPush = async (order, newStatus) => {
+  if (!order.customerToken) return { sent: 0 };
+
+  const statusMessages = {
+    payment_confirmed: { icon: '✅', title: 'Pago confirmado', body: 'Tu pago ha sido verificado. ¡Ya estamos procesando tu pedido!' },
+    confirmed: { icon: '✅', title: 'Pedido confirmado', body: 'El restaurante confirmó tu pedido.' },
+    preparing: { icon: '👨‍🍳', title: 'Preparando tu pedido', body: '¡Tu pedido está siendo preparado!' },
+    inProgress: { icon: '👨‍🍳', title: 'Preparando tu pedido', body: '¡Tu pedido está siendo preparado!' },
+    ready: { icon: '🎉', title: '¡Tu pedido está listo!', body: order.orderType === 'delivery' ? 'Tu pedido va en camino' : order.orderType === 'takeaway' ? 'Puedes pasar a recogerlo' : 'Será servido en tu mesa' },
+    completed: { icon: '✨', title: 'Pedido completado', body: '¡Gracias por tu compra! Esperamos verte pronto.' },
+    delivered: { icon: '🏠', title: 'Pedido entregado', body: '¡Tu pedido ha sido entregado! Buen provecho.' },
+    cancelled: { icon: '❌', title: 'Pedido cancelado', body: 'Tu pedido ha sido cancelado.' },
+  };
+
+  const msg = statusMessages[newStatus];
+  if (!msg) return { sent: 0 };
+
+  const payload = {
+    title: `${msg.icon} Pedido #${order.orderNumber} - ${msg.title}`,
+    body: msg.body,
+    clickUrl: '/',
+    data: { orderId: order._id.toString(), orderNumber: order.orderNumber, status: newStatus }
+  };
+
+  return sendPushToCustomer(order.customerToken, payload);
+};
+
 module.exports = {
   configureVapid,
   sendPushToBusinessId,
   sendOrderStatusPush,
   sendOrderReadyPush,
+  sendPushToCustomer,
+  sendCustomerOrderStatusPush,
 };

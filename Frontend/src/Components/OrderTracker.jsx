@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { API_URL } from '../config';
@@ -102,8 +102,62 @@ const OrderTracker = ({
   const [error, setError] = useState(null);
   const [polling, setPolling] = useState(true);
 
+  // Payment inline states
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [proofFile, setProofFile] = useState(null);
+  const [proofPreview, setProofPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
+  const proofInputRef = useRef(null);
+
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const textColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
+  const paymentInfo = businessConfig?.paymentInfo || {};
+
+  // Build available payment methods from config
+  const paymentMethods = [
+    paymentInfo.nequi && { id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg', color: '#200020', bg: '#F3E8FF', number: paymentInfo.nequi },
+    paymentInfo.daviplata && { id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA', color: '#DC2626', bg: '#FEF2F2', number: paymentInfo.daviplata },
+    paymentInfo.bankAccountNumber && { id: 'bank', label: paymentInfo.bankName || 'Banco', icon: '🏦', color: '#1D4ED8', bg: '#EFF6FF',
+      number: paymentInfo.bankAccountNumber, extra: `${paymentInfo.bankAccountType || 'Cuenta'}${paymentInfo.accountHolder ? ` · ${paymentInfo.accountHolder}` : ''}` },
+  ].filter(Boolean);
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).catch(() => {});
+  };
+
+  const handleProofSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { setUploadError('Máximo 25MB'); return; }
+    setProofFile(file);
+    setUploadError(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => setProofPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleProofUpload = async () => {
+    if (!proofFile) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('proof', proofFile);
+      formData.append('customerToken', customerToken);
+      await api.post(`/orders/${orderId}/payment-proof`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 30000,
+      });
+      setProofFile(null);
+      setProofPreview(null);
+      fetchOrder(); // refresh status
+    } catch (err) {
+      setUploadError(err.response?.data?.message || 'Error al subir. Intenta de nuevo.');
+    } finally {
+      setUploading(false);
+    }
+  };
 
   // Fetch order status
   const fetchOrder = useCallback(async () => {
@@ -263,31 +317,136 @@ const OrderTracker = ({
             })}
           </div>
 
-          {/* Payment Upload CTA - only show when pending payment */}
+          {/* Payment section - inline payment methods + upload */}
           {isInApp && order.status === 'pending_payment' && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-amber-50 border border-amber-200 rounded-2xl p-4"
+              className="space-y-3"
             >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
-                  💳
+              {/* Payment method buttons */}
+              {paymentMethods.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Medio de pago</p>
+                  <div className={`grid gap-2 ${paymentMethods.length === 1 ? 'grid-cols-1' : paymentMethods.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                    {paymentMethods.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setSelectedPayment(selectedPayment === m.id ? null : m.id)}
+                        className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all ${
+                          selectedPayment === m.id
+                            ? 'border-blue-500 bg-blue-50 shadow-sm'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        {m.logo ? (
+                          <img src={m.logo} alt={m.label} className="h-6 w-auto object-contain" />
+                        ) : (
+                          <span className="text-lg">{m.icon}</span>
+                        )}
+                        <span className={`text-[11px] font-semibold ${selectedPayment === m.id ? 'text-blue-700' : 'text-gray-500'}`}>{m.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-amber-900 text-sm">Realiza tu pago</h4>
-                  <p className="text-amber-700 text-xs mt-1">
-                    Transfiere a la cuenta indicada y sube el comprobante
-                  </p>
+              )}
+
+              {/* Selected payment info card */}
+              <AnimatePresence mode="wait">
+                {selectedPayment && (() => {
+                  const m = paymentMethods.find(p => p.id === selectedPayment);
+                  if (!m) return null;
+                  return (
+                    <motion.div
+                      key={m.id}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-xl border p-3 space-y-1" style={{ backgroundColor: m.bg, borderColor: `${m.color}30` }}>
+                        <div className="flex items-center gap-2">
+                          {m.logo && <img src={m.logo} alt={m.label} className="h-4 w-auto object-contain" />}
+                          <p className="text-[11px] font-medium" style={{ color: m.color }}>{m.label}</p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-base font-bold text-gray-900 tracking-wide">{m.number}</p>
+                          <button
+                            onClick={() => copyToClipboard(m.number)}
+                            className="px-2 py-1 rounded-lg text-xs font-medium bg-white/80 border border-gray-200 active:scale-95 transition-all"
+                          >
+                            📋 Copiar
+                          </button>
+                        </div>
+                        {m.extra && <p className="text-[11px] text-gray-500">{m.extra}</p>}
+                        {paymentInfo.instructions && (
+                          <p className="text-[11px] text-gray-500 mt-1">💡 {paymentInfo.instructions}</p>
+                        )}
+                        {/* Total to transfer */}
+                        <div className="pt-2 mt-1 border-t" style={{ borderColor: `${m.color}20` }}>
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs text-gray-500">Valor a transferir</span>
+                            <span className="text-sm font-bold text-gray-900">{formatPrice(order.finalAmount || order.totalAmount)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
+
+              {/* Upload proof section */}
+              <div className="space-y-2">
+                <input
+                  ref={proofInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
+                  onChange={handleProofSelect}
+                  className="hidden"
+                />
+
+                {!proofPreview ? (
                   <button
-                    onClick={onUploadProof}
-                    className="mt-3 w-full py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:shadow-lg active:scale-95"
-                    style={{ backgroundColor: themeColor }}
+                    onClick={() => proofInputRef.current?.click()}
+                    className="w-full py-3 rounded-xl text-white text-sm font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                    style={{ backgroundColor: themeColor, color: textColor }}
                   >
-                    📸 Subir Comprobante de Pago
+                    📸 Subir Comprobante
                   </button>
-                </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative rounded-xl overflow-hidden bg-gray-100">
+                      <img src={proofPreview} alt="Comprobante" className="w-full h-36 object-contain" />
+                      <button
+                        onClick={() => { setProofFile(null); setProofPreview(null); if (proofInputRef.current) proofInputRef.current.value = ''; }}
+                        className="absolute top-2 right-2 w-7 h-7 bg-black/50 text-white rounded-full flex items-center justify-center text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <button
+                      onClick={handleProofUpload}
+                      disabled={uploading}
+                      className="w-full py-3 rounded-xl text-white text-sm font-semibold transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50"
+                      style={{ backgroundColor: '#10b981' }}
+                    >
+                      {uploading ? (
+                        <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Enviando...</>
+                      ) : (
+                        <>📤 Enviar Comprobante</>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {uploadError && (
+                  <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">⚠️ {uploadError}</p>
+                )}
               </div>
+
+              {paymentMethods.length === 0 && (
+                <p className="text-xs text-gray-400 text-center">El restaurante no ha configurado medios de pago</p>
+              )}
             </motion.div>
           )}
 
@@ -312,31 +471,14 @@ const OrderTracker = ({
             </motion.div>
           )}
 
-          {/* Payment rejected - show re-upload */}
+          {/* Payment rejected notice */}
           {isInApp && order.status === 'pending_payment' && order.statusHistory?.some(h => h.note?.includes('rechazado')) && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-red-50 border border-red-200 rounded-2xl p-4"
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0">
-                  ⚠️
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-red-900 text-sm">Comprobante rechazado</h4>
-                  <p className="text-red-700 text-xs mt-1">
-                    {order.statusHistory?.filter(h => h.note?.includes('rechazado')).pop()?.note || 'Por favor sube un nuevo comprobante'}
-                  </p>
-                  <button
-                    onClick={onUploadProof}
-                    className="mt-3 w-full py-2.5 rounded-xl text-white text-sm font-semibold bg-red-500 hover:bg-red-600 transition-all active:scale-95"
-                  >
-                    📸 Subir Nuevo Comprobante
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+            <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center gap-2">
+              <span className="text-sm">⚠️</span>
+              <p className="text-xs text-red-700 font-medium">
+                {order.statusHistory?.filter(h => h.note?.includes('rechazado')).pop()?.note || 'Comprobante rechazado — sube uno nuevo'}
+              </p>
+            </div>
           )}
 
           {/* Order ready celebration */}

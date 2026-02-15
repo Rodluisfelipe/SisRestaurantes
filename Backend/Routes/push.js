@@ -44,21 +44,25 @@ router.post('/subscribe', validatePushSubscriptionInput, async (req, res) => {
       // Actualizar si ya existe (por si cambian las keys o el estado)
       subscription.businessId = resolvedBusinessId;
       subscription.userId = userId;
+      subscription.customerToken = req.body.customerToken || null;
+      subscription.role = req.body.customerToken ? 'customer' : (userId ? 'admin' : 'admin');
       subscription.keys = keys;
       subscription.isActive = true; // Reactivar si estaba inactiva
       await subscription.save();
-      logger.info('Updated existing push subscription', { id: subscription._id, businessId: resolvedBusinessId, userId }, req);
+      logger.info('Updated existing push subscription', { id: subscription._id, businessId: resolvedBusinessId, userId, role: subscription.role }, req);
     } else {
       // Crear nueva suscripción
       subscription = new PushSubscription({
         businessId: resolvedBusinessId,
         userId,
+        customerToken: req.body.customerToken || null,
+        role: req.body.customerToken ? 'customer' : (userId ? 'admin' : 'admin'),
         endpoint,
         keys,
         isActive: true,
       });
       await subscription.save();
-      logger.info('Created new push subscription', { id: subscription._id, businessId: resolvedBusinessId, userId }, req);
+      logger.info('Created new push subscription', { id: subscription._id, businessId: resolvedBusinessId, userId, role: subscription.role }, req);
     }
 
     res.status(201).json({ message: 'Suscripción registrada exitosamente', subscriptionId: subscription._id });

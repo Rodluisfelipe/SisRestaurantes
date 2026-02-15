@@ -11,6 +11,16 @@ const pushSubscriptionSchema = new mongoose.Schema({
     ref: 'Admin', // Assuming Admin model for merchants
     required: false,
   },
+  customerToken: { // For customer push subscriptions (order tracking)
+    type: String,
+    required: false,
+    index: true,
+  },
+  role: { // 'admin' or 'customer'
+    type: String,
+    enum: ['admin', 'customer'],
+    default: 'admin',
+  },
   endpoint: {
     type: String,
     required: true,

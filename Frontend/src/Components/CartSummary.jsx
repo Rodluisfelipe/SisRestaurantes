@@ -1247,233 +1247,180 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             </div>
           )}
 
-        </div>
+          {/* ── Checkout section (inside scroll) ── */}
+          {cart.length > 0 && (
+            <div className="mt-2 pt-3 border-t border-slate-100 space-y-3">
+              {/* Coupon Input */}
+              <CouponInput
+                onCouponApplied={handleCouponApplied}
+                onCouponRemoved={handleCouponRemoved}
+                appliedCoupon={appliedCoupon}
+                orderData={{
+                  totalAmount,
+                  orderType: orderInfo?.orderType || 'inSite',
+                  items: cart
+                }}
+                customerId={orderInfo?.customerId}
+                businessId={businessConfig?.businessId || businessConfig?._id}
+              />
 
-        {/* Footer con total y botones - SIEMPRE VISIBLE */}
-        {cart.length > 0 && (
-          <div className="border-t border-slate-200/80 bg-white px-4 py-3 sm:px-6 sm:py-4 space-y-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] sm:rounded-b-2xl flex-shrink-0 modal-footer-max overflow-y-auto overscroll-contain pb-safe" style={{ WebkitOverflowScrolling: 'touch' }}>
-            {/* Coupon Input */}
-            <CouponInput
-              onCouponApplied={handleCouponApplied}
-              onCouponRemoved={handleCouponRemoved}
-              appliedCoupon={appliedCoupon}
-              orderData={{
-                totalAmount,
-                orderType: orderInfo?.orderType || 'inSite',
-                items: cart
-              }}
-              customerId={orderInfo?.customerId}
-              businessId={businessConfig?.businessId || businessConfig?._id}
-            />
-
-            {/* Total amount */}
-            <div className="space-y-1.5">
-              {/* Subtotal + delivery fee breakdown */}
-              {deliveryFee !== null && deliveryFee > 0 && (
-                <>
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-slate-500">Subtotal</p>
-                    <p className="text-sm text-slate-600">${totalAmount.toLocaleString('es-CO')}</p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-slate-500">🚚 Envío</p>
-                    <p className="text-sm text-slate-600">${deliveryFee.toLocaleString('es-CO')}</p>
-                  </div>
-                  <div className="border-t border-dashed border-slate-200 my-1"></div>
-                </>
-              )}
-              
-              {/* Coupon discount */}
-              {appliedCoupon && (
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-green-600">🎉 Descuento</p>
-                  <p className="text-sm font-medium text-green-600">-${appliedCoupon.discountAmount.toLocaleString('es-CO')}</p>
-                </div>
-              )}
-              
-              {/* Total final */}
-              <div className="flex justify-between items-center pt-1">
-                <p className="text-base font-bold text-slate-800">Total</p>
-                <div className="text-right">
-                  {appliedCoupon ? (
-                    <>
-                      <p className="text-xs text-slate-400 line-through">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
-                      <p className="text-xl font-bold text-slate-800">${((deliveryFee || 0) + finalAmount).toLocaleString('es-CO')}</p>
-                    </>
-                  ) : (
-                    <p className="text-xl font-bold text-slate-800">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* ── Tipo de pedido inline ── */}
-            {!initialOrderTypeSelected && (
-              <div className="space-y-3">
-                <p className="text-sm font-semibold text-slate-700">¿Cómo será tu pedido?</p>
-                <div className={isFromTableQR ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-3 gap-3'}>
-                  {/* En Sitio */}
-                  <button
-                    type="button"
-                    onClick={() => { setOrderType('inSite'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
-                      orderType === 'inSite' 
-                        ? 'border-blue-500 bg-blue-50 shadow-md' 
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <span className="text-xl">🍽️</span>
-                    <span className={`text-xs font-semibold ${orderType === 'inSite' ? 'text-blue-700' : 'text-slate-600'}`}>En Sitio</span>
-                  </button>
-                  
-                  {/* Para Llevar */}
-                  <button
-                    type="button"
-                    onClick={() => { setOrderType('takeaway'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
-                      orderType === 'takeaway' 
-                        ? 'border-blue-500 bg-blue-50 shadow-md' 
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <span className="text-xl">📦</span>
-                    <span className={`text-xs font-semibold ${orderType === 'takeaway' ? 'text-blue-700' : 'text-slate-600'}`}>Para Llevar</span>
-                  </button>
-                  
-                  {/* Domicilio - solo en modo normal (no QR) */}
-                  {!isFromTableQR && (
+              {/* ── Tipo de pedido inline ── */}
+              {!initialOrderTypeSelected && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo de pedido</p>
+                  <div className={isFromTableQR ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-3 gap-2'}>
                     <button
                       type="button"
-                      onClick={() => { setOrderType('delivery'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
-                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
-                        orderType === 'delivery' 
-                          ? 'border-blue-500 bg-blue-50 shadow-md' 
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      onClick={() => { setOrderType('inSite'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-center ${
+                        orderType === 'inSite' 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-slate-200 bg-white'
                       }`}
                     >
-                      <span className="text-xl">🛵</span>
-                      <span className={`text-xs font-semibold ${orderType === 'delivery' ? 'text-blue-700' : 'text-slate-600'}`}>Domicilio</span>
+                      <span className="text-lg">🍽️</span>
+                      <span className={`text-[11px] font-semibold ${orderType === 'inSite' ? 'text-blue-700' : 'text-slate-500'}`}>En Sitio</span>
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => { setOrderType('takeaway'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
+                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-center ${
+                        orderType === 'takeaway' 
+                          ? 'border-blue-500 bg-blue-50' 
+                          : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      <span className="text-lg">📦</span>
+                      <span className={`text-[11px] font-semibold ${orderType === 'takeaway' ? 'text-blue-700' : 'text-slate-500'}`}>Llevar</span>
+                    </button>
+                    {!isFromTableQR && (
+                      <button
+                        type="button"
+                        onClick={() => { setOrderType('delivery'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
+                        className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-center ${
+                          orderType === 'delivery' 
+                            ? 'border-blue-500 bg-blue-50' 
+                            : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <span className="text-lg">🛵</span>
+                        <span className={`text-[11px] font-semibold ${orderType === 'delivery' ? 'text-blue-700' : 'text-slate-500'}`}>Domicilio</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ── Campo condicional: Número de mesa ── */}
-            {(orderType === 'inSite' && !initialOrderTypeSelected && !(isFromTableQR && tableNumber)) && (
-              <div className="space-y-2">
-                <label htmlFor="inline-table-number" className="text-sm font-medium text-slate-700">Número de Mesa</label>
+              {/* ── Campo condicional: Número de mesa ── */}
+              {(orderType === 'inSite' && !initialOrderTypeSelected && !(isFromTableQR && tableNumber)) && (
                 <input
                   id="inline-table-number"
                   type="number"
                   value={formState.tableNumber}
                   onChange={handleInputChange}
                   name="tableNumber"
-                  className="w-full p-3 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
-                  placeholder="Ej: 5"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                  placeholder="Número de mesa"
                   min="1"
                   max="999"
                   inputMode="numeric"
                   pattern="[0-9]*"
                   autoComplete="off"
                 />
-              </div>
-            )}
+              )}
 
-            {/* ── Info mesa QR ── */}
-            {isFromTableQR && tableNumber && (
-              <div className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-xl">
-                <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center mr-3">
-                  <span className="text-white text-sm">🪑</span>
+              {/* ── Info mesa QR ── */}
+              {isFromTableQR && tableNumber && (
+                <div className="flex items-center gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
+                  <span className="text-sm">🪑</span>
+                  <p className="text-blue-800 font-semibold text-xs">Mesa {tableNumber} · En sitio</p>
                 </div>
-                <div>
-                  <p className="text-blue-800 font-semibold text-sm">Mesa {tableNumber}</p>
-                  <p className="text-blue-600 text-xs">Pedido en sitio</p>
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* ── Campo condicional: Dirección de entrega ── */}
-            {orderType === 'delivery' && !initialOrderTypeSelected && (
-              <div className="space-y-3">
+              {/* ── Campo condicional: Dirección de entrega ── */}
+              {orderType === 'delivery' && !initialOrderTypeSelected && (
                 <div className="space-y-2">
-                  <label htmlFor="inline-delivery-address" className="text-sm font-medium text-slate-700">Dirección de Entrega</label>
                   <textarea
                     ref={deliveryAddressRef}
                     id="inline-delivery-address"
                     name="address"
                     defaultValue={orderInfo?.address || ''}
-                    className="w-full p-3 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
-                    placeholder="Ej: Calle 123 #45-67, Barrio Centro"
-                    rows="2"
+                    className="w-full p-2.5 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                    placeholder="Dirección de entrega"
+                    rows="1"
                     autoComplete="street-address"
                   />
+
+                  {!locationChecked && (
+                    <button
+                      type="button"
+                      onClick={detectLocationAndCalculateFee}
+                      disabled={checkingLocation}
+                      className="w-full px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-xs"
+                    >
+                      {checkingLocation ? (
+                        <><span className="animate-spin">🔄</span> Verificando...</>
+                      ) : (
+                        <>📍 Verificar costo de domicilio</>
+                      )}
+                    </button>
+                  )}
+
+                  {locationChecked && (
+                    <>
+                      {deliveryFee && deliveryZoneInfo ? (
+                        <div className="flex items-center justify-between p-2.5 bg-green-50 border border-green-200 rounded-xl">
+                          <div className="flex items-center gap-1.5">
+                            <span>✅</span>
+                            <span className="text-xs text-green-800 font-medium">{deliveryZoneInfo.zoneName}</span>
+                          </div>
+                          <span className="text-sm font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
+                          <span className="text-amber-600">⚠️</span>
+                          <p className="text-xs text-amber-800 font-medium">Costo por confirmar</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {!isInAppMode && (
+                    <div className="flex items-center gap-1.5 p-2 bg-green-50 border border-green-100 rounded-lg">
+                      <span className="text-xs">📱</span>
+                      <p className="text-[11px] text-green-700">Se abrirá WhatsApp con tu pedido.</p>
+                    </div>
+                  )}
                 </div>
+              )}
+            </div>
+          )}
 
-                {/* Botón verificar ubicación */}
-                {!locationChecked && (
-                  <button
-                    type="button"
-                    onClick={detectLocationAndCalculateFee}
-                    disabled={checkingLocation}
-                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-sm"
-                  >
-                    {checkingLocation ? (
-                      <>
-                        <span className="animate-spin">🔄</span>
-                        Verificando ubicación...
-                      </>
-                    ) : (
-                      <>📍 Verificar costo de domicilio</>
-                    )}
-                  </button>
-                )}
+        </div>
 
-                {/* Resultado verificación */}
-                {locationChecked && (
-                  <>
-                    {deliveryFee && deliveryZoneInfo ? (
-                      <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">✅</span>
-                            <div>
-                              <p className="font-semibold text-green-800 text-sm">Costo de envío</p>
-                              <p className="text-xs text-green-700">Zona: {deliveryZoneInfo.zoneName}</p>
-                            </div>
-                          </div>
-                          <span className="text-lg font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                        <div className="flex items-start gap-2">
-                          <span className="text-amber-600 mt-0.5">⚠️</span>
-                          <div>
-                            <p className="text-sm text-amber-900 font-semibold">Costo por confirmar</p>
-                            <p className="text-xs text-amber-700 mt-0.5">Te confirmaremos el costo al recibir tu pedido.</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
+        {/* ── Sticky bottom: Total + Confirm button ── */}
+        {cart.length > 0 && (
+          <div className="border-t border-slate-200 bg-white px-4 py-3 sm:px-6 flex-shrink-0 pb-safe sm:rounded-b-2xl space-y-2">
+            {/* Total row */}
+            <div className="flex justify-between items-center">
+              <div>
+                {deliveryFee > 0 && (
+                  <p className="text-[11px] text-slate-400">Envío: ${deliveryFee.toLocaleString('es-CO')}</p>
                 )}
-
-                {/* Aviso WhatsApp (solo modo no-inapp) */}
-                {!isInAppMode && (
-                  <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                    <span className="text-green-600 mt-0.5 text-sm">📱</span>
-                    <p className="text-xs text-green-800">
-                      Al confirmar, se abrirá WhatsApp con tu pedido listo para enviar.
-                    </p>
-                  </div>
+                {appliedCoupon && (
+                  <p className="text-[11px] text-green-500">Descuento: -${appliedCoupon.discountAmount.toLocaleString('es-CO')}</p>
                 )}
+                <p className="text-base font-bold text-slate-800">
+                  Total ${(appliedCoupon ? ((deliveryFee || 0) + finalAmount) : ((deliveryFee || 0) + totalAmount)).toLocaleString('es-CO')}
+                </p>
               </div>
-            )}
+              {appliedCoupon && (
+                <p className="text-xs text-slate-400 line-through">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
+              )}
+            </div>
 
-            {/* ── Botón Confirmar Pedido ── */}
+            {/* Confirm button */}
             {(() => {
-              // Determinar si el botón debe mostrarse
               const hasSelectedType = initialOrderTypeSelected || orderType;
               const isDeliveryWithoutCheck = orderType === 'delivery' && !initialOrderTypeSelected && !locationChecked;
               const showButton = hasSelectedType && !isDeliveryWithoutCheck;
@@ -1481,87 +1428,49 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
               if (!showButton) return null;
 
-              // Determinar la acción del botón
               const handleConfirmClick = () => {
                 if (isDisabled) return;
                 
                 if (initialOrderTypeSelected) {
-                  // Ya viene con tipo preseleccionado (QR)
                   handleSubmitOrder();
                 } else if (orderType === 'inSite') {
-                  // Validar mesa
                   const trimmedTable = formState.tableNumber.trim();
                   if (!trimmedTable && !(isFromTableQR && tableNumber)) {
                     alert('Por favor ingresa el número de mesa');
                     return;
                   }
-                  
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = {
-                    ...orderInfo,
-                    orderType: 'inSite',
-                    tableNumber: trimmedTable || tableNumber
-                  };
+                  const updatedOrderInfo = { ...orderInfo, orderType: 'inSite', tableNumber: trimmedTable || tableNumber };
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
-                  setTimeout(() => {
-                    onOrder(updatedOrderInfo, appliedCoupon);
-                    setTimeout(() => setLocalIsSubmitting(false), 500);
-                  }, 150);
+                  setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
                 } else if (orderType === 'takeaway') {
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = {
-                    ...orderInfo,
-                    orderType: 'takeaway',
-                    tableNumber: ''
-                  };
+                  const updatedOrderInfo = { ...orderInfo, orderType: 'takeaway', tableNumber: '' };
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
-                  setTimeout(() => {
-                    onOrder(updatedOrderInfo, appliedCoupon);
-                    setTimeout(() => setLocalIsSubmitting(false), 500);
-                  }, 150);
+                  setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
                 } else if (orderType === 'delivery') {
                   const trimmedAddress = (deliveryAddressRef.current?.value || '').trim();
-                  if (!trimmedAddress) {
-                    alert('Por favor ingresa la dirección de entrega');
-                    return;
-                  }
-                  
+                  if (!trimmedAddress) { alert('Por favor ingresa la dirección de entrega'); return; }
                   setLocalIsSubmitting(true);
                   const updatedOrderInfo = {
-                    ...orderInfo,
-                    orderType: 'delivery',
-                    address: trimmedAddress,
-                    tableNumber: '',
-                    deliveryFee: deliveryFee || null,
-                    deliveryZoneName: deliveryZoneInfo?.zoneName || null,
-                    deliveryZoneInfo: deliveryZoneInfo || null,
-                    deliveryCalculated: true,
-                    deliveryNeedsConfirmation: !deliveryFee
+                    ...orderInfo, orderType: 'delivery', address: trimmedAddress, tableNumber: '',
+                    deliveryFee: deliveryFee || null, deliveryZoneName: deliveryZoneInfo?.zoneName || null,
+                    deliveryZoneInfo: deliveryZoneInfo || null, deliveryCalculated: true, deliveryNeedsConfirmation: !deliveryFee
                   };
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
-                  setTimeout(() => {
-                    onOrder(updatedOrderInfo, appliedCoupon);
-                    setTimeout(() => setLocalIsSubmitting(false), 500);
-                  }, 150);
+                  setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
                 }
               };
 
-              // Label del botón
               let buttonLabel = 'Confirmar Pedido';
-              if (initialOrderTypeSelected && orderInfo.orderType === 'inSite') {
-                buttonLabel = `Confirmar Pedido en Mesa ${tableNumber}`;
-              } else if (initialOrderTypeSelected && orderInfo.orderType === 'takeaway') {
-                buttonLabel = 'Confirmar Pedido Para Llevar';
-              } else if (orderType === 'inSite') {
-                buttonLabel = `Confirmar Pedido en Mesa${formState.tableNumber ? ` ${formState.tableNumber}` : ''}`;
-              } else if (orderType === 'takeaway') {
-                buttonLabel = 'Confirmar Pedido Para Llevar';
-              } else if (orderType === 'delivery') {
-                buttonLabel = 'Confirmar Pedido a Domicilio';
-              }
+              if (initialOrderTypeSelected && orderInfo.orderType === 'inSite') buttonLabel = `Confirmar · Mesa ${tableNumber}`;
+              else if (initialOrderTypeSelected && orderInfo.orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
+              else if (orderType === 'inSite') buttonLabel = `Confirmar · Mesa${formState.tableNumber ? ` ${formState.tableNumber}` : ''}`;
+              else if (orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
+              else if (orderType === 'delivery') buttonLabel = 'Confirmar · Domicilio';
 
               return (
                 <button
@@ -1570,27 +1479,24 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     backgroundColor: isDisabled ? '#9ca3af' : (businessConfig.theme.buttonColor || '#f97316'),
                     color: businessConfig.theme.buttonTextColor || '#ffffff'
                   }}
-                  className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg transition-all duration-200 ${
-                    isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]'
+                  className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm transition-all ${
+                    isDisabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'
                   }`}
                   disabled={isDisabled}
                 >
                   {isSubmitting ? (
                     <>
-                      <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                       <span>Procesando...</span>
                     </>
                   ) : (
-                    <>
-                      <span>✅</span>
-                      <span>{buttonLabel}</span>
-                    </>
+                    <span>{buttonLabel}</span>
                   )}
                 </button>
               );
             })()}
-            </div>
-          )}
+          </div>
+        )}
         </div>
         
       {/* Modal de negocio cerrado */}
