@@ -6,9 +6,21 @@ const path = require("path");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
+const Sentry = require("@sentry/node");
 
 // Cargar variables de entorno - ESTO DEBE IR PRIMERO
 require('dotenv').config();
+
+// Inicializar Sentry - Monitoreo de errores en producción
+Sentry.init({
+  dsn: "https://7881e2181ef4ac4c49d459eced22d715@o4510891623251968.ingest.us.sentry.io/4510891639242752",
+  environment: process.env.NODE_ENV || 'development',
+  enabled: process.env.NODE_ENV === 'production',
+  // Performance monitoring - captura 20% de transacciones
+  tracesSampleRate: 0.2,
+  // Enviar PII
+  sendDefaultPii: true,
+});
 
 /**
  * Servidor principal de la aplicación
@@ -166,12 +178,16 @@ app.use('/uploads/announcements', express.static(path.join(__dirname, 'uploads/a
 // Ruta específica para SSE
 app.use("/events", require("./Routes/events"));
 
+// Sentry error handler - DEBE ir antes del manejador de errores genérico
+Sentry.setupExpressErrorHandler(app);
+
 // Manejo de errores
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
   res.status(500).json({ 
     message: "Error interno del servidor",
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    sentryId: res.sentry // ID del error en Sentry para referencia
   });
 });
 

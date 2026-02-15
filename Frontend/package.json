@@ -11,6 +11,7 @@
     "deploy": "npm run build && npx gh-pages -d dist"
   },
   "dependencies": {
+    "@sentry/react": "^10.38.0",
     "axios": "^1.7.0",
     "concurrently": "^9.1.2",
     "framer-motion": "^12.10.5",

@@ -1,5 +1,27 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import * as Sentry from "@sentry/react";
+
+// Inicializar Sentry - Monitoreo de errores en producción
+Sentry.init({
+  dsn: "https://d2287951bfe926aa4d4b641446b90856@o4510891623251968.ingest.us.sentry.io/4510891635900416",
+  environment: import.meta.env.MODE,
+  enabled: import.meta.env.PROD,
+  integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration({
+      maskAllText: false,
+      blockAllMedia: false,
+    }),
+  ],
+  // Performance monitoring - captura 20% de transacciones
+  tracesSampleRate: 0.2,
+  // Session Replay - captura 10% normal, 100% en errores
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+  // Enviar PII (IP, user agent)
+  sendDefaultPii: true,
+});
 
 // SOBRESCRITURA NUCLEAR DE CONSOLE - Filtrar TODO lo relacionado con PWA y React DevTools
 if (typeof window !== 'undefined') {
