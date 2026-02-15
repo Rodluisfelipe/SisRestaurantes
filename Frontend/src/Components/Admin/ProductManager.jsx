@@ -293,9 +293,7 @@ export default function ProductManager({
                     <button type="button"
                       onClick={(e) => {
                         e.preventDefault();
-                        const modalContent = e.target.closest('.bg-white');
-                        const formElement = modalContent?.querySelector('form');
-                        if (formElement) formElement.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                        handleSubmit(e);
                       }}
                       className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
                       <FaCheck className="text-[10px]" />
