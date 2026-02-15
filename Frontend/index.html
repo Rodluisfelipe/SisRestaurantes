@@ -44,37 +44,22 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://menuby.tech" />
     
-    <!-- Manifest (dynamic, managed by DynamicManifest.jsx component) -->
+    <!-- Manifest (dynamic via Cloudflare Pages Function - iOS compatible) -->
     <link rel="manifest" href="/manifest.json" />
     <script>
-      // Pre-React manifest update: set start_url to current path immediately
+      // Update manifest link to use dynamic Pages Function with current slug
       (function() {
         var path = window.location.pathname;
         if (path && path !== '/' && path.length > 1) {
-          var origin = window.location.origin;
-          var m = {
-            name: 'MenuBy',
-            short_name: 'MenuBy',
-            start_url: origin + path,
-            scope: origin + '/',
-            display: 'standalone',
-            background_color: '#051C2C',
-            theme_color: '#E31E24',
-            orientation: 'portrait-primary',
-            id: origin + path,
-            icons: [
-              { src: origin + '/logo.jpeg', sizes: '192x192', type: 'image/jpeg', purpose: 'any' },
-              { src: origin + '/logo.jpeg', sizes: '512x512', type: 'image/jpeg', purpose: 'any' },
-              { src: origin + '/logo.jpeg', sizes: '192x192', type: 'image/jpeg', purpose: 'maskable' }
-            ]
-          };
-          var blob = new Blob([JSON.stringify(m)], { type: 'application/json' });
-          var link = document.querySelector('link[rel="manifest"]');
-          if (link) link.remove();
-          var newLink = document.createElement('link');
-          newLink.rel = 'manifest';
-          newLink.href = URL.createObjectURL(blob);
-          document.head.appendChild(newLink);
+          var slug = path.split('/')[1] || '';
+          if (slug) {
+            var link = document.querySelector('link[rel="manifest"]');
+            if (link) link.remove();
+            var newLink = document.createElement('link');
+            newLink.rel = 'manifest';
+            newLink.href = '/manifest?slug=' + encodeURIComponent(slug);
+            document.head.appendChild(newLink);
+          }
         }
       })();
     </script>
