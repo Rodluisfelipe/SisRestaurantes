@@ -13,7 +13,6 @@ import OrderHistoryModal from "../Components/OrderHistoryModal";
 import FeaturedProducts from "../Components/FeaturedProducts";
 import { FlyToCartProvider } from "../Components/FlyToCart";
 import { FilterableMenuSkeleton, BusinessHeaderSkeleton } from "../Components/MenuSkeletons";
-import PullToRefresh from "../Components/PullToRefresh";
 import SplashScreen from "../Components/SplashScreen";
 import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
@@ -1159,23 +1158,8 @@ export default function Menu() {
     navigate('/restaurantes');
   };
 
-  // Pull-to-refresh handler — re-fetch products & categories
-  const handlePullRefresh = async () => {
-    try {
-      const [productsRes, categoriesRes] = await Promise.all([
-        api.get(`/products?businessId=${businessId}`),
-        api.get(`/categories?businessId=${businessId}`)
-      ]);
-      setProducts(productsRes.data);
-      setCategories(categoriesRes.data);
-    } catch (err) {
-      logger.error('Pull-to-refresh error:', err);
-    }
-  };
-
   return (
     <FlyToCartProvider>
-    <PullToRefresh onRefresh={handlePullRefresh} themeColor={businessConfig?.theme?.buttonColor || '#f97316'}>
     <div className="min-h-screen bg-gray-50 pb-20">
       <BusinessHeader 
         comesFromCatalog={comesFromCatalog}
@@ -1454,7 +1438,6 @@ export default function Menu() {
         </div>
       </footer>
     </div>
-    </PullToRefresh>
     </FlyToCartProvider>
   );
 } 
