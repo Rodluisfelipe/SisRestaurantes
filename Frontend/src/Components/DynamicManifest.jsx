@@ -63,16 +63,20 @@ const DynamicManifest = () => {
       });
       const manifestURL = URL.createObjectURL(manifestBlob);
 
-      // Update or create manifest link
-      let manifestLink = document.querySelector('link[rel="manifest"]');
-      if (manifestLink) {
-        manifestLink.href = manifestURL;
-      } else {
-        manifestLink = document.createElement('link');
-        manifestLink.rel = 'manifest';
-        manifestLink.href = manifestURL;
-        document.head.appendChild(manifestLink);
+      // Remove existing manifest link and create a fresh one
+      // (some browsers don't re-read the manifest if you just change href)
+      const existingLink = document.querySelector('link[rel="manifest"]');
+      if (existingLink) {
+        // Revoke old blob URL to free memory
+        if (existingLink.href.startsWith('blob:')) {
+          URL.revokeObjectURL(existingLink.href);
+        }
+        existingLink.remove();
       }
+      const newLink = document.createElement('link');
+      newLink.rel = 'manifest';
+      newLink.href = manifestURL;
+      document.head.appendChild(newLink);
 
       // Update theme color meta tag
       let themeColorMeta = document.querySelector('meta[name="theme-color"]');
