@@ -44,8 +44,36 @@
     <!-- Canonical URL -->
     <link rel="canonical" href="https://menuby.tech" />
     
-    <!-- Manifest -->
-    <link rel="manifest" href="/manifest.json?v=3" />
+    <!-- Manifest (dynamic: sets start_url to current page so "Add to Home Screen" opens the right menu) -->
+    <link rel="manifest" id="dynamic-manifest" href="/manifest.json?v=4" />
+    <script>
+      (function() {
+        var path = window.location.pathname;
+        if (path && path !== '/' && path.length > 1) {
+          var m = {
+            name: document.title || 'Menuby',
+            short_name: 'Menuby',
+            description: 'Menú Digital',
+            start_url: path + window.location.search,
+            scope: '/',
+            display: 'standalone',
+            background_color: '#ffffff',
+            theme_color: '#E31E24',
+            orientation: 'portrait-primary',
+            icons: [
+              { src: '/logo.jpeg', sizes: '192x192', type: 'image/jpeg', purpose: 'any' },
+              { src: '/logo.jpeg', sizes: '512x512', type: 'image/jpeg', purpose: 'any' },
+              { src: '/logo.jpeg', sizes: '192x192', type: 'image/jpeg', purpose: 'maskable' }
+            ],
+            categories: ['business', 'food'],
+            lang: 'es-CO',
+            id: path
+          };
+          var blob = new Blob([JSON.stringify(m)], { type: 'application/json' });
+          document.getElementById('dynamic-manifest').setAttribute('href', URL.createObjectURL(blob));
+        }
+      })();
+    </script>
     
     <!-- Structured Data -->
     <script type="application/ld+json">
