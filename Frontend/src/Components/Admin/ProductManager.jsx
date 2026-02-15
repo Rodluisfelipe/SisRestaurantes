@@ -2,10 +2,11 @@ import { useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ProductFormToppingSelector from '../ProductFormToppingSelector';
 import ProductToppingOrderSelector from '../ProductToppingOrderSelector';
+import ImageUploader from './ImageUploader';
 import {
   FaPlus, FaTimes, FaEdit, FaPause, FaPlay, FaTrash, FaStar,
   FaChevronLeft, FaChevronDown, FaChevronRight, FaCheck,
-  FaTag, FaAlignLeft, FaFolderOpen, FaDollarSign, FaLink, FaImage,
+  FaTag, FaAlignLeft, FaFolderOpen, FaDollarSign, FaImage,
   FaCheese, FaGripVertical, FaExclamationTriangle
 } from 'react-icons/fa';
 
@@ -190,25 +191,16 @@ export default function ProductManager({
                       </div>
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                          <FaLink className="text-slate-400 text-[10px]" />URL de Imagen
+                          <FaImage className="text-slate-400 text-[10px]" />Imagen del producto
                         </label>
-                        <input name="image" value={form.image} onChange={handleChange}
-                          className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-3 py-2 text-sm transition-all"
-                          placeholder="https://ejemplo.com/imagen.jpg" />
+                        <ImageUploader
+                          value={form.image}
+                          onChange={(url) => setForm(prev => ({ ...prev, image: url }))}
+                          folder="products"
+                          maxWidth={800}
+                          quality={80}
+                        />
                       </div>
-                      {form.image && (
-                        <div className="relative w-full h-48 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
-                          <img src={form.image} alt="Preview" className="w-full h-full object-cover"
-                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
-                          <div style={{ display: 'none' }} className="w-full h-full flex flex-col items-center justify-center bg-slate-50">
-                            <FaImage className="text-2xl text-slate-300 mb-2" />
-                            <span className="text-xs text-slate-400">No se pudo cargar</span>
-                          </div>
-                          <div className="absolute top-2 right-2 bg-emerald-500/90 text-white px-2 py-0.5 rounded-full text-[10px] font-medium flex items-center gap-1">
-                            <FaCheck className="text-[8px]" /> Vista previa
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
 

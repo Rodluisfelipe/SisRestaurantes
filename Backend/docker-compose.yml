@@ -13,6 +13,8 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     env_file:
       - .env
+    volumes:
+      - ./uploads:/app/uploads
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
