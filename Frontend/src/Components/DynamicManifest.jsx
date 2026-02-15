@@ -6,82 +6,48 @@ const DynamicManifest = () => {
 
   useEffect(() => {
     if (businessConfig) {
+      const origin = window.location.origin;
+      const logoUrl = businessConfig.logo
+        ? (businessConfig.logo.startsWith('http') ? businessConfig.logo : origin + businessConfig.logo)
+        : origin + '/logo.jpeg';
+      const logoType = businessConfig.logo ? 'image/png' : 'image/jpeg';
+      const slug = businessConfig.slug || '';
+
       const manifest = {
         name: `${businessConfig.businessName || 'MenuBy'} - Sistema de Gestión`,
         short_name: businessConfig.businessName || 'MenuBy',
         description: businessConfig.description || `Sistema de gestión para ${businessConfig.businessName || 'tu restaurante'}. Crea tu menú digital, gestiona pedidos y mejora la experiencia de tus clientes.`,
-        start_url: `/${businessConfig.slug || ''}`,
+        start_url: `${origin}/${slug}`,
         display: 'standalone',
         background_color: businessConfig.primaryColor || '#051C2C',
         theme_color: businessConfig.accentColor || '#3A7AFF',
         orientation: 'portrait-primary',
-        scope: '/',
+        scope: origin + '/',
         lang: 'es',
         categories: ['business', 'food', 'productivity'],
+        id: `${origin}/${slug}`,
         icons: [
-          {
-            src: businessConfig.logo || '/logo.jpeg',
-            sizes: '192x192',
-            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
-            purpose: 'maskable any'
-          },
-          {
-            src: businessConfig.logo || '/logo.jpeg',
-            sizes: '512x512',
-            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
-            purpose: 'maskable any'
-          },
-          {
-            src: businessConfig.logo || '/logo.jpeg',
-            sizes: '180x180',
-            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
-            purpose: 'any'
-          },
-          {
-            src: businessConfig.logo || '/logo.jpeg',
-            sizes: '167x167',
-            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
-            purpose: 'any'
-          },
-          {
-            src: businessConfig.logo || '/logo.jpeg',
-            sizes: '152x152',
-            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
-            purpose: 'any'
-          },
-          {
-            src: businessConfig.logo || '/logo.jpeg',
-            sizes: '120x120',
-            type: businessConfig.logo ? 'image/png' : 'image/jpeg',
-            purpose: 'any'
-          }
+          { src: logoUrl, sizes: '192x192', type: logoType, purpose: 'any' },
+          { src: logoUrl, sizes: '512x512', type: logoType, purpose: 'any' },
+          { src: logoUrl, sizes: '192x192', type: logoType, purpose: 'maskable' },
+          { src: logoUrl, sizes: '180x180', type: logoType, purpose: 'any' },
+          { src: logoUrl, sizes: '152x152', type: logoType, purpose: 'any' },
+          { src: logoUrl, sizes: '120x120', type: logoType, purpose: 'any' }
         ],
         shortcuts: [
           {
             name: 'Panel Admin',
             short_name: 'Admin',
             description: 'Acceso directo al panel de administración',
-            url: `/${businessConfig.slug || ''}/admin`,
-            icons: [
-              {
-                src: businessConfig.logo || '/logo.jpeg',
-                sizes: '96x96',
-                type: businessConfig.logo ? 'image/png' : 'image/jpeg'
-              }
-            ]
+            url: `${origin}/${slug}/admin`,
+            icons: [{ src: logoUrl, sizes: '96x96', type: logoType }]
           },
           {
             name: 'Menú',
             short_name: 'Menú',
             description: 'Ver el menú del restaurante',
-            url: `/${businessConfig.slug || ''}`,
-            icons: [
-              {
-                src: businessConfig.logo || '/logo.jpeg',
-                sizes: '96x96',
-                type: businessConfig.logo ? 'image/png' : 'image/jpeg'
-              }
-            ]
+            url: `${origin}/${slug}`,
+            icons: [{ src: logoUrl, sizes: '96x96', type: logoType }]
           }
         ]
       };

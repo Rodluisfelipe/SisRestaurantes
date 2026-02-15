@@ -2,33 +2,33 @@
   "name": "Menuby - Menús Digitales",
   "short_name": "Menuby",
   "description": "La mejor plataforma de menús digitales para restaurantes en Colombia",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "https://menuby.tech/",
+  "scope": "https://menuby.tech/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#E31E24",
   "orientation": "portrait-primary",
+  "id": "https://menuby.tech/",
   "icons": [
     {
-      "src": "/logo.jpeg",
+      "src": "https://menuby.tech/logo.jpeg",
       "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/logo.jpeg",
+      "src": "https://menuby.tech/logo.jpeg",
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/logo.jpeg",
+      "src": "https://menuby.tech/logo.jpeg",
       "sizes": "192x192",
       "type": "image/jpeg",
       "purpose": "maskable"
     }
   ],
   "categories": ["business", "food"],
-  "lang": "es-CO",
-  "id": "/"
+  "lang": "es-CO"
 }
