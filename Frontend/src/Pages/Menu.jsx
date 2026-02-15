@@ -1,5 +1,5 @@
 // @charset UTF-8
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
@@ -108,9 +108,39 @@ export default function Menu() {
   const [showMyOrders, setShowMyOrders] = useState(false);
   const [activeOrderId, setActiveOrderId] = useState(() => sessionStorage.getItem('activeOrderId') || null);
   const [activeCustomerToken, setActiveCustomerToken] = useState(() => sessionStorage.getItem('activeCustomerToken') || null);
+  const [activeOrderStatus, setActiveOrderStatus] = useState(null);
   
   // Check if business uses in-app ordering
   const isInAppMode = businessConfig?.orderingMode === 'inapp' || businessConfig?.orderingMode === 'both';
+
+  // Poll active order status for banner display
+  useEffect(() => {
+    if (!activeOrderId || !activeCustomerToken || !isInAppMode) {
+      setActiveOrderStatus(null);
+      return;
+    }
+    let cancelled = false;
+    const fetchStatus = async () => {
+      try {
+        const res = await api.get(`/orders/track/${activeOrderId}?token=${activeCustomerToken}`);
+        if (!cancelled) setActiveOrderStatus(res.data.status || null);
+      } catch {
+        if (!cancelled) setActiveOrderStatus(null);
+      }
+    };
+    fetchStatus();
+    const interval = setInterval(fetchStatus, 6000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [activeOrderId, activeCustomerToken, isInAppMode]);
+
+  // Clear active order (user confirmed completed order)
+  const clearActiveOrder = useCallback(() => {
+    setActiveOrderId(null);
+    setActiveCustomerToken(null);
+    setActiveOrderStatus(null);
+    sessionStorage.removeItem('activeOrderId');
+    sessionStorage.removeItem('activeCustomerToken');
+  }, []);
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -1212,7 +1242,9 @@ export default function Menu() {
         onToppingsClose={() => setIsSelectingToppings(false)}
         subscriptionStatus={subscriptionStatus}
         hasActiveOrder={!!(isInAppMode && activeOrderId && activeCustomerToken && !showOrderTracker && !showPaymentUpload)}
+        activeOrderStatus={activeOrderStatus}
         onViewActiveOrder={() => setShowOrderTracker(true)}
+        onDismissCompletedOrder={clearActiveOrder}
       />
 
       <CartBar 

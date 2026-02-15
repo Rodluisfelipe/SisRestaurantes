@@ -155,7 +155,9 @@ const FilterableMenu = ({
   businessId,
   businessConfig: businessConfigProp,
   hasActiveOrder = false,
-  onViewActiveOrder
+  activeOrderStatus = null,
+  onViewActiveOrder,
+  onDismissCompletedOrder
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -409,51 +411,81 @@ const FilterableMenu = ({
     <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2">
       {/* Active Order Banner — Rappi style, above search */}
       <AnimatePresence>
-        {hasActiveOrder && (
-          <motion.button
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            onClick={onViewActiveOrder}
-            className="w-full mb-3 rounded-2xl overflow-hidden shadow-sm active:scale-[0.98] transition-transform"
-            style={{ backgroundColor: themeColor }}
-          >
-            <div className="flex items-center gap-3 px-4 py-3">
-              <div className="relative flex-shrink-0">
-                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
-                  <svg className="w-5 h-5" style={{ color: themeTextColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
+        {hasActiveOrder && (() => {
+          const isCompleted = activeOrderStatus === 'completed' || activeOrderStatus === 'ready';
+          const statusMap = {
+            pending_payment: { label: 'Pendiente de pago', icon: '💳', sub: 'Realiza el pago para continuar' },
+            payment_uploaded: { label: 'Verificando pago', icon: '📤', sub: 'El restaurante revisa tu comprobante' },
+            payment_confirmed: { label: 'Pago confirmado', icon: '✅', sub: 'Tu pedido será preparado pronto' },
+            pending: { label: 'Pedido recibido', icon: '📋', sub: 'El restaurante recibió tu pedido' },
+            inProgress: { label: 'En preparación', icon: '👨\u200d\ud83c\udf73', sub: 'Están preparando tu pedido' },
+            ready: { label: '¡Pedido listo!', icon: '🎉', sub: 'Tu pedido está listo para recoger' },
+            completed: { label: '¡Pedido completado!', icon: '✨', sub: 'Tu pedido ha sido entregado' },
+          };
+          const info = statusMap[activeOrderStatus] || { label: 'Pedido en curso', icon: '📋', sub: 'Toca para ver el estado' };
+
+          return (
+            <motion.div
+              key="active-order-banner"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="w-full mb-3 rounded-2xl overflow-hidden shadow-sm"
+              style={{ backgroundColor: isCompleted ? '#10b981' : themeColor }}
+            >
+              <button
+                onClick={isCompleted ? undefined : onViewActiveOrder}
+                className="w-full active:scale-[0.98] transition-transform"
+              >
+                <div className="flex items-center gap-3 px-4 py-3">
+                  <div className="relative flex-shrink-0">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-lg">
+                      {info.icon}
+                    </div>
+                    {!isCompleted && (
+                      <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-sm font-semibold leading-tight text-white">
+                      {info.label}
+                    </p>
+                    <p className="text-xs mt-0.5 text-white/75">
+                      {info.sub}
+                    </p>
+                  </div>
+                  {!isCompleted && (
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                      <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
-                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
-                </span>
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <p className="text-sm font-semibold leading-tight" style={{ color: themeTextColor }}>
-                  Tu pedido está en curso
-                </p>
-                <p className="text-xs mt-0.5 opacity-75" style={{ color: themeTextColor }}>
-                  Toca para ver el estado
-                </p>
-              </div>
-              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
-                <svg className="w-4 h-4" style={{ color: themeTextColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </div>
-            <div className="h-0.5 bg-white/20">
-              <motion.div
-                className="h-full bg-white/50 rounded-full"
-                animate={{ width: ['0%', '100%'] }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
-              />
-            </div>
-          </motion.button>
-        )}
+              </button>
+              {isCompleted ? (
+                <button
+                  onClick={onDismissCompletedOrder}
+                  className="w-full py-2 bg-white/20 text-white text-xs font-semibold tracking-wide active:bg-white/30 transition-colors"
+                >
+                  OK, ENTENDIDO
+                </button>
+              ) : (
+                <div className="h-0.5 bg-white/20">
+                  <motion.div
+                    className="h-full bg-white/50 rounded-full"
+                    animate={{ width: ['0%', '100%'] }}
+                    transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+                  />
+                </div>
+              )}
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Search Bar */}
