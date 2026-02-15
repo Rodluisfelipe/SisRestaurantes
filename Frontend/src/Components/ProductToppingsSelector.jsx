@@ -506,15 +506,28 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
     e.stopPropagation();
   };
 
+  // Close only when tapping directly on the dark backdrop, not from scroll gestures
+  const backdropRef = React.useRef(null);
+  const handleBackdropPointerDown = (e) => {
+    // Only close if the pointer landed exactly on the backdrop (not on the modal content)
+    if (e.target === backdropRef.current) {
+      onClose();
+    }
+  };
+
   // Renderizar el modal con los toppings
   return (
     <div
+      ref={backdropRef}
       className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-40"
-      onClick={onClose}
+      onMouseDown={handleBackdropPointerDown}
+      onTouchEnd={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
         <div
           className="bg-white rounded-2xl max-w-lg w-full h-[95vh] sm:h-[92vh] md:h-[95vh] shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col"
           onClick={handleModalClick}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
         {/* Encabezado del modal */}
         <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-4 sm:p-6 flex justify-between items-center z-10 backdrop-blur-lg rounded-t-2xl">
