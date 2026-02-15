@@ -20,21 +20,38 @@ const crypto = require('crypto');
 // Multer config for payment proof uploads
 const proofStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '..', 'uploads', 'order-proofs'));
+    const dir = path.join(__dirname, '..', 'uploads', 'order-proofs');
+    // Ensure directory exists
+    const fs = require('fs');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'proof-' + uniqueSuffix + path.extname(file.originalname));
+    const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+    cb(null, 'proof-' + uniqueSuffix + ext);
   }
 });
 const uploadProof = multer({
   storage: proofStorage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for mobile photos
   fileFilter: (req, file, cb) => {
-    const allowed = /jpeg|jpg|png|webp/;
-    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-    const mime = allowed.test(file.mimetype);
-    if (ext && mime) return cb(null, true);
+    const allowedMimes = [
+      'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
+      'image/heic', 'image/heif',                // iPhone
+      'application/octet-stream'                   // Android fallback
+    ];
+    if (allowedMimes.includes(file.mimetype.toLowerCase())) {
+      return cb(null, true);
+    }
+    // Also check extension as fallback (some Android browsers don't set mimetype)
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedExts = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'];
+    if (allowedExts.includes(ext)) {
+      return cb(null, true);
+    }
     cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
   }
 });
@@ -727,7 +744,20 @@ router.post("/cleanup-completed", authMiddleware, async (req, res) => {
 // ===== IN-APP ORDERING ENDPOINTS =====
 
 // Upload payment proof (public - uses customerToken for auth)
-router.post('/:id/payment-proof', uploadProof.single('proof'), async (req, res) => {
+router.post('/:id/payment-proof', (req, res, next) => {
+  uploadProof.single('proof')(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ message: 'La imagen es muy grande. Máximo 10MB.' });
+      }
+      if (err.message) {
+        return res.status(400).json({ message: err.message });
+      }
+      return res.status(400).json({ message: 'Error al procesar la imagen. Intenta con otro archivo.' });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     const { id } = req.params;
     const { customerToken } = req.body;

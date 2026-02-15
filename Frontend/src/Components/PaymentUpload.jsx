@@ -30,13 +30,16 @@ const PaymentUpload = ({
     if (!file) return;
 
     // Validate file
-    if (file.size > 5 * 1024 * 1024) {
-      setError('La imagen no puede pesar más de 5MB');
+    if (file.size > 10 * 1024 * 1024) {
+      setError('La imagen no puede pesar más de 10MB');
       return;
     }
 
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
+    // Accept common image types including HEIC from iPhone
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    const validExts = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'];
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!validTypes.includes(file.type) && !validExts.includes(ext)) {
       setError('Solo se permiten imágenes (JPG, PNG, WebP)');
       return;
     }
@@ -264,7 +267,7 @@ const PaymentUpload = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
               onChange={handleFileSelect}
               className="hidden"
             />

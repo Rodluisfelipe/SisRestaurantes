@@ -548,9 +548,9 @@ function ModernOrdersDashboard() {
 
   const orderCounts = {
     all: filteredOrders.length,
-    [ORDER_STATUS.PENDING]: orders.filter(o => o.status === ORDER_STATUS.PENDING).length,
-    [ORDER_STATUS.IN_PROGRESS]: orders.filter(o => o.status === ORDER_STATUS.IN_PROGRESS).length,
-    [ORDER_STATUS.COMPLETED]: orders.filter(o => o.status === ORDER_STATUS.COMPLETED).length,
+    [ORDER_STATUS.PENDING]: orders.filter(o => o?.status === ORDER_STATUS.PENDING).length,
+    [ORDER_STATUS.IN_PROGRESS]: orders.filter(o => o?.status === ORDER_STATUS.IN_PROGRESS).length,
+    [ORDER_STATUS.COMPLETED]: orders.filter(o => o?.status === ORDER_STATUS.COMPLETED).length,
   };
 
   return (
