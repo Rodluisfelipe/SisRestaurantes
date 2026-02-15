@@ -319,15 +319,16 @@ function ModernOrdersDashboard() {
   const confirmPayment = async (orderId) => {
     try {
       const response = await api.patch(`/orders/${orderId}/confirm-payment`);
+      const updatedOrder = response.data.order || response.data;
       
       setOrders(prevOrders => 
         prevOrders.map(order => 
-          order._id === orderId ? response.data.order : order
+          order._id === orderId ? updatedOrder : order
         )
       );
 
       if (selectedOrder === orderId) {
-        setOrderDetails(response.data.order);
+        setOrderDetails(updatedOrder);
       }
     } catch (error) {
       console.error('Error confirming payment:', error);
@@ -340,15 +341,16 @@ function ModernOrdersDashboard() {
     const reason = prompt('Razón del rechazo (opcional):');
     try {
       const response = await api.patch(`/orders/${orderId}/reject-payment`, { reason: reason || '' });
+      const updatedOrder = response.data.order || response.data;
       
       setOrders(prevOrders => 
         prevOrders.map(order => 
-          order._id === orderId ? response.data.order : order
+          order._id === orderId ? updatedOrder : order
         )
       );
 
       if (selectedOrder === orderId) {
-        setOrderDetails(response.data.order);
+        setOrderDetails(updatedOrder);
       }
     } catch (error) {
       console.error('Error rejecting payment:', error);
