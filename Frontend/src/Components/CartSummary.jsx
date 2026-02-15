@@ -1386,251 +1386,292 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               </div>
             </div>
 
-            {/* Mostrar información de la mesa si hay tableNumber */}
-            {isFromTableQR && (
-              <div className="flex items-center p-4 bg-blue-50 border border-blue-200 rounded-xl shadow-sm">
-                <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center mr-3">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-blue-800 font-semibold">Mesa {tableNumber}</p>
-                  <p className="text-blue-600 text-sm">Pedido en sitio</p>
+            {/* ── Tipo de pedido inline ── */}
+            {!initialOrderTypeSelected && (
+              <div className="space-y-3">
+                <p className="text-sm font-semibold text-slate-700">¿Cómo será tu pedido?</p>
+                <div className={isFromTableQR ? 'grid grid-cols-2 gap-3' : 'grid grid-cols-3 gap-3'}>
+                  {/* En Sitio */}
+                  <button
+                    type="button"
+                    onClick={() => { setOrderType('inSite'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      orderType === 'inSite' 
+                        ? 'border-blue-500 bg-blue-50 shadow-md' 
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="text-xl">🍽️</span>
+                    <span className={`text-xs font-semibold ${orderType === 'inSite' ? 'text-blue-700' : 'text-slate-600'}`}>En Sitio</span>
+                  </button>
+                  
+                  {/* Para Llevar */}
+                  <button
+                    type="button"
+                    onClick={() => { setOrderType('takeaway'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
+                      orderType === 'takeaway' 
+                        ? 'border-blue-500 bg-blue-50 shadow-md' 
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="text-xl">📦</span>
+                    <span className={`text-xs font-semibold ${orderType === 'takeaway' ? 'text-blue-700' : 'text-slate-600'}`}>Para Llevar</span>
+                  </button>
+                  
+                  {/* Domicilio - solo en modo normal (no QR) */}
+                  {!isFromTableQR && (
+                    <button
+                      type="button"
+                      onClick={() => { setOrderType('delivery'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
+                        orderType === 'delivery' 
+                          ? 'border-blue-500 bg-blue-50 shadow-md' 
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <span className="text-xl">🛵</span>
+                      <span className={`text-xs font-semibold ${orderType === 'delivery' ? 'text-blue-700' : 'text-slate-600'}`}>Domicilio</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
 
-              {/* Payment Info for in-app mode (shown before confirm buttons) */}
-              {isInAppMode && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3 mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">💳</span>
-                    <p className="text-sm text-blue-900 font-semibold">Medios de pago</p>
-                  </div>
-                  <p className="text-xs text-blue-700">Paga y luego sube tu comprobante desde el seguimiento.</p>
-                  
-                  {businessConfig?.paymentInfo?.nequi && (
-                    <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">📱</span>
-                        <div>
-                          <p className="text-xs text-gray-500">Nequi</p>
-                          <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.nequi}</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.nequi)}
-                        className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
-                      >
-                        Copiar
-                      </button>
-                    </div>
-                  )}
-                  
-                  {businessConfig?.paymentInfo?.daviplata && (
-                    <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">📲</span>
-                        <div>
-                          <p className="text-xs text-gray-500">Daviplata</p>
-                          <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.daviplata}</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.daviplata)}
-                        className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
-                      >
-                        Copiar
-                      </button>
-                    </div>
-                  )}
-                  
-                  {businessConfig?.paymentInfo?.bankAccountNumber && (
-                    <div className="bg-white rounded-lg px-3 py-2 border border-blue-100 space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">🏦</span>
-                        <p className="text-xs text-gray-500">Transferencia bancaria</p>
-                      </div>
-                      <div className="pl-7 space-y-0.5">
-                        {businessConfig.paymentInfo.bankName && (
-                          <p className="text-xs text-gray-600">{businessConfig.paymentInfo.bankName} - {businessConfig.paymentInfo.bankAccountType || 'Ahorros'}</p>
-                        )}
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.bankAccountNumber}</p>
-                          <button
-                            type="button"
-                            onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.bankAccountNumber)}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                        {businessConfig.paymentInfo.accountHolder && (
-                          <p className="text-xs text-gray-500">Titular: {businessConfig.paymentInfo.accountHolder}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
+            {/* ── Campo condicional: Número de mesa ── */}
+            {(orderType === 'inSite' && !initialOrderTypeSelected && !(isFromTableQR && tableNumber)) && (
+              <div className="space-y-2">
+                <label htmlFor="inline-table-number" className="text-sm font-medium text-slate-700">Número de Mesa</label>
+                <input
+                  id="inline-table-number"
+                  type="number"
+                  value={formState.tableNumber}
+                  onChange={handleInputChange}
+                  name="tableNumber"
+                  className="w-full p-3 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                  placeholder="Ej: 5"
+                  min="1"
+                  max="999"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="off"
+                />
+              </div>
+            )}
 
-                  {businessConfig?.paymentInfo?.instructions && (
-                    <p className="text-xs text-blue-700 italic">💡 {businessConfig.paymentInfo.instructions}</p>
-                  )}
+            {/* ── Info mesa QR ── */}
+            {isFromTableQR && tableNumber && (
+              <div className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                <div className="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center mr-3">
+                  <span className="text-white text-sm">🪑</span>
                 </div>
-              )}
+                <div>
+                  <p className="text-blue-800 font-semibold text-sm">Mesa {tableNumber}</p>
+                  <p className="text-blue-600 text-xs">Pedido en sitio</p>
+                </div>
+              </div>
+            )}
 
-              {/* Order type buttons */}
-              <div className={initialOrderTypeSelected ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-2 gap-4'}>
-                {initialOrderTypeSelected && orderInfo.orderType === 'inSite' ? (
+            {/* ── Campo condicional: Dirección de entrega ── */}
+            {orderType === 'delivery' && !initialOrderTypeSelected && (
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <label htmlFor="inline-delivery-address" className="text-sm font-medium text-slate-700">Dirección de Entrega</label>
+                  <textarea
+                    ref={deliveryAddressRef}
+                    id="inline-delivery-address"
+                    name="address"
+                    defaultValue={orderInfo?.address || ''}
+                    className="w-full p-3 border border-slate-300 rounded-xl text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition-all"
+                    placeholder="Ej: Calle 123 #45-67, Barrio Centro"
+                    rows="2"
+                    autoComplete="street-address"
+                  />
+                </div>
+
+                {/* Botón verificar ubicación */}
+                {!locationChecked && (
                   <button
-                    onClick={handleSubmitOrder}
-                    style={{ 
-                      backgroundColor: businessStatus?.isOpen 
-                        ? (subscriptionStatus === 'suspended' ? '#9ca3af' : businessConfig.theme.buttonColor)
-                        : '#9ca3af',
-                      color: businessConfig.theme.buttonTextColor 
-                    }}
-                    className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
-                      (businessStatus?.isOpen && subscriptionStatus !== 'suspended') ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
-                    }`}
-                    disabled={isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended'}
+                    type="button"
+                    onClick={detectLocationAndCalculateFee}
+                    disabled={checkingLocation}
+                    className="w-full px-4 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-sm"
                   >
-                    {isSubmitting ? (
+                    {checkingLocation ? (
                       <>
-                        <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                        <span>Procesando...</span>
+                        <span className="animate-spin">🔄</span>
+                        Verificando ubicación...
                       </>
                     ) : (
-                      <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                        <span>Confirmar Pedido en Mesa {tableNumber}</span>
-                      </>
+                      <>📍 Verificar costo de domicilio</>
                     )}
                   </button>
-                ) : initialOrderTypeSelected && orderInfo.orderType === 'takeaway' ? (
-                  <button
-                    onClick={handleSubmitOrder}
-                    style={{ 
-                      backgroundColor: businessStatus?.isOpen 
-                        ? (subscriptionStatus === 'suspended' ? '#9ca3af' : businessConfig.theme.buttonColor)
-                        : '#9ca3af',
-                      color: businessConfig.theme.buttonTextColor 
-                    }}
-                    className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
-                      (businessStatus?.isOpen && subscriptionStatus !== 'suspended') ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
-                    }`}
-                    disabled={isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended'}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                        <span>Procesando...</span>
-                      </>
-                    ) : (
-                      <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                    </svg>
-                        <span>Confirmar Pedido Para Llevar</span>
-                      </>
-                    )}
-                  </button>
-                ) : (
+                )}
+
+                {/* Resultado verificación */}
+                {locationChecked && (
                   <>
-                    <button
-                      onClick={() => openOrderModal('inSite')}
-                      style={{ 
-                        backgroundColor: businessStatus?.isOpen 
-                          ? businessConfig.theme.buttonColor 
-                          : '#9ca3af',
-                        color: businessConfig.theme.buttonTextColor 
-                      }}
-                      className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
-                        (businessStatus?.isOpen && subscriptionStatus !== 'suspended') ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
-                      }`}
-                      disabled={isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended'}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-                          <span className="ml-2">Procesando...</span>
-                        </>
-                      ) : (
-                        <>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                      </svg>
-                          <span>Comer en Sitio</span>
-                        </>
-                      )}
-                    </button>
-                    {!isFromTableQR ? (
-                      <button
-                        onClick={() => openOrderModal('delivery')}
-                        style={{ 
-                          backgroundColor: businessStatus?.isOpen 
-                            ? businessConfig.theme.buttonColor 
-                            : '#9ca3af',
-                          color: businessConfig.theme.buttonTextColor 
-                        }}
-                        className={`w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm ${
-                          (businessStatus?.isOpen && subscriptionStatus !== 'suspended') ? 'hover:shadow' : 'opacity-50 cursor-not-allowed'
-                        }`}
-                        disabled={isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended'}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                            <span>Procesando...</span>
-                          </>
-                        ) : (
-                          <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                          <span>A Domicilio</span>
-                        </>
-                      )}
-                      </button>
+                    {deliveryFee && deliveryZoneInfo ? (
+                      <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">✅</span>
+                            <div>
+                              <p className="font-semibold text-green-800 text-sm">Costo de envío</p>
+                              <p className="text-xs text-green-700">Zona: {deliveryZoneInfo.zoneName}</p>
+                            </div>
+                          </div>
+                          <span className="text-lg font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
+                        </div>
+                      </div>
                     ) : (
-                      <button
-                        onClick={handleTakeawayOrder}
-                        style={{ backgroundColor: businessConfig.theme.buttonColor, color: businessConfig.theme.buttonTextColor }}
-                        className="w-full py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow"
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-                            <span>Procesando...</span>
-                          </>
-                        ) : (
-                          <>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                        </svg>
-                          <span>Para Llevar</span>
-                        </>
-                      )}
-                      </button>
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                        <div className="flex items-start gap-2">
+                          <span className="text-amber-600 mt-0.5">⚠️</span>
+                          <div>
+                            <p className="text-sm text-amber-900 font-semibold">Costo por confirmar</p>
+                            <p className="text-xs text-amber-700 mt-0.5">Te confirmaremos el costo al recibir tu pedido.</p>
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </>
                 )}
+
+                {/* Aviso WhatsApp (solo modo no-inapp) */}
+                {!isInAppMode && (
+                  <div className="flex items-start gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <span className="text-green-600 mt-0.5 text-sm">📱</span>
+                    <p className="text-xs text-green-800">
+                      Al confirmar, se abrirá WhatsApp con tu pedido listo para enviar.
+                    </p>
+                  </div>
+                )}
               </div>
+            )}
+
+            {/* ── Botón Confirmar Pedido ── */}
+            {(() => {
+              // Determinar si el botón debe mostrarse
+              const hasSelectedType = initialOrderTypeSelected || orderType;
+              const isDeliveryWithoutCheck = orderType === 'delivery' && !initialOrderTypeSelected && !locationChecked;
+              const showButton = hasSelectedType && !isDeliveryWithoutCheck;
+              const isDisabled = isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended';
+
+              if (!showButton) return null;
+
+              // Determinar la acción del botón
+              const handleConfirmClick = () => {
+                if (isDisabled) return;
+                
+                if (initialOrderTypeSelected) {
+                  // Ya viene con tipo preseleccionado (QR)
+                  handleSubmitOrder();
+                } else if (orderType === 'inSite') {
+                  // Validar mesa
+                  const trimmedTable = formState.tableNumber.trim();
+                  if (!trimmedTable && !(isFromTableQR && tableNumber)) {
+                    alert('Por favor ingresa el número de mesa');
+                    return;
+                  }
+                  
+                  setLocalIsSubmitting(true);
+                  const updatedOrderInfo = {
+                    ...orderInfo,
+                    orderType: 'inSite',
+                    tableNumber: trimmedTable || tableNumber
+                  };
+                  updateOrderInfo(updatedOrderInfo);
+                  SessionManager.saveOrderInfo(updatedOrderInfo);
+                  setTimeout(() => {
+                    onOrder(updatedOrderInfo, appliedCoupon);
+                    setTimeout(() => setLocalIsSubmitting(false), 500);
+                  }, 150);
+                } else if (orderType === 'takeaway') {
+                  setLocalIsSubmitting(true);
+                  const updatedOrderInfo = {
+                    ...orderInfo,
+                    orderType: 'takeaway',
+                    tableNumber: ''
+                  };
+                  updateOrderInfo(updatedOrderInfo);
+                  SessionManager.saveOrderInfo(updatedOrderInfo);
+                  setTimeout(() => {
+                    onOrder(updatedOrderInfo, appliedCoupon);
+                    setTimeout(() => setLocalIsSubmitting(false), 500);
+                  }, 150);
+                } else if (orderType === 'delivery') {
+                  const trimmedAddress = (deliveryAddressRef.current?.value || '').trim();
+                  if (!trimmedAddress) {
+                    alert('Por favor ingresa la dirección de entrega');
+                    return;
+                  }
+                  
+                  setLocalIsSubmitting(true);
+                  const updatedOrderInfo = {
+                    ...orderInfo,
+                    orderType: 'delivery',
+                    address: trimmedAddress,
+                    tableNumber: '',
+                    deliveryFee: deliveryFee || null,
+                    deliveryZoneName: deliveryZoneInfo?.zoneName || null,
+                    deliveryZoneInfo: deliveryZoneInfo || null,
+                    deliveryCalculated: true,
+                    deliveryNeedsConfirmation: !deliveryFee
+                  };
+                  updateOrderInfo(updatedOrderInfo);
+                  SessionManager.saveOrderInfo(updatedOrderInfo);
+                  setTimeout(() => {
+                    onOrder(updatedOrderInfo, appliedCoupon);
+                    setTimeout(() => setLocalIsSubmitting(false), 500);
+                  }, 150);
+                }
+              };
+
+              // Label del botón
+              let buttonLabel = 'Confirmar Pedido';
+              if (initialOrderTypeSelected && orderInfo.orderType === 'inSite') {
+                buttonLabel = `Confirmar Pedido en Mesa ${tableNumber}`;
+              } else if (initialOrderTypeSelected && orderInfo.orderType === 'takeaway') {
+                buttonLabel = 'Confirmar Pedido Para Llevar';
+              } else if (orderType === 'inSite') {
+                buttonLabel = `Confirmar Pedido en Mesa${formState.tableNumber ? ` ${formState.tableNumber}` : ''}`;
+              } else if (orderType === 'takeaway') {
+                buttonLabel = 'Confirmar Pedido Para Llevar';
+              } else if (orderType === 'delivery') {
+                buttonLabel = 'Confirmar Pedido a Domicilio';
+              }
+
+              return (
+                <button
+                  onClick={handleConfirmClick}
+                  style={{ 
+                    backgroundColor: isDisabled ? '#9ca3af' : (businessConfig.theme.buttonColor || '#f97316'),
+                    color: businessConfig.theme.buttonTextColor || '#ffffff'
+                  }}
+                  className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 shadow-lg transition-all duration-200 ${
+                    isDisabled ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]'
+                  }`}
+                  disabled={isDisabled}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span>Procesando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✅</span>
+                      <span>{buttonLabel}</span>
+                    </>
+                  )}
+                </button>
+              );
+            })()}
             </div>
           )}
         </div>
         
-      {/* Order form modal - improve styling */}
-      {showOrderModal && (
-        <OrderFormModal />
-      )}
-      
       {/* Modal de negocio cerrado */}
       <BusinessClosedModal
         isOpen={showClosedModal}

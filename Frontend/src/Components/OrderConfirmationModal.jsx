@@ -74,7 +74,7 @@ const OrderConfirmationModal = ({
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
-  const [countdown, setCountdown] = useState(15);
+  const [countdown, setCountdown] = useState(30);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -83,8 +83,8 @@ const OrderConfirmationModal = ({
     if (show) {
       const lastOrderNumber = sessionStorage.getItem('lastOrderNumber');
       setOrderNumber(lastOrderNumber || '');
-      // Iniciar countdown
-      setCountdown(15);
+      // Iniciar countdown solo para el botón de cancelar (NO auto-dismiss)
+      setCountdown(30);
       setIsCountdownActive(true);
       // Launch confetti
       setShowConfetti(true);
@@ -93,7 +93,7 @@ const OrderConfirmationModal = ({
     }
   }, [show]);
 
-  // Efecto para el countdown
+  // Efecto para el countdown — solo controla visibilidad del botón cancelar, NO auto-cierra
   useEffect(() => {
     let interval;
     if (isCountdownActive && countdown > 0) {
@@ -101,8 +101,6 @@ const OrderConfirmationModal = ({
         setCountdown(prev => {
           if (prev <= 1) {
             setIsCountdownActive(false);
-            // Auto-confirmar pedido cuando llegue a 0
-            handleModalClose();
             return 0;
           }
           return prev - 1;
@@ -169,7 +167,7 @@ const OrderConfirmationModal = ({
   const handleCancelOrder = async () => {
     try {
       setIsCancelling(true);
-      setIsCountdownActive(false); // Detener countdown
+      setIsCountdownActive(false);
       
       // Obtener el ID del pedido del localStorage
       const lastOrderId = sessionStorage.getItem('lastOrderId');
@@ -256,15 +254,7 @@ const OrderConfirmationModal = ({
           
           {/* Contenido principal */}
           <div className="p-4 sm:p-6">
-            {/* Contador mejorado */}
-            {isCountdownActive && (
-              <div className="text-center mb-4">
-                <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-red-100 to-red-200 rounded-full mb-2 shadow-lg">
-                  <span className="text-lg sm:text-xl font-bold text-red-600">{countdown}</span>
-                </div>
-                <p className="text-xs sm:text-sm text-red-600 font-medium">Se confirmará automáticamente</p>
-              </div>
-            )}
+            {/* Info — sin auto-dismiss */}
             
             <div className="text-center mb-4">
               <div className="mb-3">

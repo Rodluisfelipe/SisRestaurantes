@@ -233,7 +233,7 @@ const PaymentUpload = ({
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-gray-700">Toca para tomar foto o seleccionar</p>
-                  <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP · Máx. 5MB</p>
+                  <p className="text-xs text-gray-400 mt-1">JPG, PNG o WebP · Máx. 25MB</p>
                 </div>
               </button>
             ) : (
