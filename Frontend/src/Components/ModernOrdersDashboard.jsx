@@ -10,7 +10,8 @@ import {
   FaClipboardList, FaSync, FaCircle, FaSearch, FaTh, FaList,
   FaUtensils, FaTv, FaShoppingBag, FaEye, FaPlay, FaCheck,
   FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaClock, FaTimes,
-  FaChair, FaHome, FaTag, FaExclamationTriangle, FaWifi
+  FaChair, FaHome, FaTag, FaExclamationTriangle, FaWifi,
+  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle
 } from 'react-icons/fa';
 
 function ModernOrdersDashboard() {
@@ -71,6 +72,30 @@ function ModernOrdersDashboard() {
           label: 'Pendiente',
           Icon: FaClock
         };
+      case ORDER_STATUS.PENDING_PAYMENT:
+        return { 
+          color: 'bg-amber-500', 
+          textColor: 'text-amber-700',
+          bgColor: 'bg-amber-50',
+          label: 'Pago pendiente',
+          Icon: FaMoneyBillWave
+        };
+      case ORDER_STATUS.PAYMENT_UPLOADED:
+        return { 
+          color: 'bg-purple-500', 
+          textColor: 'text-purple-700',
+          bgColor: 'bg-purple-50',
+          label: 'Comprobante recibido',
+          Icon: FaImage
+        };
+      case ORDER_STATUS.PAYMENT_CONFIRMED:
+        return { 
+          color: 'bg-teal-500', 
+          textColor: 'text-teal-700',
+          bgColor: 'bg-teal-50',
+          label: 'Pago confirmado',
+          Icon: FaCheckCircle
+        };
       case ORDER_STATUS.IN_PROGRESS:
         return { 
           color: 'bg-blue-500', 
@@ -107,7 +132,9 @@ function ModernOrdersDashboard() {
       setOrders(response.data);
       
       // Check for pending orders that need notification
-      const pendingOrders = response.data.filter(order => order.status === ORDER_STATUS.PENDING);
+      const pendingOrders = response.data.filter(order => 
+        order.status === ORDER_STATUS.PENDING || order.status === ORDER_STATUS.PAYMENT_UPLOADED
+      );
       if (pendingOrders.length > 0) {
         setPendingNotifications(pendingOrders.map(order => order._id));
       }
@@ -287,6 +314,51 @@ function ModernOrdersDashboard() {
       alert('Error al enviar pedido a cocina');
     }
   };
+
+  // Confirm payment for in-app orders
+  const confirmPayment = async (orderId) => {
+    try {
+      const response = await api.patch(`/orders/${orderId}/confirm-payment`);
+      
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === orderId ? response.data.order : order
+        )
+      );
+
+      if (selectedOrder === orderId) {
+        setOrderDetails(response.data.order);
+      }
+    } catch (error) {
+      console.error('Error confirming payment:', error);
+      alert('Error al confirmar el pago');
+    }
+  };
+
+  // Reject payment for in-app orders
+  const rejectPayment = async (orderId) => {
+    const reason = prompt('Razón del rechazo (opcional):');
+    try {
+      const response = await api.patch(`/orders/${orderId}/reject-payment`, { reason: reason || '' });
+      
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order._id === orderId ? response.data.order : order
+        )
+      );
+
+      if (selectedOrder === orderId) {
+        setOrderDetails(response.data.order);
+      }
+    } catch (error) {
+      console.error('Error rejecting payment:', error);
+      alert('Error al rechazar el pago');
+    }
+  };
+
+  // State for payment proof preview modal
+  const [showProofModal, setShowProofModal] = useState(false);
+  const [proofImageUrl, setProofImageUrl] = useState('');
 
   // Navigate to kitchen screen
   const goToKitchenScreen = () => {
@@ -819,6 +891,50 @@ function ModernOrdersDashboard() {
                               <span>Detalles</span>
                             </button>
                             
+                            {/* Payment proof thumbnail for in-app orders */}
+                            {order.paymentProof && (
+                              <button
+                                onClick={() => {
+                                  setProofImageUrl(`https://157-245-125-216.nip.io${order.paymentProof}`);
+                                  setShowProofModal(true);
+                                }}
+                                className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-2 rounded-lg text-xs font-semibold border border-purple-200 transition-colors"
+                              >
+                                <FaImage className="text-[10px]" />
+                                <span>Comprobante</span>
+                              </button>
+                            )}
+
+                            {/* Payment confirm/reject for uploaded proofs */}
+                            {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                              <>
+                                <button
+                                  onClick={() => confirmPayment(order._id)}
+                                  className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                >
+                                  <FaCheckCircle className="text-[9px]" />
+                                  <span>Confirmar</span>
+                                </button>
+                                <button
+                                  onClick={() => rejectPayment(order._id)}
+                                  className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                >
+                                  <FaTimesCircle className="text-[9px]" />
+                                </button>
+                              </>
+                            )}
+                            
+                            {/* Start preparation after payment confirmed */}
+                            {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
+                              <button
+                                onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                              >
+                                <FaPlay className="text-[9px]" />
+                                <span>Iniciar</span>
+                              </button>
+                            )}
+
                             {order.status === ORDER_STATUS.PENDING && (
                               <button
                                 onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
@@ -874,6 +990,46 @@ function ModernOrdersDashboard() {
                             >
                               <FaEye className="text-xs" />
                             </button>
+
+                            {order.paymentProof && (
+                              <button
+                                onClick={() => {
+                                  setProofImageUrl(`https://157-245-125-216.nip.io${order.paymentProof}`);
+                                  setShowProofModal(true);
+                                }}
+                                className="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-500 transition-colors"
+                              >
+                                <FaImage className="text-xs" />
+                              </button>
+                            )}
+                            
+                            {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                              <>
+                                <button
+                                  onClick={() => confirmPayment(order._id)}
+                                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+                                  title="Confirmar pago"
+                                >
+                                  <FaCheckCircle className="text-xs" />
+                                </button>
+                                <button
+                                  onClick={() => rejectPayment(order._id)}
+                                  className="p-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                                  title="Rechazar pago"
+                                >
+                                  <FaTimesCircle className="text-xs" />
+                                </button>
+                              </>
+                            )}
+
+                            {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
+                              <button
+                                onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
+                                className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                              >
+                                <FaPlay className="text-xs" />
+                              </button>
+                            )}
                             
                             {order.status === ORDER_STATUS.PENDING && (
                               <button
@@ -1132,8 +1288,79 @@ function ModernOrdersDashboard() {
                   )}
                 </div>
 
+                {/* Payment Proof Section */}
+                {orderDetails.paymentProof && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-800 mb-2">Comprobante de pago</h3>
+                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                      <img 
+                        src={`https://157-245-125-216.nip.io${orderDetails.paymentProof}`} 
+                        alt="Comprobante de pago"
+                        className="w-full max-h-64 object-contain bg-slate-50 cursor-pointer"
+                        onClick={() => {
+                          setProofImageUrl(`https://157-245-125-216.nip.io${orderDetails.paymentProof}`);
+                          setShowProofModal(true);
+                        }}
+                      />
+                      {orderDetails.paymentMethod && (
+                        <div className="px-3 py-2 bg-slate-50 border-t border-slate-200">
+                          <span className="text-[11px] text-slate-500">Método: </span>
+                          <span className="text-[11px] font-semibold text-slate-700 capitalize">{orderDetails.paymentMethod}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Customer Notes */}
+                {orderDetails.customerNotes && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <p className="text-[11px] font-semibold text-amber-700 mb-0.5">Nota del cliente:</p>
+                    <p className="text-[13px] text-amber-800">{orderDetails.customerNotes}</p>
+                  </div>
+                )}
+
+                {/* Order Channel Badge */}
+                {orderDetails.orderChannel === 'inapp' && (
+                  <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                    <FaMoneyBillWave className="text-indigo-500 text-xs" />
+                    <span className="text-[12px] font-medium text-indigo-700">Pedido in-app (pago por transferencia)</span>
+                  </div>
+                )}
+
                 {/* Action buttons */}
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
+                  {/* Payment confirm/reject for uploaded proofs */}
+                  {orderDetails.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                    <>
+                      <button
+                        onClick={() => confirmPayment(orderDetails._id)}
+                        className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        <FaCheckCircle className="text-xs" />
+                        <span>Confirmar pago</span>
+                      </button>
+                      <button
+                        onClick={() => rejectPayment(orderDetails._id)}
+                        className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        <FaTimesCircle className="text-xs" />
+                        <span>Rechazar</span>
+                      </button>
+                    </>
+                  )}
+
+                  {/* Start preparation after payment confirmed */}
+                  {orderDetails.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
+                    <button
+                      onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
+                      className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                    >
+                      <FaPlay className="text-xs" />
+                      <span>Iniciar preparación</span>
+                    </button>
+                  )}
+
                   {orderDetails.status === ORDER_STATUS.PENDING && (
                     <button
                       onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
@@ -1165,6 +1392,39 @@ function ModernOrdersDashboard() {
                   )}
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Payment Proof Full-screen Modal */}
+      <AnimatePresence>
+        {showProofModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-[60]"
+            onClick={() => setShowProofModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-lg w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowProofModal(false)}
+                className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg z-10"
+              >
+                <FaTimes className="text-slate-500 text-xs" />
+              </button>
+              <img
+                src={proofImageUrl}
+                alt="Comprobante de pago"
+                className="w-full rounded-xl shadow-2xl"
+              />
             </motion.div>
           </motion.div>
         )}

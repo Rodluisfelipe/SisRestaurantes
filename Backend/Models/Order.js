@@ -47,9 +47,45 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'preparing', 'ready', 'inProgress', 'completed', 'cancelled', 'delivered'],
+    enum: ['pending', 'pending_payment', 'payment_uploaded', 'payment_confirmed', 'confirmed', 'preparing', 'ready', 'inProgress', 'completed', 'cancelled', 'delivered'],
     default: 'pending'
   },
+  
+  // In-app ordering fields
+  orderChannel: {
+    type: String,
+    enum: ['whatsapp', 'inapp'],
+    default: 'whatsapp'
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'nequi', 'daviplata', 'transfer', 'other'],
+    default: null
+  },
+  paymentProof: {
+    type: String,
+    default: null
+  },
+  paymentProofUploadedAt: {
+    type: Date,
+    default: null
+  },
+  customerToken: {
+    type: String,
+    default: null,
+    index: true
+  },
+  customerNotes: {
+    type: String,
+    trim: true,
+    maxlength: 500,
+    default: ''
+  },
+  statusHistory: [{
+    status: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    note: { type: String, default: '' }
+  }],
   
   // Coupon information
   couponCode: {
@@ -196,6 +232,8 @@ orderSchema.index({ businessId: 1, status: 1 });
 orderSchema.index({ businessId: 1, tableNumber: 1 });
 orderSchema.index({ businessId: 1, sentToKitchen: 1 });
 orderSchema.index({ deliveryZoneId: 1 });
+orderSchema.index({ customerToken: 1 });
+orderSchema.index({ businessId: 1, orderChannel: 1, status: 1 });
 
 // Hook para actualizar estadísticas de zona cuando se completa un pedido
 orderSchema.post('save', async function(doc, next) {

@@ -6,7 +6,7 @@ import {
   FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, 
   FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
-  FaShoppingBag, FaStore, FaTools, FaCog
+  FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData }) => {
@@ -46,6 +46,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'catalog', label: 'Catálogo', Icon: FaBullhorn, badge: null },
         { id: 'whatsapp', label: 'WhatsApp', Icon: FaWhatsapp, badge: null },
+        { id: 'payment-config', label: 'Pagos', Icon: FaMoneyBillWave, badge: null },
       ]
     },
     {

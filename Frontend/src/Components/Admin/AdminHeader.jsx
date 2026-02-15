@@ -21,6 +21,7 @@ const TAB_CONFIG = {
   'business':         { title: 'Configuración del Negocio', desc: 'Información y configuración general' },
   'change-password':  { title: 'Cambiar Contraseña',      desc: 'Actualiza tu contraseña de acceso' },
   'completed_orders': { title: 'Pedidos Completados',     desc: 'Historial y resumen de pedidos' },
+  'payment-config':   { title: 'Configuración de Pagos',  desc: 'Configura métodos de pago y modo de pedidos' },
 };
 
 export default function AdminHeader({ activeTab }) {

@@ -16,6 +16,9 @@ import { FilterableMenuSkeleton, BusinessHeaderSkeleton } from "../Components/Me
 import PullToRefresh from "../Components/PullToRefresh";
 import SplashScreen from "../Components/SplashScreen";
 import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
+import OrderTracker from "../Components/OrderTracker";
+import PaymentUpload from "../Components/PaymentUpload";
+import MyOrders from "../Components/MyOrders";
 import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -98,6 +101,16 @@ export default function Menu() {
   // Estados para modales de favoritos e historial
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  
+  // In-app ordering states
+  const [showOrderTracker, setShowOrderTracker] = useState(false);
+  const [showPaymentUpload, setShowPaymentUpload] = useState(false);
+  const [showMyOrders, setShowMyOrders] = useState(false);
+  const [activeOrderId, setActiveOrderId] = useState(() => sessionStorage.getItem('activeOrderId') || null);
+  const [activeCustomerToken, setActiveCustomerToken] = useState(() => sessionStorage.getItem('activeCustomerToken') || null);
+  
+  // Check if business uses in-app ordering
+  const isInAppMode = businessConfig?.orderingMode === 'inapp' || businessConfig?.orderingMode === 'both';
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -828,6 +841,12 @@ export default function Menu() {
           selectedToppings: item.selectedToppings || []
         })),
         totalAmount: totalAmount.toString(), // Convertir a string para evitar problemas con 0
+        // In-app ordering channel
+        ...(isInAppMode && {
+          orderChannel: 'inapp',
+          paymentMethod: orderDetails.paymentMethod || null,
+          customerNotes: orderDetails.customerNotes || ''
+        }),
         // Información del cupón si está aplicado
         ...(appliedCoupon && {
           couponCode: appliedCoupon.coupon.code,
@@ -864,8 +883,8 @@ export default function Menu() {
       }
       console.log('=== FIN DATOS ===');
 
-      // Para pedidos a domicilio enviar WhatsApp además de guardar en API
-      if (orderDetails.orderType === 'delivery') {
+      // Para pedidos a domicilio enviar WhatsApp solo si NO es modo in-app
+      if (orderDetails.orderType === 'delivery' && !isInAppMode) {
         // Crear el mensaje de WhatsApp usando el template personalizado
         const whatsappMessage = await createWhatsAppMessage(
           orderDetails, 
@@ -948,9 +967,19 @@ export default function Menu() {
       sessionStorage.setItem('lastOrderNumber', response.data.orderNumber);
       logger.info('Número de orden guardado:', response.data.orderNumber);
       
+      // For in-app orders, save customerToken and show tracker
+      if (isInAppMode && response.data.customerToken) {
+        sessionStorage.setItem('activeOrderId', response.data._id);
+        sessionStorage.setItem('activeCustomerToken', response.data.customerToken);
+        setActiveOrderId(response.data._id);
+        setActiveCustomerToken(response.data.customerToken);
+      }
+      
       // Configurar mensaje específico según tipo de pedido
       let confirmMessage = '¡Gracias por tu pedido!';
-      if (orderDetails.orderType === 'delivery') {
+      if (isInAppMode) {
+        confirmMessage = '¡Pedido recibido! Realiza el pago y sube tu comprobante para continuar.';
+      } else if (orderDetails.orderType === 'delivery') {
         confirmMessage = '¡Gracias por tu pedido! Te contactaremos pronto para coordinar la entrega.';
       } else if (orderDetails.orderType === 'inSite') {
         confirmMessage = `¡Gracias por tu pedido! Tu orden será servida en la Mesa ${orderDetails.tableNumber}.`;
@@ -958,14 +987,17 @@ export default function Menu() {
         confirmMessage = '¡Gracias por tu pedido! Tu orden estará lista para recoger en breve.';
       }
       
-      // Mostrar modal de confirmación
-      setOrderConfirmationDetails({
-        type: orderDetails.orderType,
-        message: confirmMessage
-      });
-      
-      // Activar modal de confirmación
-      setShowOrderConfirmationModal(true);
+      // Mostrar modal de confirmación o tracker
+      if (isInAppMode) {
+        // For in-app: skip confirmation modal, show tracker directly
+        setShowOrderTracker(true);
+      } else {
+        setOrderConfirmationDetails({
+          type: orderDetails.orderType,
+          message: confirmMessage
+        });
+        setShowOrderConfirmationModal(true);
+      }
       
       // Actualizar orderInfo con la información del pedido completado para mantener los datos del cliente
       const updatedOrderInfo = {
@@ -1181,6 +1213,37 @@ export default function Menu() {
         subscriptionStatus={subscriptionStatus}
       />
 
+      {/* Active order floating banner */}
+      {isInAppMode && activeOrderId && activeCustomerToken && !showOrderTracker && !showPaymentUpload && (
+        <motion.button
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          onClick={() => setShowOrderTracker(true)}
+          className="fixed bottom-24 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-30 rounded-2xl p-3 shadow-lg border flex items-center gap-3"
+          style={{ 
+            backgroundColor: `${businessConfig?.theme?.buttonColor || '#f97316'}15`,
+            borderColor: `${businessConfig?.theme?.buttonColor || '#f97316'}40`
+          }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg"
+            style={{ backgroundColor: `${businessConfig?.theme?.buttonColor || '#f97316'}20` }}
+          >
+            📋
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-gray-900">Pedido Activo</p>
+            <p className="text-xs text-gray-500">Toca para ver el estado</p>
+          </div>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ backgroundColor: businessConfig?.theme?.buttonColor || '#f97316' }}
+          >
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </div>
+        </motion.button>
+      )}
+
       <CartBar 
         cart={cart}
         totalItems={totalItems}
@@ -1222,6 +1285,57 @@ export default function Menu() {
         setCart={setCart}
         setShowCartSummary={setShowCartSummary}
       />
+      
+      {/* Order Tracker for in-app orders */}
+      {showOrderTracker && activeOrderId && activeCustomerToken && (
+        <OrderTracker
+          orderId={activeOrderId}
+          customerToken={activeCustomerToken}
+          businessConfig={businessConfig}
+          onClose={() => setShowOrderTracker(false)}
+          onUploadProof={() => {
+            setShowOrderTracker(false);
+            setShowPaymentUpload(true);
+          }}
+        />
+      )}
+
+      {/* Payment Upload Modal */}
+      {showPaymentUpload && activeOrderId && activeCustomerToken && (
+        <PaymentUpload
+          orderId={activeOrderId}
+          customerToken={activeCustomerToken}
+          businessConfig={businessConfig}
+          onClose={() => {
+            setShowPaymentUpload(false);
+            setShowOrderTracker(true);
+          }}
+          onSuccess={() => {
+            setShowPaymentUpload(false);
+            setShowOrderTracker(true);
+          }}
+        />
+      )}
+
+      {/* My Orders Panel */}
+      {showMyOrders && (
+        <MyOrders
+          businessId={businessId}
+          phone={orderInfo.phone}
+          businessConfig={businessConfig}
+          onTrackOrder={(order) => {
+            if (order.customerToken) {
+              setActiveOrderId(order._id);
+              setActiveCustomerToken(order.customerToken);
+              sessionStorage.setItem('activeOrderId', order._id);
+              sessionStorage.setItem('activeCustomerToken', order.customerToken);
+            }
+            setShowMyOrders(false);
+            setShowOrderTracker(true);
+          }}
+          onClose={() => setShowMyOrders(false)}
+        />
+      )}
       
       {/* CartSummary como modal superpuesto */}
       {showCartSummary && (

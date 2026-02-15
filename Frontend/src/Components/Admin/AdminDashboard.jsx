@@ -23,6 +23,7 @@ const DASHBOARD_ITEMS = [
   { tab: 'location',         icon: '📍', title: 'Ubicación',      desc: 'Dirección y mapa',        from: 'from-red-500',     to: 'to-rose-500' },
   { tab: 'product-order',    icon: '🔄', title: 'Orden',          desc: 'Ordenar productos',       from: 'from-purple-500',  to: 'to-purple-600' },
   { tab: 'completed_orders', icon: '✅', title: 'Completados',    desc: 'Historial',               from: 'from-lime-500',    to: 'to-green-500' },
+  { tab: 'payment-config',  icon: '💰', title: 'Pagos',          desc: 'Métodos y pedidos',       from: 'from-emerald-500', to: 'to-teal-500' },
   { tab: 'change-password',  icon: '🔒', title: 'Contraseña',     desc: 'Cambiar acceso',          from: 'from-gray-600',    to: 'to-slate-600' },
 ];
 

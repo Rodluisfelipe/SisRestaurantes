@@ -33,6 +33,9 @@ export const VALIDATION_RULES = {
 // Estados de pedidos
 export const ORDER_STATUS = {
   PENDING: 'pending',
+  PENDING_PAYMENT: 'pending_payment',
+  PAYMENT_UPLOADED: 'payment_uploaded',
+  PAYMENT_CONFIRMED: 'payment_confirmed',
   IN_PROGRESS: 'inProgress',
   COMPLETED: 'completed',
 };

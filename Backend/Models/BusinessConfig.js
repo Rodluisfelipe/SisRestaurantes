@@ -131,6 +131,21 @@ const businessConfigSchema = new mongoose.Schema({
     favoritesEnabled: { type: Boolean, default: true },
     orderHistoryEnabled: { type: Boolean, default: true }
   },
+  // In-app ordering configuration
+  orderingMode: {
+    type: String,
+    enum: ['whatsapp', 'inapp', 'both'],
+    default: 'whatsapp'
+  },
+  paymentInfo: {
+    nequi: { type: String, default: '' },
+    daviplata: { type: String, default: '' },
+    bankName: { type: String, default: '' },
+    bankAccountType: { type: String, default: '' },
+    bankAccountNumber: { type: String, default: '' },
+    accountHolder: { type: String, default: '' },
+    instructions: { type: String, default: '' }
+  },
   isActive: {
     type: Boolean,
     default: true

@@ -19,6 +19,7 @@ import CouponsManager from "../Components/CouponsManager";
 import MultiSessionWarning from "../Components/MultiSessionWarning";
 import DeliveryZoneManager from "../Components/DeliveryZoneManager";
 import PushNotificationToggle from "../Components/PushNotificationToggle";
+import PaymentConfig from "../Components/Admin/PaymentConfig";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Componentes extraidos del monolito
@@ -403,6 +404,11 @@ function Admin() {
                 {activeTab === 'whatsapp' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <WhatsAppCustomizer />
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'payment-config' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <PaymentConfig />
                   </AdminTabWrapper>
                 )}
               </motion.div>

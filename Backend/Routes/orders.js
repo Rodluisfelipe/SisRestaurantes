@@ -5,6 +5,7 @@ const Order = require("../Models/Order");
 const CompletedOrder = require("../Models/CompletedOrder");
 const Customer = require("../Models/Customer");
 const Coupon = require("../Models/Coupon");
+const BusinessConfig = require("../Models/BusinessConfig");
 const { ObjectId } = require("mongoose").Types;
 const socketService = require("../services/socketService");
 const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
@@ -12,6 +13,36 @@ const { isValidObjectId } = require("../utils/validators");
 const logger = require("../utils/logger");
 const { getSubscriptionForBusiness } = require('../utils/subscriptionHelper');
 const authMiddleware = require('../middleware/authMiddleware');
+const multer = require('multer');
+const path = require('path');
+const crypto = require('crypto');
+
+// Multer config for payment proof uploads
+const proofStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '..', 'uploads', 'order-proofs'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'proof-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const uploadProof = multer({
+  storage: proofStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|webp/;
+    const ext = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowed.test(file.mimetype);
+    if (ext && mime) return cb(null, true);
+    cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
+  }
+});
+
+// Generate a customer token for order tracking
+const generateCustomerToken = () => {
+  return crypto.randomBytes(16).toString('hex');
+};
 
 // Helper function to get order number
 const generateOrderNumber = async (businessId) => {
@@ -83,7 +114,11 @@ router.post("/", async (req, res) => {
       deliveryZoneName,
       deliveryZoneInfo,
       deliveryCalculated,
-      deliveryNeedsConfirmation
+      deliveryNeedsConfirmation,
+      // In-app ordering fields
+      orderChannel,
+      paymentMethod,
+      customerNotes
     } = req.body;
     
 
@@ -227,6 +262,11 @@ router.post("/", async (req, res) => {
       }
     }
 
+    // Determine initial status based on ordering channel
+    const isInApp = orderChannel === 'inapp';
+    const initialStatus = isInApp ? 'pending_payment' : 'pending';
+    const customerToken = isInApp ? generateCustomerToken() : null;
+
     // Create the order
     const newOrder = new Order({
       businessId: businessObjectId,
@@ -243,13 +283,19 @@ router.post("/", async (req, res) => {
       couponId: coupon ? coupon._id : null,
       discountAmount,
       finalAmount,
+      // In-app ordering fields
+      orderChannel: orderChannel || 'whatsapp',
+      paymentMethod: isInApp ? (paymentMethod || null) : null,
+      customerToken,
+      customerNotes: customerNotes || '',
+      statusHistory: [{ status: initialStatus, timestamp: new Date(), note: 'Pedido creado' }],
       // Datos de zona de entrega
       deliveryFee: deliveryFee || null,
       deliveryZoneName: deliveryZoneName || null,
       deliveryZoneInfo: deliveryZoneInfo || null,
       deliveryCalculated: deliveryCalculated || false,
       deliveryNeedsConfirmation: deliveryNeedsConfirmation || false,
-      status: "pending",
+      status: initialStatus,
       createdAt: new Date(),
       updatedAt: new Date()
     });
@@ -281,8 +327,11 @@ router.post("/", async (req, res) => {
       logger.warn('Failed to send push notification for new order', { error: pushError.message });
     }
     
-    logger.info(`Created new order ${orderNumber} for business ${businessId}`);
-    res.status(201).json(savedOrder);
+    logger.info(`Created new order ${orderNumber} for business ${businessId} (channel: ${orderChannel || 'whatsapp'})`);
+    res.status(201).json({
+      ...savedOrder.toObject(),
+      customerToken: customerToken // Include token in response for client tracking
+    });
   } catch (error) {
     logger.error("Error creating order", error);
     res.status(500).json({ message: error.message });
@@ -375,14 +424,15 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Invalid order ID" });
     }
     
-    if (!status || !["pending", "inProgress", "completed", "ready"].includes(status)) {
+    if (!status || !["pending", "pending_payment", "payment_uploaded", "payment_confirmed", "inProgress", "completed", "ready", "preparing", "confirmed", "cancelled", "delivered"].includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
     }
     
     // Create update object
     const updateData = { 
       status,
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      $push: { statusHistory: { status, timestamp: new Date(), note: '' } }
     };
     
     // If status is changing to inProgress, set sentToKitchen to true
@@ -670,6 +720,265 @@ router.post("/cleanup-completed", authMiddleware, async (req, res) => {
     });
   } catch (error) {
 
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ===== IN-APP ORDERING ENDPOINTS =====
+
+// Upload payment proof (public - uses customerToken for auth)
+router.post('/:id/payment-proof', uploadProof.single('proof'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { customerToken } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
+    if (!customerToken) {
+      return res.status(401).json({ message: 'Token de cliente requerido' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Imagen del comprobante requerida' });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
+
+    if (order.customerToken !== customerToken) {
+      return res.status(403).json({ message: 'Token inválido' });
+    }
+
+    if (!['pending_payment', 'payment_uploaded'].includes(order.status)) {
+      return res.status(400).json({ message: 'Este pedido no requiere comprobante de pago en este momento' });
+    }
+
+    // Save proof path
+    const proofPath = `/uploads/order-proofs/${req.file.filename}`;
+    
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      {
+        paymentProof: proofPath,
+        paymentProofUploadedAt: new Date(),
+        status: 'payment_uploaded',
+        updatedAt: new Date(),
+        $push: { statusHistory: { status: 'payment_uploaded', timestamp: new Date(), note: 'Comprobante de pago subido' } }
+      },
+      { new: true }
+    );
+
+    // Notify restaurant via socket
+    socketService.emitToBusiness(order.businessId.toString(), 'payment_proof_uploaded', {
+      orderId: updatedOrder._id,
+      orderNumber: updatedOrder.orderNumber,
+      customerName: updatedOrder.customerName,
+      paymentProof: proofPath,
+      paymentMethod: updatedOrder.paymentMethod
+    });
+
+    // Push notification to restaurant
+    try {
+      const { sendPushToBusinessId } = require('../services/pushService');
+      await sendPushToBusinessId(order.businessId.toString(), {
+        title: `💳 Comprobante recibido - Pedido #${updatedOrder.orderNumber}`,
+        body: `${updatedOrder.customerName} ha subido su comprobante de pago`,
+        data: { orderId: updatedOrder._id.toString(), type: 'payment_proof' }
+      });
+    } catch (pushErr) {
+      logger.warn('Failed to send push for payment proof', { error: pushErr.message });
+    }
+
+    logger.info(`Payment proof uploaded for order ${updatedOrder.orderNumber}`);
+    res.json({ success: true, order: updatedOrder });
+  } catch (error) {
+    logger.error('Error uploading payment proof', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Track order by ID + customerToken (public endpoint)
+router.get('/track/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { token } = req.query;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
+
+    if (order.customerToken !== token) {
+      return res.status(403).json({ message: 'Token inválido' });
+    }
+
+    // Return safe subset of order data for tracking
+    const trackingData = {
+      _id: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      orderType: order.orderType,
+      orderChannel: order.orderChannel,
+      customerName: order.customerName,
+      items: order.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+      totalAmount: order.totalAmount,
+      finalAmount: order.finalAmount,
+      discountAmount: order.discountAmount,
+      deliveryFee: order.deliveryFee,
+      paymentMethod: order.paymentMethod,
+      paymentProof: order.paymentProof,
+      statusHistory: order.statusHistory,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    };
+
+    res.json(trackingData);
+  } catch (error) {
+    logger.error('Error tracking order', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get my orders by phone + businessId (public endpoint)
+router.get('/my-orders', async (req, res) => {
+  try {
+    const { phone, businessId } = req.query;
+
+    if (!phone || !businessId) {
+      return res.status(400).json({ message: 'phone y businessId son requeridos' });
+    }
+
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) {
+      return res.status(404).json({ message: businessResult.error });
+    }
+
+    const businessObjectId = businessResult.businessId;
+
+    // Get active orders (not completed/cancelled)
+    const activeOrders = await Order.find({
+      businessId: businessObjectId,
+      phone: phone,
+      status: { $nin: ['completed', 'cancelled', 'delivered'] }
+    }).sort({ createdAt: -1 }).limit(10);
+
+    // Get recent completed orders
+    const completedOrders = await CompletedOrder.find({
+      businessId: businessObjectId,
+      phone: phone
+    }).sort({ completedAt: -1 }).limit(10);
+
+    res.json({
+      active: activeOrders,
+      completed: completedOrders
+    });
+  } catch (error) {
+    logger.error('Error fetching my orders', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Confirm payment (admin only)
+router.patch('/:id/confirm-payment', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { note } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
+
+    if (order.status !== 'payment_uploaded') {
+      return res.status(400).json({ message: `No se puede confirmar pago en estado "${order.status}"` });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      {
+        status: 'payment_confirmed',
+        updatedAt: new Date(),
+        $push: { statusHistory: { status: 'payment_confirmed', timestamp: new Date(), note: note || 'Pago confirmado por el restaurante' } }
+      },
+      { new: true }
+    );
+
+    // Emit socket event for order update
+    socketService.emitToBusiness(updatedOrder.businessId.toString(), 'order_updated', updatedOrder);
+
+    // Also emit specific event for customer tracking
+    socketService.emitToBusiness(updatedOrder.businessId.toString(), 'payment_confirmed', {
+      orderId: updatedOrder._id,
+      orderNumber: updatedOrder.orderNumber,
+      status: 'payment_confirmed'
+    });
+
+    logger.info(`Payment confirmed for order ${updatedOrder.orderNumber}`);
+    res.json(updatedOrder);
+  } catch (error) {
+    logger.error('Error confirming payment', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Reject payment (admin only)
+router.patch('/:id/reject-payment', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
+
+    if (order.status !== 'payment_uploaded') {
+      return res.status(400).json({ message: `No se puede rechazar pago en estado "${order.status}"` });
+    }
+
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      {
+        status: 'pending_payment',
+        paymentProof: null,
+        paymentProofUploadedAt: null,
+        updatedAt: new Date(),
+        $push: { statusHistory: { status: 'pending_payment', timestamp: new Date(), note: reason || 'Comprobante rechazado - sube uno nuevo' } }
+      },
+      { new: true }
+    );
+
+    socketService.emitToBusiness(updatedOrder.businessId.toString(), 'order_updated', updatedOrder);
+    socketService.emitToBusiness(updatedOrder.businessId.toString(), 'payment_rejected', {
+      orderId: updatedOrder._id,
+      orderNumber: updatedOrder.orderNumber,
+      reason: reason || 'Comprobante rechazado'
+    });
+
+    logger.info(`Payment rejected for order ${updatedOrder.orderNumber}: ${reason}`);
+    res.json(updatedOrder);
+  } catch (error) {
+    logger.error('Error rejecting payment', error);
     res.status(500).json({ message: error.message });
   }
 });
