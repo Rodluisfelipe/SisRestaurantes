@@ -262,6 +262,45 @@ router.get('/:phone/orders', async (req, res) => {
   }
 });
 
+// PATCH /api/customers/:phone/address - Actualizar nombre/dirección (público, sin auth)
+router.patch('/:phone/address', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { businessId } = req.query;
+    const { name, address } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ error: 'Número de teléfono requerido' });
+    }
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (address) updateData.address = address;
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ error: 'No hay datos para actualizar' });
+    }
+
+    const customer = await Customer.findOneAndUpdate(
+      { 
+        businessId: isValidObjectId(businessId) ? businessId : null, 
+        phone 
+      },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+
+    res.json(customer);
+  } catch (error) {
+    console.error('Error al actualizar dirección del cliente:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // PUT /api/customers/:phone/settings - Actualizar configuraciones del cliente
 router.put('/:phone/settings', async (req, res) => {
   try {

@@ -405,9 +405,10 @@ function ModernOrdersDashboard() {
     if (socket) {
       socket.on(SOCKET_EVENTS.ORDER_UPDATED, (updatedOrder) => {
         console.log('Order updated:', updatedOrder);
+        if (!updatedOrder?._id) return;
         setOrders(prevOrders => 
-          prevOrders.map(order => 
-            order._id === updatedOrder._id ? updatedOrder : order
+          prevOrders.filter(Boolean).map(order => 
+            order?._id === updatedOrder._id ? updatedOrder : order
           )
         );
         
@@ -424,8 +425,9 @@ function ModernOrdersDashboard() {
       
       socket.on('order_deleted', (deletedOrder) => {
         console.log('Order deleted:', deletedOrder);
+        if (!deletedOrder?._id) return;
         setOrders(prevOrders => 
-          prevOrders.filter(order => order._id !== deletedOrder._id)
+          prevOrders.filter(order => order && order._id !== deletedOrder._id)
         );
         
         // Remove from pending notifications

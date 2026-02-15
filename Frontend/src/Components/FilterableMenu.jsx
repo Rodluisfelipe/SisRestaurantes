@@ -153,7 +153,9 @@ const FilterableMenu = ({
   onToppingsClose,
   subscriptionStatus = null,
   businessId,
-  businessConfig: businessConfigProp
+  businessConfig: businessConfigProp,
+  hasActiveOrder = false,
+  onViewActiveOrder
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -405,6 +407,55 @@ const FilterableMenu = ({
   
   return (
     <div className="container mx-auto px-3 sm:px-4 lg:px-6 py-2">
+      {/* Active Order Banner — Rappi style, above search */}
+      <AnimatePresence>
+        {hasActiveOrder && (
+          <motion.button
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            onClick={onViewActiveOrder}
+            className="w-full mb-3 rounded-2xl overflow-hidden shadow-sm active:scale-[0.98] transition-transform"
+            style={{ backgroundColor: themeColor }}
+          >
+            <div className="flex items-center gap-3 px-4 py-3">
+              <div className="relative flex-shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                  <svg className="w-5 h-5" style={{ color: themeTextColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                </div>
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+                </span>
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-semibold leading-tight" style={{ color: themeTextColor }}>
+                  Tu pedido está en curso
+                </p>
+                <p className="text-xs mt-0.5 opacity-75" style={{ color: themeTextColor }}>
+                  Toca para ver el estado
+                </p>
+              </div>
+              <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">
+                <svg className="w-4 h-4" style={{ color: themeTextColor }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+            <div className="h-0.5 bg-white/20">
+              <motion.div
+                className="h-full bg-white/50 rounded-full"
+                animate={{ width: ['0%', '100%'] }}
+                transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
+              />
+            </div>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {/* Search Bar */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }}

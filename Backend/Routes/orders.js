@@ -409,6 +409,95 @@ router.get("/completed", async (req, res) => {
   }
 });
 
+// Track order by ID + customerToken (public endpoint) - MUST be before /:id
+router.get('/track/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { token } = req.query;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
+    if (!token) {
+      return res.status(401).json({ message: 'Token requerido' });
+    }
+
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
+
+    if (order.customerToken !== token) {
+      return res.status(403).json({ message: 'Token inválido' });
+    }
+
+    // Return safe subset of order data for tracking
+    const trackingData = {
+      _id: order._id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      orderType: order.orderType,
+      orderChannel: order.orderChannel,
+      customerName: order.customerName,
+      items: order.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+      totalAmount: order.totalAmount,
+      finalAmount: order.finalAmount,
+      discountAmount: order.discountAmount,
+      deliveryFee: order.deliveryFee,
+      paymentMethod: order.paymentMethod,
+      paymentProof: order.paymentProof,
+      statusHistory: order.statusHistory,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt
+    };
+
+    res.json(trackingData);
+  } catch (error) {
+    logger.error('Error tracking order', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get my orders by phone + businessId (public endpoint) - MUST be before /:id
+router.get('/my-orders', async (req, res) => {
+  try {
+    const { phone, businessId } = req.query;
+
+    if (!phone || !businessId) {
+      return res.status(400).json({ message: 'phone y businessId son requeridos' });
+    }
+
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) {
+      return res.status(404).json({ message: businessResult.error });
+    }
+
+    const businessObjectId = businessResult.businessId;
+
+    // Get active orders (not completed/cancelled)
+    const activeOrders = await Order.find({
+      businessId: businessObjectId,
+      phone: phone,
+      status: { $nin: ['completed', 'cancelled', 'delivered'] }
+    }).sort({ createdAt: -1 }).limit(10);
+
+    // Get recent completed orders
+    const completedOrders = await CompletedOrder.find({
+      businessId: businessObjectId,
+      phone: phone
+    }).sort({ completedAt: -1 }).limit(10);
+
+    res.json({
+      active: activeOrders,
+      completed: completedOrders
+    });
+  } catch (error) {
+    logger.error('Error fetching my orders', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Get order by ID - MUST BE AFTER specific routes to avoid intercepting them
 router.get("/:id", async (req, res) => {
   try {
@@ -827,95 +916,6 @@ router.post('/:id/payment-proof', (req, res, next) => {
     res.json({ success: true, order: updatedOrder });
   } catch (error) {
     logger.error('Error uploading payment proof', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Track order by ID + customerToken (public endpoint)
-router.get('/track/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { token } = req.query;
-
-    if (!isValidObjectId(id)) {
-      return res.status(400).json({ message: 'Invalid order ID' });
-    }
-
-    if (!token) {
-      return res.status(401).json({ message: 'Token requerido' });
-    }
-
-    const order = await Order.findById(id);
-    if (!order) {
-      return res.status(404).json({ message: 'Pedido no encontrado' });
-    }
-
-    if (order.customerToken !== token) {
-      return res.status(403).json({ message: 'Token inválido' });
-    }
-
-    // Return safe subset of order data for tracking
-    const trackingData = {
-      _id: order._id,
-      orderNumber: order.orderNumber,
-      status: order.status,
-      orderType: order.orderType,
-      orderChannel: order.orderChannel,
-      customerName: order.customerName,
-      items: order.items.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
-      totalAmount: order.totalAmount,
-      finalAmount: order.finalAmount,
-      discountAmount: order.discountAmount,
-      deliveryFee: order.deliveryFee,
-      paymentMethod: order.paymentMethod,
-      paymentProof: order.paymentProof,
-      statusHistory: order.statusHistory,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt
-    };
-
-    res.json(trackingData);
-  } catch (error) {
-    logger.error('Error tracking order', error);
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Get my orders by phone + businessId (public endpoint)
-router.get('/my-orders', async (req, res) => {
-  try {
-    const { phone, businessId } = req.query;
-
-    if (!phone || !businessId) {
-      return res.status(400).json({ message: 'phone y businessId son requeridos' });
-    }
-
-    const businessResult = await validateAndResolveBusinessId(businessId);
-    if (!businessResult.success) {
-      return res.status(404).json({ message: businessResult.error });
-    }
-
-    const businessObjectId = businessResult.businessId;
-
-    // Get active orders (not completed/cancelled)
-    const activeOrders = await Order.find({
-      businessId: businessObjectId,
-      phone: phone,
-      status: { $nin: ['completed', 'cancelled', 'delivered'] }
-    }).sort({ createdAt: -1 }).limit(10);
-
-    // Get recent completed orders
-    const completedOrders = await CompletedOrder.find({
-      businessId: businessObjectId,
-      phone: phone
-    }).sort({ completedAt: -1 }).limit(10);
-
-    res.json({
-      active: activeOrders,
-      completed: completedOrders
-    });
-  } catch (error) {
-    logger.error('Error fetching my orders', error);
     res.status(500).json({ message: error.message });
   }
 });
