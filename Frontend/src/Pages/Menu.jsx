@@ -1150,7 +1150,7 @@ export default function Menu() {
       <>
         <SplashScreen businessConfig={businessConfig} visible={showSplash} />
         {!showSplash && (
-          <div className="min-h-screen bg-gray-50 pb-20">
+          <div className="min-h-screen bg-gray-50 pb-20 pt-safe">
             <BusinessHeaderSkeleton />
             <FilterableMenuSkeleton />
           </div>
@@ -1173,7 +1173,7 @@ export default function Menu() {
 
   return (
     <FlyToCartProvider>
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20 pt-safe">
       <BusinessHeader 
         comesFromCatalog={comesFromCatalog}
         onShowFavorites={() => setShowFavorites(true)}

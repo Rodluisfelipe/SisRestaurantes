@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { useLocation } from 'react-router-dom';
 
 const DynamicManifest = () => {
   const { businessConfig } = useBusinessConfig();
+  const location = useLocation();
 
   useEffect(() => {
     if (businessConfig) {
@@ -12,12 +14,15 @@ const DynamicManifest = () => {
         : origin + '/logo.jpeg';
       const logoType = businessConfig.logo ? 'image/png' : 'image/jpeg';
       const slug = businessConfig.slug || '';
+      // Usar la ruta actual para que "Agregar a inicio" guarde la URL del menú específico
+      const currentPath = location.pathname;
+      const startUrl = origin + currentPath;
 
       const manifest = {
-        name: `${businessConfig.businessName || 'MenuBy'} - Sistema de Gestión`,
+        name: businessConfig.businessName || 'MenuBy',
         short_name: businessConfig.businessName || 'MenuBy',
-        description: businessConfig.description || `Sistema de gestión para ${businessConfig.businessName || 'tu restaurante'}. Crea tu menú digital, gestiona pedidos y mejora la experiencia de tus clientes.`,
-        start_url: `${origin}/${slug}`,
+        description: businessConfig.description || `Menú digital de ${businessConfig.businessName || 'tu restaurante'}`,
+        start_url: startUrl,
         display: 'standalone',
         background_color: businessConfig.primaryColor || '#051C2C',
         theme_color: businessConfig.accentColor || '#3A7AFF',
@@ -81,7 +86,7 @@ const DynamicManifest = () => {
         appleTitleMeta.content = businessConfig.businessName || 'MenuBy';
       }
     }
-  }, [businessConfig]);
+  }, [businessConfig, location.pathname]);
 
   return null; // This component doesn't render anything
 };
