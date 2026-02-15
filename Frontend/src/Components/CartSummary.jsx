@@ -20,6 +20,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const [checkingLocation, setCheckingLocation] = useState(false);
   const backdropRef = useRef(null);
   const touchStartedOnBackdrop = useRef(false);
+  const scrollContainerRef = useRef(null);
+  const checkoutRef = useRef(null);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -46,6 +48,13 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     address: ''
   });
   const deliveryAddressRef = useRef(null);
+
+  // Auto-scroll to checkout section when order type changes
+  const scrollToCheckout = useCallback(() => {
+    setTimeout(() => {
+      checkoutRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 150);
+  }, []);
   const [isProcessing, setIsProcessing] = useState(false);
   const { businessConfig, businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
@@ -1135,7 +1144,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         </div>
 
         {/* Cart Items - Scrollable Content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-2 min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-2 min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
           {cart.map((item, itemIndex) => (
             <div key={item.uniqueId || item._id} className={`py-3 ${itemIndex < cart.length - 1 ? 'border-b border-slate-100' : ''}`}>
               <div className="flex items-start gap-3">
@@ -1249,7 +1258,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
           {/* ── Checkout section (inside scroll) ── */}
           {cart.length > 0 && (
-            <div className="mt-2 pt-3 border-t border-slate-100 space-y-3">
+            <div ref={checkoutRef} className="mt-2 pt-2 border-t border-slate-100 space-y-2">
               {/* Coupon Input */}
               <CouponInput
                 onCouponApplied={handleCouponApplied}
@@ -1266,44 +1275,44 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
               {/* ── Tipo de pedido inline ── */}
               {!initialOrderTypeSelected && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Tipo de pedido</p>
-                  <div className={isFromTableQR ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-3 gap-2'}>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Tipo de pedido</p>
+                  <div className={isFromTableQR ? 'grid grid-cols-2 gap-1.5' : 'grid grid-cols-3 gap-1.5'}>
                     <button
                       type="button"
-                      onClick={() => { setOrderType('inSite'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
-                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-center ${
+                      onClick={() => { setOrderType('inSite'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
+                      className={`flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 transition-all ${
                         orderType === 'inSite' 
                           ? 'border-blue-500 bg-blue-50' 
                           : 'border-slate-200 bg-white'
                       }`}
                     >
-                      <span className="text-lg">🍽️</span>
+                      <span className="text-sm">🍽️</span>
                       <span className={`text-[11px] font-semibold ${orderType === 'inSite' ? 'text-blue-700' : 'text-slate-500'}`}>En Sitio</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setOrderType('takeaway'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
-                      className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-center ${
+                      onClick={() => { setOrderType('takeaway'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
+                      className={`flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 transition-all ${
                         orderType === 'takeaway' 
                           ? 'border-blue-500 bg-blue-50' 
                           : 'border-slate-200 bg-white'
                       }`}
                     >
-                      <span className="text-lg">📦</span>
+                      <span className="text-sm">📦</span>
                       <span className={`text-[11px] font-semibold ${orderType === 'takeaway' ? 'text-blue-700' : 'text-slate-500'}`}>Llevar</span>
                     </button>
                     {!isFromTableQR && (
                       <button
                         type="button"
-                        onClick={() => { setOrderType('delivery'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); }}
-                        className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-center ${
+                        onClick={() => { setOrderType('delivery'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
+                        className={`flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 transition-all ${
                           orderType === 'delivery' 
                             ? 'border-blue-500 bg-blue-50' 
                             : 'border-slate-200 bg-white'
                         }`}
                       >
-                        <span className="text-lg">🛵</span>
+                        <span className="text-sm">🛵</span>
                         <span className={`text-[11px] font-semibold ${orderType === 'delivery' ? 'text-blue-700' : 'text-slate-500'}`}>Domicilio</span>
                       </button>
                     )}
@@ -1319,7 +1328,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   value={formState.tableNumber}
                   onChange={handleInputChange}
                   name="tableNumber"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                  className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
                   placeholder="Número de mesa"
                   min="1"
                   max="999"
@@ -1331,21 +1340,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
               {/* ── Info mesa QR ── */}
               {isFromTableQR && tableNumber && (
-                <div className="flex items-center gap-2 p-2.5 bg-blue-50 border border-blue-200 rounded-xl">
-                  <span className="text-sm">🪑</span>
-                  <p className="text-blue-800 font-semibold text-xs">Mesa {tableNumber} · En sitio</p>
+                <div className="flex items-center gap-1.5 p-2 bg-blue-50 border border-blue-200 rounded-xl">
+                  <span className="text-xs">🪑</span>
+                  <p className="text-blue-800 font-semibold text-[11px]">Mesa {tableNumber} · En sitio</p>
                 </div>
               )}
 
               {/* ── Campo condicional: Dirección de entrega ── */}
               {orderType === 'delivery' && !initialOrderTypeSelected && (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <textarea
                     ref={deliveryAddressRef}
                     id="inline-delivery-address"
                     name="address"
                     defaultValue={orderInfo?.address || ''}
-                    className="w-full p-2.5 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                    className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
                     placeholder="Dirección de entrega"
                     rows="1"
                     autoComplete="street-address"
@@ -1356,7 +1365,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                       type="button"
                       onClick={detectLocationAndCalculateFee}
                       disabled={checkingLocation}
-                      className="w-full px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-xs"
+                      className="w-full px-3 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-xs"
                     >
                       {checkingLocation ? (
                         <><span className="animate-spin">🔄</span> Verificando...</>
@@ -1369,27 +1378,20 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   {locationChecked && (
                     <>
                       {deliveryFee && deliveryZoneInfo ? (
-                        <div className="flex items-center justify-between p-2.5 bg-green-50 border border-green-200 rounded-xl">
+                        <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-xl">
                           <div className="flex items-center gap-1.5">
-                            <span>✅</span>
-                            <span className="text-xs text-green-800 font-medium">{deliveryZoneInfo.zoneName}</span>
+                            <span className="text-sm">✅</span>
+                            <span className="text-[11px] text-green-800 font-medium">{deliveryZoneInfo.zoneName}</span>
                           </div>
-                          <span className="text-sm font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
+                          <span className="text-xs font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl">
-                          <span className="text-amber-600">⚠️</span>
-                          <p className="text-xs text-amber-800 font-medium">Costo por confirmar</p>
+                        <div className="flex items-center gap-1.5 p-2 bg-amber-50 border border-amber-200 rounded-xl">
+                          <span className="text-sm text-amber-600">⚠️</span>
+                          <p className="text-[11px] text-amber-800 font-medium">Costo por confirmar</p>
                         </div>
                       )}
                     </>
-                  )}
-
-                  {!isInAppMode && (
-                    <div className="flex items-center gap-1.5 p-2 bg-green-50 border border-green-100 rounded-lg">
-                      <span className="text-xs">📱</span>
-                      <p className="text-[11px] text-green-700">Se abrirá WhatsApp con tu pedido.</p>
-                    </div>
                   )}
                 </div>
               )}
@@ -1400,7 +1402,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
         {/* ── Sticky bottom: Total + Confirm button ── */}
         {cart.length > 0 && (
-          <div className="border-t border-slate-200 bg-white px-4 py-3 sm:px-6 flex-shrink-0 pb-safe sm:rounded-b-2xl space-y-2">
+          <div className="border-t border-slate-200 bg-white px-4 py-2.5 sm:px-6 flex-shrink-0 pb-safe sm:rounded-b-2xl space-y-1.5">
             {/* Total row */}
             <div className="flex justify-between items-center">
               <div>
