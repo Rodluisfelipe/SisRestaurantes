@@ -1,16 +1,15 @@
 // Service Worker para notificaciones push PWA
-// Versión: 1.1.0
+// Versión: 2.0.0 - Cloudflare Pages compatible
 
-const CACHE_NAME = 'menuby-v2';
+const CACHE_NAME = 'menuby-v3';
 
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker v1.1...');
-  // Skip cacheAll to avoid install failures on GitHub Pages
+  console.log('[SW] Installing service worker v2.0...');
   self.skipWaiting();
 });
 
-// Activación del Service Worker
+// Activación del Service Worker - limpiar cachés viejos
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activating service worker...');
   event.waitUntil(
@@ -27,38 +26,36 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: estrategia Network First con fallback a cache
+// Fetch: Network Only - dejar que Cloudflare CDN maneje el caching
+// No interceptamos requests para evitar problemas de compatibilidad
 self.addEventListener('fetch', (event) => {
+  // Solo interceptar requests GET del mismo origen
   const url = new URL(event.request.url);
-  
-  // NO interceptar: APIs, socket.io, otros dominios, chrome-extension, etc.
-  if (url.pathname.startsWith('/api/') || 
-      url.pathname.startsWith('/socket.io/') ||
-      url.hostname !== self.location.hostname ||
-      !url.protocol.startsWith('http')) {
-    return;
-  }
-  
-  // Solo cachear GET requests
-  if (event.request.method !== 'GET') {
+  if (event.request.method !== 'GET' ||
+      url.origin !== self.location.origin ||
+      url.pathname.startsWith('/api/') ||
+      url.pathname.startsWith('/socket.io/')) {
     return;
   }
 
+  // Network first, cache fallback — siempre retornar un Response válido
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        if (response && response.status === 200) {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+        if (response && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
       })
       .catch(() => {
-        // Si falla la red, intentar desde cache; si tampoco hay cache, devolver respuesta vacía
         return caches.match(event.request).then((cached) => {
-          return cached || new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
+          if (cached) return cached;
+          // Siempre devolver un Response válido
+          if (event.request.destination === 'document') {
+            return caches.match('/index.html') || new Response('<h1>Offline</h1>', { headers: { 'Content-Type': 'text/html' } });
+          }
+          return new Response('', { status: 503, statusText: 'Offline' });
         });
       })
   );
