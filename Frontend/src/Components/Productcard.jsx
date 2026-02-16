@@ -96,6 +96,8 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             <motion.img 
               src={product.image} 
               alt={product.name}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               onError={(e) => { e.target.style.display = 'none'; }}
             />

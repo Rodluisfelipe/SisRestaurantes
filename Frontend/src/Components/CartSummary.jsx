@@ -1202,7 +1202,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                           if (topping.subGroups) {
                             topping.subGroups.forEach((sub, subIdx) => {
                               tags.push(
-                                <span key={`${item.uniqueId || item._id}-s-${idx}-${subIdx}`} className="text-[10px] px-1.5 py-0.5 bg-orange-50 text-orange-500 rounded-md leading-tight">
+                                <span key={`${item.uniqueId || item._id}-s-${idx}-${subIdx}`} className="text-[10px] px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded-md leading-tight">
                                   {sub.optionName}{sub.price > 0 ? ` +$${Number(sub.price).toLocaleString('es-CO')}` : ''}
                                 </span>
                               );
@@ -1252,7 +1252,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   <span className="text-3xl">🛒</span>
                 </div>
                 <p className="text-slate-500 text-sm mb-1">Tu carrito está vacío</p>
-                <p className="text-slate-400 text-xs mb-4">Agrega productos para armar tu pedido</p>
+                <p className="text-slate-500 text-xs mb-4">Agrega productos para armar tu pedido</p>
                 <button
                   onClick={onClose}
                   className="text-sm px-5 py-2.5 rounded-xl transition-all font-medium"

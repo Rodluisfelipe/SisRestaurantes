@@ -437,6 +437,7 @@ const FilterableMenu = ({
               <button
                 onClick={isCompleted ? undefined : onViewActiveOrder}
                 className="w-full active:scale-[0.98] transition-transform"
+                aria-label={isCompleted ? 'Pedido completado' : `Ver pedido activo: ${info.label}`}
               >
                 <div className="flex items-center gap-3 px-4 py-3">
                   <div className="relative flex-shrink-0">
@@ -445,7 +446,7 @@ const FilterableMenu = ({
                     </div>
                     {!isCompleted && (
                       <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75 will-change-transform" />
                         <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
                       </span>
                     )}
@@ -454,7 +455,7 @@ const FilterableMenu = ({
                     <p className="text-sm font-semibold leading-tight text-white">
                       {info.label}
                     </p>
-                    <p className="text-xs mt-0.5 text-white/75">
+                    <p className="text-xs mt-0.5 text-white/90">
                       {info.sub}
                     </p>
                   </div>
@@ -627,8 +628,8 @@ const FilterableMenu = ({
                 <h3 className="mt-4 text-lg font-bold text-gray-700">
                   No encontramos resultados
                 </h3>
-                <p className="mt-1.5 text-sm text-gray-400 max-w-xs">
-                  No hay productos que coincidan con <span className="font-semibold text-gray-500">"{searchTerm}"</span>
+                <p className="mt-1.5 text-sm text-gray-500 max-w-xs">
+                  No hay productos que coincidan con <span className="font-semibold text-gray-600">"{searchTerm}"</span>
                 </p>
                 <button
                   onClick={clearSearch}
@@ -641,7 +642,7 @@ const FilterableMenu = ({
                 {/* Suggest popular categories */}
                 {categoriesWithProducts.length > 0 && (
                   <div className="mt-6 w-full">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Explora categorías</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Explora categorías</p>
                     <div className="flex flex-wrap justify-center gap-2">
                       {categoriesWithProducts.slice(0, 4).map(cat => (
                         <motion.button
@@ -663,7 +664,7 @@ const FilterableMenu = ({
                 <h3 className="mt-4 text-lg font-bold text-gray-700">
                   Menú vacío
                 </h3>
-                <p className="mt-1.5 text-sm text-gray-400 max-w-xs">
+                <p className="mt-1.5 text-sm text-gray-500 max-w-xs">
                   Aún no hay productos disponibles en esta categoría.
                 </p>
               </>

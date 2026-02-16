@@ -581,6 +581,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
               <button
                 onClick={() => quantity > 1 && setQuantity(quantity - 1)}
                 className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700"
+                aria-label="Disminuir cantidad"
               >
                 -
               </button>
@@ -588,6 +589,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
               <button
                 onClick={() => setQuantity(quantity + 1)}
                 className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700"
+                aria-label="Aumentar cantidad"
               >
                 +
               </button>
@@ -642,7 +644,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                           <div>
                             <div className="flex items-center justify-between">
                               <div>
-                                <h4 className="font-medium text-gray-800">{group.name}</h4>
+                                <h3 className="font-medium text-gray-800">{group.name}</h3>
                             {group.description && (
                               <p className="text-sm text-gray-600">{group.description}</p>
                             )}

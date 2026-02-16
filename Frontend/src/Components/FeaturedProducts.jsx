@@ -93,7 +93,7 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
           >
             <FaStar className="text-xs" style={{ color: buttonColor }} />
           </div>
-          <h3 className="text-sm sm:text-base font-bold text-gray-800">Destacados</h3>
+          <h2 className="text-sm sm:text-base font-bold text-gray-800">Destacados</h2>
         </div>
 
         {/* Horizontal scroll */}
@@ -111,6 +111,8 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
                   <img
                     src={product.image}
                     alt={product.name}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -152,6 +154,7 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
                     }}
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-xs shadow-sm transition-all hover:shadow-md"
                     style={{ backgroundColor: buttonColor, color: buttonTextColor }}
+                    aria-label={product.toppingGroups && product.toppingGroups.length > 0 ? `Personalizar ${product.name}` : `Agregar ${product.name} al carrito`}
                   >
                     {product.toppingGroups && product.toppingGroups.length > 0 
                       ? <FaPlus className="text-[10px]" /> 
