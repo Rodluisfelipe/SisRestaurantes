@@ -86,7 +86,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
         whileHover={!isDisabled ? { y: -4, scale: 1.01 } : {}}
         whileTap={!isDisabled ? { scale: 0.97 } : {}}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-[box-shadow] duration-300 border border-gray-100 overflow-hidden ${
+        className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-100 overflow-hidden ${
           isDisabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
@@ -196,7 +196,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
               whileHover={!isDisabled ? { scale: 1.15 } : {}}
               whileTap={!isDisabled ? { scale: 0.85 } : {}}
               transition={{ type: "spring", stiffness: 400, damping: 15 }}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-md transition-all duration-200 ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-md transition-transform duration-200 ${
                 isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-lg active:shadow-sm'
               }`}
               style={{

@@ -103,7 +103,7 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
               key={product._id}
               whileTap={{ scale: 0.97 }}
               onClick={() => handleProductClick(product)}
-              className="flex-shrink-0 w-40 sm:w-48 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-shadow duration-200"
+              className="flex-shrink-0 w-40 sm:w-48 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden snap-start cursor-pointer hover:shadow-md transition-colors duration-200"
             >
               {/* Image */}
               <div className="relative aspect-[4/3] bg-gray-50 overflow-hidden">

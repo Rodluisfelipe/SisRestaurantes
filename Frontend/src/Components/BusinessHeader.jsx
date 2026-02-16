@@ -166,7 +166,7 @@ const BusinessHeader = ({
           {/* Account / Order Status button */}
           <button
             onClick={() => setShowAccountModal(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-[transform,box-shadow] duration-200 shadow-md hover:shadow-lg active:scale-95 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-transform duration-200 shadow-md hover:shadow-lg active:scale-95 ${
               hasActiveOrder ? 'animate-pulse' : ''
             }`}
             style={
@@ -193,7 +193,7 @@ const BusinessHeader = ({
               {showFavoritesButton && (
                 <button
                   onClick={onShowFavorites}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm hover:shadow-md active:scale-95 transition-all duration-200"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm hover:shadow-md active:scale-95 transition-[transform,opacity] duration-200"
                   style={{ backgroundColor: businessConfig.theme?.buttonColor || '#f97316', color: businessConfig.theme?.buttonTextColor || '#ffffff' }}
                   title="Favoritos"
                 >
@@ -204,7 +204,7 @@ const BusinessHeader = ({
               {showHistoryButton && (
                 <button
                   onClick={onShowHistory}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm hover:shadow-md active:scale-95 transition-all duration-200"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium shadow-sm hover:shadow-md active:scale-95 transition-[transform,opacity] duration-200"
                   style={{ backgroundColor: businessConfig.theme?.buttonColor || '#f97316', color: businessConfig.theme?.buttonTextColor || '#ffffff' }}
                   title="Historial"
                 >

@@ -87,7 +87,7 @@ const CartBar = ({
           whileHover={!isSuspended ? { scale: 1.02, y: -2 } : {}}
           whileTap={!isSuspended ? { scale: 0.98 } : {}}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          className={`w-full flex items-center justify-between px-5 py-3.5 sm:py-4 rounded-2xl shadow-2xl backdrop-blur-md transition-all duration-200 ${
+          className={`w-full flex items-center justify-between px-5 py-3.5 sm:py-4 rounded-2xl shadow-2xl backdrop-blur-md transition-transform duration-200 ${
             isSuspended ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           style={{

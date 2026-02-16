@@ -534,7 +534,7 @@ const FilterableMenu = ({
       {/* ── Sticky Category Filter Pills + Progress Bar ── */}
       <div
         ref={pillBarRef}
-        className={`transition-shadow duration-200 z-40 ${
+        className={`z-40 ${
           isSticky
             ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6 py-2 mb-4 sm:mb-5'
             : 'mb-4 sm:mb-5'

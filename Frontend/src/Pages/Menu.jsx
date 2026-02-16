@@ -1201,7 +1201,7 @@ export default function Menu() {
       {comesFromCatalog && (
         <button
           onClick={handleBackToCatalog}
-          className="fixed top-4 left-4 z-50 bg-white hover:bg-gray-100 text-gray-700 rounded-full p-2 shadow-lg transition-all duration-200 hover:scale-110 active:scale-95 border border-gray-200"
+          className="fixed top-4 left-4 z-50 bg-white hover:bg-gray-100 text-gray-700 rounded-full p-2 shadow-lg transition-transform duration-200 hover:scale-110 active:scale-95 border border-gray-200"
           title="Volver al catálogo"
           aria-label="Volver al catálogo"
         >

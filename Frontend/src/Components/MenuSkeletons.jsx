@@ -98,7 +98,7 @@ export const FilterableMenuSkeleton = () => (
 /*  BusinessHeaderSkeleton                                             */
 /* ------------------------------------------------------------------ */
 export const BusinessHeaderSkeleton = () => (
-  <div className="w-full text-center relative bg-gray-100 animate-fadeIn">
+  <div className="w-full text-center relative bg-gray-100 animate-fadeIn min-h-[200px] sm:min-h-[260px]">
     {/* Cover area */}
     <div className={`h-48 sm:h-56 bg-gray-200 ${shimmerClass}`} />
 
