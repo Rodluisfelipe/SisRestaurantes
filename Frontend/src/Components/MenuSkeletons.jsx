@@ -98,23 +98,41 @@ export const FilterableMenuSkeleton = () => (
 /*  BusinessHeaderSkeleton                                             */
 /* ------------------------------------------------------------------ */
 export const BusinessHeaderSkeleton = () => (
-  <div className="w-full text-center relative bg-gray-100 animate-fadeIn min-h-[200px] sm:min-h-[260px]">
-    {/* Cover area */}
-    <div className={`h-48 sm:h-56 bg-gray-200 ${shimmerClass}`} />
-
-    {/* Overlaid content */}
-    <div className="relative -mt-14 z-10 flex flex-col items-center">
-      {/* Logo */}
-      <div className={`w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-gray-300 border-[3px] border-white shadow-lg ${shimmerClass}`} />
-      {/* Name */}
-      <div className={`mt-2 h-7 w-48 rounded-full bg-gray-200 ${shimmerClass}`} />
-      {/* Address */}
-      <div className={`mt-2 h-4 w-36 rounded-full bg-gray-100 ${shimmerClass}`} />
-      {/* Social icons */}
-      <div className="flex gap-4 mt-2 mb-3">
+  <div className="w-full relative animate-fadeIn">
+    {/* Hero cover area — matches aspect-ratio 16/7, minHeight 140, maxHeight 220 */}
+    <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/7', minHeight: '140px', maxHeight: '220px' }}>
+      <div className={`absolute inset-0 bg-gray-200 ${shimmerClass}`} />
+      {/* Fake status badge */}
+      <div className="absolute top-3 left-3 z-10">
+        <div className={`h-5 w-16 rounded-full bg-gray-300/60 ${shimmerClass}`} />
+      </div>
+      {/* Fake action buttons */}
+      <div className="absolute top-3 right-3 z-10 flex gap-1.5">
         {[1, 2, 3].map(i => (
-          <div key={i} className={`w-5 h-5 rounded-full bg-gray-200 ${shimmerClass}`} />
+          <div key={i} className={`w-8 h-8 rounded-full bg-gray-300/50 ${shimmerClass}`} />
         ))}
+      </div>
+    </div>
+
+    {/* Info section — matches real component layout */}
+    <div className="relative bg-white px-4 pb-3 pt-12">
+      {/* Logo overlap */}
+      <div className="absolute left-1/2 -translate-x-1/2 -top-10 z-10">
+        <div className={`w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] rounded-2xl bg-gray-200 ring-[3px] ring-white ${shimmerClass}`} />
+      </div>
+      {/* Name */}
+      <div className="flex justify-center">
+        <div className={`h-5 w-44 rounded-full bg-gray-200 ${shimmerClass}`} />
+      </div>
+      {/* Address + social */}
+      <div className="flex justify-center gap-2 mt-2">
+        <div className={`h-3.5 w-32 rounded-full bg-gray-100 ${shimmerClass}`} />
+        <div className="w-px h-3.5 bg-gray-200" />
+        <div className="flex gap-2">
+          {[1, 2].map(i => (
+            <div key={i} className={`w-3.5 h-3.5 rounded-full bg-gray-200 ${shimmerClass}`} />
+          ))}
+        </div>
       </div>
     </div>
   </div>
