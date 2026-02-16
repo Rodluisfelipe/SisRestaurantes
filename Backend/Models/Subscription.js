@@ -118,7 +118,8 @@ subscriptionSchema.methods.calculateGraceUntil = function() {
 subscriptionSchema.methods.getCurrentStatus = function() {
   const now = new Date();
   const periodEndDate = this.periodEnd || this.endDate;
-  const graceUntilDate = this.graceUntil || this.calculateGraceUntil();
+  // SIEMPRE usar cálculo dinámico para gracia (no el valor almacenado en DB)
+  const graceUntilDate = this.calculateGraceUntil() || this.graceUntil;
   
     // Si no hay periodEnd, considerar como activo (sin restricciones)
     if (!periodEndDate) {
@@ -163,9 +164,10 @@ subscriptionSchema.methods.getDaysRemaining = function() {
 };
 
 // Método para calcular días de gracia restantes
+// SIEMPRE usar calculateGraceUntil() para garantizar GRACE_DAYS correcto
 subscriptionSchema.methods.getGraceDaysRemaining = function() {
   const now = new Date();
-  const graceUntilDate = this.graceUntil || this.calculateGraceUntil();
+  const graceUntilDate = this.calculateGraceUntil() || this.graceUntil;
   if (!graceUntilDate) return 0;
     
     // Normalizar las fechas para comparar solo días (sin horas)

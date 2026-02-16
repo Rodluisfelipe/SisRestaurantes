@@ -21,15 +21,14 @@ function calculateSubscriptionStatus(subscription) {
   const now = new Date();
   const periodEndDate = subscription.periodEnd || subscription.endDate;
   
-  // Calculate grace period end
-  let graceUntilDate = subscription.graceUntil;
+  // Calculate grace period end - SIEMPRE usar cálculo dinámico (no el valor almacenado)
+  let graceUntilDate;
+  if (subscription.calculateGraceUntil) {
+    graceUntilDate = subscription.calculateGraceUntil();
+  }
   if (!graceUntilDate && periodEndDate) {
     graceUntilDate = new Date(periodEndDate);
     graceUntilDate.setDate(graceUntilDate.getDate() + GRACE_DAYS);
-  }
-  if (subscription.calculateGraceUntil) {
-    const modelGrace = subscription.calculateGraceUntil();
-    if (modelGrace) graceUntilDate = modelGrace;
   }
 
   let status = 'active';

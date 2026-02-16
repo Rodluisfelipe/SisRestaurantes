@@ -381,8 +381,8 @@ router.post('/', validateSubscriptionInput, async (req, res) => {
       subscriptionStatus = 'expired';
     }
     
-    // Calcular graceUntil basado en GRACE_DAYS (5 días)
-    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 5);
+    // Calcular graceUntil basado en GRACE_DAYS (1 día)
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 1);
     const graceUntilDate = new Date(endDate);
     graceUntilDate.setDate(graceUntilDate.getDate() + GRACE_DAYS);
     
@@ -437,8 +437,8 @@ router.put('/:id', validateSubscriptionInput, async (req, res) => {
       return res.status(404).json(formatHttpError(req, 'Suscripción no encontrada', 404));
     }
     
-    // Calcular graceUntil basado en GRACE_DAYS (5 días)
-    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 5);
+    // Calcular graceUntil basado en GRACE_DAYS (1 día)
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 1);
     
     // Actualizar campos - SINCRONIZAR periodStart y periodEnd con startDate y endDate
     if (planType) subscription.planType = planType;
