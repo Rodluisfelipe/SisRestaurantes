@@ -213,6 +213,14 @@ mongoose.connect(MONGO_URI)
       }
     }
     
+    // Iniciar cron de recordatorios de suscripción
+    try {
+      const { startSubscriptionCron } = require('./services/subscriptionCron');
+      startSubscriptionCron();
+    } catch (error) {
+      console.warn('⚠️ Error iniciando cron de suscripciones:', error.message);
+    }
+    
     const port = process.env.PORT || 5000;
     server.listen(port, () =>
       console.log(`Servidor unificado (Backend + BackendSA) corriendo en el puerto ${port}`)

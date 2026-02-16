@@ -103,8 +103,8 @@ subscriptionSchema.virtual('gracePeriodEnd').get(function() {
 subscriptionSchema.index({ businessId: 1, status: 1 });
 subscriptionSchema.index({ endDate: 1, status: 1 });
 
-  // Constante de gracia (5 días)
-  const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 5);
+  // Constante de gracia (1 día después de vencimiento)
+  const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 1);
 
 // Método para calcular graceUntil basado en periodEnd
 subscriptionSchema.methods.calculateGraceUntil = function() {

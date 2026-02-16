@@ -44,7 +44,7 @@ export default function useSubscriptionData(businessId) {
           const sub = response.data.subscription;
           const now = new Date();
           const periodEnd = sub.periodEnd || sub.endDate;
-          const graceUntil = sub.graceUntil || (periodEnd ? new Date(new Date(periodEnd).getTime() + 5 * 24 * 60 * 60 * 1000) : null);
+          const graceUntil = sub.graceUntil || (periodEnd ? new Date(new Date(periodEnd).getTime() + 1 * 24 * 60 * 60 * 1000) : null);
 
           let status = 'active';
           if (periodEnd && now > graceUntil) {
@@ -112,7 +112,7 @@ export default function useSubscriptionData(businessId) {
       : null;
     if (!grace && pe) {
       grace = new Date(pe);
-      grace.setDate(grace.getDate() + 5);
+      grace.setDate(grace.getDate() + 1);
     }
 
     const isInGrace = pe && grace && now > pe && now <= grace;
@@ -165,7 +165,7 @@ export default function useSubscriptionData(businessId) {
     } else if (periodEnd) {
       if (now > periodEnd) {
         const calcGrace = new Date(periodEnd);
-        calcGrace.setDate(calcGrace.getDate() + 5);
+        calcGrace.setDate(calcGrace.getDate() + 1);
         status = now > calcGrace ? 'suspended' : 'grace';
       } else {
         status = 'active';

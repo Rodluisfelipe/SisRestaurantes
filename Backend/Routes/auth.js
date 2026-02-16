@@ -75,14 +75,15 @@ router.post('/register', async (req, res) => {
     // Guardar el usuario administrador
     await admin.save();
 
-    // Crear suscripción inicial con período de gracia de 7 días
+    // Crear suscripción inicial: 7 días de prueba + 1 día de gracia
     const Subscription = require('../Models/Subscription');
-    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 7);
+    const TRIAL_DAYS = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || 7);
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 1);
     const now = new Date();
     const periodEnd = new Date(now);
-    periodEnd.setDate(periodEnd.getDate() + GRACE_DAYS);
+    periodEnd.setDate(periodEnd.getDate() + TRIAL_DAYS);
     const graceUntil = new Date(periodEnd);
-    graceUntil.setDate(graceUntil.getDate() + GRACE_DAYS); // periodEnd + 7 días de gracia
+    graceUntil.setDate(graceUntil.getDate() + GRACE_DAYS); // periodEnd + 1 día de gracia
     
     const initialSubscription = new Subscription({
       businessId: businessConfig._id,
@@ -93,12 +94,12 @@ router.post('/register', async (req, res) => {
       periodStart: now,
       periodEnd: periodEnd,
       graceUntil: graceUntil,
-      price: 0, // Gratis durante período de gracia
+      price: 0, // Gratis durante período de prueba
       paymentStatus: 'paid',
       isActive: true,
       isTrialPeriod: true,
       paymentMethod: 'OTHER',
-      notes: 'Período de gracia inicial de 7 días al registrarse'
+      notes: `Período de prueba de ${TRIAL_DAYS} días con ${GRACE_DAYS} día(s) de gracia`
     });
     
     await initialSubscription.save();
