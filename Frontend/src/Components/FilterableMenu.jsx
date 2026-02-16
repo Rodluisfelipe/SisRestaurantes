@@ -427,11 +427,11 @@ const FilterableMenu = ({
           return (
             <motion.div
               key="active-order-banner"
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
+              initial={{ opacity: 0, scaleY: 0 }}
+              animate={{ opacity: 1, scaleY: 1 }}
+              exit={{ opacity: 0, scaleY: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="w-full mb-3 rounded-2xl overflow-hidden shadow-sm"
+              className="w-full mb-3 rounded-2xl overflow-hidden shadow-sm origin-top"
               style={{ backgroundColor: isCompleted ? '#10b981' : themeColor }}
             >
               <button
@@ -478,8 +478,8 @@ const FilterableMenu = ({
               ) : (
                 <div className="h-0.5 bg-white/20">
                   <motion.div
-                    className="h-full bg-white/50 rounded-full"
-                    animate={{ width: ['0%', '100%'] }}
+                    className="h-full bg-white/50 rounded-full w-full origin-left"
+                    animate={{ scaleX: [0, 1] }}
                     transition={{ repeat: Infinity, duration: 2.5, ease: 'easeInOut' }}
                   />
                 </div>
@@ -505,7 +505,7 @@ const FilterableMenu = ({
             placeholder="Buscar productos..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full pl-10 sm:pl-12 pr-10 py-3 sm:py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:bg-white transition-all duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-400"
+            className="w-full pl-10 sm:pl-12 pr-10 py-3 sm:py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:bg-white transition-colors duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-400"
             style={{
               '--tw-ring-color': `${themeColor}40`,
               borderColor: searchTerm ? themeColor : undefined
@@ -536,7 +536,7 @@ const FilterableMenu = ({
         ref={pillBarRef}
         className={`transition-shadow duration-200 z-40 ${
           isSticky
-            ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6 py-2'
+            ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6 py-2 mb-4 sm:mb-5'
             : 'mb-4 sm:mb-5'
         }`}
       >
@@ -547,7 +547,7 @@ const FilterableMenu = ({
               ref={el => (pillRefs.current['all'] = el)}
               onClick={() => handlePillClick('all')}
               whileTap={{ scale: 0.93 }}
-              className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-all duration-200 ${
+              className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-colors duration-200 ${
                 visualActive === 'all'
                   ? 'shadow-lg'
                   : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 shadow-sm'
@@ -570,7 +570,7 @@ const FilterableMenu = ({
                   ref={el => (pillRefs.current[category._id] = el)}
                   onClick={() => handlePillClick(category._id)}
                   whileTap={{ scale: 0.93 }}
-                  className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-all duration-200 ${
+                  className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-colors duration-200 ${
                     isActive
                       ? 'shadow-lg'
                       : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 shadow-sm'
@@ -591,9 +591,9 @@ const FilterableMenu = ({
         {/* ── Scroll progress line ── */}
         <div className="h-[2px] bg-gray-100 mt-1.5 rounded-full overflow-hidden">
           <motion.div
-            className="h-full rounded-full"
+            className="h-full rounded-full w-full origin-left"
             style={{ backgroundColor: themeColor }}
-            animate={{ width: `${scrollProgress * 100}%` }}
+            animate={{ scaleX: scrollProgress }}
             transition={{ duration: 0.1, ease: 'linear' }}
           />
         </div>

@@ -144,7 +144,7 @@ const BusinessHeader = ({
 
 
   return (
-    <div className="w-full text-center relative">
+    <div className="w-full text-center relative min-h-[200px] sm:min-h-[260px]">
       {/* Cover Image Background */}
       {businessConfig.coverImage && (
         <div 
@@ -166,7 +166,7 @@ const BusinessHeader = ({
           {/* Account / Order Status button */}
           <button
             onClick={() => setShowAccountModal(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg active:scale-95 ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-[transform,box-shadow] duration-200 shadow-md hover:shadow-lg active:scale-95 ${
               hasActiveOrder ? 'animate-pulse' : ''
             }`}
             style={

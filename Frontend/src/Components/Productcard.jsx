@@ -86,7 +86,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
         whileHover={!isDisabled ? { y: -4, scale: 1.01 } : {}}
         whileTap={!isDisabled ? { scale: 0.97 } : {}}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-shadow duration-300 border border-gray-100 overflow-hidden ${
+        className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl transition-[box-shadow] duration-300 border border-gray-100 overflow-hidden ${
           isDisabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
         }`}
       >

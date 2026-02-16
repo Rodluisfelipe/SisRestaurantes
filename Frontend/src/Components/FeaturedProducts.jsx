@@ -75,7 +75,7 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
   }
 
   if (featuredProducts.length === 0) {
-    return null;
+    return <div className="h-0" />;
   }
 
   return (
