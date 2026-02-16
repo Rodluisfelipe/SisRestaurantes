@@ -110,14 +110,15 @@ async function checkSubscriptionReminders() {
       }
     }
 
-    // También verificar suscripciones que acaban de entrar en gracia (vencieron ayer)
-    await checkGraceNotifications(today);
+    // También verificar suscripciones actualmente en gracia
+    const graceCount = await checkGraceNotifications(today);
 
-    // También verificar suscripciones que se acaban de suspender
-    await checkSuspendedNotifications(today);
+    // También verificar suscripciones que se acaban de suspender (graceUntil pasó)
+    const suspendedCount = await checkSuspendedNotifications(today);
 
-    logger.info(`[SubscriptionCron] Completado: ${notificationsSent} recordatorio(s) enviado(s)`);
-    return notificationsSent;
+    const total = notificationsSent + graceCount + suspendedCount;
+    console.log(`[SubscriptionCron] Completado: ${notificationsSent} recordatorio(s), ${graceCount} gracia, ${suspendedCount} suspensión`);
+    return total;
   } catch (error) {
     logger.error('[SubscriptionCron] Error en checkSubscriptionReminders:', error);
     return 0;
@@ -125,20 +126,15 @@ async function checkSubscriptionReminders() {
 }
 
 /**
- * Notifica a negocios que acaban de entrar en período de gracia
- * (su periodEnd fue ayer, ahora están en grace).
+ * Notifica a negocios que están actualmente en período de gracia
+ * (periodEnd ya pasó pero graceUntil aún no).
  */
 async function checkGraceNotifications(today) {
+  let count = 0;
   try {
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // Suscripciones cuyo periodEnd fue ayer (acaban de entrar en gracia)
-    const dayAfterYesterday = new Date(yesterday);
-    dayAfterYesterday.setDate(dayAfterYesterday.getDate() + 1);
-
+    // Suscripciones cuyo periodEnd ya pasó pero graceUntil aún no
     const graceSubs = await Subscription.find({
-      periodEnd: { $gte: yesterday, $lt: dayAfterYesterday },
+      periodEnd: { $lt: today },
       graceUntil: { $gte: today }
     }).populate('businessId', 'name slug');
 
@@ -153,7 +149,7 @@ async function checkGraceNotifications(today) {
 
         const payload = {
           title: '🚨 Suscripción vencida - Período de gracia',
-          body: `${businessName}: tu suscripción ha vencido. Tienes ${graceHoursLeft} hora(s) de gracia para realizar el pago antes de la suspensión.`,
+          body: `${businessName}: tu suscripción ha vencido. Tienes ${graceHoursLeft} hora(s) para realizar el pago antes de la suspensión.`,
           clickUrl: '/admin/subscription',
           data: {
             type: 'subscription_grace',
@@ -162,8 +158,11 @@ async function checkGraceNotifications(today) {
           }
         };
 
-        await sendPushToBusinessId(businessId, payload);
-        logger.info(`[SubscriptionCron] Notificación de gracia enviada a ${businessName}`);
+        const result = await sendPushToBusinessId(businessId, payload);
+        if (result.sent > 0) {
+          count++;
+          console.log(`[SubscriptionCron] Notificación de gracia enviada a ${businessName} (${graceHoursLeft}h restantes)`);
+        }
       } catch (err) {
         logger.error(`[SubscriptionCron] Error en notificación de gracia para ${sub._id}:`, err);
       }
@@ -171,21 +170,21 @@ async function checkGraceNotifications(today) {
   } catch (error) {
     logger.error('[SubscriptionCron] Error en checkGraceNotifications:', error);
   }
+  return count;
 }
 
 /**
- * Notifica a negocios cuya suscripción se acaba de suspender
- * (graceUntil fue ayer).
+ * Notifica a negocios cuya suscripción se suspendió recientemente
+ * (graceUntil pasó en los últimos 2 días).
  */
 async function checkSuspendedNotifications(today) {
+  let count = 0;
   try {
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const dayAfterYesterday = new Date(yesterday);
-    dayAfterYesterday.setDate(dayAfterYesterday.getDate() + 1);
+    const twoDaysAgo = new Date(today);
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
     const suspendedSubs = await Subscription.find({
-      graceUntil: { $gte: yesterday, $lt: dayAfterYesterday }
+      graceUntil: { $gte: twoDaysAgo, $lt: today }
     }).populate('businessId', 'name slug');
 
     for (const sub of suspendedSubs) {
@@ -206,7 +205,8 @@ async function checkSuspendedNotifications(today) {
         };
 
         await sendPushToBusinessId(businessId, payload);
-        logger.info(`[SubscriptionCron] Notificación de suspensión enviada a ${businessName}`);
+        count++;
+        console.log(`[SubscriptionCron] Notificación de suspensión enviada a ${businessName}`);
       } catch (err) {
         logger.error(`[SubscriptionCron] Error en notificación de suspensión para ${sub._id}:`, err);
       }
@@ -214,6 +214,7 @@ async function checkSuspendedNotifications(today) {
   } catch (error) {
     logger.error('[SubscriptionCron] Error en checkSuspendedNotifications:', error);
   }
+  return count;
 }
 
 /**
