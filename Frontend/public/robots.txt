@@ -2,12 +2,13 @@ User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://www.menuby.tech/sitemap.xml
+Sitemap: https://menuby.tech/sitemap.xml
 
 # Disallow admin and private areas
 Disallow: /admin/
 Disallow: /superadmin/
 Disallow: /api/
+Disallow: /assets/
 
 # Allow all landing pages
 Allow: /features

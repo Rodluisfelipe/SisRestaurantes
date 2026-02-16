@@ -201,8 +201,9 @@ export default function Menu() {
     siteName: businessConfig?.businessName || 'Restaurante',
     url: window.location.href,
     type: 'restaurant',
-    keywords: `${businessConfig?.businessName || 'restaurante'}, menú digital, pedidos online, comida, delivery`,
-    image: businessConfig?.logo
+    keywords: `${businessConfig?.businessName || 'restaurante'}, menú digital, pedidos online, ${businessConfig?.city ? businessConfig.city + ', ' : ''}${businessConfig?.department ? businessConfig.department + ', ' : ''}comida, delivery`,
+    image: businessConfig?.coverImage || businessConfig?.logo,
+    businessConfig
   });
 
   // Determinar si debe mostrar el selector de tipo de pedido

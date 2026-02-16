@@ -376,4 +376,20 @@ router.put("/:businessId", tenantAuth, async (req, res) => {
     }
 });
 
+// GET /api/business-config/catalog - Listar todos los negocios activos (para sitemap/SEO)
+router.get("/catalog", async (req, res) => {
+  try {
+    const businesses = await BusinessConfig.find(
+      { isActive: true },
+      'slug businessName logo description city department updatedAt'
+    ).sort({ updatedAt: -1 }).lean();
+    
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.json(businesses);
+  } catch (error) {
+    logger.error('Error obteniendo catálogo de negocios', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener el catálogo', 500));
+  }
+});
+
 module.exports = router;
