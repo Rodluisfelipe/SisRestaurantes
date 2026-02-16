@@ -167,7 +167,7 @@ const BusinessHeader = ({
   return (
     <div className="w-full relative">
       {/* ═══════════════ HERO COVER SECTION ═══════════════ */}
-      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/7', minHeight: '140px', maxHeight: '220px' }}>
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: '21/7', minHeight: '100px', maxHeight: '130px' }}>
         {/* Cover image or gradient fallback */}
         {hasCover ? (
           <img
@@ -188,7 +188,7 @@ const BusinessHeader = ({
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-black/10" />
 
         {/* ── Top action bar (glassmorphic icons) ── */}
-        <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between">
+        <div className="absolute top-2 left-2.5 right-2.5 z-20 flex items-center justify-between">
           {/* Status badge — top left */}
           <div className={`${comesFromCatalog ? 'opacity-0 pointer-events-none' : ''}`}>
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] sm:text-xs font-bold rounded-full shadow-lg backdrop-blur-md ${
@@ -240,17 +240,17 @@ const BusinessHeader = ({
       </div>
 
       {/* ═══════════════ INFO SECTION (below cover) ═══════════════ */}
-      <div className="relative bg-white px-4 pb-3 pt-12">
+      <div className="relative bg-white px-4 pb-2 pt-9">
         {/* Logo — overlapping the cover/info boundary */}
-        <div className="absolute left-1/2 -translate-x-1/2 -top-10 z-10">
-          <div className="w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] rounded-2xl overflow-hidden bg-white shadow-xl ring-[3px] ring-white">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-7 z-10">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-white shadow-lg ring-2 ring-white">
             <img 
               src={businessConfig.logo || defaultLogo}
               alt={`Logo de ${businessConfig.businessName || 'negocio'}`}
               className="w-full h-full object-cover"
               loading="eager"
-              width="88"
-              height="88"
+              width="64"
+              height="64"
               fetchPriority="high"
               onError={(e) => {
                 if (!logoError) { setLogoError(true); e.target.src = defaultLogo; }
@@ -260,12 +260,12 @@ const BusinessHeader = ({
         </div>
 
         {/* Business name */}
-        <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 text-center leading-tight">
+        <h1 className="text-base sm:text-lg font-extrabold text-gray-900 text-center leading-tight">
           {businessConfig.businessName || 'Mi Restaurante'}
         </h1>
 
         {/* Address chip + social icons — single compact row */}
-        <div className="flex items-center justify-center gap-2 mt-1.5 flex-wrap">
+        <div className="flex items-center justify-center gap-2 mt-1 flex-wrap">
           {businessConfig?.address && (
             <a 
               href={businessConfig?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`}

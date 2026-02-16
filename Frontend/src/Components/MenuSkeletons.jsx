@@ -100,7 +100,7 @@ export const FilterableMenuSkeleton = () => (
 export const BusinessHeaderSkeleton = () => (
   <div className="w-full relative animate-fadeIn">
     {/* Hero cover area — matches aspect-ratio 16/7, minHeight 140, maxHeight 220 */}
-    <div className="relative w-full overflow-hidden" style={{ aspectRatio: '16/7', minHeight: '140px', maxHeight: '220px' }}>
+    <div className="relative w-full overflow-hidden" style={{ aspectRatio: '21/7', minHeight: '100px', maxHeight: '130px' }}>
       <div className={`absolute inset-0 bg-gray-200 ${shimmerClass}`} />
       {/* Fake status badge */}
       <div className="absolute top-3 left-3 z-10">
@@ -115,10 +115,10 @@ export const BusinessHeaderSkeleton = () => (
     </div>
 
     {/* Info section — matches real component layout */}
-    <div className="relative bg-white px-4 pb-3 pt-12">
+    <div className="relative bg-white px-4 pb-2 pt-9">
       {/* Logo overlap */}
-      <div className="absolute left-1/2 -translate-x-1/2 -top-10 z-10">
-        <div className={`w-[76px] h-[76px] sm:w-[88px] sm:h-[88px] rounded-2xl bg-gray-200 ring-[3px] ring-white ${shimmerClass}`} />
+      <div className="absolute left-1/2 -translate-x-1/2 -top-7 z-10">
+        <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-gray-200 ring-2 ring-white ${shimmerClass}`} />
       </div>
       {/* Name */}
       <div className="flex justify-center">
