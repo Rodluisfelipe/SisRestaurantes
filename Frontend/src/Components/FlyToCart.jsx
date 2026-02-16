@@ -84,7 +84,7 @@ const FlyingDot = ({ startX, startY, targetX, targetY, image, color }) => {
         }}
       >
         {image ? (
-          <img src={image} alt="" className="w-full h-full object-cover" />
+          <img src={image} alt="" className="w-full h-full object-cover" loading="lazy" width="40" height="40" />
         ) : (
           <span className="text-lg">🍽️</span>
         )}

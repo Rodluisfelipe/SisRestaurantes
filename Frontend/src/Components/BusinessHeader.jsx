@@ -230,8 +230,12 @@ const BusinessHeader = ({
           <div className="w-20 h-20 sm:w-28 sm:h-28 rounded-full overflow-hidden bg-white shadow-lg border-[3px] border-white">
             <img 
               src={businessConfig.logo || defaultLogo}
-              alt="Logo del negocio"
+              alt={`Logo de ${businessConfig.businessName || 'negocio'}`}
               className="w-full h-full object-cover"
+              loading="eager"
+              width="112"
+              height="112"
+              fetchPriority="high"
               onError={(e) => {
                 if (!logoError) { setLogoError(true); e.target.src = defaultLogo; }
               }}

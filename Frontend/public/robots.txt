@@ -1,19 +1,8 @@
 User-agent: *
 Allow: /
-
-# Sitemap
-Sitemap: https://menuby.tech/sitemap.xml
-
-# Disallow admin and private areas
 Disallow: /admin/
 Disallow: /superadmin/
 Disallow: /api/
 Disallow: /assets/
 
-# Allow all landing pages
-Allow: /features
-Allow: /pricing
-Allow: /demo
-Allow: /contact
-Allow: /login
-Allow: /register
+Sitemap: https://menuby.tech/sitemap.xml

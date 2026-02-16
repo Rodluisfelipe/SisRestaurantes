@@ -1174,7 +1174,7 @@ export default function Menu() {
 
   return (
     <FlyToCartProvider>
-    <div className="min-h-screen bg-gray-50 pb-20 pt-safe">
+    <main className="min-h-screen bg-gray-50 pb-20 pt-safe">
       <BusinessHeader 
         comesFromCatalog={comesFromCatalog}
         onShowFavorites={() => setShowFavorites(true)}
@@ -1451,7 +1451,7 @@ export default function Menu() {
           </a>
         </div>
       </footer>
-    </div>
+    </main>
     </FlyToCartProvider>
   );
 } 

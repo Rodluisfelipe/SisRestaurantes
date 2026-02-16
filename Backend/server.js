@@ -99,7 +99,13 @@ app.options('*', cors());
 // Security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: false // Handled by frontend
+  contentSecurityPolicy: false, // Handled by frontend
+  strictTransportSecurity: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  },
+  crossOriginOpenerPolicy: { policy: 'same-origin' }
 }));
 
 // Request logging
