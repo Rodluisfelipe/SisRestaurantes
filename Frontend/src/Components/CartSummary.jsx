@@ -1129,10 +1129,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           <div className="w-10 h-1 rounded-full bg-slate-300" />
         </div>
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-slate-100 px-4 py-2.5 sm:px-6 sm:py-4 flex justify-between items-center z-10 rounded-t-2xl flex-shrink-0">
-          <div>
+        <div className="sticky top-0 bg-white border-b border-slate-100 px-4 py-2.5 sm:px-6 sm:py-3 flex justify-between items-center z-10 rounded-t-2xl flex-shrink-0">
+          <div className="flex items-center gap-2">
             <h2 className="text-lg font-bold text-slate-800">Tu pedido</h2>
-            <p className="text-xs text-slate-400">{totalItems} {totalItems === 1 ? 'producto' : 'productos'}</p>
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{totalItems}</span>
           </div>
           <button
             onClick={onClose}
@@ -1410,23 +1410,41 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
         {/* ── Sticky bottom: Total + Confirm button ── */}
         {cart.length > 0 && (
-          <div className="border-t border-slate-200 bg-white px-4 py-2.5 sm:px-6 flex-shrink-0 pb-safe sm:rounded-b-2xl space-y-1.5">
-            {/* Total row */}
-            <div className="flex justify-between items-center">
-              <div>
+          <div className="border-t border-slate-200 bg-white px-4 pt-3 pb-3 sm:px-6 flex-shrink-0 pb-safe sm:rounded-b-2xl">
+            {/* Price breakdown when there are extras */}
+            {(deliveryFee > 0 || appliedCoupon) && (
+              <div className="space-y-1 mb-2">
+                <div className="flex justify-between text-xs text-slate-400">
+                  <span>Subtotal</span>
+                  <span>${totalAmount.toLocaleString('es-CO')}</span>
+                </div>
                 {deliveryFee > 0 && (
-                  <p className="text-[11px] text-slate-400">Envío: ${deliveryFee.toLocaleString('es-CO')}</p>
+                  <div className="flex justify-between text-xs text-slate-400">
+                    <span>Envío</span>
+                    <span>${deliveryFee.toLocaleString('es-CO')}</span>
+                  </div>
                 )}
                 {appliedCoupon && (
-                  <p className="text-[11px] text-green-500">Descuento: -${appliedCoupon.discountAmount.toLocaleString('es-CO')}</p>
+                  <div className="flex justify-between text-xs text-green-500">
+                    <span>Descuento</span>
+                    <span>-${appliedCoupon.discountAmount.toLocaleString('es-CO')}</span>
+                  </div>
                 )}
-                <p className="text-base font-bold text-slate-800">
-                  Total ${(appliedCoupon ? ((deliveryFee || 0) + finalAmount) : ((deliveryFee || 0) + totalAmount)).toLocaleString('es-CO')}
-                </p>
+                <div className="border-t border-dashed border-slate-200" />
               </div>
-              {appliedCoupon && (
-                <p className="text-xs text-slate-400 line-through">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</p>
-              )}
+            )}
+
+            {/* Total row — prominent */}
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-semibold text-slate-500">Total</span>
+              <div className="flex items-baseline gap-2">
+                {appliedCoupon && (
+                  <span className="text-xs line-through text-slate-300">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</span>
+                )}
+                <span className="text-2xl font-extrabold text-slate-900">
+                  ${(appliedCoupon ? ((deliveryFee || 0) + finalAmount) : ((deliveryFee || 0) + totalAmount)).toLocaleString('es-CO')}
+                </span>
+              </div>
             </div>
 
             {/* Confirm button */}
@@ -1489,8 +1507,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     backgroundColor: isDisabled ? '#9ca3af' : (businessConfig.theme.buttonColor || '#f97316'),
                     color: businessConfig.theme.buttonTextColor || '#ffffff'
                   }}
-                  className={`w-full py-3 rounded-xl font-semibold flex items-center justify-center gap-2 text-sm transition-all ${
-                    isDisabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98]'
+                  className={`w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-[15px] shadow-lg transition-all ${
+                    isDisabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98] hover:shadow-xl'
                   }`}
                   disabled={isDisabled}
                 >
