@@ -141,7 +141,7 @@ router.get('/', async (req, res) => {
     // Obtener todos los negocios activos
     const businesses = await BusinessConfig.find({ 
       isActive: true
-    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location businessHours createdAt updatedAt');
+    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt');
 
     // Si hay ubicación, filtrar por cobertura
     let businessesToShow = businesses;
@@ -260,6 +260,7 @@ router.get('/', async (req, res) => {
         popularityScore: info.popularityScore || 0,
         orderCount: info.orderCount || 0,
         categories: info.categories,
+        reviewStats: business.reviewStats || { averageRating: 0, totalReviews: 0 },
         deliveryZone: business._doc?.deliveryZone || business.deliveryZone || null
       };
     });
@@ -288,7 +289,7 @@ router.get('/featured', async (req, res) => {
     const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
 
     const businesses = await BusinessConfig.find({ isActive: true })
-      .select('businessName slug logo coverImage description isOpen businessHours location department city createdAt').lean();
+      .select('businessName slug logo coverImage description isOpen businessHours location department city reviewStats createdAt').lean();
 
     const businessIds = businesses.map(b => b._id);
     const batchInfo = await getBatchBusinessInfo(businessIds);
@@ -322,7 +323,8 @@ router.get('/featured', async (req, res) => {
         topProducts: info.topProducts,
         popularityScore: info.popularityScore,
         orderCount: info.orderCount,
-        categories: info.categories
+        categories: info.categories,
+        reviewStats: b.reviewStats || { averageRating: 0, totalReviews: 0 }
       };
     });
 
@@ -402,7 +404,7 @@ router.get('/search/products', async (req, res) => {
     const businesses = await BusinessConfig.find({
       _id: { $in: businessIds },
       isActive: true
-    }).select('businessName slug logo coverImage description theme isOpen address department city location businessHours createdAt').lean();
+    }).select('businessName slug logo coverImage description theme isOpen address department city location businessHours reviewStats createdAt').lean();
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -431,6 +433,7 @@ router.get('/search/products', async (req, res) => {
         todayHours: b.businessHours?.[todayKey] || null,
         isNew: b.createdAt >= thirtyDaysAgo,
         createdAt: b.createdAt,
+        reviewStats: b.reviewStats || { averageRating: 0, totalReviews: 0 },
         matchingProducts: productsByBusiness[bid] || [],
         matchCount: (productsByBusiness[bid] || []).length
       };
@@ -464,7 +467,7 @@ router.get('/search', async (req, res) => {
     }
 
     const businesses = await BusinessConfig.find(filters)
-      .select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours createdAt')
+      .select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt')
       .limit(parseInt(limit))
       .skip(parseInt(offset))
       .sort({ createdAt: -1 });
@@ -498,7 +501,8 @@ router.get('/search', async (req, res) => {
         isCurrentlyOpen: typeof business.isCurrentlyOpen === 'function' ? business.isCurrentlyOpen() : business.isOpen,
         businessHours: business.businessHours,
         productCount: info.productCount,
-        categories: info.categories
+        categories: info.categories,
+        reviewStats: business.reviewStats || { averageRating: 0, totalReviews: 0 }
       };
     });
 
@@ -554,7 +558,7 @@ router.get('/:id', async (req, res) => {
     const business = await BusinessConfig.findOne({ 
       _id: businessId,
       isActive: true 
-    }).select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours createdAt updatedAt');
+    }).select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt');
 
     if (!business) {
       return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
@@ -589,7 +593,8 @@ router.get('/:id', async (req, res) => {
       isCurrentlyOpen: typeof business.isCurrentlyOpen === 'function' ? business.isCurrentlyOpen() : business.isOpen,
       businessHours: business.businessHours,
       productCount: info.productCount,
-      categories: info.categories
+      categories: info.categories,
+      reviewStats: business.reviewStats || { averageRating: 0, totalReviews: 0 }
     };
 
     logger.info(`Business found`, { id: business._id, name: business.businessName }, req);

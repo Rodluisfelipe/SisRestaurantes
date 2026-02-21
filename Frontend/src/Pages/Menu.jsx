@@ -18,6 +18,8 @@ import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
 import PaymentUpload from "../Components/PaymentUpload";
 import MyOrders from "../Components/MyOrders";
+import ReviewModal from "../Components/ReviewModal";
+import ReviewsSheet from "../Components/ReviewsSheet";
 import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -110,6 +112,11 @@ export default function Menu() {
   const [activeCustomerToken, setActiveCustomerToken] = useState(() => sessionStorage.getItem('activeCustomerToken') || null);
   const [activeOrderStatus, setActiveOrderStatus] = useState(null);
   
+  // Review states
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReviewsSheet, setShowReviewsSheet] = useState(false);
+  const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
+  
   // Check if business uses in-app ordering
   const isInAppMode = businessConfig?.orderingMode === 'inapp' || businessConfig?.orderingMode === 'both';
 
@@ -133,14 +140,20 @@ export default function Menu() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [activeOrderId, activeCustomerToken, isInAppMode]);
 
-  // Clear active order (user confirmed completed order)
+  // Clear active order (user confirmed completed order) — trigger review modal
   const clearActiveOrder = useCallback(() => {
+    const orderId = activeOrderId;
     setActiveOrderId(null);
     setActiveCustomerToken(null);
     setActiveOrderStatus(null);
     sessionStorage.removeItem('activeOrderId');
     sessionStorage.removeItem('activeCustomerToken');
-  }, []);
+    // Trigger review prompt if we have the info
+    if (orderId && orderInfo.phone && orderInfo.customerName) {
+      setPendingReviewOrder(orderId);
+      setShowReviewModal(true);
+    }
+  }, [activeOrderId, orderInfo.phone, orderInfo.customerName]);
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -1179,6 +1192,8 @@ export default function Menu() {
         comesFromCatalog={comesFromCatalog}
         onShowFavorites={() => setShowFavorites(true)}
         onShowHistory={() => setShowHistory(true)}
+        onShowReviews={() => setShowReviewsSheet(true)}
+        reviewStats={businessConfig?.reviewStats}
         showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
         showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
       />
@@ -1431,6 +1446,29 @@ export default function Menu() {
 
       {/* Footer - MenuBy Branding */}
       <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-4 mt-8">
+
+      {/* Review Modal — triggered after order completion */}
+      <ReviewModal
+        show={showReviewModal}
+        onClose={(submitted) => {
+          setShowReviewModal(false);
+          setPendingReviewOrder(null);
+        }}
+        businessId={businessId}
+        orderId={pendingReviewOrder}
+        customerName={orderInfo.customerName}
+        customerPhone={orderInfo.phone}
+        theme={businessConfig?.theme}
+      />
+
+      {/* Reviews Sheet — list of reviews */}
+      <ReviewsSheet
+        show={showReviewsSheet}
+        onClose={() => setShowReviewsSheet(false)}
+        businessId={businessId}
+        reviewStats={businessConfig?.reviewStats}
+        theme={businessConfig?.theme}
+      />
         <div className="container mx-auto px-4 text-center">
           <a 
             href="https://www.menuby.tech" 
