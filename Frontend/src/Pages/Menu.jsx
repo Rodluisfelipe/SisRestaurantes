@@ -18,8 +18,6 @@ import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
 import PaymentUpload from "../Components/PaymentUpload";
 import MyOrders from "../Components/MyOrders";
-const ReviewModal = lazy(() => import("../Components/ReviewModal"));
-const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -34,6 +32,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import NotFound from './NotFound';
 import LeadCapturePage from './LeadCapturePage';
 import useSEO from '../hooks/useSEO';
+
+// Lazy-loaded components (must be after all static imports to avoid TDZ)
+const ReviewModal = lazy(() => import("../Components/ReviewModal"));
+const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 
 /**
  * Página principal del Menú para clientes
