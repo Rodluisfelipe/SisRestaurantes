@@ -149,11 +149,11 @@ export default function Menu() {
     sessionStorage.removeItem('activeOrderId');
     sessionStorage.removeItem('activeCustomerToken');
     // Trigger review prompt if we have the info
-    if (orderId && orderInfo.phone && orderInfo.customerName) {
+    if (orderId && orderInfo?.phone && orderInfo?.customerName) {
       setPendingReviewOrder(orderId);
       setShowReviewModal(true);
     }
-  }, [activeOrderId, orderInfo.phone, orderInfo.customerName]);
+  }, [activeOrderId, orderInfo?.phone, orderInfo?.customerName]);
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -1444,9 +1444,6 @@ export default function Menu() {
         }}
       />
 
-      {/* Footer - MenuBy Branding */}
-      <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-4 mt-8">
-
       {/* Review Modal — triggered after order completion */}
       <ReviewModal
         show={showReviewModal}
@@ -1456,8 +1453,8 @@ export default function Menu() {
         }}
         businessId={businessId}
         orderId={pendingReviewOrder}
-        customerName={orderInfo.customerName}
-        customerPhone={orderInfo.phone}
+        customerName={orderInfo?.customerName || ''}
+        customerPhone={orderInfo?.phone || ''}
         theme={businessConfig?.theme}
       />
 
@@ -1469,6 +1466,9 @@ export default function Menu() {
         reviewStats={businessConfig?.reviewStats}
         theme={businessConfig?.theme}
       />
+
+      {/* Footer - MenuBy Branding */}
+      <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-4 mt-8">
         <div className="container mx-auto px-4 text-center">
           <a 
             href="https://www.menuby.tech" 
