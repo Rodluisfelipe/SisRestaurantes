@@ -1,5 +1,5 @@
 // @charset UTF-8
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
@@ -18,8 +18,8 @@ import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
 import PaymentUpload from "../Components/PaymentUpload";
 import MyOrders from "../Components/MyOrders";
-import ReviewModal from "../Components/ReviewModal";
-import ReviewsSheet from "../Components/ReviewsSheet";
+const ReviewModal = lazy(() => import("../Components/ReviewModal"));
+const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -1445,27 +1445,31 @@ export default function Menu() {
       />
 
       {/* Review Modal — triggered after order completion */}
-      <ReviewModal
-        show={showReviewModal}
-        onClose={(submitted) => {
-          setShowReviewModal(false);
-          setPendingReviewOrder(null);
-        }}
-        businessId={businessId}
-        orderId={pendingReviewOrder}
-        customerName={orderInfo?.customerName || ''}
-        customerPhone={orderInfo?.phone || ''}
-        theme={businessConfig?.theme}
-      />
+      <Suspense fallback={null}>
+        <ReviewModal
+          show={showReviewModal}
+          onClose={(submitted) => {
+            setShowReviewModal(false);
+            setPendingReviewOrder(null);
+          }}
+          businessId={businessId}
+          orderId={pendingReviewOrder}
+          customerName={orderInfo?.customerName || ''}
+          customerPhone={orderInfo?.phone || ''}
+          theme={businessConfig?.theme}
+        />
+      </Suspense>
 
       {/* Reviews Sheet — list of reviews */}
-      <ReviewsSheet
-        show={showReviewsSheet}
-        onClose={() => setShowReviewsSheet(false)}
-        businessId={businessId}
-        reviewStats={businessConfig?.reviewStats}
-        theme={businessConfig?.theme}
-      />
+      <Suspense fallback={null}>
+        <ReviewsSheet
+          show={showReviewsSheet}
+          onClose={() => setShowReviewsSheet(false)}
+          businessId={businessId}
+          reviewStats={businessConfig?.reviewStats}
+          theme={businessConfig?.theme}
+        />
+      </Suspense>
 
       {/* Footer - MenuBy Branding */}
       <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-4 mt-8">

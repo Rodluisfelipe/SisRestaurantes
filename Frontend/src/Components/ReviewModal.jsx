@@ -126,11 +126,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
 
                 {/* Comment */}
                 {rating > 0 && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    className="px-5 pb-3"
-                  >
+                  <div className="px-5 pb-3">
                     <textarea
                       value={comment}
                       onChange={e => setComment(e.target.value)}
@@ -141,7 +137,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                       style={{ '--tw-ring-color': buttonColor + '40' }}
                     />
                     <p className="text-right text-xs text-gray-400 mt-0.5">{comment.length}/500</p>
-                  </motion.div>
+                  </div>
                 )}
 
                 {error && (
