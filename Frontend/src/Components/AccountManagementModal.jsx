@@ -372,7 +372,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                 >
                   <h3 className="text-base font-bold text-gray-800 mb-4">Mis Pedidos</h3>
                   
-                  {orders.length === 0 ? (
+                  {customerOrders.length === 0 ? (
                     <div className="text-center py-10">
                       <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
                         <FaBox className="text-xl text-gray-300" />
@@ -389,7 +389,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {orders.map((order, index) => {
+                      {customerOrders.map((order, index) => {
                         const orderNum = order.orderNumber || index + 1;
                         const shortId = order._id?.slice(-6) || '';
                         const typeInfo = getOrderTypeInfo(order.orderType);

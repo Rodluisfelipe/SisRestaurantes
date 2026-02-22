@@ -234,18 +234,29 @@ router.get('/:phone/orders', async (req, res) => {
       phone: phone
     };
 
+    // Obtener pedidos activos + completados
+    const CompletedOrder = require('../Models/CompletedOrder');
+    
+    const completedFilter = {
+      businessId: isValidObjectId(businessId) ? businessId : null,
+      phone: phone
+    };
     if (status) {
       orderFilter.status = status;
+      completedFilter.status = status;
     }
 
-    // Obtener pedidos con paginación
-    const orders = await Order.find(orderFilter)
-      .sort({ createdAt: -1 })
-      .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .populate('items.productId', 'name price');
+    const [activeOrders, completedOrders] = await Promise.all([
+      Order.find(orderFilter).sort({ createdAt: -1 }).limit(parseInt(limit)),
+      CompletedOrder.find(completedFilter).sort({ completedAt: -1 }).limit(parseInt(limit))
+    ]);
 
-    const totalOrders = await Order.countDocuments(orderFilter);
+    // Merge and sort by date (newest first)
+    const orders = [...activeOrders, ...completedOrders]
+      .sort((a, b) => new Date(b.createdAt || b.completedAt) - new Date(a.createdAt || a.completedAt))
+      .slice(0, parseInt(limit));
+
+    const totalOrders = await Order.countDocuments(orderFilter) + await CompletedOrder.countDocuments(completedFilter);
 
     res.json({
       orders,
