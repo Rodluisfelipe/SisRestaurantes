@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import { socket } from '../services/socket';
 import { getBusinessIdFromSlug } from '../utils/getBusinessId';
@@ -45,6 +45,12 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Refs to avoid re-triggering useEffect when callbacks change
+  const onErrorRef = useRef(onError);
+  const onLoadedRef = useRef(onLoaded);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  useEffect(() => { onLoadedRef.current = onLoaded; }, [onLoaded]);
+
   useEffect(() => {
     async function fetchBusiness() {
       setLoading(true);
@@ -64,13 +70,13 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           setLoading(false);
           
           // Si hay una función onError, notificar del error
-          if (onError && typeof onError === 'function') {
-            onError({ message: 'ID de negocio inválido', type: 'INVALID_ID' });
+          if (onErrorRef.current && typeof onErrorRef.current === 'function') {
+            onErrorRef.current({ message: 'ID de negocio inválido', type: 'INVALID_ID' });
           }
           
           // Notificar que la carga ha terminado
-          if (onLoaded && typeof onLoaded === 'function') {
-            onLoaded();
+          if (onLoadedRef.current && typeof onLoadedRef.current === 'function') {
+            onLoadedRef.current();
           }
           
           return;
@@ -106,8 +112,8 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           setError(error.message || 'Error desconocido al cargar la configuración');
           
           // Si hay una función onError, notificar del error
-          if (onError && typeof onError === 'function') {
-            onError(error);
+          if (onErrorRef.current && typeof onErrorRef.current === 'function') {
+            onErrorRef.current(error);
           }
         }
       } catch (error) {
@@ -115,20 +121,20 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
         setError(error.message || 'Error desconocido al obtener el business ID');
         
         // Si hay una función onError, notificar del error
-        if (onError && typeof onError === 'function') {
-          onError(error);
+        if (onErrorRef.current && typeof onErrorRef.current === 'function') {
+          onErrorRef.current(error);
         }
       } finally {
         setLoading(false);
         
         // Notificar que la carga ha terminado
-        if (onLoaded && typeof onLoaded === 'function') {
-          onLoaded();
+        if (onLoadedRef.current && typeof onLoadedRef.current === 'function') {
+          onLoadedRef.current();
         }
       }
     }
     fetchBusiness();
-  }, [propBusinessId, onError, onLoaded]);
+  }, [propBusinessId]);
 
   // Update businessId if prop changes - SOLO cuando la prop cambia, NO cuando cambia el state
   useEffect(() => {

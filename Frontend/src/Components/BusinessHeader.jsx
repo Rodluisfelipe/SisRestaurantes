@@ -12,7 +12,9 @@ const BusinessHeader = ({
   onShowFavorites,
   onShowHistory,
   showFavoritesButton = false,
-  showHistoryButton = false
+  showHistoryButton = false,
+  onShowReviews,
+  reviewStats
 }) => {
   const [businessConfig, setBusinessConfig] = useState({
     businessName: '',
@@ -226,6 +228,24 @@ const BusinessHeader = ({
             {businessConfig.businessName || 'Mi Restaurante'}
           </h1>
           
+          {/* Rating chip */}
+          {reviewStats && reviewStats.totalReviews > 0 && (
+            <button
+              onClick={onShowReviews}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all active:scale-95 ${
+                businessConfig.coverImage
+                  ? 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
+                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+              }`}
+            >
+              <span>⭐</span>
+              <span>{reviewStats.averageRating.toFixed(1)}</span>
+              <span className={businessConfig.coverImage ? 'text-white/60' : 'text-amber-400'}>·</span>
+              <span className={businessConfig.coverImage ? 'text-white/80' : 'text-amber-600'}>{reviewStats.totalReviews} reseñas</span>
+              <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            </button>
+          )}
+
           {/* Address + Social — compact inline row */}
           <div className="flex items-center justify-center gap-2 flex-wrap">
           {businessConfig?.address && (

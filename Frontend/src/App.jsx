@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useCallback } from "react";
 import { Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "./Context/AuthContext";
 import { useState } from "react";
@@ -65,6 +65,18 @@ function BusinessProviderWrapper({ children }) {
   const [businessNotFound, setBusinessNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
   
+  const handleError = useCallback((error) => {
+    if (error?.response?.status === 404 || 
+        error?.type === 'INVALID_ID' || 
+        (error?.message && error?.message.includes('not found'))) {
+      setBusinessNotFound(true);
+    }
+    setLoading(false);
+  }, []);
+
+  const handleLoaded = useCallback(() => {
+    setLoading(false);
+  }, []);
   
   // Si el negocio no existe, mostrar la página NotFound
   if (businessNotFound) {
@@ -74,21 +86,8 @@ function BusinessProviderWrapper({ children }) {
   return (
     <BusinessProvider 
       businessId={businessId}
-      onError={(error) => {
-        // Error silencioso
-        
-        // Si es un error 404 o no se pudo encontrar el negocio, mostrar NotFound
-        if (error?.response?.status === 404 || 
-            error?.type === 'INVALID_ID' || 
-            (error?.message && error?.message.includes('not found'))) {
-          setBusinessNotFound(true);
-        }
-        
-        setLoading(false);
-      }}
-      onLoaded={() => {
-        setLoading(false);
-      }}
+      onError={handleError}
+      onLoaded={handleLoaded}
     >
       <DynamicManifest />
       {loading ? (
