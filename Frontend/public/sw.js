@@ -1,11 +1,11 @@
 // Service Worker para notificaciones push PWA
-// Versión: 2.0.0 - Cloudflare Pages compatible
+// Versión: 3.0.0 - No cache JS/CSS assets (Cloudflare CDN handles it)
 
-const CACHE_NAME = 'menuby-v3';
+const CACHE_NAME = 'menuby-v4';
 
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker v2.0...');
+  console.log('[SW] Installing service worker v3.0...');
   self.skipWaiting();
 });
 
@@ -26,8 +26,8 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Network Only - dejar que Cloudflare CDN maneje el caching
-// No interceptamos requests para evitar problemas de compatibilidad
+// Fetch: Network first — only cache index.html for offline support
+// Hashed assets (JS/CSS) are served by Cloudflare CDN and don't need SW caching
 self.addEventListener('fetch', (event) => {
   // Solo interceptar requests GET del mismo origen
   const url = new URL(event.request.url);
@@ -38,7 +38,14 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network first, cache fallback — siempre retornar un Response válido
+  // Don't cache hashed assets — they change on every deploy and CDN handles them
+  const isHashedAsset = url.pathname.startsWith('/assets/');
+  if (isHashedAsset) {
+    // Let the browser fetch directly from CDN, no SW interception
+    return;
+  }
+
+  // Network first, cache fallback — only for HTML/non-hashed resources
   event.respondWith(
     fetch(event.request)
       .then((response) => {
