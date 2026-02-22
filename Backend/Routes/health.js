@@ -10,13 +10,11 @@ const { formatHttpError } = require('../utils/errorFormatter');
  */
 router.get('/', (req, res) => {
   try {
-    // Información básica del sistema
+    // Información básica del sistema (sin exponer datos sensibles del servidor)
     const healthInfo = {
       status: 'online',
       timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      memory: process.memoryUsage()
+      environment: process.env.NODE_ENV || 'development'
     };
     
     return res.status(200).json(healthInfo);

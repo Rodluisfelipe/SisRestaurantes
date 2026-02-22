@@ -157,7 +157,7 @@ function OrdersDashboard() {
     const businessSlug = match ? match[1] : '';
     
     // Abrir en una nueva pestaña
-    window.open(`/${businessSlug}/kitchen`, '_blank');
+    window.open(`/${businessSlug}/kitchen`, '_blank', 'noopener,noreferrer');
   };
   
   // Show order details

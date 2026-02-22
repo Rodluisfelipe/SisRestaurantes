@@ -6,13 +6,21 @@ const Product = require('../Models/Product');
 const { isValidObjectId } = require('../utils/validators');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for public favorites endpoints
+const favoritesLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 40, // 40 requests per IP per 15 minutes
+  message: { message: 'Demasiadas solicitudes. Intente nuevamente más tarde.' }
+});
 
 /**
  * GET /api/favorites
  * Get all favorites for a customer
  * Query params: phone, businessId
  */
-router.get('/', async (req, res) => {
+router.get('/', favoritesLimiter, async (req, res) => {
   try {
     const { phone, businessId } = req.query;
 
@@ -39,7 +47,7 @@ router.get('/', async (req, res) => {
  * Add a product to favorites
  * Body: { phone, businessId, productId, productName, productPrice, productImage, selectedToppings, selectedOptions, notes }
  */
-router.post('/', async (req, res) => {
+router.post('/', favoritesLimiter, async (req, res) => {
   try {
     const {
       phone,
@@ -128,7 +136,7 @@ router.post('/', async (req, res) => {
  * DELETE /api/favorites/:id
  * Remove a favorite
  */
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', favoritesLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const { phone, businessId } = req.query;
@@ -166,7 +174,7 @@ router.delete('/:id', async (req, res) => {
  * POST /api/favorites/:id/order
  * Record that a favorite was ordered
  */
-router.post('/:id/order', async (req, res) => {
+router.post('/:id/order', favoritesLimiter, async (req, res) => {
   try {
     const { id } = req.params;
 

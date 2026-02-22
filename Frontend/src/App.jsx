@@ -35,24 +35,11 @@ import DynamicManifest from "./Components/DynamicManifest";
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const { businessId } = useParams();
-  const location = useLocation();
   
   if (loading) return null; // O un spinner si prefieres
 
-  // Si hay token en localStorage, consideramos que tiene sesión
-  const hasToken = Boolean(localStorage.getItem('accessToken'));
-  
-  // Check for SuperAdmin parameters in URL
-  const params = new URLSearchParams(location.search);
-  const hasSuperAdminToken = params.get('satoken') || params.get('source') === 'superadmin';
-  
-  // Allow access if it's a SuperAdmin request
-  if (hasSuperAdminToken) {
-    return children;
-  }
-  
-  // Solo redirige si no tiene token Y no está autenticado
-  if (!hasToken && !isAuthenticated) {
+  // Rely on server-validated auth state from AuthContext, not raw localStorage
+  if (!isAuthenticated) {
     return <Navigate to={`/${businessId}/login`} replace />;
   }
 

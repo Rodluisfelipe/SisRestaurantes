@@ -3,11 +3,13 @@ const router = express.Router();
 const Banner = require('../Models/Banner');
 const BusinessConfig = require('../Models/BusinessConfig');
 const authMiddleware = require('../middleware/authMiddleware');
+const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
+const { BANNER_STATUS } = require('../utils/constants');
 
 // Validación de entrada para crear banner (después de multer)
 const validateBannerInput = (req, res, next) => {
@@ -98,42 +100,8 @@ const upload = multer({
   }
 });
 
-// GET /api/banners/test - Endpoint de prueba sin autenticación
-router.get('/test', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Banners API funcionando correctamente',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// POST /api/banners/test-upload - Endpoint temporal para probar subida sin autenticación
-router.post('/test-upload', upload.single('image'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'La imagen es requerida'
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Imagen recibida correctamente',
-      filename: req.file.filename,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Error al procesar imagen'
-    });
-  }
-});
-
-// POST /api/banners/superadmin-create - Endpoint temporal para SuperAdmin crear banners
-router.post('/superadmin-create', upload.single('image'), async (req, res) => {
+// POST /api/banners/superadmin-create - SuperAdmin creates banners (authenticated)
+router.post('/superadmin-create', protectSuperAdmin, upload.single('image'), async (req, res) => {
   try {
     const { title, description, endDate, priority, businessId } = req.body;
 
@@ -170,7 +138,7 @@ router.post('/superadmin-create', upload.single('image'), async (req, res) => {
       image: `/uploads/banners/${req.file.filename}`,
       endDate: new Date(endDate),
       priority: parseInt(priority) || 1,
-      status: 'pending'
+      status: BANNER_STATUS.PENDING
     });
 
     await banner.save();
@@ -195,7 +163,7 @@ router.get('/', async (req, res) => {
   try {
     const now = new Date();
     const banners = await Banner.find({
-      status: 'approved',
+      status: BANNER_STATUS.APPROVED,
       startDate: { $lte: now },
       endDate: { $gte: now }
     })
@@ -243,7 +211,11 @@ router.get('/my', authMiddleware, async (req, res) => {
 // GET /api/banners/business/:businessId - Obtener banners de un negocio específico (con autenticación)
 router.get('/business/:businessId', authMiddleware, async (req, res) => {
   try {
+    // Tenant isolation: only allow access to own business banners (unless superadmin)
     const { businessId } = req.params;
+    if (!req.user.isSuperAdmin && req.user.businessId && req.user.businessId.toString() !== businessId.toString()) {
+      return res.status(403).json(formatHttpError(req, 'No autorizado para ver banners de otro negocio', 403));
+    }
     const banners = await Banner.find({ businessId })
       .sort({ createdAt: -1 });
 
@@ -279,8 +251,8 @@ router.get('/business/:businessId/public', async (req, res) => {
 // POST /api/banners - Crear nuevo banner (restaurante)
 router.post('/', authMiddleware, upload.single('image'), validateBannerInput, async (req, res) => {
   try {
-    // Usar businessId del FormData si está disponible, sino del token
-    let businessId = req.body.businessId || req.user.businessId;
+    // Force businessId from authenticated user (prevent impersonation)
+    let businessId = req.user.businessId;
     const { title, description, endDate, priority } = req.body;
 
     if (!req.file) {
@@ -320,9 +292,9 @@ router.post('/', authMiddleware, upload.single('image'), validateBannerInput, as
 });
 
 // GET /api/banners/pending - Obtener banners pendientes (SuperAdmin)
-router.get('/pending', authMiddleware, async (req, res) => {
+router.get('/pending', protectSuperAdmin, async (req, res) => {
   try {
-    const banners = await Banner.find({ status: 'pending' })
+    const banners = await Banner.find({ status: BANNER_STATUS.PENDING })
       .populate('businessId', 'businessName slug logo')
       .sort({ createdAt: -1 });
 
@@ -336,10 +308,10 @@ router.get('/pending', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/banners/pending/public - Obtener banners pendientes (sin autenticación para SuperAdmin temporal)
-router.get('/pending/public', async (req, res) => {
+// GET /api/banners/pending/public - Obtener banners pendientes (SuperAdmin autenticado)
+router.get('/pending/public', protectSuperAdmin, async (req, res) => {
   try {
-    const banners = await Banner.find({ status: 'pending' })
+    const banners = await Banner.find({ status: BANNER_STATUS.PENDING })
       .populate('businessId', 'businessName slug logo')
       .sort({ createdAt: -1 });
 
@@ -353,10 +325,10 @@ router.get('/pending/public', async (req, res) => {
   }
 });
 
-// GET /api/banners/approved/public - Obtener banners aprobados (sin autenticación)
-router.get('/approved/public', async (req, res) => {
+// GET /api/banners/approved/public - Obtener banners aprobados (SuperAdmin autenticado)
+router.get('/approved/public', protectSuperAdmin, async (req, res) => {
   try {
-    const banners = await Banner.find({ status: 'approved' })
+    const banners = await Banner.find({ status: BANNER_STATUS.APPROVED })
       .populate('businessId', 'businessName slug logo')
       .sort({ priority: -1, createdAt: -1 });
 
@@ -370,10 +342,10 @@ router.get('/approved/public', async (req, res) => {
   }
 });
 
-// GET /api/banners/rejected/public - Obtener banners rechazados (sin autenticación)
-router.get('/rejected/public', async (req, res) => {
+// GET /api/banners/rejected/public - Obtener banners rechazados (SuperAdmin autenticado)
+router.get('/rejected/public', protectSuperAdmin, async (req, res) => {
   try {
-    const banners = await Banner.find({ status: 'rejected' })
+    const banners = await Banner.find({ status: BANNER_STATUS.REJECTED })
       .populate('businessId', 'businessName slug logo')
       .sort({ createdAt: -1 });
 
@@ -387,8 +359,8 @@ router.get('/rejected/public', async (req, res) => {
   }
 });
 
-// GET /api/banners/all/public - Obtener todos los banners (sin autenticación)
-router.get('/all/public', async (req, res) => {
+// GET /api/banners/all/public - Obtener todos los banners (SuperAdmin autenticado)
+router.get('/all/public', protectSuperAdmin, async (req, res) => {
   try {
     const banners = await Banner.find({})
       .populate('businessId', 'businessName slug logo')
@@ -405,7 +377,7 @@ router.get('/all/public', async (req, res) => {
 });
 
 // PUT /api/banners/:id/approve - Aprobar banner (SuperAdmin)
-router.put('/:id/approve', authMiddleware, async (req, res) => {
+router.put('/:id/approve', protectSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { priority } = req.body;
@@ -418,7 +390,7 @@ router.put('/:id/approve', authMiddleware, async (req, res) => {
       });
     }
 
-    banner.status = 'approved';
+    banner.status = BANNER_STATUS.APPROVED;
     banner.approvedBy = req.user.id;
     banner.approvedAt = new Date();
     if (priority) banner.priority = priority;
@@ -438,7 +410,7 @@ router.put('/:id/approve', authMiddleware, async (req, res) => {
 });
 
 // PUT /api/banners/:id/reject - Rechazar banner (SuperAdmin)
-router.put('/:id/reject', authMiddleware, async (req, res) => {
+router.put('/:id/reject', protectSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { rejectionReason } = req.body;
@@ -448,7 +420,7 @@ router.put('/:id/reject', authMiddleware, async (req, res) => {
       return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
-    banner.status = 'rejected';
+    banner.status = BANNER_STATUS.REJECTED;
     banner.rejectionReason = rejectionReason;
 
     await banner.save();
@@ -519,8 +491,8 @@ router.delete('/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// PUT /api/banners/:id/approve/public - Aprobar banner (público para SuperAdmin temporal)
-router.put('/:id/approve/public', async (req, res) => {
+// PUT /api/banners/:id/approve/public - Aprobar banner (SuperAdmin autenticado)
+router.put('/:id/approve/public', protectSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { priority = 1 } = req.body;
@@ -533,7 +505,7 @@ router.put('/:id/approve/public', async (req, res) => {
       });
     }
 
-    banner.status = 'approved';
+    banner.status = BANNER_STATUS.APPROVED;
     banner.priority = priority;
     banner.approvedAt = new Date();
 
@@ -549,8 +521,8 @@ router.put('/:id/approve/public', async (req, res) => {
   }
 });
 
-// PUT /api/banners/:id/reject/public - Rechazar banner (público para SuperAdmin temporal)
-router.put('/:id/reject/public', async (req, res) => {
+// PUT /api/banners/:id/reject/public - Rechazar banner (SuperAdmin autenticado)
+router.put('/:id/reject/public', protectSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -560,7 +532,7 @@ router.put('/:id/reject/public', async (req, res) => {
       return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }
 
-    banner.status = 'rejected';
+    banner.status = BANNER_STATUS.REJECTED;
     banner.rejectionReason = reason;
 
     await banner.save();
@@ -575,8 +547,8 @@ router.put('/:id/reject/public', async (req, res) => {
   }
 });
 
-// PUT /api/banners/:id/toggle-status/public - Cambiar estado del banner (público para SuperAdmin temporal)
-router.put('/:id/toggle-status/public', async (req, res) => {
+// PUT /api/banners/:id/toggle-status/public - Cambiar estado del banner (SuperAdmin autenticado)
+router.put('/:id/toggle-status/public', protectSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -587,7 +559,7 @@ router.put('/:id/toggle-status/public', async (req, res) => {
     }
 
     banner.status = status;
-    if (status === 'approved') {
+    if (status === BANNER_STATUS.APPROVED) {
       banner.approvedAt = new Date();
     }
 
@@ -595,7 +567,7 @@ router.put('/:id/toggle-status/public', async (req, res) => {
 
     res.json({
       success: true,
-      message: `Banner ${status === 'approved' ? 'activado' : 'desactivado'} exitosamente`
+      message: `Banner ${status === BANNER_STATUS.APPROVED ? 'activado' : 'desactivado'} exitosamente`
     });
   } catch (error) {
     logger.error('Error toggling banner status (public)', error, req);
@@ -603,8 +575,8 @@ router.put('/:id/toggle-status/public', async (req, res) => {
   }
 });
 
-// DELETE /api/banners/:id/delete/public - Eliminar banner permanentemente (público para SuperAdmin temporal)
-router.delete('/:id/delete/public', async (req, res) => {
+// DELETE /api/banners/:id/delete/public - Eliminar banner (SuperAdmin autenticado)
+router.delete('/:id/delete/public', protectSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -640,14 +612,19 @@ router.delete('/:id/delete/public', async (req, res) => {
   }
 });
 
-// DELETE /api/banners/:id/delete/restaurant - Eliminar banner desde restaurante (público)
-router.delete('/:id/delete/restaurant', async (req, res) => {
+// DELETE /api/banners/:id/delete/restaurant - Eliminar banner desde restaurante (autenticado)
+router.delete('/:id/delete/restaurant', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
 
     const banner = await Banner.findById(id);
     if (!banner) {
       return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
+    }
+
+    // Tenant isolation: verify admin owns this banner's business
+    if (req.user.businessId && banner.businessId && banner.businessId.toString() !== req.user.businessId.toString() && !req.user.isSuperAdmin) {
+      return res.status(403).json(formatHttpError(req, 'No tienes acceso a este banner', 403));
     }
 
     // Eliminar archivo de imagen si existe

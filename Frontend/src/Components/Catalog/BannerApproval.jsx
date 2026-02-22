@@ -31,7 +31,7 @@ const BannerApproval = () => {
         }
       } else {
         // Usar endpoint normal con autenticación
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         const response = await fetch(`${API_URL}/banners/pending`, {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -66,7 +66,7 @@ const BannerApproval = () => {
 
       // Solo agregar Authorization si no estamos en modo temporal
       if (!isSuperAdminTemporary) {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         headers['Authorization'] = `Bearer ${token}`;
       }
 
@@ -124,7 +124,7 @@ const BannerApproval = () => {
 
       // Solo agregar Authorization si no estamos en modo temporal
       if (!isSuperAdminTemporary) {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('accessToken');
         headers['Authorization'] = `Bearer ${token}`;
       }
 

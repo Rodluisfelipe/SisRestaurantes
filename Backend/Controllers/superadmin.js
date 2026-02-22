@@ -61,8 +61,7 @@ exports.crearNegocio = async (req, res) => {
     }
     
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ 
-      message: 'Error creating business', 
-      error: error.message 
+      message: 'Error creating business'
     });
   }
 };
@@ -73,7 +72,7 @@ exports.listarNegocios = async (req, res) => {
     const negocios = await BusinessConfig.find({}).lean();
     res.json({ businesses: negocios });
   } catch (error) {
-    res.status(500).json({ message: 'Error al listar negocios', error: error.message });
+    res.status(500).json({ message: 'Error al listar negocios' });
   }
 };
 
@@ -92,21 +91,67 @@ exports.activarNegocio = async (req, res) => {
     
     res.json(negocio);
   } catch (error) {
-    res.status(500).json({ message: 'Error al actualizar negocio', error: error.message });
+    res.status(500).json({ message: 'Error al actualizar negocio' });
   }
 };
 
-// Eliminar negocio y sus admins
+// Eliminar negocio y todos sus datos asociados (cascade delete)
 exports.eliminarNegocio = async (req, res) => {
   try {
     const { id } = req.params;
-    // Eliminar todos los admins asociados a este negocio
-    await Admin.deleteMany({ businessId: id });
-    // Eliminar el negocio
-    const deleted = await BusinessConfig.findByIdAndDelete(id);
-    if (!deleted) {
+    
+    // First verify business exists
+    const business = await BusinessConfig.findById(id);
+    if (!business) {
       return res.status(404).json({ message: 'Negocio no encontrado' });
     }
+    
+    // Cascade delete all related data across 16 collections
+    const Order = require('../Models/Order');
+    const CompletedOrder = require('../Models/CompletedOrder');
+    const Product = require('../Models/Product');
+    const Category = require('../Models/Category');
+    const Customer = require('../Models/Customer');
+    const Subscription = require('../Models/Subscription');
+    const DeliveryZone = require('../Models/DeliveryZone');
+    const Table = require('../Models/Table');
+    const ToppingGroup = require('../Models/ToppingGroup');
+    const Favorite = require('../Models/Favorite');
+    const Review = require('../Models/Review');
+    const PushSubscription = require('../Models/PushSubscription');
+    const Banner = require('../Models/Banner');
+    const WhatsAppTemplate = require('../Models/WhatsAppTemplate');
+    const PaymentRequest = require('../Models/PaymentRequest');
+    
+    const deleteResults = await Promise.allSettled([
+      Admin.deleteMany({ businessId: id }),
+      Order.deleteMany({ businessId: id }),
+      CompletedOrder.deleteMany({ businessId: id }),
+      Product.deleteMany({ businessId: id }),
+      Category.deleteMany({ businessId: id }),
+      Customer.deleteMany({ businessId: id }),
+      Subscription.deleteMany({ businessId: id }),
+      DeliveryZone.deleteMany({ businessId: id }),
+      Table.deleteMany({ businessId: id }),
+      ToppingGroup.deleteMany({ businessId: id }),
+      Favorite.deleteMany({ businessId: id }),
+      Review.deleteMany({ businessId: id }),
+      PushSubscription.deleteMany({ businessId: id }),
+      Banner.deleteMany({ businessId: id }),
+      WhatsAppTemplate.deleteMany({ businessId: id }),
+      PaymentRequest.deleteMany({ businessId: id }),
+    ]);
+    
+    // Log any failures
+    const collectionNames = ['Admin', 'Order', 'CompletedOrder', 'Product', 'Category', 'Customer', 'Subscription', 'DeliveryZone', 'Table', 'ToppingGroup', 'Favorite', 'Review', 'PushSubscription', 'Banner', 'WhatsAppTemplate', 'PaymentRequest'];
+    deleteResults.forEach((result, idx) => {
+      if (result.status === 'rejected') {
+        logger.warn(`Cascade delete failed for ${collectionNames[idx]}`, { error: result.reason?.message });
+      }
+    });
+    
+    // Finally delete the business itself
+    await BusinessConfig.findByIdAndDelete(id);
     
     // Emitir evento de actualización de negocios a través de Socket.io
     const io = req.app.get('io');
@@ -114,8 +159,10 @@ exports.eliminarNegocio = async (req, res) => {
       io.emit('businesses-updated');
     }
     
+    logger.info(`Business ${id} (${business.businessName}) deleted with all related data`);
     res.json({ message: 'Negocio eliminado correctamente' });
   } catch (error) {
-    res.status(500).json({ message: 'Error al eliminar negocio', error: error.message });
+    logger.error('Error deleting business', error);
+    res.status(500).json({ message: 'Error al eliminar negocio' });
   }
 }; 

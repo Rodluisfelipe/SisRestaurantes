@@ -220,12 +220,15 @@ deliveryZoneSchema.pre('save', function(next) {
   next();
 });
 
-// Método de instancia para incrementar estadísticas
+// Método de instancia para incrementar estadísticas (atomic)
 deliveryZoneSchema.methods.recordOrder = function(orderTotal) {
-  this.stats.totalOrders += 1;
-  this.stats.totalRevenue += orderTotal;
-  this.stats.lastOrderDate = new Date();
-  return this.save();
+  return mongoose.model('DeliveryZone').updateOne(
+    { _id: this._id },
+    {
+      $inc: { 'stats.totalOrders': 1, 'stats.totalRevenue': orderTotal },
+      $set: { 'stats.lastOrderDate': new Date() }
+    }
+  );
 };
 
 // Método de instancia para verificar si está disponible en un horario

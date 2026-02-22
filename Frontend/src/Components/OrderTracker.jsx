@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { API_URL } from '../config';
+import { socket } from '../services/socket';
 import logger from '../utils/logger';
 import { isPushSupported, subscribeToPush, isIOS, isInstalledPWA } from '../utils/pushNotifications';
 
@@ -217,7 +218,9 @@ const OrderTracker = ({
   const fetchOrder = useCallback(async () => {
     if (!orderId || !customerToken) return;
     try {
-      const response = await api.get(`/orders/track/${orderId}?token=${customerToken}`);
+      const response = await api.get(`/orders/track/${orderId}`, {
+        headers: { 'X-Customer-Token': customerToken }
+      });
       setOrder(response.data);
       setError(null);
 
@@ -236,15 +239,41 @@ const OrderTracker = ({
     }
   }, [orderId, customerToken]);
 
-  // Poll for updates every 5 seconds
+  // Use socket for real-time updates, with polling as fallback (30s)
   useEffect(() => {
     fetchOrder();
     
     if (!polling) return;
+
+    // Socket-based real-time tracking
+    if (socket && orderId && customerToken) {
+      if (!socket.connected) socket.connect();
+      socket.emit('trackOrder', { orderId, customerToken });
+      
+      const handleStatusChange = (data) => {
+        if (data.orderId === orderId || data.orderId?.toString() === orderId) {
+          setOrder(prev => data.order || { ...prev, status: data.status });
+          setError(null);
+          if (['completed', 'cancelled', 'delivered'].includes(data.status)) {
+            setPolling(false);
+          }
+        }
+      };
+      socket.on('order_status_changed', handleStatusChange);
+      
+      // Fallback polling at 30s (reduced from 5s since socket handles real-time)
+      const interval = setInterval(fetchOrder, 30000);
+      return () => {
+        socket.off('order_status_changed', handleStatusChange);
+        socket.emit('untrackOrder', orderId);
+        clearInterval(interval);
+      };
+    }
     
+    // Pure polling fallback if socket unavailable
     const interval = setInterval(fetchOrder, 5000);
     return () => clearInterval(interval);
-  }, [fetchOrder, polling]);
+  }, [fetchOrder, polling, orderId, customerToken]);
 
   // Determine step flow
   const isInApp = order?.orderChannel === 'inapp';

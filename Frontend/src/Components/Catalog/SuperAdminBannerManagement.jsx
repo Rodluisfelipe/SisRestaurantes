@@ -2,6 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
 
+// Helper: build auth headers for SuperAdmin requests
+const saAuthHeaders = (extra = {}) => {
+  const token = localStorage.getItem('superadmin_token');
+  return {
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...extra
+  };
+};
+
 const SuperAdminBannerManagement = () => {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -37,7 +46,7 @@ const SuperAdminBannerManagement = () => {
           endpoint = `${API_URL}/banners/pending/public`;
       }
 
-      const response = await fetch(endpoint);
+      const response = await fetch(endpoint, { headers: saAuthHeaders() });
       
       if (response.ok) {
         const data = await response.json();
@@ -59,9 +68,7 @@ const SuperAdminBannerManagement = () => {
     try {
       const response = await fetch(`${API_URL}/banners/${bannerId}/approve/public`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: saAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ priority })
       });
 
@@ -102,9 +109,7 @@ const SuperAdminBannerManagement = () => {
     try {
       const response = await fetch(`${API_URL}/banners/${selectedBanner._id}/reject/public`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: saAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ reason: rejectionReason })
       });
 
@@ -143,7 +148,8 @@ const SuperAdminBannerManagement = () => {
     setLoading(true);
     try {
       const response = await fetch(`${API_URL}/banners/${bannerId}/delete/public`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: saAuthHeaders()
       });
 
       const data = await response.json();
@@ -177,9 +183,7 @@ const SuperAdminBannerManagement = () => {
     try {
       const response = await fetch(`${API_URL}/banners/${bannerId}/toggle-status/public`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: saAuthHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ status: newStatus })
       });
 

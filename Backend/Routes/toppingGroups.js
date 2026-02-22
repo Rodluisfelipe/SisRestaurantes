@@ -10,15 +10,6 @@ const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
 
-// Endpoint de prueba para verificar que el servidor esté funcionando
-router.get("/test", (req, res) => {
-  res.json({ 
-    message: "ToppingGroups API funcionando correctamente", 
-    timestamp: new Date().toISOString(),
-    mongoose: mongoose.connection.readyState === 1 ? "conectado" : "desconectado"
-  });
-});
-
 // Get all topping groups
 router.get("/", async (req, res) => {
   try {

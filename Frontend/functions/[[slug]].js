@@ -11,7 +11,9 @@
  * Route: /:slug (catches all top-level paths that aren't static files)
  */
 
-const API_BASE = 'https://157-245-125-216.nip.io/api';
+// NOTE: Cloudflare Pages Functions cannot use Vite imports.
+// If the backend URL changes, update this fallback AND the VITE_API_URL env var.
+const API_BASE = (typeof process !== 'undefined' && process.env?.API_BASE_URL) || 'https://157-245-125-216.nip.io/api';
 const SITE_ORIGIN = 'https://menuby.tech';
 
 // Known crawler user agents

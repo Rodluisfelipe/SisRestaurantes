@@ -68,6 +68,8 @@ const toppingGroupSchema = new mongoose.Schema({
     ref: 'BusinessConfig',
     required: true
   }
-});
+}, { timestamps: true });
+
+toppingGroupSchema.index({ businessId: 1, active: 1 });
 
 module.exports = mongoose.models.ToppingGroup || mongoose.model("ToppingGroup", toppingGroupSchema); 

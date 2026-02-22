@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { BACKEND_URL } from '../config';
 import { socket, joinBusiness, socketDiagnostic, forceReconnect } from '../services/socket';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useNavigate } from 'react-router-dom';
@@ -370,7 +371,7 @@ function ModernOrdersDashboard() {
     const businessSlug = match ? match[1] : '';
     
     // Abrir en una nueva pestaña
-    window.open(`/${businessSlug}/kitchen`, '_blank');
+    window.open(`/${businessSlug}/kitchen`, '_blank', 'noopener,noreferrer');
   };
 
   // Show order details
@@ -630,7 +631,7 @@ function ModernOrdersDashboard() {
               const currentPath = window.location.pathname;
               const match = currentPath.match(/^\/([^/]+)/);
               const businessSlug = match ? match[1] : '';
-              window.open(`/${businessSlug}/orders`, '_blank');
+              window.open(`/${businessSlug}/orders`, '_blank', 'noopener,noreferrer');
             }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
           >
@@ -923,7 +924,7 @@ function ModernOrdersDashboard() {
                             {order.paymentProof && (
                               <button
                                 onClick={() => {
-                                  setProofImageUrl(`https://157-245-125-216.nip.io${order.paymentProof}`);
+                                  setProofImageUrl(`${BACKEND_URL}${order.paymentProof}`);
                                   setShowProofModal(true);
                                 }}
                                 className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-2 rounded-lg text-xs font-semibold border border-purple-200 transition-colors"
@@ -1022,7 +1023,7 @@ function ModernOrdersDashboard() {
                             {order.paymentProof && (
                               <button
                                 onClick={() => {
-                                  setProofImageUrl(`https://157-245-125-216.nip.io${order.paymentProof}`);
+                                  setProofImageUrl(`${BACKEND_URL}${order.paymentProof}`);
                                   setShowProofModal(true);
                                 }}
                                 className="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-500 transition-colors"
@@ -1322,11 +1323,11 @@ function ModernOrdersDashboard() {
                     <h3 className="text-sm font-semibold text-slate-800 mb-2">Comprobante de pago</h3>
                     <div className="border border-slate-200 rounded-lg overflow-hidden">
                       <img 
-                        src={`https://157-245-125-216.nip.io${orderDetails.paymentProof}`} 
+                        src={`${BACKEND_URL}${orderDetails.paymentProof}`} 
                         alt="Comprobante de pago"
                         className="w-full max-h-64 object-contain bg-slate-50 cursor-pointer"
                         onClick={() => {
-                          setProofImageUrl(`https://157-245-125-216.nip.io${orderDetails.paymentProof}`);
+                          setProofImageUrl(`${BACKEND_URL}${orderDetails.paymentProof}`);
                           setShowProofModal(true);
                         }}
                       />

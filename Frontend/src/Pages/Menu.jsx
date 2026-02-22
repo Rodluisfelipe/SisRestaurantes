@@ -27,13 +27,16 @@ import '../../styles/scrollbar.css';
 import { socket } from '../services/socket';
 import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import * as SessionManager from '../utils/sessionManager';
-import { calculateItemPrice, calculateTotalAmount, calculateTotalItems, createWhatsAppMessage } from '../utils/orderUtils';
+import { calculateItemPrice as calcItemPriceUtil, calculateTotalAmount as calcTotalUtil, calculateTotalItems, createWhatsAppMessage } from '../utils/orderUtils';
 import logger from '../utils/logger';
 import { isPushSupported, subscribeToPush } from '../utils/pushNotifications';
 import { useParams, useNavigate } from 'react-router-dom';
 import NotFound from './NotFound';
 import LeadCapturePage from './LeadCapturePage';
 import useSEO from '../hooks/useSEO';
+import useCart from '../hooks/useCart';
+import useMenuData from '../hooks/useMenuData';
+import useOrderTracking from '../hooks/useOrderTracking';
 
 /**
  * Página principal del Menú para clientes
@@ -120,7 +123,7 @@ export default function Menu() {
   // Check if business uses in-app ordering
   const isInAppMode = businessConfig?.orderingMode === 'inapp' || businessConfig?.orderingMode === 'both';
 
-  // Poll active order status for banner display
+  // Poll active order status for banner display (socket + fallback)
   useEffect(() => {
     if (!activeOrderId || !activeCustomerToken || !isInAppMode) {
       setActiveOrderStatus(null);
@@ -129,13 +132,39 @@ export default function Menu() {
     let cancelled = false;
     const fetchStatus = async () => {
       try {
-        const res = await api.get(`/orders/track/${activeOrderId}?token=${activeCustomerToken}`);
+        const res = await api.get(`/orders/track/${activeOrderId}`, {
+          headers: { 'X-Customer-Token': activeCustomerToken }
+        });
         if (!cancelled) setActiveOrderStatus(res.data.status || null);
       } catch {
         if (!cancelled) setActiveOrderStatus(null);
       }
     };
     fetchStatus();
+
+    // Socket-based real-time tracking
+    if (socket) {
+      if (!socket.connected) socket.connect();
+      socket.emit('trackOrder', { orderId: activeOrderId, customerToken: activeCustomerToken });
+      
+      const handleStatusChange = (data) => {
+        if ((data.orderId === activeOrderId || data.orderId?.toString() === activeOrderId) && !cancelled) {
+          setActiveOrderStatus(data.status || null);
+        }
+      };
+      socket.on('order_status_changed', handleStatusChange);
+      
+      // Reduced fallback polling (30s instead of 6s)
+      const interval = setInterval(fetchStatus, 30000);
+      return () => {
+        cancelled = true;
+        socket.off('order_status_changed', handleStatusChange);
+        socket.emit('untrackOrder', activeOrderId);
+        clearInterval(interval);
+      };
+    }
+    
+    // Fallback: polling only if socket unavailable
     const interval = setInterval(fetchStatus, 6000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [activeOrderId, activeCustomerToken, isInAppMode]);
@@ -997,7 +1026,7 @@ export default function Menu() {
           const fallbackUrl = businessConfig?.whatsappNumber 
             ? `https://wa.me/${businessConfig.whatsappNumber}?text=${whatsappMessage}` 
             : `https://wa.me/?text=${whatsappMessage}`;
-          window.open(fallbackUrl, '_blank');
+          window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
         }
       }
       

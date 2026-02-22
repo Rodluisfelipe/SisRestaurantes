@@ -1,12 +1,9 @@
 import axios from "axios";
+import { BACKEND_URL } from '../config';
 
 // Crear instancia de axios para el SuperAdmin
 const superadminApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL 
-    ? `${import.meta.env.VITE_API_URL}/api/superadmin`
-    : (import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production')
-      ? 'https://157-245-125-216.nip.io/api/superadmin'
-      : "/api/superadmin",
+  baseURL: `${BACKEND_URL}/api/superadmin`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -22,6 +19,23 @@ superadminApi.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Add response interceptor for automatic logout on 401
+const handle401 = (error) => {
+  if (error.response && error.response.status === 401) {
+    localStorage.removeItem('superadmin_token');
+    // Redirect to superadmin login if we're on a superadmin page
+    if (window.location.pathname.startsWith('/superadmin')) {
+      window.location.href = '/superadmin';
+    }
+  }
+  return Promise.reject(error);
+};
+
+superadminApi.interceptors.response.use(
+  (response) => response,
+  handle401
+);
 
 // Funciones de autenticación
 export const loginSuperAdmin = async (email, password) => {
@@ -105,11 +119,7 @@ export const deleteBusiness = async (id) => {
 
 // Crear instancia separada para suscripciones
 const subscriptionApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL 
-    ? `${import.meta.env.VITE_API_URL}/api`
-    : (import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production')
-      ? 'https://157-245-125-216.nip.io/api'
-      : "/api",
+  baseURL: `${BACKEND_URL}/api`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -124,6 +134,12 @@ subscriptionApi.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Add response interceptor for 401 handling
+subscriptionApi.interceptors.response.use(
+  (response) => response,
+  handle401
+);
 
 export { subscriptionApi };
 export default superadminApi;

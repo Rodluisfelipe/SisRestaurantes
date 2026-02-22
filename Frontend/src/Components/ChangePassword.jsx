@@ -20,13 +20,18 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
       return;
     }
 
+    if (newPassword.length < 8) {
+      setError("La nueva contraseña debe tener al menos 8 caracteres.");
+      return;
+    }
+
     setLoading(true);
     try {
       const token = localStorage.getItem("accessToken");
       await api.post(
-        "/auth/change-password",
+        forceNoOldPassword ? "/auth/force-change-password" : "/auth/change-password",
         forceNoOldPassword
-          ? { oldPassword: newPassword, newPassword }
+          ? { newPassword }
           : { oldPassword, newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );

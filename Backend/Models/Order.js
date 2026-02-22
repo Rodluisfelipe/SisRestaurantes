@@ -232,7 +232,7 @@ orderSchema.index({ businessId: 1, status: 1 });
 orderSchema.index({ businessId: 1, tableNumber: 1 });
 orderSchema.index({ businessId: 1, sentToKitchen: 1 });
 orderSchema.index({ deliveryZoneId: 1 });
-orderSchema.index({ customerToken: 1 });
+// customerToken already has index:true in field definition
 orderSchema.index({ businessId: 1, orderChannel: 1, status: 1 });
 
 // Hook para actualizar estadísticas de zona cuando se completa un pedido

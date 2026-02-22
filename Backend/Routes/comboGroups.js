@@ -8,12 +8,14 @@ const { tenantAuth } = require("../middleware/tenantAuth");
 router.get("/", async (req, res) => {
   try {
     const { businessId } = req.query;
-    const filter = { active: true };
-    if (businessId) filter.businessId = businessId;
+    if (!businessId) {
+      return res.status(400).json({ message: 'businessId es requerido' });
+    }
+    const filter = { active: true, businessId };
     const comboGroups = await ComboGroup.find(filter);
     res.json(comboGroups);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
@@ -24,7 +26,7 @@ router.post("/", tenantAuth, async (req, res) => {
     basePrice: req.body.basePrice,
     description: req.body.description,
     subGroups: req.body.subGroups,
-    businessId: req.body.businessId
+    businessId: req.user.businessId  // Force from token, not body
   });
 
   try {
@@ -39,12 +41,19 @@ router.post("/", tenantAuth, async (req, res) => {
 // Actualizar un grupo de combo
 router.patch("/:id", tenantAuth, async (req, res) => {
   try {
-    const comboGroup = await ComboGroup.findById(req.params.id);
+    // Compound query: only find combos belonging to this tenant
+    const comboGroup = await ComboGroup.findOne({ _id: req.params.id, businessId: req.user.businessId });
     if (!comboGroup) {
       return res.status(404).json({ message: "Combo no encontrado" });
     }
 
-    Object.assign(comboGroup, req.body);
+    // Whitelist allowed fields — prevent businessId override and mass assignment
+    const { name, basePrice, description, subGroups } = req.body;
+    if (name !== undefined) comboGroup.name = name;
+    if (basePrice !== undefined) comboGroup.basePrice = basePrice;
+    if (description !== undefined) comboGroup.description = description;
+    if (subGroups !== undefined) comboGroup.subGroups = subGroups;
+
     const updatedComboGroup = await comboGroup.save();
     emitToBusiness(updatedComboGroup.businessId?.toString(), 'combo_groups_update', await ComboGroup.find({ active: true, businessId: updatedComboGroup.businessId }));
     res.json(updatedComboGroup);
@@ -56,7 +65,8 @@ router.patch("/:id", tenantAuth, async (req, res) => {
 // Eliminar un grupo de combo (soft delete)
 router.delete("/:id", tenantAuth, async (req, res) => {
   try {
-    const comboGroup = await ComboGroup.findById(req.params.id);
+    // Compound query: only find combos belonging to this tenant
+    const comboGroup = await ComboGroup.findOne({ _id: req.params.id, businessId: req.user.businessId });
     if (!comboGroup) {
       return res.status(404).json({ message: "Combo no encontrado" });
     }
@@ -66,7 +76,7 @@ router.delete("/:id", tenantAuth, async (req, res) => {
     emitToBusiness(comboGroup.businessId?.toString(), 'combo_groups_update', await ComboGroup.find({ active: true, businessId: comboGroup.businessId }));
     res.json({ message: "Combo eliminado" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 

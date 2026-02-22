@@ -43,7 +43,8 @@ export const calculateTotalItems = (cart) => {
 // Función auxiliar para obtener el template personalizado
 const getCustomTemplate = async (businessId) => {
   try {
-    const response = await fetch(`${import.meta.env.PROD ? 'https://157-245-125-216.nip.io' : 'http://localhost:5000'}/api/whatsapp-templates?businessId=${businessId}`);
+    const { BACKEND_URL } = await import('../config');
+    const response = await fetch(`${BACKEND_URL}/api/whatsapp-templates?businessId=${businessId}`);
     if (response.ok) {
       const data = await response.json();
       return data.messageTemplate;

@@ -75,6 +75,12 @@ const optionGroupSchema = new mongoose.Schema({
   active: {
     type: Boolean,
     default: true
+  },
+  businessId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'BusinessConfig',
+    required: true,
+    index: true
   }
 }, {
   timestamps: true

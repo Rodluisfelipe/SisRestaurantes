@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const Order = require('../Models/Order');
 const socketService = require('../services/socketService');
 const logger = require('../utils/logger');
+const { ORDER_STATUS } = require('../utils/constants');
 
 /**
  * Servicio de limpieza automática de pedidos abandonados/expirados.
@@ -22,7 +23,7 @@ const EXPIRATION_RULES = {
   payment_uploaded: 24 * 60 * 60 * 1000,   // 24 horas
 };
 
-// Pedidos cancelados se eliminan después de este tiempo
+// Pedidos cancelados se archivan después de este tiempo (soft-delete)
 const CANCELLED_CLEANUP_AFTER = 2 * 60 * 60 * 1000; // 2 horas
 
 /**
@@ -50,11 +51,11 @@ async function expireStaleOrders() {
           const ageMinutes = Math.round((now - order.createdAt) / 60000);
           
           await Order.findByIdAndUpdate(order._id, {
-            status: 'cancelled',
+            status: ORDER_STATUS.CANCELLED,
             updatedAt: now,
             $push: { 
               statusHistory: { 
-                status: 'cancelled', 
+                status: ORDER_STATUS.CANCELLED, 
                 timestamp: now, 
                 note: `Auto-expirado: ${ageMinutes} min en estado ${status}` 
               } 
@@ -65,7 +66,7 @@ async function expireStaleOrders() {
           socketService.emitToBusiness(
             order.businessId.toString(), 
             'order_updated', 
-            { _id: order._id, status: 'cancelled', autoExpired: true }
+            { _id: order._id, status: ORDER_STATUS.CANCELLED, autoExpired: true }
           );
 
           totalExpired++;
@@ -88,23 +89,30 @@ async function expireStaleOrders() {
 }
 
 /**
- * Elimina pedidos cancelados antiguos de la BD
+ * Archiva pedidos cancelados antiguos (soft-delete para auditoría)
  */
 async function cleanupCancelledOrders() {
   try {
     const cutoff = new Date(Date.now() - CANCELLED_CLEANUP_AFTER);
     
-    const result = await Order.deleteMany({
-      status: 'cancelled',
-      updatedAt: { $lt: cutoff }
-    });
+    // Soft-delete: mark as archived instead of permanently deleting
+    // Preserves data for auditing/accounting while cleaning up the active orders view
+    const result = await Order.updateMany(
+      {
+        status: ORDER_STATUS.CANCELLED,
+        updatedAt: { $lt: cutoff },
+        _archived: { $ne: true }
+      },
+      {
+        $set: { _archived: true, _archivedAt: new Date() }
+      }
+    );
 
-    if (result.deletedCount > 0) {
-      console.log(`[OrderCleanup] ${result.deletedCount} pedido(s) cancelados eliminados de la BD`);
-      logger.info(`[OrderCleanup] ${result.deletedCount} cancelled orders cleaned up`);
+    if (result.modifiedCount > 0) {
+      logger.info(`[OrderCleanup] ${result.modifiedCount} cancelled orders archived (soft-deleted)`);
     }
 
-    return result.deletedCount;
+    return result.modifiedCount;
   } catch (error) {
     logger.error('[OrderCleanup] Error en cleanupCancelledOrders:', error);
     return 0;
@@ -129,7 +137,7 @@ function startOrderCleanupCron() {
   setTimeout(() => {
     runCleanup().then(({ expired, cleaned }) => {
       if (expired > 0 || cleaned > 0) {
-        console.log(`[OrderCleanup] Limpieza inicial: ${expired} expirados, ${cleaned} eliminados`);
+        logger.info(`[OrderCleanup] Limpieza inicial: ${expired} expirados, ${cleaned} archivados`);
       }
     }).catch(err => {
       logger.error('[OrderCleanup] Error en limpieza inicial:', err);

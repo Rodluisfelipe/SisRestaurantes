@@ -44,10 +44,9 @@ const BannerUpload = () => {
       }
 
       // Fallback: intentar con autenticación si hay token
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('accessToken');
       
       if (!token) {
-        console.log('No hay token en localStorage y no hay businessConfig');
         setBanners([]);
         return;
       }
@@ -61,16 +60,7 @@ const BannerUpload = () => {
 
   const loadBannersFromMy = async () => {
     try {
-      const token = localStorage.getItem('token');
-      
-      // Decodificar el token para ver su contenido
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('Token payload en loadBanners:', payload);
-        console.log('BusinessId en token:', payload.businessId);
-      } catch (e) {
-        console.log('Error decodificando token:', e);
-      }
+      const token = localStorage.getItem('accessToken');
 
       const response = await fetch(`${API_URL}/banners/my`, {
         headers: {
@@ -139,7 +129,7 @@ const BannerUpload = () => {
       // Determinar el contexto y businessId
       let businessId = null;
       let useSuperAdminEndpoint = false;
-      let token = localStorage.getItem('token');
+      let token = localStorage.getItem('accessToken');
       
       // Verificar si estamos en modo SuperAdmin (tiene businessConfig del contexto)
       const isSuperAdminMode = businessConfig && businessConfig._id;
@@ -148,7 +138,6 @@ const BannerUpload = () => {
         // Modo SuperAdmin: usar businessId del contexto
         businessId = businessConfig._id;
         useSuperAdminEndpoint = true;
-        console.log('Usando businessId del contexto (modo SuperAdmin):', businessId);
       } else {
         // Modo Admin normal: usar token de autenticación
         if (!token) {
@@ -160,13 +149,12 @@ const BannerUpload = () => {
           return;
         }
 
-        // Obtener businessId del token
+        // Obtener businessId del user en localStorage (no decodificar JWT en el cliente)
         try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          businessId = payload.businessId;
-          console.log('Usando businessId del token (modo Admin):', businessId);
+          const userStr = localStorage.getItem('user');
+          const user = userStr ? JSON.parse(userStr) : null;
+          businessId = user?.businessId;
         } catch (e) {
-          console.log('Error decodificando token:', e);
           setMessage({
             text: 'Error al procesar la autenticación. Por favor, inicia sesión nuevamente.',
             type: 'error'
@@ -208,7 +196,7 @@ const BannerUpload = () => {
         headers: useSuperAdminEndpoint 
           ? {} // No necesita Authorization para el endpoint temporal
           : {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
             },
         body: formDataToSend
       });
@@ -263,11 +251,15 @@ const BannerUpload = () => {
       let headers = {};
       
       if (isSuperAdminTemporary) {
-        // Usar endpoint público para SuperAdmin temporal
+        // Usar endpoint público para SuperAdmin temporal — con auth
         endpoint = `${API_URL}/banners/${bannerId}/delete/public`;
+        const saToken = localStorage.getItem('superadmin_token');
+        if (saToken) headers['Authorization'] = `Bearer ${saToken}`;
       } else {
-        // Usar endpoint público para restaurantes
+        // Usar endpoint para restaurantes — con admin auth
         endpoint = `${API_URL}/banners/${bannerId}/delete/restaurant`;
+        const adminToken = localStorage.getItem('accessToken');
+        if (adminToken) headers['Authorization'] = `Bearer ${adminToken}`;
       }
 
       const response = await fetch(endpoint, {

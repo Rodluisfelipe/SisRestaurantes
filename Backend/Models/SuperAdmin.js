@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const SuperAdminSchema = new mongoose.Schema({
   email: {
@@ -27,6 +28,13 @@ SuperAdminSchema.pre('save', async function(next) {
   } catch (error) {
     next(error);
   }
+});
+
+// Hash resetPasswordToken before saving (store SHA-256 hash, not plaintext)
+SuperAdminSchema.pre('save', function(next) {
+  if (!this.isModified('resetPasswordToken') || !this.resetPasswordToken) return next();
+  this.resetPasswordToken = crypto.createHash('sha256').update(this.resetPasswordToken).digest('hex');
+  next();
 });
 
 // Método para comparar contraseñas

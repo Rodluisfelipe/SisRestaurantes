@@ -31,16 +31,22 @@ function SuperAdminDashboard() {
 
   // Log de depuración para verificar token
   useEffect(() => {
-    console.log("Detectado token en URL:", token);
-    console.log("Parámetros detectados:", params);
-    console.log("Ruta actual:", location.pathname);
-    console.log("Search params:", location.search);
-  }, [token, params, location.pathname, location.search]);
-
-  useEffect(() => {
-    // Mantener sesión si hay token
-    const adminToken = localStorage.getItem("superadmin_token");
-    if (adminToken) setIsLogged(true);
+    // Validate stored token against server on mount
+    const validateToken = async () => {
+      const adminToken = localStorage.getItem("superadmin_token");
+      if (!adminToken) return;
+      
+      try {
+        const { default: superadminApi } = await import('../../services/superadminApi');
+        await superadminApi.get('/auth/me');
+        setIsLogged(true);
+      } catch (error) {
+        // Token is invalid or expired — force logout
+        localStorage.removeItem("superadmin_token");
+        setIsLogged(false);
+      }
+    };
+    validateToken();
   }, []);
 
   useEffect(() => {

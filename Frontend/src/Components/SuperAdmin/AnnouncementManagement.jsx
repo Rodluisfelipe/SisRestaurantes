@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { BACKEND_URL } from '../../config';
 
-const API_BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL}/api`
-  : (import.meta.env.PROD ? 'https://157-245-125-216.nip.io/api' : 'http://localhost:5000/api');
-
-const IMG_BASE = API_BASE.replace(/\/api$/, '');
+const API_BASE = `${BACKEND_URL}/api`;
+const IMG_BASE = BACKEND_URL;
 
 const priorityOptions = [
   { value: 'low', label: 'Nota', icon: 'ℹ️', color: 'bg-gray-500' },

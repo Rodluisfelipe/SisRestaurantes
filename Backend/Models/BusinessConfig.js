@@ -279,6 +279,9 @@ businessConfigSchema.methods.getNextOpenTime = function() {
   return null;
 };
 
+businessConfigSchema.index({ isActive: 1 });
+businessConfigSchema.index({ department: 1, city: 1 });
+
 // Importante: esto es para asegurarnos de que usamos el mismo modelo si ya existe
 const BusinessConfig = mongoose.models.BusinessConfig || mongoose.model("BusinessConfig", businessConfigSchema);
 

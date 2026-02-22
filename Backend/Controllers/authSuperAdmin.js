@@ -23,10 +23,10 @@ const emailTransporter = nodemailer.createTransport({
   }
 });
 
-// Verificar la configuración del transportador
+// Verificar la configuración del transportador (no bloquea el inicio)
 emailTransporter.verify(function(error, success) {
   if (error) {
-    console.error('Error en la configuración de Nodemailer:', error);
+    console.warn('[Nodemailer] SMTP no disponible; el envío de emails fallará:', error.message);
   } else {
     console.log('Servidor SMTP listo para enviar mensajes');
   }
@@ -89,7 +89,7 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     console.error('Error en login:', error);
-    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    res.status(500).json({ message: 'Error en el servidor' });
   }
 };
 
@@ -123,7 +123,7 @@ exports.changePassword = async (req, res) => {
     res.json({ message: 'Contraseña actualizada exitosamente' });
   } catch (error) {
     console.error('Error en cambio de contraseña:', error);
-    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    res.status(500).json({ message: 'Error en el servidor' });
   }
 };
 
@@ -179,7 +179,6 @@ exports.forgotPassword = async (req, res) => {
       
       return res.status(500).json({ 
         message: 'No se pudo enviar el correo electrónico. Por favor, intenta de nuevo más tarde.',
-        error: emailError.message,
         success: false,
         // Proporcionar el token en desarrollo para pruebas
         dev_info: process.env.NODE_ENV === 'development' ? {
@@ -192,7 +191,6 @@ exports.forgotPassword = async (req, res) => {
     console.error('Error en recuperación de contraseña:', error);
     res.status(500).json({ 
       message: 'Error en el servidor', 
-      error: error.message,
       success: false
     });
   }
@@ -207,9 +205,10 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Token y nueva contraseña son requeridos' });
     }
 
-    // Buscar SuperAdmin con token válido
+    // Buscar SuperAdmin con token válido (hash the incoming token for comparison)
+    const hashedToken = require('crypto').createHash('sha256').update(token).digest('hex');
     const superAdmin = await SuperAdmin.findOne({
-      resetPasswordToken: token,
+      resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: Date.now() }
     });
 
@@ -226,6 +225,6 @@ exports.resetPassword = async (req, res) => {
     res.json({ message: 'Contraseña actualizada exitosamente' });
   } catch (error) {
     console.error('Error en restablecimiento de contraseña:', error);
-    res.status(500).json({ message: 'Error en el servidor', error: error.message });
+    res.status(500).json({ message: 'Error en el servidor' });
   }
 }; 

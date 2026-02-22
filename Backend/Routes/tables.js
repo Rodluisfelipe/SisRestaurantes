@@ -35,14 +35,7 @@ router.use(async (req, res, next) => {
       const business = await BusinessConfig.findOne({ slug: businessId });
       
       if (!business) {
-
-        // For debugging, let's see what business slugs actually exist
-        const allBusinesses = await BusinessConfig.find({}, 'slug');
-
-        
-        // For now, temporarily allow any slug to pass for testing
-
-        return next();
+        return res.status(404).json({ message: 'Negocio no encontrado' });
       }
       
 
@@ -58,15 +51,12 @@ router.use(async (req, res, next) => {
       return next();
     } catch (innerError) {
       console.error("Error during business lookup:", innerError);
-      // Allow to proceed with original businessId for testing
-
-      return next();
+      return res.status(500).json({ message: 'Error al buscar negocio' });
     }
   } catch (error) {
     console.error("Error in businessId middleware:", error);
     return res.status(500).json({ 
-      message: "Error processing businessId",
-      details: error.message
+      message: "Error processing businessId"
     });
   }
 });
@@ -89,7 +79,7 @@ router.get("/", async (req, res) => {
     res.status(200).json(tables);
   } catch (error) {
     console.error("Error fetching tables:", error);
-    res.status(500).json({ message: "Error fetching tables", error: error.message });
+    res.status(500).json({ message: "Error fetching tables" });
   }
 });
 
@@ -151,7 +141,7 @@ router.get("/validate", async (req, res) => {
     
   } catch (error) {
     console.error("Error validating table:", error);
-    res.status(500).json({ message: "Error validating table", error: error.message });
+    res.status(500).json({ message: "Error validating table" });
   }
 });
 
@@ -174,7 +164,7 @@ router.get("/:id", async (req, res) => {
     res.status(200).json(table);
   } catch (error) {
     console.error("Error fetching table:", error);
-    res.status(500).json({ message: "Error fetching table", error: error.message });
+    res.status(500).json({ message: "Error fetching table" });
   }
 });
 
@@ -217,7 +207,7 @@ router.post("/", tenantAuth, async (req, res) => {
     res.status(201).json(newTable);
   } catch (error) {
     console.error("Error creating table:", error);
-    res.status(500).json({ message: "Error creating table", error: error.message });
+    res.status(500).json({ message: "Error creating table" });
   }
 });
 
@@ -258,7 +248,7 @@ router.put("/:id", tenantAuth, async (req, res) => {
     res.status(200).json(updatedTable);
   } catch (error) {
     console.error("Error updating table:", error);
-    res.status(500).json({ message: "Error updating table", error: error.message });
+    res.status(500).json({ message: "Error updating table" });
   }
 });
 
@@ -294,7 +284,7 @@ router.delete("/:id", tenantAuth, async (req, res) => {
     res.status(200).json({ message: "Table deleted successfully" });
   } catch (error) {
     console.error("Error deleting table:", error);
-    res.status(500).json({ message: "Error deleting table", error: error.message });
+    res.status(500).json({ message: "Error deleting table" });
   }
 });
 

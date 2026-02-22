@@ -256,7 +256,7 @@ const CustomersManager = () => {
   const openWhatsAppWithMessage = (customer, messageType) => {
     const phone = customer.phone.replace(/\D/g, '');
     const message = generateWhatsAppMessage(customer, messageType);
-    window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+    window.open(`https://wa.me/${phone}?text=${message}`, '_blank', 'noopener,noreferrer');
     setShowWhatsAppMenu(false);
     setWhatsappMenuCustomer(null);
   };

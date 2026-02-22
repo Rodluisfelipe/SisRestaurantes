@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { API_ENDPOINTS } from '../config';
 
 const DebugSSE = () => {
+  // Gate: only functional in development mode
+  if (import.meta.env.PROD) {
+    return (
+      <div className="p-4 text-center text-gray-500">
+        Debug tools are not available in production.
+      </div>
+    );
+  }
   const [events, setEvents] = useState([]);
   const [status, setStatus] = useState('Desconectado');
   const [connected, setConnected] = useState(false);

@@ -8,6 +8,7 @@ const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const authMiddleware = require('../middleware/authMiddleware');
 const { isValidObjectId } = require('../utils/validators');
 const { resolveBusinessId } = require('../utils/businessResolver');
+const { SUBSCRIPTION_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { calculateSubscriptionStatus } = require('../utils/subscriptionHelper');
@@ -36,14 +37,14 @@ const validateSubscriptionInput = (req, res, next) => {
   // Validar startDate
   if (req.method === 'POST' && !startDate) {
     errors.push({ field: 'startDate', message: 'startDate es requerido' });
-  } else if (startDate !== undefined && !(new Date(startDate).toString() !== 'Invalid Date')) {
+  } else if (startDate !== undefined && new Date(startDate).toString() === 'Invalid Date') {
     errors.push({ field: 'startDate', message: 'startDate debe ser una fecha válida' });
   }
   
   // Validar endDate
   if (req.method === 'POST' && !endDate) {
     errors.push({ field: 'endDate', message: 'endDate es requerido' });
-  } else if (endDate !== undefined && !(new Date(endDate).toString() !== 'Invalid Date')) {
+  } else if (endDate !== undefined && new Date(endDate).toString() === 'Invalid Date') {
     errors.push({ field: 'endDate', message: 'endDate debe ser una fecha válida' });
   }
   
@@ -60,7 +61,7 @@ const validateSubscriptionInput = (req, res, next) => {
   }
   
   // Validar status (opcional)
-  if (status !== undefined && !['active', 'expired', 'cancelled', 'pending'].includes(status)) {
+  if (status !== undefined && !Object.values(SUBSCRIPTION_STATUS).includes(status)) {
     errors.push({ field: 'status', message: 'status debe ser uno de: active, expired, cancelled, pending' });
   }
   
@@ -78,10 +79,15 @@ const validateSubscriptionInput = (req, res, next) => {
   next();
 };
 
-// GET /api/subscriptions/check/:businessId - Verificar estado de suscripción (para el admin regular)
+// GET /api/subscriptions/check/:businessId - Verificar estado de suscripción
+// Public endpoint but returns limited info. Full details require auth.
 router.get('/check/:businessId', async (req, res) => {
   try {
     let { businessId } = req.params;
+    
+    // Check if request is authenticated (optional auth)
+    const authHeader = req.headers.authorization;
+    const isAuthenticated = authHeader && authHeader.startsWith('Bearer ');
     
     // Resolver businessId si es un slug (convertir a ObjectId)
     try {
@@ -107,6 +113,21 @@ router.get('/check/:businessId', async (req, res) => {
     
     // Calcular estado usando helper centralizado
     const { status: currentStatus, periodEnd: periodEndDate, graceUntil: graceUntilDate } = calculateSubscriptionStatus(subscription);
+    
+    // For unauthenticated requests (public/customer), return minimal info
+    if (!isAuthenticated) {
+      return res.json({
+        success: true,
+        hasSubscription: true,
+        subscription: {
+          status: currentStatus,
+          isActive: currentStatus === 'active',
+          isInGracePeriod: currentStatus === 'grace'
+        }
+      });
+    }
+    
+    // For authenticated requests (admin), return full details
     const daysRemaining = subscription.getDaysRemaining ? subscription.getDaysRemaining() : 0;
     
     res.json({
@@ -356,7 +377,7 @@ router.post('/', validateSubscriptionInput, async (req, res) => {
     if (newEndDate >= currentDate || newStartDate >= currentDate) {
       const existingSubscription = await Subscription.findOne({
         businessId,
-        status: { $in: ['active', 'pending'] },
+        status: { $in: [SUBSCRIPTION_STATUS.ACTIVE, SUBSCRIPTION_STATUS.PENDING] },
         $or: [
           { startDate: { $lte: newEndDate }, endDate: { $gte: newStartDate } }, // Se superpone
           { endDate: { $gte: currentDate } } // Aún activa

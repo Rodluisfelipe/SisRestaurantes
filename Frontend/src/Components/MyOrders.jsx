@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { socket } from '../services/socket';
 import logger from '../utils/logger';
 
 const STATUS_LABELS = {
@@ -39,8 +40,26 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
 
   useEffect(() => {
     fetchOrders();
-    const interval = setInterval(fetchOrders, 10000); // Refresh every 10s
-    return () => clearInterval(interval);
+
+    // Listen for real-time order updates via socket
+    const handleOrderUpdate = (data) => {
+      // Refresh orders when any order in our business gets updated
+      fetchOrders();
+    };
+    if (socket) {
+      socket.on('order_updated', handleOrderUpdate);
+      socket.on('order_status_changed', handleOrderUpdate);
+    }
+    
+    // Reduced fallback polling (30s instead of 10s since socket handles real-time)
+    const interval = setInterval(fetchOrders, 30000);
+    return () => {
+      if (socket) {
+        socket.off('order_updated', handleOrderUpdate);
+        socket.off('order_status_changed', handleOrderUpdate);
+      }
+      clearInterval(interval);
+    };
   }, [fetchOrders]);
 
   const formatPrice = (amount) => {

@@ -1,6 +1,8 @@
 import { io } from 'socket.io-client';
 import { logSystem } from '../utils/systemLogger';
 
+import { BACKEND_URL } from '../config';
+
 /**
  * Configuración de Socket.io con sistema de logging centralizado
  */
@@ -15,13 +17,7 @@ const getSocketUrl = () => {
   if (envSocketUrl) {
     return envSocketUrl;
   }
-  
-  if (isProd) {
-    return 'https://157-245-125-216.nip.io';
-  }
-  
-  // En desarrollo local, conectar al backend local
-  return 'http://localhost:5000';
+  return BACKEND_URL;
 };
 
 const socketUrl = getSocketUrl();
@@ -42,11 +38,11 @@ export const socket = io(socketUrl, {
   reconnectionDelayMax: 5000,
   randomizationFactor: 0.3,
   timeout: 20000,
-  transports: ['polling'],
+  transports: ['polling', 'websocket'],
   path: '/socket.io',
   forceNew: false,
-  upgrade: false,
-  rememberUpgrade: false,
+  upgrade: true,
+  rememberUpgrade: true,
   // Agregar identificador único para esta sesión
   query: {
     sessionId: `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

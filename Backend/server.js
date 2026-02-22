@@ -13,13 +13,13 @@ require('dotenv').config();
 
 // Inicializar Sentry - Monitoreo de errores en producción
 Sentry.init({
-  dsn: "https://7881e2181ef4ac4c49d459eced22d715@o4510891623251968.ingest.us.sentry.io/4510891639242752",
+  dsn: process.env.SENTRY_DSN || '',
   environment: process.env.NODE_ENV || 'development',
-  enabled: process.env.NODE_ENV === 'production',
+  enabled: process.env.NODE_ENV === 'production' && !!process.env.SENTRY_DSN,
   // Performance monitoring - captura 20% de transacciones
   tracesSampleRate: 0.2,
-  // Enviar PII
-  sendDefaultPii: true,
+  // Do NOT send PII (GDPR compliance)
+  sendDefaultPii: false,
 });
 
 /**
@@ -36,6 +36,7 @@ Sentry.init({
 // Usar las variables de entorno
 const MONGO_URI = process.env.MONGODB_URI;
 const isProd = process.env.NODE_ENV === 'production';
+// CORS: prefer ALLOWED_ORIGINS env var. Fallback includes nip.io for backward compat.
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : ['http://menuby.tech', 'https://menuby.tech', 'https://www.menuby.tech', 'http://127.0.0.1:5173', 'http://localhost:5173', 'https://157-245-125-216.nip.io'];
@@ -69,25 +70,35 @@ const io = new Server(server, {
 // Exponer io globalmente para usarlo en otros módulos
 app.set('io', io);
 
+// Trust first proxy (nginx) — necessary for express-rate-limit and req.ip behind reverse proxy
+app.set('trust proxy', 1);
+
 // Inicializar lógica de sockets
 require('./services/socketService').initSocket(io);
 
 // Configurar CORS con los orígenes permitidos
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir solicitudes sin origen (como aplicaciones móviles o curl)
-    if (!origin) return callback(null, true);
+    // No Origin header = not a cross-origin browser request (curl, Wget, mobile apps, healthchecks)
+    // These are safe to allow — CORS is a browser-only mechanism
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Reject literal "null" origin from sandboxed iframes in production
+    if (origin === 'null' && isProd) {
+      return callback(new Error('Null origin not allowed'));
+    }
     
     // Verificar si el origen está en la lista de permitidos
     if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.log(`Origen no permitido: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-business-id'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-business-id', 'x-customer-token'],
   credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204
@@ -99,7 +110,18 @@ app.options('*', cors());
 // Security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  contentSecurityPolicy: false, // Handled by frontend
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"]
+    }
+  },
   strictTransportSecurity: {
     maxAge: 31536000,
     includeSubDomains: true,
@@ -118,32 +140,16 @@ app.use(express.json());
 // NoSQL injection sanitization
 app.use(mongoSanitize());
 
-// Servir archivos estáticos desde la carpeta uploads
-app.use('/uploads', express.static('uploads'));
+// Servir archivos estáticos — solo banners/announcements públicamente
+// Proofs y order-proofs requieren auth (servidos por endpoints dedicados)
+app.use('/uploads/banners', express.static('uploads/banners'));
+app.use('/uploads/announcements', express.static('uploads/announcements'));
+app.use('/uploads/products', express.static('uploads/products'));
 
-// Endpoint de prueba para verificar archivos
-app.get('/test-uploads', (req, res) => {
-  const fs = require('fs');
-  const path = require('path');
-  
-  try {
-    const uploadsDir = path.join(__dirname, 'uploads', 'banners');
-    const files = fs.readdirSync(uploadsDir);
-    
-    res.json({
-      success: true,
-      message: 'Archivos encontrados en uploads/banners',
-      files: files,
-      baseUrl: `${req.protocol}://${req.get('host')}/uploads/banners/`
-    });
-  } catch (error) {
-    res.json({
-      success: false,
-      message: 'Error al leer archivos',
-      error: error.message
-    });
-  }
-});
+// Authenticated access to payment proofs and order proofs
+const proofAuthMiddleware = require('./middleware/authMiddleware');
+app.use('/uploads/proofs', proofAuthMiddleware, express.static('uploads/proofs'));
+app.use('/uploads/order-proofs', proofAuthMiddleware, express.static('uploads/order-proofs'));
 
 // Rutas API original
 app.use("/api/products", require("./Routes/products"));
@@ -178,11 +184,6 @@ app.use("/api/admin/subscriptions", require("./Routes/adminSubscriptions"));
 app.use("/api/whatsapp-templates", require("./Routes/whatsappTemplates"));
 app.use("/api/announcements", require("./Routes/announcements")); // Sistema de anuncios/novedades
 
-// Servir archivos de comprobantes
-app.use('/uploads/proofs', express.static(path.join(__dirname, 'uploads/proofs')));
-app.use('/uploads/order-proofs', express.static(path.join(__dirname, 'uploads/order-proofs')));
-app.use('/uploads/announcements', express.static(path.join(__dirname, 'uploads/announcements')));
-  
 // Ruta específica para SSE
 app.use("/events", require("./Routes/events"));
 

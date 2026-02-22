@@ -103,7 +103,7 @@ router.post('/admin/create', async (req, res) => {
     });
   } catch (error) {
     logger.error('Error creating coupon', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al crear cupón: ' + error.message, 500));
+    res.status(500).json(formatHttpError(req, 'Error al crear cupón', 500));
   }
 });
 
@@ -232,7 +232,7 @@ router.post('/redeem', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     logger.error('Error redeeming coupon', error, req);
-    res.status(500).json(formatHttpError(req, 'Error al canjear cupón: ' + error.message, 500));
+    res.status(500).json(formatHttpError(req, 'Error al canjear cupón', 500));
   }
 });
 

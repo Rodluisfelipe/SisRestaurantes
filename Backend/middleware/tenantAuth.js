@@ -24,7 +24,16 @@ function tenantAuth(req, res, next) {
       const requestBusinessId = req.body.businessId || req.query.businessId || req.params.businessId;
 
       if (!requestBusinessId) {
-        // If no businessId in request, allow (some routes don't need it)
+        // If the user's token has a businessId, inject it into the request for downstream handlers
+        if (req.user && req.user.businessId) {
+          req.resolvedBusinessId = req.user.businessId;
+          return next();
+        }
+        // No businessId anywhere — reject for write operations, allow for safe reads
+        const safeMethod = ['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+        if (!safeMethod) {
+          return res.status(400).json({ message: 'businessId es requerido para esta operación' });
+        }
         return next();
       }
 

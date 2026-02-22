@@ -35,7 +35,7 @@ const priorityConfig = {
 
 // Construir URL base para imágenes (sin /api)
 const getBaseUrl = () => {
-  const apiUrl = API_URL; // e.g. https://157-245-125-216.nip.io/api
+  const apiUrl = API_URL;
   return apiUrl.replace(/\/api$/, '');
 };
 

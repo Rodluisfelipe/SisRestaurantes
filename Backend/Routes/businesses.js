@@ -6,6 +6,7 @@ const Category = require('../Models/Category');
 const DeliveryZone = require('../Models/DeliveryZone');
 const Order = require('../Models/Order');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
+const { ORDER_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
@@ -42,7 +43,7 @@ const getBatchBusinessInfo = async (businessIds) => {
         {
           $match: {
             businessId: { $in: businessIds },
-            status: { $in: ['completed', 'delivered'] },
+            status: { $in: [ORDER_STATUS.COMPLETED, ORDER_STATUS.DELIVERED] },
             createdAt: { $gte: thirtyDaysAgo }
           }
         },

@@ -1,5 +1,5 @@
-# Usar Node.js LTS
-FROM node:18-alpine
+# Usar Node.js LTS (v20 - Active LTS until April 2026)
+FROM node:20-alpine
 
 # Crear directorio de trabajo
 WORKDIR /app

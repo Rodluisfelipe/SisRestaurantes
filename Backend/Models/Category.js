@@ -18,16 +18,12 @@ const categorySchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',
     required: true
   }
-});
+}, { timestamps: true });
 
 categorySchema.index({ name: 1, businessId: 1 }, { unique: true });
 

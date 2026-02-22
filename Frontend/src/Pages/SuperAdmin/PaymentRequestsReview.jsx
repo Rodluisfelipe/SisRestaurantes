@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import api from '../../services/api';
 import { subscriptionApi } from '../../services/superadminApi';
+
+// Helper: attach superadmin_token to requests (since these endpoints require protectSuperAdmin)
+const saAuthHeader = () => {
+  const token = localStorage.getItem('superadmin_token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 import { 
   FaCheckCircle, 
   FaTimes, 
@@ -33,7 +39,7 @@ const PaymentRequestsReview = () => {
       setLoading(true);
       const params = filter !== 'all' ? `?status=${filter}` : '';
       // Usar /api/admin/payment-requests (no /api/superadmin/admin/payment-requests)
-      const res = await api.get(`/admin/payment-requests${params}`);
+      const res = await api.get(`/admin/payment-requests${params}`, { headers: saAuthHeader() });
       if (res.data.success && res.data.requests) {
         setRequests(res.data.requests);
       }
@@ -86,7 +92,7 @@ const PaymentRequestsReview = () => {
     try {
       setProcessing(true);
       // Usar /api/admin/payment-requests/:id/approve
-      const res = await api.post(`/admin/payment-requests/${requestId}/approve`);
+      const res = await api.post(`/admin/payment-requests/${requestId}/approve`, {}, { headers: saAuthHeader() });
       if (res.data.success) {
         const periodEnd = res.data.subscription?.periodEnd ? new Date(res.data.subscription.periodEnd).toLocaleDateString('es-CO') : 'N/A';
         alert(`✅ Solicitud aprobada correctamente.\n\nLa suscripción ha sido activada inmediatamente.\nVigencia hasta: ${periodEnd}\n\nEl menú está activo ahora mismo.`);
@@ -135,7 +141,7 @@ const PaymentRequestsReview = () => {
       
       const res = await api.post(`/admin/payment-requests/${requestId}/reject`, {
         rejectionReason: rejectionReason.trim()
-      });
+      }, { headers: saAuthHeader() });
       if (res.data.success) {
         alert('Solicitud rechazada correctamente.');
         await loadRequests();
@@ -175,12 +181,12 @@ const PaymentRequestsReview = () => {
     }
     
     // Construir URL completa del comprobante
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://157-245-125-216.nip.io';
+    const apiUrl = import.meta.env.VITE_API_URL || (await import('../../config')).BACKEND_URL;
     const fullUrl = proofUrl.startsWith('http') 
       ? proofUrl 
       : `${apiUrl}${proofUrl.startsWith('/') ? proofUrl : '/' + proofUrl}`;
     
-    window.open(fullUrl, '_blank');
+    window.open(fullUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (loading) {

@@ -12,21 +12,22 @@
 // URL base de la API
 const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production';
 
+// Production backend base URL (without /api) — single source of truth
+const PROD_BACKEND_URL = 'https://157-245-125-216.nip.io';
+
+// Función para obtener la URL base del backend (sin /api)
+const getBackendUrl = () => {
+  const envApiUrl = import.meta.env.VITE_API_URL;
+  if (envApiUrl) return envApiUrl;
+  if (isProd) return PROD_BACKEND_URL;
+  return 'http://localhost:5000';
+};
+
+export const BACKEND_URL = getBackendUrl();
+
 // Función para obtener la URL de la API
 const getApiUrl = () => {
-  // Priorizar variables de entorno
-  const envApiUrl = import.meta.env.VITE_API_URL;
-  if (envApiUrl) {
-    return `${envApiUrl}/api`;
-  }
-  
-  // Usar HTTPS en producción para evitar Mixed Content
-  if (isProd) {
-    return 'https://157-245-125-216.nip.io/api'; // Digital Ocean backend - HTTPS
-  }
-  
-  // Desarrollo local
-  return 'http://localhost:5000/api';
+  return `${BACKEND_URL}/api`;
 };
 
 export const API_URL = getApiUrl();
@@ -34,7 +35,7 @@ export const API_URL = getApiUrl();
 // URLs específicas
 export const API_ENDPOINTS = {
   BASE_URL: API_URL,
-  EVENTS: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/events` : (isProd ? 'https://157-245-125-216.nip.io/events' : 'http://localhost:5000/events'),
+  EVENTS: `${BACKEND_URL}/events`,
   PRODUCTS: `${API_URL}/products`,
   CATEGORIES: `${API_URL}/categories`,
   TOPPING_GROUPS: `${API_URL}/topping-groups`,

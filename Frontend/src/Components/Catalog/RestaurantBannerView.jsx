@@ -23,10 +23,10 @@ const RestaurantBannerView = () => {
       if (businessConfig && businessConfig._id) {
         businessId = businessConfig._id;
       } else {
-        // Fallback: intentar obtener del token
-        const token = localStorage.getItem('token');
+        // Fallback: intentar obtener del user data almacenado
+        const userStr = localStorage.getItem('user');
         
-        if (!token) {
+        if (!userStr) {
           setMessage({
             text: 'No se pudo determinar el negocio. Asegúrate de estar en el contexto correcto.',
             type: 'error'
@@ -35,10 +35,10 @@ const RestaurantBannerView = () => {
           return;
         }
 
-        // Obtener businessId del token
+        // Obtener businessId del user data
         try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          businessId = payload.businessId;
+          const user = JSON.parse(userStr);
+          businessId = user.businessId;
         } catch (e) {
           setMessage({
             text: 'Error al obtener información del negocio',

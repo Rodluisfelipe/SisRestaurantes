@@ -4,6 +4,15 @@ const PushSubscription = require('../Models/PushSubscription');
 const { resolveBusinessId } = require('../utils/businessResolver');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
+const authMiddleware = require('../middleware/authMiddleware');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for public push subscribe/unsubscribe endpoints
+const pushSubscribeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: 'Demasiadas solicitudes de suscripción. Intente nuevamente más tarde.' }
+});
 
 // Validación de entrada para suscripción push
 const validatePushSubscriptionInput = (req, res, next) => {
@@ -25,8 +34,8 @@ const validatePushSubscriptionInput = (req, res, next) => {
   next();
 };
 
-// POST /api/push/subscribe - Registrar una nueva suscripción
-router.post('/subscribe', validatePushSubscriptionInput, async (req, res) => {
+// POST /api/push/subscribe - Registrar una nueva suscripción (rate limited)
+router.post('/subscribe', pushSubscribeLimiter, validatePushSubscriptionInput, async (req, res) => {
   try {
     const { businessId, userId, endpoint, keys } = req.body;
     
@@ -72,8 +81,8 @@ router.post('/subscribe', validatePushSubscriptionInput, async (req, res) => {
   }
 });
 
-// POST /api/push/unsubscribe - Eliminar una suscripción
-router.post('/unsubscribe', async (req, res) => {
+// POST /api/push/unsubscribe - Eliminar una suscripción (rate limited)
+router.post('/unsubscribe', pushSubscribeLimiter, async (req, res) => {
   try {
     const { endpoint } = req.body;
     if (!endpoint) {
@@ -94,19 +103,13 @@ router.post('/unsubscribe', async (req, res) => {
   }
 });
 
-// GET /api/push/subscriptions - Obtener suscripciones por businessId (para debug/admin)
-router.get('/subscriptions', async (req, res) => {
+// GET /api/push/subscriptions - Obtener suscripciones por businessId (admin only, tenant-isolated)
+router.get('/subscriptions', authMiddleware, async (req, res) => {
   try {
-    const { businessId } = req.query;
-    if (!businessId) {
-      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
-    }
-
-    let resolvedBusinessId;
-    try {
-      resolvedBusinessId = await resolveBusinessId(businessId);
-    } catch (error) {
-      return res.status(404).json(formatHttpError(req, error.message, 404));
+    // Enforce tenant isolation: admin can only see their own business subscriptions
+    const resolvedBusinessId = req.user.businessId;
+    if (!resolvedBusinessId) {
+      return res.status(400).json(formatHttpError(req, 'businessId no disponible en el token', 400));
     }
 
     const subscriptions = await PushSubscription.find({ businessId: resolvedBusinessId });

@@ -51,7 +51,7 @@ class ErrorBoundary extends Component {
           <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full">
             <h1 className="text-2xl font-bold text-red-600 mb-4">¡Oops! Algo salió mal</h1>
             <p className="text-gray-600 mb-4">
-              {this.state.error?.message || 'Ha ocurrido un error inesperado.'}
+              Ha ocurrido un error inesperado. El equipo técnico ha sido notificado.
             </p>
             <button
               onClick={this.handleRedirect}

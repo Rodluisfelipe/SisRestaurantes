@@ -162,36 +162,64 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      // Check for URL parameters first
-      const searchParams = new URLSearchParams(location.search);
-      const saTokenParam = searchParams.get('satoken');
+      // Check for SuperAdmin handoff via localStorage (secure same-origin transfer)
+      const saHandoff = localStorage.getItem('sa_handoff');
       
-      if (saTokenParam) {
+      if (saHandoff) {
         try {
-          const tokenData = JSON.parse(decodeURIComponent(saTokenParam));
+          const tokenData = JSON.parse(saHandoff);
+          localStorage.removeItem('sa_handoff'); // Consume immediately
+
+          // Verify TTL — reject handoffs older than allowed window
+          if (tokenData._ts && tokenData._ttl && (Date.now() - tokenData._ts > tokenData._ttl)) {
+            console.warn('[Auth] SA handoff expired');
+            navigate(location.pathname, { replace: true });
+            setLoading(false);
+            return;
+          }
           
-          // Store the token
-          localStorage.setItem('accessToken', tokenData.accessToken);
-          localStorage.setItem('refreshToken', tokenData.refreshToken);
-          localStorage.setItem('user', JSON.stringify(tokenData.user));
+          // Validate the token server-side before trusting it
+          if (tokenData.accessToken) {
+            try {
+              const verifyRes = await api.get('/auth/me', {
+                headers: { Authorization: `Bearer ${tokenData.accessToken}` }
+              });
+              
+              if (verifyRes.data && verifyRes.data.user) {
+                // Token is valid — store it
+                localStorage.setItem('accessToken', tokenData.accessToken);
+                if (tokenData.refreshToken) {
+                  localStorage.setItem('refreshToken', tokenData.refreshToken);
+                }
+                localStorage.setItem('user', JSON.stringify(verifyRes.data.user));
+                
+                setIsAuthenticated(true);
+                setUser(verifyRes.data.user);
+                setLoading(false);
+                
+                // Remove source param from URL if present
+                navigate(location.pathname, { replace: true });
+                return;
+              }
+            } catch (verifyError) {
+              // Token is invalid — discard silently
+              console.warn('[Auth] SA handoff token validation failed');
+            }
+          }
           
-          setIsAuthenticated(true);
-          setUser(tokenData.user);
-          setLoading(false);
-          
-          // Remove token from URL
+          // Remove source param from URL
           navigate(location.pathname, { replace: true });
-          return;
         } catch (error) {
-          // Error silencioso
+          // Error silencioso — malformed handoff data
+          localStorage.removeItem('sa_handoff');
+          navigate(location.pathname, { replace: true });
         }
       }
       
       const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
       const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
       
-      // Verificar si es un token temporal de superadmin O si es un token real de superadmin
-      const isTempSuperAdminToken = token?.startsWith('temp_sa_token_');
+      // Verificar si es un token real de superadmin
       const hasSuperAdminToken = !!localStorage.getItem('superadmin_token');
       
       // Si hay token, consideramos que hay sesión aunque haya errores
@@ -202,7 +230,7 @@ export function AuthProvider({ children }) {
           setUser(userObj);
           
           // Si es SuperAdmin (por role o por tener superadmin_token), no intentamos verificar con /auth/me
-          if (isTempSuperAdminToken || hasSuperAdminToken || userObj.role === 'superadmin') {
+          if (hasSuperAdminToken || userObj.role === 'superadmin') {
             setLoading(false);
             return;
           }

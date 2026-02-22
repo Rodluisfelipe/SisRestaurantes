@@ -14,10 +14,9 @@ export default function LoginSuperAdmin({ onLogin }) {
     setLoading(true);
     try {
       const res = await loginSuperAdmin(email, password);
-      // Guardar token tanto en superadmin_token como en accessToken para compatibilidad
+      // Store SuperAdmin token ONLY in superadmin_token (not in accessToken to avoid context confusion)
       localStorage.setItem("superadmin_token", res.data.token);
-      localStorage.setItem("accessToken", res.data.token);
-      // También guardar el usuario
+      // Also guardar el usuario
       if (res.data.superAdmin) {
         localStorage.setItem("user", JSON.stringify(res.data.superAdmin));
       }

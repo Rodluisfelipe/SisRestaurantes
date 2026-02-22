@@ -14,8 +14,45 @@ const loginLimiter = rateLimit({
   message: { message: 'Demasiados intentos de inicio de sesión. Intente nuevamente en 15 minutos.' }
 });
 
+// Rate limiter para registro (prevenir abuso de trials)
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hora
+  max: 3, // 3 registros por IP por hora
+  message: { message: 'Demasiados registros desde esta dirección. Intente nuevamente en 1 hora.' }
+});
+
+// Rate limiter para check-email (prevenir enumeración)
+const checkEmailLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // 10 intentos
+  message: { message: 'Demasiadas consultas. Intente nuevamente más tarde.' }
+});
+
+// Validación de fortaleza de contraseña
+const validatePassword = (password) => {
+  if (!password || password.length < 8) {
+    return 'La contraseña debe tener al menos 8 caracteres';
+  }
+  if (!/[A-Z]/.test(password)) {
+    return 'La contraseña debe contener al menos una letra mayúscula';
+  }
+  if (!/[a-z]/.test(password)) {
+    return 'La contraseña debe contener al menos una letra minúscula';
+  }
+  if (!/[0-9]/.test(password)) {
+    return 'La contraseña debe contener al menos un número';
+  }
+  return null;
+};
+
+// Validación de formato de email
+const validateEmail = (email) => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
 // Ruta de registro de negocio
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   try {
     const { name, businessName, email, password } = req.body;
 
@@ -23,6 +60,21 @@ router.post('/register', async (req, res) => {
     if (!name || !businessName || !email || !password) {
       return res.status(400).json({ message: 'Todos los campos son obligatorios' });
     }
+
+    // Validar formato de email
+    if (!validateEmail(email)) {
+      return res.status(400).json({ message: 'Formato de correo electrónico inválido' });
+    }
+
+    // Validar fortaleza de contraseña
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ message: passwordError });
+    }
+
+    // Sanitizar nombre (prevenir XSS básico)
+    const sanitizedName = name.trim().substring(0, 100);
+    const sanitizedBusinessName = businessName.trim().substring(0, 100);
 
     // Verificar si el email ya está registrado como username
     const existingAdmin = await Admin.findOne({ username: email });
@@ -132,7 +184,7 @@ router.post('/register', async (req, res) => {
 });
 
 // Verificar disponibilidad de email
-router.post('/check-email', async (req, res) => {
+router.post('/check-email', checkEmailLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     
@@ -220,8 +272,15 @@ router.get('/verify', async (req, res) => {
   }
 });
 
+// Rate limiter for token refresh
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { message: 'Demasiadas solicitudes de refresh. Intente nuevamente más tarde.' }
+});
+
 // Endpoint para refrescar el access token
-router.post('/refresh', async (req, res) => {
+router.post('/refresh', refreshLimiter, async (req, res) => {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken) {
@@ -231,9 +290,9 @@ router.post('/refresh', async (req, res) => {
     if (!decoded) {
       return res.status(401).json({ message: 'Invalid refresh token' });
     }
-    // Buscar admin y validar refresh token guardado
-    const admin = await Admin.findById(decoded.id);
-    if (!admin || admin.refreshToken !== refreshToken) {
+    // Buscar admin y validar refresh token guardado (hashed comparison)
+    const admin = await Admin.findByRefreshToken(decoded.id, refreshToken);
+    if (!admin) {
       return res.status(401).json({ message: 'Refresh token inválido' });
     }
     // Generar nuevo access token
@@ -274,7 +333,35 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     if (!admin) return res.status(404).json({ message: 'Admin no encontrado' });
     const isValid = await admin.comparePassword(oldPassword);
     if (!isValid) return res.status(400).json({ message: 'Contraseña actual incorrecta' });
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 8 caracteres' });
+    }
     admin.password = newPassword; // El pre-save del modelo la hashea
+    admin.mustChangePassword = false;
+    await admin.save();
+    res.json({ message: 'Contraseña actualizada correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al cambiar la contraseña' });
+  }
+});
+
+// Force change password (only allowed when mustChangePassword flag is set)
+router.post('/force-change-password', authMiddleware, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const admin = await Admin.findById(req.user.id);
+    if (!admin) return res.status(404).json({ message: 'Admin no encontrado' });
+    
+    // Only allow force-change when the flag is set (first login, SA-created accounts)
+    if (!admin.mustChangePassword) {
+      return res.status(403).json({ message: 'No autorizado. Usa el endpoint de cambio de contraseña normal.' });
+    }
+    
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 8 caracteres' });
+    }
+    
+    admin.password = newPassword;
     admin.mustChangePassword = false;
     await admin.save();
     res.json({ message: 'Contraseña actualizada correctamente' });

@@ -1,9 +1,7 @@
 node_modules
 npm-debug.log
 .env
-.env.local
-.env.development
-.env.test
+.env.*
 .git
 .gitignore
 README.md
@@ -13,3 +11,7 @@ coverage
 .nyc_output
 .vscode
 .idea
+scripts/
+test-*.js
+deploy-*.sh
+*.md

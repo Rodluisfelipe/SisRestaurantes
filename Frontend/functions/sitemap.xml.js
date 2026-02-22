@@ -7,7 +7,9 @@
  * Route: /sitemap.xml
  */
 
-const API_BASE = 'https://157-245-125-216.nip.io/api';
+// NOTE: Cloudflare Pages Functions cannot use Vite imports.
+// If the backend URL changes, update this fallback AND the VITE_API_URL env var.
+const API_BASE = (typeof process !== 'undefined' && process.env?.API_BASE_URL) || 'https://157-245-125-216.nip.io/api';
 const SITE_ORIGIN = 'https://menuby.tech';
 
 export async function onRequest(context) {

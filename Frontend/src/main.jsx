@@ -4,14 +4,14 @@ import * as Sentry from "@sentry/react";
 
 // Inicializar Sentry - Monitoreo de errores en producción
 Sentry.init({
-  dsn: "https://d2287951bfe926aa4d4b641446b90856@o4510891623251968.ingest.us.sentry.io/4510891635900416",
+  dsn: import.meta.env.VITE_SENTRY_DSN || "",
   environment: import.meta.env.MODE,
-  enabled: import.meta.env.PROD,
+  enabled: import.meta.env.PROD && !!import.meta.env.VITE_SENTRY_DSN,
   integrations: [
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration({
-      maskAllText: false,
-      blockAllMedia: false,
+      maskAllText: true,
+      blockAllMedia: true,
     }),
   ],
   // Performance monitoring - captura 20% de transacciones
@@ -19,70 +19,53 @@ Sentry.init({
   // Session Replay - captura 10% normal, 100% en errores
   replaysSessionSampleRate: 0.1,
   replaysOnErrorSampleRate: 1.0,
-  // Enviar PII (IP, user agent)
-  sendDefaultPii: true,
+  // Do NOT send PII (IP, user agent)
+  sendDefaultPii: false,
 });
 
-// SOBRESCRITURA NUCLEAR DE CONSOLE - Filtrar TODO lo relacionado con PWA y React DevTools
+// PRODUCTION CONSOLE FILTER — strip ALL console.log/info in production, keep warn/error for debugging
 if (typeof window !== 'undefined') {
-  // Guardar referencias originales
+  const isProduction = import.meta.env.PROD;
   const originalLog = console.log;
   const originalWarn = console.warn;
   const originalError = console.error;
   const originalInfo = console.info;
   
-  // Función de filtrado agresiva
+  // Filter for known noisy messages (active in all environments)
   const shouldFilter = (...args) => {
     const message = String(args.join(' ')).toLowerCase();
     return message.includes('react devtools') || 
            message.includes('development experience') ||
            message.includes('download the react devtools') ||
            message.includes('reactjs.org/link/react-devtools') ||
-           message.includes('better development experience') ||
            message.includes('manifest:') ||
            (message.includes('property') && message.includes('ignored')) ||
            message.includes('url is invalid') ||
            message.includes('start_url') ||
-           message.includes('scope') ||
-           message.includes('shortcut') ||
-           message.includes('not present') ||
            message.includes('fetch event handler is recognized as no-op') ||
            message.includes('no-op fetch handler') ||
-           message.includes('may bring overhead during navigation') ||
-           message.includes('consider removing the handler') ||
-           message.includes('detectado token en url') ||
-           message.includes('parámetros detectados') ||
-           message.includes('ruta actual') ||
-           message.includes('search params');
+           message.includes('may bring overhead during navigation');
   };
 
-  // Sobrescribir TODOS los métodos de console
+  // In production: suppress ALL console.log and console.info (prevents PII leakage)
+  // In development: only filter known noisy messages
   console.log = (...args) => {
-    if (!shouldFilter(...args)) {
-      originalLog.apply(console, args);
-    }
-  };
-
-  console.warn = (...args) => {
-    if (!shouldFilter(...args)) {
-      originalWarn.apply(console, args);
-    }
-  };
-
-  console.error = (...args) => {
-    if (!shouldFilter(...args)) {
-      originalError.apply(console, args);
-    }
+    if (isProduction) return; // Suppress all logs in production
+    if (!shouldFilter(...args)) originalLog.apply(console, args);
   };
 
   console.info = (...args) => {
-    if (!shouldFilter(...args)) {
-      originalInfo.apply(console, args);
-    }
+    if (isProduction) return; // Suppress all info in production
+    if (!shouldFilter(...args)) originalInfo.apply(console, args);
   };
 
-  // No intentar modificar React DevTools - solo filtrar sus mensajes en console
-  // Si DevTools está instalado, dejarlo funcionar normalmente
+  console.warn = (...args) => {
+    if (!shouldFilter(...args)) originalWarn.apply(console, args);
+  };
+
+  console.error = (...args) => {
+    if (!shouldFilter(...args)) originalError.apply(console, args);
+  };
 }
 import { BrowserRouter } from "react-router-dom";
 import "./index.css";

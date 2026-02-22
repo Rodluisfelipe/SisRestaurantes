@@ -62,7 +62,7 @@ const RestaurantClosedOverlay = ({
         `¡Hola! Me gustaría recibir una notificación cuando abran. 🔔`
       );
       const num = businessConfig.whatsappNumber.replace(/\D/g, '');
-      window.open(`https://wa.me/${num}?text=${msg}`, '_blank');
+      window.open(`https://wa.me/${num}?text=${msg}`, '_blank', 'noopener,noreferrer');
     }
   };
 

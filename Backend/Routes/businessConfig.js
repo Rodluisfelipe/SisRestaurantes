@@ -41,6 +41,15 @@ router.put("/", tenantAuth, async (req, res) => {
       return res.status(400).json({ message: "businessId es requerido" });
     }
     
+    // Block internal/sensitive fields (same blacklist as PUT /:businessId)
+    delete updateData._id;
+    delete updateData.isActive;       // Only SA can activate/deactivate
+    delete updateData.slug;           // Prevent slug squatting
+    delete updateData.reviewStats;    // Calculated server-side only
+    delete updateData.createdAt;
+    delete updateData.updatedAt;
+    delete updateData.__v;
+    
     try {
       logger.debug('Actualizando configuración de negocio', { businessId }, req);
       
@@ -344,7 +353,16 @@ router.put("/menu-status", tenantAuth, async (req, res) => {
 // IMPORTANTE: Esta ruta debe estar AL FINAL porque captura cualquier PUT con un parámetro
 router.put("/:businessId", tenantAuth, async (req, res) => {
     const { businessId } = req.params;
-    const updateData = req.body;
+    const updateData = { ...req.body };
+    
+    // Block internal/sensitive fields that admins should not modify directly
+    delete updateData._id;
+    delete updateData.isActive;       // Only SA can activate/deactivate
+    delete updateData.slug;           // Prevent slug squatting
+    delete updateData.reviewStats;    // Calculated server-side only
+    delete updateData.createdAt;
+    delete updateData.updatedAt;
+    delete updateData.__v;
     
     if (!businessId) {
       return res.status(400).json({ message: "businessId es requerido" });

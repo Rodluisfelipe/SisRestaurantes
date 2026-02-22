@@ -5,12 +5,20 @@ const Order = require('../Models/Order');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const { isValidObjectId } = require('../utils/isValidObjectId');
 const { tenantAuth } = require('../middleware/tenantAuth');
+const authMiddleware = require('../middleware/authMiddleware');
+const rateLimit = require('express-rate-limit');
 
-// GET /api/customers - Listar clientes con filtros
-router.get('/', async (req, res) => {
+// Rate limiter for public customer endpoints
+const customerRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30,
+  message: { error: 'Demasiadas solicitudes. Intente nuevamente más tarde.' }
+});
+
+// GET /api/customers - Listar clientes con filtros (admin only — tenant isolated)
+router.get('/', tenantAuth, async (req, res) => {
   try {
     const { 
-      businessId, 
       page = 1, 
       limit = 20, 
       search = '', 
@@ -19,37 +27,15 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
+    // Use tenant-validated businessId from middleware (not from query)
+    const resolvedBusinessId = req.user.businessId;
 
 
 
     // Construir filtro
     const filter = {
-      businessId: isValidObjectId(businessId) ? businessId : null
+      businessId: resolvedBusinessId
     };
-
-
-
-    // Si businessId no es un ObjectId válido, intentar resolverlo como slug
-    if (!isValidObjectId(businessId)) {
-
-      const BusinessConfig = require('../Models/BusinessConfig');
-      const business = await BusinessConfig.findOne({ slug: businessId });
-      if (business) {
-        filter.businessId = business._id;
-
-      } else {
-
-        return res.json({
-          customers: [],
-          pagination: {
-            current: parseInt(page),
-            total: 0,
-            limit: parseInt(limit),
-            totalCustomers: 0
-          }
-        });
-      }
-    }
 
 
 
@@ -169,11 +155,12 @@ router.put('/:phone', tenantAuth, async (req, res) => {
   }
 });
 
-// POST /api/customers - Crear o encontrar cliente
-router.post('/', async (req, res) => {
+// POST /api/customers - Crear o encontrar cliente (public, rate limited)
+router.post('/', customerRateLimiter, async (req, res) => {
   try {
     const { businessId } = req.query;
-    const { phone, name, ...otherData } = req.body;
+    // Whitelist allowed fields — prevent stat manipulation (totalOrders, totalSpent, status)
+    const { phone, name, address, email } = req.body;
 
     if (!phone || !name) {
       return res.status(400).json({ error: 'Teléfono y nombre son requeridos' });
@@ -186,16 +173,19 @@ router.post('/', async (req, res) => {
     });
 
     if (customer) {
-      // Si existe, actualizar con nuevos datos si se proporcionan
-      Object.assign(customer, otherData);
+      // Si existe, actualizar solo campos permitidos
+      if (name) customer.name = name;
+      if (address) customer.address = address;
+      if (email) customer.email = email;
       await customer.save();
     } else {
-      // Si no existe, crear nuevo cliente
+      // Si no existe, crear nuevo cliente con campos permitidos solamente
       customer = new Customer({
         businessId: isValidObjectId(businessId) ? businessId : null,
         phone,
         name,
-        ...otherData
+        ...(address && { address }),
+        ...(email && { email })
       });
       await customer.save();
     }
@@ -207,8 +197,8 @@ router.post('/', async (req, res) => {
   }
 });
 
-// GET /api/customers/:phone/orders - Obtener pedidos del cliente
-router.get('/:phone/orders', async (req, res) => {
+// GET /api/customers/:phone/orders - Obtener pedidos del cliente (rate limited)
+router.get('/:phone/orders', customerRateLimiter, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -273,8 +263,8 @@ router.get('/:phone/orders', async (req, res) => {
   }
 });
 
-// PATCH /api/customers/:phone/address - Actualizar nombre/dirección (público, sin auth)
-router.patch('/:phone/address', async (req, res) => {
+// PATCH /api/customers/:phone/address - Actualizar nombre/dirección (rate limited)
+router.patch('/:phone/address', customerRateLimiter, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -312,8 +302,8 @@ router.patch('/:phone/address', async (req, res) => {
   }
 });
 
-// PUT /api/customers/:phone/settings - Actualizar configuraciones del cliente
-router.put('/:phone/settings', async (req, res) => {
+// PUT /api/customers/:phone/settings - Actualizar configuraciones del cliente (rate limited)
+router.put('/:phone/settings', customerRateLimiter, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -351,14 +341,14 @@ router.put('/:phone/settings', async (req, res) => {
 router.delete('/:phone', tenantAuth, async (req, res) => {
   try {
     const { phone } = req.params;
-    const { businessId } = req.query;
 
     if (!phone) {
       return res.status(400).json({ error: 'Número de teléfono requerido' });
     }
 
+    // Use businessId from token for tenant isolation
     const customer = await Customer.findOneAndDelete({ 
-      businessId: isValidObjectId(businessId) ? businessId : null, 
+      businessId: req.user.businessId, 
       phone 
     });
 
@@ -377,9 +367,6 @@ router.delete('/:phone', tenantAuth, async (req, res) => {
 router.delete('/by-id/:id', tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { businessId } = req.query;
-
-
 
     if (!id) {
       return res.status(400).json({ error: 'ID del cliente requerido' });
@@ -389,23 +376,10 @@ router.delete('/by-id/:id', tenantAuth, async (req, res) => {
       return res.status(400).json({ error: 'ID del cliente inválido' });
     }
 
-    // Resolver businessId si es un slug
-    let resolvedBusinessId = businessId;
-    if (!isValidObjectId(businessId)) {
-
-      const BusinessConfig = require('../Models/BusinessConfig');
-      const business = await BusinessConfig.findOne({ slug: businessId });
-      if (business) {
-        resolvedBusinessId = business._id;
-
-      } else {
-        return res.status(404).json({ error: 'Negocio no encontrado' });
-      }
-    }
-
+    // Use businessId from token for tenant isolation
     const customer = await Customer.findOneAndDelete({ 
       _id: id,
-      businessId: resolvedBusinessId
+      businessId: req.user.businessId
     });
 
     if (!customer) {
@@ -421,8 +395,8 @@ router.delete('/by-id/:id', tenantAuth, async (req, res) => {
   }
 });
 
-// GET /api/customers/:phone - Obtener datos del cliente por teléfono - MUST BE LAST
-router.get('/:phone', async (req, res) => {
+// GET /api/customers/:phone - Obtener datos del cliente por teléfono (rate limited) - MUST BE LAST
+router.get('/:phone', customerRateLimiter, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;

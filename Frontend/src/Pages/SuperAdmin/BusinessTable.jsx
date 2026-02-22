@@ -72,7 +72,7 @@ export default function BusinessTable({ refreshTrigger }) {
     }
     
     // Usar el token REAL del SuperAdmin almacenado en localStorage
-    const superadminToken = localStorage.getItem('superadmin_token') || localStorage.getItem('accessToken');
+    const superadminToken = localStorage.getItem('superadmin_token');
     
     if (!superadminToken) {
       alert('No tienes sesión activa como SuperAdmin. Por favor, inicia sesión de nuevo.');
@@ -87,12 +87,17 @@ export default function BusinessTable({ refreshTrigger }) {
       }
     };
     
-    // Encode the auth data in the URL
-    const encodedAuthData = encodeURIComponent(JSON.stringify(realAuthData));
+    // Store token data in localStorage for same-origin handoff with short TTL
+    const handoffData = {
+      ...realAuthData,
+      _ts: Date.now(),       // creation timestamp for TTL check
+      _ttl: 10000            // 10 second TTL
+    };
+    localStorage.setItem('sa_handoff', JSON.stringify(handoffData));
     const baseUrl = `${window.location.protocol}//${window.location.host}`;
-    const url = `${baseUrl}/${b.slug}/admin?satoken=${encodedAuthData}&source=superadmin`;
+    const url = `${baseUrl}/${b.slug}/admin?source=superadmin`;
     
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleOpenMenu = (b) => {
@@ -102,7 +107,7 @@ export default function BusinessTable({ refreshTrigger }) {
     }
     const baseUrl = `${window.location.protocol}//${window.location.host}`;
     const url = `${baseUrl}/${b.slug}`;
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleDelete = async (b) => {

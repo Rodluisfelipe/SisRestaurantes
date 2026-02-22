@@ -66,7 +66,7 @@ router.get("/", async (req, res) => {
     res.json(products);
   } catch (error) {
     logger.error("Error getting products", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
@@ -113,7 +113,7 @@ router.get("/:id", async (req, res) => {
     res.json(product);
   } catch (error) {
     logger.error("Error al obtener producto", error, req);
-    res.status(500).json(formatHttpError(req, error.message || "Error al obtener producto", 500));
+    res.status(500).json(formatHttpError(req, 'Error al obtener producto', 500));
   }
 });
 
@@ -180,16 +180,8 @@ router.post("/", tenantAuth, validateProductInput, async (req, res) => {
       }));
     }
     
-    // Manejar businessId si viene como slug usando la utilidad centralizada
-    if (productData.businessId && typeof productData.businessId === 'string') {
-      try {
-        productData.businessId = await resolveBusinessId(productData.businessId);
-      } catch (error) {
-        return res.status(404).json(
-          formatHttpError(req, 'Business not found', 404, { detail: error.message })
-        );
-      }
-    }
+    // Force businessId from authenticated user's token (prevent cross-tenant)
+    productData.businessId = req.user.businessId;
     
     const newProduct = new Product(productData);
     await newProduct.save();
@@ -237,9 +229,10 @@ router.put("/products-reorder", tenantAuth, async (req, res) => {
     logger.debug("Reordenando productos", { businessId, productsCount: products.length }, req);
     
     // Usar bulkWrite para actualizar todos los productos de una vez (más eficiente)
+    // Compound filter ensures tenant isolation on each update
     const bulkOps = products.map(productData => ({
       updateOne: {
-        filter: { _id: productData._id },
+        filter: { _id: productData._id, businessId: req.user.businessId },
         update: { displayOrder: productData.order }
       }
     }));
@@ -284,9 +277,9 @@ router.put("/reorder-featured", tenantAuth, async (req, res) => {
       return res.status(400).json(formatHttpError(req, "orderedIds debe ser un array no vacío", 400));
     }
 
-    // Actualizar el featuredOrder de cada producto
+    // Actualizar el featuredOrder de cada producto (compound filter for tenant isolation)
     const updatePromises = orderedIds.map((id, index) => 
-      Product.findByIdAndUpdate(id, { featuredOrder: index + 1 })
+      Product.findOneAndUpdate({ _id: id, businessId: req.user.businessId }, { featuredOrder: index + 1 })
     );
 
     await Promise.all(updatePromises);
@@ -327,7 +320,7 @@ router.put("/:id/toggle-featured", tenantAuth, async (req, res) => {
     }
 
 
-    const product = await Product.findById(id);
+    const product = await Product.findOne({ _id: id, businessId: req.user.businessId });
 
     if (!product) {
 
@@ -428,7 +421,7 @@ router.put("/:id/toggle-featured", tenantAuth, async (req, res) => {
 
   } catch (error) {
     console.error('❌❌❌ ERROR EN TOGGLE FEATURED:', error);
-    console.error('Stack trace:', error.stack);
+    // Stack trace logged internally by Sentry
     logger.error("Error toggling featured status", error, req);
     res.status(500).json(formatHttpError(req, "Error al cambiar estado destacado", 500));
   }
@@ -438,32 +431,10 @@ router.put("/:id/toggle-featured", tenantAuth, async (req, res) => {
 router.put("/:id", tenantAuth, validateProductInput, async (req, res) => {
   try {
     const productId = req.params.id;
-    const { name, description, price, category, image, toppingGroups, businessId } = req.body;
+    const { name, description, price, category, image, toppingGroups } = req.body;
     
-    logger.debug('Actualizando producto', { productId, toppingGroupsCount: toppingGroups?.length }, req);
-    
-    // Validar businessId en PUT
-    if (!businessId) {
-      return res.status(400).json(
-        formatHttpError(req, 'Errores de validación en la entrada', 400, [
-          { field: 'businessId', message: 'businessId es requerido' }
-        ])
-      );
-    }
-    
-    // Manejar businessId si viene como slug usando la utilidad centralizada
-    let finalBusinessId = businessId;
-    if (businessId && typeof businessId === 'string') {
-      try {
-        finalBusinessId = await resolveBusinessId(businessId);
-      } catch (error) {
-        return res.status(400).json(
-          formatHttpError(req, 'Errores de validación en la entrada', 400, [
-            { field: 'businessId', message: error.message }
-          ])
-        );
-      }
-    }
+    // Force businessId from token (prevent cross-tenant)
+    const finalBusinessId = req.user.businessId;
     
     // Procesar el orden de los toppings
     let toppingGroupsOrder = [];
@@ -499,21 +470,15 @@ router.put("/:id", tenantAuth, validateProductInput, async (req, res) => {
     res.json(updatedProduct);
   } catch (error) {
     logger.error('Error al actualizar producto', error, req);
-    res.status(500).json(formatHttpError(req, error.message || "Error al actualizar producto", 500));
+    res.status(500).json(formatHttpError(req, 'Error al actualizar producto', 500));
   }
 });
 
 // DELETE a product
 router.delete("/:id", tenantAuth, async (req, res) => {
   try {
-    const { businessId } = req.query;
-    let resolvedBusinessId;
-    try {
-      resolvedBusinessId = await resolveBusinessId(businessId);
-    } catch (error) {
-      return res.status(404).json(formatHttpError(req, error.message, 404));
-    }
-    const deletedProduct = await Product.findOneAndDelete({ _id: req.params.id, businessId: resolvedBusinessId });
+    // Use businessId from token for tenant isolation
+    const deletedProduct = await Product.findOneAndDelete({ _id: req.params.id, businessId: req.user.businessId });
     
     // Emitir evento de actualización por WebSocket
     if (deletedProduct) {
@@ -534,8 +499,8 @@ router.patch("/:id/toggle", tenantAuth, async (req, res) => {
     
     logger.debug("Toggling product", { productId }, req);
     
-    // Encontrar el producto
-    const product = await Product.findById(productId);
+    // Compound query for tenant isolation
+    const product = await Product.findOne({ _id: productId, businessId: req.user.businessId });
     if (!product) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }

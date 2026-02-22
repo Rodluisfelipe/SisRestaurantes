@@ -1,7 +1,22 @@
 const jwt = require('jsonwebtoken');
 const logger = require('../utils/logger');
 
-module.exports = function authMiddleware(req, res, next) {
+// Cache for recently verified users (TTL: 5 minutes)
+const verifiedUsersCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000;
+
+function cleanCache() {
+  const now = Date.now();
+  for (const [key, entry] of verifiedUsersCache) {
+    if (now - entry.timestamp > CACHE_TTL) {
+      verifiedUsersCache.delete(key);
+    }
+  }
+}
+// Clean cache every 10 minutes
+setInterval(cleanCache, 10 * 60 * 1000);
+
+module.exports = async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     logger.warn('No authorization header provided', null, req);
@@ -20,6 +35,28 @@ module.exports = function authMiddleware(req, res, next) {
       return res.status(401).json({ message: 'Invalid token' });
     }
     
+    // Verify user still exists in DB (with cache to avoid DB hit every request)
+    const cacheKey = `${decoded.id}_${decoded.role || 'admin'}`;
+    const cached = verifiedUsersCache.get(cacheKey);
+    
+    if (!cached || (Date.now() - cached.timestamp > CACHE_TTL)) {
+      let userExists = false;
+      if (decoded.role === 'superadmin') {
+        const SuperAdmin = require('../Models/SuperAdmin');
+        userExists = await SuperAdmin.exists({ _id: decoded.id });
+      } else {
+        const Admin = require('../Models/Admin');
+        userExists = await Admin.exists({ _id: decoded.id });
+      }
+      
+      if (!userExists) {
+        logger.warn('Token references non-existent user', { userId: decoded.id }, req);
+        return res.status(401).json({ message: 'User no longer exists' });
+      }
+      
+      verifiedUsersCache.set(cacheKey, { timestamp: Date.now() });
+    }
+    
     // Token válido - agregar al request
     req.user = decoded;
     
@@ -31,6 +68,8 @@ module.exports = function authMiddleware(req, res, next) {
     next();
   } catch (err) {
     logger.error('Error verificando token', err, req);
-    return res.status(401).json({ message: 'Invalid token', error: err.message });
+    // Don't leak internal error details
+    const message = err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token';
+    return res.status(401).json({ message });
   }
 } 

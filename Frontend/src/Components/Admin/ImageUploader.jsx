@@ -68,14 +68,12 @@ export default function ImageUploader({
       formData.append('maxWidth', maxWidth.toString());
       formData.append('quality', quality.toString());
 
-      const token = localStorage.getItem('accessToken') || localStorage.getItem('token');
-      const businessId = localStorage.getItem('businessSlug') || localStorage.getItem('businessId');
+      const token = localStorage.getItem('accessToken');
 
       const response = await fetch(`${API_URL}/upload/image`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
-          'x-business-id': businessId || '',
         },
         body: formData,
       });

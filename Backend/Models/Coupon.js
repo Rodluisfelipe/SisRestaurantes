@@ -60,7 +60,7 @@ const couponSchema = new mongoose.Schema({
 });
 
 // Índices
-couponSchema.index({ code: 1 });
+// code already has unique:true + index:true in field definition
 couponSchema.index({ isActive: 1, expiresAt: 1 });
 couponSchema.index({ createdAt: -1 });
 

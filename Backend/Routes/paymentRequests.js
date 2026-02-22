@@ -12,6 +12,7 @@ const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const authMiddleware = require('../middleware/authMiddleware');
 const { isValidObjectId } = require('../utils/validators');
 const { resolveBusinessId } = require('../utils/businessResolver');
+const { PAYMENT_REQUEST_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const socketService = require('../services/socketService');
@@ -258,7 +259,7 @@ router.post('/payments/manual/request', authMiddleware, upload.single('proof'), 
       monthsPurchased: parseInt(monthsPurchased),
       paymentMethod,
       proofUrl,
-      status: 'pending'
+      status: PAYMENT_REQUEST_STATUS.PENDING
     });
     
     await paymentRequest.save();
@@ -364,7 +365,7 @@ router.get('/admin/payment-requests', protectSuperAdmin, async (req, res) => {
     const { status } = req.query;
     
     const query = {};
-    if (status && ['pending', 'approved', 'rejected'].includes(status)) {
+    if (status && [PAYMENT_REQUEST_STATUS.PENDING, PAYMENT_REQUEST_STATUS.APPROVED, PAYMENT_REQUEST_STATUS.REJECTED].includes(status)) {
       query.status = status;
     }
     
@@ -419,7 +420,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
       return res.status(404).json(formatHttpError(req, 'Solicitud de pago no encontrada', 404));
     }
     
-    if (paymentRequest.status !== 'pending') {
+    if (paymentRequest.status !== PAYMENT_REQUEST_STATUS.PENDING) {
       return res.status(400).json(formatHttpError(req, 'Esta solicitud ya ha sido procesada', 400));
     }
     
@@ -598,7 +599,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
     }
     
     // Marcar solicitud como aprobada
-    paymentRequest.status = 'approved';
+    paymentRequest.status = PAYMENT_REQUEST_STATUS.APPROVED;
     paymentRequest.reviewedBy = req.user.id;
     paymentRequest.reviewedAt = now;
     await paymentRequest.save();
@@ -718,12 +719,12 @@ router.post('/admin/payment-requests/:id/reject', protectSuperAdmin, async (req,
       return res.status(404).json(formatHttpError(req, 'Solicitud de pago no encontrada', 404));
     }
     
-    if (paymentRequest.status !== 'pending') {
+    if (paymentRequest.status !== PAYMENT_REQUEST_STATUS.PENDING) {
       return res.status(400).json(formatHttpError(req, 'Esta solicitud ya ha sido procesada', 400));
     }
     
     // Marcar como rechazada
-    paymentRequest.status = 'rejected';
+    paymentRequest.status = PAYMENT_REQUEST_STATUS.REJECTED;
     paymentRequest.reviewedBy = req.user.id;
     paymentRequest.reviewedAt = new Date();
     paymentRequest.rejectionReason = rejectionReason || 'Sin motivo especificado';

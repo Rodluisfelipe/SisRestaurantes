@@ -59,7 +59,7 @@ const ProductSchema = new mongoose.Schema({
     ref: 'BusinessConfig',
     required: true
   }
-});
+}, { timestamps: true });
 
 // Índices para mejorar rendimiento de consultas comunes
 // Índice compuesto para consultas filtradas por negocio, categoría y estado activo

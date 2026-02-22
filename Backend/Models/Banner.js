@@ -59,7 +59,7 @@ const bannerSchema = new mongoose.Schema({
   // Información de aprobación
   approvedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'SuperAdmin'
   },
   approvedAt: {
     type: Date
@@ -103,16 +103,20 @@ bannerSchema.methods.isActive = function() {
          this.endDate >= now;
 };
 
-// Método para incrementar clicks
+// Método para incrementar clicks (atomic)
 bannerSchema.methods.incrementClicks = function() {
-  this.clicks += 1;
-  return this.save();
+  return mongoose.model('Banner').updateOne(
+    { _id: this._id },
+    { $inc: { clicks: 1 } }
+  );
 };
 
-// Método para incrementar impresiones
+// Método para incrementar impresiones (atomic)
 bannerSchema.methods.incrementImpressions = function() {
-  this.impressions += 1;
-  return this.save();
+  return mongoose.model('Banner').updateOne(
+    { _id: this._id },
+    { $inc: { impressions: 1 } }
+  );
 };
 
 module.exports = mongoose.model('Banner', bannerSchema);

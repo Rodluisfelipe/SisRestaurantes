@@ -27,79 +27,37 @@ export default function useAdminAuth(businessId) {
   // --- SuperAdmin token desde la URL ---
   useEffect(() => {
     const handleSuperAdminToken = () => {
-      const getCookie = (name) => {
-        const value = `; ${document.cookie}`;
-        const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop().split(';').shift();
-        return null;
-      };
-
       const params = new URLSearchParams(location.search);
-      const satoken = params.get('satoken');
       const fromSuperAdmin = params.get('source') === 'superadmin';
 
-      // Check URL parameter
-      if (satoken) {
+      // Check localStorage handoff (secure same-origin token transfer)
+      const handoff = localStorage.getItem('sa_handoff');
+      if (handoff) {
         try {
-          const tokenData = JSON.parse(decodeURIComponent(satoken));
+          const tokenData = JSON.parse(handoff);
+          localStorage.removeItem('sa_handoff'); // Consume immediately
+
+          // Verify TTL — reject handoffs older than 10 seconds
+          if (tokenData._ts && tokenData._ttl && (Date.now() - tokenData._ts > tokenData._ttl)) {
+            console.warn('SA handoff expired');
+            return;
+          }
+
           localStorage.setItem('accessToken', tokenData.accessToken);
-          localStorage.setItem('refreshToken', tokenData.refreshToken);
+          if (tokenData.refreshToken) localStorage.setItem('refreshToken', tokenData.refreshToken);
           localStorage.setItem('user', JSON.stringify(tokenData.user));
           if (businessId) localStorage.setItem('businessSlug', businessId);
           navigate(location.pathname, { replace: true });
           window.location.reload();
           return;
         } catch (error) {
-          console.error('Error parsing SuperAdmin token:', error);
+          localStorage.removeItem('sa_handoff');
+          console.error('Error parsing SA handoff:', error);
         }
       }
 
       if (!fromSuperAdmin) return;
-
-      // Check temp localStorage
-      const tempAccessToken = localStorage.getItem('temp_accessToken');
-      const tempRefreshToken = localStorage.getItem('temp_refreshToken');
-      const tempUser = localStorage.getItem('temp_user');
-
-      if (tempAccessToken && tempRefreshToken && tempUser) {
-        try {
-          localStorage.setItem('accessToken', tempAccessToken);
-          localStorage.setItem('refreshToken', tempRefreshToken);
-          localStorage.setItem('user', tempUser);
-          if (businessId) localStorage.setItem('businessSlug', businessId);
-          localStorage.removeItem('temp_accessToken');
-          localStorage.removeItem('temp_refreshToken');
-          localStorage.removeItem('temp_user');
-          localStorage.removeItem('temp_businessSlug');
-          navigate(location.pathname, { replace: true });
-          window.location.reload();
-          return;
-        } catch (error) {
-          console.error('Error handling temp tokens:', error);
-        }
-      }
-
-      // Check cookies as last resort
-      const cookieAccessToken = getCookie('sa_accessToken');
-      const cookieRefreshToken = getCookie('sa_refreshToken');
-      const cookieUser = getCookie('sa_user');
-
-      if (cookieAccessToken && cookieRefreshToken && cookieUser) {
-        try {
-          localStorage.setItem('accessToken', cookieAccessToken);
-          localStorage.setItem('refreshToken', cookieRefreshToken);
-          localStorage.setItem('user', decodeURIComponent(cookieUser));
-          if (businessId) localStorage.setItem('businessSlug', businessId);
-          document.cookie = 'sa_accessToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-          document.cookie = 'sa_refreshToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-          document.cookie = 'sa_user=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-          document.cookie = 'sa_businessSlug=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-          navigate(location.pathname, { replace: true });
-          window.location.reload();
-        } catch (error) {
-          console.error('Error handling cookie tokens:', error);
-        }
-      }
+      // No legacy fallbacks — sa_handoff with TTL is the only supported handoff mechanism
     };
 
     handleSuperAdminToken();

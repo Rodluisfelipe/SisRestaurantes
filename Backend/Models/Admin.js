@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const adminSchema = new mongoose.Schema({
   username: {
@@ -48,10 +49,25 @@ adminSchema.pre('save', async function(next) {
   }
 });
 
+// Hash refreshToken before saving (store SHA-256 hash, not plaintext)
+adminSchema.pre('save', function(next) {
+  if (!this.isModified('refreshToken') || !this.refreshToken) return next();
+  this.refreshToken = crypto.createHash('sha256').update(this.refreshToken).digest('hex');
+  next();
+});
+
 // Método para comparar contraseñas
 adminSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
+
+// Static: find admin by ID and verify refresh token (hashed comparison)
+adminSchema.statics.findByRefreshToken = async function(adminId, plainToken) {
+  const hashed = crypto.createHash('sha256').update(plainToken).digest('hex');
+  return this.findOne({ _id: adminId, refreshToken: hashed });
+};
+
+adminSchema.index({ businessId: 1 });
 
 const Admin = mongoose.model('Admin', adminSchema);
 

@@ -23,9 +23,6 @@ const api = axios.create({
   withCredentials: true
 });
 
-// Implementar un cache simple usando Map
-const cache = new Map();
-
 // Interceptor para las peticiones
 api.interceptors.request.use(
   (config) => {
@@ -106,15 +103,6 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// Función para limpiar el cache
-export const clearCache = () => cache.clear();
-
-// Función para invalidar una entrada específica del cache
-export const invalidateCache = (url, params = {}) => {
-  const cacheKey = `${url}${JSON.stringify(params)}`;
-  cache.delete(cacheKey);
-};
 
 // Funciones para obtener datos del backend
 

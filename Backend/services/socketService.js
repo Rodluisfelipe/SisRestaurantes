@@ -4,6 +4,10 @@ const connectedClients = new Map(); // Track connected clients
 const { verifyToken } = require('../config/jwt');
 const logger = require('../utils/logger');
 
+// Slug cache to avoid DB lookups on every emit
+const slugCache = new Map(); // businessId -> { slug, cachedAt }
+const SLUG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 function initSocket(io) {
   ioInstance = io;
 
@@ -89,10 +93,22 @@ function initSocket(io) {
       }
     });
 
-    // Unirse a un canal específico para superadmin
+    // Unirse a un canal específico para superadmin (requires auth + superadmin role)
     socket.on('joinSuperAdmin', () => {
+      if (!socket.user) {
+        logger.warn('joinSuperAdmin rejected - not authenticated', { socketId: socket.id });
+        socket.emit('superAdminJoined', { success: false, error: 'unauthorized' });
+        return;
+      }
+      const isSuperAdmin = socket.user.role === 'superadmin' || socket.user.isSuperAdmin;
+      if (!isSuperAdmin) {
+        logger.warn('joinSuperAdmin rejected - not superadmin', { socketId: socket.id, role: socket.user.role });
+        socket.emit('superAdminJoined', { success: false, error: 'forbidden' });
+        return;
+      }
       socket.join('superadmin-channel');
       logger.info('Socket se unió al canal de superadmin', { socketId: socket.id });
+      socket.emit('superAdminJoined', { success: true });
     });
 
     // Salir de un room
@@ -113,6 +129,35 @@ function initSocket(io) {
     socket.on('ping', () => {
       logger.debug('Ping received', { socketId: socket.id });
       socket.emit('pong', { timestamp: new Date().toISOString() });
+    });
+
+    // Customer order tracking — join per-order room without requiring auth
+    socket.on('trackOrder', async ({ orderId, customerToken }) => {
+      if (!orderId || !customerToken) {
+        socket.emit('trackOrderResult', { success: false, error: 'Missing orderId or customerToken' });
+        return;
+      }
+      try {
+        const Order = require('../Models/Order');
+        const order = await Order.findById(orderId).select('customerToken status').lean();
+        if (!order || order.customerToken !== customerToken) {
+          socket.emit('trackOrderResult', { success: false, error: 'Order not found or token mismatch' });
+          return;
+        }
+        socket.join(`order:${orderId}`);
+        logger.debug('Customer joined order tracking room', { socketId: socket.id, orderId });
+        socket.emit('trackOrderResult', { success: true, orderId, status: order.status });
+      } catch (error) {
+        logger.error('Error in trackOrder', { error: error.message });
+        socket.emit('trackOrderResult', { success: false, error: 'Server error' });
+      }
+    });
+
+    socket.on('untrackOrder', (orderId) => {
+      if (orderId) {
+        socket.leave(`order:${orderId}`);
+        logger.debug('Customer left order tracking room', { socketId: socket.id, orderId });
+      }
     });
 
     socket.on('disconnect', () => {
@@ -148,17 +193,27 @@ async function emitToBusiness(businessId, event, data) {
     // Emit to the main room
     ioInstance.to(roomId).emit(event, data);
     
-    // If businessId looks like an ObjectId, also try to emit to slug
+    // If businessId looks like an ObjectId, also try to emit to slug (cached)
     if (roomId.match(/^[0-9a-fA-F]{24}$/)) {
       try {
-        const BusinessConfig = require('../Models/BusinessConfig');
-        const business = await BusinessConfig.findById(roomId);
-        if (business && business.slug) {
-          const slugRoomClients = ioInstance.sockets.adapter.rooms.get(business.slug);
+        let slug = null;
+        const cached = slugCache.get(roomId);
+        if (cached && (Date.now() - cached.cachedAt) < SLUG_CACHE_TTL) {
+          slug = cached.slug;
+        } else {
+          const BusinessConfig = require('../Models/BusinessConfig');
+          const business = await BusinessConfig.findById(roomId).select('slug').lean();
+          if (business?.slug) {
+            slug = business.slug;
+            slugCache.set(roomId, { slug, cachedAt: Date.now() });
+          }
+        }
+        if (slug) {
+          const slugRoomClients = ioInstance.sockets.adapter.rooms.get(slug);
           const slugClientCount = slugRoomClients?.size || 0;
           
-          ioInstance.to(business.slug).emit(event, data);
-          logger.debug(`Also emitting to business slug`, { slug: business.slug, slugClientCount });
+          ioInstance.to(slug).emit(event, data);
+          logger.debug(`Also emitting to business slug`, { slug, slugClientCount });
         }
       } catch (error) {
         logger.error('Error emitting to business slug', error);
@@ -202,9 +257,20 @@ function testEmitToBusiness(businessId, testData = { message: 'Test event', time
   return emitToBusiness(businessId, 'test_event', testData);
 }
 
+/**
+ * Emit an event to a specific order tracking room.
+ * Customers join these rooms via the 'trackOrder' socket event.
+ */
+function emitToOrder(orderId, event, data) {
+  if (!ioInstance || !orderId) return;
+  const room = `order:${orderId.toString()}`;
+  ioInstance.to(room).emit(event, data);
+}
+
 module.exports = {
   initSocket,
   emitToBusiness,
+  emitToOrder,
   emitBusinessesUpdate,
   getConnectedClientsInfo,
   testEmitToBusiness

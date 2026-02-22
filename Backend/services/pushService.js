@@ -93,8 +93,11 @@ const sendOrderReadyPush = async (businessId, order) => {
 
 /**
  * Send push notification to a customer by their customerToken
+ * @param {string} customerToken - Customer's unique token
+ * @param {object} payload - Push notification payload
+ * @param {string} [businessId] - Optional businessId to scope notifications to a specific business
  */
-const sendPushToCustomer = async (customerToken, payload) => {
+const sendPushToCustomer = async (customerToken, payload, businessId) => {
   if (!vapidConfigured) {
     logger.debug('Push notifications disabled - VAPID not configured');
     return { sent: 0, failed: 0, removed: 0 };
@@ -103,7 +106,11 @@ const sendPushToCustomer = async (customerToken, payload) => {
     return { sent: 0, failed: 0, removed: 0 };
   }
 
-  const subscriptions = await PushSubscription.find({ customerToken, role: 'customer', isActive: true });
+  const filter = { customerToken, role: 'customer', isActive: true };
+  if (businessId) {
+    filter.businessId = businessId;
+  }
+  const subscriptions = await PushSubscription.find(filter);
   let sent = 0, failed = 0, removed = 0;
 
   for (const sub of subscriptions) {
@@ -149,7 +156,7 @@ const sendCustomerOrderStatusPush = async (order, newStatus) => {
     data: { orderId: order._id.toString(), orderNumber: order.orderNumber, status: newStatus }
   };
 
-  return sendPushToCustomer(order.customerToken, payload);
+  return sendPushToCustomer(order.customerToken, payload, order.businessId);
 };
 
 module.exports = {

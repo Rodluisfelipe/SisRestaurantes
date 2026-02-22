@@ -46,7 +46,7 @@ router.get("/", async (req, res) => {
     res.json(template);
   } catch (error) {
     logger.error("Error getting WhatsApp template", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
@@ -91,7 +91,7 @@ router.post("/", tenantAuth, async (req, res) => {
     res.json(savedTemplate);
   } catch (error) {
     logger.error("Error saving WhatsApp template", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
@@ -126,7 +126,7 @@ router.delete("/", tenantAuth, async (req, res) => {
     res.json(savedTemplate);
   } catch (error) {
     logger.error("Error resetting WhatsApp template", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 

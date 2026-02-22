@@ -23,9 +23,17 @@ const ORDER_STATUS = {
   PENDING_PAYMENT: 'pending_payment',
   PAYMENT_UPLOADED: 'payment_uploaded',
   PAYMENT_CONFIRMED: 'payment_confirmed',
+  CONFIRMED: 'confirmed',
+  PREPARING: 'preparing',
   IN_PROGRESS: 'inProgress',
+  READY: 'ready',
   COMPLETED: 'completed',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled',
 };
+
+// All valid order statuses as array (for validation)
+const ALL_ORDER_STATUSES = Object.values(ORDER_STATUS);
 
 // Tipos de pedidos
 const ORDER_TYPES = {
@@ -40,6 +48,28 @@ const USER_ROLES = {
   ADMIN: 'admin',
   MANAGER: 'manager',
   STAFF: 'staff',
+};
+
+// Estados de solicitudes de pago
+const PAYMENT_REQUEST_STATUS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
+};
+
+// Estados de suscripciones
+const SUBSCRIPTION_STATUS = {
+  ACTIVE: 'active',
+  EXPIRED: 'expired',
+  CANCELLED: 'cancelled',
+  PENDING: 'pending',
+};
+
+// Estados de banners
+const BANNER_STATUS = {
+  PENDING: 'pending',
+  APPROVED: 'approved',
+  REJECTED: 'rejected',
 };
 
 // Códigos de estado HTTP
@@ -106,8 +136,12 @@ module.exports = {
   TIME_INTERVALS,
   RATE_LIMITS,
   ORDER_STATUS,
+  ALL_ORDER_STATUSES,
   ORDER_TYPES,
   USER_ROLES,
+  PAYMENT_REQUEST_STATUS,
+  SUBSCRIPTION_STATUS,
+  BANNER_STATUS,
   HTTP_STATUS,
   SOCKET_EVENTS,
   DEFAULTS,

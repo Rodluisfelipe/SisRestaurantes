@@ -37,9 +37,9 @@ router.post("/", tenantAuth, async (req, res) => {
   try {
     // Si se proporciona un _id, actualizar en lugar de crear
     if (req.body._id) {
-      // Intentar actualizar la categoría existente
-      const updatedCategory = await Category.findByIdAndUpdate(
-        req.body._id,
+      // Compound query: only update categories belonging to this tenant
+      const updatedCategory = await Category.findOneAndUpdate(
+        { _id: req.body._id, businessId: req.user.businessId },
         {
           name: req.body.name,
           description: req.body.description,
@@ -62,16 +62,16 @@ router.post("/", tenantAuth, async (req, res) => {
     // Si no hay _id, crear una nueva categoría
     logger.debug('Creating category', { name: req.body.name }, req);
     
-    // Manejar businessId si viene como slug
-    if (req.body.businessId && typeof req.body.businessId === 'string') {
-      try {
-        req.body.businessId = await resolveBusinessId(req.body.businessId);
-      } catch (error) {
-        return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404, { detail: error.message }));
-      }
-    }
+    // Force businessId from authenticated user's token
+    const categoryData = {
+      name: req.body.name,
+      description: req.body.description,
+      displayOrder: req.body.displayOrder,
+      active: req.body.active,
+      businessId: req.user.businessId
+    };
     
-    const newCategory = new Category(req.body);
+    const newCategory = new Category(categoryData);
     try {
       const savedCategory = await newCategory.save();
       // Emitir evento de actualización por WebSocket
@@ -106,10 +106,10 @@ router.put("/reorder", tenantAuth, async (req, res) => {
     
     logger.debug(`Reordenando categorías para negocio ${businessId}`, { count: categories.length }, req);
     
-    // Actualizar cada categoría con su nuevo orden
+    // Actualizar cada categoría con su nuevo orden (compound query for tenant isolation)
     const updatePromises = categories.map(category => 
-      Category.findByIdAndUpdate(
-        category._id,
+      Category.findOneAndUpdate(
+        { _id: category._id, businessId: req.user.businessId },
         { displayOrder: category.order },
         { new: true }
       )
@@ -118,9 +118,9 @@ router.put("/reorder", tenantAuth, async (req, res) => {
     await Promise.all(updatePromises);
     
     // Emitir evento de actualización por WebSocket
-    emitToBusiness(businessId, "categories_update", { 
+    emitToBusiness(req.user.businessId?.toString(), "categories_update", { 
       type: "reordered", 
-      businessId,
+      businessId: req.user.businessId,
       message: "Orden de categorías actualizado" 
     });
     
@@ -137,18 +137,18 @@ router.put("/:id", tenantAuth, async (req, res) => {
   try {
     logger.debug('Updating category', { id: req.params.id }, req);
     
-    // Manejar businessId si viene como slug
-    if (req.body.businessId && typeof req.body.businessId === 'string') {
-      try {
-        req.body.businessId = await resolveBusinessId(req.body.businessId);
-      } catch (error) {
-        return res.status(404).json(formatHttpError(req, error.message, 404));
-      }
-    }
+    // Whitelist allowed fields — prevent businessId override and mass assignment
+    const { name, description, displayOrder, active } = req.body;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (displayOrder !== undefined) updateData.displayOrder = displayOrder;
+    if (active !== undefined) updateData.active = active;
     
-    const updatedCategory = await Category.findByIdAndUpdate(
-      req.params.id,
-      { ...req.body },
+    // Compound query: only update categories belonging to this tenant
+    const updatedCategory = await Category.findOneAndUpdate(
+      { _id: req.params.id, businessId: req.user.businessId },
+      updateData,
       { new: true, runValidators: true }
     );
     
@@ -170,14 +170,8 @@ router.put("/:id", tenantAuth, async (req, res) => {
 // Eliminar categoría
 router.delete("/:id", tenantAuth, async (req, res) => {
   try {
-    const { businessId } = req.query;
-    let resolvedBusinessId;
-    try {
-      resolvedBusinessId = await resolveBusinessId(businessId);
-    } catch (error) {
-      return res.status(404).json(formatHttpError(req, error.message, 404));
-    }
-    const category = await Category.findOneAndDelete({ _id: req.params.id, businessId: resolvedBusinessId });
+    // Use businessId from token for tenant isolation
+    const category = await Category.findOneAndDelete({ _id: req.params.id, businessId: req.user.businessId });
     if (!category) {
       return res.status(404).json(formatHttpError(req, "Categoría no encontrada", 404));
     }
@@ -202,10 +196,10 @@ router.post("/update-order", tenantAuth, async (req, res) => {
     
     logger.debug("Actualizando orden de categorías", { count: categories.length }, req);
     
-    // Actualizar cada categoría con su nuevo displayOrder
+    // Actualizar cada categoría con su nuevo displayOrder (compound query for tenant isolation)
     const updatePromises = categories.map(item => 
-      Category.findByIdAndUpdate(
-        item.id,
+      Category.findOneAndUpdate(
+        { _id: item.id, businessId: req.user.businessId },
         { displayOrder: item.order },
         { new: true }
       )

@@ -145,7 +145,7 @@ router.post("/reverse-geocode", geocodeLimiter, async (req, res) => {
  * GET /api/delivery-zones/geocode/stats
  * Obtener estadísticas del cache de geocodificación
  */
-router.get("/geocode/stats", async (req, res) => {
+router.get("/geocode/stats", authMiddleware, async (req, res) => {
   try {
     const stats = getCacheStats();
     res.json({
@@ -235,8 +235,14 @@ router.get("/", authMiddleware, zoneLimiter, async (req, res) => {
   try {
     logger.info("GET /delivery-zones");
     
-    // Obtener businessId del token, query param, o del admin
-    let businessId = req.user.businessId || req.query.businessId;
+    // Obtener businessId del token (enforce tenant isolation)
+    // Non-SuperAdmin users can ONLY see their own business zones
+    let businessId;
+    if (req.user.isSuperAdmin) {
+      businessId = req.query.businessId || req.user.businessId;
+    } else {
+      businessId = req.user.businessId;
+    }
     logger.debug("businessId inicial", { businessId });
     
     // Si es un token temporal de SuperAdmin, el businessId debe venir en el query
@@ -507,6 +513,13 @@ router.put("/:id", authMiddleware, zoneLimiter, async (req, res) => {
     }
     
     const updateData = req.body;
+    
+    // Block sensitive fields from mass assignment
+    delete updateData._id;
+    delete updateData.businessId;  // Prevent tenant switch
+    delete updateData.createdAt;
+    delete updateData.updatedAt;
+    delete updateData.__v;
     
     // Normalizar datos del círculo (el frontend envía type: 'radius' pero geometry.type: 'Point')
     if (updateData.type === 'radius' && updateData.geometry) {

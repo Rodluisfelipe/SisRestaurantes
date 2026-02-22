@@ -12,7 +12,12 @@ const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils
 const { isValidObjectId } = require("../utils/validators");
 const logger = require("../utils/logger");
 const { getSubscriptionForBusiness } = require('../utils/subscriptionHelper');
+const { ORDER_STATUS } = require('../utils/constants');
 const authMiddleware = require('../middleware/authMiddleware');
+const { tenantAuth } = require('../middleware/tenantAuth');
+const rateLimit = require('express-rate-limit');
+const Product = require('../Models/Product');
+const ToppingGroup = require('../Models/ToppingGroup');
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
@@ -36,12 +41,11 @@ const proofStorage = multer.diskStorage({
 });
 const uploadProof = multer({
   storage: proofStorage,
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB for mobile photos
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB for mobile photos
   fileFilter: (req, file, cb) => {
     const allowedMimes = [
       'image/jpeg', 'image/jpg', 'image/png', 'image/webp',
-      'image/heic', 'image/heif',                // iPhone
-      'application/octet-stream'                   // Android fallback
+      'image/heic', 'image/heif'                 // iPhone
     ];
     if (allowedMimes.includes(file.mimetype.toLowerCase())) {
       return cb(null, true);
@@ -54,6 +58,20 @@ const uploadProof = multer({
     }
     cb(new Error('Solo se permiten imágenes (jpg, png, webp)'));
   }
+});
+
+// Rate limiter for public order creation
+const createOrderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 orders per IP per 15 minutes
+  message: { message: 'Demasiados pedidos. Intente nuevamente en unos minutos.' }
+});
+
+// Rate limiter for public order tracking/history
+const publicOrderLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { message: 'Demasiadas consultas. Intente nuevamente más tarde.' }
 });
 
 // Generate a customer token for order tracking
@@ -83,8 +101,8 @@ const generateOrderNumber = async (businessId) => {
   }
 };
 
-// Get all orders for a business (with optional filtering)
-router.get("/", async (req, res) => {
+// Get all orders for a business (with optional filtering) — ADMIN ONLY
+router.get("/", tenantAuth, async (req, res) => {
   try {
     const { businessId, status, orderType } = req.query;
     
@@ -106,12 +124,12 @@ router.get("/", async (req, res) => {
     res.json(orders);
   } catch (error) {
     logger.error("Error fetching orders", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Create a new order
-router.post("/", async (req, res) => {
+router.post("/", createOrderLimiter, async (req, res) => {
   try {
 
 
@@ -156,6 +174,9 @@ router.post("/", async (req, res) => {
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "Items must be a non-empty array" });
     }
+    if (items.length > 100) {
+      return res.status(400).json({ message: "Too many items in order (max 100)" });
+    }
     for (const item of items) {
       if (!item.name || typeof item.name !== 'string' || !item.quantity || !item.price) {
         return res.status(400).json({ message: "Each item must have name (string), quantity and price" });
@@ -183,7 +204,47 @@ router.post("/", async (req, res) => {
     }
     
     const businessObjectId = businessResult.businessId;
-    
+
+    // === SERVER-SIDE PRICE VALIDATION ===
+    // Recalculate total from DB prices to prevent price manipulation
+    try {
+      let calculatedTotal = 0;
+      for (const item of items) {
+        if (item.productId) {
+          const dbProduct = await Product.findOne({ _id: item.productId, businessId: businessObjectId });
+          if (dbProduct) {
+            let itemPrice = dbProduct.price;
+            // Add topping prices if any
+            if (item.selectedToppings && Array.isArray(item.selectedToppings) && item.selectedToppings.length > 0) {
+              for (const topping of item.selectedToppings) {
+                if (topping.price && typeof topping.price === 'number') {
+                  itemPrice += topping.price;
+                }
+              }
+            }
+            calculatedTotal += itemPrice * (item.quantity || 1);
+          } else {
+            calculatedTotal += (item.price || 0) * (item.quantity || 1);
+          }
+        } else {
+          // No productId — use client price (legacy orders from WhatsApp)
+          calculatedTotal += (item.price || 0) * (item.quantity || 1);
+        }
+      }
+      // Allow 5% tolerance for rounding differences, delivery fees already excluded from totalAmount
+      if (calculatedTotal > 0 && Math.abs(calculatedTotal - numericTotalAmount) > calculatedTotal * 0.05) {
+        logger.warn('Price mismatch detected', {
+          clientTotal: numericTotalAmount,
+          serverTotal: calculatedTotal,
+          businessId: businessObjectId
+        });
+        return res.status(400).json({ message: 'El total del pedido no coincide con los precios actuales. Recarga la página e intenta de nuevo.' });
+      }
+    } catch (priceErr) {
+      // Non-blocking: if price check fails, log and continue (don't break orders)
+      logger.warn('Price validation failed, continuing', { error: priceErr.message });
+    }
+
     // Verificar estado de la suscripción antes de permitir crear órdenes
     const { subscription, status: subscriptionStatus, isSuspended, periodEnd: periodEndDate, graceUntil: graceUntilDate } = await getSubscriptionForBusiness(businessObjectId);
     
@@ -281,7 +342,7 @@ router.post("/", async (req, res) => {
 
     // Determine initial status based on ordering channel
     const isInApp = orderChannel === 'inapp';
-    const initialStatus = isInApp ? 'pending_payment' : 'pending';
+    const initialStatus = isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
     const customerToken = isInApp ? generateCustomerToken() : null;
 
     // Create the order
@@ -336,7 +397,7 @@ router.post("/", async (req, res) => {
         title: `🆕 Nuevo Pedido #${orderNumber}`,
         body: `Nuevo pedido de ${customerName} - ${numericTotalAmount.toLocaleString('es-CO', { style: 'currency', currency: 'COP' })}`,
         clickUrl: `/admin/orders/${savedOrder._id}`,
-        data: { orderId: savedOrder._id.toString(), orderNumber, status: 'pending' }
+        data: { orderId: savedOrder._id.toString(), orderNumber, status: ORDER_STATUS.PENDING }
       };
       await sendPushToBusinessId(businessObjectId.toString(), payload);
     } catch (pushError) {
@@ -351,12 +412,12 @@ router.post("/", async (req, res) => {
     });
   } catch (error) {
     logger.error("Error creating order", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
-// Get all completed orders for a business (historical view)
-router.get("/completed", async (req, res) => {
+// Get all completed orders for a business (historical view) — ADMIN ONLY
+router.get("/completed", tenantAuth, async (req, res) => {
   try {
     const { businessId, page, limit: queryLimit } = req.query;
     
@@ -405,15 +466,16 @@ router.get("/completed", async (req, res) => {
     res.json(completedOrders);
   } catch (error) {
     logger.error("Error fetching completed orders", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Track order by ID + customerToken (public endpoint) - MUST be before /:id
-router.get('/track/:id', async (req, res) => {
+router.get('/track/:id', publicOrderLimiter, async (req, res) => {
   try {
     const { id } = req.params;
-    const { token } = req.query;
+    // Accept token from header (preferred) or query string (legacy)
+    const token = req.headers['x-customer-token'] || req.query.token;
 
     if (!isValidObjectId(id)) {
       return res.status(400).json({ message: 'Invalid order ID' });
@@ -455,12 +517,12 @@ router.get('/track/:id', async (req, res) => {
     res.json(trackingData);
   } catch (error) {
     logger.error('Error tracking order', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Get my orders by phone + businessId (public endpoint) - MUST be before /:id
-router.get('/my-orders', async (req, res) => {
+router.get('/my-orders', publicOrderLimiter, async (req, res) => {
   try {
     const { phone, businessId } = req.query;
 
@@ -479,7 +541,7 @@ router.get('/my-orders', async (req, res) => {
     const activeOrders = await Order.find({
       businessId: businessObjectId,
       phone: phone,
-      status: { $nin: ['completed', 'cancelled', 'delivered'] }
+      status: { $nin: [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED] }
     }).sort({ createdAt: -1 }).limit(10);
 
     // Get recent completed orders
@@ -494,12 +556,12 @@ router.get('/my-orders', async (req, res) => {
     });
   } catch (error) {
     logger.error('Error fetching my orders', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
-// Get order by ID - MUST BE AFTER specific routes to avoid intercepting them
-router.get("/:id", async (req, res) => {
+// Get order by ID - ADMIN ONLY - MUST BE AFTER specific routes to avoid intercepting them
+router.get("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -512,16 +574,21 @@ router.get("/:id", async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
+
+    // Tenant isolation: verify admin owns this order's business
+    if (req.user.businessId && order.businessId.toString() !== req.user.businessId.toString() && !req.user.isSuperAdmin) {
+      return res.status(403).json({ message: 'No tienes acceso a este pedido' });
+    }
     
     res.json(order);
   } catch (error) {
 
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Update order status (admin only)
-router.patch("/:id/status", authMiddleware, async (req, res) => {
+router.patch("/:id/status", tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -546,9 +613,9 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       updateData.sentToKitchen = true;
     }
     
-    // Update the order
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
+    // Update the order — compound query ensures tenant isolation
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: id, businessId: req.user.businessId },
       updateData,
       { new: true }
     );
@@ -559,6 +626,8 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
     
     // Emit socket event
     socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_updated", updatedOrder);
+    // Emit to per-order tracking room for customer real-time updates
+    socketService.emitToOrder(updatedOrder._id, 'order_status_changed', { orderId: updatedOrder._id, status: updatedOrder.status, order: updatedOrder });
     
     // Send push notification to customer about status change
     try {
@@ -621,12 +690,12 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
     res.json(updatedOrder);
   } catch (error) {
 
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Send order to kitchen without changing status (admin only)
-router.patch("/:id/send-to-kitchen", authMiddleware, async (req, res) => {
+router.patch("/:id/send-to-kitchen", tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -634,9 +703,9 @@ router.patch("/:id/send-to-kitchen", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Invalid order ID" });
     }
     
-    // Update only the sentToKitchen field
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
+    // Update only the sentToKitchen field — compound query ensures tenant isolation
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: id, businessId: req.user.businessId },
       { 
         sentToKitchen: true,
         updatedAt: new Date()
@@ -650,16 +719,17 @@ router.patch("/:id/send-to-kitchen", authMiddleware, async (req, res) => {
     
     // Emit socket event
     socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_updated", updatedOrder);
+    socketService.emitToOrder(updatedOrder._id, 'order_status_changed', { orderId: updatedOrder._id, status: updatedOrder.status, order: updatedOrder });
     
     res.json(updatedOrder);
   } catch (error) {
 
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Delete an order (admin only)
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.delete("/:id", tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -667,14 +737,12 @@ router.delete("/:id", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Invalid order ID" });
     }
     
-    // Find order first to get businessId for socket event
-    const order = await Order.findById(id);
+    // Compound query ensures tenant isolation
+    const order = await Order.findOneAndDelete({ _id: id, businessId: req.user.businessId });
     
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    
-    await Order.findByIdAndDelete(id);
     
     // Emit socket event
     socketService.emitToBusiness(order.businessId.toString(), "order_deleted", { _id: id });
@@ -682,12 +750,12 @@ router.delete("/:id", authMiddleware, async (req, res) => {
     res.json({ message: "Order deleted successfully" });
   } catch (error) {
 
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Generate daily sales report and close day (admin only)
-router.post("/daily-closing", authMiddleware, async (req, res) => {
+router.post("/daily-closing", tenantAuth, async (req, res) => {
   try {
     const { businessId } = req.body;
     
@@ -805,12 +873,12 @@ router.post("/daily-closing", authMiddleware, async (req, res) => {
     });
   } catch (error) {
 
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Cleanup completed orders after viewing report (admin only)
-router.post("/cleanup-completed", authMiddleware, async (req, res) => {
+router.post("/cleanup-completed", tenantAuth, async (req, res) => {
   try {
     const { businessId, orderIds } = req.body;
     
@@ -852,7 +920,7 @@ router.post("/cleanup-completed", authMiddleware, async (req, res) => {
     });
   } catch (error) {
 
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
@@ -898,7 +966,7 @@ router.post('/:id/payment-proof', (req, res, next) => {
       return res.status(403).json({ message: 'Token inválido' });
     }
 
-    if (!['pending_payment', 'payment_uploaded'].includes(order.status)) {
+    if (![ORDER_STATUS.PENDING_PAYMENT, ORDER_STATUS.PAYMENT_UPLOADED].includes(order.status)) {
       return res.status(400).json({ message: 'Este pedido no requiere comprobante de pago en este momento' });
     }
 
@@ -910,9 +978,9 @@ router.post('/:id/payment-proof', (req, res, next) => {
       {
         paymentProof: proofPath,
         paymentProofUploadedAt: new Date(),
-        status: 'payment_uploaded',
+        status: ORDER_STATUS.PAYMENT_UPLOADED,
         updatedAt: new Date(),
-        $push: { statusHistory: { status: 'payment_uploaded', timestamp: new Date(), note: 'Comprobante de pago subido' } }
+        $push: { statusHistory: { status: ORDER_STATUS.PAYMENT_UPLOADED, timestamp: new Date(), note: 'Comprobante de pago subido' } }
       },
       { new: true }
     );
@@ -942,12 +1010,12 @@ router.post('/:id/payment-proof', (req, res, next) => {
     res.json({ success: true, order: updatedOrder });
   } catch (error) {
     logger.error('Error uploading payment proof', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Confirm payment (admin only)
-router.patch('/:id/confirm-payment', authMiddleware, async (req, res) => {
+router.patch('/:id/confirm-payment', tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { note } = req.body;
@@ -956,33 +1024,35 @@ router.patch('/:id/confirm-payment', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Invalid order ID' });
     }
 
-    const order = await Order.findById(id);
+    // Compound query ensures tenant isolation
+    const order = await Order.findOne({ _id: id, businessId: req.user.businessId });
     if (!order) {
       return res.status(404).json({ message: 'Pedido no encontrado' });
     }
 
-    if (order.status !== 'payment_uploaded') {
+    if (order.status !== ORDER_STATUS.PAYMENT_UPLOADED) {
       return res.status(400).json({ message: `No se puede confirmar pago en estado "${order.status}"` });
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: id, businessId: req.user.businessId },
       {
-        status: 'payment_confirmed',
+        status: ORDER_STATUS.PAYMENT_CONFIRMED,
         updatedAt: new Date(),
-        $push: { statusHistory: { status: 'payment_confirmed', timestamp: new Date(), note: note || 'Pago confirmado por el restaurante' } }
+        $push: { statusHistory: { status: ORDER_STATUS.PAYMENT_CONFIRMED, timestamp: new Date(), note: note || 'Pago confirmado por el restaurante' } }
       },
       { new: true }
     );
 
     // Emit socket event for order update
     socketService.emitToBusiness(updatedOrder.businessId.toString(), 'order_updated', updatedOrder);
+    socketService.emitToOrder(updatedOrder._id, 'order_status_changed', { orderId: updatedOrder._id, status: ORDER_STATUS.PAYMENT_CONFIRMED, order: updatedOrder });
 
     // Also emit specific event for customer tracking
     socketService.emitToBusiness(updatedOrder.businessId.toString(), 'payment_confirmed', {
       orderId: updatedOrder._id,
       orderNumber: updatedOrder.orderNumber,
-      status: 'payment_confirmed'
+      status: ORDER_STATUS.PAYMENT_CONFIRMED
     });
 
     logger.info(`Payment confirmed for order ${updatedOrder.orderNumber}`);
@@ -990,7 +1060,7 @@ router.patch('/:id/confirm-payment', authMiddleware, async (req, res) => {
     // Push notification to customer
     try {
       const { sendCustomerOrderStatusPush } = require('../services/pushService');
-      await sendCustomerOrderStatusPush(updatedOrder, 'payment_confirmed');
+      await sendCustomerOrderStatusPush(updatedOrder, ORDER_STATUS.PAYMENT_CONFIRMED);
     } catch (pushErr) {
       logger.warn('Failed to send customer push for payment confirmed', { error: pushErr.message });
     }
@@ -998,12 +1068,12 @@ router.patch('/:id/confirm-payment', authMiddleware, async (req, res) => {
     res.json(updatedOrder);
   } catch (error) {
     logger.error('Error confirming payment', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
 // Reject payment (admin only)
-router.patch('/:id/reject-payment', authMiddleware, async (req, res) => {
+router.patch('/:id/reject-payment', tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
@@ -1012,28 +1082,30 @@ router.patch('/:id/reject-payment', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Invalid order ID' });
     }
 
-    const order = await Order.findById(id);
+    // Compound query ensures tenant isolation
+    const order = await Order.findOne({ _id: id, businessId: req.user.businessId });
     if (!order) {
       return res.status(404).json({ message: 'Pedido no encontrado' });
     }
 
-    if (order.status !== 'payment_uploaded') {
+    if (order.status !== ORDER_STATUS.PAYMENT_UPLOADED) {
       return res.status(400).json({ message: `No se puede rechazar pago en estado "${order.status}"` });
     }
 
-    const updatedOrder = await Order.findByIdAndUpdate(
-      id,
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: id, businessId: req.user.businessId },
       {
-        status: 'pending_payment',
+        status: ORDER_STATUS.PENDING_PAYMENT,
         paymentProof: null,
         paymentProofUploadedAt: null,
         updatedAt: new Date(),
-        $push: { statusHistory: { status: 'pending_payment', timestamp: new Date(), note: reason || 'Comprobante rechazado - sube uno nuevo' } }
+        $push: { statusHistory: { status: ORDER_STATUS.PENDING_PAYMENT, timestamp: new Date(), note: reason || 'Comprobante rechazado - sube uno nuevo' } }
       },
       { new: true }
     );
 
     socketService.emitToBusiness(updatedOrder.businessId.toString(), 'order_updated', updatedOrder);
+    socketService.emitToOrder(updatedOrder._id, 'order_status_changed', { orderId: updatedOrder._id, status: updatedOrder.status, order: updatedOrder });
     socketService.emitToBusiness(updatedOrder.businessId.toString(), 'payment_rejected', {
       orderId: updatedOrder._id,
       orderNumber: updatedOrder.orderNumber,
@@ -1050,7 +1122,7 @@ router.patch('/:id/reject-payment', authMiddleware, async (req, res) => {
           title: `⚠️ Pedido #${updatedOrder.orderNumber} - Comprobante rechazado`,
           body: reason || 'Tu comprobante fue rechazado. Por favor sube uno nuevo.',
           clickUrl: '/',
-          data: { orderId: updatedOrder._id.toString(), orderNumber: updatedOrder.orderNumber, status: 'pending_payment' }
+          data: { orderId: updatedOrder._id.toString(), orderNumber: updatedOrder.orderNumber, status: ORDER_STATUS.PENDING_PAYMENT }
         });
       }
     } catch (pushErr) {
@@ -1060,12 +1132,12 @@ router.patch('/:id/reject-payment', authMiddleware, async (req, res) => {
     res.json(updatedOrder);
   } catch (error) {
     logger.error('Error rejecting payment', error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 
-// GET /orders/customer/:phone - Obtener pedidos de un cliente por teléfono
-router.get('/customer/:phone', async (req, res) => {
+// GET /orders/customer/:phone - Obtener pedidos de un cliente por teléfono — ADMIN ONLY
+router.get('/customer/:phone', tenantAuth, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -1092,7 +1164,7 @@ router.get('/customer/:phone', async (req, res) => {
     res.json(orders);
   } catch (error) {
     logger.error("Error fetching customer orders", error);
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
 

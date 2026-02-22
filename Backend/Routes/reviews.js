@@ -257,15 +257,21 @@ router.put('/:id/reply', authMiddleware, async (req, res) => {
       return res.status(400).json(formatHttpError(req, 'La respuesta no puede exceder 300 caracteres', 400));
     }
 
-    const review = await Review.findByIdAndUpdate(
-      id,
-      { reply: reply.trim(), repliedAt: new Date() },
-      { new: true }
-    );
+    // Fetch first, then check tenant, then update (prevents TOCTOU)
+    const review = await Review.findById(id);
 
     if (!review) {
       return res.status(404).json(formatHttpError(req, 'Reseña no encontrada', 404));
     }
+
+    // Tenant isolation: verify admin owns this review's business BEFORE writing
+    if (req.user.businessId && review.businessId && review.businessId.toString() !== req.user.businessId.toString() && !req.user.isSuperAdmin) {
+      return res.status(403).json(formatHttpError(req, 'No tienes acceso a esta reseña', 403));
+    }
+
+    review.reply = reply.trim();
+    review.repliedAt = new Date();
+    await review.save();
 
     logger.info('Admin replied to review', { reviewId: id }, req);
 
@@ -294,15 +300,20 @@ router.put('/:id/visibility', authMiddleware, async (req, res) => {
       return res.status(400).json(formatHttpError(req, 'ID de reseña inválido', 400));
     }
 
-    const review = await Review.findByIdAndUpdate(
-      id,
-      { isVisible: Boolean(isVisible) },
-      { new: true }
-    );
+    // Fetch first, then check tenant, then update (prevents TOCTOU)
+    const review = await Review.findById(id);
 
     if (!review) {
       return res.status(404).json(formatHttpError(req, 'Reseña no encontrada', 404));
     }
+
+    // Tenant isolation: verify admin owns this review's business BEFORE writing
+    if (req.user.businessId && review.businessId && review.businessId.toString() !== req.user.businessId.toString() && !req.user.isSuperAdmin) {
+      return res.status(403).json(formatHttpError(req, 'No tienes acceso a esta reseña', 403));
+    }
+
+    review.isVisible = Boolean(isVisible);
+    await review.save();
 
     // Recalculate stats since visibility changed
     await recalculateReviewStats(review.businessId);
@@ -327,10 +338,12 @@ router.put('/:id/visibility', authMiddleware, async (req, res) => {
  */
 router.get('/admin', authMiddleware, async (req, res) => {
   try {
-    const { businessId, page = 1, limit = 15, rating, search } = req.query;
+    const { page = 1, limit = 15, rating, search } = req.query;
 
+    // Tenant isolation: use businessId from JWT token, not from query
+    const businessId = req.user.businessId;
     if (!businessId) {
-      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
+      return res.status(400).json(formatHttpError(req, 'businessId no disponible en el token', 400));
     }
 
     const filter = { businessId };
@@ -338,9 +351,10 @@ router.get('/admin', authMiddleware, async (req, res) => {
       filter.rating = parseInt(rating);
     }
     if (search && search.trim()) {
+      const escapedSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$or = [
-        { customerName: { $regex: search.trim(), $options: 'i' } },
-        { comment: { $regex: search.trim(), $options: 'i' } }
+        { customerName: { $regex: escapedSearch, $options: 'i' } },
+        { comment: { $regex: escapedSearch, $options: 'i' } }
       ];
     }
 
@@ -377,10 +391,10 @@ router.get('/admin', authMiddleware, async (req, res) => {
  */
 router.get('/stats', authMiddleware, async (req, res) => {
   try {
-    const { businessId } = req.query;
-
+    // Tenant isolation: use businessId from JWT token, not from query
+    const businessId = req.user.businessId;
     if (!businessId) {
-      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
+      return res.status(400).json(formatHttpError(req, 'businessId no disponible en el token', 400));
     }
 
     const config = await BusinessConfig.findById(businessId).select('reviewStats');

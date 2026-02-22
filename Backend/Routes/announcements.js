@@ -79,7 +79,7 @@ router.post('/', protectSuperAdmin, upload.single('image'), async (req, res) => 
     });
   } catch (error) {
     logger.error('Error al crear anuncio', error);
-    res.status(500).json({ message: 'Error al crear anuncio', error: error.message });
+    res.status(500).json({ message: 'Error al crear anuncio' });
   }
 });
 
@@ -105,7 +105,7 @@ router.get('/', protectSuperAdmin, async (req, res) => {
     res.json(announcementsWithStats);
   } catch (error) {
     logger.error('Error al obtener anuncios', error);
-    res.status(500).json({ message: 'Error al obtener anuncios', error: error.message });
+    res.status(500).json({ message: 'Error al obtener anuncios' });
   }
 });
 
@@ -139,7 +139,7 @@ router.get('/pending/me', authMiddleware, async (req, res) => {
     res.json(announcements);
   } catch (error) {
     logger.error('Error al obtener anuncios pendientes', error);
-    res.status(500).json({ message: 'Error al obtener anuncios pendientes', error: error.message });
+    res.status(500).json({ message: 'Error al obtener anuncios pendientes' });
   }
 });
 
@@ -184,7 +184,7 @@ router.post('/:id/seen', authMiddleware, async (req, res) => {
     res.json({ message: 'Anuncio marcado como leído' });
   } catch (error) {
     logger.error('Error al marcar anuncio como leído', error);
-    res.status(500).json({ message: 'Error al marcar lectura', error: error.message });
+    res.status(500).json({ message: 'Error al marcar lectura' });
   }
 });
 
@@ -216,7 +216,7 @@ router.get('/:id', protectSuperAdmin, async (req, res) => {
     });
   } catch (error) {
     logger.error('Error al obtener detalle de anuncio', error);
-    res.status(500).json({ message: 'Error al obtener anuncio', error: error.message });
+    res.status(500).json({ message: 'Error al obtener anuncio' });
   }
 });
 
@@ -256,7 +256,7 @@ router.put('/:id', protectSuperAdmin, upload.single('image'), async (req, res) =
     });
   } catch (error) {
     logger.error('Error al actualizar anuncio', error);
-    res.status(500).json({ message: 'Error al actualizar anuncio', error: error.message });
+    res.status(500).json({ message: 'Error al actualizar anuncio' });
   }
 });
 
@@ -283,7 +283,7 @@ router.delete('/:id', protectSuperAdmin, async (req, res) => {
     res.json({ message: 'Anuncio eliminado exitosamente' });
   } catch (error) {
     logger.error('Error al eliminar anuncio', error);
-    res.status(500).json({ message: 'Error al eliminar anuncio', error: error.message });
+    res.status(500).json({ message: 'Error al eliminar anuncio' });
   }
 });
 
