@@ -68,9 +68,10 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
       try {
         const ordersResponse = await api.get(`/orders/my-orders?phone=${encodeURIComponent(customerData.phone)}&businessId=${bizId}`);
         const { active = [], completed = [] } = ordersResponse.data || {};
-        const allOrders = [...active, ...completed]
-          .sort((a, b) => new Date(b.createdAt || b.completedAt) - new Date(a.createdAt || a.completedAt));
-        setCustomerOrders(allOrders);
+        // Active/pending orders first (sorted by date), then completed
+        const sortedActive = [...active].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        const sortedCompleted = [...completed].sort((a, b) => new Date(b.completedAt || b.createdAt) - new Date(a.completedAt || a.createdAt));
+        setCustomerOrders([...sortedActive, ...sortedCompleted]);
       } catch (orderErr) {
         logSystem('Error al cargar pedidos del cliente', orderErr);
       }
@@ -123,6 +124,9 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
   const getOrderStatusIcon = (status) => {
     switch (status) {
       case 'pending': return <FaClock className="text-yellow-500 text-xs" />;
+      case 'pending_payment': return <FaClock className="text-amber-500 text-xs" />;
+      case 'payment_uploaded': return <FaClock className="text-purple-500 text-xs" />;
+      case 'payment_confirmed': return <FaCheckCircle className="text-green-500 text-xs" />;
       case 'preparing': return <FaClock className="text-blue-500 text-xs" />;
       case 'ready': return <FaCheckCircle className="text-green-500 text-xs" />;
       case 'completed': return <FaCheckCircle className="text-green-600 text-xs" />;
@@ -137,6 +141,9 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
   const getOrderStatusText = (status) => {
     switch (status) {
       case 'pending': return 'Pendiente';
+      case 'pending_payment': return 'Pago Pendiente';
+      case 'payment_uploaded': return 'Verificando Pago';
+      case 'payment_confirmed': return 'Pago Confirmado';
       case 'preparing': return 'Preparando';
       case 'ready': return 'Listo';
       case 'completed': return 'Completado';
@@ -144,13 +151,16 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
       case 'delivered': return 'Entregado';
       case 'inProgress': return 'En Progreso';
       case 'confirmed': return 'Confirmado';
-      default: return 'Desconocido';
+      default: return status || 'Desconocido';
     }
   };
 
   const getOrderStatusColor = (status) => {
     switch (status) {
       case 'pending': return 'text-yellow-700 bg-yellow-50 border-yellow-200';
+      case 'pending_payment': return 'text-amber-700 bg-amber-50 border-amber-200';
+      case 'payment_uploaded': return 'text-purple-700 bg-purple-50 border-purple-200';
+      case 'payment_confirmed': return 'text-green-700 bg-green-50 border-green-200';
       case 'preparing': return 'text-blue-700 bg-blue-50 border-blue-200';
       case 'ready': return 'text-green-700 bg-green-50 border-green-200';
       case 'completed': return 'text-green-800 bg-green-100 border-green-200';
@@ -401,9 +411,10 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                         const shortId = order._id?.slice(-6) || '';
                         const typeInfo = getOrderTypeInfo(order.orderType);
                         
-                        // Calculate total
+                        // Calculate total (include delivery fee)
                         const calculatedTotal = order.items?.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0) || 0;
-                        const displayTotal = order.finalAmount || order.total || order.totalAmount || calculatedTotal;
+                        const baseTotal = order.finalAmount || order.total || order.totalAmount || calculatedTotal;
+                        const displayTotal = baseTotal + (order.deliveryFee || 0);
 
                         return (
                           <motion.div 

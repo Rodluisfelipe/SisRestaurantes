@@ -140,6 +140,33 @@ export default function Menu() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [activeOrderId, activeCustomerToken, isInAppMode]);
 
+  // Recover active order from backend if sessionStorage lost it (e.g. new session)
+  useEffect(() => {
+    if (activeOrderId || !isInAppMode || !orderInfo.phone || !businessId) return;
+    let cancelled = false;
+    const recover = async () => {
+      try {
+        const res = await api.get(`/orders/my-orders?phone=${encodeURIComponent(orderInfo.phone)}&businessId=${businessId}`);
+        if (cancelled) return;
+        const activeOrders = res.data?.active || [];
+        if (activeOrders.length > 0) {
+          // Pick the most recent active order that has a customerToken
+          const recoverableOrder = activeOrders.find(o => o.customerToken);
+          if (recoverableOrder) {
+            sessionStorage.setItem('activeOrderId', recoverableOrder._id);
+            sessionStorage.setItem('activeCustomerToken', recoverableOrder.customerToken);
+            setActiveOrderId(recoverableOrder._id);
+            setActiveCustomerToken(recoverableOrder.customerToken);
+          }
+        }
+      } catch {
+        // Silently fail — banner just won't show
+      }
+    };
+    recover();
+    return () => { cancelled = true; };
+  }, [activeOrderId, isInAppMode, orderInfo.phone, businessId]);
+
   // Clear active order (user confirmed completed order)
   const clearActiveOrder = useCallback(() => {
     // Trigger review modal before clearing

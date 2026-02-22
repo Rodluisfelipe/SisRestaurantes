@@ -45,7 +45,12 @@ const BusinessHeader = ({
       const activeOrder = customerOrders.find(order => 
         order.status === 'pending' || 
         order.status === 'preparing' || 
-        order.status === 'ready'
+        order.status === 'ready' ||
+        order.status === 'pending_payment' ||
+        order.status === 'payment_uploaded' ||
+        order.status === 'payment_confirmed' ||
+        order.status === 'inProgress' ||
+        order.status === 'confirmed'
       );
       
       if (activeOrder) {
