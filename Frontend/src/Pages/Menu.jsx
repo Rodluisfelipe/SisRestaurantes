@@ -22,6 +22,7 @@ import MyOrders from "../Components/MyOrders";
 // Dynamic imports — separate chunks to avoid TDZ in production build
 const ReviewModal = lazy(() => import("../Components/ReviewModal"));
 const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
+
 import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -144,7 +145,7 @@ export default function Menu() {
 
   // Clear active order (user confirmed completed order)
   const clearActiveOrder = useCallback(() => {
-    // Store order info for review prompt before clearing
+    // Prompt review after completing order
     if (activeOrderId && orderInfo?.phone) {
       setPendingReviewOrder({
         orderId: activeOrderId,
@@ -1449,7 +1450,7 @@ export default function Menu() {
         }}
       />
 
-      {/* Reviews — lazy loaded in separate chunks */}
+      {/* Reviews */}
       <Suspense fallback={null}>
         {showReviewModal && (
           <ReviewModal
@@ -1465,8 +1466,6 @@ export default function Menu() {
             theme={businessConfig?.theme}
           />
         )}
-      </Suspense>
-      <Suspense fallback={null}>
         {showReviewsSheet && (
           <ReviewsSheet
             show={showReviewsSheet}

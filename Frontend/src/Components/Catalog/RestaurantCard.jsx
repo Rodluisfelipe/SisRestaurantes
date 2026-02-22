@@ -72,7 +72,6 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
   const distanceText = restaurant.distance != null ? (restaurant.distance < 1 ? `${Math.round(restaurant.distance * 1000)} m` : `${restaurant.distance.toFixed(1)} km`) : null;
 
   const rating = restaurant.reviewStats?.averageRating > 0 ? restaurant.reviewStats.averageRating.toFixed(1) : null;
-  const reviewCount = restaurant.reviewStats?.totalReviews || 0;
 
   // ═══ COMPACT ═══
   if (variant === 'compact') {
