@@ -133,7 +133,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                       placeholder="Cuéntanos más sobre tu experiencia (opcional)"
                       maxLength={500}
                       rows={3}
-                      className="w-full border border-gray-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:border-transparent"
+                      className="w-full border border-gray-200 rounded-xl p-3 text-sm text-gray-800 bg-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:border-transparent"
                       style={{ '--tw-ring-color': buttonColor + '40' }}
                     />
                     <p className="text-right text-xs text-gray-400 mt-0.5">{comment.length}/500</p>

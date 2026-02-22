@@ -1452,7 +1452,7 @@ export default function Menu() {
             onClose={() => { setShowReviewModal(false); setPendingReviewOrder(null); }}
             businessId={businessId}
             orderId={pendingReviewOrder}
-            customerName={orderInfo.name}
+            customerName={orderInfo.customerName}
             customerPhone={orderInfo.phone}
             theme={businessConfig?.theme}
           />
