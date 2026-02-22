@@ -36,16 +36,17 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
   const [isLoading, setIsLoading] = useState(false);
   const [customerOrders, setCustomerOrders] = useState(orders);
   const { businessConfig } = useBusinessConfig();
+  const bizId = businessConfig?._id || businessConfig?.businessId;
 
   // Cargar datos del cliente desde la base de datos
   useEffect(() => {
     const loadCustomerData = async () => {
-      if (!customerData?.phone || !businessConfig?.businessId) return;
+      if (!customerData?.phone || !bizId) return;
       
       setIsLoading(true);
       try {
         // Cargar datos del cliente desde la BD
-        const response = await api.get(`/customers/${customerData.phone}?businessId=${businessConfig.businessId}`);
+        const response = await api.get(`/customers/${customerData.phone}?businessId=${bizId}`);
         const dbCustomerData = response.data;
         
         setProfileData({
@@ -65,7 +66,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
 
       // Siempre intentar cargar pedidos (independiente del perfil)
       try {
-        const ordersResponse = await api.get(`/orders/my-orders?phone=${encodeURIComponent(customerData.phone)}&businessId=${businessConfig.businessId}`);
+        const ordersResponse = await api.get(`/orders/my-orders?phone=${encodeURIComponent(customerData.phone)}&businessId=${bizId}`);
         const { active = [], completed = [] } = ordersResponse.data || {};
         const allOrders = [...active, ...completed]
           .sort((a, b) => new Date(b.createdAt || b.completedAt) - new Date(a.createdAt || a.completedAt));
@@ -80,7 +81,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
     if (isOpen) {
       loadCustomerData();
     }
-  }, [customerData, businessConfig?.businessId, isOpen]);
+  }, [customerData, bizId, isOpen]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -93,9 +94,9 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
       });
 
       // Guardar en backend
-      if (businessConfig?.businessId && profileData.phone) {
+      if (bizId && profileData.phone) {
         try {
-          await api.put(`/customers/${profileData.phone}?businessId=${businessConfig.businessId}`, {
+          await api.put(`/customers/${profileData.phone}?businessId=${bizId}`, {
             name: profileData.name,
             address: profileData.address
           });
