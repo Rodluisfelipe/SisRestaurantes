@@ -121,6 +121,8 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
     }
   };
 
+  const isCancelledOrExpired = (status) => status === 'cancelled' || status === 'expired';
+
   const getOrderStatusIcon = (status) => {
     switch (status) {
       case 'pending': return <FaClock className="text-yellow-500 text-xs" />;
@@ -130,7 +132,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
       case 'preparing': return <FaClock className="text-blue-500 text-xs" />;
       case 'ready': return <FaCheckCircle className="text-green-500 text-xs" />;
       case 'completed': return <FaCheckCircle className="text-green-600 text-xs" />;
-      case 'cancelled': return <FaTimesCircle className="text-red-500 text-xs" />;
+      case 'cancelled': case 'expired': return <FaTimesCircle className="text-red-500 text-xs" />;
       case 'delivered': return <FaCheckCircle className="text-green-700 text-xs" />;
       case 'inProgress': return <FaClock className="text-blue-600 text-xs" />;
       case 'confirmed': return <FaCheckCircle className="text-blue-500 text-xs" />;
@@ -147,7 +149,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
       case 'preparing': return 'Preparando';
       case 'ready': return 'Listo';
       case 'completed': return 'Completado';
-      case 'cancelled': return 'Cancelado';
+      case 'cancelled': case 'expired': return 'Cancelado';
       case 'delivered': return 'Entregado';
       case 'inProgress': return 'En Progreso';
       case 'confirmed': return 'Confirmado';
@@ -164,7 +166,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
       case 'preparing': return 'text-blue-700 bg-blue-50 border-blue-200';
       case 'ready': return 'text-green-700 bg-green-50 border-green-200';
       case 'completed': return 'text-green-800 bg-green-100 border-green-200';
-      case 'cancelled': return 'text-red-700 bg-red-50 border-red-200';
+      case 'cancelled': case 'expired': return 'text-red-700 bg-red-50 border-red-200';
       case 'delivered': return 'text-green-800 bg-green-100 border-green-200';
       case 'inProgress': return 'text-blue-700 bg-blue-50 border-blue-200';
       case 'confirmed': return 'text-blue-700 bg-blue-50 border-blue-200';
@@ -410,6 +412,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                         const orderNum = order.orderNumber || index + 1;
                         const shortId = order._id?.slice(-6) || '';
                         const typeInfo = getOrderTypeInfo(order.orderType);
+                        const isCancelled = isCancelledOrExpired(order.status);
                         
                         // Calculate total (include delivery fee)
                         const calculatedTotal = order.items?.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0) || 0;
@@ -422,7 +425,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.05 }}
-                            className="bg-gray-50 rounded-xl p-4 border border-gray-100"
+                            className={`rounded-xl p-4 border ${isCancelled ? 'bg-red-50/50 border-red-100 opacity-70' : 'bg-gray-50 border-gray-100'}`}
                           >
                             {/* Order header row */}
                             <div className="flex items-start justify-between mb-3">
@@ -448,7 +451,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                               <span className="inline-flex items-center gap-1 text-xs text-gray-500">
                                 {typeInfo.icon} {typeInfo.text}
                               </span>
-                              <span className="text-sm font-bold" style={{ color: primaryColor }}>
+                              <span className={`text-sm font-bold ${isCancelled ? 'line-through text-gray-400' : ''}`} style={isCancelled ? {} : { color: primaryColor }}>
                                 ${displayTotal.toLocaleString()}
                               </span>
                             </div>
@@ -468,6 +471,14 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                             {order.orderType === 'takeaway' && (
                               <div className="text-xs text-orange-600 bg-orange-50 rounded-lg px-3 py-1.5 mb-3">
                                 Recogida en mostrador
+                              </div>
+                            )}
+
+                            {/* Cancelled reason banner */}
+                            {isCancelled && (
+                              <div className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3 flex items-center gap-2 border border-red-100">
+                                <FaTimesCircle className="text-red-400 flex-shrink-0" />
+                                <span>{order.autoExpired ? 'Pedido expirado automáticamente por falta de pago' : order.cancellationReason || 'Este pedido fue cancelado'}</span>
                               </div>
                             )}
 
