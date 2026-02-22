@@ -174,7 +174,7 @@ const PaymentRequestsReview = () => {
     }
   };
 
-  const openProofInNewTab = (proofUrl) => {
+  const openProofInNewTab = async (proofUrl) => {
     if (!proofUrl) {
       alert('No hay comprobante disponible');
       return;
