@@ -158,8 +158,8 @@ app.use("/api/auth", require("./Routes/auth"));
 app.use("/api/tables", require("./Routes/tables"));
 app.use("/api/orders", require("./Routes/orders"));
 app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
-app.use("/api/reviews", require("./Routes/reviews")); // Reseñas y calificaciones de clientes
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
+app.use("/api/reviews", require("./Routes/reviews")); // Reseñas de clientes
 app.use("/api/push", require("./Routes/push")); // Push notifications (PWA)
 app.use("/api/upload", require("./Routes/upload")); // Subida de imágenes a DigitalOcean Spaces
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot
@@ -226,6 +226,14 @@ mongoose.connect(MONGO_URI)
       startSubscriptionCron();
     } catch (error) {
       console.warn('⚠️ Error iniciando cron de suscripciones:', error.message);
+    }
+    
+    // Iniciar cron de limpieza de pedidos expirados
+    try {
+      const { startOrderCleanupCron } = require('./services/orderCleanupCron');
+      startOrderCleanupCron();
+    } catch (error) {
+      console.warn('⚠️ Error iniciando cron de limpieza de pedidos:', error.message);
     }
     
     const port = process.env.PORT || 5000;
