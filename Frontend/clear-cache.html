@@ -57,14 +57,12 @@
                     link.href = link.href + '?clear=' + Date.now();
                 });
                 
-                statusEl.innerHTML += '<br><br>🎉 <strong>LIMPIEZA NUCLEAR COMPLETA!</strong>';
-                statusEl.innerHTML += '<br>📝 Ahora:';
-                statusEl.innerHTML += '<br>1. Cierra esta pestaña';
-                statusEl.innerHTML += '<br>2. Presiona Ctrl+Shift+Delete';
-                statusEl.innerHTML += '<br>3. Selecciona "Todo el tiempo"';
-                statusEl.innerHTML += '<br>4. Marca todas las opciones';
-                statusEl.innerHTML += '<br>5. Click "Borrar datos"';
-                statusEl.innerHTML += '<br>6. Recarga con Ctrl+F5';
+                statusEl.innerHTML += '<br><br>🎉 <strong>LIMPIEZA COMPLETA!</strong>';
+                statusEl.innerHTML += '<br>Redirigiendo en 3 segundos...';
+                
+                setTimeout(() => {
+                    window.location.href = '/?cachebust=' + Date.now();
+                }, 3000);
                 
             } catch (error) {
                 statusEl.innerHTML += '<br>❌ Error: ' + error.message;
