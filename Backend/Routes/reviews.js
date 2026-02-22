@@ -78,13 +78,17 @@ router.post('/', async (req, res) => {
       return res.status(409).json(formatHttpError(req, 'Ya existe una reseña para este pedido', 409));
     }
 
-    // Verify the order exists (in completed orders) and belongs to the phone
-    const completedOrder = await CompletedOrder.findOne({ _id: orderId, businessId });
-    if (!completedOrder) {
-      return res.status(404).json(formatHttpError(req, 'Pedido no encontrado o no completado', 404));
+    // Verify the order exists (in completed OR active orders) and belongs to the phone
+    let orderDoc = await CompletedOrder.findOne({ _id: orderId, businessId });
+    if (!orderDoc) {
+      // Order might not have moved to CompletedOrder yet (race condition on completion)
+      orderDoc = await Order.findOne({ _id: orderId, businessId });
+    }
+    if (!orderDoc) {
+      return res.status(404).json(formatHttpError(req, 'Pedido no encontrado', 404));
     }
 
-    if (completedOrder.customerPhone !== phone) {
+    if (orderDoc.phone !== phone && orderDoc.customerPhone !== phone) {
       return res.status(403).json(formatHttpError(req, 'No tienes permiso para reseñar este pedido', 403));
     }
 
@@ -103,8 +107,8 @@ router.post('/', async (req, res) => {
       customerName: customerName.trim(),
       rating,
       comment: comment ? comment.trim() : '',
-      orderType: orderType || completedOrder.orderType,
-      orderTotal: orderTotal || completedOrder.total
+      orderType: orderType || orderDoc.orderType,
+      orderTotal: orderTotal || orderDoc.total
     });
 
     // Recalculate stats
