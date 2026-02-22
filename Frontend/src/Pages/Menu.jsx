@@ -1,5 +1,5 @@
 // @charset UTF-8
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
@@ -32,10 +32,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import NotFound from './NotFound';
 import LeadCapturePage from './LeadCapturePage';
 import useSEO from '../hooks/useSEO';
-
-// Lazy-loaded components (must be after all static imports to avoid TDZ)
-const ReviewModal = lazy(() => import("../Components/ReviewModal"));
-const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 
 /**
  * Página principal del Menú para clientes
@@ -114,11 +110,6 @@ export default function Menu() {
   const [activeCustomerToken, setActiveCustomerToken] = useState(() => sessionStorage.getItem('activeCustomerToken') || null);
   const [activeOrderStatus, setActiveOrderStatus] = useState(null);
   
-  // Review states
-  const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showReviewsSheet, setShowReviewsSheet] = useState(false);
-  const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
-  
   // Check if business uses in-app ordering
   const isInAppMode = businessConfig?.orderingMode === 'inapp' || businessConfig?.orderingMode === 'both';
 
@@ -142,20 +133,14 @@ export default function Menu() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [activeOrderId, activeCustomerToken, isInAppMode]);
 
-  // Clear active order (user confirmed completed order) — trigger review modal
+  // Clear active order (user confirmed completed order)
   const clearActiveOrder = useCallback(() => {
-    const orderId = activeOrderId;
     setActiveOrderId(null);
     setActiveCustomerToken(null);
     setActiveOrderStatus(null);
     sessionStorage.removeItem('activeOrderId');
     sessionStorage.removeItem('activeCustomerToken');
-    // Trigger review prompt if we have the info
-    if (orderId && orderInfo?.phone && orderInfo?.customerName) {
-      setPendingReviewOrder(orderId);
-      setShowReviewModal(true);
-    }
-  }, [activeOrderId, orderInfo?.phone, orderInfo?.customerName]);
+  }, []);
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -1194,8 +1179,6 @@ export default function Menu() {
         comesFromCatalog={comesFromCatalog}
         onShowFavorites={() => setShowFavorites(true)}
         onShowHistory={() => setShowHistory(true)}
-        onShowReviews={() => setShowReviewsSheet(true)}
-        reviewStats={businessConfig?.reviewStats}
         showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
         showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
       />
@@ -1445,33 +1428,6 @@ export default function Menu() {
           setShowCartSummary(true);
         }}
       />
-
-      {/* Review Modal — triggered after order completion */}
-      <Suspense fallback={null}>
-        <ReviewModal
-          show={showReviewModal}
-          onClose={(submitted) => {
-            setShowReviewModal(false);
-            setPendingReviewOrder(null);
-          }}
-          businessId={businessId}
-          orderId={pendingReviewOrder}
-          customerName={orderInfo?.customerName || ''}
-          customerPhone={orderInfo?.phone || ''}
-          theme={businessConfig?.theme}
-        />
-      </Suspense>
-
-      {/* Reviews Sheet — list of reviews */}
-      <Suspense fallback={null}>
-        <ReviewsSheet
-          show={showReviewsSheet}
-          onClose={() => setShowReviewsSheet(false)}
-          businessId={businessId}
-          reviewStats={businessConfig?.reviewStats}
-          theme={businessConfig?.theme}
-        />
-      </Suspense>
 
       {/* Footer - MenuBy Branding */}
       <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-4 mt-8">
