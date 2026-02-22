@@ -25,7 +25,6 @@ export default defineConfig(({ mode }) => ({
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom', 'react-router-dom', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
-          'vendor-motion': ['framer-motion'],
           'vendor-sentry': ['@sentry/react'],
         }
       }
