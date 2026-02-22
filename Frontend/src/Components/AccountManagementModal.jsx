@@ -53,11 +53,6 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
           phone: dbCustomerData.phone || customerData.phone || '',
           address: dbCustomerData.address || customerData.address || ''
         });
-        
-        // Cargar pedidos del cliente
-        const ordersResponse = await api.get(`/customers/${customerData.phone}/orders?businessId=${businessConfig.businessId}&limit=20`);
-        setCustomerOrders(ordersResponse.data.orders || []);
-        
       } catch (error) {
         // Si no existe en BD, usar datos locales
         setProfileData({
@@ -66,9 +61,20 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
           address: customerData.address || ''
         });
         logSystem('Cliente no encontrado en BD, usando datos locales', error);
-      } finally {
-        setIsLoading(false);
       }
+
+      // Siempre intentar cargar pedidos (independiente del perfil)
+      try {
+        const ordersResponse = await api.get(`/orders/my-orders?phone=${encodeURIComponent(customerData.phone)}&businessId=${businessConfig.businessId}`);
+        const { active = [], completed = [] } = ordersResponse.data || {};
+        const allOrders = [...active, ...completed]
+          .sort((a, b) => new Date(b.createdAt || b.completedAt) - new Date(a.createdAt || a.completedAt));
+        setCustomerOrders(allOrders);
+      } catch (orderErr) {
+        logSystem('Error al cargar pedidos del cliente', orderErr);
+      }
+
+      setIsLoading(false);
     };
 
     if (isOpen) {

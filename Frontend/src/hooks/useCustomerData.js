@@ -57,55 +57,22 @@ export const useCustomerData = () => {
   const loadCustomerOrders = async () => {
     try {
       const phone = customerData?.phone || SessionManager.getFromLocalStorage('customerPhone', '') || localStorage.getItem('customerPhone');
-      console.log('loadCustomerOrders - phone:', phone);
-      if (!phone) {
-        console.log('loadCustomerOrders - No phone found, skipping');
-        return;
-      }
+      if (!phone) return;
 
       // Obtener businessId del contexto o de la URL
-      const businessId = window.location.pathname.split('/')[1] || 'felipe';
-      console.log('loadCustomerOrders - businessId:', businessId);
-      console.log('loadCustomerOrders - window.location.pathname:', window.location.pathname);
+      const businessId = window.location.pathname.split('/')[1] || '';
+      if (!businessId) return;
       
-      // Cargar pedidos activos (pending, inProgress, etc.)
-      console.log('loadCustomerOrders - Fetching active orders from backend...');
-      const activeOrdersResponse = await api.get(`/orders?businessId=${businessId}`);
-      const allActiveOrders = activeOrdersResponse.data || [];
-      console.log('loadCustomerOrders - All active orders received:', allActiveOrders.length);
+      // Usar endpoint my-orders que busca en Order + CompletedOrder
+      const response = await api.get(`/orders/my-orders?phone=${encodeURIComponent(phone)}&businessId=${businessId}`);
+      const { active = [], completed = [] } = response.data || {};
       
-      // Cargar pedidos completados (últimas 24 horas para tener margen)
-      console.log('loadCustomerOrders - Fetching completed orders from backend...');
-      const completedOrdersResponse = await api.get(`/orders/completed?businessId=${businessId}`);
-      const allCompletedOrders = completedOrdersResponse.data || [];
-      console.log('loadCustomerOrders - All completed orders received:', allCompletedOrders.length);
+      // Combinar activos + completados recientes (últimos 20)
+      const allCustomerOrders = [...active, ...completed]
+        .sort((a, b) => new Date(b.createdAt || b.completedAt) - new Date(a.createdAt || a.completedAt));
       
-      // Filtrar pedidos activos por teléfono del cliente
-      const customerActiveOrders = allActiveOrders.filter(order => order.phone === phone);
-      console.log('loadCustomerOrders - Filtered active customer orders:', customerActiveOrders.length);
-      
-      // Filtrar pedidos completados por teléfono del cliente y mantener solo los de la última hora
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000); // 1 hora atrás
-      const customerCompletedOrders = allCompletedOrders.filter(order => {
-        if (order.phone !== phone) return false;
-        
-        // Verificar si el pedido fue completado en la última hora
-        const completedAt = new Date(order.completedAt || order.updatedAt || order.createdAt);
-        return completedAt >= oneHourAgo;
-      });
-      console.log('loadCustomerOrders - Filtered completed customer orders (last hour):', customerCompletedOrders.length);
-      
-      // Combinar pedidos activos y completados
-      const allCustomerOrders = [...customerActiveOrders, ...customerCompletedOrders];
-      
-      // Ordenar por fecha de creación (más recientes primero)
-      allCustomerOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      console.log('loadCustomerOrders - Total customer orders (active + completed):', allCustomerOrders.length);
-      console.log('loadCustomerOrders - All customer orders:', allCustomerOrders);
       setCustomerOrders(allCustomerOrders);
       
-      // También guardar en localStorage como backup
       if (allCustomerOrders.length > 0) {
         localStorage.setItem(`customerOrders_${phone}`, JSON.stringify(allCustomerOrders));
       }
@@ -173,23 +140,15 @@ export const useCustomerData = () => {
   };
 
   useEffect(() => {
-    console.log('useEffect - Initial load');
     const data = loadCustomerData();
     if (data) {
-      console.log('useEffect - Customer data loaded, loading orders');
       loadCustomerOrders();
-    } else {
-      console.log('useEffect - No customer data found');
     }
   }, []);
 
   useEffect(() => {
-    console.log('useEffect - customerData changed:', customerData);
     if (customerData) {
-      console.log('useEffect - Loading orders for customer:', customerData.phone);
       loadCustomerOrders();
-    } else {
-      console.log('useEffect - No customerData, skipping loadCustomerOrders');
     }
   }, [customerData]);
 
