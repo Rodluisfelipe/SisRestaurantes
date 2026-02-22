@@ -18,6 +18,8 @@ import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
 import PaymentUpload from "../Components/PaymentUpload";
 import MyOrders from "../Components/MyOrders";
+import ReviewModal from "../Components/ReviewModal";
+import ReviewsSheet from "../Components/ReviewsSheet";
 import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -101,6 +103,11 @@ export default function Menu() {
   // Estados para modales de favoritos e historial
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Reviews states
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReviewsSheet, setShowReviewsSheet] = useState(false);
+  const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
   
   // In-app ordering states
   const [showOrderTracker, setShowOrderTracker] = useState(false);
@@ -135,12 +142,21 @@ export default function Menu() {
 
   // Clear active order (user confirmed completed order)
   const clearActiveOrder = useCallback(() => {
+    // Store order info for review prompt before clearing
+    if (activeOrderId && orderInfo?.phone) {
+      setPendingReviewOrder({
+        orderId: activeOrderId,
+        customerName: orderInfo.customerName || '',
+        customerPhone: orderInfo.phone
+      });
+      setShowReviewModal(true);
+    }
     setActiveOrderId(null);
     setActiveCustomerToken(null);
     setActiveOrderStatus(null);
     sessionStorage.removeItem('activeOrderId');
     sessionStorage.removeItem('activeCustomerToken');
-  }, []);
+  }, [activeOrderId, orderInfo]);
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -1181,6 +1197,8 @@ export default function Menu() {
         onShowHistory={() => setShowHistory(true)}
         showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
         showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
+        onShowReviews={() => setShowReviewsSheet(true)}
+        reviewStats={businessConfig?.reviewStats}
       />
       
       {/* Aviso discreto de servicio temporalmente no disponible */}
@@ -1427,6 +1445,27 @@ export default function Menu() {
           setShowHistory(false);
           setShowCartSummary(true);
         }}
+      />
+
+      {/* Reviews */}
+      <ReviewModal
+        show={showReviewModal}
+        onClose={(submitted) => {
+          setShowReviewModal(false);
+          setPendingReviewOrder(null);
+        }}
+        businessId={businessId}
+        orderId={pendingReviewOrder?.orderId}
+        customerName={pendingReviewOrder?.customerName}
+        customerPhone={pendingReviewOrder?.customerPhone}
+        theme={businessConfig?.theme}
+      />
+      <ReviewsSheet
+        show={showReviewsSheet}
+        onClose={() => setShowReviewsSheet(false)}
+        businessId={businessId}
+        reviewStats={businessConfig?.reviewStats}
+        theme={businessConfig?.theme}
       />
 
       {/* Footer - MenuBy Branding */}
