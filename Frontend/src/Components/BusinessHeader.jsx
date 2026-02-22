@@ -12,9 +12,7 @@ const BusinessHeader = ({
   onShowFavorites,
   onShowHistory,
   showFavoritesButton = false,
-  showHistoryButton = false,
-  onShowReviews,
-  reviewStats
+  showHistoryButton = false
 }) => {
   const [businessConfig, setBusinessConfig] = useState({
     businessName: '',
@@ -317,26 +315,6 @@ const BusinessHeader = ({
             )}
           </div>
           </div>
-
-          {/* Rating chip */}
-          {reviewStats && reviewStats.totalReviews > 0 && (
-            <button
-              onClick={onShowReviews}
-              className={`mt-1 inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full transition-colors ${
-                businessConfig.coverImage
-                  ? 'bg-white/20 text-white hover:bg-white/30'
-                  : 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100'
-              }`}
-            >
-              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="#facc15" stroke="#eab308" strokeWidth="0.5">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-              {reviewStats.averageRating.toFixed(1)} · {reviewStats.totalReviews} reseña{reviewStats.totalReviews !== 1 ? 's' : ''}
-              <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          )}
         </div>
       </div>
 
