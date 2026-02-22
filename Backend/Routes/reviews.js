@@ -87,8 +87,14 @@ router.post('/', async (req, res) => {
     if (!orderDoc) {
       return res.status(404).json(formatHttpError(req, 'Pedido no encontrado', 404));
     }
-
     if (orderDoc.phone !== phone && orderDoc.customerPhone !== phone) {
+      logger.warn('Review phone mismatch', { 
+        reqPhone: phone, 
+        orderPhone: orderDoc.phone, 
+        orderCustomerPhone: orderDoc.customerPhone,
+        orderId,
+        orderFields: Object.keys(orderDoc.toObject ? orderDoc.toObject() : orderDoc)
+      });
       return res.status(403).json(formatHttpError(req, 'No tienes permiso para reseñar este pedido', 403));
     }
 
@@ -311,6 +317,56 @@ router.put('/:id/visibility', authMiddleware, async (req, res) => {
   } catch (error) {
     logger.error('Error toggling review visibility', error, req);
     res.status(500).json(formatHttpError(req, 'Error al cambiar visibilidad', 500));
+  }
+});
+
+/**
+ * GET /api/reviews/admin
+ * List ALL reviews for a business (admin only — includes hidden)
+ * Query: businessId, page, limit, rating (optional), search (optional)
+ */
+router.get('/admin', authMiddleware, async (req, res) => {
+  try {
+    const { businessId, page = 1, limit = 15, rating, search } = req.query;
+
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
+    }
+
+    const filter = { businessId };
+    if (rating) {
+      filter.rating = parseInt(rating);
+    }
+    if (search && search.trim()) {
+      filter.$or = [
+        { customerName: { $regex: search.trim(), $options: 'i' } },
+        { comment: { $regex: search.trim(), $options: 'i' } }
+      ];
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const [reviews, total] = await Promise.all([
+      Review.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .select('customerName phone rating comment reply repliedAt orderType orderTotal isVisible createdAt'),
+      Review.countDocuments(filter)
+    ]);
+
+    res.json({
+      success: true,
+      reviews,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching admin reviews', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener reseñas', 500));
   }
 });
 

@@ -35,6 +35,7 @@ import OrderNotificationBanner from "../Components/Admin/OrderNotificationBanner
 import SubscriptionPayment from "./SubscriptionPayment";
 import AdminSectionErrorBoundary from "../Components/Admin/AdminSectionErrorBoundary";
 import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
+import AdminReviews from "../Components/Admin/AdminReviews";
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -409,6 +410,13 @@ function Admin() {
                 {activeTab === 'payment-config' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <PaymentConfig />
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'reviews' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Reseñas" onGoBack={() => setActiveTab('dashboard')}>
+                      <AdminReviews />
+                    </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
               </motion.div>
