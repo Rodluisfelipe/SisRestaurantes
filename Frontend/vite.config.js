@@ -23,10 +23,20 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-motion': ['framer-motion'],
-          'vendor-sentry': ['@sentry/react'],
+        manualChunks(id) {
+          // Function-based chunking avoids circular-dependency TDZ errors
+          // that array-based manualChunks causes with framer-motion
+          if (id.includes('node_modules')) {
+            if (id.includes('react-dom') || id.includes('react-router') ||
+                id.includes('/react/') || id.includes('react/jsx')) {
+              return 'vendor-react';
+            }
+            if (id.includes('@sentry')) {
+              return 'vendor-sentry';
+            }
+            // Let framer-motion stay in the default shared chunk
+            // so Rollup resolves initialization order automatically
+          }
         }
       }
     }

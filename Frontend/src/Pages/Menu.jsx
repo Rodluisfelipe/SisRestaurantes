@@ -1,5 +1,5 @@
 // @charset UTF-8
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
@@ -18,6 +18,11 @@ import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
 import PaymentUpload from "../Components/PaymentUpload";
 import MyOrders from "../Components/MyOrders";
+
+// Lazy-loaded review components (separate chunks, zero framer-motion)
+const ReviewModal = lazy(() => import("../Components/ReviewModal"));
+const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
+
 import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -101,6 +106,11 @@ export default function Menu() {
   // Estados para modales de favoritos e historial
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+
+  // Reviews states
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [showReviewsSheet, setShowReviewsSheet] = useState(false);
+  const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
   
   // In-app ordering states
   const [showOrderTracker, setShowOrderTracker] = useState(false);
@@ -135,12 +145,20 @@ export default function Menu() {
 
   // Clear active order (user confirmed completed order)
   const clearActiveOrder = useCallback(() => {
+    if (activeOrderId && orderInfo?.phone) {
+      setPendingReviewOrder({
+        orderId: activeOrderId,
+        customerName: orderInfo.customerName || '',
+        customerPhone: orderInfo.phone
+      });
+      setShowReviewModal(true);
+    }
     setActiveOrderId(null);
     setActiveCustomerToken(null);
     setActiveOrderStatus(null);
     sessionStorage.removeItem('activeOrderId');
     sessionStorage.removeItem('activeCustomerToken');
-  }, []);
+  }, [activeOrderId, orderInfo]);
   
   // Detectar si viene del catálogo de restaurantes
   const [comesFromCatalog, setComesFromCatalog] = useState(() => {
@@ -1181,6 +1199,8 @@ export default function Menu() {
         onShowHistory={() => setShowHistory(true)}
         showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
         showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
+        onShowReviews={() => setShowReviewsSheet(true)}
+        reviewStats={businessConfig?.reviewStats}
       />
       
       {/* Aviso discreto de servicio temporalmente no disponible */}
@@ -1428,6 +1448,30 @@ export default function Menu() {
           setShowCartSummary(true);
         }}
       />
+
+      {/* Reviews — lazy loaded, separate chunks */}
+      <Suspense fallback={null}>
+        {showReviewModal && (
+          <ReviewModal
+            show={showReviewModal}
+            onClose={(submitted) => { setShowReviewModal(false); setPendingReviewOrder(null); }}
+            businessId={businessId}
+            orderId={pendingReviewOrder?.orderId}
+            customerName={pendingReviewOrder?.customerName}
+            customerPhone={pendingReviewOrder?.customerPhone}
+            theme={businessConfig?.theme}
+          />
+        )}
+        {showReviewsSheet && (
+          <ReviewsSheet
+            show={showReviewsSheet}
+            onClose={() => setShowReviewsSheet(false)}
+            businessId={businessId}
+            reviewStats={businessConfig?.reviewStats}
+            theme={businessConfig?.theme}
+          />
+        )}
+      </Suspense>
 
       {/* Footer - MenuBy Branding */}
       <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-4 mt-8">
