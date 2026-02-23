@@ -36,6 +36,7 @@ import SubscriptionPayment from "./SubscriptionPayment";
 import AdminSectionErrorBoundary from "../Components/Admin/AdminSectionErrorBoundary";
 import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 import WelcomeWizard from "../Components/Admin/WelcomeWizard";
+import FloatingHelpChat from "../Components/Admin/FloatingHelpChat";
 import AdminReviews from "../Components/Admin/AdminReviews";
 
 // Custom hooks
@@ -482,6 +483,9 @@ function Admin() {
         onConfirm={confirmDelete}
         product={productToDelete || {}}
       />
+
+      {/* Floating AI Help Chat */}
+      <FloatingHelpChat />
     </div>
   );
 }
