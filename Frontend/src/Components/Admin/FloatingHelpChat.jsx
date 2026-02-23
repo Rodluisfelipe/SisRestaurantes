@@ -109,14 +109,26 @@ export default function FloatingHelpChat() {
         <AnimatePresence>
           {!isOpen && showPulse && (
             <motion.div
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 4 }}
-              className="absolute bottom-full right-0 mb-2.5 whitespace-nowrap pointer-events-none"
+              initial={{ opacity: 0, y: 6, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+              className="absolute bottom-full right-0 mb-3 pointer-events-none"
             >
-              <div className="bg-gray-900 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-lg">
-                ¿Necesitas ayuda?
-                <div className="absolute -bottom-1 right-4 w-2 h-2 bg-gray-900 rotate-45" />
+              <div className="relative bg-white rounded-2xl shadow-xl shadow-black/10 px-3.5 py-2.5 flex items-center gap-2.5 border border-gray-100">
+                {/* MenuBy logo */}
+                <img src="/logo.jpeg" alt="MenuBy" className="w-7 h-7 rounded-lg object-cover" />
+                {/* Text */}
+                <div className="pr-1">
+                  <p className="text-[12px] font-semibold text-gray-800 leading-tight">Usa nuestra IA</p>
+                  <p className="text-[10px] text-gray-400 leading-tight">Resuelve tus dudas al instante</p>
+                </div>
+                {/* AI badge */}
+                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow-sm border-2 border-white">
+                  <span className="text-[8px] text-white font-bold">IA</span>
+                </div>
+                {/* Arrow */}
+                <div className="absolute -bottom-1.5 right-5 w-3 h-3 bg-white rotate-45 border-r border-b border-gray-100" />
               </div>
             </motion.div>
           )}
