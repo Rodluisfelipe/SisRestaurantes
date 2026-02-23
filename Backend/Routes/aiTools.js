@@ -14,7 +14,7 @@ const aiLimiter = rateLimit({
 
 // Groq API
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODELS = ['deepseek-r1-distill-llama-70b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const GROQ_MODELS = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 
 async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
   const messages = [
@@ -22,6 +22,7 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
     { role: 'user', content: userMessage }
   ];
 
+  let lastError;
   for (const model of GROQ_MODELS) {
     try {
       const response = await fetch(GROQ_API_URL, {
@@ -38,8 +39,11 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
         })
       });
 
-      if (response.status === 429) {
-        logger.warn(`Groq model ${model} rate limited, trying next...`);
+      // Retry on rate limit or model unavailable/decommissioned
+      if (response.status === 429 || response.status === 400 || response.status === 404) {
+        const errBody = await response.text();
+        logger.warn(`Groq model ${model} failed (${response.status}), trying next...`, errBody.slice(0, 200));
+        lastError = new Error(`Groq ${response.status}: ${errBody}`);
         continue;
       }
 
@@ -49,16 +53,19 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
       }
 
       const data = await response.json();
-      // DeepSeek R1 includes <think>...</think> blocks — strip them
       let content = data.choices[0].message.content || '';
       content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
       return content;
     } catch (err) {
-      if (err.message && err.message.includes('429')) continue;
+      lastError = err;
+      if (err.message && (err.message.includes('429') || err.message.includes('400') || err.message.includes('decommission'))) {
+        logger.warn(`Groq model ${model} error, trying next...`);
+        continue;
+      }
       throw err;
     }
   }
-  throw new Error('RATE_LIMITED');
+  throw lastError || new Error('ALL_MODELS_FAILED');
 }
 
 // ─── 1. GENERATE CREATIVE PRODUCT NAMES ─────────────────
