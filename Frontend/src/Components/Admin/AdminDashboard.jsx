@@ -28,8 +28,12 @@ const DASHBOARD_ITEMS = [
   { tab: 'change-password',  icon: '🔒', title: 'Contraseña',     desc: 'Cambiar acceso',          from: 'from-gray-600',    to: 'to-slate-600' },
 ];
 
-export default function AdminDashboard({ setActiveTab, pendingOrdersCount }) {
+export default function AdminDashboard({ setActiveTab, pendingOrdersCount, onboarding }) {
   const { businessConfig } = useBusinessConfig();
+
+  const isNewUser = onboarding && !onboarding.isLegacy && onboarding.level < 6;
+  const progressPercent = onboarding ? (onboarding.progress || 0) : 100;
+  const nextStep = onboarding?.nextStep;
 
   return (
     <div className="space-y-6">
@@ -38,7 +42,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount }) {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold mb-2">
-              Bienvenido de nuevo 👋
+              {isNewUser ? '¡Bienvenido! 🚀' : 'Bienvenido de nuevo 👋'}
             </h1>
             <p className="text-blue-100">
               Panel de administración - {businessConfig?.businessName || 'Tu Restaurante'}
@@ -58,30 +62,79 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount }) {
             </div>
           </div>
         </div>
+
+        {/* Onboarding Progress Bar — only for new users */}
+        {isNewUser && (
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-100">Tu menú está al {progressPercent}%</span>
+              <span className="text-xs text-blue-200">Nivel {onboarding.level || 0} / 6</span>
+            </div>
+            <div className="w-full bg-white/20 rounded-full h-3">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${progressPercent}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                className="bg-white rounded-full h-3 shadow-sm"
+              />
+            </div>
+            {nextStep && nextStep.action && (
+              <p className="mt-2 text-sm text-blue-100">
+                Siguiente paso: {nextStep.action}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Grid de Funciones */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-        {DASHBOARD_ITEMS.map((item) => (
-          <motion.button
-            key={item.tab}
-            whileHover={{ scale: 1.02, y: -4 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setActiveTab(item.tab)}
-            className={`relative bg-gradient-to-br ${item.from} ${item.to} rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group`}
-          >
-            <div className="text-white">
-              <div className="text-4xl mb-3">{item.icon}</div>
-              <h3 className="font-bold text-lg mb-1">{item.title}</h3>
-              <p className={`text-xs opacity-90`}>{item.desc}</p>
-            </div>
-            {item.hasBadge && pendingOrdersCount > 0 && (
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
-                {pendingOrdersCount}
+        {DASHBOARD_ITEMS.map((item) => {
+          const isLocked = onboarding && !onboarding.isLegacy && onboarding.level < 6 && 
+            onboarding.unlockedSections !== 'all' && 
+            !onboarding.unlockedSections?.includes(item.tab);
+
+          if (isLocked) {
+            return (
+              <div
+                key={item.tab}
+                className="relative bg-slate-200 rounded-2xl p-6 opacity-50 cursor-not-allowed group"
+                title={onboarding?.getUnlockMessage?.(item.tab) || 'Completa pasos anteriores'}
+              >
+                <div className="text-slate-400">
+                  <div className="text-4xl mb-3 grayscale">🔒</div>
+                  <h3 className="font-bold text-lg mb-1">{item.title}</h3>
+                  <p className="text-xs">{item.desc}</p>
+                </div>
+                {/* Tooltip */}
+                <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-48 bg-slate-800 text-white text-xs p-2 rounded-lg shadow-xl text-center">
+                  🔒 {onboarding?.getUnlockMessage?.(item.tab) || 'Bloqueado'}
+                </div>
               </div>
-            )}
-          </motion.button>
-        ))}
+            );
+          }
+
+          return (
+            <motion.button
+              key={item.tab}
+              whileHover={{ scale: 1.02, y: -4 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setActiveTab(item.tab)}
+              className={`relative bg-gradient-to-br ${item.from} ${item.to} rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group`}
+            >
+              <div className="text-white">
+                <div className="text-4xl mb-3">{item.icon}</div>
+                <h3 className="font-bold text-lg mb-1">{item.title}</h3>
+                <p className={`text-xs opacity-90`}>{item.desc}</p>
+              </div>
+              {item.hasBadge && pendingOrdersCount > 0 && (
+                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
+                  {pendingOrdersCount}
+                </div>
+              )}
+            </motion.button>
+          );
+        })}
       </div>
     </div>
   );

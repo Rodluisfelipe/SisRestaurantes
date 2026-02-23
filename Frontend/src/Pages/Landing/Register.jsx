@@ -5,12 +5,25 @@ import { GoogleLogin } from '@react-oauth/google';
 import { registerUser, googleAuth, suggestSlugs, checkSlug } from '../../services/authService';
 import { useAuth } from '../../Context/AuthContext';
 
+// Business type definitions (matches backend BUSINESS_TYPE_CONFIG)
+const BUSINESS_TYPES = [
+  { id: 'fast_food',  emoji: '🍔', label: 'Comida Rápida',  desc: 'Hamburguesas, pizzas, perros...' },
+  { id: 'restaurant', emoji: '🍽️', label: 'Restaurante',    desc: 'Menú completo con entradas y platos' },
+  { id: 'cafe',       emoji: '☕', label: 'Cafetería',       desc: 'Café, repostería, desayunos' },
+  { id: 'bakery',     emoji: '🧁', label: 'Pastelería',     desc: 'Tortas, cupcakes, panes' },
+  { id: 'ice_cream',  emoji: '🍦', label: 'Heladería',      desc: 'Helados, malteadas, postres' },
+  { id: 'bar',        emoji: '🍸', label: 'Bar',            desc: 'Cocteles, cervezas, picadas' },
+  { id: 'food_truck', emoji: '🚚', label: 'Food Truck',     desc: 'Comida callejera, especiales' },
+  { id: 'other',      emoji: '🍴', label: 'Otro',           desc: 'Cualquier tipo de negocio' },
+];
+
 const Register = () => {
   const navigate = useNavigate();
   const { loginWithGoogle } = useAuth();
 
   // ===== STEP MANAGEMENT =====
-  const [step, setStep] = useState(1); // 1 = identity, 2 = business + slug
+  // 1 = identity, 2 = business type, 3 = business name + slug
+  const [step, setStep] = useState(1);
 
   // ===== STEP 1 STATE: Identity =====
   const [authMethod, setAuthMethod] = useState(null); // 'google' | 'email'
@@ -28,7 +41,10 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
 
-  // ===== STEP 2 STATE: Business + Slug =====
+  // ===== STEP 2 STATE: Business Type =====
+  const [businessType, setBusinessType] = useState(null);
+
+  // ===== STEP 3 STATE: Business Name + Slug =====
   const [businessName, setBusinessName] = useState('');
   const [slugSuggestions, setSlugSuggestions] = useState([]);
   const [selectedSlug, setSelectedSlug] = useState('');
@@ -68,7 +84,7 @@ const Register = () => {
   }, [isCustomSlug]);
 
   useEffect(() => {
-    if (step !== 2) return;
+    if (step !== 3) return;
     if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
     slugDebounceRef.current = setTimeout(() => {
       fetchSlugSuggestions(businessName);
@@ -118,7 +134,7 @@ const Register = () => {
       if (result.needsBusinessName) {
         setGoogleUser(result.googleUser);
         setAuthMethod('google');
-        setStep(2);
+        setStep(2); // Go to business type selection
       } else if (result.token) {
         loginWithGoogle(result);
       }
@@ -150,7 +166,13 @@ const Register = () => {
       return;
     }
     setAuthMethod('email');
-    setStep(2);
+    setStep(2); // Go to business type selection
+  };
+
+  const handleSelectBusinessType = (typeId) => {
+    setBusinessType(typeId);
+    setError('');
+    setTimeout(() => setStep(3), 300);
   };
 
   const handleCreateAccount = async (e) => {
@@ -174,7 +196,7 @@ const Register = () => {
     setIsLoading(true);
     try {
       if (authMethod === 'google') {
-        const result = await googleAuth(googleCredential, businessName.trim(), finalSlug);
+        const result = await googleAuth(googleCredential, businessName.trim(), finalSlug, businessType);
         if (result.token) {
           loginWithGoogle(result);
         }
@@ -185,7 +207,8 @@ const Register = () => {
           email: emailData.email,
           password: emailData.password,
           phone: emailData.phone,
-          slug: finalSlug
+          slug: finalSlug,
+          businessType
         });
         if (result.token) {
           loginWithGoogle(result);
@@ -200,10 +223,41 @@ const Register = () => {
     }
   };
 
+  // ===== STEP INDICATOR =====
+  const StepIndicator = ({ currentStep }) => {
+    const steps = [
+      { num: 1, label: 'Cuenta' },
+      { num: 2, label: 'Tipo' },
+      { num: 3, label: 'Negocio' }
+    ];
+    return (
+      <div className="flex items-center justify-center mb-6">
+        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+          {steps.map((s, i) => (
+            <React.Fragment key={s.num}>
+              {i > 0 && <div className="w-6 h-px bg-gray-300" />}
+              <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                currentStep > s.num
+                  ? 'bg-green-500 text-white'
+                  : currentStep === s.num
+                    ? 'bg-[#E31E24] text-white'
+                    : 'bg-gray-200 text-gray-400'
+              }`}>
+                {currentStep > s.num ? '✓' : s.num}
+              </span>
+              <span className={`${currentStep >= s.num ? 'text-gray-900 font-medium' : ''}`}>{s.label}</span>
+            </React.Fragment>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // ===========================
-  // STEP 2 - Business + Slug
+  // STEP 3 - Business Name + Slug
   // ===========================
-  if (step === 2) {
+  if (step === 3) {
+    const selectedType = BUSINESS_TYPES.find(t => t.id === businessType);
     return (
       <div className="min-h-screen bg-white">
         <section className="py-12 sm:py-20 bg-gradient-to-br from-white via-red-50 to-white">
@@ -226,19 +280,10 @@ const Register = () => {
                   </div>
                 )}
                 <h1 className="text-2xl font-bold text-gray-900 mb-1">
-                  ¡Hola {authMethod === 'google' ? googleUser?.name?.split(' ')[0] : emailData.firstName}!
+                  {selectedType?.emoji} {selectedType?.label}
                 </h1>
                 <p className="text-sm text-gray-500">
-                  {authMethod === 'google' ? (
-                    <>{googleUser?.email}
-                      <span className="inline-flex items-center ml-1.5 text-green-600 text-xs font-medium">
-                        <svg className="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        verificado
-                      </span>
-                    </>
-                  ) : emailData.email}
+                  Ahora ponle nombre a tu negocio
                 </p>
               </motion.div>
 
@@ -248,15 +293,7 @@ const Register = () => {
                 transition={{ duration: 0.5, delay: 0.15 }}
                 className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8"
               >
-                <div className="flex items-center justify-center mb-6">
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <span className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">✓</span>
-                    <span className="text-green-600 font-medium">Tu cuenta</span>
-                    <div className="w-8 h-px bg-gray-300"></div>
-                    <span className="w-6 h-6 rounded-full bg-[#E31E24] text-white flex items-center justify-center text-xs font-bold">2</span>
-                    <span className="text-gray-900 font-medium">Tu restaurante</span>
-                  </div>
-                </div>
+                <StepIndicator currentStep={3} />
 
                 <form onSubmit={handleCreateAccount} className="space-y-5">
                   {error && (
@@ -267,12 +304,12 @@ const Register = () => {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre del restaurante</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre del negocio</label>
                     <input type="text" value={businessName}
                       onChange={(e) => { setBusinessName(e.target.value); setError(''); }}
                       autoFocus required
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
-                      placeholder="Ej: La Parrilla de Juan" />
+                      placeholder={businessType === 'cafe' ? 'Ej: Café Aroma' : businessType === 'bakery' ? 'Ej: Dulces Delicias' : 'Ej: La Parrilla de Juan'} />
                   </div>
 
                   <AnimatePresence>
@@ -384,7 +421,99 @@ const Register = () => {
                   </button>
                 </form>
 
-                <button onClick={() => { setStep(1); setAuthMethod(null); setError(''); setBusinessName(''); setSlugSuggestions([]); setSelectedSlug(''); }}
+                <button onClick={() => { setStep(2); setError(''); setBusinessName(''); setSlugSuggestions([]); setSelectedSlug(''); }}
+                  className="mt-4 w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                  ← Volver
+                </button>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
+  // ===========================
+  // STEP 2 - Business Type
+  // ===========================
+  if (step === 2) {
+    return (
+      <div className="min-h-screen bg-white">
+        <section className="py-12 sm:py-20 bg-gradient-to-br from-white via-red-50 to-white">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="max-w-md mx-auto">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-center mb-6"
+              >
+                {authMethod === 'google' && googleUser?.picture ? (
+                  <img src={googleUser.picture} alt={googleUser.name}
+                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-[#E31E24] shadow-md" />
+                ) : (
+                  <div className="w-14 h-14 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
+                    <span className="text-white font-bold text-xl">
+                      {authMethod === 'google' ? googleUser?.name?.[0] : emailData.firstName[0]?.toUpperCase()}
+                    </span>
+                  </div>
+                )}
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                  ¿Qué tipo de negocio tienes?
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Esto nos ayuda a configurar tu menú automáticamente
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.15 }}
+                className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8"
+              >
+                <StepIndicator currentStep={2} />
+
+                <div className="grid grid-cols-2 gap-3">
+                  {BUSINESS_TYPES.map((type, index) => (
+                    <motion.button
+                      key={type.id}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      onClick={() => handleSelectBusinessType(type.id)}
+                      className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 group hover:shadow-md ${
+                        businessType === type.id
+                          ? 'border-[#E31E24] bg-red-50 ring-1 ring-[#E31E24] shadow-md'
+                          : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="text-3xl mb-2">{type.emoji}</div>
+                      <h3 className={`text-sm font-bold mb-0.5 ${businessType === type.id ? 'text-[#E31E24]' : 'text-gray-900'}`}>
+                        {type.label}
+                      </h3>
+                      <p className="text-[11px] text-gray-400 leading-tight">{type.desc}</p>
+
+                      {businessType === type.id && (
+                        <motion.div
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className="absolute top-2 right-2 w-5 h-5 bg-[#E31E24] rounded-full flex items-center justify-center"
+                        >
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        </motion.div>
+                      )}
+                    </motion.button>
+                  ))}
+                </div>
+
+                <p className="text-xs text-gray-400 text-center mt-4">
+                  Se crearán categorías automáticas según tu tipo de negocio. Podrás editarlas después.
+                </p>
+
+                <button onClick={() => { setStep(1); setAuthMethod(null); setError(''); setBusinessType(null); }}
                   className="mt-4 w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors">
                   ← Volver
                 </button>
@@ -416,15 +545,7 @@ const Register = () => {
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.15 }}
               className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8">
-              <div className="flex items-center justify-center mb-6">
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span className="w-6 h-6 rounded-full bg-[#E31E24] text-white flex items-center justify-center text-xs font-bold">1</span>
-                  <span className="text-gray-900 font-medium">Tu cuenta</span>
-                  <div className="w-8 h-px bg-gray-300"></div>
-                  <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">2</span>
-                  <span>Tu restaurante</span>
-                </div>
-              </div>
+              <StepIndicator currentStep={1} />
 
               <div className="mb-5">
                 <div className="flex justify-center">

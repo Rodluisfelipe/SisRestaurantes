@@ -77,11 +77,12 @@ export const checkEmailAvailability = async (email) => {
  * @param {string} [slug] - Slug elegido por el usuario
  * @returns {Promise<Object>} - Respuesta con tokens o needsBusinessName flag
  */
-export const googleAuth = async (credential, businessName = null, slug = null) => {
+export const googleAuth = async (credential, businessName = null, slug = null, businessType = null) => {
   try {
     const payload = { credential };
     if (businessName) payload.businessName = businessName;
     if (slug) payload.slug = slug;
+    if (businessType) payload.businessType = businessType;
     const response = await api.post('/auth/google', payload);
     return response.data;
   } catch (error) {
@@ -120,6 +121,46 @@ export const checkSlug = async (slug) => {
   }
 };
 
+/**
+ * Obtiene el estado del onboarding del negocio
+ * @returns {Promise<Object>} - Estado de onboarding
+ */
+export const getOnboardingStatus = async () => {
+  try {
+    const response = await api.get('/auth/onboarding-status');
+    return response.data;
+  } catch (error) {
+    console.error('Error al obtener estado de onboarding:', error);
+    return null;
+  }
+};
+
+/**
+ * Marca una guía como vista
+ * @param {string} guideId - ID de la guía
+ */
+export const markGuideShown = async (guideId) => {
+  try {
+    await api.post('/auth/onboarding-guide-shown', { guideId });
+  } catch (error) {
+    console.error('Error al marcar guía como vista:', error);
+  }
+};
+
+/**
+ * Obtiene los tipos de negocio disponibles
+ * @returns {Promise<Array>} - Array de tipos
+ */
+export const getBusinessTypes = async () => {
+  try {
+    const response = await api.get('/auth/business-types');
+    return response.data.types;
+  } catch (error) {
+    console.error('Error al obtener tipos de negocio:', error);
+    return [];
+  }
+};
+
 export default {
   registerUser,
   requestPasswordReset,
@@ -127,5 +168,8 @@ export default {
   checkEmailAvailability,
   googleAuth,
   suggestSlugs,
-  checkSlug
-}; 
+  checkSlug,
+  getOnboardingStatus,
+  markGuideShown,
+  getBusinessTypes
+};

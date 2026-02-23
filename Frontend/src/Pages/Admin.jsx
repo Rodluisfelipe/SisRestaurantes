@@ -42,6 +42,7 @@ import useAdminAuth from "../hooks/useAdminAuth";
 import useAdminData from "../hooks/useAdminData";
 import useProductHandlers from "../hooks/useProductHandlers";
 import useSubscriptionData from "../hooks/useSubscriptionData";
+import useOnboarding from "../hooks/useOnboarding";
 
 function Admin() {
   const { businessConfig } = useBusinessConfig();
@@ -53,6 +54,18 @@ function Admin() {
 
   // --- Subscription (una sola instancia, se pasa a sidebar + dashboard) ---
   const subscriptionData = useSubscriptionData(businessConfig?._id);
+
+  // --- Onboarding (progressive unlock + guide system) ---
+  const onboardingHook = useOnboarding();
+  // Merge raw API data with utility functions for easy prop passing
+  const onboardingData = onboardingHook.onboarding ? {
+    ...onboardingHook.onboarding,
+    getUnlockMessage: onboardingHook.getUnlockMessage,
+    isSectionUnlocked: onboardingHook.isSectionUnlocked,
+    showGuide: onboardingHook.showGuide,
+    isGuideShown: onboardingHook.isGuideShown,
+    refreshOnboarding: onboardingHook.refreshOnboarding,
+  } : null;
 
   // --- Data (productos, categorias, toppings, socket, SSE) ---
   const {
@@ -224,6 +237,7 @@ function Admin() {
           handleLogout={logout}
           pendingOrdersCount={pendingOrdersCount}
           subscriptionData={subscriptionData}
+          onboarding={onboardingData}
         />
 
         {/* Main Content */}
@@ -272,7 +286,7 @@ function Admin() {
                 className="w-full"
               >
                 {activeTab === 'dashboard' && (
-                  <AdminDashboard setActiveTab={setActiveTab} pendingOrdersCount={pendingOrdersCount} />
+                  <AdminDashboard setActiveTab={setActiveTab} pendingOrdersCount={pendingOrdersCount} onboarding={onboardingData} />
                 )}
                 {activeTab === 'business' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
