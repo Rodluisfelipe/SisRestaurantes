@@ -27,7 +27,10 @@ async function recalculateReviewStats(businessId) {
         r2: { $sum: { $cond: [{ $eq: ['$rating', 2] }, 1, 0] } },
         r3: { $sum: { $cond: [{ $eq: ['$rating', 3] }, 1, 0] } },
         r4: { $sum: { $cond: [{ $eq: ['$rating', 4] }, 1, 0] } },
-        r5: { $sum: { $cond: [{ $eq: ['$rating', 5] }, 1, 0] } }
+        r5: { $sum: { $cond: [{ $eq: ['$rating', 5] }, 1, 0] } },
+        thumbsUpCount: { $sum: { $cond: [{ $eq: ['$thumbsUp', true] }, 1, 0] } },
+        thumbsDownCount: { $sum: { $cond: [{ $eq: ['$thumbsUp', false] }, 1, 0] } },
+        thumbsTotalCount: { $sum: { $cond: [{ $ne: ['$thumbsUp', null] }, 1, 0] } }
       }
     }
   ]);
@@ -43,10 +46,38 @@ async function recalculateReviewStats(businessId) {
       3: data.r3,
       4: data.r4,
       5: data.r5
+    },
+    thumbsFeedback: {
+      thumbsUp: data.thumbsUpCount || 0,
+      thumbsDown: data.thumbsDownCount || 0,
+      total: data.thumbsTotalCount || 0
     }
   };
 
   await BusinessConfig.findByIdAndUpdate(businessId, { reviewStats });
+
+  // Compute favorite product IDs (products in positive reviews: rating >= 4 OR thumbsUp)
+  // A product needs at least 2 positive mentions to become "Favorito"
+  try {
+    const favAgg = await Review.aggregate([
+      { $match: {
+        businessId: new mongoose.Types.ObjectId(businessId),
+        isVisible: true,
+        $or: [{ rating: { $gte: 4 } }, { thumbsUp: true }]
+      }},
+      { $unwind: '$productIds' },
+      { $group: { _id: '$productIds', count: { $sum: 1 } } },
+      { $match: { count: { $gte: 2 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+    const favoriteProductIds = favAgg.map(f => f._id);
+    await BusinessConfig.findByIdAndUpdate(businessId, { 'reviewStats.favoriteProductIds': favoriteProductIds });
+    reviewStats.favoriteProductIds = favoriteProductIds;
+  } catch (favErr) {
+    logger.error('Error computing favorite products', favErr);
+  }
+
   return reviewStats;
 }
 
@@ -57,7 +88,7 @@ async function recalculateReviewStats(businessId) {
  */
 router.post('/', async (req, res) => {
   try {
-    const { phone, businessId, orderId, customerName, rating, comment, orderType, orderTotal } = req.body;
+    const { phone, businessId, orderId, customerName, rating, comment, orderType, orderTotal, thumbsUp } = req.body;
 
     // Validate required fields
     if (!phone || !businessId || !orderId || !customerName || !rating) {
@@ -104,6 +135,17 @@ router.post('/', async (req, res) => {
       customer = await Customer.create({ businessId, phone, name: customerName });
     }
 
+    // Extract productIds from order items for favorites analytics
+    const productIds = [];
+    if (orderDoc.items && Array.isArray(orderDoc.items)) {
+      for (const item of orderDoc.items) {
+        const pid = item.productId || item._id;
+        if (pid && isValidObjectId(pid.toString())) {
+          productIds.push(pid);
+        }
+      }
+    }
+
     // Create the review
     const review = await Review.create({
       businessId,
@@ -112,9 +154,11 @@ router.post('/', async (req, res) => {
       phone,
       customerName: customerName.trim(),
       rating,
+      thumbsUp: typeof thumbsUp === 'boolean' ? thumbsUp : null,
       comment: comment ? comment.trim() : '',
       orderType: orderType || orderDoc.orderType,
-      orderTotal: orderTotal || orderDoc.total
+      orderTotal: orderTotal || orderDoc.total,
+      productIds
     });
 
     // Recalculate stats
@@ -167,7 +211,7 @@ router.get('/', async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .select('customerName rating comment reply repliedAt orderType createdAt'),
+        .select('customerName rating comment reply repliedAt orderType thumbsUp createdAt'),
       Review.countDocuments(filter)
     ]);
 
@@ -202,12 +246,84 @@ router.get('/my', async (req, res) => {
 
     const reviews = await Review.find({ phone, businessId })
       .sort({ createdAt: -1 })
-      .select('orderId rating comment reply repliedAt createdAt');
+      .select('orderId rating comment reply repliedAt createdAt thumbsUp');
 
     res.json({ success: true, reviews });
   } catch (error) {
     logger.error('Error fetching customer reviews', error, req);
     res.status(500).json(formatHttpError(req, 'Error al obtener tus reseñas', 500));
+  }
+});
+
+/**
+ * GET /api/reviews/pending
+ * Check if a customer has completed orders without reviews
+ * Returns the most recent un-reviewed completed order
+ * Query: phone, businessId
+ */
+router.get('/pending', async (req, res) => {
+  try {
+    const { phone, businessId } = req.query;
+
+    if (!phone || !businessId) {
+      return res.status(400).json(formatHttpError(req, 'phone y businessId son requeridos', 400));
+    }
+
+    // Resolve businessId (could be slug or ObjectId)
+    let businessObjectId = businessId;
+    if (!isValidObjectId(businessId)) {
+      const business = await BusinessConfig.findOne({ slug: businessId });
+      if (!business) return res.json({ success: true, pendingOrder: null });
+      businessObjectId = business._id;
+    }
+
+    // Only check the SINGLE most recent completed order (last 30 days)
+    // Do NOT loop through older orders to avoid an infinite reminder cycle
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const lastOrder = await CompletedOrder.findOne({
+      businessId: businessObjectId,
+      phone,
+      completedAt: { $gte: thirtyDaysAgo }
+    }).sort({ completedAt: -1 }).lean();
+
+    if (!lastOrder) {
+      return res.json({ success: true, pendingOrder: null });
+    }
+
+    // Check if that specific order already has a review
+    const alreadyReviewed = await Review.exists({ orderId: lastOrder._id });
+    if (alreadyReviewed) {
+      return res.json({ success: true, pendingOrder: null });
+    }
+
+    // Find the most expensive item to feature in the review card
+    let topProduct = null;
+    if (lastOrder.items && lastOrder.items.length > 0) {
+      const sorted = [...lastOrder.items].sort((a, b) => (b.price || 0) - (a.price || 0));
+      const top = sorted[0];
+      topProduct = {
+        name: top.name || top.productName || '',
+        image: top.image || top.productImage || null,
+        price: top.price || 0
+      };
+    }
+
+    res.json({
+      success: true,
+      pendingOrder: {
+        _id: lastOrder._id,
+        orderNumber: lastOrder.orderNumber,
+        customerName: lastOrder.customerName,
+        totalAmount: lastOrder.totalAmount,
+        orderType: lastOrder.orderType,
+        completedAt: lastOrder.completedAt,
+        itemCount: lastOrder.items ? lastOrder.items.length : 0,
+        topProduct
+      }
+    });
+  } catch (error) {
+    logger.error('Error checking pending review', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al verificar reseñas pendientes', 500));
   }
 });
 
@@ -364,7 +480,7 @@ router.get('/admin', authMiddleware, async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .select('customerName phone rating comment reply repliedAt orderType orderTotal isVisible createdAt'),
+        .select('customerName phone rating comment reply repliedAt orderType orderTotal thumbsUp isVisible createdAt'),
       Review.countDocuments(filter)
     ]);
 

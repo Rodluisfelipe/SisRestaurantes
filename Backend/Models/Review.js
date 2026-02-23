@@ -35,6 +35,13 @@ const reviewSchema = new Schema({
     min: 1,
     max: 5
   },
+
+  // Quick feedback: thumbs up / thumbs down (optional)
+  thumbsUp: {
+    type: Boolean,
+    default: null
+  },
+
   comment: {
     type: String,
     maxlength: 500,
@@ -65,7 +72,12 @@ const reviewSchema = new Schema({
   },
   orderTotal: {
     type: Number
-  }
+  },
+  // Product IDs from the order (for "Favorito" badge analytics)
+  productIds: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Product'
+  }]
 }, { timestamps: true });
 
 // Indexes

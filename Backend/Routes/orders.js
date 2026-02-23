@@ -16,6 +16,7 @@ const { ORDER_STATUS } = require('../utils/constants');
 const authMiddleware = require('../middleware/authMiddleware');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const rateLimit = require('express-rate-limit');
+const { startOfDayCOL, endOfDayCOL } = require('../utils/timezone');
 const Product = require('../Models/Product');
 const ToppingGroup = require('../Models/ToppingGroup');
 const multer = require('multer');
@@ -781,13 +782,9 @@ router.post("/daily-closing", tenantAuth, async (req, res) => {
       businessObjectId = business._id;
     }
     
-    // Get today's date at midnight
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Get tomorrow's date at midnight
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    // Get today's date at midnight Colombia time (UTC-5)
+    const today = startOfDayCOL();
+    const tomorrow = endOfDayCOL();
     
     // Query completed orders for today that haven't been included in a report
     const completedOrders = await CompletedOrder.find({

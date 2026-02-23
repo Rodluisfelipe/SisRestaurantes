@@ -111,6 +111,7 @@ export default function Menu() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showReviewsSheet, setShowReviewsSheet] = useState(false);
   const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
+  const [pendingReviewTopProduct, setPendingReviewTopProduct] = useState(null);
   
   // In-app ordering states
   const [showOrderTracker, setShowOrderTracker] = useState(false);
@@ -1313,6 +1314,12 @@ export default function Menu() {
         activeOrderStatus={activeOrderStatus}
         onViewActiveOrder={() => setShowOrderTracker(true)}
         onDismissCompletedOrder={clearActiveOrder}
+        customerPhone={orderInfo?.phone || null}
+        onPendingReview={(order) => {
+          setPendingReviewOrder(order._id);
+          setPendingReviewTopProduct(order.topProduct || null);
+          setShowReviewModal(true);
+        }}
       />
 
       <CartBar 
@@ -1452,6 +1459,17 @@ export default function Menu() {
         businessId={businessId}
         customerPhone={orderInfo.phone}
         theme={businessConfig?.theme}
+        onReview={(order) => {
+          setPendingReviewOrder(order._id);
+          // Compute topProduct from order items
+          if (order.items && order.items.length > 0) {
+            const sorted = [...order.items].sort((a, b) => (b.price || 0) - (a.price || 0));
+            setPendingReviewTopProduct({ name: sorted[0].name, image: sorted[0].image || sorted[0].productImage || null, price: sorted[0].price });
+          } else {
+            setPendingReviewTopProduct(null);
+          }
+          setShowReviewModal(true);
+        }}
         onReorder={(orderItems) => {
           console.log('[Menu] Reordering items:', orderItems);
           console.log('[Menu] Current products:', products);
@@ -1504,12 +1522,13 @@ export default function Menu() {
         {showReviewModal && (
           <ReviewModal
             show={showReviewModal}
-            onClose={() => { setShowReviewModal(false); setPendingReviewOrder(null); }}
+            onClose={() => { setShowReviewModal(false); setPendingReviewOrder(null); setPendingReviewTopProduct(null); }}
             businessId={businessId}
             orderId={pendingReviewOrder}
             customerName={orderInfo.customerName}
             customerPhone={orderInfo.phone}
             theme={businessConfig?.theme}
+            topProduct={pendingReviewTopProduct}
           />
         )}
         {showReviewsSheet && (

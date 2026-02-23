@@ -1,37 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 
 /**
  * Modal para que el cliente deje una reseña después de completar un pedido
- * Se muestra después de que el pedido es marcado como completado/entregado
+ * Incluye rating general + "¿Qué tal estuvo?" con thumbs up/down + producto destacado
  */
-const ReviewModal = ({ show, onClose, businessId, orderId, customerName, customerPhone, theme }) => {
+const ReviewModal = ({ show, onClose, businessId, orderId, customerName, customerPhone, theme, topProduct }) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [thumbsUp, setThumbsUp] = useState(null); // null | true | false
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
 
   const buttonColor = theme?.buttonColor || '#f97316';
 
+  // Reset state when modal opens with new order
+  useEffect(() => {
+    if (show) {
+      setRating(0);
+      setHoverRating(0);
+      setComment('');
+      setThumbsUp(null);
+      setSubmitted(false);
+      setError(null);
+    }
+  }, [show, orderId]);
+
   const handleSubmit = async () => {
     if (rating === 0) return;
     try {
       setSubmitting(true);
       setError(null);
-      await api.post('/reviews', {
+      const payload = {
         phone: customerPhone,
         businessId,
         orderId,
         customerName,
         rating,
         comment: comment.trim()
-      });
+      };
+      if (thumbsUp !== null) {
+        payload.thumbsUp = thumbsUp;
+      }
+      await api.post('/reviews', payload);
       setSubmitted(true);
       setTimeout(() => {
-        onClose(true); // true = review submitted
+        onClose(true);
       }, 1800);
     } catch (err) {
       const msg = err.response?.data?.message || 'Error al enviar reseña';
@@ -123,6 +140,75 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                     </p>
                   )}
                 </div>
+
+                {/* Thumbs Up/Down — "¿Qué tal estuvo?" with top product */}
+                {rating > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3 }}
+                    className="px-5 pb-3"
+                  >
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <p className="text-xs text-gray-400 text-center mb-2.5">¿Qué tal estuvo?</p>
+                      {/* Top product highlight */}
+                      {topProduct && (
+                        <div className="flex items-center gap-3 mb-3">
+                          {topProduct.image ? (
+                            <img
+                              src={topProduct.image}
+                              alt={topProduct.name}
+                              className="w-14 h-14 rounded-xl object-cover shadow-sm"
+                            />
+                          ) : (
+                            <div className="w-14 h-14 rounded-xl bg-gray-200 flex items-center justify-center text-2xl">
+                              🍽️
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-gray-700 truncate">{topProduct.name}</p>
+                            {topProduct.price > 0 && (
+                              <p className="text-xs text-gray-400">
+                                ${Number(topProduct.price).toLocaleString('es-CO')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {/* Thumbs buttons */}
+                      <div className="flex justify-center gap-4">
+                        <button
+                          type="button"
+                          onClick={() => setThumbsUp(thumbsUp === true ? null : true)}
+                          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 ${
+                            thumbsUp === true
+                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
+                              : 'bg-white border border-gray-200 text-gray-500 hover:border-emerald-300'
+                          }`}
+                        >
+                          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" />
+                          </svg>
+                          Me gustó
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setThumbsUp(thumbsUp === false ? null : false)}
+                          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 ${
+                            thumbsUp === false
+                              ? 'bg-red-500 text-white shadow-md shadow-red-200'
+                              : 'bg-white border border-gray-200 text-gray-500 hover:border-red-300'
+                          }`}
+                        >
+                          <svg className="w-5 h-5 rotate-180" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" />
+                          </svg>
+                          No tanto
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Comment */}
                 {rating > 0 && (

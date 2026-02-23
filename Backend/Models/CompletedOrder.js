@@ -111,10 +111,9 @@ const completedOrderSchema = new mongoose.Schema({
   reportDate: {
     type: Date,
     default: function() {
-      // Set to the start of the current day (midnight)
-      const date = new Date();
-      date.setHours(0, 0, 0, 0);
-      return date;
+      // Start of day in Colombia timezone (UTC-5)
+      const { startOfDayCOL } = require('../utils/timezone');
+      return startOfDayCOL();
     }
   },
   

@@ -5,6 +5,7 @@ import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import FeaturedProducts from './FeaturedProducts';
+import PendingReviewCard from './PendingReviewCard';
 import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
 
 // Función para obtener emoji basado en el nombre de la categoría
@@ -157,7 +158,9 @@ const FilterableMenu = ({
   hasActiveOrder = false,
   activeOrderStatus = null,
   onViewActiveOrder,
-  onDismissCompletedOrder
+  onDismissCompletedOrder,
+  customerPhone = null,
+  onPendingReview
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -488,6 +491,16 @@ const FilterableMenu = ({
           );
         })()}
       </AnimatePresence>
+
+      {/* Pending Review Card — shown when no active order and customer has un-reviewed orders */}
+      {!hasActiveOrder && customerPhone && (
+        <PendingReviewCard
+          businessId={businessId}
+          customerPhone={customerPhone}
+          themeColor={themeColor}
+          onReview={onPendingReview}
+        />
+      )}
 
       {/* Search Bar */}
       <motion.div 

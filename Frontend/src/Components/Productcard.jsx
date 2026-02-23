@@ -22,6 +22,9 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   const buttonTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
   const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
   const isDisabled = subscriptionStatus === 'suspended' || !businessStatus?.isOpen;
+  const isFavorite = businessConfig?.reviewStats?.favoriteProductIds?.some(
+    id => id === product._id || id?.toString() === product._id?.toString()
+  );
 
   const flashAdded = useCallback(() => {
     setJustAdded(true);
@@ -124,6 +127,16 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
               >
                 <FaSlidersH className="text-[8px] sm:text-[10px]" />
                 <span className="hidden sm:inline">Personalizable</span>
+              </span>
+            </div>
+          )}
+
+          {/* "Favorito 🔥" badge for popular products */}
+          {isFavorite && (
+            <div className="absolute top-2 right-2">
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm backdrop-blur-md">
+                🔥
+                <span className="hidden sm:inline">Favorito</span>
               </span>
             </div>
           )}

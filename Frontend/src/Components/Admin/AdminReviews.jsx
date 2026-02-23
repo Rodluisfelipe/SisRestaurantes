@@ -180,6 +180,8 @@ export default function AdminReviews() {
   const totalReviews = stats?.totalReviews || 0;
   const avgRating = stats?.averageRating || 0;
   const breakdown = stats?.ratingBreakdown || { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  const thumbs = stats?.thumbsFeedback || { thumbsUp: 0, thumbsDown: 0, total: 0 };
+  const thumbsUpPct = thumbs.total > 0 ? Math.round((thumbs.thumbsUp / thumbs.total) * 100) : 0;
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -202,6 +204,38 @@ export default function AdminReviews() {
               <p className="text-sm text-slate-400 mt-2">
                 {totalReviews} {totalReviews === 1 ? 'reseña' : 'reseñas'} en total
               </p>
+
+              {/* Thumbs feedback */}
+              {thumbs.total > 0 && (
+                <div className="w-full mt-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-slate-400">¿Qué tal estuvo?</span>
+                    <span className="text-xs font-semibold text-slate-600">{thumbs.total} respuestas</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-emerald-600">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" />
+                      </svg>
+                      <span className="text-sm font-bold">{thumbsUpPct}%</span>
+                    </div>
+                    <div className="flex-1 h-2.5 bg-red-100 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${thumbsUpPct}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                        className="h-full rounded-full bg-emerald-500"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 text-red-400">
+                      <span className="text-sm font-bold">{100 - thumbsUpPct}%</span>
+                      <svg className="w-4 h-4 rotate-180" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -396,6 +430,18 @@ export default function AdminReviews() {
                   <p className="text-sm text-slate-600 mt-3 leading-relaxed">
                     {review.comment}
                   </p>
+                )}
+
+                {/* Thumbs feedback */}
+                {review.thumbsUp !== null && review.thumbsUp !== undefined && (
+                  <span className={`inline-flex items-center gap-1 mt-2 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                    review.thumbsUp ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'
+                  }`}>
+                    <svg className={`w-3 h-3 ${review.thumbsUp ? '' : 'rotate-180'}`} viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" />
+                    </svg>
+                    {review.thumbsUp ? 'Le gustó' : 'No le gustó'}
+                  </span>
                 )}
 
                 {/* Existing reply */}

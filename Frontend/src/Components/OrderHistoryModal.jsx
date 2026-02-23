@@ -1,18 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHistory, FaTimes, FaShoppingCart, FaHeart, FaClock, FaCheckCircle, FaChevronDown, FaRedo, FaMapMarkerAlt, FaChair, FaTruck, FaBoxOpen } from 'react-icons/fa';
+import { FaHistory, FaTimes, FaShoppingCart, FaHeart, FaClock, FaCheckCircle, FaChevronDown, FaRedo, FaMapMarkerAlt, FaChair, FaTruck, FaBoxOpen, FaStar } from 'react-icons/fa';
 import api from '../services/api';
 import logger from '../utils/logger';
 
 /**
  * Modal para mostrar historial de pedidos y permitir re-ordenar rápidamente
  */
-const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder, onAddToFavorites, theme }) => {
+const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder, onAddToFavorites, theme, onReview }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [addedFav, setAddedFav] = useState(null);
+  const [reviewedOrderIds, setReviewedOrderIds] = useState(new Set());
   
   // Colores del tema con fallback
   const buttonColor = theme?.buttonColor || '#f97316';
@@ -38,6 +39,16 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
         .slice(0, 20);
       
       setOrders(customerOrders);
+      
+      // Fetch which orders have already been reviewed
+      try {
+        const reviewsRes = await api.get(`/reviews/${businessId}?phone=${customerPhone}`);
+        const reviews = reviewsRes.data?.reviews || [];
+        const ids = new Set(reviews.map(r => r.orderId?.toString()).filter(Boolean));
+        setReviewedOrderIds(ids);
+      } catch {
+        // Non-critical — just can't show review status
+      }
     } catch (err) {
       logger.error('Error loading order history:', err);
       setError('No se pudo cargar el historial');
@@ -384,16 +395,36 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                                 </div>
                               )}
 
-                              {/* Reorder button */}
-                              <motion.button
-                                whileTap={{ scale: 0.97 }}
-                                onClick={(e) => { e.stopPropagation(); handleReorder(order); }}
-                                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
-                                style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-                              >
-                                <FaRedo className="text-xs" />
-                                Repetir este pedido
-                              </motion.button>
+                              {/* Action buttons */}
+                              <div className="flex gap-2">
+                                {/* Review button — show if not yet reviewed */}
+                                {!reviewedOrderIds.has(order._id?.toString()) && onReview && (
+                                  <motion.button
+                                    whileTap={{ scale: 0.97 }}
+                                    onClick={(e) => { e.stopPropagation(); onReview(order); onClose(); }}
+                                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-semibold border-2 transition-all active:scale-[0.98]"
+                                    style={{ borderColor: buttonColor, color: buttonColor, backgroundColor: buttonColor + '08' }}
+                                  >
+                                    <FaStar className="text-xs" />
+                                    Calificar
+                                  </motion.button>
+                                )}
+                                {reviewedOrderIds.has(order._id?.toString()) && (
+                                  <div className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-sm font-medium text-emerald-600 bg-emerald-50">
+                                    <FaCheckCircle className="text-xs" />
+                                    Reseña enviada
+                                  </div>
+                                )}
+                                <motion.button
+                                  whileTap={{ scale: 0.97 }}
+                                  onClick={(e) => { e.stopPropagation(); handleReorder(order); }}
+                                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+                                  style={{ backgroundColor: buttonColor, color: buttonTextColor }}
+                                >
+                                  <FaRedo className="text-xs" />
+                                  Repetir pedido
+                                </motion.button>
+                              </div>
                             </div>
                           </motion.div>
                         )}
