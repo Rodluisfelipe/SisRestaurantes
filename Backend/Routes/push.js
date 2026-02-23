@@ -107,7 +107,7 @@ router.post('/unsubscribe', pushSubscribeLimiter, async (req, res) => {
 router.get('/subscriptions', authMiddleware, async (req, res) => {
   try {
     // Enforce tenant isolation: admin can only see their own business subscriptions
-    const resolvedBusinessId = req.user.businessId;
+    const resolvedBusinessId = req.user.businessId || req.query.businessId;
     if (!resolvedBusinessId) {
       return res.status(400).json(formatHttpError(req, 'businessId no disponible en el token', 400));
     }

@@ -27,8 +27,8 @@ router.get('/', tenantAuth, async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Use tenant-validated businessId from middleware (not from query)
-    const resolvedBusinessId = req.user.businessId;
+    // Use tenant-validated businessId from middleware, with fallback for superadmin
+    const resolvedBusinessId = req.user.businessId || req.query.businessId;
 
 
 
@@ -346,9 +346,9 @@ router.delete('/:phone', tenantAuth, async (req, res) => {
       return res.status(400).json({ error: 'Número de teléfono requerido' });
     }
 
-    // Use businessId from token for tenant isolation
+    // Use businessId from token for tenant isolation, with fallback for superadmin
     const customer = await Customer.findOneAndDelete({ 
-      businessId: req.user.businessId, 
+      businessId: req.user.businessId || req.query.businessId, 
       phone 
     });
 
@@ -376,10 +376,10 @@ router.delete('/by-id/:id', tenantAuth, async (req, res) => {
       return res.status(400).json({ error: 'ID del cliente inválido' });
     }
 
-    // Use businessId from token for tenant isolation
+    // Use businessId from token for tenant isolation, with fallback for superadmin
     const customer = await Customer.findOneAndDelete({ 
       _id: id,
-      businessId: req.user.businessId
+      businessId: req.user.businessId || req.query.businessId
     });
 
     if (!customer) {

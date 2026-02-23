@@ -180,8 +180,8 @@ router.post("/", tenantAuth, validateProductInput, async (req, res) => {
       }));
     }
     
-    // Force businessId from authenticated user's token (prevent cross-tenant)
-    productData.businessId = req.user.businessId;
+    // Force businessId from authenticated user's token, fallback for superadmin
+    productData.businessId = req.user.businessId || req.body.businessId;
     
     const newProduct = new Product(productData);
     await newProduct.save();
@@ -230,9 +230,10 @@ router.put("/products-reorder", tenantAuth, async (req, res) => {
     
     // Usar bulkWrite para actualizar todos los productos de una vez (más eficiente)
     // Compound filter ensures tenant isolation on each update
+    const tenantBusinessId = req.user.businessId || req.body.businessId;
     const bulkOps = products.map(productData => ({
       updateOne: {
-        filter: { _id: productData._id, businessId: req.user.businessId },
+        filter: { _id: productData._id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) },
         update: { displayOrder: productData.order }
       }
     }));
@@ -278,8 +279,9 @@ router.put("/reorder-featured", tenantAuth, async (req, res) => {
     }
 
     // Actualizar el featuredOrder de cada producto (compound filter for tenant isolation)
+    const tenantBusinessId = req.user.businessId || req.body.businessId;
     const updatePromises = orderedIds.map((id, index) => 
-      Product.findOneAndUpdate({ _id: id, businessId: req.user.businessId }, { featuredOrder: index + 1 })
+      Product.findOneAndUpdate({ _id: id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) }, { featuredOrder: index + 1 })
     );
 
     await Promise.all(updatePromises);
@@ -320,7 +322,7 @@ router.put("/:id/toggle-featured", tenantAuth, async (req, res) => {
     }
 
 
-    const product = await Product.findOne({ _id: id, businessId: req.user.businessId });
+    const product = await Product.findOne({ _id: id, ...(req.user.businessId ? { businessId: req.user.businessId } : {}) });
 
     if (!product) {
 
@@ -433,8 +435,12 @@ router.put("/:id", tenantAuth, validateProductInput, async (req, res) => {
     const productId = req.params.id;
     const { name, description, price, category, image, toppingGroups } = req.body;
     
-    // Force businessId from token (prevent cross-tenant)
-    const finalBusinessId = req.user.businessId;
+    // Force businessId from token, fallback to body for superadmin
+    const finalBusinessId = req.user.businessId || req.body.businessId;
+
+    if (!finalBusinessId) {
+      return res.status(400).json(formatHttpError(req, "businessId es requerido", 400));
+    }
     
     // Procesar el orden de los toppings
     let toppingGroupsOrder = [];
@@ -465,6 +471,10 @@ router.put("/:id", tenantAuth, validateProductInput, async (req, res) => {
       select: 'name description isMultipleChoice isRequired options basePrice subGroups'
     });
     
+    if (!updatedProduct) {
+      return res.status(404).json(formatHttpError(req, "Producto no encontrado", 404));
+    }
+
     logger.info('Producto actualizado', { productId: updatedProduct._id.toString() }, req);
     
     res.json(updatedProduct);
@@ -477,8 +487,9 @@ router.put("/:id", tenantAuth, validateProductInput, async (req, res) => {
 // DELETE a product
 router.delete("/:id", tenantAuth, async (req, res) => {
   try {
-    // Use businessId from token for tenant isolation
-    const deletedProduct = await Product.findOneAndDelete({ _id: req.params.id, businessId: req.user.businessId });
+    // Use businessId from token for tenant isolation, fallback for superadmin
+    const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
+    const deletedProduct = await Product.findOneAndDelete({ _id: req.params.id, ...(tenantBizId ? { businessId: tenantBizId } : {}) });
     
     // Emitir evento de actualización por WebSocket
     if (deletedProduct) {
@@ -499,8 +510,9 @@ router.patch("/:id/toggle", tenantAuth, async (req, res) => {
     
     logger.debug("Toggling product", { productId }, req);
     
-    // Compound query for tenant isolation
-    const product = await Product.findOne({ _id: productId, businessId: req.user.businessId });
+    // Compound query for tenant isolation, fallback for superadmin
+    const tenantBizIdToggle = req.user.businessId || req.body.businessId;
+    const product = await Product.findOne({ _id: productId, ...(tenantBizIdToggle ? { businessId: tenantBizIdToggle } : {}) });
     if (!product) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }

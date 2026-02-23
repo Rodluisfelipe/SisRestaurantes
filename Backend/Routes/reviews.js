@@ -6,6 +6,7 @@ const Order = require('../Models/Order');
 const CompletedOrder = require('../Models/CompletedOrder');
 const BusinessConfig = require('../Models/BusinessConfig');
 const { isValidObjectId } = require('../utils/validators');
+const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -17,7 +18,7 @@ const socketService = require('../services/socketService');
 async function recalculateReviewStats(businessId) {
   const mongoose = require('mongoose');
   const stats = await Review.aggregate([
-    { $match: { businessId: new mongoose.Types.ObjectId(businessId), isVisible: true } },
+    { $match: { businessId: new mongoose.Types.ObjectId(businessId), isVisible: { $ne: false } } },
     {
       $group: {
         _id: null,
@@ -62,7 +63,7 @@ async function recalculateReviewStats(businessId) {
     const favAgg = await Review.aggregate([
       { $match: {
         businessId: new mongoose.Types.ObjectId(businessId),
-        isVisible: true,
+        isVisible: { $ne: false },
         $or: [{ rating: { $gte: 4 } }, { thumbsUp: true }]
       }},
       { $unwind: '$productIds' },
@@ -200,7 +201,14 @@ router.get('/', async (req, res) => {
       return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
     }
 
-    const filter = { businessId, isVisible: true };
+    // Resolve slug to ObjectId
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) {
+      return res.status(404).json(formatHttpError(req, businessResult.error, 404));
+    }
+    const businessObjectId = businessResult.businessId;
+
+    const filter = { businessId: businessObjectId, isVisible: { $ne: false } };
     if (rating) {
       filter.rating = parseInt(rating);
     }
@@ -244,7 +252,14 @@ router.get('/my', async (req, res) => {
       return res.status(400).json(formatHttpError(req, 'phone y businessId son requeridos', 400));
     }
 
-    const reviews = await Review.find({ phone, businessId })
+    // Resolve slug to ObjectId
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) {
+      return res.status(404).json(formatHttpError(req, businessResult.error, 404));
+    }
+    const businessObjectId = businessResult.businessId;
+
+    const reviews = await Review.find({ phone, businessId: businessObjectId })
       .sort({ createdAt: -1 })
       .select('orderId rating comment reply repliedAt createdAt thumbsUp');
 
@@ -456,10 +471,14 @@ router.get('/admin', authMiddleware, async (req, res) => {
   try {
     const { page = 1, limit = 15, rating, search } = req.query;
 
-    // Tenant isolation: use businessId from JWT token, not from query
-    const businessId = req.user.businessId;
+    // Use businessId from JWT token; for superadmins fall back to query param
+    let businessId = req.user.businessId;
+    if (!businessId && req.query.businessId) {
+      const bResult = await validateAndResolveBusinessId(req.query.businessId);
+      if (bResult.success) businessId = bResult.businessId;
+    }
     if (!businessId) {
-      return res.status(400).json(formatHttpError(req, 'businessId no disponible en el token', 400));
+      return res.status(400).json(formatHttpError(req, 'businessId no disponible', 400));
     }
 
     const filter = { businessId };
@@ -507,10 +526,14 @@ router.get('/admin', authMiddleware, async (req, res) => {
  */
 router.get('/stats', authMiddleware, async (req, res) => {
   try {
-    // Tenant isolation: use businessId from JWT token, not from query
-    const businessId = req.user.businessId;
+    // Use businessId from JWT token; for superadmins fall back to query param
+    let businessId = req.user.businessId;
+    if (!businessId && req.query.businessId) {
+      const bResult = await validateAndResolveBusinessId(req.query.businessId);
+      if (bResult.success) businessId = bResult.businessId;
+    }
     if (!businessId) {
-      return res.status(400).json(formatHttpError(req, 'businessId no disponible en el token', 400));
+      return res.status(400).json(formatHttpError(req, 'businessId no disponible', 400));
     }
 
     const config = await BusinessConfig.findById(businessId).select('reviewStats');
@@ -527,6 +550,29 @@ router.get('/stats', authMiddleware, async (req, res) => {
   } catch (error) {
     logger.error('Error fetching review stats', error, req);
     res.status(500).json(formatHttpError(req, 'Error al obtener estadísticas', 500));
+  }
+});
+
+/**
+ * POST /api/reviews/recalculate
+ * Force recalculate review stats for a business (admin only)
+ */
+router.post('/recalculate', authMiddleware, async (req, res) => {
+  try {
+    let businessId = req.user.businessId;
+    if (!businessId && req.query.businessId) {
+      const bResult = await validateAndResolveBusinessId(req.query.businessId);
+      if (bResult.success) businessId = bResult.businessId;
+    }
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, 'businessId no disponible', 400));
+    }
+    const reviewStats = await recalculateReviewStats(businessId);
+    logger.info('Review stats recalculated manually', { businessId }, req);
+    res.json({ success: true, reviewStats });
+  } catch (error) {
+    logger.error('Error recalculating review stats', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al recalcular estadísticas', 500));
   }
 });
 

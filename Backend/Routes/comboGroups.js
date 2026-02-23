@@ -26,7 +26,7 @@ router.post("/", tenantAuth, async (req, res) => {
     basePrice: req.body.basePrice,
     description: req.body.description,
     subGroups: req.body.subGroups,
-    businessId: req.user.businessId  // Force from token, not body
+    businessId: req.user.businessId || req.body.businessId  // Force from token, fallback for superadmin
   });
 
   try {
@@ -42,7 +42,8 @@ router.post("/", tenantAuth, async (req, res) => {
 router.patch("/:id", tenantAuth, async (req, res) => {
   try {
     // Compound query: only find combos belonging to this tenant
-    const comboGroup = await ComboGroup.findOne({ _id: req.params.id, businessId: req.user.businessId });
+    const tenantBizId = req.user.businessId || req.body.businessId;
+    const comboGroup = await ComboGroup.findOne({ _id: req.params.id, ...(tenantBizId ? { businessId: tenantBizId } : {}) });
     if (!comboGroup) {
       return res.status(404).json({ message: "Combo no encontrado" });
     }
@@ -66,7 +67,8 @@ router.patch("/:id", tenantAuth, async (req, res) => {
 router.delete("/:id", tenantAuth, async (req, res) => {
   try {
     // Compound query: only find combos belonging to this tenant
-    const comboGroup = await ComboGroup.findOne({ _id: req.params.id, businessId: req.user.businessId });
+    const tenantBizIdDel = req.user.businessId || req.body.businessId || req.query.businessId;
+    const comboGroup = await ComboGroup.findOne({ _id: req.params.id, ...(tenantBizIdDel ? { businessId: tenantBizIdDel } : {}) });
     if (!comboGroup) {
       return res.status(404).json({ message: "Combo no encontrado" });
     }

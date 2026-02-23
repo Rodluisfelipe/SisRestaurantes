@@ -70,9 +70,28 @@ export const checkEmailAvailability = async (email) => {
   }
 };
 
+/**
+ * Autenticación con Google
+ * @param {string} credential - ID token de Google
+ * @param {string} [businessName] - Nombre del negocio (solo para registro nuevo)
+ * @returns {Promise<Object>} - Respuesta con tokens o needsBusinessName flag
+ */
+export const googleAuth = async (credential, businessName = null) => {
+  try {
+    const payload = { credential };
+    if (businessName) payload.businessName = businessName;
+    const response = await api.post('/auth/google', payload);
+    return response.data;
+  } catch (error) {
+    console.error('Error en autenticación con Google:', error);
+    throw error;
+  }
+};
+
 export default {
   registerUser,
   requestPasswordReset,
   resetPassword,
-  checkEmailAvailability
+  checkEmailAvailability,
+  googleAuth
 }; 

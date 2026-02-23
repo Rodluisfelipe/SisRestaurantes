@@ -17,6 +17,17 @@ function tenantAuth(req, res, next) {
     try {
       // SuperAdmins can access any business
       if (req.user && req.user.isSuperAdmin) {
+        // For superadmins, resolve businessId from request and inject it
+        // so downstream routes can use req.user.businessId seamlessly
+        const requestBusinessId = req.body.businessId || req.query.businessId || req.params.businessId;
+        if (requestBusinessId && !req.user.businessId) {
+          try {
+            req.user.businessId = await resolveBusinessId(requestBusinessId);
+          } catch (e) {
+            // If resolution fails, continue without it — the route will handle the error
+            logger.debug('SuperAdmin businessId resolution failed', { requestBusinessId, error: e.message }, req);
+          }
+        }
         return next();
       }
 

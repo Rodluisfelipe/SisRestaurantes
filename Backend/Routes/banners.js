@@ -194,7 +194,7 @@ router.get('/', async (req, res) => {
 // GET /api/banners/my - Obtener banners del restaurante autenticado
 router.get('/my', authMiddleware, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = req.user.businessId || req.query.businessId;
     const banners = await Banner.find({ businessId })
       .sort({ createdAt: -1 });
 
@@ -251,8 +251,8 @@ router.get('/business/:businessId/public', async (req, res) => {
 // POST /api/banners - Crear nuevo banner (restaurante)
 router.post('/', authMiddleware, upload.single('image'), validateBannerInput, async (req, res) => {
   try {
-    // Force businessId from authenticated user (prevent impersonation)
-    let businessId = req.user.businessId;
+    // Force businessId from authenticated user, fallback for superadmin
+    let businessId = req.user.businessId || req.body.businessId;
     const { title, description, endDate, priority } = req.body;
 
     if (!req.file) {
@@ -463,9 +463,9 @@ router.put('/:id/click', async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const businessId = req.user.businessId;
+    const businessId = req.user.businessId || req.query.businessId;
 
-    const banner = await Banner.findOne({ _id: id, businessId });
+    const banner = await Banner.findOne({ _id: id, ...(businessId ? { businessId } : {}) });
     if (!banner) {
       return res.status(404).json(formatHttpError(req, 'Banner no encontrado', 404));
     }

@@ -10,7 +10,24 @@ const adminSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true
+    required: function() { return this.authProvider === 'local'; }
+  },
+  name: {
+    type: String,
+    default: null
+  },
+  avatar: {
+    type: String,
+    default: null
+  },
+  googleId: {
+    type: String,
+    default: null
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
   },
   lastLogin: {
     type: Date,
@@ -68,6 +85,7 @@ adminSchema.statics.findByRefreshToken = async function(adminId, plainToken) {
 };
 
 adminSchema.index({ businessId: 1 });
+adminSchema.index({ googleId: 1 }, { sparse: true });
 
 const Admin = mongoose.model('Admin', adminSchema);
 

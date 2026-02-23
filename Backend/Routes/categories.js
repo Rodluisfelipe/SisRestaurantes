@@ -38,8 +38,9 @@ router.post("/", tenantAuth, async (req, res) => {
     // Si se proporciona un _id, actualizar en lugar de crear
     if (req.body._id) {
       // Compound query: only update categories belonging to this tenant
+      const tenantBusinessId = req.user.businessId || req.body.businessId;
       const updatedCategory = await Category.findOneAndUpdate(
-        { _id: req.body._id, businessId: req.user.businessId },
+        { _id: req.body._id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) },
         {
           name: req.body.name,
           description: req.body.description,
@@ -62,13 +63,13 @@ router.post("/", tenantAuth, async (req, res) => {
     // Si no hay _id, crear una nueva categoría
     logger.debug('Creating category', { name: req.body.name }, req);
     
-    // Force businessId from authenticated user's token
+    // Force businessId from authenticated user's token, fallback for superadmin
     const categoryData = {
       name: req.body.name,
       description: req.body.description,
       displayOrder: req.body.displayOrder,
       active: req.body.active,
-      businessId: req.user.businessId
+      businessId: req.user.businessId || req.body.businessId
     };
     
     const newCategory = new Category(categoryData);
@@ -107,9 +108,10 @@ router.put("/reorder", tenantAuth, async (req, res) => {
     logger.debug(`Reordenando categorías para negocio ${businessId}`, { count: categories.length }, req);
     
     // Actualizar cada categoría con su nuevo orden (compound query for tenant isolation)
+    const tenantBusinessId = req.user.businessId || req.body.businessId;
     const updatePromises = categories.map(category => 
       Category.findOneAndUpdate(
-        { _id: category._id, businessId: req.user.businessId },
+        { _id: category._id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) },
         { displayOrder: category.order },
         { new: true }
       )
@@ -118,9 +120,10 @@ router.put("/reorder", tenantAuth, async (req, res) => {
     await Promise.all(updatePromises);
     
     // Emitir evento de actualización por WebSocket
-    emitToBusiness(req.user.businessId?.toString(), "categories_update", { 
+    const wsBusinessId = tenantBusinessId || businessId;
+    emitToBusiness(wsBusinessId?.toString(), "categories_update", { 
       type: "reordered", 
-      businessId: req.user.businessId,
+      businessId: wsBusinessId,
       message: "Orden de categorías actualizado" 
     });
     
@@ -146,8 +149,9 @@ router.put("/:id", tenantAuth, async (req, res) => {
     if (active !== undefined) updateData.active = active;
     
     // Compound query: only update categories belonging to this tenant
+    const tenantBusinessId = req.user.businessId || req.body.businessId;
     const updatedCategory = await Category.findOneAndUpdate(
-      { _id: req.params.id, businessId: req.user.businessId },
+      { _id: req.params.id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) },
       updateData,
       { new: true, runValidators: true }
     );
@@ -170,8 +174,9 @@ router.put("/:id", tenantAuth, async (req, res) => {
 // Eliminar categoría
 router.delete("/:id", tenantAuth, async (req, res) => {
   try {
-    // Use businessId from token for tenant isolation
-    const category = await Category.findOneAndDelete({ _id: req.params.id, businessId: req.user.businessId });
+    // Use businessId from token for tenant isolation, fallback for superadmin
+    const tenantBusinessId = req.user.businessId || req.query.businessId;
+    const category = await Category.findOneAndDelete({ _id: req.params.id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) });
     if (!category) {
       return res.status(404).json(formatHttpError(req, "Categoría no encontrada", 404));
     }
@@ -197,9 +202,10 @@ router.post("/update-order", tenantAuth, async (req, res) => {
     logger.debug("Actualizando orden de categorías", { count: categories.length }, req);
     
     // Actualizar cada categoría con su nuevo displayOrder (compound query for tenant isolation)
+    const tenantBusinessId2 = req.user.businessId || req.body.businessId;
     const updatePromises = categories.map(item => 
       Category.findOneAndUpdate(
-        { _id: item.id, businessId: req.user.businessId },
+        { _id: item.id, ...(tenantBusinessId2 ? { businessId: tenantBusinessId2 } : {}) },
         { displayOrder: item.order },
         { new: true }
       )

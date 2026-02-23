@@ -170,7 +170,13 @@ const businessConfigSchema = new mongoose.Schema({
       3: { type: Number, default: 0 },
       4: { type: Number, default: 0 },
       5: { type: Number, default: 0 }
-    }
+    },
+    thumbsFeedback: {
+      thumbsUp: { type: Number, default: 0 },
+      thumbsDown: { type: Number, default: 0 },
+      total: { type: Number, default: 0 }
+    },
+    favoriteProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
   }
 }, { timestamps: true }); // Agregar timestamps para debugging
 

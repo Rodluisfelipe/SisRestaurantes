@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { registerUser } from '../../services/authService';
+import { GoogleLogin } from '@react-oauth/google';
+import { registerUser, googleAuth } from '../../services/authService';
+import { useAuth } from '../../Context/AuthContext';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { loginWithGoogle } = useAuth();
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -19,6 +22,13 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+
+  // Google OAuth state
+  const [googleStep, setGoogleStep] = useState(null); // null | 'business-name'
+  const [googleCredential, setGoogleCredential] = useState(null);
+  const [googleUser, setGoogleUser] = useState(null);
+  const [googleBusinessName, setGoogleBusinessName] = useState('');
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -59,7 +69,6 @@ const Register = () => {
         phone: formData.phone
       });
       
-      // Redirect to login on success
       navigate('/login', { 
         state: { message: '¡Cuenta creada exitosamente! Inicia sesión para comenzar.' }
       });
@@ -70,6 +79,160 @@ const Register = () => {
       setIsLoading(false);
     }
   };
+
+  // Handle Google credential response
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setIsGoogleLoading(true);
+    
+    try {
+      const credential = credentialResponse.credential;
+      setGoogleCredential(credential);
+      
+      // Send to backend (without businessName first)
+      const result = await googleAuth(credential);
+      
+      if (result.needsBusinessName) {
+        // New user — show step 2 (ask for business name)
+        setGoogleUser(result.googleUser);
+        setGoogleStep('business-name');
+      } else if (result.token) {
+        // Existing user — login directly
+        loginWithGoogle(result);
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Error al autenticar con Google. Intenta nuevamente.';
+      setError(errorMessage);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  // Handle step 2: submit business name for Google registration
+  const handleGoogleBusinessSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!googleBusinessName.trim()) {
+      setError('El nombre del restaurante es obligatorio');
+      return;
+    }
+    
+    setIsGoogleLoading(true);
+    
+    try {
+      const result = await googleAuth(googleCredential, googleBusinessName.trim());
+      
+      if (result.token) {
+        // Registration complete — auto-login
+        loginWithGoogle(result);
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Error al crear la cuenta. Intenta nuevamente.';
+      setError(errorMessage);
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  // Google OAuth step 2: Business name form
+  if (googleStep === 'business-name') {
+    return (
+      <div className="min-h-screen bg-white">
+        <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
+          <div className="container mx-auto px-4 sm:px-6">
+            <div className="max-w-md mx-auto">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="text-center mb-8"
+              >
+                {googleUser?.picture && (
+                  <img 
+                    src={googleUser.picture} 
+                    alt={googleUser.name}
+                    className="w-16 h-16 rounded-full mx-auto mb-4 border-2 border-[#E31E24]"
+                  />
+                )}
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                  ¡Hola {googleUser?.name?.split(' ')[0]}!
+                </h1>
+                <p className="text-gray-600">
+                  {googleUser?.email}
+                  <span className="inline-flex items-center ml-2 text-green-600 text-xs font-medium">
+                    <svg className="w-3.5 h-3.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    verificado
+                  </span>
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8"
+              >
+                <h2 className="text-lg font-semibold text-gray-900 mb-1">Solo falta un paso</h2>
+                <p className="text-sm text-gray-500 mb-6">¿Cómo se llama tu restaurante?</p>
+
+                <form onSubmit={handleGoogleBusinessSubmit} className="space-y-6">
+                  {error && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  <div>
+                    <label htmlFor="googleBusinessName" className="block text-sm font-medium text-gray-700 mb-2">
+                      Nombre del restaurante
+                    </label>
+                    <input
+                      type="text"
+                      id="googleBusinessName"
+                      value={googleBusinessName}
+                      onChange={(e) => { setGoogleBusinessName(e.target.value); setError(''); }}
+                      required
+                      autoFocus
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
+                      placeholder="Ej: La Parrilla de Juan"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isGoogleLoading}
+                    className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] disabled:bg-red-400 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 flex items-center justify-center"
+                  >
+                    {isGoogleLoading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Creando tu menú...
+                      </>
+                    ) : (
+                      'Crear mi menú digital'
+                    )}
+                  </button>
+                </form>
+
+                <button
+                  onClick={() => { setGoogleStep(null); setGoogleCredential(null); setGoogleUser(null); setError(''); }}
+                  className="mt-4 w-full text-center text-sm text-gray-500 hover:text-gray-700"
+                >
+                  ← Volver al registro
+                </button>
+              </motion.div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -102,6 +265,40 @@ const Register = () => {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8"
             >
+              {/* Google Sign-Up Button */}
+              <div className="mb-6">
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={() => setError('Error al conectar con Google')}
+                    text="signup_with"
+                    shape="rectangular"
+                    size="large"
+                    width="100%"
+                    theme="outline"
+                    locale="es"
+                  />
+                </div>
+                {isGoogleLoading && (
+                  <div className="flex justify-center mt-3">
+                    <svg className="animate-spin h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white text-gray-500">o regístrate con email</span>
+                </div>
+              </div>
+
               <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Error display */}
                 {error && (

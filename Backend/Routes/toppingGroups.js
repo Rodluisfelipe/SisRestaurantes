@@ -71,6 +71,19 @@ router.post("/", tenantAuth, async (req, res) => {
       }
     }
     
+    // Filtrar opciones vacías (sin nombre) antes de crear
+    if (Array.isArray(req.body.options)) {
+      req.body.options = req.body.options.filter(opt => opt && opt.name && opt.name.trim() !== '');
+    }
+    if (Array.isArray(req.body.subGroups)) {
+      req.body.subGroups = req.body.subGroups.map(sg => {
+        if (sg && Array.isArray(sg.options)) {
+          return { ...sg, options: sg.options.filter(opt => opt && opt.name && opt.name.trim() !== '') };
+        }
+        return sg;
+      });
+    }
+
     const group = new ToppingGroup(req.body);
     await group.save();
     
@@ -124,14 +137,29 @@ router.put("/:id", tenantAuth, async (req, res) => {
     }
 
     // Preparar datos de actualización de forma más segura
+    // Filtrar opciones vacías (sin nombre) que el frontend puede enviar al agregar una opción nueva sin completarla
+    let cleanOptions = existingGroup.options;
+    if (Array.isArray(req.body.options)) {
+      cleanOptions = req.body.options.filter(opt => opt && opt.name && opt.name.trim() !== '');
+    }
+    let cleanSubGroups = existingGroup.subGroups;
+    if (Array.isArray(req.body.subGroups)) {
+      cleanSubGroups = req.body.subGroups.map(sg => {
+        if (sg && Array.isArray(sg.options)) {
+          return { ...sg, options: sg.options.filter(opt => opt && opt.name && opt.name.trim() !== '') };
+        }
+        return sg;
+      });
+    }
+
     const updateData = {
       name: req.body.name || existingGroup.name,
       description: req.body.description || existingGroup.description,
       basePrice: Number(req.body.basePrice || existingGroup.basePrice || 0),
       isMultipleChoice: Boolean(req.body.isMultipleChoice),
       isRequired: Boolean(req.body.isRequired),
-      options: Array.isArray(req.body.options) ? req.body.options : existingGroup.options,
-      subGroups: Array.isArray(req.body.subGroups) ? req.body.subGroups : existingGroup.subGroups,
+      options: cleanOptions,
+      subGroups: cleanSubGroups,
       businessId: existingGroup.businessId // Mantener el businessId original
     };
 
@@ -179,22 +207,39 @@ router.put("/:id", tenantAuth, async (req, res) => {
   }
 });
 
-// Delete topping group (soft delete)
+// Delete topping group
 router.delete("/:id", tenantAuth, async (req, res) => {
   try {
-    const { businessId } = req.query;
-    let resolvedBusinessId;
-    try {
-      resolvedBusinessId = await resolveBusinessId(businessId);
-    } catch (error) {
-      return res.status(404).json(formatHttpError(req, error.message, 404));
+    // Validar que el ID sea válido
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json(formatHttpError(req, "ID de grupo inválido", 400));
     }
-    const deleted = await ToppingGroup.findOneAndDelete({ _id: req.params.id, businessId: resolvedBusinessId });
+
+    // Resolver businessId: query param > JWT > skip filter
+    const rawBusinessId = req.query.businessId || req.user?.businessId;
+    let filter = { _id: req.params.id };
+    if (rawBusinessId) {
+      try {
+        const resolvedBusinessId = await resolveBusinessId(rawBusinessId);
+        filter.businessId = resolvedBusinessId;
+      } catch (err) {
+        // Si no se puede resolver, buscar solo por _id
+        logger.warn('Could not resolve businessId for delete, using _id only', { rawBusinessId }, req);
+      }
+    }
+
+    const deleted = await ToppingGroup.findOneAndDelete(filter);
+    if (!deleted) {
+      return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado (puede que ya fue eliminado)", 404));
+    }
+
     // Emitir evento de WebSocket
-    if (deleted) {
+    try {
       emitToBusiness(deleted.businessId?.toString(), "topping_groups_update", { type: "deleted" });
-      logger.info('Topping group deleted', { id: deleted._id }, req);
+    } catch (wsError) {
+      logger.error("Error emitiendo WebSocket (no crítico)", wsError, req);
     }
+    logger.info('Topping group deleted', { id: deleted._id, name: deleted.name }, req);
     res.json({ message: "Grupo de toppings eliminado" });
   } catch (error) {
     logger.error("Error eliminando topping group", error, req);

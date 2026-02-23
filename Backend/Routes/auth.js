@@ -6,6 +6,9 @@ const { generateToken, generateRefreshToken, verifyToken, verifyRefreshToken } =
 const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../utils/logger');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Rate limiter para prevenir ataques de fuerza bruta
 const loginLimiter = rateLimit({
@@ -236,6 +239,9 @@ router.post('/login', loginLimiter, async (req, res) => {
       user: {
         id: admin._id,
         username: admin.username,
+        name: admin.name,
+        avatar: admin.avatar,
+        authProvider: admin.authProvider,
         lastLogin: admin.lastLogin,
         mustChangePassword: admin.mustChangePassword,
         businessId: admin.businessId,
@@ -382,6 +388,9 @@ router.get('/me', authMiddleware, async (req, res) => {
     const userData = {
       id: admin._id,
       username: admin.username,
+      name: admin.name,
+      avatar: admin.avatar,
+      authProvider: admin.authProvider,
       lastLogin: admin.lastLogin,
       mustChangePassword: admin.mustChangePassword,
       businessId: admin.businessId,
@@ -393,6 +402,206 @@ router.get('/me', authMiddleware, async (req, res) => {
     res.json({ user: userData });
   } catch (error) {
     res.status(401).json({ message: 'Token inválido' });
+  }
+});
+
+// ==================== GOOGLE OAUTH ====================
+
+// Rate limiter para Google auth
+const googleAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Demasiados intentos. Intente nuevamente más tarde.' }
+});
+
+// POST /auth/google - Login o Registro con Google
+router.post('/google', googleAuthLimiter, async (req, res) => {
+  try {
+    const { credential, businessName } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: 'Token de Google es requerido' });
+    }
+
+    // Verificar el ID token con Google
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+    } catch (err) {
+      logger.error('Google token verification failed', err);
+      return res.status(401).json({ message: 'Token de Google inválido' });
+    }
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: 'No se pudo obtener el email de Google' });
+    }
+
+    // Buscar si ya existe un admin con este googleId o email
+    let admin = await Admin.findOne({ $or: [{ googleId }, { username: email }] });
+
+    if (admin) {
+      // ===== LOGIN: usuario existente =====
+
+      // Si el admin existía con email/password y ahora usa Google, vincular
+      if (!admin.googleId) {
+        admin.googleId = googleId;
+        admin.authProvider = 'google';
+        if (!admin.name) admin.name = name;
+        if (!admin.avatar) admin.avatar = picture;
+      }
+
+      admin.lastLogin = new Date();
+      const token = generateToken(admin._id, admin.businessId);
+      const refreshToken = generateRefreshToken(admin._id);
+      admin.refreshToken = refreshToken;
+      await admin.save();
+
+      // Obtener slug del negocio
+      const business = await BusinessConfig.findById(admin.businessId);
+
+      return res.json({
+        isNewUser: false,
+        token,
+        refreshToken,
+        user: {
+          id: admin._id,
+          username: admin.username,
+          name: admin.name,
+          avatar: admin.avatar,
+          lastLogin: admin.lastLogin,
+          mustChangePassword: false,
+          businessId: admin.businessId,
+          role: admin.role,
+          authProvider: admin.authProvider
+        },
+        business: business ? {
+          id: business._id,
+          slug: business.slug,
+          businessName: business.businessName
+        } : null
+      });
+    }
+
+    // ===== REGISTRO: usuario nuevo =====
+
+    if (!businessName || !businessName.trim()) {
+      // Necesitamos el nombre del negocio para crear la cuenta
+      return res.json({
+        needsBusinessName: true,
+        googleUser: { name, email, picture }
+      });
+    }
+
+    // Sanitizar
+    const sanitizedBusinessName = businessName.trim().substring(0, 100);
+
+    // Generar slug
+    let slug = sanitizedBusinessName.toLowerCase()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    let slugExists = true;
+    let counter = 1;
+    let newSlug = slug;
+    while (slugExists) {
+      const existingBusiness = await BusinessConfig.findOne({ slug: newSlug });
+      if (existingBusiness) {
+        newSlug = `${slug}-${counter}`;
+        counter++;
+      } else {
+        slugExists = false;
+        slug = newSlug;
+      }
+    }
+
+    // Crear BusinessConfig
+    const businessConfig = new BusinessConfig({
+      slug,
+      businessName: sanitizedBusinessName,
+      isActive: true
+    });
+    await businessConfig.save();
+
+    // Crear Admin (sin password para Google auth)
+    admin = new Admin({
+      username: email,
+      password: require('crypto').randomBytes(32).toString('hex'), // password random que nunca se usará
+      name: name || email.split('@')[0],
+      avatar: picture || null,
+      googleId,
+      authProvider: 'google',
+      businessId: businessConfig._id,
+      mustChangePassword: false,
+      role: 'admin'
+    });
+    await admin.save();
+
+    // Crear Subscription (trial)
+    const Subscription = require('../Models/Subscription');
+    const TRIAL_DAYS = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || 7);
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 1);
+    const now = new Date();
+    const periodEnd = new Date(now);
+    periodEnd.setDate(periodEnd.getDate() + TRIAL_DAYS);
+    const graceUntil = new Date(periodEnd);
+    graceUntil.setDate(graceUntil.getDate() + GRACE_DAYS);
+
+    await new Subscription({
+      businessId: businessConfig._id,
+      planType: 'monthly',
+      status: 'active',
+      startDate: now,
+      endDate: periodEnd,
+      periodStart: now,
+      periodEnd: periodEnd,
+      graceUntil: graceUntil,
+      price: 0,
+      paymentStatus: 'paid',
+      isActive: true,
+      isTrialPeriod: true,
+      paymentMethod: 'OTHER',
+      notes: `Período de prueba de ${TRIAL_DAYS} días con ${GRACE_DAYS} día(s) de gracia (Google OAuth)`
+    }).save();
+
+    // Generar tokens
+    const token = generateToken(admin._id, businessConfig._id);
+    const refreshToken = generateRefreshToken(admin._id);
+    admin.refreshToken = refreshToken;
+    await admin.save();
+
+    logger.info(`Nuevo negocio registrado via Google: ${sanitizedBusinessName} (${email})`);
+
+    res.status(201).json({
+      isNewUser: true,
+      token,
+      refreshToken,
+      user: {
+        id: admin._id,
+        username: admin.username,
+        name: admin.name,
+        avatar: admin.avatar,
+        lastLogin: admin.lastLogin,
+        mustChangePassword: false,
+        businessId: businessConfig._id,
+        role: admin.role,
+        authProvider: 'google'
+      },
+      business: {
+        id: businessConfig._id,
+        slug,
+        businessName: sanitizedBusinessName
+      }
+    });
+  } catch (error) {
+    logger.error('Error en Google auth', process.env.NODE_ENV !== 'production' ? error : undefined);
+    res.status(500).json({ message: 'Error en el servidor al procesar autenticación con Google' });
   }
 });
 

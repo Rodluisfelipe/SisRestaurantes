@@ -296,7 +296,7 @@ router.get("/", authMiddleware, zoneLimiter, async (req, res) => {
 router.get("/:id", authMiddleware, zoneLimiter, async (req, res) => {
   try {
     const { id } = req.params;
-    const businessId = req.user.businessId;
+    const businessId = req.user.businessId || req.query.businessId;
     
     const zone = await DeliveryZone.findOne({ _id: id, businessId });
     

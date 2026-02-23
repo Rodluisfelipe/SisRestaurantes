@@ -68,11 +68,14 @@ if (typeof window !== 'undefined') {
   };
 }
 import { BrowserRouter } from "react-router-dom";
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import "./index.css";
 import { AuthProvider } from "./Context/AuthContext";
 import { ThemeProvider } from "./Context/ThemeContext";
 import ErrorBoundary from "./Components/ErrorBoundary";
 import App from "./App.jsx";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 // Spinner MenuBy - Liviano y Profesional
 const LoadingSpinner = () => (
@@ -144,14 +147,16 @@ if ('serviceWorker' in navigator) {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <BrowserRouter
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true
-        }}
-      >
-        <Root />
-      </BrowserRouter>
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true
+          }}
+        >
+          <Root />
+        </BrowserRouter>
+      </GoogleOAuthProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );

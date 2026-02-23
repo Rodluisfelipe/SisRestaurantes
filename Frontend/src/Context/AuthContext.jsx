@@ -104,6 +104,18 @@ export function AuthProvider({ children }) {
     navigate(`/${slug}/admin`, { replace: true });
   }, [navigate]);
 
+  // Login con Google (ya tiene tokens del backend)
+  const loginWithGoogle = useCallback((data) => {
+    saveTokens(data.token, data.refreshToken, data.user);
+    setIsAuthenticated(true);
+    setUser(data.user);
+    checkMultipleSessions();
+    
+    const slug = data.business?.slug || data.user.businessId;
+    localStorage.setItem('businessSlug', slug);
+    navigate(`/${slug}/admin`, { replace: true });
+  }, [navigate]);
+
   // Logout
   const logout = useCallback(async () => {
     let slug = null;
@@ -308,6 +320,7 @@ export function AuthProvider({ children }) {
     isAuthenticated,
     user,
     login,
+    loginWithGoogle,
     logout,
     refreshToken,
     loading,
