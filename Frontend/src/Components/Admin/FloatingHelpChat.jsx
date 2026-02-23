@@ -27,9 +27,7 @@ function MenuByIcon({ className = "w-5 h-5" }) {
 function TypingIndicator() {
   return (
     <div className="flex items-end gap-2">
-      <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shrink-0">
-        <MenuByIcon className="w-3 h-3 text-white" />
-      </div>
+      <img src="/logo.jpeg" alt="MenuBy" className="w-6 h-6 rounded-full object-cover shrink-0" />
       <div className="bg-gray-100 rounded-2xl rounded-bl-sm px-3.5 py-2.5">
         <div className="flex gap-1">
           {[0, 1, 2].map(i => (
@@ -163,9 +161,7 @@ export default function FloatingHelpChat() {
             <div className="bg-red-600 px-4 py-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="relative shrink-0">
-                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
-                    <MenuByIcon className="w-4.5 h-4.5 text-white" />
-                  </div>
+                  <img src="/logo.jpeg" alt="MenuBy" className="w-8 h-8 rounded-full object-cover border-2 border-white/20" />
                   <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-400 rounded-full border-[1.5px] border-red-600" />
                 </div>
                 <div className="min-w-0">
@@ -193,9 +189,7 @@ export default function FloatingHelpChat() {
               {showWelcome && (
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-3">
                   <div className="text-center py-2">
-                    <div className="w-12 h-12 mx-auto bg-red-50 rounded-2xl flex items-center justify-center mb-2">
-                      <MenuByIcon className="w-6 h-6 text-red-500" />
-                    </div>
+                    <img src="/logo.jpeg" alt="MenuBy" className="w-12 h-12 mx-auto rounded-2xl object-cover mb-2" />
                     <h4 className="font-semibold text-gray-800 text-sm">¡Hola! Soy tu asistente</h4>
                     <p className="text-[11px] text-gray-400 mt-0.5 leading-snug">
                       Pregúntame sobre cómo usar MenuBy
@@ -235,9 +229,7 @@ export default function FloatingHelpChat() {
                       className={`flex ${msg.role === 'user' ? 'justify-end' : 'items-end gap-2'}`}
                     >
                       {msg.role === 'assistant' && (
-                        <div className="w-6 h-6 rounded-full bg-red-500 flex items-center justify-center shrink-0">
-                          <MenuByIcon className="w-3 h-3 text-white" />
-                        </div>
+                        <img src="/logo.jpeg" alt="MenuBy" className="w-6 h-6 rounded-full object-cover shrink-0" />
                       )}
                       <div className="max-w-[78%]">
                         <div
