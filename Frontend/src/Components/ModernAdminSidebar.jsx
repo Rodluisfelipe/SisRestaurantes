@@ -8,7 +8,7 @@ import {
   FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar,
-  FaQuestionCircle
+  FaQuestionCircle, FaExternalLinkAlt
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding }) => {
@@ -161,6 +161,26 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
           )}
         </button>
       </div>
+
+      {/* Ver Menú Button */}
+      {businessConfig?.slug && (
+        <div className="px-4 pb-3">
+          <a
+            href={`https://menuby.tech/${businessConfig.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-emerald-200/80 bg-emerald-50 hover:bg-emerald-100 transition-all duration-200 group"
+          >
+            <FaExternalLinkAlt className="text-[11px] shrink-0 text-emerald-500" />
+            <span className="text-[11px] font-semibold text-emerald-700 flex-1 text-left">
+              Ver Menú
+            </span>
+            <span className="text-[9px] text-emerald-400 font-medium truncate max-w-[80px]">
+              /{businessConfig.slug}
+            </span>
+          </a>
+        </div>
+      )}
 
       {/* Divider */}
       <div className="mx-4 border-t border-slate-100" />
