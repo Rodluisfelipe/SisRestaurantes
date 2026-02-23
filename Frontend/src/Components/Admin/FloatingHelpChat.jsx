@@ -106,56 +106,38 @@ export default function FloatingHelpChat() {
     <>
       {/* ===== FAB ===== */}
       <div className="fixed bottom-4 right-4 z-[9999]">
-        <AnimatePresence>
-          {!isOpen && showPulse && (
-            <motion.div
-              initial={{ opacity: 0, y: 6, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 6, scale: 0.9 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              className="absolute bottom-full right-0 mb-3 pointer-events-none"
-            >
-              <div className="relative bg-white rounded-2xl shadow-xl shadow-black/10 px-3.5 py-2.5 flex items-center gap-2.5 border border-gray-100">
-                {/* MenuBy logo */}
-                <img src="/logo.jpeg" alt="MenuBy" className="w-7 h-7 rounded-lg object-cover" />
-                {/* Text */}
-                <div className="pr-1">
-                  <p className="text-[12px] font-semibold text-gray-800 leading-tight">Usa nuestra IA</p>
-                  <p className="text-[10px] text-gray-400 leading-tight">Resuelve tus dudas al instante</p>
-                </div>
-                {/* AI badge */}
-                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow-sm border-2 border-white">
-                  <span className="text-[8px] text-white font-bold">IA</span>
-                </div>
-                {/* Arrow */}
-                <div className="absolute -bottom-1.5 right-5 w-3 h-3 bg-white rotate-45 border-r border-b border-gray-100" />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <motion.button
           onClick={() => { setIsOpen(!isOpen); setShowPulse(false); }}
-          className="relative w-12 h-12 rounded-full shadow-lg flex items-center justify-center"
+          className="relative w-13 h-13 rounded-full shadow-lg flex items-center justify-center overflow-hidden"
           whileHover={{ scale: 1.06 }}
           whileTap={{ scale: 0.93 }}
-          title="Asistente MenuBy"
-          style={{ background: isOpen ? '#991b1b' : '#DC2626' }}
+          title="Asistente IA MenuBy"
+          style={{ width: 52, height: 52 }}
         >
           {!isOpen && showPulse && (
             <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-25" />
           )}
           <AnimatePresence mode="wait">
             {isOpen ? (
-              <motion.svg key="x" className="w-5 h-5 text-white" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </motion.svg>
+              <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }} className="w-full h-full bg-red-700 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </motion.div>
             ) : (
-              <motion.div key="icon" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}>
-                <MenuByIcon className="w-6 h-6 text-white" />
+              <motion.div key="logo" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}>
+                <img src="/logo.jpeg" alt="MenuBy" className="w-[52px] h-[52px] rounded-full object-cover" />
               </motion.div>
             )}
           </AnimatePresence>
+          {/* Sparkle IA */}
+          {!isOpen && (
+            <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow">
+              <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0L14.59 8.41L23 11L14.59 13.59L12 22L9.41 13.59L1 11L9.41 8.41L12 0Z" />
+              </svg>
+            </div>
+          )}
         </motion.button>
       </div>
 
