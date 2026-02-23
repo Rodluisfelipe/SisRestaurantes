@@ -40,6 +40,7 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
   // ===== STEP 2 STATE: Business Type =====
   const [businessType, setBusinessType] = useState(null);
@@ -547,136 +548,193 @@ const Register = () => {
               className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8">
               <StepIndicator currentStep={1} />
 
-              <div className="mb-5">
-                <div className="flex justify-center">
-                  <GoogleLogin onSuccess={handleGoogleSuccess}
-                    onError={() => setError('Error al conectar con Google')}
-                    text="signup_with" shape="rectangular" size="large" width="100%" theme="outline" locale="es" />
-                </div>
-                {isGoogleLoading && (
-                  <div className="flex items-center justify-center mt-3 gap-2">
-                    <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    <span className="text-xs text-gray-500">Verificando con Google...</span>
+              {error && !showEmailForm && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                  className="p-3 mb-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-start">
+                  <svg className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  <span>{error}</span>
+                </motion.div>
+              )}
+
+              {/* ===== GOOGLE SIGN-IN - HERO SECTION ===== */}
+              <div className="mb-6">
+                <div className="bg-gradient-to-b from-blue-50 to-white border-2 border-blue-100 rounded-2xl p-6 text-center">
+                  <div className="flex justify-center mb-4">
+                    <div className="bg-white rounded-2xl shadow-md p-1 inline-block">
+                      <GoogleLogin onSuccess={handleGoogleSuccess}
+                        onError={() => setError('Error al conectar con Google')}
+                        text="signup_with" shape="pill" size="large" width="320" theme="filled_blue" locale="es"
+                        logo_alignment="center" />
+                    </div>
                   </div>
-                )}
-                <p className="text-center text-xs text-gray-400 mt-2">Registro más rápido — sin contraseñas</p>
+
+                  {isGoogleLoading && (
+                    <div className="flex items-center justify-center mb-3 gap-2">
+                      <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span className="text-sm text-blue-600 font-medium">Verificando con Google...</span>
+                    </div>
+                  )}
+
+                  <p className="text-sm font-semibold text-gray-700 mb-2">
+                    ⚡ La forma más rápida de empezar
+                  </p>
+                  <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Sin contraseñas
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Verificación instantánea
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Más seguro
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="relative mb-5">
+              {/* ===== EMAIL SECTION - COLLAPSIBLE ===== */}
+              <div className="relative mb-4">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200"></div>
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="px-3 bg-white text-gray-400">o con email y contraseña</span>
+                <div className="relative flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => { setShowEmailForm(!showEmailForm); setError(''); }}
+                    className="px-4 py-1 bg-white text-xs text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1.5 group"
+                  >
+                    o con email y contraseña
+                    <svg className={`w-3 h-3 transition-transform duration-300 ${showEmailForm ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
                 </div>
               </div>
 
-              <form onSubmit={handleEmailStep1} className="space-y-4">
-                {error && (
-                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
-                    className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-start">
-                    <svg className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                    </svg>
-                    <span>{error}</span>
+              <AnimatePresence>
+                {showEmailForm && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="overflow-hidden"
+                  >
+                    <form onSubmit={handleEmailStep1} className="space-y-4 pt-2">
+                      {error && (
+                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                          className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-start">
+                          <svg className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                          <span>{error}</span>
+                        </motion.div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="firstName" className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                          <input type="text" id="firstName" name="firstName" value={emailData.firstName} onChange={handleEmailChange} required
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                            placeholder="Juan" />
+                        </div>
+                        <div>
+                          <label htmlFor="lastName" className="block text-xs font-medium text-gray-600 mb-1">Apellido</label>
+                          <input type="text" id="lastName" name="lastName" value={emailData.lastName} onChange={handleEmailChange} required
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                            placeholder="Pérez" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label htmlFor="email" className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico</label>
+                        <input type="email" id="email" name="email" value={emailData.email} onChange={handleEmailChange} required
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                          placeholder="tu@email.com" />
+                      </div>
+
+                      <div>
+                        <label htmlFor="phone" className="block text-xs font-medium text-gray-600 mb-1">
+                          Teléfono <span className="text-gray-400">(opcional)</span>
+                        </label>
+                        <input type="tel" id="phone" name="phone" value={emailData.phone} onChange={handleEmailChange}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                          placeholder="+57 300 123 4567" />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label htmlFor="password" className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
+                          <div className="relative">
+                            <input type={showPassword ? 'text' : 'password'} id="password" name="password" value={emailData.password}
+                              onChange={handleEmailChange} required
+                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                              placeholder="Mín. 8 caracteres" />
+                            <button type="button" onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {showPassword ? (
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                ) : (
+                                  <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
+                                )}
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label htmlFor="confirmPassword" className="block text-xs font-medium text-gray-600 mb-1">Confirmar</label>
+                          <div className="relative">
+                            <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" name="confirmPassword"
+                              value={emailData.confirmPassword} onChange={handleEmailChange} required
+                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                              placeholder="Repetir" />
+                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                {showConfirmPassword ? (
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                ) : (
+                                  <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
+                                )}
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-start pt-1">
+                        <input type="checkbox" id="acceptTerms" checked={acceptTerms}
+                          onChange={(e) => setAcceptTerms(e.target.checked)}
+                          className="w-4 h-4 text-[#E31E24] border-gray-300 rounded focus:ring-[#E31E24] mt-0.5" />
+                        <label htmlFor="acceptTerms" className="ml-2 text-xs text-gray-500">
+                          Acepto los{' '}<Link to="/terms" className="text-[#E31E24] hover:underline">términos</Link>{' '}
+                          y la{' '}<Link to="/privacy" className="text-[#E31E24] hover:underline">política de privacidad</Link>
+                        </label>
+                      </div>
+
+                      <button type="submit"
+                        className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center">
+                        Continuar
+                        <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </form>
                   </motion.div>
                 )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="firstName" className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
-                    <input type="text" id="firstName" name="firstName" value={emailData.firstName} onChange={handleEmailChange} required
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
-                      placeholder="Juan" />
-                  </div>
-                  <div>
-                    <label htmlFor="lastName" className="block text-xs font-medium text-gray-600 mb-1">Apellido</label>
-                    <input type="text" id="lastName" name="lastName" value={emailData.lastName} onChange={handleEmailChange} required
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
-                      placeholder="Pérez" />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="email" className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico</label>
-                  <input type="email" id="email" name="email" value={emailData.email} onChange={handleEmailChange} required
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
-                    placeholder="tu@email.com" />
-                </div>
-
-                <div>
-                  <label htmlFor="phone" className="block text-xs font-medium text-gray-600 mb-1">
-                    Teléfono <span className="text-gray-400">(opcional)</span>
-                  </label>
-                  <input type="tel" id="phone" name="phone" value={emailData.phone} onChange={handleEmailChange}
-                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
-                    placeholder="+57 300 123 4567" />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="password" className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
-                    <div className="relative">
-                      <input type={showPassword ? 'text' : 'password'} id="password" name="password" value={emailData.password}
-                        onChange={handleEmailChange} required
-                        className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
-                        placeholder="Mín. 8 caracteres" />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          {showPassword ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                          ) : (
-                            <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
-                          )}
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="confirmPassword" className="block text-xs font-medium text-gray-600 mb-1">Confirmar</label>
-                    <div className="relative">
-                      <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" name="confirmPassword"
-                        value={emailData.confirmPassword} onChange={handleEmailChange} required
-                        className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
-                        placeholder="Repetir" />
-                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          {showConfirmPassword ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                          ) : (
-                            <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
-                          )}
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start pt-1">
-                  <input type="checkbox" id="acceptTerms" checked={acceptTerms}
-                    onChange={(e) => setAcceptTerms(e.target.checked)}
-                    className="w-4 h-4 text-[#E31E24] border-gray-300 rounded focus:ring-[#E31E24] mt-0.5" />
-                  <label htmlFor="acceptTerms" className="ml-2 text-xs text-gray-500">
-                    Acepto los{' '}<Link to="/terms" className="text-[#E31E24] hover:underline">términos</Link>{' '}
-                    y la{' '}<Link to="/privacy" className="text-[#E31E24] hover:underline">política de privacidad</Link>
-                  </label>
-                </div>
-
-                <button type="submit"
-                  className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center">
-                  Continuar
-                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </form>
+              </AnimatePresence>
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-500">
