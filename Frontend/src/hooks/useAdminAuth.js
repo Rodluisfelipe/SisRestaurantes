@@ -26,42 +26,14 @@ export default function useAdminAuth(businessId) {
 
   // --- SuperAdmin token desde la URL ---
   useEffect(() => {
-    const handleSuperAdminToken = () => {
-      const params = new URLSearchParams(location.search);
-      const fromSuperAdmin = params.get('source') === 'superadmin';
+    const params = new URLSearchParams(location.search);
+    const fromSuperAdmin = params.get('source') === 'superadmin';
 
-      // Check localStorage handoff (secure same-origin token transfer)
-      const handoff = localStorage.getItem('sa_handoff');
-      if (handoff) {
-        try {
-          const tokenData = JSON.parse(handoff);
-          localStorage.removeItem('sa_handoff'); // Consume immediately
-
-          // Verify TTL — reject handoffs older than 10 seconds
-          if (tokenData._ts && tokenData._ttl && (Date.now() - tokenData._ts > tokenData._ttl)) {
-            console.warn('SA handoff expired');
-            return;
-          }
-
-          localStorage.setItem('accessToken', tokenData.accessToken);
-          if (tokenData.refreshToken) localStorage.setItem('refreshToken', tokenData.refreshToken);
-          localStorage.setItem('user', JSON.stringify(tokenData.user));
-          if (businessId) localStorage.setItem('businessSlug', businessId);
-          navigate(location.pathname, { replace: true });
-          window.location.reload();
-          return;
-        } catch (error) {
-          localStorage.removeItem('sa_handoff');
-          console.error('Error parsing SA handoff:', error);
-        }
-      }
-
-      if (!fromSuperAdmin) return;
-      // No legacy fallbacks — sa_handoff with TTL is the only supported handoff mechanism
-    };
-
-    handleSuperAdminToken();
-  }, [location, navigate, businessId]);
+    // SA handoff is handled by AuthContext — just clean the URL param here
+    if (fromSuperAdmin) {
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
 
   // --- Validación de businessId ---
   useEffect(() => {

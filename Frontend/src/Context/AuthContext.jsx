@@ -193,7 +193,9 @@ export function AuthProvider({ children }) {
           // Validate the token server-side before trusting it
           if (tokenData.accessToken) {
             try {
-              const verifyRes = await api.get('/auth/me', {
+              // Pass businessId from handoff so SuperAdmin gets correct context
+              const bId = tokenData.user?.businessId || '';
+              const verifyRes = await api.get(`/auth/me${bId ? `?businessId=${bId}` : ''}`, {
                 headers: { Authorization: `Bearer ${tokenData.accessToken}` }
               });
               

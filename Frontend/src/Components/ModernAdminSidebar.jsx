@@ -213,7 +213,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                         const ItemIcon = item.Icon;
 
                         return (
-                          <div key={item.id} className="flex items-center">
+                          <div key={item.id} className="flex items-center group/item">
                             <motion.button
                               whileTap={{ scale: 0.97 }}
                               onClick={() => setActiveTab(item.id)}
@@ -260,7 +260,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                             {/* Guide (?) button */}
                             <button
                               onClick={(e) => { e.stopPropagation(); setGuideSection(item.id); }}
-                              className="shrink-0 p-1 rounded-md text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-colors opacity-0 group-hover:opacity-100"
+                              className="shrink-0 p-1 rounded-md text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-colors opacity-0 group-hover/item:opacity-100"
                               title="¿Cómo funciona?"
                             >
                               <FaQuestionCircle className="text-xs" />
