@@ -14,7 +14,7 @@ const aiLimiter = rateLimit({
 
 // Groq API
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+const GROQ_MODELS = ['deepseek-r1-distill-llama-70b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
 
 async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
   const messages = [
@@ -49,7 +49,10 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
       }
 
       const data = await response.json();
-      return data.choices[0].message.content;
+      // DeepSeek R1 includes <think>...</think> blocks — strip them
+      let content = data.choices[0].message.content || '';
+      content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+      return content;
     } catch (err) {
       if (err.message && err.message.includes('429')) continue;
       throw err;
@@ -59,16 +62,18 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
 }
 
 // ─── 1. GENERATE CREATIVE PRODUCT NAMES ─────────────────
-const NAMES_PROMPT = `Eres un experto en branding y naming para restaurantes y negocios de comida en Latinoamérica. Tu trabajo es generar nombres CREATIVOS, ATRACTIVOS y MEMORABLES para platos de menú.
+const NAMES_PROMPT = `Eres un experto en naming para menús de restaurantes en Latinoamérica. Tu trabajo es generar nombres CREATIVOS para platos de menú.
 
-REGLAS:
+REGLAS IMPORTANTES:
 - Genera EXACTAMENTE 5 nombres creativos y diferentes
 - Cada nombre debe ser corto (2-5 palabras máximo)
-- Los nombres deben sonar apetitosos y atractivos
-- Adapta el estilo al tipo de negocio (casual, gourmet, callejero, etc.)
-- Usa español colombiano/latinoamericano
+- Los nombres DEBEN dejar claro qué tipo de plato es (hamburguesa, pizza, wrap, etc.). El cliente que lea el nombre en el menú debe saber qué está pidiendo
+- Ejemplo BUENO para "hamburguesa doble carne": "La Doble Bestia", "Burger Inferno Doble", "La Gran Smash Doble"
+- Ejemplo MALO para "hamburguesa doble carne": "Doble Sabor", "Carne y Fuego" (no dicen que es una hamburguesa)
+- Los nombres deben sonar apetitosos, memorables y diferenciadores
+- Usa español latinoamericano, pero puedes mezclar con anglicismos comunes en gastronomía (burger, smash, wrap, etc.)
 - NO uses comillas ni numeración
-- Responde SOLO con los 5 nombres, uno por línea, sin explicaciones ni texto adicional
+- Responde SOLO con los 5 nombres, uno por línea, sin explicaciones
 - NO repitas palabras entre los nombres`;
 
 router.post('/generate-names', authMiddleware, aiLimiter, async (req, res) => {
@@ -83,9 +88,10 @@ router.post('/generate-names', authMiddleware, aiLimiter, async (req, res) => {
       return res.status(503).json({ message: 'Servicio de IA no disponible' });
     }
 
-    let prompt = `Genera 5 nombres creativos para este plato: ${description.trim().slice(0, 300)}`;
-    if (category) prompt += `\nCategoría: ${category}`;
+    let prompt = `Plato: ${description.trim().slice(0, 300)}`;
+    if (category) prompt += `\nCategoría del menú: ${category}`;
     if (businessType) prompt += `\nTipo de negocio: ${businessType}`;
+    prompt += `\n\nGenera 5 nombres creativos para este plato. El nombre debe dejar claro qué tipo de comida es.`;
 
     const result = await callGroq(apiKey, NAMES_PROMPT, prompt, { temperature: 0.9 });
 
