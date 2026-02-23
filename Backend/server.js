@@ -169,7 +169,8 @@ app.use("/api/reviews", require("./Routes/reviews")); // Reseñas de clientes
 app.use("/api/push", require("./Routes/push")); // Push notifications (PWA)
 app.use("/api/upload", require("./Routes/upload")); // Subida de imágenes a DigitalOcean Spaces
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot
-app.use("/api/help-chat", require("./Routes/helpChat")); // Asistente IA de ayuda (Gemini)
+app.use("/api/help-chat", require("./Routes/helpChat")); // Asistente IA de ayuda (Groq)
+app.use("/api/ai-tools", require("./Routes/aiTools")); // Herramientas IA (nombres, respuestas a reseñas)
 // Debug endpoints - solo disponibles en desarrollo
 if (process.env.NODE_ENV !== 'production') {
   app.use("/api/debug", require("./Routes/debug"));

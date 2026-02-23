@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaStar, FaReply, FaEye, FaEyeSlash, FaSearch, FaChevronLeft, FaChevronRight, FaSyncAlt, FaBoxOpen, FaStarHalfAlt } from 'react-icons/fa';
+import { FaStar, FaReply, FaEye, FaEyeSlash, FaSearch, FaChevronLeft, FaChevronRight, FaSyncAlt, FaBoxOpen, FaStarHalfAlt, FaMagic } from 'react-icons/fa';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import { getBusinessSlug } from '../../utils/getBusinessId';
@@ -53,6 +53,7 @@ export default function AdminReviews() {
   const [replyingTo, setReplyingTo] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
+  const [aiReplyLoading, setAiReplyLoading] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -137,6 +138,25 @@ export default function AdminReviews() {
       showToast(err.response?.data?.message || 'Error al enviar respuesta', 'error');
     } finally {
       setReplyLoading(false);
+    }
+  };
+
+  // Generate AI reply
+  const generateAiReply = async (review) => {
+    setAiReplyLoading(review._id);
+    try {
+      const res = await api.post('/ai-tools/review-response', {
+        reviewText: review.comment || '',
+        rating: review.rating,
+        customerName: review.customerName || review.name || '',
+        businessName: businessConfig?.name || businessConfig?.businessName || '',
+        businessType: businessConfig?.businessType || ''
+      });
+      setReplyText(res.data.response || '');
+    } catch {
+      showToast('No se pudo generar la respuesta con IA', 'error');
+    } finally {
+      setAiReplyLoading(null);
     }
   };
 
@@ -479,9 +499,25 @@ export default function AdminReviews() {
                           autoFocus
                         />
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-400">
-                            {replyText.length}/300
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-400">
+                              {replyText.length}/300
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => generateAiReply(review)}
+                              disabled={aiReplyLoading === review._id}
+                              className="flex items-center gap-1 text-[11px] font-semibold text-violet-600 hover:text-violet-700 disabled:text-violet-300 px-2 py-1 rounded-lg hover:bg-violet-50 transition-all"
+                              title="Generar respuesta con IA adaptada a tu negocio"
+                            >
+                              {aiReplyLoading === review._id ? (
+                                <FaSyncAlt className="text-[10px] animate-spin" />
+                              ) : (
+                                <FaMagic className="text-[10px]" />
+                              )}
+                              {aiReplyLoading === review._id ? 'Generando...' : '✨ IA'}
+                            </button>
+                          </div>
                           <div className="flex gap-2">
                             <button
                               onClick={() => { setReplyingTo(null); setReplyText(''); }}

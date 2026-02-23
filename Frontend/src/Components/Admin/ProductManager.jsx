@@ -3,11 +3,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import ProductFormToppingSelector from '../ProductFormToppingSelector';
 import ProductToppingOrderSelector from '../ProductToppingOrderSelector';
 import ImageUploader from './ImageUploader';
+import api from '../../services/api';
 import {
   FaPlus, FaTimes, FaEdit, FaPause, FaPlay, FaTrash, FaStar,
   FaChevronLeft, FaChevronDown, FaChevronRight, FaCheck,
   FaTag, FaAlignLeft, FaFolderOpen, FaDollarSign, FaImage,
-  FaCheese, FaGripVertical, FaExclamationTriangle
+  FaCheese, FaGripVertical, FaExclamationTriangle, FaMagic
 } from 'react-icons/fa';
 
 /**
@@ -41,8 +42,37 @@ export default function ProductManager({
 }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [showToppingsSection, setShowToppingsSection] = useState(false);
+  const [aiNames, setAiNames] = useState([]);
+  const [aiNamesLoading, setAiNamesLoading] = useState(false);
+  const [showAiNames, setShowAiNames] = useState(false);
   const nameInputRef = useRef(null);
   const priceInputRef = useRef(null);
+
+  // Generate AI names
+  const generateAiNames = async () => {
+    const desc = form.description || form.name;
+    if (!desc.trim()) return;
+    setAiNamesLoading(true);
+    setShowAiNames(true);
+    try {
+      const categoryName = categories.find(c => c._id === form.category)?.name || '';
+      const res = await api.post('/ai-tools/generate-names', {
+        description: desc.trim(),
+        category: categoryName
+      });
+      setAiNames(res.data.names || []);
+    } catch {
+      setAiNames([]);
+    } finally {
+      setAiNamesLoading(false);
+    }
+  };
+
+  const selectAiName = (name) => {
+    setForm(prev => ({ ...prev, name }));
+    setShowAiNames(false);
+    setAiNames([]);
+  };
 
   const openCreate = () => {
     setShowProductModal(true);
@@ -138,15 +168,82 @@ export default function ProductManager({
                   {currentStep === 1 && (
                     <div className="space-y-3">
                       <div className="space-y-1">
-                        <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                          <FaTag className="text-slate-400 text-[10px]" />Nombre *
-                        </label>
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                            <FaTag className="text-slate-400 text-[10px]" />Nombre *
+                          </label>
+                          <button
+                            type="button"
+                            onClick={generateAiNames}
+                            disabled={aiNamesLoading || (!form.description.trim() && !form.name.trim())}
+                            className="flex items-center gap-1 text-[10px] font-semibold text-violet-600 hover:text-violet-700 disabled:text-slate-300 disabled:cursor-not-allowed transition-colors px-2 py-0.5 rounded-md hover:bg-violet-50"
+                            title="La IA sugiere nombres creativos basados en la descripción"
+                          >
+                            {aiNamesLoading ? (
+                              <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" /></svg>
+                            ) : (
+                              <FaMagic className="text-[10px]" />
+                            )}
+                            {aiNamesLoading ? 'Generando...' : '✨ Sugerir nombres'}
+                          </button>
+                        </div>
                         <input ref={nameInputRef} name="name" value={form.name} onChange={handleChange} onBlur={() => handleBlur('name')}
                           className={`w-full rounded-lg border bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-3 py-2 text-sm transition-all ${touchedFields.name && !form.name.trim() ? 'border-red-300 bg-red-50/50' : 'border-slate-200'}`}
                           placeholder="Ej: Hamburguesa Clásica" required />
                         {touchedFields.name && !form.name.trim() && (
                           <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-[10px]" />Campo obligatorio</p>
                         )}
+                        {/* AI Name Suggestions */}
+                        <AnimatePresence>
+                          {showAiNames && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-1.5 bg-violet-50 border border-violet-200 rounded-xl p-2.5 space-y-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[10px] font-bold text-violet-600 uppercase tracking-wide flex items-center gap-1">
+                                    <FaMagic className="text-[8px]" /> Nombres sugeridos por IA
+                                  </span>
+                                  <button type="button" onClick={() => setShowAiNames(false)} className="text-violet-400 hover:text-violet-600">
+                                    <FaTimes className="text-[10px]" />
+                                  </button>
+                                </div>
+                                {aiNamesLoading ? (
+                                  <div className="flex items-center gap-2 py-2 px-1">
+                                    <svg className="w-4 h-4 animate-spin text-violet-500" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="3" strokeDasharray="31.4" strokeLinecap="round" /></svg>
+                                    <span className="text-xs text-violet-500">Pensando nombres creativos...</span>
+                                  </div>
+                                ) : aiNames.length > 0 ? (
+                                  aiNames.map((name, i) => (
+                                    <button
+                                      key={i}
+                                      type="button"
+                                      onClick={() => selectAiName(name)}
+                                      className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-violet-100 rounded-lg transition-colors flex items-center justify-between group"
+                                    >
+                                      <span>{name}</span>
+                                      <span className="text-[10px] text-violet-400 opacity-0 group-hover:opacity-100 transition-opacity">Usar</span>
+                                    </button>
+                                  ))
+                                ) : (
+                                  <p className="text-xs text-slate-500 py-1 px-1">No se pudieron generar nombres. Intenta agregar una descripción primero.</p>
+                                )}
+                                {aiNames.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={generateAiNames}
+                                    className="w-full text-center text-[11px] text-violet-500 hover:text-violet-700 font-medium pt-1 transition-colors"
+                                  >
+                                    🔄 Generar más nombres
+                                  </button>
+                                )}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
