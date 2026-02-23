@@ -74,12 +74,14 @@ export const checkEmailAvailability = async (email) => {
  * Autenticación con Google
  * @param {string} credential - ID token de Google
  * @param {string} [businessName] - Nombre del negocio (solo para registro nuevo)
+ * @param {string} [slug] - Slug elegido por el usuario
  * @returns {Promise<Object>} - Respuesta con tokens o needsBusinessName flag
  */
-export const googleAuth = async (credential, businessName = null) => {
+export const googleAuth = async (credential, businessName = null, slug = null) => {
   try {
     const payload = { credential };
     if (businessName) payload.businessName = businessName;
+    if (slug) payload.slug = slug;
     const response = await api.post('/auth/google', payload);
     return response.data;
   } catch (error) {
@@ -88,10 +90,42 @@ export const googleAuth = async (credential, businessName = null) => {
   }
 };
 
+/**
+ * Obtiene sugerencias de slugs disponibles para un nombre de negocio
+ * @param {string} businessName - Nombre del negocio
+ * @returns {Promise<Array>} - Array de { slug, available }
+ */
+export const suggestSlugs = async (businessName) => {
+  try {
+    const response = await api.post('/auth/suggest-slugs', { businessName });
+    return response.data.suggestions;
+  } catch (error) {
+    console.error('Error al obtener sugerencias de slug:', error);
+    return [];
+  }
+};
+
+/**
+ * Verifica disponibilidad de un slug
+ * @param {string} slug - Slug a verificar
+ * @returns {Promise<Object>} - { slug, available }
+ */
+export const checkSlug = async (slug) => {
+  try {
+    const response = await api.post('/auth/check-slug', { slug });
+    return response.data;
+  } catch (error) {
+    console.error('Error al verificar slug:', error);
+    return { slug, available: false };
+  }
+};
+
 export default {
   registerUser,
   requestPasswordReset,
   resetPassword,
   checkEmailAvailability,
-  googleAuth
+  googleAuth,
+  suggestSlugs,
+  checkSlug
 }; 

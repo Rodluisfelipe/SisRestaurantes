@@ -85,26 +85,36 @@ router.post('/register', registerLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Este correo ya está registrado' });
     }
 
-    // Generar un slug basado en el nombre del negocio
-    let slug = businessName.toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    // Verificar si el slug ya existe y modificarlo si es necesario
-    let slugExists = true;
-    let counter = 1;
-    let newSlug = slug;
-    
-    while (slugExists) {
-      const existingBusiness = await BusinessConfig.findOne({ slug: newSlug });
-      if (existingBusiness) {
-        newSlug = `${slug}-${counter}`;
-        counter++;
-      } else {
-        slugExists = false;
-        slug = newSlug;
+    // Usar slug elegido por el usuario o generar uno automáticamente
+    let slug = req.body.slug;
+    if (slug) {
+      slug = slug.toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      // Verificar que el slug elegido esté disponible
+      const slugTaken = await BusinessConfig.findOne({ slug });
+      if (slugTaken) {
+        return res.status(400).json({ message: 'El enlace elegido ya no está disponible. Por favor selecciona otro.' });
+      }
+    } else {
+      slug = businessName.toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      let slugExists = true;
+      let counter = 1;
+      let newSlug = slug;
+      while (slugExists) {
+        const existingBusiness = await BusinessConfig.findOne({ slug: newSlug });
+        if (existingBusiness) {
+          newSlug = `${slug}-${counter}`;
+          counter++;
+        } else {
+          slugExists = false;
+          slug = newSlug;
+        }
       }
     }
 
@@ -183,6 +193,99 @@ router.post('/register', registerLimiter, async (req, res) => {
   } catch (error) {
     logger.error('Error al registrar negocio', process.env.NODE_ENV !== 'production' ? error : undefined);
     res.status(500).json({ message: 'Error en el servidor al registrar el negocio' });
+  }
+});
+
+// Generar sugerencias de slug a partir del nombre del negocio
+router.post('/suggest-slugs', checkEmailLimiter, async (req, res) => {
+  try {
+    const { businessName } = req.body;
+    if (!businessName || !businessName.trim()) {
+      return res.status(400).json({ message: 'El nombre del negocio es requerido' });
+    }
+
+    const base = businessName.toLowerCase().trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+
+    if (!base) {
+      return res.status(400).json({ message: 'El nombre no genera un slug válido' });
+    }
+
+    // Generate variations
+    const words = base.split('-').filter(Boolean);
+    const candidates = new Set();
+    candidates.add(base);
+
+    // Abbreviations / short forms
+    if (words.length > 1) {
+      // First word only
+      candidates.add(words[0]);
+      // First + last
+      candidates.add(`${words[0]}-${words[words.length - 1]}`);
+      // Initials + last word
+      if (words.length >= 3) {
+        const initials = words.slice(0, -1).map(w => w[0]).join('');
+        candidates.add(`${initials}-${words[words.length - 1]}`);
+      }
+    }
+
+    // With common suffixes
+    candidates.add(`${base}-menu`);
+    candidates.add(`${base}-app`);
+    if (words.length === 1) {
+      candidates.add(`${base}-restaurante`);
+    }
+
+    // Check availability for all candidates
+    const slugArray = [...candidates];
+    const existingSlugs = await BusinessConfig.find(
+      { slug: { $in: slugArray } },
+      { slug: 1 }
+    ).lean();
+    const takenSet = new Set(existingSlugs.map(s => s.slug));
+
+    const suggestions = [];
+    for (const slug of slugArray) {
+      if (!takenSet.has(slug)) {
+        suggestions.push({ slug, available: true });
+      } else {
+        // Find next available numbered variant
+        let counter = 1;
+        let variant;
+        do {
+          variant = `${slug}-${counter}`;
+          counter++;
+        } while (await BusinessConfig.findOne({ slug: variant }));
+        suggestions.push({ slug: variant, available: true, original: slug });
+      }
+      if (suggestions.length >= 5) break;
+    }
+
+    res.json({ suggestions });
+  } catch (error) {
+    logger.error('Error al sugerir slugs', process.env.NODE_ENV !== 'production' ? error : undefined);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+});
+
+// Verificar disponibilidad de slug individual
+router.post('/check-slug', checkEmailLimiter, async (req, res) => {
+  try {
+    const { slug } = req.body;
+    if (!slug) {
+      return res.status(400).json({ message: 'Slug es requerido' });
+    }
+    const normalized = slug.toLowerCase().trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    const existing = await BusinessConfig.findOne({ slug: normalized });
+    res.json({ slug: normalized, available: !existing });
+  } catch (error) {
+    logger.error('Error al verificar slug', process.env.NODE_ENV !== 'production' ? error : undefined);
+    res.status(500).json({ message: 'Error en el servidor' });
   }
 });
 
@@ -417,7 +520,7 @@ const googleAuthLimiter = rateLimit({
 // POST /auth/google - Login o Registro con Google
 router.post('/google', googleAuthLimiter, async (req, res) => {
   try {
-    const { credential, businessName } = req.body;
+    const { credential, businessName, slug: chosenSlug } = req.body;
 
     if (!credential) {
       return res.status(400).json({ message: 'Token de Google es requerido' });
@@ -501,23 +604,34 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
     // Sanitizar
     const sanitizedBusinessName = businessName.trim().substring(0, 100);
 
-    // Generar slug
-    let slug = sanitizedBusinessName.toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-
-    let slugExists = true;
-    let counter = 1;
-    let newSlug = slug;
-    while (slugExists) {
-      const existingBusiness = await BusinessConfig.findOne({ slug: newSlug });
-      if (existingBusiness) {
-        newSlug = `${slug}-${counter}`;
-        counter++;
-      } else {
-        slugExists = false;
-        slug = newSlug;
+    // Usar slug elegido o generar uno
+    let slug;
+    if (chosenSlug) {
+      slug = chosenSlug.toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      const slugTaken = await BusinessConfig.findOne({ slug });
+      if (slugTaken) {
+        return res.status(400).json({ message: 'El enlace elegido ya no está disponible.' });
+      }
+    } else {
+      slug = sanitizedBusinessName.toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      let slugExists = true;
+      let counter = 1;
+      let newSlug = slug;
+      while (slugExists) {
+        const existingBusiness = await BusinessConfig.findOne({ slug: newSlug });
+        if (existingBusiness) {
+          newSlug = `${slug}-${counter}`;
+          counter++;
+        } else {
+          slugExists = false;
+          slug = newSlug;
+        }
       }
     }
 

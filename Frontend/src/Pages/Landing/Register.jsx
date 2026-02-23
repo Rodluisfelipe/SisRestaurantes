@@ -1,230 +1,392 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
-import { registerUser, googleAuth } from '../../services/authService';
+import { registerUser, googleAuth, suggestSlugs, checkSlug } from '../../services/authService';
 import { useAuth } from '../../Context/AuthContext';
 
 const Register = () => {
   const navigate = useNavigate();
   const { loginWithGoogle } = useAuth();
-  const [formData, setFormData] = useState({
+
+  // ===== STEP MANAGEMENT =====
+  const [step, setStep] = useState(1); // 1 = identity, 2 = business + slug
+
+  // ===== STEP 1 STATE: Identity =====
+  const [authMethod, setAuthMethod] = useState(null); // 'google' | 'email'
+  const [googleCredential, setGoogleCredential] = useState(null);
+  const [googleUser, setGoogleUser] = useState(null);
+  const [emailData, setEmailData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
     confirmPassword: '',
-    businessName: '',
     phone: '',
-    acceptTerms: false
   });
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
+
+  // ===== STEP 2 STATE: Business + Slug =====
+  const [businessName, setBusinessName] = useState('');
+  const [slugSuggestions, setSlugSuggestions] = useState([]);
+  const [selectedSlug, setSelectedSlug] = useState('');
+  const [customSlug, setCustomSlug] = useState('');
+  const [isCustomSlug, setIsCustomSlug] = useState(false);
+  const [customSlugAvailable, setCustomSlugAvailable] = useState(null);
+  const [isLoadingSlugs, setIsLoadingSlugs] = useState(false);
+  const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+
+  // ===== SHARED STATE =====
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Google OAuth state
-  const [googleStep, setGoogleStep] = useState(null); // null | 'business-name'
-  const [googleCredential, setGoogleCredential] = useState(null);
-  const [googleUser, setGoogleUser] = useState(null);
-  const [googleBusinessName, setGoogleBusinessName] = useState('');
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const slugDebounceRef = useRef(null);
+  const customSlugDebounceRef = useRef(null);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === 'checkbox' ? checked : value
-    });
+  // ===== SLUG SUGGESTIONS =====
+  const fetchSlugSuggestions = useCallback(async (name) => {
+    if (!name || name.trim().length < 2) {
+      setSlugSuggestions([]);
+      setSelectedSlug('');
+      return;
+    }
+    setIsLoadingSlugs(true);
+    try {
+      const suggestions = await suggestSlugs(name.trim());
+      setSlugSuggestions(suggestions);
+      if (suggestions.length > 0 && !isCustomSlug) {
+        setSelectedSlug(suggestions[0].slug);
+      }
+    } catch {
+      setSlugSuggestions([]);
+    } finally {
+      setIsLoadingSlugs(false);
+    }
+  }, [isCustomSlug]);
+
+  useEffect(() => {
+    if (step !== 2) return;
+    if (slugDebounceRef.current) clearTimeout(slugDebounceRef.current);
+    slugDebounceRef.current = setTimeout(() => {
+      fetchSlugSuggestions(businessName);
+    }, 400);
+    return () => clearTimeout(slugDebounceRef.current);
+  }, [businessName, step, fetchSlugSuggestions]);
+
+  useEffect(() => {
+    if (!isCustomSlug || !customSlug.trim()) {
+      setCustomSlugAvailable(null);
+      return;
+    }
+    if (customSlugDebounceRef.current) clearTimeout(customSlugDebounceRef.current);
+    setIsCheckingSlug(true);
+    customSlugDebounceRef.current = setTimeout(async () => {
+      const normalized = customSlug.toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+      if (!normalized) {
+        setCustomSlugAvailable(false);
+        setIsCheckingSlug(false);
+        return;
+      }
+      const result = await checkSlug(normalized);
+      setCustomSlugAvailable(result.available);
+      setSelectedSlug(result.slug);
+      setIsCheckingSlug(false);
+    }, 500);
+    return () => clearTimeout(customSlugDebounceRef.current);
+  }, [customSlug, isCustomSlug]);
+
+  // ===== HANDLERS =====
+  const handleEmailChange = (e) => {
+    const { name, value } = e.target;
+    setEmailData(prev => ({ ...prev, [name]: value }));
     setError('');
   };
 
-  const handleSubmit = async (e) => {
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setIsGoogleLoading(true);
+    try {
+      const credential = credentialResponse.credential;
+      setGoogleCredential(credential);
+      const result = await googleAuth(credential);
+      if (result.needsBusinessName) {
+        setGoogleUser(result.googleUser);
+        setAuthMethod('google');
+        setStep(2);
+      } else if (result.token) {
+        loginWithGoogle(result);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al autenticar con Google. Intenta nuevamente.');
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleEmailStep1 = (e) => {
     e.preventDefault();
     setError('');
-    
-    if (formData.password !== formData.confirmPassword) {
+    const { firstName, lastName, email, password, confirmPassword } = emailData;
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
+      setError('Todos los campos son obligatorios');
+      return;
+    }
+    if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
     }
-
-    if (formData.password.length < 8) {
+    if (password.length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres');
       return;
     }
-    
-    if (!formData.acceptTerms) {
+    if (!acceptTerms) {
       setError('Debes aceptar los términos y condiciones');
       return;
     }
-    
+    setAuthMethod('email');
+    setStep(2);
+  };
+
+  const handleCreateAccount = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!businessName.trim()) {
+      setError('El nombre del restaurante es obligatorio');
+      return;
+    }
+    const finalSlug = isCustomSlug
+      ? customSlug.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '')
+      : selectedSlug;
+    if (!finalSlug) {
+      setError('Selecciona o escribe un enlace para tu menú');
+      return;
+    }
+    if (isCustomSlug && customSlugAvailable === false) {
+      setError('El enlace personalizado no está disponible');
+      return;
+    }
     setIsLoading(true);
-    
     try {
-      await registerUser({
-        name: `${formData.firstName} ${formData.lastName}`.trim(),
-        businessName: formData.businessName,
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone
-      });
-      
-      navigate('/login', { 
-        state: { message: '¡Cuenta creada exitosamente! Inicia sesión para comenzar.' }
-      });
+      if (authMethod === 'google') {
+        const result = await googleAuth(googleCredential, businessName.trim(), finalSlug);
+        if (result.token) {
+          loginWithGoogle(result);
+        }
+      } else {
+        const result = await registerUser({
+          name: `${emailData.firstName} ${emailData.lastName}`.trim(),
+          businessName: businessName.trim(),
+          email: emailData.email,
+          password: emailData.password,
+          phone: emailData.phone,
+          slug: finalSlug
+        });
+        if (result.token) {
+          loginWithGoogle(result);
+        } else {
+          navigate('/login', { state: { message: '¡Cuenta creada exitosamente! Inicia sesión.' } });
+        }
+      }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Error al crear la cuenta. Intenta nuevamente.';
-      setError(errorMessage);
+      setError(err.response?.data?.message || 'Error al crear la cuenta. Intenta nuevamente.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle Google credential response
-  const handleGoogleSuccess = async (credentialResponse) => {
-    setError('');
-    setIsGoogleLoading(true);
-    
-    try {
-      const credential = credentialResponse.credential;
-      setGoogleCredential(credential);
-      
-      // Send to backend (without businessName first)
-      const result = await googleAuth(credential);
-      
-      if (result.needsBusinessName) {
-        // New user — show step 2 (ask for business name)
-        setGoogleUser(result.googleUser);
-        setGoogleStep('business-name');
-      } else if (result.token) {
-        // Existing user — login directly
-        loginWithGoogle(result);
-      }
-    } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Error al autenticar con Google. Intenta nuevamente.';
-      setError(errorMessage);
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
-  // Handle step 2: submit business name for Google registration
-  const handleGoogleBusinessSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!googleBusinessName.trim()) {
-      setError('El nombre del restaurante es obligatorio');
-      return;
-    }
-    
-    setIsGoogleLoading(true);
-    
-    try {
-      const result = await googleAuth(googleCredential, googleBusinessName.trim());
-      
-      if (result.token) {
-        // Registration complete — auto-login
-        loginWithGoogle(result);
-      }
-    } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Error al crear la cuenta. Intenta nuevamente.';
-      setError(errorMessage);
-    } finally {
-      setIsGoogleLoading(false);
-    }
-  };
-
-  // Google OAuth step 2: Business name form
-  if (googleStep === 'business-name') {
+  // ===========================
+  // STEP 2 - Business + Slug
+  // ===========================
+  if (step === 2) {
     return (
       <div className="min-h-screen bg-white">
-        <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
+        <section className="py-12 sm:py-20 bg-gradient-to-br from-white via-red-50 to-white">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="max-w-md mx-auto">
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="text-center mb-8"
+                transition={{ duration: 0.5 }}
+                className="text-center mb-6"
               >
-                {googleUser?.picture && (
-                  <img 
-                    src={googleUser.picture} 
-                    alt={googleUser.name}
-                    className="w-16 h-16 rounded-full mx-auto mb-4 border-2 border-[#E31E24]"
-                  />
+                {authMethod === 'google' && googleUser?.picture ? (
+                  <img src={googleUser.picture} alt={googleUser.name}
+                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-[#E31E24] shadow-md" />
+                ) : (
+                  <div className="w-14 h-14 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
+                    <span className="text-white font-bold text-xl">
+                      {authMethod === 'google' ? googleUser?.name?.[0] : emailData.firstName[0]?.toUpperCase()}
+                    </span>
+                  </div>
                 )}
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  ¡Hola {googleUser?.name?.split(' ')[0]}!
+                <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                  ¡Hola {authMethod === 'google' ? googleUser?.name?.split(' ')[0] : emailData.firstName}!
                 </h1>
-                <p className="text-gray-600">
-                  {googleUser?.email}
-                  <span className="inline-flex items-center ml-2 text-green-600 text-xs font-medium">
-                    <svg className="w-3.5 h-3.5 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    verificado
-                  </span>
+                <p className="text-sm text-gray-500">
+                  {authMethod === 'google' ? (
+                    <>{googleUser?.email}
+                      <span className="inline-flex items-center ml-1.5 text-green-600 text-xs font-medium">
+                        <svg className="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        verificado
+                      </span>
+                    </>
+                  ) : emailData.email}
                 </p>
               </motion.div>
 
               <motion.div
-                initial={{ opacity: 0, y: 30 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8"
+                transition={{ duration: 0.5, delay: 0.15 }}
+                className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8"
               >
-                <h2 className="text-lg font-semibold text-gray-900 mb-1">Solo falta un paso</h2>
-                <p className="text-sm text-gray-500 mb-6">¿Cómo se llama tu restaurante?</p>
+                <div className="flex items-center justify-center mb-6">
+                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center text-xs font-bold">✓</span>
+                    <span className="text-green-600 font-medium">Tu cuenta</span>
+                    <div className="w-8 h-px bg-gray-300"></div>
+                    <span className="w-6 h-6 rounded-full bg-[#E31E24] text-white flex items-center justify-center text-xs font-bold">2</span>
+                    <span className="text-gray-900 font-medium">Tu restaurante</span>
+                  </div>
+                </div>
 
-                <form onSubmit={handleGoogleBusinessSubmit} className="space-y-6">
+                <form onSubmit={handleCreateAccount} className="space-y-5">
                   {error && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                    <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                      className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
                       {error}
-                    </div>
+                    </motion.div>
                   )}
 
                   <div>
-                    <label htmlFor="googleBusinessName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombre del restaurante
-                    </label>
-                    <input
-                      type="text"
-                      id="googleBusinessName"
-                      value={googleBusinessName}
-                      onChange={(e) => { setGoogleBusinessName(e.target.value); setError(''); }}
-                      required
-                      autoFocus
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
-                      placeholder="Ej: La Parrilla de Juan"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre del restaurante</label>
+                    <input type="text" value={businessName}
+                      onChange={(e) => { setBusinessName(e.target.value); setError(''); }}
+                      autoFocus required
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                      placeholder="Ej: La Parrilla de Juan" />
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={isGoogleLoading}
-                    className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] disabled:bg-red-400 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 flex items-center justify-center"
-                  >
-                    {isGoogleLoading ? (
+                  <AnimatePresence>
+                    {(slugSuggestions.length > 0 || isLoadingSlugs) && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Elige tu enlace</label>
+                        <p className="text-xs text-gray-400 mb-2">
+                          Tu menú estará en: <span className="font-mono text-gray-600">menuby.tech/<span className="text-[#E31E24]">{isCustomSlug ? (customSlug || '...') : (selectedSlug || '...')}</span>/menu</span>
+                        </p>
+
+                        {isLoadingSlugs ? (
+                          <div className="flex items-center justify-center py-4">
+                            <svg className="animate-spin h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {slugSuggestions.map((s) => (
+                              <label key={s.slug}
+                                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
+                                  !isCustomSlug && selectedSlug === s.slug
+                                    ? 'border-[#E31E24] bg-red-50 ring-1 ring-[#E31E24]'
+                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
+                                onClick={() => { setIsCustomSlug(false); setSelectedSlug(s.slug); }}>
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                  !isCustomSlug && selectedSlug === s.slug ? 'border-[#E31E24]' : 'border-gray-300'
+                                }`}>
+                                  {!isCustomSlug && selectedSlug === s.slug && <div className="w-2 h-2 rounded-full bg-[#E31E24]" />}
+                                </div>
+                                <span className="font-mono text-sm text-gray-700 flex-1">
+                                  menuby.tech/<span className="text-[#E31E24] font-semibold">{s.slug}</span>/menu
+                                </span>
+                                <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">disponible</span>
+                              </label>
+                            ))}
+
+                            <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
+                              isCustomSlug ? 'border-[#E31E24] bg-red-50 ring-1 ring-[#E31E24]' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }`} onClick={() => setIsCustomSlug(true)}>
+                              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                isCustomSlug ? 'border-[#E31E24]' : 'border-gray-300'
+                              }`}>
+                                {isCustomSlug && <div className="w-2 h-2 rounded-full bg-[#E31E24]" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-sm text-gray-600">Personalizar enlace</span>
+                                {isCustomSlug && (
+                                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2">
+                                    <div className="flex items-center gap-1 text-xs text-gray-400 mb-1">
+                                      <span>menuby.tech/</span>
+                                    </div>
+                                    <div className="relative">
+                                      <input type="text" value={customSlug}
+                                        onChange={(e) => { setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setCustomSlugAvailable(null); setError(''); }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] pr-8"
+                                        placeholder="mi-restaurante" autoFocus />
+                                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                                        {isCheckingSlug ? (
+                                          <svg className="animate-spin h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                          </svg>
+                                        ) : customSlugAvailable === true ? (
+                                          <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                          </svg>
+                                        ) : customSlugAvailable === false ? (
+                                          <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                          </svg>
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                    {customSlugAvailable === false && <p className="text-xs text-red-500 mt-1">Este enlace no está disponible</p>}
+                                    {customSlugAvailable === true && <p className="text-xs text-green-600 mt-1">¡Disponible!</p>}
+                                  </motion.div>
+                                )}
+                              </div>
+                            </label>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <button type="submit"
+                    disabled={isLoading || (isCustomSlug && (isCheckingSlug || customSlugAvailable === false))}
+                    className="w-full py-3.5 bg-[#E31E24] hover:bg-[#C71A1F] disabled:bg-red-300 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] disabled:scale-100 flex items-center justify-center text-base">
+                    {isLoading ? (
                       <>
                         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                         </svg>
                         Creando tu menú...
                       </>
                     ) : (
-                      'Crear mi menú digital'
+                      <>Crear mi menú digital
+                        <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                        </svg>
+                      </>
                     )}
                   </button>
                 </form>
 
-                <button
-                  onClick={() => { setGoogleStep(null); setGoogleCredential(null); setGoogleUser(null); setError(''); }}
-                  className="mt-4 w-full text-center text-sm text-gray-500 hover:text-gray-700"
-                >
-                  ← Volver al registro
+                <button onClick={() => { setStep(1); setAuthMethod(null); setError(''); setBusinessName(''); setSlugSuggestions([]); setSelectedSlug(''); }}
+                  className="mt-4 w-full text-center text-sm text-gray-400 hover:text-gray-600 transition-colors">
+                  ← Volver
                 </button>
               </motion.div>
             </div>
@@ -234,287 +396,172 @@ const Register = () => {
     );
   }
 
+  // ===========================
+  // STEP 1 - Identity
+  // ===========================
   return (
     <div className="min-h-screen bg-white">
-      
-      {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
+      <section className="py-12 sm:py-20 bg-gradient-to-br from-white via-red-50 to-white">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="max-w-2xl mx-auto">
-      <motion.div
-              initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="text-center mb-8"
-            >
-              <div className="w-16 h-16 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-white font-bold text-2xl">M</span>
+          <div className="max-w-md mx-auto">
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }} className="text-center mb-6">
+              <div className="w-14 h-14 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
+                <span className="text-white font-bold text-xl">M</span>
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                Crea tu cuenta gratis
-              </h1>
-              <p className="text-gray-600">
-                Comienza a aumentar las ventas de tu restaurante hoy mismo
-              </p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Crea tu menú digital gratis</h1>
+              <p className="text-gray-500 text-sm">Tu restaurante online en 2 minutos</p>
             </motion.div>
 
-            {/* Register Form */}
-              <motion.div
-              initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8"
-            >
-              {/* Google Sign-Up Button */}
-              <div className="mb-6">
+            <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.15 }}
+              className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8">
+              <div className="flex items-center justify-center mb-6">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span className="w-6 h-6 rounded-full bg-[#E31E24] text-white flex items-center justify-center text-xs font-bold">1</span>
+                  <span className="text-gray-900 font-medium">Tu cuenta</span>
+                  <div className="w-8 h-px bg-gray-300"></div>
+                  <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-xs font-bold">2</span>
+                  <span>Tu restaurante</span>
+                </div>
+              </div>
+
+              <div className="mb-5">
                 <div className="flex justify-center">
-                  <GoogleLogin
-                    onSuccess={handleGoogleSuccess}
+                  <GoogleLogin onSuccess={handleGoogleSuccess}
                     onError={() => setError('Error al conectar con Google')}
-                    text="signup_with"
-                    shape="rectangular"
-                    size="large"
-                    width="100%"
-                    theme="outline"
-                    locale="es"
-                  />
+                    text="signup_with" shape="rectangular" size="large" width="100%" theme="outline" locale="es" />
                 </div>
                 {isGoogleLoading && (
-                  <div className="flex justify-center mt-3">
-                    <svg className="animate-spin h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <div className="flex items-center justify-center mt-3 gap-2">
+                    <svg className="animate-spin h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
+                    <span className="text-xs text-gray-500">Verificando con Google...</span>
                   </div>
                 )}
+                <p className="text-center text-xs text-gray-400 mt-2">Registro más rápido — sin contraseñas</p>
               </div>
 
-              {/* Divider */}
-              <div className="relative mb-6">
+              <div className="relative mb-5">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300"></div>
+                  <div className="w-full border-t border-gray-200"></div>
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500">o regístrate con email</span>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-3 bg-white text-gray-400">o con email y contraseña</span>
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Error display */}
+              <form onSubmit={handleEmailStep1} className="space-y-4">
                 {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-                    {error}
-                  </div>
+                  <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                    className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-start">
+                    <svg className="w-4 h-4 mr-2 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <span>{error}</span>
+                  </motion.div>
                 )}
-                {/* Name Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombre
-                </label>
-                <input
-                  type="text"
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
-                  onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
-                      placeholder="Tu nombre"
-                    />
+                    <label htmlFor="firstName" className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
+                    <input type="text" id="firstName" name="firstName" value={emailData.firstName} onChange={handleEmailChange} required
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                      placeholder="Juan" />
                   </div>
                   <div>
-                    <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Apellido
-                </label>
-                <input
-                  type="text"
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
-                  onChange={handleChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
-                      placeholder="Tu apellido"
-                />
+                    <label htmlFor="lastName" className="block text-xs font-medium text-gray-600 mb-1">Apellido</label>
+                    <input type="text" id="lastName" name="lastName" value={emailData.lastName} onChange={handleEmailChange} required
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                      placeholder="Pérez" />
                   </div>
-            </div>
-            
-                {/* Email Field */}
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                    Correo electrónico
-              </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
-                    placeholder="tu@email.com"
-                  />
-                  </div>
-
-                {/* Business Name */}
-                <div>
-                  <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-2">
-                    Nombre del restaurante
-                  </label>
-                  <input
-                    type="text"
-                    id="businessName"
-                    name="businessName"
-                    value={formData.businessName}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
-                    placeholder="Mi Restaurante"
-                  />
-              </div>
-
-                {/* Phone */}
-                <div>
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                    Teléfono
-                </label>
-                <input
-                    type="tel"
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
-                    placeholder="+57 300 123 4567"
-                  />
                 </div>
 
-                {/* Password Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="email" className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico</label>
+                  <input type="email" id="email" name="email" value={emailData.email} onChange={handleEmailChange} required
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                    placeholder="tu@email.com" />
+                </div>
+
+                <div>
+                  <label htmlFor="phone" className="block text-xs font-medium text-gray-600 mb-1">
+                    Teléfono <span className="text-gray-400">(opcional)</span>
+                  </label>
+                  <input type="tel" id="phone" name="phone" value={emailData.phone} onChange={handleEmailChange}
+                    className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                    placeholder="+57 300 123 4567" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                      Contraseña
-                    </label>
+                    <label htmlFor="password" className="block text-xs font-medium text-gray-600 mb-1">Contraseña</label>
                     <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
-                  placeholder="Mínimo 8 caracteres"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <input type={showPassword ? 'text' : 'password'} id="password" name="password" value={emailData.password}
+                        onChange={handleEmailChange} required
+                        className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                        placeholder="Mín. 8 caracteres" />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {showPassword ? (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
+                          ) : (
+                            <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
+                          )}
+                        </svg>
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                      Confirmar contraseña
-                </label>
+                    <label htmlFor="confirmPassword" className="block text-xs font-medium text-gray-600 mb-1">Confirmar</label>
                     <div className="relative">
-                <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors duration-200 text-gray-900 bg-white"
-                        placeholder="Repite tu contraseña"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showConfirmPassword ? (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" name="confirmPassword"
+                        value={emailData.confirmPassword} onChange={handleEmailChange} required
+                        className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                        placeholder="Repetir" />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          {showConfirmPassword ? (
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                          </svg>
-                        ) : (
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        )}
+                          ) : (
+                            <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></>
+                          )}
+                        </svg>
                       </button>
                     </div>
                   </div>
-            </div>
-            
-                {/* Terms and Conditions */}
-                <div className="flex items-start">
-                <input
-                    type="checkbox"
-                  id="acceptTerms"
-                  name="acceptTerms"
-                  checked={formData.acceptTerms}
-                  onChange={handleChange}
-                    className="w-4 h-4 text-[#E31E24] border-gray-300 rounded focus:ring-[#E31E24] mt-1"
-                />
-                  <label htmlFor="acceptTerms" className="ml-3 text-sm text-gray-600">
-                  Acepto los{' '}
-                    <Link to="/terms" className="text-[#E31E24] hover:text-[#C71A1F] font-medium">
-                    términos y condiciones
-                    </Link>{' '}
-                    y la{' '}
-                    <Link to="/privacy" className="text-[#E31E24] hover:text-[#C71A1F] font-medium">
-                      política de privacidad
-                  </Link>
-                </label>
-              </div>
+                </div>
 
-                {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                  className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] disabled:bg-red-400 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 disabled:scale-100 flex items-center justify-center"
-              >
-                {isLoading ? (
-                  <>
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Creando cuenta...
-                  </>
-                ) : (
-                    'Crear Cuenta Gratis'
-                )}
-              </button>
-          </form>
-          
+                <div className="flex items-start pt-1">
+                  <input type="checkbox" id="acceptTerms" checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    className="w-4 h-4 text-[#E31E24] border-gray-300 rounded focus:ring-[#E31E24] mt-0.5" />
+                  <label htmlFor="acceptTerms" className="ml-2 text-xs text-gray-500">
+                    Acepto los{' '}<Link to="/terms" className="text-[#E31E24] hover:underline">términos</Link>{' '}
+                    y la{' '}<Link to="/privacy" className="text-[#E31E24] hover:underline">política de privacidad</Link>
+                  </label>
+                </div>
 
-              {/* Login Link */}
-              <div className="mt-8 text-center">
-                <p className="text-gray-600">
-              ¿Ya tienes una cuenta?{' '}
-                  <Link
-                    to="/login"
-                    className="text-[#E31E24] hover:text-[#C71A1F] font-semibold"
-                  >
-                Inicia sesión
-              </Link>
-            </p>
+                <button type="submit"
+                  className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center">
+                  Continuar
+                  <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <p className="text-sm text-gray-500">
+                  ¿Ya tienes cuenta?{' '}
+                  <Link to="/login" className="text-[#E31E24] hover:text-[#C71A1F] font-semibold">Inicia sesión</Link>
+                </p>
               </div>
             </motion.div>
           </div>
@@ -524,4 +571,4 @@ const Register = () => {
   );
 };
 
-export default Register; 
+export default Register;
