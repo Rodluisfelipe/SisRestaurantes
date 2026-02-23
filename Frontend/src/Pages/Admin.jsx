@@ -35,6 +35,7 @@ import OrderNotificationBanner from "../Components/Admin/OrderNotificationBanner
 import SubscriptionPayment from "./SubscriptionPayment";
 import AdminSectionErrorBoundary from "../Components/Admin/AdminSectionErrorBoundary";
 import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
+import WelcomeWizard from "../Components/Admin/WelcomeWizard";
 import AdminReviews from "../Components/Admin/AdminReviews";
 
 // Custom hooks
@@ -106,6 +107,18 @@ function Admin() {
     window.innerWidth >= 1024 ? 'orders' : 'dashboard'
   );
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // Show welcome wizard for new users on first visit
+  useEffect(() => {
+    if (onboardingData && !onboardingData.isLegacy && onboardingData.level < 6) {
+      const wizardKey = `welcome_wizard_shown_${businessId}`;
+      if (!localStorage.getItem(wizardKey)) {
+        setShowWelcome(true);
+        localStorage.setItem(wizardKey, '1');
+      }
+    }
+  }, [onboardingData, businessId]);
 
   // Listener para navegacion desde componentes (evento custom)
   useEffect(() => {
@@ -227,6 +240,14 @@ function Admin() {
 
       {/* Popup de anuncios/novedades — solo para dueños, no superadmin */}
       {!isSuperAdminMode && <AnnouncementPopup />}
+
+      {/* Welcome Wizard for new users */}
+      {showWelcome && (
+        <WelcomeWizard
+          onClose={() => setShowWelcome(false)}
+          onGoToTab={(tab) => { setActiveTab(tab); setShowWelcome(false); }}
+        />
+      )}
 
       <div className="flex min-h-screen">
         {/* Sidebar */}

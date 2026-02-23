@@ -87,54 +87,70 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount, onboa
         )}
       </div>
 
+      {/* Getting Started Checklist — only for new users */}
+      {isNewUser && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-800 mb-4">📋 Primeros pasos</h2>
+          <div className="space-y-3">
+            {[
+              { done: (onboarding?.level || 0) >= 1, label: 'Crear tu cuenta', desc: '¡Listo! Ya tienes tu cuenta', icon: '✅' },
+              { done: (onboarding?.level || 0) >= 2, label: 'Agrega productos a tu menú', desc: 'Ve a Productos y crea tu primer plato', icon: '🍔', tab: 'products' },
+              { done: (onboarding?.level || 0) >= 3, label: 'Configura tu modo de pedidos', desc: 'WhatsApp, en la app o ambos', icon: '⚙️', tab: 'business' },
+              { done: (onboarding?.level || 0) >= 4, label: 'Recibe tus primeros pedidos', desc: 'Comparte tu menú y empieza a vender', icon: '📋', tab: 'orders' },
+              { done: (onboarding?.level || 0) >= 5, label: 'Personaliza tu tema', desc: 'Dale estilo a tu menú digital', icon: '🎨', tab: 'theme' },
+              { done: (onboarding?.level || 0) >= 6, label: 'Explora herramientas avanzadas', desc: 'Cupones, zonas de entrega, mesas QR y más', icon: '🚀' },
+            ].map((step, i) => (
+              <button
+                key={i}
+                onClick={() => step.tab && setActiveTab(step.tab)}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
+                  step.done
+                    ? 'bg-green-50 border border-green-200'
+                    : step.tab
+                      ? 'bg-blue-50 border border-blue-200 hover:bg-blue-100 cursor-pointer'
+                      : 'bg-slate-50 border border-slate-200'
+                }`}
+              >
+                <span className="text-2xl">{step.done ? '✅' : step.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${step.done ? 'text-green-700 line-through' : 'text-slate-800'}`}>
+                    {step.label}
+                  </p>
+                  <p className="text-xs text-slate-500">{step.desc}</p>
+                </div>
+                {!step.done && step.tab && (
+                  <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2 py-1 rounded-full shrink-0">
+                    Ir →
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Grid de Funciones */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-        {DASHBOARD_ITEMS.map((item) => {
-          const isLocked = onboarding && !onboarding.isLegacy && onboarding.level < 6 && 
-            onboarding.unlockedSections !== 'all' && 
-            !onboarding.unlockedSections?.includes(item.tab);
-
-          if (isLocked) {
-            return (
-              <div
-                key={item.tab}
-                className="relative bg-slate-200 rounded-2xl p-6 opacity-50 cursor-not-allowed group"
-                title={onboarding?.getUnlockMessage?.(item.tab) || 'Completa pasos anteriores'}
-              >
-                <div className="text-slate-400">
-                  <div className="text-4xl mb-3 grayscale">🔒</div>
-                  <h3 className="font-bold text-lg mb-1">{item.title}</h3>
-                  <p className="text-xs">{item.desc}</p>
-                </div>
-                {/* Tooltip */}
-                <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 w-48 bg-slate-800 text-white text-xs p-2 rounded-lg shadow-xl text-center">
-                  🔒 {onboarding?.getUnlockMessage?.(item.tab) || 'Bloqueado'}
-                </div>
+        {DASHBOARD_ITEMS.map((item) => (
+          <motion.button
+            key={item.tab}
+            whileHover={{ scale: 1.02, y: -4 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => setActiveTab(item.tab)}
+            className={`relative bg-gradient-to-br ${item.from} ${item.to} rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group`}
+          >
+            <div className="text-white">
+              <div className="text-4xl mb-3">{item.icon}</div>
+              <h3 className="font-bold text-lg mb-1">{item.title}</h3>
+              <p className={`text-xs opacity-90`}>{item.desc}</p>
+            </div>
+            {item.hasBadge && pendingOrdersCount > 0 && (
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
+                {pendingOrdersCount}
               </div>
-            );
-          }
-
-          return (
-            <motion.button
-              key={item.tab}
-              whileHover={{ scale: 1.02, y: -4 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setActiveTab(item.tab)}
-              className={`relative bg-gradient-to-br ${item.from} ${item.to} rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all group`}
-            >
-              <div className="text-white">
-                <div className="text-4xl mb-3">{item.icon}</div>
-                <h3 className="font-bold text-lg mb-1">{item.title}</h3>
-                <p className={`text-xs opacity-90`}>{item.desc}</p>
-              </div>
-              {item.hasBadge && pendingOrdersCount > 0 && (
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-sm font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
-                  {pendingOrdersCount}
-                </div>
-              )}
-            </motion.button>
-          );
-        })}
+            )}
+          </motion.button>
+        ))}
       </div>
     </div>
   );

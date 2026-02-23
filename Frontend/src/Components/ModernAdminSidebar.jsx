@@ -211,34 +211,6 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                       {section.items.map((item) => {
                         const isActive = activeTab === item.id;
                         const ItemIcon = item.Icon;
-                        
-                        // Onboarding: check if section is locked
-                        const isLocked = onboarding && !onboarding.isLegacy && onboarding.level < 6 && 
-                          onboarding.unlockedSections !== 'all' && 
-                          !onboarding.unlockedSections?.includes(item.id);
-                        const isLegacy = !onboarding || onboarding.isLegacy || onboarding.level >= 6;
-                        const unlockMsg = isLocked ? (onboarding?.getUnlockMessage?.(item.id) || 'Completa pasos anteriores para desbloquear') : null;
-
-                        if (isLocked) {
-                          return (
-                            <div
-                              key={item.id}
-                              className="w-full flex items-center justify-between pl-4 pr-3 py-2 rounded-lg text-left opacity-40 cursor-not-allowed group relative"
-                              title={unlockMsg}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <FaLock className="text-xs text-slate-300 shrink-0" />
-                                <span className="text-[13px] font-medium text-slate-400 truncate">
-                                  {item.label}
-                                </span>
-                              </div>
-                              {/* Tooltip on hover */}
-                              <div className="hidden group-hover:block absolute left-full ml-2 top-1/2 -translate-y-1/2 z-50 w-48 bg-slate-800 text-white text-xs p-2 rounded-lg shadow-xl">
-                                🔒 {unlockMsg}
-                              </div>
-                            </div>
-                          );
-                        }
 
                         return (
                           <div key={item.id} className="flex items-center">
@@ -285,16 +257,14 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                             )}
                           </motion.button>
 
-                            {/* Guide (?) button for legacy/completed users */}
-                            {isLegacy && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setGuideSection(item.id); }}
-                                className="shrink-0 p-1 rounded-md text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-colors"
-                                title="¿Cómo funciona?"
-                              >
-                                <FaQuestionCircle className="text-xs" />
-                              </button>
-                            )}
+                            {/* Guide (?) button */}
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setGuideSection(item.id); }}
+                              className="shrink-0 p-1 rounded-md text-slate-300 hover:text-blue-500 hover:bg-blue-50 transition-colors opacity-0 group-hover:opacity-100"
+                              title="¿Cómo funciona?"
+                            >
+                              <FaQuestionCircle className="text-xs" />
+                            </button>
                           </div>
                         );
                       })}
