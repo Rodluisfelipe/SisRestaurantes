@@ -108,32 +108,35 @@ export default function FloatingHelpChat() {
       <div className="fixed bottom-4 right-4 z-[9999]">
         <motion.button
           onClick={() => { setIsOpen(!isOpen); setShowPulse(false); }}
-          className="relative w-13 h-13 rounded-full shadow-lg flex items-center justify-center overflow-hidden"
-          whileHover={{ scale: 1.06 }}
+          className="relative flex items-center justify-center"
+          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.93 }}
           title="Asistente IA MenuBy"
-          style={{ width: 52, height: 52 }}
         >
           {!isOpen && showPulse && (
-            <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-25" />
+            <span className="absolute inset-0 rounded-2xl bg-red-400 animate-ping opacity-20" />
           )}
           <AnimatePresence mode="wait">
             {isOpen ? (
-              <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }} className="w-full h-full bg-red-700 flex items-center justify-center">
+              <motion.div key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }}
+                className="w-12 h-12 rounded-2xl bg-red-600 flex items-center justify-center shadow-lg"
+              >
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </motion.div>
             ) : (
-              <motion.div key="logo" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}>
-                <img src="/logo.jpeg" alt="MenuBy" className="w-[52px] h-[52px] rounded-full object-cover" />
+              <motion.div key="logo" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}
+                className="w-12 h-12 rounded-2xl bg-white border border-gray-200 shadow-lg flex items-center justify-center p-1.5"
+              >
+                <img src="/logo.jpeg" alt="MenuBy" className="w-full h-full rounded-xl object-cover" />
               </motion.div>
             )}
           </AnimatePresence>
-          {/* Sparkle IA */}
+          {/* Sparkle */}
           {!isOpen && (
-            <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow">
-              <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+            <div className="absolute -top-1 -right-1 pointer-events-none">
+              <svg className="w-4 h-4 text-yellow-400 drop-shadow-sm" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 0L14.59 8.41L23 11L14.59 13.59L12 22L9.41 13.59L1 11L9.41 8.41L12 0Z" />
               </svg>
             </div>
