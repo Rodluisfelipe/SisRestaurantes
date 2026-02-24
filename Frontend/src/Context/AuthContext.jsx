@@ -193,6 +193,12 @@ export function AuthProvider({ children }) {
           // Validate the token server-side before trusting it
           if (tokenData.accessToken) {
             try {
+              // Clear stale tokens from any previous session so interceptor doesn't interfere
+              localStorage.removeItem('accessToken');
+              localStorage.removeItem('refreshToken');
+              sessionStorage.removeItem('accessToken');
+              sessionStorage.removeItem('refreshToken');
+
               // Pass businessId from handoff so SuperAdmin gets correct context
               const bId = tokenData.user?.businessId || '';
               const verifyRes = await api.get(`/auth/me${bId ? `?businessId=${bId}` : ''}`, {

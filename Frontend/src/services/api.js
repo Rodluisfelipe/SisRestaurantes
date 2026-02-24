@@ -30,10 +30,13 @@ api.interceptors.request.use(
     if (!config.url.startsWith('/')) {
       config.url = '/' + config.url;
     }
-    // Adjuntar access token si existe
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+    // Adjuntar access token si existe (pero NO sobreescribir si ya fue puesto explícitamente)
+    const hasExplicitAuth = config.headers?.Authorization || config.headers?.authorization;
+    if (!hasExplicitAuth) {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
     }
     return config;
   },
