@@ -14,7 +14,10 @@ const aiLimiter = rateLimit({
 
 // Groq API
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODELS = ['openai/gpt-oss-120b', 'llama-3.3-70b-versatile', 'llama-3.1-8b-instant'];
+// For AI tools (structured output), prefer non-reasoning models first.
+// openai/gpt-oss-120b uses reasoning tokens that consume max_tokens budget,
+// often leaving content empty. Use it as last resort with higher max_tokens.
+const GROQ_TOOLS_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b'];
 
 async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
   const messages = [
@@ -22,9 +25,15 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
     { role: 'user', content: userMessage }
   ];
 
+  const baseMaxTokens = opts.maxTokens || 400;
   let lastError;
-  for (const model of GROQ_MODELS) {
+
+  for (const model of GROQ_TOOLS_MODELS) {
     try {
+      // Reasoning models need much higher max_tokens (reasoning consumes most of them)
+      const isReasoningModel = model.includes('gpt-oss');
+      const maxTokens = isReasoningModel ? Math.max(baseMaxTokens * 4, 2000) : baseMaxTokens;
+
       const response = await fetch(GROQ_API_URL, {
         method: 'POST',
         headers: {
@@ -34,7 +43,7 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
         body: JSON.stringify({
           model,
           messages,
-          max_tokens: opts.maxTokens || 400,
+          max_tokens: maxTokens,
           temperature: opts.temperature || 0.8
         })
       });
@@ -55,6 +64,14 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
       const data = await response.json();
       let content = data.choices[0].message.content || '';
       content = content.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+      // If reasoning model returned empty content (all tokens used for reasoning), try next model
+      if (!content && data.choices[0].finish_reason === 'length') {
+        logger.warn(`Groq model ${model} returned empty content (finish_reason: length), trying next...`);
+        lastError = new Error(`Empty content from ${model}`);
+        continue;
+      }
+
       return content;
     } catch (err) {
       lastError = err;

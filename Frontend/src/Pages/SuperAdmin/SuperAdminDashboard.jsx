@@ -43,6 +43,7 @@ function SuperAdminDashboard() {
       } catch (error) {
         // Token is invalid or expired — force logout
         localStorage.removeItem("superadmin_token");
+        localStorage.removeItem("superadmin_refreshToken");
         setIsLogged(false);
       }
     };
@@ -63,6 +64,7 @@ function SuperAdminDashboard() {
 
   const handleLogout = () => {
     localStorage.removeItem("superadmin_token");
+    localStorage.removeItem("superadmin_refreshToken");
     setIsLogged(false);
     setAuthView('login');
   };

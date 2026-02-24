@@ -81,6 +81,7 @@ export default function BusinessTable({ refreshTrigger }) {
     
     const realAuthData = {
       accessToken: superadminToken,
+      refreshToken: localStorage.getItem('superadmin_refreshToken') || null,
       user: {
         businessId: b._id,
         role: 'superadmin'
@@ -91,7 +92,7 @@ export default function BusinessTable({ refreshTrigger }) {
     const handoffData = {
       ...realAuthData,
       _ts: Date.now(),       // creation timestamp for TTL check
-      _ttl: 10000            // 10 second TTL
+      _ttl: 30000            // 30 second TTL
     };
     localStorage.setItem('sa_handoff', JSON.stringify(handoffData));
     const baseUrl = `${window.location.protocol}//${window.location.host}`;

@@ -14,7 +14,11 @@ const SuperAdminSchema = new mongoose.Schema({
     required: true
   },
   resetPasswordToken: String,
-  resetPasswordExpires: Date
+  resetPasswordExpires: Date,
+  refreshToken: {
+    type: String,
+    default: null
+  }
 }, { timestamps: true });
 
 // Middleware para hashear la contraseña antes de guardar
@@ -36,6 +40,19 @@ SuperAdminSchema.pre('save', function(next) {
   this.resetPasswordToken = crypto.createHash('sha256').update(this.resetPasswordToken).digest('hex');
   next();
 });
+
+// Hash refreshToken before saving
+SuperAdminSchema.pre('save', function(next) {
+  if (!this.isModified('refreshToken') || !this.refreshToken) return next();
+  this.refreshToken = crypto.createHash('sha256').update(this.refreshToken).digest('hex');
+  next();
+});
+
+// Static: find superadmin by ID and verify refresh token (hashed comparison)
+SuperAdminSchema.statics.findByRefreshToken = async function(saId, plainToken) {
+  const hashed = crypto.createHash('sha256').update(plainToken).digest('hex');
+  return this.findOne({ _id: saId, refreshToken: hashed });
+};
 
 // Método para comparar contraseñas
 SuperAdminSchema.methods.comparePassword = async function(candidatePassword) {

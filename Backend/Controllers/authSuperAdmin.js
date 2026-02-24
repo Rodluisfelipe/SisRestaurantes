@@ -9,7 +9,8 @@ const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is required');
 }
-const JWT_EXPIRES_IN = '24h'; // Token válido por 24 horas
+const { generateRefreshToken } = require('../config/jwt');
+const JWT_EXPIRES_IN = '7d'; // Token válido por 7 días
 
 // Configuración del servicio de email para Gmail
 const emailTransporter = nodemailer.createTransport({
@@ -78,10 +79,16 @@ exports.login = async (req, res) => {
     // Generar token JWT
     const token = jwt.sign({ id: superAdmin._id, role: 'superadmin' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
+    // Generar refresh token
+    const refreshToken = generateRefreshToken(superAdmin._id);
+    superAdmin.refreshToken = refreshToken;
+    await superAdmin.save();
+
     // Respuesta exitosa
     res.json({
       success: true,
       token,
+      refreshToken,
       superAdmin: {
         id: superAdmin._id,
         email: superAdmin.email

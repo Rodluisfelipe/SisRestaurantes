@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Admin = require('../Models/Admin');
 const BusinessConfig = require('../Models/BusinessConfig');
+const Category = require('../Models/Category');
 const { generateToken, generateRefreshToken, verifyToken, verifyRefreshToken } = require('../config/jwt');
 const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -9,6 +11,74 @@ const logger = require('../utils/logger');
 const { OAuth2Client } = require('google-auth-library');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// ==================== CATEGORY TEMPLATES BY BUSINESS TYPE ====================
+const BUSINESS_TYPE_CONFIG = {
+  fast_food: {
+    label: 'Comida Rápida',
+    emoji: '🍔',
+    categories: ['Hamburguesas', 'Perros Calientes', 'Papas y Acompañantes', 'Bebidas', 'Combos'],
+    orderingMode: 'both'
+  },
+  restaurant: {
+    label: 'Restaurante',
+    emoji: '🍽️',
+    categories: ['Entradas', 'Platos Fuertes', 'Sopas', 'Ensaladas', 'Postres', 'Bebidas'],
+    orderingMode: 'both'
+  },
+  cafe: {
+    label: 'Cafetería',
+    emoji: '☕',
+    categories: ['Café', 'Bebidas Frías', 'Panadería', 'Desayunos', 'Snacks'],
+    orderingMode: 'both'
+  },
+  bakery: {
+    label: 'Pastelería',
+    emoji: '🧁',
+    categories: ['Tortas', 'Cupcakes', 'Panes', 'Galletas', 'Bebidas'],
+    orderingMode: 'whatsapp'
+  },
+  ice_cream: {
+    label: 'Heladería',
+    emoji: '🍦',
+    categories: ['Helados', 'Malteadas', 'Sundaes', 'Waffles', 'Toppings'],
+    orderingMode: 'both'
+  },
+  bar: {
+    label: 'Bar',
+    emoji: '🍸',
+    categories: ['Cocteles', 'Cervezas', 'Licores', 'Snacks', 'Picadas'],
+    orderingMode: 'inapp'
+  },
+  food_truck: {
+    label: 'Food Truck',
+    emoji: '🚚',
+    categories: ['Plato Principal', 'Acompañantes', 'Bebidas', 'Especiales del Día'],
+    orderingMode: 'both'
+  },
+  other: {
+    label: 'Otro',
+    emoji: '🍴',
+    categories: ['Categoría 1', 'Categoría 2', 'Bebidas'],
+    orderingMode: 'whatsapp'
+  }
+};
+
+// Helper: create default categories for a business type
+async function createDefaultCategories(businessId, businessType) {
+  const config = BUSINESS_TYPE_CONFIG[businessType] || BUSINESS_TYPE_CONFIG.other;
+  const categories = config.categories.map((name, index) => ({
+    name,
+    businessId,
+    displayOrder: index + 1,
+    active: true
+  }));
+  try {
+    await Category.insertMany(categories);
+  } catch (err) {
+    logger.error('Error creating default categories', err);
+  }
+}
 
 // Rate limiter para prevenir ataques de fuerza bruta
 const loginLimiter = rateLimit({
@@ -57,7 +127,7 @@ const validateEmail = (email) => {
 // Ruta de registro de negocio
 router.post('/register', registerLimiter, async (req, res) => {
   try {
-    const { name, businessName, email, password } = req.body;
+    const { name, businessName, email, password, businessType } = req.body;
 
     // Validaciones básicas
     if (!name || !businessName || !email || !password) {
@@ -118,15 +188,27 @@ router.post('/register', registerLimiter, async (req, res) => {
       }
     }
 
+    // Determinar tipo de negocio y configuración
+    const validTypes = ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'other'];
+    const finalBusinessType = validTypes.includes(businessType) ? businessType : 'restaurant';
+    const typeConfig = BUSINESS_TYPE_CONFIG[finalBusinessType];
+
     // Crear la configuración del negocio
     const businessConfig = new BusinessConfig({
       slug,
       businessName,
+      businessType: finalBusinessType,
+      orderingMode: typeConfig.orderingMode,
+      onboarding: { level: 1, completedAt: null, guidesShown: [] },
+      onboardingFeatureDate: new Date(),
       isActive: true
     });
 
     // Guardar la configuración del negocio
     await businessConfig.save();
+
+    // Crear categorías por defecto según tipo de negocio
+    await createDefaultCategories(businessConfig._id, finalBusinessType);
 
     // Crear el usuario administrador
     const admin = new Admin({
@@ -399,14 +481,28 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     if (!decoded) {
       return res.status(401).json({ message: 'Invalid refresh token' });
     }
-    // Buscar admin y validar refresh token guardado (hashed comparison)
+
+    // Try Admin first
     const admin = await Admin.findByRefreshToken(decoded.id, refreshToken);
-    if (!admin) {
-      return res.status(401).json({ message: 'Refresh token inválido' });
+    if (admin) {
+      const token = generateToken(admin._id, admin.businessId);
+      return res.json({ token });
     }
-    // Generar nuevo access token
-    const token = generateToken(admin._id, admin.businessId);
-    res.json({ token });
+
+    // Try SuperAdmin
+    const SuperAdmin = require('../Models/SuperAdmin');
+    const superAdmin = await SuperAdmin.findByRefreshToken(decoded.id, refreshToken);
+    if (superAdmin) {
+      const jwt = require('jsonwebtoken');
+      const token = jwt.sign(
+        { id: superAdmin._id, role: 'superadmin' },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+      return res.json({ token });
+    }
+
+    return res.status(401).json({ message: 'Refresh token inválido' });
   } catch (error) {
     res.status(500).json({ message: 'Error al refrescar el token' });
   }
@@ -482,6 +578,25 @@ router.post('/force-change-password', authMiddleware, async (req, res) => {
 // Obtener datos del usuario autenticado (protegido)
 router.get('/me', authMiddleware, async (req, res) => {
   try {
+    // SuperAdmin viewing as admin — return superadmin info with the target businessId
+    if (req.user.role === 'superadmin') {
+      const SuperAdmin = require('../Models/SuperAdmin');
+      const sa = await SuperAdmin.findById(req.user.id).select('-password');
+      if (!sa) return res.status(401).json({ message: 'Usuario no encontrado' });
+      
+      return res.json({
+        user: {
+          id: sa._id,
+          username: sa.username || 'SuperAdmin',
+          name: sa.name || 'SuperAdmin',
+          role: 'superadmin',
+          businessId: req.query.businessId || null,
+          createdAt: sa.createdAt,
+          updatedAt: sa.updatedAt
+        }
+      });
+    }
+
     const admin = await Admin.findById(req.user.id).select('-password');
     if (!admin) {
       return res.status(401).json({ message: 'Usuario no encontrado' });
@@ -520,7 +635,7 @@ const googleAuthLimiter = rateLimit({
 // POST /auth/google - Login o Registro con Google
 router.post('/google', googleAuthLimiter, async (req, res) => {
   try {
-    const { credential, businessName, slug: chosenSlug } = req.body;
+    const { credential, businessName, slug: chosenSlug, businessType } = req.body;
 
     if (!credential) {
       return res.status(400).json({ message: 'Token de Google es requerido' });
@@ -635,13 +750,25 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       }
     }
 
+    // Determinar tipo de negocio
+    const validTypes = ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'other'];
+    const finalBusinessType = validTypes.includes(businessType) ? businessType : 'restaurant';
+    const typeConfig = BUSINESS_TYPE_CONFIG[finalBusinessType];
+
     // Crear BusinessConfig
     const businessConfig = new BusinessConfig({
       slug,
       businessName: sanitizedBusinessName,
+      businessType: finalBusinessType,
+      orderingMode: typeConfig.orderingMode,
+      onboarding: { level: 1, completedAt: null, guidesShown: [] },
+      onboardingFeatureDate: new Date(),
       isActive: true
     });
     await businessConfig.save();
+
+    // Crear categorías por defecto según tipo de negocio
+    await createDefaultCategories(businessConfig._id, finalBusinessType);
 
     // Crear Admin (sin password para Google auth)
     admin = new Admin({
@@ -717,6 +844,169 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
     logger.error('Error en Google auth', process.env.NODE_ENV !== 'production' ? error : undefined);
     res.status(500).json({ message: 'Error en el servidor al procesar autenticación con Google' });
   }
+});
+
+// ==================== ONBOARDING ====================
+
+// GET /auth/onboarding-status — calcula nivel en tiempo real
+router.get('/onboarding-status', authMiddleware, async (req, res) => {
+  try {
+    let businessId;
+
+    // SuperAdmin: get businessId from query param or return legacy
+    if (req.user.role === 'superadmin') {
+      businessId = req.query.businessId;
+      if (!businessId) {
+        return res.json({ isLegacy: true, level: 6, progress: 100, unlockedSections: 'all', guidesShown: [], nextStep: null });
+      }
+    } else {
+      const admin = await Admin.findById(req.user.id);
+      if (!admin) return res.status(401).json({ message: 'No autorizado' });
+      businessId = admin.businessId;
+    }
+
+    const business = await BusinessConfig.findById(businessId);
+    if (!business) return res.status(404).json({ message: 'Negocio no encontrado' });
+
+    // Si es un negocio existente antes del feature (no tiene onboardingFeatureDate) → todo desbloqueado
+    const isLegacy = !business.onboardingFeatureDate;
+    if (isLegacy) {
+      return res.json({
+        isLegacy: true,
+        level: 6,
+        progress: 100,
+        completedAt: business.createdAt,
+        guidesShown: business.onboarding?.guidesShown || [],
+        businessType: business.businessType || 'restaurant',
+        unlockedSections: 'all',
+        nextStep: null
+      });
+    }
+
+    // Si ya completó el onboarding
+    if (business.onboarding?.completedAt) {
+      return res.json({
+        isLegacy: false,
+        level: 6,
+        progress: 100,
+        completedAt: business.onboarding.completedAt,
+        guidesShown: business.onboarding.guidesShown || [],
+        businessType: business.businessType,
+        unlockedSections: 'all',
+        nextStep: null
+      });
+    }
+
+    // Calcular nivel en tiempo real basado en datos reales
+    const [categoryCount, productCount, orderCount, customerCount] = await Promise.all([
+      Category.countDocuments({ businessId }),
+      mongoose.model('Product').countDocuments({ businessId }),
+      mongoose.model('Order').countDocuments({ businessId }),
+      mongoose.model('Customer').countDocuments({ businessId })
+    ]);
+
+    let level = 1; // Post-registration: has categories + products unlocked
+    let nextStep = { action: 'Agrega tu primera categoría', tab: 'categories' };
+    const progress = 10;
+
+    // Level 2: Has ≥1 category AND ≥1 product
+    if (categoryCount >= 1 && productCount >= 1) {
+      level = 2;
+      nextStep = { action: 'Personaliza tu menú', tab: 'theme' };
+    }
+    // Level 3: Has configured ordering mode or received first order
+    if (level >= 2 && (business.orderingMode !== 'whatsapp' || orderCount >= 1)) {
+      level = 3;
+      nextStep = { action: 'Espera tu primer pedido', tab: 'orders' };
+    }
+    // Level 4: Has ≥5 orders or ≥3 customers
+    if (level >= 3 && (orderCount >= 5 || customerCount >= 3)) {
+      level = 4;
+      nextStep = { action: 'Conoce a tus clientes', tab: 'customers' };
+    }
+    // Level 5: Has ≥10 orders
+    if (level >= 4 && orderCount >= 10) {
+      level = 5;
+      nextStep = { action: 'Explora herramientas avanzadas', tab: 'coupons' };
+    }
+    // Level 6: All complete
+    if (level >= 5 && orderCount >= 15) {
+      level = 6;
+      nextStep = null;
+      // Mark as completed
+      business.onboarding.completedAt = new Date();
+    }
+
+    // Calculate progress percentage
+    const progressMap = { 1: 10, 2: 30, 3: 50, 4: 70, 5: 85, 6: 100 };
+
+    // Define which sections are unlocked per level
+    const sectionsByLevel = {
+      1: ['categories', 'products', 'business'],
+      2: ['categories', 'products', 'business', 'theme', 'product-order', 'toppings'],
+      3: ['categories', 'products', 'business', 'theme', 'product-order', 'toppings', 'orders', 'completed_orders', 'payment-config'],
+      4: ['categories', 'products', 'business', 'theme', 'product-order', 'toppings', 'orders', 'completed_orders', 'payment-config', 'customers', 'reviews'],
+      5: ['categories', 'products', 'business', 'theme', 'product-order', 'toppings', 'orders', 'completed_orders', 'payment-config', 'customers', 'reviews', 'coupons', 'tables', 'delivery-zones', 'catalog', 'whatsapp'],
+      6: 'all'
+    };
+
+    // Always unlocked
+    const alwaysUnlocked = ['location', 'change-password', 'subscription', 'dashboard'];
+
+    // Update level in DB if changed
+    if (business.onboarding.level !== level) {
+      business.onboarding.level = level;
+      await business.save();
+    }
+
+    res.json({
+      isLegacy: false,
+      level,
+      progress: progressMap[level] || 10,
+      completedAt: business.onboarding.completedAt,
+      guidesShown: business.onboarding.guidesShown || [],
+      businessType: business.businessType,
+      unlockedSections: level >= 6 ? 'all' : [...(sectionsByLevel[level] || []), ...alwaysUnlocked],
+      nextStep
+    });
+  } catch (error) {
+    logger.error('Error getting onboarding status', process.env.NODE_ENV !== 'production' ? error : undefined);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+});
+
+// POST /auth/onboarding-guide-shown — mark a guide as seen
+router.post('/onboarding-guide-shown', authMiddleware, async (req, res) => {
+  try {
+    const { guideId } = req.body;
+    if (!guideId) return res.status(400).json({ message: 'guideId es requerido' });
+
+    // SuperAdmin: just acknowledge, don't modify business data
+    if (req.user.role === 'superadmin') return res.json({ success: true });
+
+    const admin = await Admin.findById(req.user.id);
+    if (!admin) return res.status(401).json({ message: 'No autorizado' });
+
+    await BusinessConfig.findByIdAndUpdate(admin.businessId, {
+      $addToSet: { 'onboarding.guidesShown': guideId }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Error marking guide shown', error);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+});
+
+// GET /auth/business-types — returns available business types for registration
+router.get('/business-types', (req, res) => {
+  const types = Object.entries(BUSINESS_TYPE_CONFIG).map(([key, val]) => ({
+    id: key,
+    label: val.label,
+    emoji: val.emoji,
+    categoryCount: val.categories.length
+  }));
+  res.json({ types });
 });
 
 module.exports = router; 

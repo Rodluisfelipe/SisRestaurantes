@@ -24,6 +24,17 @@ const businessConfigSchema = new mongoose.Schema({
     required: true,
     default: "Mi Restaurante"
   },
+  businessType: {
+    type: String,
+    enum: ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'other'],
+    default: 'restaurant'
+  },
+  // Onboarding tracking
+  onboarding: {
+    level: { type: Number, default: 0, min: 0, max: 6 },
+    completedAt: { type: Date, default: null },
+    guidesShown: [{ type: String }]
+  },
   description: {
     type: String,
     default: "Deliciosa comida casera con ingredientes frescos y servicio de calidad.",
@@ -161,6 +172,11 @@ const businessConfigSchema = new mongoose.Schema({
   },
 
   // Review statistics (auto-calculated)
+  // Feature creation date for onboarding detection
+  onboardingFeatureDate: {
+    type: Date,
+    default: null
+  },
   reviewStats: {
     averageRating: { type: Number, default: 0 },
     totalReviews: { type: Number, default: 0 },

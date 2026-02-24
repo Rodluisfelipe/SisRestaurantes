@@ -24,6 +24,7 @@ superadminApi.interceptors.request.use((config) => {
 const handle401 = (error) => {
   if (error.response && error.response.status === 401) {
     localStorage.removeItem('superadmin_token');
+    localStorage.removeItem('superadmin_refreshToken');
     // Redirect to superadmin login if we're on a superadmin page
     if (window.location.pathname.startsWith('/superadmin')) {
       window.location.href = '/superadmin';

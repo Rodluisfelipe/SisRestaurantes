@@ -16,6 +16,10 @@ export default function LoginSuperAdmin({ onLogin }) {
       const res = await loginSuperAdmin(email, password);
       // Store SuperAdmin token ONLY in superadmin_token (not in accessToken to avoid context confusion)
       localStorage.setItem("superadmin_token", res.data.token);
+      // Store refresh token for session persistence
+      if (res.data.refreshToken) {
+        localStorage.setItem("superadmin_refreshToken", res.data.refreshToken);
+      }
       // Also guardar el usuario
       if (res.data.superAdmin) {
         localStorage.setItem("user", JSON.stringify(res.data.superAdmin));
