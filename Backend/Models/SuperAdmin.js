@@ -13,6 +13,18 @@ const SuperAdminSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  googleId: {
+    type: String,
+    default: null
+  },
+  name: {
+    type: String,
+    default: null
+  },
+  avatar: {
+    type: String,
+    default: null
+  },
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   refreshToken: {

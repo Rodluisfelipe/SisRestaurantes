@@ -12,6 +12,17 @@ if (!JWT_SECRET) {
 const { generateRefreshToken } = require('../config/jwt');
 const JWT_EXPIRES_IN = '7d'; // Token válido por 7 días
 
+// Google Auth
+let googleClient = null;
+try {
+  const { OAuth2Client } = require('google-auth-library');
+  if (process.env.GOOGLE_CLIENT_ID) {
+    googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  }
+} catch (e) {
+  console.warn('[SuperAdmin] google-auth-library not available');
+}
+
 // Configuración del servicio de email para Gmail
 const emailTransporter = nodemailer.createTransport({
   service: 'gmail',
@@ -234,4 +245,78 @@ exports.resetPassword = async (req, res) => {
     console.error('Error en restablecimiento de contraseña:', error);
     res.status(500).json({ message: 'Error en el servidor' });
   }
-}; 
+};
+
+// Login de SuperAdmin con Google
+exports.googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ message: 'Token de Google es requerido' });
+    }
+
+    if (!googleClient) {
+      return res.status(500).json({ message: 'Google Auth no está configurado en el servidor' });
+    }
+
+    // Verificar el ID token con Google
+    let ticket;
+    try {
+      ticket = await googleClient.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID
+      });
+    } catch (err) {
+      console.error('Google token verification failed:', err.message);
+      return res.status(401).json({ message: 'Token de Google inválido' });
+    }
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ message: 'No se pudo obtener el email de Google' });
+    }
+
+    // Buscar SuperAdmin por googleId O por email
+    let superAdmin = await SuperAdmin.findOne({
+      $or: [{ googleId }, { email }]
+    });
+
+    if (!superAdmin) {
+      return res.status(403).json({ 
+        message: 'No existe una cuenta SuperAdmin con este correo. Solo SuperAdmins registrados pueden acceder.' 
+      });
+    }
+
+    // Vincular googleId si aún no está vinculado
+    if (!superAdmin.googleId) {
+      superAdmin.googleId = googleId;
+    }
+    // Actualizar nombre y avatar si no existen
+    if (!superAdmin.name && name) superAdmin.name = name;
+    if (!superAdmin.avatar && picture) superAdmin.avatar = picture;
+
+    // Generar tokens
+    const token = jwt.sign({ id: superAdmin._id, role: 'superadmin' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const refreshToken = generateRefreshToken(superAdmin._id);
+    superAdmin.refreshToken = refreshToken;
+    await superAdmin.save();
+
+    res.json({
+      success: true,
+      token,
+      refreshToken,
+      superAdmin: {
+        id: superAdmin._id,
+        email: superAdmin.email,
+        name: superAdmin.name || name || 'SuperAdmin',
+        avatar: superAdmin.avatar || picture
+      }
+    });
+  } catch (error) {
+    console.error('Error en Google login SuperAdmin:', error);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+};

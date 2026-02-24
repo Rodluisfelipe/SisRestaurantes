@@ -20,6 +20,7 @@ const saPasswordLimiter = rateLimit({
 
 // Rutas públicas (no requieren token)
 router.post('/login', saLoginLimiter, authSuperAdmin.login);
+router.post('/google', saLoginLimiter, authSuperAdmin.googleLogin);
 router.post('/forgot-password', saPasswordLimiter, authSuperAdmin.forgotPassword);
 router.post('/reset-password', saPasswordLimiter, authSuperAdmin.resetPassword);
 

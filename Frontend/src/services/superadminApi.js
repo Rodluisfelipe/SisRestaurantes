@@ -48,6 +48,15 @@ export const loginSuperAdmin = async (email, password) => {
   }
 };
 
+export const googleLoginSuperAdmin = async (credential) => {
+  try {
+    const response = await superadminApi.post('/auth/google', { credential });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const changePassword = async (oldPassword, newPassword) => {
   try {
     const response = await superadminApi.post('/auth/change-password', { 
