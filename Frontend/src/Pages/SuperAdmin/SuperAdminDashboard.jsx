@@ -13,35 +13,53 @@ import PaymentRequestsReview from "./PaymentRequestsReview";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
+const NAV_ITEMS = [
+  { id: 'businesses', label: 'Negocios', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+    </svg>
+  )},
+  { id: 'banners', label: 'Banners', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 002.25-2.25V5.25a2.25 2.25 0 00-2.25-2.25H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+    </svg>
+  )},
+  { id: 'subscriptions', label: 'Suscripciones', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+    </svg>
+  )},
+  { id: 'announcements', label: 'Anuncios', icon: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688-.06-1.386-.09-2.09-.09H7.5a4.5 4.5 0 110-9h.75c.704 0 1.402-.03 2.09-.09m0 9.18c.253.962.584 1.892.985 2.783.247.55.06 1.21-.463 1.511l-.657.38c-.551.318-1.26.117-1.527-.461a20.845 20.845 0 01-1.44-4.282m3.102.069a18.03 18.03 0 01-.59-4.59c0-1.586.205-3.124.59-4.59m0 9.18a23.848 23.848 0 018.835 2.535M10.34 6.66a23.847 23.847 0 008.835-2.535m0 0A23.74 23.74 0 0018.795 3m.38 1.125a23.91 23.91 0 011.014 5.395m-1.014 8.855c-.118.38-.245.754-.38 1.125m.38-1.125a23.91 23.91 0 001.014-5.395m0-3.46c.495.413.811 1.035.811 1.73 0 .695-.316 1.317-.811 1.73m0-3.46a24.347 24.347 0 010 3.46" />
+    </svg>
+  )},
+];
+
 function SuperAdminDashboard() {
   const [isLogged, setIsLogged] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [refresh, setRefresh] = useState(0);
-  const [authView, setAuthView] = useState('login'); // 'login' | 'forgot' | 'change'
-  const [currentView, setCurrentView] = useState('businesses'); // 'businesses' | 'banners' | 'subscriptions' | 'announcements'
-  const [subscriptionSubTab, setSubscriptionSubTab] = useState('payments'); // 'payments' | 'management'
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authView, setAuthView] = useState('login');
+  const [currentView, setCurrentView] = useState('businesses');
+  const [subscriptionSubTab, setSubscriptionSubTab] = useState('payments');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const params = useParams();
-  // Extraer token de parámetros y búsqueda de URL de forma segura
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const token = params.token || queryParams.get('token');
   const [resetToken, setResetToken] = useState(token || null);
   const navigate = useNavigate();
 
-  // Log de depuración para verificar token
   useEffect(() => {
-    // Validate stored token against server on mount
     const validateToken = async () => {
       const adminToken = localStorage.getItem("superadmin_token");
       if (!adminToken) return;
-      
       try {
         const { default: superadminApi } = await import('../../services/superadminApi');
         await superadminApi.get('/auth/me');
         setIsLogged(true);
       } catch (error) {
-        // Token is invalid or expired — force logout
         localStorage.removeItem("superadmin_token");
         localStorage.removeItem("superadmin_refreshToken");
         setIsLogged(false);
@@ -51,10 +69,7 @@ function SuperAdminDashboard() {
   }, []);
 
   useEffect(() => {
-    // Actualizar estado del token si viene en la URL
-    if (token) {
-      setResetToken(token);
-    }
+    if (token) setResetToken(token);
   }, [token]);
 
   const handleCreated = () => {
@@ -69,23 +84,16 @@ function SuperAdminDashboard() {
     setAuthView('login');
   };
 
-  // Mostrar SIEMPRE el formulario de reset si hay token, aunque esté logueado
+  // Reset password view
   if (resetToken) {
     return <ResetPasswordSuperAdmin 
       token={resetToken} 
-      onSuccess={() => { 
-        setAuthView('login'); 
-        navigate('/superadmin', { replace: true });
-        setResetToken(null); 
-      }} 
-      onBack={() => { 
-        setAuthView('login'); 
-        navigate('/superadmin', { replace: true });
-        setResetToken(null); 
-      }} 
+      onSuccess={() => { setAuthView('login'); navigate('/superadmin', { replace: true }); setResetToken(null); }} 
+      onBack={() => { setAuthView('login'); navigate('/superadmin', { replace: true }); setResetToken(null); }} 
     />;
   }
   
+  // Not logged in
   if (!isLogged) {
     if (authView === 'forgot') {
       return <ForgotPasswordSuperAdmin onBack={() => setAuthView('login')} />;
@@ -93,6 +101,7 @@ function SuperAdminDashboard() {
     return <LoginSuperAdmin onLogin={v => v === 'forgot' ? setAuthView('forgot') : setIsLogged(true)} />;
   }
 
+  // Change password view
   if (authView === 'change') {
     return <ChangePasswordSuperAdmin 
       onBack={() => setAuthView('dashboard')} 
@@ -100,405 +109,261 @@ function SuperAdminDashboard() {
     />;
   }
 
-  return (
-    <div className="min-h-screen bg-[#051C2C] flex flex-col">
-      <style>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
-      {/* Header */}
-      <header className="fixed top-0 left-0 w-full bg-[#333F50] shadow-lg z-50 border-b border-[#333F50]/80">
-        {/* Top bar - Logo and Mobile Menu Button */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3">
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5 }}
-            className="flex items-center space-x-2 sm:space-x-3"
-          >
-            <img src="/logo.jpeg" alt="Menuby" className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover border-2 border-[#5FF9B4] shadow" />
-            <span className="text-base sm:text-lg font-bold text-white tracking-wide hidden sm:inline">Panel SuperAdmin</span>
-            <span className="text-base sm:text-lg font-bold text-white tracking-wide sm:hidden">SuperAdmin</span>
-          </motion.div>
-          
-          {/* Desktop Actions */}
-          <div className="hidden lg:flex items-center gap-3">
-            <motion.button
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              onClick={() => setAuthView('change')}
-              className="flex items-center gap-2 px-4 py-2 bg-[#5FF9B4] text-[#051C2C] rounded-lg hover:bg-[#5FF9B4]/90 transition-colors font-semibold shadow-md text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-              <span className="hidden xl:inline">Cambiar contraseña</span>
-              <span className="xl:hidden">Contraseña</span>
-            </motion.button>
-            <motion.button 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              onClick={handleLogout} 
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold shadow-md text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
-              </svg>
-              Salir
-            </motion.button>
-          </div>
+  const currentNavItem = NAV_ITEMS.find(item => item.id === currentView);
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden p-2 text-white hover:bg-[#333F50]/80 rounded-lg transition-colors"
-            aria-label="Toggle menu"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-              )}
+  return (
+    <div className="min-h-screen flex" style={{ background: 'linear-gradient(145deg, #0a0a1a 0%, #0d1b2a 40%, #111827 100%)' }}>
+      
+      {/* Mobile sidebar overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-[260px] flex flex-col
+        bg-white/[0.03] backdrop-blur-xl border-r border-white/[0.06]
+        transition-transform duration-300 ease-out
+        lg:translate-x-0 lg:static lg:z-auto
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        {/* Sidebar header */}
+        <div className="flex items-center gap-3 px-5 py-5 border-b border-white/[0.06]">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/30 to-indigo-600/30 border border-white/10 flex items-center justify-center shadow-lg shadow-blue-500/10">
+            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-semibold text-white truncate">MenuBy</h2>
+            <p className="text-[11px] text-white/30">Super Admin</p>
+          </div>
+          <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 text-white/40 hover:text-white/70 transition-colors rounded-lg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          </div>
-          
-        {/* Desktop Navigation Tabs */}
-        <div className="hidden lg:flex space-x-2 px-6 pb-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setCurrentView('businesses')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                currentView === 'businesses'
-                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-              }`}
-            >
-              🏢 Negocios
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setCurrentView('banners')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                currentView === 'banners'
-                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-              }`}
-            >
-              📢 Banners
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setCurrentView('subscriptions')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                currentView === 'subscriptions'
-                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-              }`}
-            >
-              👑 Suscripciones
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setCurrentView('announcements')}
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${
-                currentView === 'announcements'
-                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                  : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-              }`}
-            >
-              📋 Anuncios
-            </motion.button>
-          </div>
-
-        {/* Mobile Navigation - Scrollable Tabs */}
-        <div className="lg:hidden overflow-x-auto scrollbar-hide pb-3 px-4">
-          <div className="flex space-x-2 min-w-max">
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setCurrentView('businesses');
-                setMobileMenuOpen(false);
-              }}
-              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm ${
-                currentView === 'businesses'
-                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                  : 'bg-[#333F50] text-white'
-              }`}
-            >
-              🏢 Negocios
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setCurrentView('banners');
-                setMobileMenuOpen(false);
-              }}
-              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm ${
-                currentView === 'banners'
-                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                  : 'bg-[#333F50] text-white'
-              }`}
-            >
-              📢 Banners
-            </motion.button>
-          <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setCurrentView('subscriptions');
-                setMobileMenuOpen(false);
-              }}
-              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm ${
-                currentView === 'subscriptions'
-                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                  : 'bg-[#333F50] text-white'
-              }`}
-            >
-              👑 Suscripciones
-            </motion.button>
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setCurrentView('announcements');
-                setMobileMenuOpen(false);
-              }}
-              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm ${
-                currentView === 'announcements'
-                  ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                  : 'bg-[#333F50] text-white'
-              }`}
-            >
-              📋 Anuncios
-            </motion.button>
-          </div>
         </div>
 
-        {/* Mobile Menu Dropdown */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.2 }}
-              className="lg:hidden border-t border-[#333F50]/80 bg-[#333F50]"
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          <p className="px-3 mb-2 text-[10px] font-semibold text-white/20 uppercase tracking-wider">Principal</p>
+          {NAV_ITEMS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => { setCurrentView(item.id); setSidebarOpen(false); }}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group ${
+                currentView === item.id
+                  ? 'bg-blue-500/15 text-blue-400 shadow-sm shadow-blue-500/5'
+                  : 'text-white/50 hover:text-white/80 hover:bg-white/[0.04]'
+              }`}
             >
-              <div className="px-4 py-3 space-y-2">
-                <button
-                  onClick={() => {
-                    setAuthView('change');
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 bg-[#5FF9B4] text-[#051C2C] rounded-lg hover:bg-[#5FF9B4]/90 transition-colors font-semibold"
+              <span className={`transition-colors ${currentView === item.id ? 'text-blue-400' : 'text-white/30 group-hover:text-white/50'}`}>
+                {item.icon}
+              </span>
+              {item.label}
+              {currentView === item.id && (
+                <motion.div layoutId="activeNav" className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-400" />
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Sidebar footer */}
+        <div className="p-3 border-t border-white/[0.06] space-y-1">
+          <button
+            onClick={() => setAuthView('change')}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-all duration-200"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.343 3.94c.09-.542.56-.94 1.11-.94h1.093c.55 0 1.02.398 1.11.94l.149.894c.07.424.384.764.78.93.398.164.855.142 1.205-.108l.737-.527a1.125 1.125 0 011.45.12l.773.774c.39.389.44 1.002.12 1.45l-.527.737c-.25.35-.272.806-.107 1.204.165.397.505.71.93.78l.893.15c.543.09.94.56.94 1.109v1.094c0 .55-.397 1.02-.94 1.11l-.893.149c-.425.07-.765.383-.93.78-.165.398-.143.854.107 1.204l.527.738c.32.447.269 1.06-.12 1.45l-.774.773a1.125 1.125 0 01-1.449.12l-.738-.527c-.35-.25-.806-.272-1.203-.107-.397.165-.71.505-.781.929l-.149.894c-.09.542-.56.94-1.11.94h-1.094c-.55 0-1.019-.398-1.11-.94l-.148-.894c-.071-.424-.384-.764-.781-.93-.398-.164-.854-.142-1.204.108l-.738.527c-.447.32-1.06.269-1.45-.12l-.773-.774a1.125 1.125 0 01-.12-1.45l.527-.737c.25-.35.273-.806.108-1.204-.165-.397-.506-.71-.93-.78l-.894-.15c-.542-.09-.94-.56-.94-1.109v-1.094c0-.55.398-1.02.94-1.11l.894-.149c.424-.07.765-.383.93-.78.165-.398.143-.854-.107-1.204l-.527-.738a1.125 1.125 0 01.12-1.45l.773-.773a1.125 1.125 0 011.45-.12l.737.527c.35.25.807.272 1.204.107.397-.165.71-.505.78-.929l.15-.894z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             Cambiar contraseña
-                </button>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold"
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-red-400/60 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content area */}
+      <div className="flex-1 flex flex-col min-h-screen min-w-0">
+        {/* Top bar */}
+        <header className="sticky top-0 z-30 flex items-center gap-4 px-4 sm:px-6 lg:px-8 h-16 bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.06]">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="lg:hidden p-2 -ml-2 text-white/40 hover:text-white/70 hover:bg-white/[0.06] rounded-xl transition-all"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2h4a2 2 0 012 2v1" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
-            Salir
-                </button>
-        </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
+          </button>
 
-      {/* Main content - Adjusted padding for mobile */}
-      <main className="flex-1 flex flex-col items-center justify-start pt-20 sm:pt-24 px-3 sm:px-4 pb-6 sm:pb-8 min-h-screen">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-6xl"
-        >
+          <div className="flex items-center gap-3">
+            <span className="text-white/30">{currentNavItem?.icon}</span>
+            <h1 className="text-lg font-semibold text-white">{currentNavItem?.label}</h1>
+          </div>
+
+          <div className="flex-1" />
+
+          {/* Create CTA in topbar for businesses */}
           {currentView === 'businesses' && (
-            <>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-                <motion.h1 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-2xl font-bold text-white drop-shadow"
-                >
-                  Negocios registrados
-                </motion.h1>
-                <motion.button
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="px-3 sm:px-4 py-2 sm:py-2.5 bg-[#3A7AFF] text-white rounded-lg shadow-lg hover:bg-[#3A7AFF]/90 transition-colors font-semibold flex items-center justify-center gap-2 hover:shadow-[#3A7AFF]/20 text-sm sm:text-base w-full sm:w-auto"
-                  onClick={() => setShowCreate(true)}
-                >
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span className="hidden sm:inline">Crear nuevo negocio</span>
-                  <span className="sm:hidden">Crear</span>
-                </motion.button>
-              </div>
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
-              >
-                <BusinessTable
-                  refreshTrigger={refresh}
-                />
-              </motion.div>
-            </>
-          )}
-          
-          {currentView === 'banners' && (
-            <>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-                <motion.h1 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-2xl font-bold text-white drop-shadow"
-                >
-                  Gestión de Banners
-                </motion.h1>
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-white/80 text-sm"
-                >
-                  Aprueba o rechaza banners promocionales
-                </motion.div>
-              </div>
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
-              >
-                <SuperAdminBannerManagement />
-              </motion.div>
-            </>
-          )}
-          
-          {currentView === 'subscriptions' && (
-            <>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-                <motion.h1 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-2xl font-bold text-white drop-shadow"
-                >
-                  Suscripciones y Pagos
-                </motion.h1>
-              </div>
-              
-              {/* Subtabs - Responsive */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-2 mb-6 overflow-x-auto">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setSubscriptionSubTab('payments')}
-                  className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm sm:text-base ${
-                    subscriptionSubTab === 'payments'
-                      ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                      : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-                  }`}
-                >
-                  💳 <span className="hidden sm:inline">Dashboard de Pagos</span><span className="sm:hidden">Pagos</span>
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setSubscriptionSubTab('management')}
-                  className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm sm:text-base ${
-                    subscriptionSubTab === 'management'
-                      ? 'bg-[#5FF9B4] text-[#051C2C] shadow-lg'
-                      : 'bg-[#333F50] text-white hover:bg-[#333F50]/80'
-                  }`}
-                >
-                  👑 <span className="hidden sm:inline">Gestión de Suscripciones</span><span className="sm:hidden">Suscripciones</span>
-                </motion.button>
-              </div>
-              
-              {/* Contenido según subtab */}
-              {subscriptionSubTab === 'payments' ? (
-                <PaymentRequestsReview />
-              ) : (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.4 }}
-                  className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
-                >
-                  <SubscriptionManagement />
-                </motion.div>
-              )}
-            </>
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              onClick={() => setShowCreate(true)}
+              className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/20 transition-all duration-200"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Nuevo negocio
+            </motion.button>
           )}
 
-          {currentView === 'announcements' && (
-            <>
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-                <motion.h1 
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                  className="text-2xl font-bold text-white drop-shadow"
-                >
-                  Gestión de Anuncios
-                </motion.h1>
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-white/80 text-sm"
-                >
-                  Novedades y avisos para los negocios
-                </motion.div>
-              </div>
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
+          {/* User menu */}
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500/30 to-indigo-600/30 border border-white/10 flex items-center justify-center">
+              <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            {currentView === 'businesses' && (
+              <motion.div
+                key="businesses"
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="bg-[#333F50]/80 rounded-2xl shadow-xl p-4 md:p-8 border border-[#333F50]"
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.3 }}
               >
-                <AnnouncementManagement />
+                {/* Mobile create button */}
+                <div className="sm:hidden mb-4">
+                  <button
+                    onClick={() => setShowCreate(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/20 transition-all duration-200"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Crear nuevo negocio
+                  </button>
+                </div>
+
+                <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl overflow-hidden">
+                  <BusinessTable refreshTrigger={refresh} />
+                </div>
               </motion.div>
-            </>
-          )}
-        </motion.div>
-        <CreateBusinessModal
-          isOpen={showCreate}
-          onClose={() => setShowCreate(false)}
-          onCreated={handleCreated}
-        />
-      </main>
+            )}
+
+            {currentView === 'banners' && (
+              <motion.div
+                key="banners"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.3 }}
+              >
+                <p className="text-white/40 text-sm mb-6">Aprueba o rechaza banners promocionales de los negocios</p>
+                <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-4 sm:p-6 lg:p-8">
+                  <SuperAdminBannerManagement />
+                </div>
+              </motion.div>
+            )}
+
+            {currentView === 'subscriptions' && (
+              <motion.div
+                key="subscriptions"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.3 }}
+              >
+                {/* Sub-tabs */}
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+                  <button
+                    onClick={() => setSubscriptionSubTab('payments')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                      subscriptionSubTab === 'payments'
+                        ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20 shadow-sm shadow-blue-500/5'
+                        : 'text-white/40 hover:text-white/60 hover:bg-white/[0.04] border border-transparent'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                    </svg>
+                    Dashboard de Pagos
+                  </button>
+                  <button
+                    onClick={() => setSubscriptionSubTab('management')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                      subscriptionSubTab === 'management'
+                        ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20 shadow-sm shadow-blue-500/5'
+                        : 'text-white/40 hover:text-white/60 hover:bg-white/[0.04] border border-transparent'
+                    }`}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" />
+                    </svg>
+                    Gestión
+                  </button>
+                </div>
+
+                {subscriptionSubTab === 'payments' ? (
+                  <PaymentRequestsReview />
+                ) : (
+                  <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-4 sm:p-6 lg:p-8">
+                    <SubscriptionManagement />
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {currentView === 'announcements' && (
+              <motion.div
+                key="announcements"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.3 }}
+              >
+                <p className="text-white/40 text-sm mb-6">Novedades y avisos para los negocios</p>
+                <div className="bg-white/[0.03] backdrop-blur-sm border border-white/[0.06] rounded-2xl p-4 sm:p-6 lg:p-8">
+                  <AnnouncementManagement />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <CreateBusinessModal
+            isOpen={showCreate}
+            onClose={() => setShowCreate(false)}
+            onCreated={handleCreated}
+          />
+        </main>
+      </div>
     </div>
   );
 }
 
-export default SuperAdminDashboard; 
+export default SuperAdminDashboard;

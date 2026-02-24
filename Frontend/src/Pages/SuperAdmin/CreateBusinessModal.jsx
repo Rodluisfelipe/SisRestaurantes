@@ -17,6 +17,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
 
   const handleChange = e => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    if (error) setError("");
   };
 
   const generateSlug = () => {
@@ -46,6 +47,25 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
     }
   };
 
+  const fields = [
+    {
+      name: 'businessName', label: 'Nombre del negocio', placeholder: 'Ej: Tacos El Patrón', required: true,
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+    },
+    {
+      name: 'adminUsername', label: 'Usuario administrador', placeholder: 'Ej: juanperez', required: true,
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+    },
+    {
+      name: 'whatsappNumber', label: 'WhatsApp', placeholder: '+57 300 123 4567 (opcional)', required: false,
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+    },
+    {
+      name: 'logo', label: 'Logo URL', placeholder: 'https://... (opcional)', required: false,
+      icon: <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a2.25 2.25 0 002.25-2.25V5.25a2.25 2.25 0 00-2.25-2.25H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+    },
+  ];
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -53,190 +73,167 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50"
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
           onClick={onClose}
         >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+
           <motion.form
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ type: "spring", damping: 25 }}
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 10 }}
+            transition={{ type: "spring", damping: 30, stiffness: 400 }}
             onSubmit={handleSubmit}
             onClick={e => e.stopPropagation()}
-            className="bg-[#333F50]/95 rounded-2xl shadow-2xl p-8 w-full max-w-md mx-auto relative border border-[#333F50]"
+            className="relative w-full max-w-lg bg-[#0d1b2a]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden"
           >
-            <button 
-              type="button" 
-              onClick={onClose} 
-              className="absolute top-4 right-4 text-[#D1D9FF] hover:text-red-400 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            
-            <motion.h2 
-              initial={{ y: -10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="text-2xl font-bold text-white mb-6 text-center flex items-center gap-2 justify-center"
-            >
-              <svg className="w-7 h-7 text-[#3A7AFF]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-          Crear nuevo negocio
-            </motion.h2>
-            
-        <div className="space-y-4">
-              <motion.div 
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="relative"
-              >
-            <input
-                  className={`w-full border rounded-lg px-4 py-2.5 pl-10 bg-[#333F50]/50 border-[#333F50] text-white placeholder-[#A5B9FF]/70 focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF] ${form.businessName === '' && error ? 'border-red-400' : ''}`}
-              name="businessName"
-              placeholder="Nombre del negocio"
-              value={form.businessName}
-              onChange={handleChange}
-              required
-            />
-                <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#A5B9FF]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                </svg>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="relative flex items-center gap-2"
-              >
-            <div className="relative flex-grow">
-              <input
-                    className="w-full border rounded-lg px-4 py-2.5 pl-10 bg-[#333F50]/50 border-[#333F50] text-white placeholder-[#A5B9FF]/70 focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF]"
-                name="logo"
-                placeholder="URL del logo (opcional)"
-                value={form.logo}
-                onChange={handleChange}
-              />
-                  <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#A5B9FF]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            {/* Top accent */}
+            <div className="h-[2px] bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+
+            <div className="p-6 sm:p-8">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">Nuevo negocio</h2>
+                    <p className="text-xs text-white/30">Completa los datos del negocio</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-2 text-white/30 hover:text-white/60 hover:bg-white/[0.06] rounded-xl transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
+                </button>
+              </div>
+
+              {/* Fields */}
+              <div className="space-y-4">
+                {fields.map((field, idx) => (
+                  <motion.div
+                    key={field.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                  >
+                    <label className="block text-xs font-medium text-white/40 mb-1.5 ml-1">
+                      {field.label} {field.required && <span className="text-blue-400">*</span>}
+                    </label>
+                    <div className="relative group flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          name={field.name}
+                          value={form[field.name]}
+                          onChange={handleChange}
+                          required={field.required}
+                          placeholder={field.placeholder}
+                          className="w-full px-4 py-2.5 pl-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-blue-400/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-blue-400/20"
+                        />
+                        <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                          {field.icon}
+                        </svg>
+                      </div>
+                      {field.name === 'logo' && form.logo && (
+                        <img
+                          src={form.logo}
+                          alt="Preview"
+                          className="w-10 h-10 rounded-xl object-cover border border-white/10 flex-shrink-0"
+                          onError={e => e.target.style.display = 'none'}
+                        />
+                      )}
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Slug field with generate button */}
+                <motion.div
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <label className="block text-xs font-medium text-white/40 mb-1.5 ml-1">
+                    Slug <span className="text-blue-400">*</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1 group">
+                      <input
+                        name="slug"
+                        value={form.slug}
+                        onChange={handleChange}
+                        required
+                        placeholder="mi-negocio"
+                        className="w-full px-4 py-2.5 pl-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-blue-400/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-blue-400/20 font-mono"
+                      />
+                      <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-3.828a4.5 4.5 0 010 6.364l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757" />
+                      </svg>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={generateSlug}
+                      className="px-3 py-2.5 rounded-xl text-xs font-medium bg-white/[0.06] border border-white/[0.08] text-white/50 hover:text-white/80 hover:bg-white/[0.08] transition-all whitespace-nowrap"
+                    >
+                      Auto
+                    </button>
+                  </div>
+                  {form.slug && (
+                    <p className="mt-1.5 text-[11px] text-white/20 ml-1">
+                      menuby.tech/<span className="text-blue-400/60">{form.slug}</span>
+                    </p>
+                  )}
+                </motion.div>
+              </div>
+
+              {/* Error */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20"
+                >
+                  <p className="text-sm text-red-300/90">{error}</p>
+                </motion.div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium text-white/40 hover:text-white/60 bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.06] transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-300 ${
+                    loading
+                      ? 'bg-white/[0.06] text-white/30 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-lg shadow-blue-500/20'
+                  }`}
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Creando...
+                    </span>
+                  ) : 'Crear negocio'}
+                </button>
+              </div>
             </div>
-                {form.logo && (
-                  <motion.img 
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    src={form.logo} 
-                    alt="Logo preview" 
-                    className="w-10 h-10 rounded-full object-cover border border-[#5FF9B4] shadow-lg" 
-                    onError={e => e.target.style.display='none'} 
-                  />
-                )}
-              </motion.div>
-              
-              <motion.div 
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="relative"
-              >
-            <input
-                  className="w-full border rounded-lg px-4 py-2.5 pl-10 bg-[#333F50]/50 border-[#333F50] text-white placeholder-[#A5B9FF]/70 focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF]"
-              name="whatsappNumber"
-              placeholder="WhatsApp del negocio"
-              value={form.whatsappNumber}
-              onChange={handleChange}
-            />
-                <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#5FF9B4]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.4 }}
-                className="relative"
-              >
-            <input
-                  className={`w-full border rounded-lg px-4 py-2.5 pl-10 bg-[#333F50]/50 border-[#333F50] text-white placeholder-[#A5B9FF]/70 focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF] ${form.adminUsername === '' && error ? 'border-red-400' : ''}`}
-              name="adminUsername"
-              placeholder="Usuario admin principal"
-              value={form.adminUsername}
-              onChange={handleChange}
-              required
-            />
-                <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#A5B9FF]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5.121 17.804A13.937 13.937 0 0112 15c2.5 0 4.847.655 6.879 1.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </motion.div>
-              
-              <motion.div 
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="relative flex items-center gap-2"
-              >
-            <div className="relative flex-grow">
-              <input
-                    className={`w-full border rounded-lg px-4 py-2.5 pl-10 bg-[#333F50]/50 border-[#333F50] text-white placeholder-[#A5B9FF]/70 focus:outline-none focus:ring-[#3A7AFF] focus:border-[#3A7AFF] ${form.slug === '' && error ? 'border-red-400' : ''}`}
-                name="slug"
-                placeholder="Slug único (ej: tacos, pizza)"
-                value={form.slug}
-                onChange={handleChange}
-                required
-              />
-                  <svg className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#A5B9FF]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
-                  </svg>
-            </div>
-            <button 
-              type="button" 
-              onClick={generateSlug}
-                  className="text-[#051C2C] bg-[#5FF9B4] hover:bg-[#5FF9B4]/90 px-3 py-2 rounded-lg text-sm font-medium shadow-md transition-colors"
-            >
-              Generar
-            </button>
-              </motion.div>
-          </div>
-            
-            {error && (
-              <motion.div 
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-4 p-3 bg-red-500/20 text-red-300 text-sm rounded-lg border border-red-500/30 text-center"
-              >
-                {error}
-              </motion.div>
-            )}
-            
-            <motion.button
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6 }}
-          type="submit"
-              className={`w-full mt-6 py-3 rounded-lg text-white font-bold text-lg shadow-lg flex items-center justify-center gap-2 ${
-                loading 
-                  ? 'bg-[#3A7AFF]/50 cursor-not-allowed' 
-                  : 'bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 hover:shadow-[#3A7AFF]/20'
-              } transition-all duration-300`}
-          disabled={loading}
-        >
-          {loading ? (
-            <span className="flex items-center gap-2">
-                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-              Creando...
-            </span>
-          ) : "Crear negocio"}
-            </motion.button>
           </motion.form>
         </motion.div>
       )}
     </AnimatePresence>
   );
-} 
+}
