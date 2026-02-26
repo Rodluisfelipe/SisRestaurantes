@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaFolderOpen, FaPlus, FaTrash, FaTag, FaAlignLeft, FaGripVertical, FaSave, FaTimes, FaExclamationTriangle, FaCheck, FaSyncAlt, FaBoxOpen } from 'react-icons/fa';
+import { FaFolderOpen, FaPlus, FaTrash, FaTag, FaAlignLeft, FaGripVertical, FaSave, FaTimes, FaExclamationTriangle, FaCheck, FaSyncAlt, FaBoxOpen, FaPen } from 'react-icons/fa';
 import api from '../services/api';
 import { useParams } from 'react-router-dom';
 import { socket } from '../services/socket';
@@ -60,6 +60,10 @@ const CategorySettings = () => {
   // Estado para el modal de eliminación
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
+  // Estado para edición inline
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({ name: '', description: '' });
+  const [editLoading, setEditLoading] = useState(false);
 
   useEffect(() => {
     fetchCategories();
@@ -166,6 +170,37 @@ const CategorySettings = () => {
       setTimeout(() => setError(null), 3000);
       setShowDeleteModal(false);
       setCategoryToDelete(null);
+    }
+  };
+
+  const startEdit = (category) => {
+    setEditingId(category._id);
+    setEditData({ name: category.name, description: category.description || '' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData({ name: '', description: '' });
+  };
+
+  const saveEdit = async (id) => {
+    if (!editData.name.trim()) return;
+    setEditLoading(true);
+    try {
+      await api.put(`/categories/${id}`, { name: editData.name.trim(), description: editData.description.trim(), businessId });
+      setSuccessMessage('Categoría actualizada correctamente');
+      setTimeout(() => setSuccessMessage(''), 3000);
+      setEditingId(null);
+      fetchCategories();
+    } catch (error) {
+      if (error.response?.status === 400 && error.response.data?.message?.includes('Ya existe')) {
+        setError('Ya existe una categoría con ese nombre.');
+      } else {
+        setError('Error al actualizar la categoría');
+      }
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -411,33 +446,99 @@ const CategorySettings = () => {
                 {categories.map((category) => {
                   const orderMap = getSavedOrder();
                   const displayOrder = orderMap[category._id] !== undefined ? orderMap[category._id] + 1 : '—';
+                  const isEditing = editingId === category._id;
 
                   return (
                     <div
                       key={category._id}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
+                      className={`px-4 py-3 hover:bg-slate-50 transition-colors ${isEditing ? 'bg-blue-50/40' : ''}`}
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FaFolderOpen className="text-blue-500 text-xs" />
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <FaPen className="text-blue-500 text-xs" />
+                            </div>
+                            <span className="text-xs font-semibold text-blue-600">Editando categoría</span>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-medium text-slate-500 mb-1 block">Nombre</label>
+                            <input
+                              type="text"
+                              value={editData.name}
+                              onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                              className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 px-3 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                              autoFocus
+                              onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(category._id); if (e.key === 'Escape') cancelEdit(); }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-medium text-slate-500 mb-1 block">Descripción</label>
+                            <input
+                              type="text"
+                              value={editData.description}
+                              onChange={(e) => setEditData({ ...editData, description: e.target.value })}
+                              className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 px-3 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                              placeholder="Descripción opcional..."
+                              onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(category._id); if (e.key === 'Escape') cancelEdit(); }}
+                            />
+                          </div>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={cancelEdit}
+                              disabled={editLoading}
+                              className="px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => saveEdit(category._id)}
+                              disabled={editLoading || !editData.name.trim()}
+                              className={`px-3 py-1.5 text-xs font-medium rounded-lg flex items-center gap-1.5 transition-colors ${
+                                editLoading || !editData.name.trim()
+                                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                  : 'bg-blue-500 text-white hover:bg-blue-600'
+                              }`}
+                            >
+                              <FaSave className="text-[10px]" />
+                              {editLoading ? 'Guardando...' : 'Guardar'}
+                            </button>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <h4 className="text-xs font-semibold text-slate-800 truncate">{category.name}</h4>
-                          {category.description && (
-                            <p className="text-[11px] text-slate-400 truncate">{category.description}</p>
-                          )}
+                      ) : (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <FaFolderOpen className="text-blue-500 text-xs" />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-semibold text-slate-800 truncate">{category.name}</h4>
+                              {category.description && (
+                                <p className="text-[11px] text-slate-400 truncate">{category.description}</p>
+                              )}
+                            </div>
+                            <span className="bg-slate-100 text-slate-500 text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0">
+                              #{displayOrder}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 ml-3 flex-shrink-0">
+                            <button
+                              onClick={() => startEdit(category)}
+                              className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Editar"
+                            >
+                              <FaPen className="text-xs" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(category._id)}
+                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Eliminar"
+                            >
+                              <FaTrash className="text-xs" />
+                            </button>
+                          </div>
                         </div>
-                        <span className="bg-slate-100 text-slate-500 text-[10px] font-medium px-1.5 py-0.5 rounded flex-shrink-0">
-                          #{displayOrder}
-                        </span>
-                      </div>
-                      <button
-                        onClick={() => handleDelete(category._id)}
-                        className="ml-3 p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                        title="Eliminar"
-                      >
-                        <FaTrash className="text-xs" />
-                      </button>
+                      )}
                     </div>
                   );
                 })}
