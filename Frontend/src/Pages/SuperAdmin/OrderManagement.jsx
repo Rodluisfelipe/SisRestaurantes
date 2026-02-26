@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://157-245-125-216.nip.io/api";
+const API_URL = (import.meta.env.VITE_API_URL || "https://157-245-125-216.nip.io") + "/api";
 
 const STATUS_CONFIG = {
   pending:           { label: "Pendiente",        color: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
