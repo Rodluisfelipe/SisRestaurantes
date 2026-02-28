@@ -707,159 +707,166 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   </>
                 )}
 
-                {/* Avisos informativos */}
-                <div className="space-y-3 mt-4">
-
-                  {isInAppMode ? (
-                    /* Info de pago para modo in-app */
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">💳</span>
-                        <p className="text-sm text-blue-900 font-semibold">Medios de pago disponibles</p>
-                      </div>
-                      <p className="text-xs text-blue-700">Realiza tu pago y luego sube el comprobante desde el seguimiento del pedido.</p>
-                      
-                      {/* Nequi - check paymentMethods config with backward compat */}
-                      {businessConfig?.paymentInfo?.nequi && (
-                        (businessConfig.paymentMethods?.nequi ? (businessConfig.paymentMethods.nequi.enabled && businessConfig.paymentMethods.nequi.modes?.inapp !== false) : true)
-                      ) && (
-                        <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">📱</span>
-                            <div>
-                              <p className="text-xs text-gray-500">Nequi</p>
-                              <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.nequi}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(businessConfig.paymentInfo.nequi);
-                            }}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                      )}
-                      
-                      {/* Daviplata */}
-                      {businessConfig?.paymentInfo?.daviplata && (
-                        (businessConfig.paymentMethods?.daviplata ? (businessConfig.paymentMethods.daviplata.enabled && businessConfig.paymentMethods.daviplata.modes?.inapp !== false) : true)
-                      ) && (
-                        <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">📲</span>
-                            <div>
-                              <p className="text-xs text-gray-500">Daviplata</p>
-                              <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.daviplata}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(businessConfig.paymentInfo.daviplata);
-                            }}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                      )}
-                      
-                      {/* Transferencia bancaria */}
-                      {businessConfig?.paymentInfo?.bankAccountNumber && (
-                        (businessConfig.paymentMethods?.transferencia ? (businessConfig.paymentMethods.transferencia.enabled && businessConfig.paymentMethods.transferencia.modes?.inapp !== false) : true)
-                      ) && (
-                        <div className="bg-white rounded-lg px-3 py-2 border border-blue-100 space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">🏦</span>
-                            <p className="text-xs text-gray-500">Transferencia bancaria</p>
-                          </div>
-                          <div className="pl-7 space-y-0.5">
-                            {businessConfig.paymentInfo.bankName && (
-                              <p className="text-xs text-gray-600">{businessConfig.paymentInfo.bankName} - {businessConfig.paymentInfo.bankAccountType || 'Ahorros'}</p>
-                            )}
-                            <div className="flex items-center justify-between">
-                              <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.bankAccountNumber}</p>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(businessConfig.paymentInfo.bankAccountNumber);
-                                }}
-                                className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
-                              >
-                                Copiar
-                              </button>
-                            </div>
-                            {businessConfig.paymentInfo.accountHolder && (
-                              <p className="text-xs text-gray-500">Titular: {businessConfig.paymentInfo.accountHolder}</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {businessConfig?.paymentInfo?.instructions && (
-                        <p className="text-xs text-blue-700 italic">💡 {businessConfig.paymentInfo.instructions}</p>
-                      )}
-                    </div>
-                  ) : (
-                    /* Selector de método de pago + aviso WhatsApp */
-                    <div className="space-y-3">
-                      {/* Payment method selector */}
-                      {(() => {
-                        const pm = businessConfig?.paymentMethods;
-                        const isMethodEnabled = (id, fallback) => {
-                          if (!pm || !pm[id]) return fallback; // backward compat
-                          return pm[id].enabled && pm[id].modes?.whatsapp !== false;
-                        };
-                        const methods = [
-                          ...(isMethodEnabled('efectivo', true) ? [{ id: 'efectivo', label: 'Efectivo', icon: '💵' }] : []),
-                          ...(isMethodEnabled('nequi', !!businessConfig?.paymentInfo?.nequi) ? [{ id: 'nequi', label: 'Nequi', icon: '📱' }] : []),
-                          ...(isMethodEnabled('daviplata', !!businessConfig?.paymentInfo?.daviplata) ? [{ id: 'daviplata', label: 'Daviplata', icon: '📲' }] : []),
-                          ...(isMethodEnabled('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', icon: '🏦' }] : []),
-                        ];
-                        return methods.length > 0 ? (
-                          <div>
-                            <p className="text-xs font-semibold text-gray-600 mb-2">💳 Método de pago</p>
-                            <div className={`grid gap-2 ${methods.length <= 2 ? 'grid-cols-2' : methods.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
-                              {methods.map(m => (
-                                <button
-                                  key={m.id}
-                                  type="button"
-                                  onClick={() => setSelectedPaymentMethod(selectedPaymentMethod === m.id ? null : m.id)}
-                                  className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-center ${
-                                    selectedPaymentMethod === m.id
-                                      ? 'border-green-500 bg-green-50 shadow-sm'
-                                      : 'border-gray-200 bg-white'
-                                  }`}
-                                >
-                                  <span className="text-lg">{m.icon}</span>
-                                  <span className={`text-[11px] font-semibold ${selectedPaymentMethod === m.id ? 'text-green-700' : 'text-gray-500'}`}>{m.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ) : null;
-                      })()}
-
-                      <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-300 rounded-lg">
-                        <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                        </svg>
-                        <div>
-                          <p className="text-sm text-green-900 font-semibold">
-                            📱 Importante: Envía tu pedido por WhatsApp
-                          </p>
-                          <p className="text-xs text-green-700 mt-1">
-                            Al confirmar, se abrirá WhatsApp con tu pedido listo para enviar
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </>
+            )}
+
+            {/* Métodos de pago y avisos - visible para todos los tipos de pedido */}
+            {(orderType === 'delivery' ? locationChecked : true) && (
+              <div className="space-y-3 mt-4">
+
+                {isInAppMode ? (
+                  /* Info de pago para modo in-app */
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">💳</span>
+                      <p className="text-sm text-blue-900 font-semibold">Medios de pago disponibles</p>
+                    </div>
+                    <p className="text-xs text-blue-700">Realiza tu pago y luego sube el comprobante desde el seguimiento del pedido.</p>
+                    
+                    {/* Nequi - check paymentMethods config with backward compat */}
+                    {businessConfig?.paymentInfo?.nequi && (
+                      (businessConfig.paymentMethods?.nequi ? (businessConfig.paymentMethods.nequi.enabled && businessConfig.paymentMethods.nequi.modes?.inapp !== false) : true)
+                    ) && (
+                      <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">📱</span>
+                          <div>
+                            <p className="text-xs text-gray-500">Nequi</p>
+                            <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.nequi}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(businessConfig.paymentInfo.nequi);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Daviplata */}
+                    {businessConfig?.paymentInfo?.daviplata && (
+                      (businessConfig.paymentMethods?.daviplata ? (businessConfig.paymentMethods.daviplata.enabled && businessConfig.paymentMethods.daviplata.modes?.inapp !== false) : true)
+                    ) && (
+                      <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">📲</span>
+                          <div>
+                            <p className="text-xs text-gray-500">Daviplata</p>
+                            <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.daviplata}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(businessConfig.paymentInfo.daviplata);
+                          }}
+                          className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Transferencia bancaria */}
+                    {businessConfig?.paymentInfo?.bankAccountNumber && (
+                      (businessConfig.paymentMethods?.transferencia ? (businessConfig.paymentMethods.transferencia.enabled && businessConfig.paymentMethods.transferencia.modes?.inapp !== false) : true)
+                    ) && (
+                      <div className="bg-white rounded-lg px-3 py-2 border border-blue-100 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🏦</span>
+                          <p className="text-xs text-gray-500">Transferencia bancaria</p>
+                        </div>
+                        <div className="pl-7 space-y-0.5">
+                          {businessConfig.paymentInfo.bankName && (
+                            <p className="text-xs text-gray-600">{businessConfig.paymentInfo.bankName} - {businessConfig.paymentInfo.bankAccountType || 'Ahorros'}</p>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.bankAccountNumber}</p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(businessConfig.paymentInfo.bankAccountNumber);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50"
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                          {businessConfig.paymentInfo.accountHolder && (
+                            <p className="text-xs text-gray-500">Titular: {businessConfig.paymentInfo.accountHolder}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {businessConfig?.paymentInfo?.instructions && (
+                      <p className="text-xs text-blue-700 italic">💡 {businessConfig.paymentInfo.instructions}</p>
+                    )}
+                  </div>
+                ) : (
+                  /* Selector de método de pago + aviso WhatsApp */
+                  <div className="space-y-3">
+                    {/* Payment method selector */}
+                    {(() => {
+                      const pm = businessConfig?.paymentMethods;
+                      const isMethodEnabled = (id, fallback) => {
+                        if (!pm || !pm[id]) return fallback; // backward compat
+                        return pm[id].enabled && pm[id].modes?.whatsapp !== false;
+                      };
+                      const methods = [
+                        ...(isMethodEnabled('efectivo', true) ? [{ id: 'efectivo', label: 'Efectivo', icon: '💵' }] : []),
+                        ...(isMethodEnabled('nequi', !!businessConfig?.paymentInfo?.nequi) ? [{ id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg' }] : []),
+                        ...(isMethodEnabled('daviplata', !!businessConfig?.paymentInfo?.daviplata) ? [{ id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA' }] : []),
+                        ...(isMethodEnabled('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', icon: '🏦' }] : []),
+                      ];
+                      return methods.length > 0 ? (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 mb-2">💳 Método de pago</p>
+                          <div className={`grid gap-2 ${methods.length <= 2 ? 'grid-cols-2' : methods.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                            {methods.map(m => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => setSelectedPaymentMethod(selectedPaymentMethod === m.id ? null : m.id)}
+                                className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border-2 transition-all text-center ${
+                                  selectedPaymentMethod === m.id
+                                    ? 'border-green-500 bg-green-50 shadow-sm'
+                                    : 'border-gray-200 bg-white'
+                                }`}
+                              >
+                                {m.logo ? (
+                                  <img src={m.logo} alt={m.label} className="w-7 h-7 object-contain rounded" />
+                                ) : (
+                                  <span className="text-lg">{m.icon}</span>
+                                )}
+                                <span className={`text-[11px] font-semibold ${selectedPaymentMethod === m.id ? 'text-green-700' : 'text-gray-500'}`}>{m.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+
+                    <div className="flex items-start gap-3 p-3 bg-green-50 border border-green-300 rounded-lg">
+                      <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                      </svg>
+                      <div>
+                        <p className="text-sm text-green-900 font-semibold">
+                          📱 Importante: Envía tu pedido por WhatsApp
+                        </p>
+                        <p className="text-xs text-green-700 mt-1">
+                          Al confirmar, se abrirá WhatsApp con tu pedido listo para enviar
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Botón de confirmar solo se muestra si no es delivery O si ya se verificó la ubicación */}

@@ -122,7 +122,7 @@ const WhatsAppCustomizer = () => {
       address: isDel ? `📍 Calle 123 #45-67${hasZones ? ' (Centro)' : ''}` : null,
       phone: isDel ? '📞 +573001234567' : null,
       paymentMethod: `💳 Pago: ${payLabel}`,
-      products: '2x *Hamburguesa Especial* · $30,000\n   ﹥ Proteína: Carne doble +$3,000\n   ﹥ Tipo de pan: Artesanal +$1,000\n1x *Coca-Cola 400ml* · $5,000',
+      products: '2x *Hamburguesa Especial* · $26,000\n   ﹥ Proteína: Carne doble +$3,000\n   ﹥ Tipo de pan: Artesanal +$1,000\n1x *Coca-Cola 400ml* · $5,000',
       totals: isDel ? 'Subtotal: $39,000\nEnvío: $5,000\n*Total: $44,000*' : '*Total: $35,000*',
       customMessage: customMessage || null,
     };

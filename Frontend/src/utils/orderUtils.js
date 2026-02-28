@@ -111,8 +111,8 @@ export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalI
     products: () => {
       let items = '';
       cart.forEach(item => {
-        const subtotal = calculateItemPrice(item);
-        items += `${item.quantity}x *${item.name}* · $${subtotal.toLocaleString()}\n`;
+        const basePrice = parseFloat(item.finalPrice || item.price || 0) * (item.quantity || 1);
+        items += `${item.quantity}x *${item.name}* · $${basePrice.toLocaleString()}\n`;
         if (item.selectedToppings?.length > 0) {
           item.selectedToppings.forEach(t => {
             if (t.optionName) {
