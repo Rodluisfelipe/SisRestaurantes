@@ -169,13 +169,20 @@ const OrderTracker = ({
     }
   };
 
-  // Build available payment methods from config
-  const paymentMethods = [
-    paymentInfo.nequi && { id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg', color: '#200020', bg: '#F3E8FF', number: paymentInfo.nequi },
-    paymentInfo.daviplata && { id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA', color: '#DC2626', bg: '#FEF2F2', number: paymentInfo.daviplata },
-    paymentInfo.bankAccountNumber && { id: 'bank', label: paymentInfo.bankName || 'Banco', icon: '🏦', color: '#1D4ED8', bg: '#EFF6FF',
-      number: paymentInfo.bankAccountNumber, extra: `${paymentInfo.bankAccountType || 'Cuenta'}${paymentInfo.accountHolder ? ` · ${paymentInfo.accountHolder}` : ''}` },
-  ].filter(Boolean);
+  // Build available payment methods from config (respects paymentMethods per-mode toggles)
+  const paymentMethods = (() => {
+    const pm = businessConfig?.paymentMethods;
+    const isEnabled = (id, fallback) => {
+      if (!pm || !pm[id]) return fallback; // backward compat
+      return pm[id].enabled && pm[id].modes?.inapp !== false;
+    };
+    return [
+      isEnabled('nequi', !!paymentInfo.nequi) && paymentInfo.nequi && { id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg', color: '#200020', bg: '#F3E8FF', number: paymentInfo.nequi },
+      isEnabled('daviplata', !!paymentInfo.daviplata) && paymentInfo.daviplata && { id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA', color: '#DC2626', bg: '#FEF2F2', number: paymentInfo.daviplata },
+      isEnabled('transferencia', !!paymentInfo.bankAccountNumber) && paymentInfo.bankAccountNumber && { id: 'bank', label: paymentInfo.bankName || 'Banco', icon: '🏦', color: '#1D4ED8', bg: '#EFF6FF',
+        number: paymentInfo.bankAccountNumber, extra: `${paymentInfo.bankAccountType || 'Cuenta'}${paymentInfo.accountHolder ? ` · ${paymentInfo.accountHolder}` : ''}` },
+    ].filter(Boolean);
+  })();
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).catch(() => {});

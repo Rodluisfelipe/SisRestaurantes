@@ -157,6 +157,37 @@ const businessConfigSchema = new mongoose.Schema({
     accountHolder: { type: String, default: '' },
     instructions: { type: String, default: '' }
   },
+  // Métodos de pago configurables por modo de pedido
+  paymentMethods: {
+    efectivo: {
+      enabled: { type: Boolean, default: true },
+      modes: {
+        whatsapp: { type: Boolean, default: true },
+        inapp: { type: Boolean, default: true }
+      }
+    },
+    nequi: {
+      enabled: { type: Boolean, default: false },
+      modes: {
+        whatsapp: { type: Boolean, default: true },
+        inapp: { type: Boolean, default: true }
+      }
+    },
+    daviplata: {
+      enabled: { type: Boolean, default: false },
+      modes: {
+        whatsapp: { type: Boolean, default: true },
+        inapp: { type: Boolean, default: true }
+      }
+    },
+    transferencia: {
+      enabled: { type: Boolean, default: false },
+      modes: {
+        whatsapp: { type: Boolean, default: true },
+        inapp: { type: Boolean, default: true }
+      }
+    }
+  },
   isActive: {
     type: Boolean,
     default: true

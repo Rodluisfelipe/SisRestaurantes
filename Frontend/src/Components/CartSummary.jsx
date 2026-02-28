@@ -719,7 +719,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                       </div>
                       <p className="text-xs text-blue-700">Realiza tu pago y luego sube el comprobante desde el seguimiento del pedido.</p>
                       
+                      {/* Nequi - check paymentMethods config with backward compat */}
                       {businessConfig?.paymentInfo?.nequi && (
+                        (businessConfig.paymentMethods?.nequi ? (businessConfig.paymentMethods.nequi.enabled && businessConfig.paymentMethods.nequi.modes?.inapp !== false) : true)
+                      ) && (
                         <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
                           <div className="flex items-center gap-2">
                             <span className="text-base">📱</span>
@@ -740,7 +743,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         </div>
                       )}
                       
+                      {/* Daviplata */}
                       {businessConfig?.paymentInfo?.daviplata && (
+                        (businessConfig.paymentMethods?.daviplata ? (businessConfig.paymentMethods.daviplata.enabled && businessConfig.paymentMethods.daviplata.modes?.inapp !== false) : true)
+                      ) && (
                         <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
                           <div className="flex items-center gap-2">
                             <span className="text-base">📲</span>
@@ -761,7 +767,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         </div>
                       )}
                       
+                      {/* Transferencia bancaria */}
                       {businessConfig?.paymentInfo?.bankAccountNumber && (
+                        (businessConfig.paymentMethods?.transferencia ? (businessConfig.paymentMethods.transferencia.enabled && businessConfig.paymentMethods.transferencia.modes?.inapp !== false) : true)
+                      ) && (
                         <div className="bg-white rounded-lg px-3 py-2 border border-blue-100 space-y-1">
                           <div className="flex items-center gap-2">
                             <span className="text-base">🏦</span>
@@ -799,11 +808,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     <div className="space-y-3">
                       {/* Payment method selector */}
                       {(() => {
+                        const pm = businessConfig?.paymentMethods;
+                        const isMethodEnabled = (id, fallback) => {
+                          if (!pm || !pm[id]) return fallback; // backward compat
+                          return pm[id].enabled && pm[id].modes?.whatsapp !== false;
+                        };
                         const methods = [
-                          { id: 'efectivo', label: 'Efectivo', icon: '💵' },
-                          ...(businessConfig?.paymentInfo?.nequi ? [{ id: 'nequi', label: 'Nequi', icon: '📱' }] : []),
-                          ...(businessConfig?.paymentInfo?.daviplata ? [{ id: 'daviplata', label: 'Daviplata', icon: '📲' }] : []),
-                          ...(businessConfig?.paymentInfo?.bankAccountNumber ? [{ id: 'transferencia', label: 'Transferencia', icon: '🏦' }] : []),
+                          ...(isMethodEnabled('efectivo', true) ? [{ id: 'efectivo', label: 'Efectivo', icon: '💵' }] : []),
+                          ...(isMethodEnabled('nequi', !!businessConfig?.paymentInfo?.nequi) ? [{ id: 'nequi', label: 'Nequi', icon: '📱' }] : []),
+                          ...(isMethodEnabled('daviplata', !!businessConfig?.paymentInfo?.daviplata) ? [{ id: 'daviplata', label: 'Daviplata', icon: '📲' }] : []),
+                          ...(isMethodEnabled('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', icon: '🏦' }] : []),
                         ];
                         return methods.length > 0 ? (
                           <div>
