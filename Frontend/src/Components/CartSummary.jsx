@@ -1577,7 +1577,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               const handleConfirmClick = () => {
                 if (isDisabled) return;
                 
-                if (!selectedPaymentMethod) {
+                if (anyPaymentAvailable && !selectedPaymentMethod) {
                   alert('Por favor selecciona un método de pago');
                   return;
                 }
