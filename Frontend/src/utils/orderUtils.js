@@ -81,7 +81,7 @@ export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalI
   const customText = config?.customMessage || '';
 
   // Constructores de cada módulo
-  const PAYMENT_LABELS = { efectivo: '💵 Efectivo', nequi: '📱 Nequi', daviplata: '📲 Daviplata', transferencia: '🏦 Transferencia' };
+  const PAYMENT_LABELS = { efectivo: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transferencia: 'Transferencia' };
 
   const builders = {
     header: () => `🧾 *${businessName}*`,
@@ -105,22 +105,40 @@ export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalI
 
     paymentMethod: () => {
       if (!orderInfo.paymentMethod) return null;
-      let line = `💳 ${PAYMENT_LABELS[orderInfo.paymentMethod] || orderInfo.paymentMethod}`;
       const pi = businessConfig?.paymentInfo;
-      if (pi) {
-        if (orderInfo.paymentMethod === 'nequi' && pi.nequi) {
-          line += `\n📱 Paga en Nequi al: *${pi.nequi}*`;
-        } else if (orderInfo.paymentMethod === 'daviplata' && pi.daviplata) {
-          line += `\n📲 Paga en Daviplata al: *${pi.daviplata}*`;
-        } else if (orderInfo.paymentMethod === 'transferencia' && pi.bankAccountNumber) {
-          line += `\n🏦 Transfiere a:`;
-          if (pi.bankName) line += ` *${pi.bankName}*`;
+      const method = orderInfo.paymentMethod;
+
+      if (method === 'efectivo') {
+        return '💵 Efectivo';
+      }
+
+      if (method === 'nequi') {
+        let line = '📱 Nequi';
+        if (pi?.nequi) line += `\nPaga al: *${pi.nequi}*`;
+        if (pi?.instructions) line += `\n📝 ${pi.instructions}`;
+        return line;
+      }
+
+      if (method === 'daviplata') {
+        let line = '📲 Daviplata';
+        if (pi?.daviplata) line += `\nPaga al: *${pi.daviplata}*`;
+        if (pi?.instructions) line += `\n📝 ${pi.instructions}`;
+        return line;
+      }
+
+      if (method === 'transferencia') {
+        let line = '🏦 Transferencia';
+        if (pi?.bankAccountNumber) {
+          if (pi.bankName) line += `\nBanco: *${pi.bankName}*`;
           if (pi.bankAccountType) line += ` - ${pi.bankAccountType}`;
           line += `\nCuenta: *${pi.bankAccountNumber}*`;
           if (pi.accountHolder) line += `\nTitular: ${pi.accountHolder}`;
         }
+        if (pi?.instructions) line += `\n📝 ${pi.instructions}`;
+        return line;
       }
-      return line;
+
+      return `💳 ${method}`;
     },
 
     products: () => {
