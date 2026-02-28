@@ -105,7 +105,22 @@ export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalI
 
     paymentMethod: () => {
       if (!orderInfo.paymentMethod) return null;
-      return `💳 ${PAYMENT_LABELS[orderInfo.paymentMethod] || orderInfo.paymentMethod}`;
+      let line = `💳 ${PAYMENT_LABELS[orderInfo.paymentMethod] || orderInfo.paymentMethod}`;
+      const pi = businessConfig?.paymentInfo;
+      if (pi) {
+        if (orderInfo.paymentMethod === 'nequi' && pi.nequi) {
+          line += `\n📱 Paga en Nequi al: *${pi.nequi}*`;
+        } else if (orderInfo.paymentMethod === 'daviplata' && pi.daviplata) {
+          line += `\n📲 Paga en Daviplata al: *${pi.daviplata}*`;
+        } else if (orderInfo.paymentMethod === 'transferencia' && pi.bankAccountNumber) {
+          line += `\n🏦 Transfiere a:`;
+          if (pi.bankName) line += ` *${pi.bankName}*`;
+          if (pi.bankAccountType) line += ` - ${pi.bankAccountType}`;
+          line += `\nCuenta: *${pi.bankAccountNumber}*`;
+          if (pi.accountHolder) line += `\nTitular: ${pi.accountHolder}`;
+        }
+      }
+      return line;
     },
 
     products: () => {
