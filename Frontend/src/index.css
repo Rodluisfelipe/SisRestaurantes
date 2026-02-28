@@ -6,6 +6,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Prevent iOS auto-zoom on input focus ── */
+/* iOS Safari zooms in when input font-size < 16px */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  /* Allow smaller font for non-interactive elements */
+  input[readonly],
+  input[disabled] {
+    font-size: inherit !important;
+  }
+}
+
 /* ── Mobile viewport fix (iOS Safari / Android Chrome) ── */
 /* dvh = dynamic viewport height: excludes browser chrome (URL bar, bottom bar) */
 /* Fallback to vh for older browsers */
