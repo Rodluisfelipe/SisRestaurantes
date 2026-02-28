@@ -1062,7 +1062,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           const updatedOrderInfo = {
             ...orderInfo,
             orderType: 'inSite',
-            tableNumber: existingTable
+            tableNumber: existingTable,
+            paymentMethod: selectedPaymentMethod
           };
           
           // Guardar en todas partes para asegurar consistencia
@@ -1098,6 +1099,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         const updatedOrderInfo = {
           ...orderInfo,
           orderType: 'takeaway',
+          paymentMethod: selectedPaymentMethod,
           // Asegurarnos de eliminar explícitamente el número de mesa para pedidos para llevar
           tableNumber: ''
         };
@@ -1466,6 +1468,49 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             </div>
           )}
 
+          {/* ── Selector de método de pago (main cart) ── */}
+          {(initialOrderTypeSelected || orderType) && (orderType !== 'delivery' || locationChecked) && (() => {
+            const pm = businessConfig?.paymentMethods;
+            const currentMode = isInAppMode ? 'inapp' : 'whatsapp';
+            const isEnabled = (id, fallback) => {
+              if (!pm || !pm[id]) return fallback;
+              return pm[id].enabled && pm[id].modes?.[currentMode] !== false;
+            };
+            const methods = [
+              ...(isEnabled('efectivo', true) ? [{ id: 'efectivo', label: 'Efectivo', icon: '💵' }] : []),
+              ...(isEnabled('nequi', !!businessConfig?.paymentInfo?.nequi) ? [{ id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg' }] : []),
+              ...(isEnabled('daviplata', !!businessConfig?.paymentInfo?.daviplata) ? [{ id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA' }] : []),
+              ...(isEnabled('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', icon: '🏦' }] : []),
+            ];
+            if (methods.length === 0) return null;
+            return (
+              <div className="px-1 mt-2">
+                <p className="text-[11px] font-semibold text-slate-500 mb-1.5">💳 Método de pago</p>
+                <div className={`grid gap-1.5 ${methods.length <= 2 ? 'grid-cols-2' : methods.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                  {methods.map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setSelectedPaymentMethod(selectedPaymentMethod === m.id ? null : m.id)}
+                      className={`flex flex-col items-center gap-0.5 py-2 rounded-xl border-2 transition-all text-center ${
+                        selectedPaymentMethod === m.id
+                          ? 'border-green-500 bg-green-50 shadow-sm'
+                          : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      {m.logo ? (
+                        <img src={m.logo} alt={m.label} className="w-6 h-6 object-contain rounded" />
+                      ) : (
+                        <span className="text-base">{m.icon}</span>
+                      )}
+                      <span className={`text-[10px] font-semibold ${selectedPaymentMethod === m.id ? 'text-green-700' : 'text-slate-500'}`}>{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
         </div>
 
         {/* ── Sticky bottom: Total + Confirm button ── */}
@@ -1528,13 +1573,13 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     return;
                   }
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = { ...orderInfo, orderType: 'inSite', tableNumber: trimmedTable || tableNumber };
+                  const updatedOrderInfo = { ...orderInfo, orderType: 'inSite', tableNumber: trimmedTable || tableNumber, paymentMethod: selectedPaymentMethod };
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
                   setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
                 } else if (orderType === 'takeaway') {
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = { ...orderInfo, orderType: 'takeaway', tableNumber: '' };
+                  const updatedOrderInfo = { ...orderInfo, orderType: 'takeaway', tableNumber: '', paymentMethod: selectedPaymentMethod };
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
                   setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
@@ -1544,6 +1589,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   setLocalIsSubmitting(true);
                   const updatedOrderInfo = {
                     ...orderInfo, orderType: 'delivery', address: trimmedAddress, tableNumber: '',
+                    paymentMethod: selectedPaymentMethod,
                     deliveryFee: deliveryFee || null, deliveryZoneName: deliveryZoneInfo?.zoneName || null,
                     deliveryZoneInfo: deliveryZoneInfo || null, deliveryCalculated: true, deliveryNeedsConfirmation: !deliveryFee
                   };
