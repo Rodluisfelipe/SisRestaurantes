@@ -482,9 +482,13 @@ function ModernOrdersDashboard() {
     }
   }, [businessId]);
 
+  // Only show orders with known, actionable statuses
+  const VISIBLE_STATUSES = ['pending', 'inProgress', 'completed', 'ready', 'payment_uploaded'];
+
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
     if (!order) return false;
+    if (!VISIBLE_STATUSES.includes(order.status)) return false;
     const name = (order.customerName || '').toLowerCase();
     const number = (order.orderNumber || '').toLowerCase();
     const search = searchTerm.toLowerCase();
