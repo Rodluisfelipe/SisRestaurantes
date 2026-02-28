@@ -941,10 +941,11 @@ export default function Menu() {
           selectedToppings: item.selectedToppings || []
         })),
         totalAmount: totalAmount.toString(), // Convertir a string para evitar problemas con 0
+        // Payment method (available in both WhatsApp and in-app modes)
+        paymentMethod: orderDetails.paymentMethod || null,
         // In-app ordering channel
         ...(isInAppMode && {
           orderChannel: 'inapp',
-          paymentMethod: orderDetails.paymentMethod || null,
           customerNotes: orderDetails.customerNotes || ''
         }),
         // Información del cupón si está aplicado
