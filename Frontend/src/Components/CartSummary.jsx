@@ -816,7 +816,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     {(() => {
                       const pm = businessConfig?.paymentMethods;
                       const isMethodEnabled = (id, fallback) => {
-                        if (!pm || !pm[id]) return fallback; // backward compat
+                        if (!pm || !pm[id]) return false; // no config = not enabled
                         return pm[id].enabled && pm[id].modes?.whatsapp !== false;
                       };
                       const methods = [
@@ -1395,7 +1395,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 const pm = businessConfig?.paymentMethods;
                 const currentMode = isInAppMode ? 'inapp' : 'whatsapp';
                 const isMethodOn = (id, fallback) => {
-                  if (!pm || !pm[id]) return fallback;
+                  if (!pm || !pm[id]) return false; // no config = not enabled
                   return pm[id].enabled && pm[id].modes?.[currentMode] !== false;
                 };
                 const methods = [
@@ -1566,7 +1566,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               const pmCfg = businessConfig?.paymentMethods;
               const curMode = isInAppMode ? 'inapp' : 'whatsapp';
               const anyPaymentAvailable = ['efectivo','nequi','daviplata','transferencia'].some(id => {
-                if (!pmCfg || !pmCfg[id]) return id === 'efectivo';
+                if (!pmCfg || !pmCfg[id]) return false;
                 return pmCfg[id].enabled && pmCfg[id].modes?.[curMode] !== false;
               });
               const needsPayment = anyPaymentAvailable && !selectedPaymentMethod;
