@@ -232,9 +232,15 @@ export const saveOrderInfo = (orderInfo) => {
   if (!orderInfo) return; // Prevenir errores con datos nulos
   
   if (!isQRMode()) {
-    // En modo normal, guardamos el nombre del cliente si existe para futuras sesiones
+    // En modo normal, guardamos datos del cliente en localStorage para futuras sesiones
     if (orderInfo.customerName) {
       saveToLocalStorage('customerName', orderInfo.customerName);
+    }
+    if (orderInfo.phone) {
+      saveToLocalStorage('customerPhone', orderInfo.phone);
+    }
+    if (orderInfo.address) {
+      saveToLocalStorage('customerAddress', orderInfo.address);
     }
     
     // Para el modo normal, creamos una copia sin el número de mesa
