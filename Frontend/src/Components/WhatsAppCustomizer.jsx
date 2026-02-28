@@ -81,6 +81,11 @@ const WhatsAppCustomizer = () => {
   };
 
   const saveTemplate = async () => {
+    if (!businessId) {
+      setError('No se pudo identificar el negocio');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
     setSaving(true);
     setError('');
     try {

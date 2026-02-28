@@ -53,7 +53,9 @@ router.get("/", async (req, res) => {
 // POST - Crear o actualizar template de WhatsApp
 router.post("/", tenantAuth, async (req, res) => {
   try {
-    const { businessId, messageTemplate, modules, customMessage } = req.body;
+    const { messageTemplate, modules, customMessage } = req.body;
+    // Accept businessId from body, resolved by tenantAuth, or from JWT
+    const businessId = req.body.businessId || req.resolvedBusinessId || req.user?.businessId;
     
     if (!businessId) {
       return res.status(400).json({ message: "businessId es requerido" });
