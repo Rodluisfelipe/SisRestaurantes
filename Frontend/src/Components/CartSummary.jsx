@@ -849,80 +849,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                               </button>
                             ))}
                           </div>
-
-                          {/* Payment info details based on selected method */}
-                          {selectedPaymentMethod && selectedPaymentMethod !== 'efectivo' && (
-                            <div className="mt-3 animate-in fade-in duration-200">
-                              {selectedPaymentMethod === 'nequi' && businessConfig?.paymentInfo?.nequi && (
-                                <div className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2.5 border border-green-200">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-base">📱</span>
-                                    <div>
-                                      <p className="text-xs text-gray-500">Nequi</p>
-                                      <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.nequi}</p>
-                                    </div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.nequi)}
-                                    className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
-                                  >
-                                    📋 Copiar
-                                  </button>
-                                </div>
-                              )}
-
-                              {selectedPaymentMethod === 'daviplata' && businessConfig?.paymentInfo?.daviplata && (
-                                <div className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2.5 border border-green-200">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-base">📲</span>
-                                    <div>
-                                      <p className="text-xs text-gray-500">Daviplata</p>
-                                      <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.daviplata}</p>
-                                    </div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.daviplata)}
-                                    className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
-                                  >
-                                    📋 Copiar
-                                  </button>
-                                </div>
-                              )}
-
-                              {selectedPaymentMethod === 'transferencia' && businessConfig?.paymentInfo?.bankAccountNumber && (
-                                <div className="bg-green-50 rounded-lg px-3 py-2.5 border border-green-200 space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-base">🏦</span>
-                                    <p className="text-xs text-gray-500">Transferencia bancaria</p>
-                                  </div>
-                                  <div className="pl-7 space-y-0.5">
-                                    {businessConfig.paymentInfo.bankName && (
-                                      <p className="text-xs text-gray-600">{businessConfig.paymentInfo.bankName} - {businessConfig.paymentInfo.bankAccountType || 'Ahorros'}</p>
-                                    )}
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.bankAccountNumber}</p>
-                                      <button
-                                        type="button"
-                                        onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.bankAccountNumber)}
-                                        className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
-                                      >
-                                        📋 Copiar
-                                      </button>
-                                    </div>
-                                    {businessConfig.paymentInfo.accountHolder && (
-                                      <p className="text-xs text-gray-500">Titular: {businessConfig.paymentInfo.accountHolder}</p>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-
-                              {businessConfig?.paymentInfo?.instructions && (
-                                <p className="text-xs text-gray-500 italic mt-2">💡 {businessConfig.paymentInfo.instructions}</p>
-                              )}
-                            </div>
-                          )}
                         </div>
                       ) : null;
                     })()}
@@ -1505,6 +1431,80 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         </button>
                       ))}
                     </div>
+
+                    {/* Payment info details based on selected method */}
+                    {selectedPaymentMethod && selectedPaymentMethod !== 'efectivo' && (
+                      <div className="mt-3">
+                        {selectedPaymentMethod === 'nequi' && businessConfig?.paymentInfo?.nequi && (
+                          <div className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2.5 border border-green-200">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">📱</span>
+                              <div>
+                                <p className="text-xs text-gray-500">Nequi</p>
+                                <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.nequi}</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.nequi)}
+                              className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
+                            >
+                              📋 Copiar
+                            </button>
+                          </div>
+                        )}
+
+                        {selectedPaymentMethod === 'daviplata' && businessConfig?.paymentInfo?.daviplata && (
+                          <div className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2.5 border border-green-200">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">📲</span>
+                              <div>
+                                <p className="text-xs text-gray-500">Daviplata</p>
+                                <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.daviplata}</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.daviplata)}
+                              className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
+                            >
+                              📋 Copiar
+                            </button>
+                          </div>
+                        )}
+
+                        {selectedPaymentMethod === 'transferencia' && businessConfig?.paymentInfo?.bankAccountNumber && (
+                          <div className="bg-green-50 rounded-lg px-3 py-2.5 border border-green-200 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-base">🏦</span>
+                              <p className="text-xs text-gray-500">Transferencia bancaria</p>
+                            </div>
+                            <div className="pl-7 space-y-0.5">
+                              {businessConfig.paymentInfo.bankName && (
+                                <p className="text-xs text-gray-600">{businessConfig.paymentInfo.bankName} - {businessConfig.paymentInfo.bankAccountType || 'Ahorros'}</p>
+                              )}
+                              <div className="flex items-center justify-between">
+                                <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.bankAccountNumber}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.bankAccountNumber)}
+                                  className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
+                                >
+                                  📋 Copiar
+                                </button>
+                              </div>
+                              {businessConfig.paymentInfo.accountHolder && (
+                                <p className="text-xs text-gray-500">Titular: {businessConfig.paymentInfo.accountHolder}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {businessConfig?.paymentInfo?.instructions && (
+                          <p className="text-xs text-gray-500 italic mt-2">💡 {businessConfig.paymentInfo.instructions}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
