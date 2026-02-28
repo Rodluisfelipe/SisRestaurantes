@@ -1182,7 +1182,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
       onTouchEnd={(e) => { if (e.target === backdropRef.current && touchStartedOnBackdrop.current) onClose(); touchStartedOnBackdrop.current = false; }}
     >
       <div 
-        className="bg-white sm:rounded-2xl rounded-t-2xl max-w-lg w-full modal-h-full sm:modal-h-desktop shadow-2xl border border-slate-200/50 flex flex-col pb-safe"
+        className="bg-white sm:rounded-2xl rounded-t-2xl max-w-lg w-full modal-h-full sm:modal-h-desktop shadow-2xl border border-slate-200/50 flex flex-col"
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
@@ -1517,7 +1517,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
         {/* ── Sticky bottom: Total + Confirm button ── */}
         {cart.length > 0 && (
-          <div className="border-t border-slate-200 bg-white px-4 pt-3 pb-5 sm:px-6 flex-shrink-0 pb-safe sm:rounded-b-2xl">
+          <div 
+            className="border-t border-slate-200 bg-white px-4 pt-3 sm:px-6 flex-shrink-0 sm:rounded-b-2xl"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 1.25rem))' }}
+          >
             {/* Price breakdown when there are extras */}
             {(deliveryFee > 0 || appliedCoupon) && (
               <div className="space-y-1 mb-2">
