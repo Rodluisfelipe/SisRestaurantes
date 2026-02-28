@@ -75,7 +75,10 @@ router.post("/", tenantAuth, async (req, res) => {
     if (template) {
       // Actualizar existente
       if (messageTemplate !== undefined) template.messageTemplate = messageTemplate;
-      if (modules) template.modules = modules;
+      if (modules) {
+        template.modules = modules;
+        template.markModified('modules');
+      }
       if (customMessage !== undefined) template.customMessage = customMessage;
     } else {
       // Crear nuevo
