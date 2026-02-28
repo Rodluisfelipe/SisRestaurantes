@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const WhatsAppTemplate = require("../Models/WhatsAppTemplate");
 const { validateAndResolveBusinessId } = require("../utils/businessValidator");
 const { isValidObjectId } = require("../utils/validators");
@@ -69,28 +70,23 @@ router.post("/", tenantAuth, async (req, res) => {
     
     const businessObjectId = businessResult.businessId;
     
-    // Buscar template existente o crear nuevo
-    let template = await WhatsAppTemplate.findOne({ businessId: businessObjectId });
+    // Build $set update object
+    const updateData = {};
+    if (messageTemplate !== undefined) updateData.messageTemplate = messageTemplate;
+    if (modules) updateData.modules = modules;
+    if (customMessage !== undefined) updateData.customMessage = customMessage;
+    updateData.updatedAt = new Date();
     
-    if (template) {
-      // Actualizar existente
-      if (messageTemplate !== undefined) template.messageTemplate = messageTemplate;
-      if (modules) {
-        template.modules = modules;
-        template.markModified('modules');
-      }
-      if (customMessage !== undefined) template.customMessage = customMessage;
-    } else {
-      // Crear nuevo
-      template = new WhatsAppTemplate({
-        businessId: businessObjectId,
-        messageTemplate: messageTemplate || '',
-        modules: modules || undefined,
-        customMessage: customMessage || ''
-      });
-    }
+    // Use native MongoDB driver to bypass Mongoose casting issues with 'id' field
+    const objectId = new mongoose.Types.ObjectId(businessObjectId);
+    const result = await WhatsAppTemplate.collection.updateOne(
+      { businessId: objectId },
+      { $set: updateData },
+      { upsert: true }
+    );
     
-    const savedTemplate = await template.save();
+    // Fetch the updated document to return
+    const savedTemplate = await WhatsAppTemplate.findOne({ businessId: businessObjectId });
     
     logger.info(`Updated WhatsApp template for business ${businessId}`);
     res.json(savedTemplate);
