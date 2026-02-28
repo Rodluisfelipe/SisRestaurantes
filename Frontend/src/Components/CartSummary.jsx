@@ -517,7 +517,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             orderType: 'inSite',
             tableNumber: trimmedTableNumber,
             // Mantener el teléfono que ya tenemos desde el inicio
-            phone: orderInfo.phone
+            phone: orderInfo.phone,
+            paymentMethod: selectedPaymentMethod
           };
 
           logSystem(`Pedido en sitio procesado - Mesa: ${trimmedTableNumber}, Cliente: ${orderInfo.customerName}`);
@@ -555,6 +556,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             // Mantener el teléfono que ya tenemos desde el inicio
             phone: orderInfo.phone,
             address: trimmedAddress,
+            paymentMethod: selectedPaymentMethod,
             // Información de entrega y zona
             deliveryFee: finalFee || null,
             deliveryZoneName: finalZoneInfo?.zoneName || null,
@@ -586,7 +588,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-5">
             <h3 className="text-lg font-bold text-gray-800">
               {orderType === 'inSite' ? 'Pedido en sitio' : 'Pedido a domicilio'}
