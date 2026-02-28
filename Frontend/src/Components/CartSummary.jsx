@@ -1208,7 +1208,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
         </div>
 
         {/* Cart Items - Scrollable Content */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overscroll-contain px-4 sm:px-6 py-2 min-h-0" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div ref={scrollContainerRef} className="overflow-y-auto overscroll-contain px-4 sm:px-6 py-2 min-h-0 shrink" style={{ WebkitOverflowScrolling: 'touch' }}>
           {cart.map((item, itemIndex) => (
             <div key={item.uniqueId || item._id} className={`py-3 ${itemIndex < cart.length - 1 ? 'border-b border-slate-100' : ''}`}>
               <div className="flex items-start gap-3">
