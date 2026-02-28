@@ -71,9 +71,10 @@ router.put("/", tenantAuth, async (req, res) => {
       }
       
       // Actualizar usando el _id encontrado
+      logger.debug('updateData being saved', { fields: Object.keys(updateData), paymentMethods: updateData.paymentMethods }, req);
       const config = await BusinessConfig.findByIdAndUpdate(
         business._id,
-        updateData,
+        { $set: updateData },
         { new: true }
       );
       

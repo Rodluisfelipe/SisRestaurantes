@@ -160,7 +160,7 @@ const businessConfigSchema = new mongoose.Schema({
   // Métodos de pago configurables por modo de pedido
   paymentMethods: {
     efectivo: {
-      enabled: { type: Boolean, default: true },
+      enabled: { type: Boolean, default: false },
       modes: {
         whatsapp: { type: Boolean, default: true },
         inapp: { type: Boolean, default: true }

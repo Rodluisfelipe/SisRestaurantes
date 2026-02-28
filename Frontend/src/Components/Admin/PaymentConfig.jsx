@@ -17,7 +17,7 @@ const PaymentConfig = () => {
   const [activeTab, setActiveTab] = useState('mode');
   const [orderingMode, setOrderingMode] = useState('whatsapp');
   const [paymentMethods, setPaymentMethods] = useState({
-    efectivo: { enabled: true, modes: { whatsapp: true, inapp: true } },
+    efectivo: { enabled: false, modes: { whatsapp: true, inapp: true } },
     nequi: { enabled: false, modes: { whatsapp: true, inapp: true } },
     daviplata: { enabled: false, modes: { whatsapp: true, inapp: true } },
     transferencia: { enabled: false, modes: { whatsapp: true, inapp: true } },
@@ -53,7 +53,7 @@ const PaymentConfig = () => {
       if (businessConfig.paymentMethods) {
         setPaymentMethods({
           efectivo: {
-            enabled: businessConfig.paymentMethods.efectivo?.enabled ?? true,
+            enabled: businessConfig.paymentMethods.efectivo?.enabled ?? false,
             modes: {
               whatsapp: businessConfig.paymentMethods.efectivo?.modes?.whatsapp ?? true,
               inapp: businessConfig.paymentMethods.efectivo?.modes?.inapp ?? true,
@@ -84,8 +84,8 @@ const PaymentConfig = () => {
       } else {
         // Backward compat: infer from paymentInfo
         setPaymentMethods({
-          efectivo: { enabled: true, modes: { whatsapp: true, inapp: true } },
-          nequi: { enabled: !!businessConfig.paymentInfo?.nequi, modes: { whatsapp: true, inapp: true } },
+          efectivo: { enabled: false, modes: { whatsapp: true, inapp: true } },
+          nequi: { enabled: false, modes: { whatsapp: true, inapp: true } },
           daviplata: { enabled: !!businessConfig.paymentInfo?.daviplata, modes: { whatsapp: true, inapp: true } },
           transferencia: { enabled: !!businessConfig.paymentInfo?.bankAccountNumber, modes: { whatsapp: true, inapp: true } },
         });
@@ -177,10 +177,13 @@ const PaymentConfig = () => {
     }
   ];
 
+  const NEQUI_LOGO = 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg';
+  const DAVIPLATA_LOGO = 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA';
+
   const PAYMENT_METHODS_META = [
     { id: 'efectivo', label: 'Efectivo', icon: '💵', desc: 'Pago en efectivo al recibir el pedido' },
-    { id: 'nequi', label: 'Nequi', icon: '📱', desc: 'Transferencia por Nequi', needsAccount: true },
-    { id: 'daviplata', label: 'Daviplata', icon: '💜', desc: 'Transferencia por Daviplata', needsAccount: true },
+    { id: 'nequi', label: 'Nequi', logo: NEQUI_LOGO, desc: 'Transferencia por Nequi', needsAccount: true },
+    { id: 'daviplata', label: 'Daviplata', logo: DAVIPLATA_LOGO, desc: 'Transferencia por Daviplata', needsAccount: true },
     { id: 'transferencia', label: 'Transferencia Bancaria', icon: '🏦', desc: 'Transferencia directa a cuenta bancaria', needsAccount: true },
   ];
 
@@ -318,7 +321,11 @@ const PaymentConfig = () => {
                       onClick={() => togglePaymentMethod(method.id)}
                       className="w-full flex items-center gap-3 p-4"
                     >
-                      <span className="text-2xl">{method.icon}</span>
+                      {method.logo ? (
+                        <img src={method.logo} alt={method.label} className="w-8 h-8 object-contain rounded" />
+                      ) : (
+                        <span className="text-2xl">{method.icon}</span>
+                      )}
                       <div className="flex-1 text-left">
                         <span className="font-semibold text-gray-900">{method.label}</span>
                         <p className="text-xs text-gray-500 mt-0.5">{method.desc}</p>
@@ -399,7 +406,7 @@ const PaymentConfig = () => {
             <div className="flex flex-wrap gap-2">
               {PAYMENT_METHODS_META.filter(m => paymentMethods[m.id]?.enabled).map(m => (
                 <span key={m.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700">
-                  {m.icon} {m.label}
+                  {m.logo ? <img src={m.logo} alt={m.label} className="w-4 h-4 object-contain rounded-sm inline-block" /> : m.icon} {m.label}
                   {activeModes.length > 1 && (
                     <span className="text-gray-400 ml-1">
                       ({activeModes.filter(mode => paymentMethods[m.id]?.modes?.[mode]).map(mode => MODE_LABELS[mode].icon).join(' ')})
