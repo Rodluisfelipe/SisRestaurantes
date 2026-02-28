@@ -1480,7 +1480,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                       type="button"
                       onClick={detectLocationAndCalculateFee}
                       disabled={checkingLocation}
-                      className="w-full px-3 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-xs"
+                      className="w-full px-3 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-sm"
                     >
                       {checkingLocation ? (
                         <><span className="animate-spin">🔄</span> Verificando...</>
@@ -1517,7 +1517,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
 
         {/* ── Sticky bottom: Total + Confirm button ── */}
         {cart.length > 0 && (
-          <div className="border-t border-slate-200 bg-white px-4 pt-3 pb-3 sm:px-6 flex-shrink-0 pb-safe sm:rounded-b-2xl">
+          <div className="border-t border-slate-200 bg-white px-4 pt-3 pb-5 sm:px-6 flex-shrink-0 pb-safe sm:rounded-b-2xl">
             {/* Price breakdown when there are extras */}
             {(deliveryFee > 0 || appliedCoupon) && (
               <div className="space-y-1 mb-2">
@@ -1628,7 +1628,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     backgroundColor: isDisabled ? '#9ca3af' : (businessConfig.theme.buttonColor || '#f97316'),
                     color: businessConfig.theme.buttonTextColor || '#ffffff'
                   }}
-                  className={`w-full py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-[15px] shadow-lg transition-[transform,opacity] ${
+                  className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-[15px] shadow-lg transition-[transform,opacity] ${
                     isDisabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98] hover:shadow-xl'
                   }`}
                   disabled={isDisabled}
