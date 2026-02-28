@@ -40,92 +40,130 @@ export const calculateTotalItems = (cart) => {
   return cart.reduce((sum, item) => sum + (item.quantity || 0), 0);
 };
 
-// Función auxiliar para obtener el template personalizado
-const getCustomTemplate = async (businessId) => {
+// Obtener configuración de módulos del template
+const getTemplateConfig = async (businessId) => {
   try {
     const { BACKEND_URL } = await import('../config');
     const response = await fetch(`${BACKEND_URL}/api/whatsapp-templates?businessId=${businessId}`);
-    if (response.ok) {
-      const data = await response.json();
-      return data.messageTemplate;
-    }
+    if (response.ok) return await response.json();
   } catch (error) {
-    console.warn('Could not load custom WhatsApp template, using default');
+    console.warn('Could not load WhatsApp template config, using defaults');
   }
   return null;
 };
 
-// Crear mensaje de WhatsApp estilo recibo compacto
+const DEFAULT_MODULES = [
+  { id: 'header', enabled: true, order: 0 },
+  { id: 'orderType', enabled: true, order: 1 },
+  { id: 'customerName', enabled: true, order: 2 },
+  { id: 'address', enabled: true, order: 3 },
+  { id: 'phone', enabled: true, order: 4 },
+  { id: 'paymentMethod', enabled: true, order: 5 },
+  { id: 'products', enabled: true, order: 6 },
+  { id: 'totals', enabled: true, order: 7 },
+  { id: 'customMessage', enabled: false, order: 8 },
+];
+
+const SEPARATOR_BEFORE = new Set(['products', 'totals', 'customMessage']);
+
+// Crear mensaje de WhatsApp basado en módulos configurables
 export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalItems, businessConfig, appliedCoupon) => {
   const businessName = businessConfig?.businessName || 'Nuestro Negocio';
+  const businessId = businessConfig?._id || businessConfig?.businessId;
 
-  // Tipo de pedido
-  let tipoPedido = '🛒 Para llevar';
-  let datosExtra = '';
-  if (orderInfo.orderType === 'delivery') {
-    tipoPedido = '🏍️ Domicilio';
-    datosExtra = `📍 ${orderInfo.address || 'Sin dirección'}`;
-    if (orderInfo.deliveryZoneName) datosExtra += ` (${orderInfo.deliveryZoneName})`;
-    if (orderInfo.phone) datosExtra += `\n📞 ${orderInfo.phone}`;
-  } else if (orderInfo.orderType === 'inSite') {
-    tipoPedido = `🍽️ Mesa ${orderInfo.tableNumber || '—'}`;
-  }
+  // Obtener configuración del template
+  let config = null;
+  if (businessId) config = await getTemplateConfig(businessId);
 
-  // Productos
-  let items = '';
-  cart.forEach(item => {
-    const subtotal = calculateItemPrice(item);
-    items += `${item.quantity}x *${item.name}* · $${subtotal.toLocaleString()}\n`;
-    // Toppings detallados debajo
-    if (item.selectedToppings?.length > 0) {
-      item.selectedToppings.forEach(t => {
-        if (t.optionName) {
-          items += `   ﹥ ${t.groupName}: ${t.optionName}`;
-          if (t.price > 0) items += ` +$${t.price.toLocaleString()}`;
-          items += `\n`;
-        }
-        if (t.subGroups?.length > 0) {
-          t.subGroups.forEach(s => {
-            items += `   ﹥ ${s.subGroupTitle}: ${s.optionName}`;
-            if (s.price > 0) items += ` +$${s.price.toLocaleString()}`;
-            items += `\n`;
+  const modules = config?.modules?.length > 0
+    ? [...config.modules].sort((a, b) => a.order - b.order)
+    : DEFAULT_MODULES;
+  const customText = config?.customMessage || '';
+
+  // Constructores de cada módulo
+  const PAYMENT_LABELS = { efectivo: '💵 Efectivo', nequi: '📱 Nequi', daviplata: '📲 Daviplata', transferencia: '🏦 Transferencia' };
+
+  const builders = {
+    header: () => `🧾 *${businessName}*`,
+
+    orderType: () => {
+      if (orderInfo.orderType === 'delivery') return '🏍️ Domicilio';
+      if (orderInfo.orderType === 'inSite') return `🍽️ Mesa ${orderInfo.tableNumber || '—'}`;
+      return '🛒 Para llevar';
+    },
+
+    customerName: () => `👤 ${orderInfo.customerName || 'Cliente'}`,
+
+    address: () => {
+      if (orderInfo.orderType !== 'delivery') return null;
+      let line = `📍 ${orderInfo.address || 'Sin dirección'}`;
+      if (orderInfo.deliveryZoneName) line += ` (${orderInfo.deliveryZoneName})`;
+      return line;
+    },
+
+    phone: () => orderInfo.phone ? `📞 ${orderInfo.phone}` : null,
+
+    paymentMethod: () => {
+      if (!orderInfo.paymentMethod) return null;
+      return `💳 ${PAYMENT_LABELS[orderInfo.paymentMethod] || orderInfo.paymentMethod}`;
+    },
+
+    products: () => {
+      let items = '';
+      cart.forEach(item => {
+        const subtotal = calculateItemPrice(item);
+        items += `${item.quantity}x *${item.name}* · $${subtotal.toLocaleString()}\n`;
+        if (item.selectedToppings?.length > 0) {
+          item.selectedToppings.forEach(t => {
+            if (t.optionName) {
+              items += `   ﹥ ${t.groupName}: ${t.optionName}`;
+              if (t.price > 0) items += ` +$${t.price.toLocaleString()}`;
+              items += '\n';
+            }
+            if (t.subGroups?.length > 0) {
+              t.subGroups.forEach(s => {
+                items += `   ﹥ ${s.subGroupTitle}: ${s.optionName}`;
+                if (s.price > 0) items += ` +$${s.price.toLocaleString()}`;
+                items += '\n';
+              });
+            }
           });
         }
       });
-    }
-  });
+      return items.trimEnd();
+    },
 
-  // Totales
-  const deliveryFee = orderInfo.deliveryFee || 0;
-  const totalFinal = totalAmount + deliveryFee - (appliedCoupon?.discountAmount || 0);
-  
-  let totales = '';
-  if (appliedCoupon || deliveryFee > 0) {
-    totales += `Subtotal: $${totalAmount.toLocaleString()}\n`;
-    if (deliveryFee > 0) {
-      totales += `Envío: $${deliveryFee.toLocaleString()}\n`;
-    } else if (orderInfo.orderType === 'delivery') {
-      totales += `Envío: Por confirmar\n`;
-    }
-    if (appliedCoupon) {
-      totales += `🏷️ ${appliedCoupon.coupon.code}: -$${appliedCoupon.discountAmount.toLocaleString()}\n`;
-    }
-  } else if (orderInfo.orderType === 'delivery') {
-    totales += `Envío: Por confirmar\n`;
+    totals: () => {
+      const deliveryFee = orderInfo.deliveryFee || 0;
+      const totalFinal = totalAmount + deliveryFee - (appliedCoupon?.discountAmount || 0);
+      let txt = '';
+      if (appliedCoupon || deliveryFee > 0) {
+        txt += `Subtotal: $${totalAmount.toLocaleString()}\n`;
+        if (deliveryFee > 0) txt += `Envío: $${deliveryFee.toLocaleString()}\n`;
+        else if (orderInfo.orderType === 'delivery') txt += 'Envío: Por confirmar\n';
+        if (appliedCoupon) txt += `🏷️ ${appliedCoupon.coupon.code}: -$${appliedCoupon.discountAmount.toLocaleString()}\n`;
+      } else if (orderInfo.orderType === 'delivery') {
+        txt += 'Envío: Por confirmar\n';
+      }
+      txt += `*Total: $${totalFinal.toLocaleString()}*`;
+      return txt;
+    },
+
+    customMessage: () => customText || null,
+  };
+
+  // Construir mensaje según módulos habilitados y su orden
+  const lines = [];
+  for (const mod of modules) {
+    if (!mod.enabled) continue;
+    const build = builders[mod.id];
+    if (!build) continue;
+    const content = build();
+    if (content === null) continue;
+    if (SEPARATOR_BEFORE.has(mod.id) && lines.length > 0) lines.push('');
+    lines.push(content);
   }
-  totales += `*Total: $${totalFinal.toLocaleString()}*`;
 
-  // Método de pago
-  const PAYMENT_LABELS = { efectivo: '💵 Efectivo', nequi: '📱 Nequi', daviplata: '📲 Daviplata', transferencia: '🏦 Transferencia' };
-  const pagoLine = orderInfo.paymentMethod ? PAYMENT_LABELS[orderInfo.paymentMethod] || orderInfo.paymentMethod : null;
-
-  // Armar mensaje compacto
-  let msg = `🧾 *${businessName}*\n`;
-  msg += `${tipoPedido}\n`;
-  msg += `👤 ${orderInfo.customerName || 'Cliente'}\n`;
-  if (datosExtra) msg += `${datosExtra}\n`;
-  if (pagoLine) msg += `💳 ${pagoLine}\n`;
-  msg += `\n${items}\n${totales}`;
-
+  const msg = lines.join('\n');
   return encodeURIComponent(msg).replace(/'/g, "%27");
 }; 

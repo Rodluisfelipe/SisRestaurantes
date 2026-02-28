@@ -15,62 +15,42 @@ const whatsAppTemplateSchema = new mongoose.Schema({
     unique: true
   },
   
-  // Template personalizado del mensaje
+  // Legacy template text (backward compat)
   messageTemplate: {
     type: String,
-    required: true,
-    default: `*** DATOS DEL CLIENTE ***
-{{customerInfo}}
-------------------------
-
-*** DETALLE DEL PEDIDO ***
-{{orderDetails}}
-
-*** RESUMEN ***
-{{orderSummary}}
-------------------------
-
-¡Gracias por tu pedido en {{businessName}}!
-Tu orden será procesada inmediatamente.
-
-{{timestamp}}`
+    default: ''
   },
-  
-  // Configuraciones adicionales
-  settings: {
-    includeTimestamp: {
-      type: Boolean,
-      default: true
-    },
-    timestampFormat: {
-      type: String,
-      enum: ['datetime', 'date', 'time'],
-      default: 'datetime'
-    },
-    includeBusinessInfo: {
-      type: Boolean,
-      default: true
-    },
-    customFooter: {
-      type: String,
-      default: ''
-    }
-  },
-  
-  // Variables disponibles y sus configuraciones
-  availableVariables: {
-    type: Map,
-    of: {
+
+  // Configuración de módulos del mensaje
+  modules: {
+    type: [{
+      id: { type: String, required: true },
       enabled: { type: Boolean, default: true },
-      customLabel: { type: String, default: '' }
-    },
-    default: new Map([
-      ['customerInfo', { enabled: true, customLabel: '' }],
-      ['orderDetails', { enabled: true, customLabel: '' }],
-      ['orderSummary', { enabled: true, customLabel: '' }],
-      ['businessName', { enabled: true, customLabel: '' }],
-      ['timestamp', { enabled: true, customLabel: '' }]
-    ])
+      order: { type: Number, default: 0 }
+    }],
+    default: [
+      { id: 'header', enabled: true, order: 0 },
+      { id: 'orderType', enabled: true, order: 1 },
+      { id: 'customerName', enabled: true, order: 2 },
+      { id: 'address', enabled: true, order: 3 },
+      { id: 'phone', enabled: true, order: 4 },
+      { id: 'paymentMethod', enabled: true, order: 5 },
+      { id: 'products', enabled: true, order: 6 },
+      { id: 'totals', enabled: true, order: 7 },
+      { id: 'customMessage', enabled: false, order: 8 },
+    ]
+  },
+
+  // Texto del módulo de mensaje personalizado
+  customMessage: {
+    type: String,
+    default: ''
+  },
+
+  // Legacy settings (backward compat)
+  settings: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   },
   
   createdAt: {

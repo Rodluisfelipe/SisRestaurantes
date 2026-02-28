@@ -53,10 +53,10 @@ router.get("/", async (req, res) => {
 // POST - Crear o actualizar template de WhatsApp
 router.post("/", tenantAuth, async (req, res) => {
   try {
-    const { businessId, messageTemplate, settings, availableVariables } = req.body;
+    const { businessId, messageTemplate, modules, customMessage } = req.body;
     
-    if (!businessId || !messageTemplate) {
-      return res.status(400).json({ message: "businessId y messageTemplate son requeridos" });
+    if (!businessId) {
+      return res.status(400).json({ message: "businessId es requerido" });
     }
     
     // Validar y resolver businessId
@@ -72,16 +72,16 @@ router.post("/", tenantAuth, async (req, res) => {
     
     if (template) {
       // Actualizar existente
-      template.messageTemplate = messageTemplate;
-      if (settings) template.settings = { ...template.settings, ...settings };
-      if (availableVariables) template.availableVariables = new Map(Object.entries(availableVariables));
+      if (messageTemplate !== undefined) template.messageTemplate = messageTemplate;
+      if (modules) template.modules = modules;
+      if (customMessage !== undefined) template.customMessage = customMessage;
     } else {
       // Crear nuevo
       template = new WhatsAppTemplate({
         businessId: businessObjectId,
-        messageTemplate,
-        settings: settings || {},
-        availableVariables: availableVariables ? new Map(Object.entries(availableVariables)) : undefined
+        messageTemplate: messageTemplate || '',
+        modules: modules || undefined,
+        customMessage: customMessage || ''
       });
     }
     
