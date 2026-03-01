@@ -166,71 +166,107 @@ const Icons = {
 };
 
 /* ═══ Live Viewers Widget ═══ */
+const ViewerIcons = {
+  eye: (c) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" />
+    </svg>
+  ),
+  cart: (c) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" /><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
+    </svg>
+  ),
+  repeat: (c) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 014-4h14" /><path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 01-4 4H3" />
+    </svg>
+  ),
+};
+
 function LiveViewers({ viewers = [], count = 0 }) {
   if (count === 0) {
     return (
-      <div className="bg-slate-50 rounded-xl border border-slate-100 p-2.5 sm:p-3">
+      <div className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-slate-300" />
+          <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center">
+            {ViewerIcons.eye("w-2.5 h-2.5 text-slate-300")}
+          </div>
           <span className="text-[11px] font-semibold text-slate-400">Nadie viendo tu menú ahora</span>
         </div>
       </div>
     );
   }
 
+  const withCart = viewers.filter(v => v.cartItems > 0);
+  const totalCartValue = withCart.reduce((s, v) => s + (v.cartTotal || 0), 0);
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-2.5 sm:p-3 shadow-sm"
+      transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
+      className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3 relative overflow-hidden"
     >
+      <div className="absolute top-0 right-0 w-12 h-12 bg-blue-500 opacity-[0.04] rounded-full -translate-y-5 translate-x-5" />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <div className="w-2 h-2 rounded-full bg-green-500" />
-            <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping" />
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded-md bg-blue-500 bg-opacity-10 flex items-center justify-center">
+            {ViewerIcons.eye("w-2.5 h-2.5 text-blue-500")}
           </div>
-          <span className="text-xs font-bold text-slate-700">
-            {count} {count === 1 ? 'persona' : 'personas'} viendo tu menú
+          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">En vivo</span>
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inset-0 rounded-full bg-green-400 opacity-60" />
+            <span className="relative rounded-full h-1.5 w-1.5 bg-green-500" />
           </span>
         </div>
-        {viewers.some(v => v.cartItems > 0) && (
-          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-            🛒 {viewers.filter(v => v.cartItems > 0).length} con carrito
+
+        <div className="flex items-center gap-2">
+          {withCart.length > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
+              {ViewerIcons.cart("w-2.5 h-2.5")}
+              {withCart.length} · {COP(totalCartValue)}
+            </span>
+          )}
+          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+            {count}
           </span>
-        )}
+        </div>
       </div>
 
       {/* Viewer list */}
       <div className="space-y-1">
         {viewers.slice(0, 6).map((v, i) => (
-          <div key={i} className="flex items-center justify-between bg-white/70 rounded-lg px-2 py-1.5">
+          <div key={i} className="flex items-center justify-between bg-slate-50/60 rounded-lg px-2 py-1.5">
             <div className="flex items-center gap-2 min-w-0">
-              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
                 v.isReturning ? 'bg-blue-500' : 'bg-slate-400'
               }`}>
                 {v.customerName?.charAt(0)?.toUpperCase() || '?'}
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-slate-700 truncate">
-                  {v.customerName}
+                <div className="flex items-center gap-1">
+                  <p className="text-[11px] font-semibold text-slate-700 truncate">{v.customerName}</p>
                   {v.isReturning && (
-                    <span className="ml-1 text-[9px] font-bold text-blue-500">🔄 {v.previousOrders} pedidos</span>
+                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-blue-500 bg-blue-50 px-1 py-0.5 rounded shrink-0">
+                      {ViewerIcons.repeat("w-2 h-2")}
+                      {v.previousOrders}
+                    </span>
                   )}
-                </p>
+                </div>
                 <p className="text-[9px] text-slate-400">
                   {v.phone || ''} · {v.device || ''} · {formatDuration(v.duration)}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {v.cartItems > 0 && (
-                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
-                  🛒 {v.cartItems}
-                </span>
-              )}
-            </div>
+            {v.cartItems > 0 && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">
+                {ViewerIcons.cart("w-2.5 h-2.5")}
+                {v.cartItems} · {COP(v.cartTotal)}
+              </span>
+            )}
           </div>
         ))}
         {viewers.length > 6 && (
