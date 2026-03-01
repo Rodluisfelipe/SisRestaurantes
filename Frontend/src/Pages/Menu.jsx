@@ -25,6 +25,7 @@ import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
 import { socket } from '../services/socket';
+import { io } from 'socket.io-client';
 import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import * as SessionManager from '../utils/sessionManager';
 import { calculateItemPrice as calcItemPriceUtil, calculateTotalAmount as calcTotalUtil, calculateTotalItems, createWhatsAppMessage } from '../utils/orderUtils';
@@ -322,10 +323,9 @@ export default function Menu() {
     
     const startTracking = async () => {
       try {
-        const { io } = await import('socket.io-client');
         if (!mounted) return;
         
-        const backendUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://157-245-125-216.nip.io';
+        const backendUrl = import.meta.env.VITE_SOCKET_URL || 'https://157-245-125-216.nip.io';
         
         viewerSocket = io(backendUrl, {
           autoConnect: true,
