@@ -391,7 +391,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
       {!q && <ShareBar businessConfig={businessConfig} />}
 
       {/* ═══ METRICS DASHBOARD ═══ */}
-      {!q && <DashboardMetrics setActiveTab={handleNav} />}
+      {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} />}
 
       {/* ═══ HERO CARDS ═══ */}
       {!q && (

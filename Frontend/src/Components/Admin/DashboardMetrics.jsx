@@ -661,7 +661,7 @@ function PendingBanner({ pending, onViewOrders }) {
 }
 
 /* ═══ MAIN COMPONENT ═══ */
-export default function DashboardMetrics({ setActiveTab }) {
+export default function DashboardMetrics({ setActiveTab, businessId }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -674,7 +674,9 @@ export default function DashboardMetrics({ setActiveTab }) {
       setError(null);
 
       const token = localStorage.getItem("accessToken");
-      const res = await fetch(`${API_URL}/dashboard/stats`, {
+      // Include businessId as query param (needed when logged in as SuperAdmin)
+      const qs = businessId ? `?businessId=${businessId}` : '';
+      const res = await fetch(`${API_URL}/dashboard/stats${qs}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -691,7 +693,7 @@ export default function DashboardMetrics({ setActiveTab }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [businessId]);
 
   useEffect(() => {
     fetchStats();
