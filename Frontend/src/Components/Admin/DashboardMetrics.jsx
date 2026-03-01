@@ -38,9 +38,13 @@ const dayAbbr = (dateStr) => {
 
 const STATUS_LABELS = {
   pending: "Pendiente",
+  pending_payment: "Pago pendiente",
+  payment_uploaded: "Pago enviado",
+  payment_confirmed: "Pago confirmado",
   confirmed: "Confirmado",
   preparing: "Preparando",
   ready: "Listo",
+  inProgress: "En progreso",
   on_the_way: "En camino",
   delivered: "Entregado",
   completed: "Completado",
@@ -49,9 +53,13 @@ const STATUS_LABELS = {
 
 const STATUS_COLORS = {
   pending: "bg-amber-400",
+  pending_payment: "bg-yellow-400",
+  payment_uploaded: "bg-indigo-400",
+  payment_confirmed: "bg-teal-400",
   confirmed: "bg-blue-400",
   preparing: "bg-orange-400",
   ready: "bg-emerald-400",
+  inProgress: "bg-sky-400",
   on_the_way: "bg-cyan-400",
   delivered: "bg-green-500",
   completed: "bg-emerald-500",
@@ -279,7 +287,7 @@ function WeeklyChart({ data, loading }) {
       </div>
 
       {/* Bars */}
-      <div className="relative flex items-end gap-1.5 sm:gap-2 h-28 sm:h-36">
+      <div className="relative flex gap-1.5 sm:gap-2 h-28 sm:h-36">
         {isEmpty && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <p className="text-xs text-slate-400 font-medium bg-white/80 px-3 py-1.5 rounded-lg">Sin ventas esta semana — ¡tu primer pedido aparecerá aquí!</p>
@@ -604,7 +612,7 @@ function RecentOrders({ orders, loading, onViewOrders }) {
                   </span>
                 </p>
                 <p className="text-[10px] text-slate-400 font-medium">
-                  {order.items?.length || 0} items · {time}
+                  {order.itemCount ?? order.items?.length ?? 0} items · {time}
                 </p>
               </div>
 
