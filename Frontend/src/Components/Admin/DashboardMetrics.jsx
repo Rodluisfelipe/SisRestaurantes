@@ -66,8 +66,8 @@ const STATUS_COLORS = {
   cancelled: "bg-red-400",
 };
 
-const CHANNEL_LABELS = { whatsapp: "WhatsApp", inapp: "En App", unknown: "Otro" };
-const CHANNEL_COLORS = { whatsapp: "bg-green-400", inapp: "bg-blue-400", unknown: "bg-slate-300" };
+const CHANNEL_LABELS = { whatsapp: "WhatsApp", inapp: "En App", unknown: "Otro", null: "Otro" };
+const CHANNEL_COLORS = { whatsapp: "bg-green-400", inapp: "bg-blue-400", unknown: "bg-slate-300", null: "bg-slate-300" };
 
 const PAYMENT_COLORS = {
   cash: "bg-emerald-400",
@@ -76,6 +76,9 @@ const PAYMENT_COLORS = {
   bancolombia: "bg-yellow-400",
   card: "bg-blue-400",
   transfer: "bg-cyan-400",
+  other: "bg-slate-300",
+  unknown: "bg-slate-200",
+  null: "bg-slate-200",
 };
 const PAYMENT_LABELS = {
   cash: "Efectivo",
@@ -84,10 +87,13 @@ const PAYMENT_LABELS = {
   bancolombia: "Bancolombia",
   card: "Tarjeta",
   transfer: "Transferencia",
+  other: "Otro",
+  unknown: "En local",
+  null: "En local",
 };
 
-const TYPE_LABELS = { inSite: "En mesa", takeaway: "Para llevar", delivery: "Domicilio" };
-const TYPE_COLORS = { inSite: "bg-blue-400", takeaway: "bg-amber-400", delivery: "bg-emerald-400" };
+const TYPE_LABELS = { inSite: "En mesa", takeaway: "Para llevar", delivery: "Domicilio", unknown: "Otro", null: "Otro" };
+const TYPE_COLORS = { inSite: "bg-blue-400", takeaway: "bg-amber-400", delivery: "bg-emerald-400", unknown: "bg-slate-300", null: "bg-slate-300" };
 
 /* ═══ SVG Icons ═══ */
 const Icons = {
