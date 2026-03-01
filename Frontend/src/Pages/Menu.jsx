@@ -293,38 +293,71 @@ export default function Menu() {
   }, [orderInfo]);
 
   // === VIEWER TRACKING: registrar al cliente como visitante en vivo ===
+  // Viewer tracking con socket dedicado (sin auth, separado del admin socket)
   useEffect(() => {
-    // Solo trackear cuando tenemos businessId, nombre, teléfono Y el menú está visible
     if (showOrderTypeSelector || !businessId || !orderInfo?.customerName || !orderInfo?.phone) return;
     
-    // Conectar socket si no está conectado
-    if (!socket.connected) socket.connect();
+    let viewerSocket = null;
+    let heartbeatInterval = null;
+    let mounted = true;
     
-    // Detectar dispositivo
-    const ua = navigator.userAgent;
-    const device = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Desktop';
+    const startTracking = async () => {
+      try {
+        const { io } = await import('socket.io-client');
+        if (!mounted) return;
+        
+        const backendUrl = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://157-245-125-216.nip.io';
+        
+        viewerSocket = io(backendUrl, {
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: 3,
+          timeout: 10000,
+          transports: ['polling', 'websocket'],
+          path: '/socket.io',
+          query: {
+            sessionId: `viewer_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+            clientType: 'viewer'
+          }
+        });
+        
+        const ua = navigator.userAgent;
+        const device = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Desktop';
+        
+        viewerSocket.on('connect', () => {
+          viewerSocket.emit('viewer:join', {
+            businessId,
+            customerName: orderInfo.customerName,
+            phone: orderInfo.phone,
+            device
+          });
+        });
+        
+        // Heartbeat cada 30 segundos
+        heartbeatInterval = setInterval(() => {
+          if (viewerSocket?.connected) {
+            viewerSocket.emit('viewer:heartbeat', {
+              currentView: 'menu',
+              cartItems: cart?.length || 0,
+              cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
+            });
+          }
+        }, 30000);
+      } catch (err) {
+        // Silent fail — viewer tracking is non-critical
+        console.debug('[ViewerTracking] Error:', err.message);
+      }
+    };
     
-    // Emitir join
-    socket.emit('viewer:join', {
-      businessId,
-      customerName: orderInfo.customerName,
-      phone: orderInfo.phone,
-      device
-    });
+    startTracking();
     
-    // Heartbeat cada 30 segundos
-    const heartbeatInterval = setInterval(() => {
-      socket.emit('viewer:heartbeat', {
-        currentView: 'menu',
-        cartItems: cart?.length || 0,
-        cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
-      });
-    }, 30000);
-    
-    // Cleanup: emitir leave al desmontar
     return () => {
-      clearInterval(heartbeatInterval);
-      socket.emit('viewer:leave');
+      mounted = false;
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      if (viewerSocket) {
+        viewerSocket.emit('viewer:leave');
+        viewerSocket.disconnect();
+      }
     };
   }, [showOrderTypeSelector, businessId, orderInfo?.customerName, orderInfo?.phone]);
 
