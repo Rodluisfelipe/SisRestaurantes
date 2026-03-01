@@ -19,7 +19,15 @@ const logger = require('../utils/logger');
  */
 router.get('/stats', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.user?.businessId || req.resolvedBusinessId;
+    let businessId = req.user?.businessId || req.resolvedBusinessId;
+
+    // Fallback: if token doesn't contain businessId, look it up from Admin doc
+    if (!businessId && req.user?.id) {
+      const Admin = require('../Models/Admin');
+      const admin = await Admin.findById(req.user.id).select('businessId').lean();
+      if (admin?.businessId) businessId = admin.businessId;
+    }
+
     if (!businessId) {
       return res.status(400).json({ message: 'businessId requerido' });
     }
