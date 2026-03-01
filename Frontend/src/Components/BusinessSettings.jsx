@@ -4,6 +4,7 @@ import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
 import BusinessHoursSettings from './BusinessHoursSettings';
+import ImageUploader from './Admin/ImageUploader';
 import { 
   FaCog, FaStore, FaImage, FaWhatsapp, FaMapMarkerAlt, FaMap,
   FaInfoCircle, FaShareAlt, FaFacebook, FaInstagram, FaMusic, FaLink,
@@ -355,31 +356,32 @@ const BusinessSettings = () => {
 
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  URL del Logo
+                  Logo del Negocio
                 </label>
-                <input
-                  type="url"
-                  name="logo"
+                <ImageUploader
                   value={settings.logo}
-                  onChange={handleChange}
-                  onFocus={() => setIsEditingLogo(true)}
-                  onBlur={() => setIsEditingLogo(false)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
-                  placeholder="https://ejemplo.com/logo.png"
+                  onChange={(url) => {
+                    setSettings(prev => ({ ...prev, logo: url }));
+                    setPreviewLogo(url || '');
+                  }}
+                  folder="logos"
+                  maxWidth={400}
+                  quality={85}
                 />
               </div>
 
               <div>
                 <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  URL de Imagen de Portada
+                  Imagen de Portada
                 </label>
-                <input
-                  type="text"
-                  name="coverImage"
+                <ImageUploader
                   value={settings.coverImage}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
-                  placeholder="https://ejemplo.com/portada.jpg"
+                  onChange={(url) => {
+                    setSettings(prev => ({ ...prev, coverImage: url }));
+                  }}
+                  folder="covers"
+                  maxWidth={1200}
+                  quality={80}
                 />
               </div>
             </div>
