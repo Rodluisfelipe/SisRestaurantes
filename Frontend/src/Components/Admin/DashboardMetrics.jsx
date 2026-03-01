@@ -251,6 +251,7 @@ function WeeklyChart({ data, loading }) {
   const maxOrd = Math.max(...data.map((d) => d.orders), 1);
   const totalRev = data.reduce((s, d) => s + d.revenue, 0);
   const totalOrd = data.reduce((s, d) => s + d.orders, 0);
+  const isEmpty = totalRev === 0 && totalOrd === 0;
 
   return (
     <motion.div
@@ -278,16 +279,23 @@ function WeeklyChart({ data, loading }) {
       </div>
 
       {/* Bars */}
-      <div className="flex items-end gap-1.5 sm:gap-2 h-28 sm:h-36">
+      <div className="relative flex items-end gap-1.5 sm:gap-2 h-28 sm:h-36">
+        {isEmpty && (
+          <div className="absolute inset-0 flex items-center justify-center z-10">
+            <p className="text-xs text-slate-400 font-medium bg-white/80 px-3 py-1.5 rounded-lg">Sin ventas esta semana — ¡tu primer pedido aparecerá aquí!</p>
+          </div>
+        )}
         {data.map((day, i) => {
-          const revH = (day.revenue / maxRev) * 100;
+          const revH = isEmpty ? 8 : (day.revenue / maxRev) * 100;
           const isToday = i === data.length - 1;
           return (
             <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group/bar">
               {/* Revenue value on hover */}
-              <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/bar:opacity-100 transition-opacity truncate max-w-full">
-                {day.orders > 0 ? COP(day.revenue) : "—"}
-              </div>
+              {!isEmpty && (
+                <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/bar:opacity-100 transition-opacity truncate max-w-full">
+                  {day.orders > 0 ? COP(day.revenue) : "—"}
+                </div>
+              )}
 
               {/* Bar */}
               <div className="w-full flex-1 flex items-end">
@@ -296,15 +304,17 @@ function WeeklyChart({ data, loading }) {
                   animate={{ height: `${Math.max(revH, 4)}%` }}
                   transition={{ duration: 0.5, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
                   className={`w-full rounded-md transition-colors ${
-                    isToday
-                      ? "bg-blue-500 shadow-sm shadow-blue-500/20"
-                      : "bg-blue-200/70 group-hover/bar:bg-blue-300/80"
+                    isEmpty
+                      ? "bg-slate-100"
+                      : isToday
+                        ? "bg-blue-500 shadow-sm shadow-blue-500/20"
+                        : "bg-blue-200/70 group-hover/bar:bg-blue-300/80"
                   }`}
                 />
               </div>
 
               {/* Orders count */}
-              {day.orders > 0 && (
+              {!isEmpty && day.orders > 0 && (
                 <span className={`text-[9px] font-bold ${isToday ? "text-blue-600" : "text-slate-400"}`}>
                   {day.orders}
                 </span>
@@ -326,7 +336,25 @@ function WeeklyChart({ data, loading }) {
 function BreakdownBar({ title, data, labels, colors, icon }) {
   const entries = Object.entries(data || {}).filter(([, v]) => v > 0);
   const total = entries.reduce((s, [, v]) => s + v, 0);
-  if (!total) return null;
+
+  if (!total) {
+    const Icon = icon;
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-4"
+      >
+        <div className="flex items-center gap-2 mb-2">
+          {Icon && Icon("w-3.5 h-3.5 text-slate-400")}
+          <h4 className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">{title}</h4>
+        </div>
+        <div className="h-2.5 rounded-full bg-slate-100 mb-2" />
+        <p className="text-[10px] text-slate-400 text-center">Sin datos aún</p>
+      </motion.div>
+    );
+  }
 
   const Icon = icon;
   return (
@@ -382,7 +410,26 @@ function TopProducts({ products, loading }) {
       </div>
     );
   }
-  if (!products?.length) return null;
+
+  if (!products?.length) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.15 }}
+        className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-4 sm:p-5"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          {Icons.fire("w-4 h-4 text-orange-500")}
+          <h3 className="text-xs sm:text-sm font-bold text-slate-700">Top productos</h3>
+        </div>
+        <div className="text-center py-4">
+          <p className="text-xs text-slate-400">Aquí verás tus productos más vendidos</p>
+          <p className="text-[10px] text-slate-300 mt-1">Los datos se acumulan con cada pedido completado</p>
+        </div>
+      </motion.div>
+    );
+  }
 
   const maxQty = Math.max(...products.map((p) => p.quantity), 1);
 
@@ -448,7 +495,7 @@ function CustomerSummary({ customers, loading }) {
       </div>
     );
   }
-  if (!customers) return null;
+  if (!customers) customers = { total: 0, newToday: 0, vip: 0 };
 
   const items = [
     { label: "Total", value: customers.total || 0, icon: Icons.customers, color: "text-blue-500" },
@@ -494,7 +541,26 @@ function RecentOrders({ orders, loading, onViewOrders }) {
       </div>
     );
   }
-  if (!orders?.length) return null;
+
+  if (!orders?.length) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.25 }}
+        className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-4 sm:p-5"
+      >
+        <div className="flex items-center gap-2 mb-3">
+          {Icons.clock("w-4 h-4 text-slate-400")}
+          <h3 className="text-xs sm:text-sm font-bold text-slate-700">Actividad reciente</h3>
+        </div>
+        <div className="text-center py-4">
+          <p className="text-xs text-slate-400">Aún no hay pedidos recientes</p>
+          <p className="text-[10px] text-slate-300 mt-1">Tu actividad del día aparecerá aquí en tiempo real</p>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
