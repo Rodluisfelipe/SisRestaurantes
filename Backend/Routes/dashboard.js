@@ -61,7 +61,8 @@ router.get('/stats', tenantAuth, async (req, res) => {
       paymentBreakdown,
       orderTypeBreakdown,
       customerStats,
-      recentOrders,
+      recentActiveOrders,
+      recentCompletedOrders,
       businessInfo,
     ] = await Promise.all([
 
@@ -189,14 +190,21 @@ router.get('/stats', tenantAuth, async (req, res) => {
         }},
       ]),
 
-      // 10. Last 5 orders (recent activity)
+      // 10. Last 5 active orders (recent activity)
       Order.find({ businessId: bid })
         .sort({ createdAt: -1 })
         .limit(5)
-        .select('orderNumber customerName totalAmount status orderType createdAt')
+        .select('orderNumber customerName totalAmount status orderType items createdAt')
         .lean(),
 
-      // 11. Business config (for isOpen, reviewStats)
+      // 11. Last 5 completed orders (recent activity)
+      CompletedOrder.find({ businessId: bid })
+        .sort({ completedAt: -1 })
+        .limit(5)
+        .select('orderNumber customerName totalAmount status orderType items completedAt createdAt')
+        .lean(),
+
+      // 12. Business config (for isOpen, reviewStats)
       BusinessConfig.findById(bid)
         .select('isOpen reviewStats orderingMode')
         .lean(),
@@ -236,23 +244,31 @@ router.get('/stats', tenantAuth, async (req, res) => {
       });
     }
 
-    // Channel breakdown → object
+    // Channel breakdown → object of counts
     const channels = {};
     channelBreakdown.forEach(c => {
-      channels[c._id || 'unknown'] = { count: c.count, revenue: c.revenue };
+      channels[c._id || 'unknown'] = c.count;
     });
 
-    // Payment breakdown → object
+    // Payment breakdown → object of counts
     const payments = {};
     paymentBreakdown.forEach(p => {
-      payments[p._id || 'unknown'] = { count: p.count, revenue: p.revenue };
+      payments[p._id || 'unknown'] = p.count;
     });
 
-    // Order type breakdown → object
+    // Order type breakdown → object of counts
     const orderTypes = {};
     orderTypeBreakdown.forEach(t => {
-      orderTypes[t._id || 'unknown'] = { count: t.count, revenue: t.revenue };
+      orderTypes[t._id || 'unknown'] = t.count;
     });
+
+    // Merge recent orders from both active and completed collections
+    const allRecentOrders = [
+      ...recentActiveOrders.map(o => ({ ...o, _sortDate: o.createdAt })),
+      ...recentCompletedOrders.map(o => ({ ...o, _sortDate: o.completedAt || o.createdAt })),
+    ]
+      .sort((a, b) => new Date(b._sortDate) - new Date(a._sortDate))
+      .slice(0, 5);
 
     // Customer stats
     const custData = customerStats[0] || {};
@@ -285,9 +301,9 @@ router.get('/stats', tenantAuth, async (req, res) => {
       topProducts,               // [{ name, quantity, revenue }, ...]
 
       // Breakdowns (last 30 days)
-      channels,                  // { whatsapp: { count, revenue }, inapp: { count, revenue } }
-      payments,                  // { cash: { count, revenue }, nequi: {...}, ... }
-      orderTypes,                // { inSite: { count, revenue }, delivery: {...}, ... }
+      channels,                  // { whatsapp: 5, inapp: 3 }
+      payments,                  // { cash: 4, nequi: 2, ... }
+      orderTypes,                // { inSite: 3, delivery: 2, ... }
 
       // Customers
       customers: {
@@ -312,13 +328,15 @@ router.get('/stats', tenantAuth, async (req, res) => {
       },
 
       // Recent activity
-      recentOrders: recentOrders.map(o => ({
+      recentOrders: allRecentOrders.map(o => ({
+        _id: o._id,
         orderNumber: o.orderNumber,
-        customer: o.customerName,
-        amount: o.totalAmount,
+        customerName: o.customerName,
+        totalAmount: o.totalAmount,
         status: o.status,
-        type: o.orderType,
-        time: o.createdAt,
+        orderType: o.orderType,
+        itemCount: o.items?.length || 0,
+        createdAt: o._sortDate || o.createdAt,
       })),
     });
 

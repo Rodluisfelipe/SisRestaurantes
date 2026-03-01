@@ -732,14 +732,6 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
 
   return (
     <div className="space-y-3 sm:space-y-4">
-      {/* Debug info (temporary) */}
-      {data?._debug && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-2 text-[10px] font-mono text-yellow-800">
-          <p>BID: {data._debug.businessId}</p>
-          <p>Token: {data._debug.tokenBusinessId || 'null'} | Query: {data._debug.queryBusinessId || 'null'}</p>
-          <p>SuperAdmin: {data._debug.isSuperAdmin ? 'SI' : 'NO'} | Prop: {businessId || 'null'}</p>
-        </div>
-      )}
       {/* Refresh button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
