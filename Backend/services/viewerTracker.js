@@ -241,25 +241,61 @@ async function persistSession(businessId, viewer) {
     // No persistir sesiones muy cortas (menos de 5 segundos — bots, reloads accidentales)
     if (duration < 5) return null;
     
-    const session = new ViewerSession({
-      businessId,
-      customerName: viewer.customerName,
-      phone: viewer.phone,
-      device: viewer.device,
-      source: viewer.source || 'direct',
-      referrer: viewer.referrer,
-      enteredAt: viewer.enteredAt,
-      leftAt: new Date(),
-      duration,
-      lastCategory: viewer.currentCategory,
-      cartProducts: (viewer.cartProducts || []).slice(0, 20),
-      cartTotal: viewer.cartTotal || 0,
-      converted: false, // se actualiza desde el flujo de pedidos
-      isReturning: viewer.isReturning,
-      previousOrders: viewer.previousOrders
-    });
+    // Deduplicar: si el mismo phone+business ya tiene una sesión NO convertida hoy, actualizarla
+    // en vez de crear una nueva (evita inflar carritos abandonados por múltiples visitas del mismo cliente)
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
     
-    await session.save();
+    let session = null;
+    
+    if (viewer.phone) {
+      session = await ViewerSession.findOneAndUpdate(
+        {
+          businessId,
+          phone: viewer.phone,
+          converted: false,
+          enteredAt: { $gte: todayStart }
+        },
+        {
+          $set: {
+            customerName: viewer.customerName,
+            device: viewer.device,
+            source: viewer.source || 'direct',
+            referrer: viewer.referrer,
+            leftAt: new Date(),
+            lastCategory: viewer.currentCategory,
+            cartProducts: (viewer.cartProducts || []).slice(0, 20),
+            cartTotal: viewer.cartTotal || 0,
+            isReturning: viewer.isReturning,
+            previousOrders: viewer.previousOrders
+          },
+          $inc: { duration: duration } // acumular tiempo total
+        },
+        { sort: { enteredAt: -1 }, new: true }
+      );
+    }
+    
+    // Si no encontró sesión existente (cliente nuevo o sin phone), crear una nueva
+    if (!session) {
+      session = new ViewerSession({
+        businessId,
+        customerName: viewer.customerName,
+        phone: viewer.phone,
+        device: viewer.device,
+        source: viewer.source || 'direct',
+        referrer: viewer.referrer,
+        enteredAt: viewer.enteredAt,
+        leftAt: new Date(),
+        duration,
+        lastCategory: viewer.currentCategory,
+        cartProducts: (viewer.cartProducts || []).slice(0, 20),
+        cartTotal: viewer.cartTotal || 0,
+        converted: false,
+        isReturning: viewer.isReturning,
+        previousOrders: viewer.previousOrders
+      });
+      await session.save();
+    }
     
     // Log abandoned cart
     if (viewer.cartTotal > 0) {
