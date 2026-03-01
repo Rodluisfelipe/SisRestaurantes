@@ -104,9 +104,7 @@ function Admin() {
   } = useProductHandlers({ businessId, products, setProducts, toppingGroups, loadData });
 
   // --- UI local ---
-  const [activeTab, setActiveTab] = useState(() =>
-    window.innerWidth >= 1024 ? 'orders' : 'dashboard'
-  );
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   const [showWelcome, setShowWelcome] = useState(false);
 

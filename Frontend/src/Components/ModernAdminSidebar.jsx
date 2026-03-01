@@ -8,7 +8,7 @@ import {
   FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar,
-  FaQuestionCircle, FaExternalLinkAlt
+  FaQuestionCircle, FaExternalLinkAlt, FaChartBar
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding }) => {
@@ -128,6 +128,25 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
           />
         </div>
       )}
+
+      {/* Dashboard Button */}
+      <div className="px-4 pb-2">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-all duration-200 ${
+            activeTab === 'dashboard'
+              ? 'bg-blue-50 border-blue-200/80 shadow-sm'
+              : 'bg-white border-slate-200/80 hover:bg-slate-50'
+          }`}
+        >
+          <FaChartBar className={`text-sm shrink-0 ${
+            activeTab === 'dashboard' ? 'text-blue-600' : 'text-slate-400'
+          }`} />
+          <span className={`text-xs font-bold ${
+            activeTab === 'dashboard' ? 'text-blue-700' : 'text-slate-600'
+          }`}>Dashboard</span>
+        </button>
+      </div>
 
       {/* Orders Indicator Card */}
       <div className="px-4 pb-3">
