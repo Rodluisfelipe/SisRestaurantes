@@ -36,6 +36,7 @@ function addViewer(businessId, socketId, data) {
     currentView: data.currentView || 'menu',
     cartItems: data.cartItems || 0,
     cartTotal: data.cartTotal || 0,
+    cartProducts: Array.isArray(data.cartProducts) ? data.cartProducts.slice(0, 20) : [],
     isReturning: false,
     previousOrders: 0
   };
@@ -107,6 +108,7 @@ function heartbeat(socketId, data = {}) {
       if (data.currentView) viewer.currentView = data.currentView;
       if (data.cartItems !== undefined) viewer.cartItems = data.cartItems;
       if (data.cartTotal !== undefined) viewer.cartTotal = data.cartTotal;
+      if (Array.isArray(data.cartProducts)) viewer.cartProducts = data.cartProducts.slice(0, 20);
       return bid;
     }
   }
@@ -144,6 +146,7 @@ function getViewers(businessId) {
       currentView: viewer.currentView,
       cartItems: viewer.cartItems,
       cartTotal: viewer.cartTotal,
+      cartProducts: viewer.cartProducts || [],
       isReturning: viewer.isReturning,
       previousOrders: viewer.previousOrders
     });

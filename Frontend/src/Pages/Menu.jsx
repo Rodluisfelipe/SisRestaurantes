@@ -308,7 +308,8 @@ export default function Menu() {
       vs.emit('viewer:heartbeat', {
         currentView: 'menu',
         cartItems: cart?.length || 0,
-        cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
+        cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
+        cartProducts: cart?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
       });
     }
   }, [cart]);
@@ -353,7 +354,8 @@ export default function Menu() {
             phone: orderInfo.phone,
             device,
             cartItems: c?.length || 0,
-            cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
+            cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
+            cartProducts: c?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
           });
         });
         
@@ -364,7 +366,8 @@ export default function Menu() {
             viewerSocket.emit('viewer:heartbeat', {
               currentView: 'menu',
               cartItems: c?.length || 0,
-              cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
+              cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
+              cartProducts: c?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
             });
           }
         }, 30000);

@@ -262,10 +262,20 @@ function LiveViewers({ viewers = [], count = 0 }) {
               </div>
             </div>
             {v.cartItems > 0 && (
-              <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded shrink-0">
-                {ViewerIcons.cart("w-2.5 h-2.5")}
-                {v.cartItems} · {COP(v.cartTotal)}
-              </span>
+              <div className="flex flex-col items-end gap-0.5 shrink-0">
+                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                  {ViewerIcons.cart("w-2.5 h-2.5")}
+                  {v.cartItems} · {COP(v.cartTotal)}
+                </span>
+                {v.cartProducts?.length > 0 && (
+                  <div className="text-[8px] text-slate-400 text-right leading-tight max-w-[140px]">
+                    {v.cartProducts.slice(0, 3).map((p, j) => (
+                      <span key={j}>{p.qty > 1 ? `${p.qty}x ` : ''}{p.name}{j < Math.min(v.cartProducts.length, 3) - 1 ? ', ' : ''}</span>
+                    ))}
+                    {v.cartProducts.length > 3 && <span> +{v.cartProducts.length - 3}</span>}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         ))}
