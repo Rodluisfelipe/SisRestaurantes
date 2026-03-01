@@ -538,7 +538,7 @@ const SubscriptionPayment = () => {
             <button
               type="button"
               onClick={handlePayWithEpayco}
-              disabled={processing || !epaycoReady}
+              disabled={processing}
               className="w-full py-3 px-4 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black disabled:from-slate-300 disabled:to-slate-400 text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-slate-900/20 hover:shadow-slate-900/30 disabled:shadow-none flex items-center justify-center gap-2"
             >
               {processing ? (
