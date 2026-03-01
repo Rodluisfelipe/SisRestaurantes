@@ -34,8 +34,8 @@ function addViewer(businessId, socketId, data) {
     enteredAt: new Date(),
     lastHeartbeat: new Date(),
     currentView: data.currentView || 'menu',
-    cartItems: 0,
-    cartTotal: 0,
+    cartItems: data.cartItems || 0,
+    cartTotal: data.cartTotal || 0,
     isReturning: false,
     previousOrders: 0
   };

@@ -1,5 +1,5 @@
 // @charset UTF-8
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 const ReviewModal = lazy(() => import("../Components/ReviewModal"));
 const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
@@ -293,6 +293,25 @@ export default function Menu() {
   }, [orderInfo]);
 
   // === VIEWER TRACKING: registrar al cliente como visitante en vivo ===
+  // Ref para acceder al cart actualizado dentro del interval
+  const cartRef = useRef(cart);
+  useEffect(() => { cartRef.current = cart; }, [cart]);
+  
+  // Ref para el socket del viewer (para enviar updates desde otros effects)
+  const viewerSocketRef = useRef(null);
+  
+  // Enviar update de carrito cada vez que cambia
+  useEffect(() => {
+    const vs = viewerSocketRef.current;
+    if (vs?.connected) {
+      vs.emit('viewer:heartbeat', {
+        currentView: 'menu',
+        cartItems: cart?.length || 0,
+        cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
+      });
+    }
+  }, [cart]);
+
   // Viewer tracking con socket dedicado (sin auth, separado del admin socket)
   useEffect(() => {
     if (showOrderTypeSelector || !businessId || !orderInfo?.customerName || !orderInfo?.phone) return;
@@ -321,30 +340,35 @@ export default function Menu() {
           }
         });
         
+        viewerSocketRef.current = viewerSocket;
+        
         const ua = navigator.userAgent;
         const device = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Desktop';
         
         viewerSocket.on('connect', () => {
+          const c = cartRef.current;
           viewerSocket.emit('viewer:join', {
             businessId,
             customerName: orderInfo.customerName,
             phone: orderInfo.phone,
-            device
+            device,
+            cartItems: c?.length || 0,
+            cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
           });
         });
         
-        // Heartbeat cada 30 segundos
+        // Heartbeat cada 30 segundos (usa ref para valor fresco)
         heartbeatInterval = setInterval(() => {
           if (viewerSocket?.connected) {
+            const c = cartRef.current;
             viewerSocket.emit('viewer:heartbeat', {
               currentView: 'menu',
-              cartItems: cart?.length || 0,
-              cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
+              cartItems: c?.length || 0,
+              cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
             });
           }
         }, 30000);
       } catch (err) {
-        // Silent fail — viewer tracking is non-critical
         console.debug('[ViewerTracking] Error:', err.message);
       }
     };
@@ -358,6 +382,7 @@ export default function Menu() {
         viewerSocket.emit('viewer:leave');
         viewerSocket.disconnect();
       }
+      viewerSocketRef.current = null;
     };
   }, [showOrderTypeSelector, businessId, orderInfo?.customerName, orderInfo?.phone]);
 
