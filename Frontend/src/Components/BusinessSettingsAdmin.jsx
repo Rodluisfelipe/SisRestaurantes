@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
+import ImageUploader from './Admin/ImageUploader';
 
 const BusinessSettingsAdmin = () => {
   const [settings, setSettings] = useState({
@@ -277,65 +278,35 @@ const BusinessSettingsAdmin = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Logo del Negocio
                 </label>
-          <div className="flex items-center space-x-4">
-            <div className="flex-1">
-              <input
-                type="url"
-                      value={settings.logo}
-                      onChange={(e) => {
-                  const newLogo = e.target.value.trim();
-                  setSettings(prev => ({ ...prev, logo: newLogo }));
-                  setPreviewLogo(newLogo || defaultLogo);
-                      }}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                      placeholder="URL del logo"
-                    />
-                  </div>
-            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-200 flex items-center justify-center bg-gray-50">
-                      <img
-                        src={previewLogo}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = defaultLogo;
-                  setPreviewLogo(defaultLogo);
-                }}
-              />
-            </div>
-                </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Ingresa la URL de una imagen para usar como logo. Recomendamos usar una imagen cuadrada.
-          </p>
-        </div>
+                <ImageUploader
+                  value={settings.logo}
+                  onChange={(url) => {
+                    setSettings(prev => ({ ...prev, logo: url }));
+                    setPreviewLogo(url || defaultLogo);
+                  }}
+                  folder="logos"
+                  maxWidth={400}
+                  quality={85}
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Sube una imagen o pega una URL. Recomendamos imagen cuadrada.
+                </p>
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Imagen de Portada
                 </label>
-          <div className="flex items-center space-x-4">
-            <div className="flex-1">
-                    <input
-                      type="url"
-                      value={settings.coverImage}
-                      onChange={(e) => {
-                        setSettings({ ...settings, coverImage: e.target.value });
-                        setPreviewCover(e.target.value);
-                      }}
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
-                      placeholder="URL de la imagen de portada"
-                    />
-                  </div>
-                  {previewCover && (
-                    <div className="w-20 h-12 rounded-lg overflow-hidden border-2 border-gray-200">
-                      <img
-                        src={previewCover}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => e.target.src = 'https://via.placeholder.com/300x100?text=Cover'}
-                      />
-                    </div>
-                  )}
-                </div>
+                <ImageUploader
+                  value={settings.coverImage}
+                  onChange={(url) => {
+                    setSettings(prev => ({ ...prev, coverImage: url }));
+                    setPreviewCover(url);
+                  }}
+                  folder="covers"
+                  maxWidth={1200}
+                  quality={80}
+                />
               </div>
             </div>
 

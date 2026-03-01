@@ -393,15 +393,25 @@ router.get('/abandoned-carts', tenantAuth, async (req, res) => {
       cartTotal: { $gt: 0 }
     })
     .sort({ enteredAt: -1 })
-    .limit(50)
+    .limit(100)
     .lean();
 
-    const totalLost = abandoned.reduce((s, a) => s + (a.cartTotal || 0), 0);
+    // Deduplicar por teléfono: quedarse solo con la sesión más reciente de cada phone
+    const seen = new Set();
+    const unique = [];
+    for (const a of abandoned) {
+      const key = a.phone || `anon_${a._id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(a);
+    }
+
+    const totalLost = unique.reduce((s, a) => s + (a.cartTotal || 0), 0);
 
     res.json({
-      count: abandoned.length,
+      count: unique.length,
       totalLost,
-      carts: abandoned.map(a => ({
+      carts: unique.slice(0, 50).map(a => ({
         customerName: a.customerName,
         phone: a.phone,
         cartProducts: a.cartProducts,

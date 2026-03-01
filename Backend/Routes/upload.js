@@ -61,7 +61,7 @@ router.post('/image', tenantAuth, upload.single('image'), async (req, res) => {
     const quality = parseInt(req.body.quality) || 80;
 
     // Validar folder permitido
-    const allowedFolders = ['products', 'banners', 'proofs', 'order-proofs', 'announcements', 'logos'];
+    const allowedFolders = ['products', 'banners', 'proofs', 'order-proofs', 'announcements', 'logos', 'covers'];
     if (!allowedFolders.includes(folder)) {
       return res.status(400).json({
         success: false,
