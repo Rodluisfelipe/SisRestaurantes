@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import DashboardMetrics from './DashboardMetrics';
 
 /**
  * AdminDashboard v4 — Ultra-professional mobile-first dashboard.
@@ -388,6 +389,9 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
 
       {/* ═══ SHARE LINK ═══ */}
       {!q && <ShareBar businessConfig={businessConfig} />}
+
+      {/* ═══ METRICS DASHBOARD ═══ */}
+      {!q && <DashboardMetrics setActiveTab={handleNav} />}
 
       {/* ═══ HERO CARDS ═══ */}
       {!q && (
