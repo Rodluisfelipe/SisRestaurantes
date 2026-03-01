@@ -372,4 +372,140 @@ router.get('/viewers', tenantAuth, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/dashboard/abandoned-carts
+ * 
+ * Returns today's abandoned carts (sessions with cartTotal > 0 that didn't convert).
+ */
+router.get('/abandoned-carts', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.query.businessId || req.user?.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId is required' });
+
+    const ViewerSession = require('../Models/ViewerSession');
+    const bid = new mongoose.Types.ObjectId(businessId);
+    const todayStart = startOfDayCOL(new Date());
+
+    const abandoned = await ViewerSession.find({
+      businessId: bid,
+      enteredAt: { $gte: todayStart },
+      converted: false,
+      cartTotal: { $gt: 0 }
+    })
+    .sort({ enteredAt: -1 })
+    .limit(50)
+    .lean();
+
+    const totalLost = abandoned.reduce((s, a) => s + (a.cartTotal || 0), 0);
+
+    res.json({
+      count: abandoned.length,
+      totalLost,
+      carts: abandoned.map(a => ({
+        customerName: a.customerName,
+        phone: a.phone,
+        cartProducts: a.cartProducts,
+        cartTotal: a.cartTotal,
+        duration: a.duration,
+        source: a.source,
+        device: a.device,
+        leftAt: a.leftAt,
+        lastCategory: a.lastCategory
+      }))
+    });
+  } catch (error) {
+    logger.error('Dashboard abandoned-carts error', error);
+    res.status(500).json({ message: 'Error al obtener carritos abandonados' });
+  }
+});
+
+/**
+ * GET /api/dashboard/viewer-stats
+ * 
+ * Returns historical viewer analytics: conversion rate, traffic sources, hourly breakdown.
+ * Query param: period=today|week|month (default: today)
+ */
+router.get('/viewer-stats', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.query.businessId || req.user?.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId is required' });
+
+    const ViewerSession = require('../Models/ViewerSession');
+    const bid = new mongoose.Types.ObjectId(businessId);
+    const period = req.query.period || 'today';
+
+    const now = new Date();
+    let dateFrom;
+    if (period === 'week') {
+      dateFrom = new Date(startOfDayCOL(now).getTime() - 6 * 24 * 60 * 60 * 1000);
+    } else if (period === 'month') {
+      dateFrom = new Date(startOfDayCOL(now).getTime() - 29 * 24 * 60 * 60 * 1000);
+    } else {
+      dateFrom = startOfDayCOL(now);
+    }
+
+    const [
+      totalSessions,
+      convertedSessions,
+      sourceBreakdown,
+      hourlyBreakdown,
+      avgDuration
+    ] = await Promise.all([
+      // Total sessions
+      ViewerSession.countDocuments({ businessId: bid, enteredAt: { $gte: dateFrom } }),
+      // Converted
+      ViewerSession.countDocuments({ businessId: bid, enteredAt: { $gte: dateFrom }, converted: true }),
+      // Source breakdown
+      ViewerSession.aggregate([
+        { $match: { businessId: bid, enteredAt: { $gte: dateFrom } } },
+        { $group: { _id: '$source', count: { $sum: 1 }, converted: { $sum: { $cond: ['$converted', 1, 0] } } } },
+        { $sort: { count: -1 } }
+      ]),
+      // Hourly breakdown (using Colombia offset -5h)
+      ViewerSession.aggregate([
+        { $match: { businessId: bid, enteredAt: { $gte: dateFrom } } },
+        { $project: { hour: { $hour: { date: '$enteredAt', timezone: 'America/Bogota' } } } },
+        { $group: { _id: '$hour', count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]),
+      // Avg duration
+      ViewerSession.aggregate([
+        { $match: { businessId: bid, enteredAt: { $gte: dateFrom }, duration: { $gt: 0 } } },
+        { $group: { _id: null, avg: { $avg: '$duration' }, avgConverted: {
+          $avg: { $cond: [{ $eq: ['$converted', true] }, '$duration', null] }
+        }, avgNotConverted: {
+          $avg: { $cond: [{ $eq: ['$converted', false] }, '$duration', null] }
+        } } }
+      ])
+    ]);
+
+    const conversionRate = totalSessions > 0 ? Math.round((convertedSessions / totalSessions) * 100) : 0;
+    const durationData = avgDuration[0] || { avg: 0, avgConverted: 0, avgNotConverted: 0 };
+
+    res.json({
+      period,
+      totalSessions,
+      convertedSessions,
+      conversionRate,
+      sources: sourceBreakdown.map(s => ({
+        source: s._id || 'direct',
+        count: s.count,
+        converted: s.converted
+      })),
+      hourly: hourlyBreakdown.map(h => ({
+        hour: h._id,
+        count: h.count
+      })),
+      avgDuration: {
+        all: Math.round(durationData.avg || 0),
+        converted: Math.round(durationData.avgConverted || 0),
+        notConverted: Math.round(durationData.avgNotConverted || 0)
+      }
+    });
+  } catch (error) {
+    logger.error('Dashboard viewer-stats error', error);
+    res.status(500).json({ message: 'Error al obtener estadísticas de visitantes' });
+  }
+});
+
 module.exports = router;

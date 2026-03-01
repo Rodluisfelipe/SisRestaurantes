@@ -171,7 +171,10 @@ function initSocket(io) {
         customerName: data.customerName,
         phone: data.phone,
         device: data.device,
-        currentView: 'menu'
+        currentView: 'menu',
+        source: data.source || 'direct',
+        referrer: data.referrer || null,
+        currentCategory: data.currentCategory || null
       });
       
       if (!viewer) return;
@@ -215,26 +218,67 @@ function initSocket(io) {
     });
     
     socket.on('viewer:leave', () => {
-      const businessId = viewerTracker.removeViewerBySocketId(socket.id);
-      if (businessId) {
-        const viewers = viewerTracker.getViewers(businessId);
-        emitToBusiness(businessId, 'viewers_updated', {
+      const result = viewerTracker.removeViewerBySocketId(socket.id);
+      if (result && result.businessId) {
+        const viewers = viewerTracker.getViewers(result.businessId);
+        emitToBusiness(result.businessId, 'viewers_updated', {
           count: viewers.length,
           viewers
         });
+        // Emit abandoned cart alert if viewer had items
+        if (result.viewer && result.viewer.cartTotal > 0) {
+          emitToBusiness(result.businessId, 'cart_abandoned', {
+            customerName: result.viewer.customerName,
+            phone: result.viewer.phone,
+            cartTotal: result.viewer.cartTotal,
+            cartProducts: result.viewer.cartProducts || [],
+            duration: Math.round((Date.now() - result.viewer.enteredAt.getTime()) / 1000)
+          });
+        }
       }
     });
 
     socket.on('disconnect', () => {
       // Clean up viewer tracking on disconnect
-      const viewerBid = socket._viewerBusinessId || viewerTracker.removeViewerBySocketId(socket.id);
+      const viewerBid = socket._viewerBusinessId;
       if (viewerBid) {
-        viewerTracker.removeViewer(viewerBid, socket.id);
-        const viewers = viewerTracker.getViewers(viewerBid);
-        emitToBusiness(viewerBid, 'viewers_updated', {
-          count: viewers.length,
-          viewers
-        });
+        const result = viewerTracker.removeViewer(viewerBid, socket.id);
+        if (result.removed) {
+          const viewers = viewerTracker.getViewers(viewerBid);
+          emitToBusiness(viewerBid, 'viewers_updated', {
+            count: viewers.length,
+            viewers
+          });
+          // Emit abandoned cart alert
+          if (result.viewer && result.viewer.cartTotal > 0) {
+            emitToBusiness(viewerBid, 'cart_abandoned', {
+              customerName: result.viewer.customerName,
+              phone: result.viewer.phone,
+              cartTotal: result.viewer.cartTotal,
+              cartProducts: result.viewer.cartProducts || [],
+              duration: result.duration || 0
+            });
+          }
+        }
+      } else {
+        // Fallback: search all businesses
+        const result = viewerTracker.removeViewerBySocketId(socket.id);
+        if (result && result.businessId) {
+          const viewers = viewerTracker.getViewers(result.businessId);
+          emitToBusiness(result.businessId, 'viewers_updated', {
+            count: viewers.length,
+            viewers
+          });
+          if (result.viewer && result.viewer.cartTotal > 0) {
+            emitToBusiness(result.businessId, 'cart_abandoned', {
+              customerName: result.viewer.customerName,
+              phone: result.viewer.phone,
+              cartTotal: result.viewer.cartTotal,
+              cartProducts: result.viewer.cartProducts || [],
+              duration: Math.round((Date.now() - result.viewer.enteredAt.getTime()) / 1000)
+            });
+          }
+        }
       }
       
       const clientInfo = connectedClients.get(socket.id);

@@ -1,5 +1,5 @@
 // @charset UTF-8
-import React, { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 const ReviewModal = lazy(() => import("../Components/ReviewModal"));
 const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
@@ -298,6 +298,34 @@ export default function Menu() {
   const cartRef = useRef(cart);
   useEffect(() => { cartRef.current = cart; }, [cart]);
   
+  // Detect traffic source from URL params or document.referrer
+  const trafficSource = useMemo(() => {
+    const params = new URLSearchParams(window.location.search);
+    const utm = (params.get('utm_source') || '').toLowerCase();
+    if (utm) {
+      if (utm.includes('instagram')) return 'instagram';
+      if (utm.includes('whatsapp')) return 'whatsapp';
+      if (utm.includes('facebook')) return 'facebook';
+      if (utm.includes('tiktok')) return 'tiktok';
+      if (utm.includes('google')) return 'google';
+      return 'other';
+    }
+    const ref = (document.referrer || '').toLowerCase();
+    if (ref.includes('instagram')) return 'instagram';
+    if (ref.includes('whatsapp') || ref.includes('wa.me') || ref.includes('api.whatsapp')) return 'whatsapp';
+    if (ref.includes('facebook') || ref.includes('fb.com')) return 'facebook';
+    if (ref.includes('tiktok')) return 'tiktok';
+    if (ref.includes('google')) return 'google';
+    if (ref) return 'other';
+    return 'direct';
+  }, []);
+  
+  // Track current visible category from FilterableMenu scroll-spy
+  const currentCategoryRef = useRef(null);
+  const handleCategoryVisible = useCallback((categoryName) => {
+    currentCategoryRef.current = categoryName;
+  }, []);
+  
   // Ref para el socket del viewer (para enviar updates desde otros effects)
   const viewerSocketRef = useRef(null);
   
@@ -307,6 +335,7 @@ export default function Menu() {
     if (vs?.connected) {
       vs.emit('viewer:heartbeat', {
         currentView: 'menu',
+        currentCategory: currentCategoryRef.current,
         cartItems: cart?.length || 0,
         cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
         cartProducts: cart?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
@@ -353,6 +382,8 @@ export default function Menu() {
             customerName: orderInfo.customerName,
             phone: orderInfo.phone,
             device,
+            source: trafficSource,
+            referrer: document.referrer || null,
             cartItems: c?.length || 0,
             cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
             cartProducts: c?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
@@ -365,6 +396,7 @@ export default function Menu() {
             const c = cartRef.current;
             viewerSocket.emit('viewer:heartbeat', {
               currentView: 'menu',
+              currentCategory: currentCategoryRef.current,
               cartItems: c?.length || 0,
               cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
               cartProducts: c?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
@@ -1413,6 +1445,7 @@ export default function Menu() {
         onViewActiveOrder={() => setShowOrderTracker(true)}
         onDismissCompletedOrder={clearActiveOrder}
         customerPhone={orderInfo?.phone || null}
+        onCategoryVisible={handleCategoryVisible}
         onPendingReview={(order) => {
           setPendingReviewOrder(order._id);
           setPendingReviewTopProduct(order.topProduct || null);

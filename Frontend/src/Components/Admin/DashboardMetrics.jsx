@@ -182,6 +182,35 @@ const ViewerIcons = {
       <path d="M17 1l4 4-4 4" /><path d="M3 11V9a4 4 0 014-4h14" /><path d="M7 23l-4-4 4-4" /><path d="M21 13v2a4 4 0 01-4 4H3" />
     </svg>
   ),
+  menu: (c) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  ),
+  alert: (c) => (
+    <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ),
+};
+
+const SOURCE_LABELS = {
+  instagram: 'IG',
+  whatsapp: 'WA',
+  google: 'Google',
+  facebook: 'FB',
+  tiktok: 'TT',
+  direct: 'Directo',
+  other: 'Otro'
+};
+const SOURCE_COLORS = {
+  instagram: 'text-pink-500 bg-pink-50',
+  whatsapp: 'text-green-600 bg-green-50',
+  google: 'text-blue-500 bg-blue-50',
+  facebook: 'text-indigo-500 bg-indigo-50',
+  tiktok: 'text-slate-700 bg-slate-100',
+  direct: 'text-slate-500 bg-slate-50',
+  other: 'text-slate-400 bg-slate-50'
 };
 
 function LiveViewers({ viewers = [], count = 0 }) {
@@ -255,9 +284,15 @@ function LiveViewers({ viewers = [], count = 0 }) {
                       {v.previousOrders}
                     </span>
                   )}
+                  {v.source && v.source !== 'direct' && (
+                    <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${SOURCE_COLORS[v.source] || SOURCE_COLORS.other}`}>
+                      {SOURCE_LABELS[v.source] || v.source}
+                    </span>
+                  )}
                 </div>
                 <p className="text-[9px] text-slate-400">
                   {v.phone || ''} · {v.device || ''} · {formatDuration(v.duration)}
+                  {v.currentCategory ? ` · ${v.currentCategory}` : ''}
                 </p>
               </div>
             </div>
@@ -293,6 +328,75 @@ function formatDuration(seconds) {
   if (!seconds || seconds < 60) return 'ahora';
   const min = Math.floor(seconds / 60);
   return `hace ${min} min`;
+}
+
+/* ═══ Abandoned Carts Widget ═══ */
+function AbandonedCarts({ carts = [], totalLost = 0 }) {
+  if (carts.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-xl border border-red-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3 relative overflow-hidden"
+    >
+      <div className="absolute top-0 right-0 w-12 h-12 bg-red-500 opacity-[0.04] rounded-full -translate-y-5 translate-x-5" />
+      
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <div className="w-5 h-5 rounded-md bg-red-500 bg-opacity-10 flex items-center justify-center">
+            {ViewerIcons.alert("w-2.5 h-2.5 text-red-500")}
+          </div>
+          <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">Carritos abandonados hoy</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+            {carts.length} · {COP(totalLost)}
+          </span>
+        </div>
+      </div>
+
+      {/* Cart list */}
+      <div className="space-y-1">
+        {carts.slice(0, 4).map((c, i) => (
+          <div key={i} className="flex items-center justify-between bg-red-50/40 rounded-lg px-2 py-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-5 h-5 rounded-full bg-red-400 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+                {c.customerName?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-700 truncate">{c.customerName}</p>
+                <p className="text-[9px] text-slate-400">
+                  {c.device || ''} · {c.duration ? `${Math.floor(c.duration / 60)} min` : ''}
+                  {c.source && c.source !== 'direct' ? ` · ${SOURCE_LABELS[c.source] || c.source}` : ''}
+                  {c.lastCategory ? ` · ${c.lastCategory}` : ''}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
+              <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
+                {COP(c.cartTotal)}
+              </span>
+              {c.cartProducts?.length > 0 && (
+                <div className="text-[8px] text-slate-400 text-right leading-tight max-w-[140px]">
+                  {c.cartProducts.slice(0, 2).map((p, j) => (
+                    <span key={j}>{p.qty > 1 ? `${p.qty}x ` : ''}{p.name}{j < Math.min(c.cartProducts.length, 2) - 1 ? ', ' : ''}</span>
+                  ))}
+                  {c.cartProducts.length > 2 && <span> +{c.cartProducts.length - 2}</span>}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+        {carts.length > 4 && (
+          <p className="text-[10px] text-center text-slate-400 font-medium pt-0.5">
+            +{carts.length - 4} más
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
 }
 
 /* ═══ Skeleton placeholder ═══ */
@@ -811,6 +915,7 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [liveViewers, setLiveViewers] = useState({ count: 0, viewers: [] });
+  const [abandonedCarts, setAbandonedCarts] = useState({ count: 0, totalLost: 0, carts: [] });
 
   // Live viewers: socket listener + initial fetch
   useEffect(() => {
@@ -831,14 +936,41 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
     };
     fetchViewers();
 
+    // Fetch abandoned carts
+    const fetchAbandoned = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const res = await fetch(`${API_URL}/dashboard/abandoned-carts?businessId=${businessId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          setAbandonedCarts(json);
+        }
+      } catch { /* silent */ }
+    };
+    fetchAbandoned();
+
     // Listen for real-time updates via socket
     const handleViewersUpdated = (data) => {
       setLiveViewers(data);
     };
+    
+    // Listen for abandoned cart alerts (incremental update)
+    const handleCartAbandoned = (data) => {
+      setAbandonedCarts(prev => ({
+        count: prev.count + 1,
+        totalLost: prev.totalLost + (data.cartTotal || 0),
+        carts: [data, ...prev.carts].slice(0, 50)
+      }));
+    };
+    
     socket.on('viewers_updated', handleViewersUpdated);
+    socket.on('cart_abandoned', handleCartAbandoned);
 
     return () => {
       socket.off('viewers_updated', handleViewersUpdated);
+      socket.off('cart_abandoned', handleCartAbandoned);
     };
   }, [businessId]);
 
@@ -919,6 +1051,9 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
 
       {/* ═══ Live Viewers ═══ */}
       <LiveViewers count={liveViewers.count} viewers={liveViewers.viewers} />
+
+      {/* ═══ Abandoned Carts ═══ */}
+      <AbandonedCarts carts={abandonedCarts.carts} totalLost={abandonedCarts.totalLost} />
 
       {/* ═══ KPI Cards ═══ */}
       {loading ? (

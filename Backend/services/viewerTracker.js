@@ -1,8 +1,10 @@
 const logger = require('../utils/logger');
+const ViewerSession = require('../Models/ViewerSession');
 
 /**
  * Servicio de tracking de visitantes en vivo por negocio.
  * Almacena en memoria (Map) las sesiones activas de clientes viendo el menú.
+ * Al desconectarse, persiste la sesión en MongoDB para analytics históricos.
  * 
  * Cada negocio tiene un Map de socketId -> viewerData.
  * Se limpia automáticamente cuando el socket se desconecta o no envía heartbeat en 90s.
@@ -34,6 +36,9 @@ function addViewer(businessId, socketId, data) {
     enteredAt: new Date(),
     lastHeartbeat: new Date(),
     currentView: data.currentView || 'menu',
+    currentCategory: data.currentCategory || null,
+    source: data.source || 'direct',
+    referrer: data.referrer || null,
     cartItems: data.cartItems || 0,
     cartTotal: data.cartTotal || 0,
     cartProducts: Array.isArray(data.cartProducts) ? data.cartProducts.slice(0, 20) : [],
@@ -43,23 +48,24 @@ function addViewer(businessId, socketId, data) {
   
   businessViewers.get(bid).set(socketId, viewer);
   
-  logger.info(`[ViewerTracker] Viewer joined: ${viewer.customerName} → business ${bid}`, {
-    socketId, businessId: bid, totalViewers: businessViewers.get(bid).size
+  logger.info(`[ViewerTracker] Viewer joined: ${viewer.customerName} → business ${bid} (source: ${viewer.source})`, {
+    socketId, businessId: bid, totalViewers: businessViewers.get(bid).size, source: viewer.source
   });
   
   return viewer;
 }
 
 /**
- * Elimina un viewer (desconexión o salida)
+ * Elimina un viewer (desconexión o salida) y persiste la sesión en MongoDB.
+ * Retorna { removed: true, viewer } o { removed: false }.
  */
 function removeViewer(businessId, socketId) {
-  if (!businessId || !socketId) return false;
+  if (!businessId || !socketId) return { removed: false };
   
   const bid = businessId.toString();
   const viewers = businessViewers.get(bid);
   
-  if (!viewers) return false;
+  if (!viewers) return { removed: false };
   
   const viewer = viewers.get(socketId);
   const removed = viewers.delete(socketId);
@@ -71,30 +77,35 @@ function removeViewer(businessId, socketId) {
   
   if (removed && viewer) {
     const duration = Math.round((Date.now() - viewer.enteredAt.getTime()) / 1000);
-    logger.info(`[ViewerTracker] Viewer left: ${viewer.customerName} → business ${bid} (${duration}s)`, {
-      socketId, businessId: bid, duration
+    logger.info(`[ViewerTracker] Viewer left: ${viewer.customerName} → business ${bid} (${duration}s, cart: $${viewer.cartTotal})`, {
+      socketId, businessId: bid, duration, cartTotal: viewer.cartTotal
     });
+    
+    // Persist to MongoDB (fire and forget)
+    persistSession(bid, viewer).catch(err => {
+      logger.warn('[ViewerTracker] Error persisting session', { error: err.message });
+    });
+    
+    return { removed: true, viewer, duration };
   }
   
-  return removed;
+  return { removed: false };
 }
 
 /**
- * Busca y elimina un viewer por socketId en TODOS los negocios
- * (para cuando se desconecta sin haber hecho viewer:leave)
+ * Busca y elimina un viewer por socketId en TODOS los negocios.
+ * Retorna { businessId, viewer } o null.
  */
 function removeViewerBySocketId(socketId) {
-  let removedFrom = null;
-  
   for (const [bid, viewers] of businessViewers.entries()) {
     if (viewers.has(socketId)) {
-      removeViewer(bid, socketId);
-      removedFrom = bid;
-      break;
+      const result = removeViewer(bid, socketId);
+      if (result.removed) {
+        return { businessId: bid, viewer: result.viewer };
+      }
     }
   }
-  
-  return removedFrom;
+  return null;
 }
 
 /**
@@ -106,6 +117,7 @@ function heartbeat(socketId, data = {}) {
     if (viewer) {
       viewer.lastHeartbeat = new Date();
       if (data.currentView) viewer.currentView = data.currentView;
+      if (data.currentCategory !== undefined) viewer.currentCategory = data.currentCategory;
       if (data.cartItems !== undefined) viewer.cartItems = data.cartItems;
       if (data.cartTotal !== undefined) viewer.cartTotal = data.cartTotal;
       if (Array.isArray(data.cartProducts)) viewer.cartProducts = data.cartProducts.slice(0, 20);
@@ -144,6 +156,8 @@ function getViewers(businessId) {
       enteredAt: viewer.enteredAt,
       duration: Math.round((now - viewer.enteredAt.getTime()) / 1000),
       currentView: viewer.currentView,
+      currentCategory: viewer.currentCategory,
+      source: viewer.source,
       cartItems: viewer.cartItems,
       cartTotal: viewer.cartTotal,
       cartProducts: viewer.cartProducts || [],
@@ -218,6 +232,86 @@ function cleanupStale() {
 }
 
 /**
+ * Persiste una sesión de viewer en MongoDB al desconectarse.
+ */
+async function persistSession(businessId, viewer) {
+  try {
+    const duration = Math.round((Date.now() - viewer.enteredAt.getTime()) / 1000);
+    
+    // No persistir sesiones muy cortas (menos de 5 segundos — bots, reloads accidentales)
+    if (duration < 5) return null;
+    
+    const session = new ViewerSession({
+      businessId,
+      customerName: viewer.customerName,
+      phone: viewer.phone,
+      device: viewer.device,
+      source: viewer.source || 'direct',
+      referrer: viewer.referrer,
+      enteredAt: viewer.enteredAt,
+      leftAt: new Date(),
+      duration,
+      lastCategory: viewer.currentCategory,
+      cartProducts: (viewer.cartProducts || []).slice(0, 20),
+      cartTotal: viewer.cartTotal || 0,
+      converted: false, // se actualiza desde el flujo de pedidos
+      isReturning: viewer.isReturning,
+      previousOrders: viewer.previousOrders
+    });
+    
+    await session.save();
+    
+    // Log abandoned cart
+    if (viewer.cartTotal > 0) {
+      logger.info(`[ViewerTracker] Abandoned cart: ${viewer.customerName} left with $${viewer.cartTotal}`, {
+        businessId, phone: viewer.phone, cartTotal: viewer.cartTotal,
+        products: (viewer.cartProducts || []).map(p => p.name).join(', ')
+      });
+    }
+    
+    return session;
+  } catch (err) {
+    logger.error('[ViewerTracker] Error saving session to MongoDB', { error: err.message });
+    return null;
+  }
+}
+
+/**
+ * Marca la última sesión de un cliente como convertida (hizo pedido).
+ * Llamar desde el flujo de creación de ordenes.
+ */
+async function markConverted(businessId, phone) {
+  try {
+    if (!businessId || !phone) return;
+    
+    // Buscar la sesión más reciente de este phone en este business (últimos 30 min)
+    const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
+    
+    const session = await ViewerSession.findOneAndUpdate(
+      {
+        businessId,
+        phone,
+        enteredAt: { $gte: thirtyMinAgo },
+        converted: false
+      },
+      { converted: true },
+      { sort: { enteredAt: -1 }, new: true }
+    );
+    
+    if (session) {
+      logger.info(`[ViewerTracker] Session marked as converted: ${session.customerName}`, {
+        businessId, phone, sessionId: session._id
+      });
+    }
+    
+    return session;
+  } catch (err) {
+    logger.error('[ViewerTracker] Error marking session as converted', { error: err.message });
+    return null;
+  }
+}
+
+/**
  * Estadísticas globales (para debug)
  */
 function getStats() {
@@ -240,6 +334,7 @@ module.exports = {
   getViewers,
   getViewerCount,
   markReturning,
+  markConverted,
   cleanupStale,
   getStats
 };

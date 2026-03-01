@@ -385,7 +385,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
       finalAmount,
       // In-app ordering fields
       orderChannel: orderChannel || 'whatsapp',
-      paymentMethod: isInApp ? (paymentMethod || null) : null,
+      paymentMethod: paymentMethod || null,
       customerToken,
       customerNotes: customerNotes || '',
       statusHistory: [{ status: initialStatus, timestamp: new Date(), note: 'Pedido creado' }],
@@ -395,6 +395,10 @@ router.post("/", createOrderLimiter, async (req, res) => {
       deliveryZoneInfo: deliveryZoneInfo || null,
       deliveryCalculated: deliveryCalculated || false,
       deliveryNeedsConfirmation: deliveryNeedsConfirmation || false,
+      // Map delivery zone details to top-level fields
+      deliveryCoordinates: deliveryZoneInfo?.coordinates || { lat: null, lon: null },
+      deliveryDistance: deliveryZoneInfo?.distance || 0,
+      estimatedDeliveryTime: deliveryZoneInfo?.estimatedTime || { min: 0, max: 0 },
       status: initialStatus,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -428,6 +432,13 @@ router.post("/", createOrderLimiter, async (req, res) => {
     }
     
     logger.info(`Created new order ${orderNumber} for business ${businessId} (channel: ${orderChannel || 'whatsapp'})`);
+    
+    // Mark viewer session as converted (fire and forget)
+    try {
+      const viewerTracker = require('../services/viewerTracker');
+      viewerTracker.markConverted(businessObjectId.toString(), phone).catch(() => {});
+    } catch (_) {}
+    
     res.status(201).json({
       ...savedOrder.toObject(),
       customerToken: customerToken // Include token in response for client tracking

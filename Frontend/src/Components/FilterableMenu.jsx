@@ -160,6 +160,7 @@ const FilterableMenu = ({
   onViewActiveOrder,
   onDismissCompletedOrder,
   customerPhone = null,
+  onCategoryVisible,
   onPendingReview
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
@@ -271,6 +272,14 @@ const FilterableMenu = ({
     sections.forEach(([, el]) => obs.observe(el));
     return () => obs.disconnect();
   }, [userTapped, filteredProducts]);
+
+  // ── Notify parent of visible category (for viewer tracking) ──
+  useEffect(() => {
+    if (onCategoryVisible && spyCategory && spyCategory !== 'all') {
+      const cat = categories.find(c => c._id === spyCategory);
+      if (cat) onCategoryVisible(cat.name);
+    }
+  }, [spyCategory, categories, onCategoryVisible]);
 
   // ── Scroll progress (how far through the menu) ──
   useEffect(() => {
