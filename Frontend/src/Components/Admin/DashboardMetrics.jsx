@@ -287,7 +287,7 @@ function WeeklyChart({ data, loading }) {
       </div>
 
       {/* Bars */}
-      <div className="relative flex gap-1.5 sm:gap-2 h-28 sm:h-36">
+      <div className="relative flex gap-1.5 sm:gap-2">
         {isEmpty && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <p className="text-xs text-slate-400 font-medium bg-white/80 px-3 py-1.5 rounded-lg">Sin ventas esta semana — ¡tu primer pedido aparecerá aquí!</p>
@@ -300,18 +300,18 @@ function WeeklyChart({ data, loading }) {
             <div key={day.date} className="flex-1 flex flex-col items-center gap-1 group/bar">
               {/* Revenue value on hover */}
               {!isEmpty && (
-                <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/bar:opacity-100 transition-opacity truncate max-w-full">
-                  {day.orders > 0 ? COP(day.revenue) : "—"}
+                <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/bar:opacity-100 transition-opacity truncate max-w-full h-3">
+                  {day.orders > 0 ? COP(day.revenue) : ""}
                 </div>
               )}
 
-              {/* Bar */}
-              <div className="w-full flex-1 flex items-end">
+              {/* Bar — fixed height container with absolute positioned bar */}
+              <div className="w-full h-24 sm:h-32 relative">
                 <motion.div
                   initial={{ height: 0 }}
                   animate={{ height: `${Math.max(revH, 4)}%` }}
                   transition={{ duration: 0.5, delay: i * 0.05, ease: [0.25, 0.1, 0.25, 1] }}
-                  className={`w-full rounded-md transition-colors ${
+                  className={`absolute bottom-0 inset-x-0 rounded-md transition-colors ${
                     isEmpty
                       ? "bg-slate-100"
                       : isToday
