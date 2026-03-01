@@ -102,6 +102,7 @@ app.use(cors({
   credentials: true,
   preflightContinue: false,
   optionsSuccessStatus: 204
+  
 }));
 
 // Manejar peticiones OPTIONS explícitamente
@@ -171,6 +172,7 @@ app.use("/api/upload", require("./Routes/upload")); // Subida de imágenes a Dig
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot
 app.use("/api/help-chat", require("./Routes/helpChat")); // Asistente IA de ayuda (Groq)
 app.use("/api/ai-tools", require("./Routes/aiTools")); // Herramientas IA (nombres, respuestas a reseñas)
+app.use("/api/dashboard", require("./Routes/dashboard")); // Dashboard de métricas admin
 // Debug endpoints - solo disponibles en desarrollo
 if (process.env.NODE_ENV !== 'production') {
   app.use("/api/debug", require("./Routes/debug"));
