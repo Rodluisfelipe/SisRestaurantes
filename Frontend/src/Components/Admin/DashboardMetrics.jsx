@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "../../config";
+import { socket } from "../../services/socket";
 
 /**
  * DashboardMetrics — Real-time business intelligence panel.
@@ -163,6 +164,90 @@ const Icons = {
     </svg>
   ),
 };
+
+/* ═══ Live Viewers Widget ═══ */
+function LiveViewers({ viewers = [], count = 0 }) {
+  if (count === 0) {
+    return (
+      <div className="bg-slate-50 rounded-xl border border-slate-100 p-2.5 sm:p-3">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-slate-300" />
+          <span className="text-[11px] font-semibold text-slate-400">Nadie viendo tu menú ahora</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200/50 p-2.5 sm:p-3 shadow-sm"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping" />
+          </div>
+          <span className="text-xs font-bold text-slate-700">
+            {count} {count === 1 ? 'persona' : 'personas'} viendo tu menú
+          </span>
+        </div>
+        {viewers.some(v => v.cartItems > 0) && (
+          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+            🛒 {viewers.filter(v => v.cartItems > 0).length} con carrito
+          </span>
+        )}
+      </div>
+
+      {/* Viewer list */}
+      <div className="space-y-1">
+        {viewers.slice(0, 6).map((v, i) => (
+          <div key={i} className="flex items-center justify-between bg-white/70 rounded-lg px-2 py-1.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${
+                v.isReturning ? 'bg-blue-500' : 'bg-slate-400'
+              }`}>
+                {v.customerName?.charAt(0)?.toUpperCase() || '?'}
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-700 truncate">
+                  {v.customerName}
+                  {v.isReturning && (
+                    <span className="ml-1 text-[9px] font-bold text-blue-500">🔄 {v.previousOrders} pedidos</span>
+                  )}
+                </p>
+                <p className="text-[9px] text-slate-400">
+                  {v.phone || ''} · {v.device || ''} · {formatDuration(v.duration)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              {v.cartItems > 0 && (
+                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                  🛒 {v.cartItems}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+        {viewers.length > 6 && (
+          <p className="text-[10px] text-center text-slate-400 font-medium pt-0.5">
+            +{viewers.length - 6} más
+          </p>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function formatDuration(seconds) {
+  if (!seconds || seconds < 60) return 'ahora';
+  const min = Math.floor(seconds / 60);
+  return `hace ${min} min`;
+}
 
 /* ═══ Skeleton placeholder ═══ */
 function Skeleton({ className = "" }) {
@@ -679,6 +764,37 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [liveViewers, setLiveViewers] = useState({ count: 0, viewers: [] });
+
+  // Live viewers: socket listener + initial fetch
+  useEffect(() => {
+    if (!businessId) return;
+
+    // Initial fetch via REST
+    const fetchViewers = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        const res = await fetch(`${API_URL}/dashboard/viewers?businessId=${businessId}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          setLiveViewers(json);
+        }
+      } catch { /* silent */ }
+    };
+    fetchViewers();
+
+    // Listen for real-time updates via socket
+    const handleViewersUpdated = (data) => {
+      setLiveViewers(data);
+    };
+    socket.on('viewers_updated', handleViewersUpdated);
+
+    return () => {
+      socket.off('viewers_updated', handleViewersUpdated);
+    };
+  }, [businessId]);
 
   const fetchStats = useCallback(async (silent = false) => {
     try {
@@ -754,6 +870,9 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
           {refreshing ? "Actualizando…" : "Actualizar"}
         </button>
       </div>
+
+      {/* ═══ Live Viewers ═══ */}
+      <LiveViewers count={liveViewers.count} viewers={liveViewers.viewers} />
 
       {/* ═══ KPI Cards ═══ */}
       {loading ? (

@@ -292,6 +292,42 @@ export default function Menu() {
     }
   }, [orderInfo]);
 
+  // === VIEWER TRACKING: registrar al cliente como visitante en vivo ===
+  useEffect(() => {
+    // Solo trackear cuando tenemos businessId, nombre, teléfono Y el menú está visible
+    if (showOrderTypeSelector || !businessId || !orderInfo?.customerName || !orderInfo?.phone) return;
+    
+    // Conectar socket si no está conectado
+    if (!socket.connected) socket.connect();
+    
+    // Detectar dispositivo
+    const ua = navigator.userAgent;
+    const device = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Desktop';
+    
+    // Emitir join
+    socket.emit('viewer:join', {
+      businessId,
+      customerName: orderInfo.customerName,
+      phone: orderInfo.phone,
+      device
+    });
+    
+    // Heartbeat cada 30 segundos
+    const heartbeatInterval = setInterval(() => {
+      socket.emit('viewer:heartbeat', {
+        currentView: 'menu',
+        cartItems: cart?.length || 0,
+        cartTotal: cart?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0
+      });
+    }, 30000);
+    
+    // Cleanup: emitir leave al desmontar
+    return () => {
+      clearInterval(heartbeatInterval);
+      socket.emit('viewer:leave');
+    };
+  }, [showOrderTypeSelector, businessId, orderInfo?.customerName, orderInfo?.phone]);
+
   // Recover active order from backend if sessionStorage lost it (e.g. new session)
   useEffect(() => {
     if (activeOrderId || !isInAppMode || !orderInfo.phone || !businessId) return;

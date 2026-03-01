@@ -346,4 +346,30 @@ router.get('/stats', tenantAuth, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/dashboard/viewers
+ * 
+ * Returns current live viewers for the business menu.
+ * Protected by tenantAuth.
+ */
+router.get('/viewers', tenantAuth, async (req, res) => {
+  try {
+    const businessId = (req.query.businessId || req.user?.businessId || '').toString();
+    if (!businessId) {
+      return res.status(400).json({ message: 'businessId is required' });
+    }
+    
+    const viewerTracker = require('../services/viewerTracker');
+    const viewers = viewerTracker.getViewers(businessId);
+    
+    res.json({
+      count: viewers.length,
+      viewers
+    });
+  } catch (error) {
+    logger.error('Dashboard viewers error', error);
+    res.status(500).json({ message: 'Error al obtener visitantes en vivo' });
+  }
+});
+
 module.exports = router;

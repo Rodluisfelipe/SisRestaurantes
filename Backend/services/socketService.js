@@ -3,6 +3,7 @@ let ioInstance = null;
 const connectedClients = new Map(); // Track connected clients
 const { verifyToken } = require('../config/jwt');
 const logger = require('../utils/logger');
+const viewerTracker = require('./viewerTracker');
 
 // Slug cache to avoid DB lookups on every emit
 const slugCache = new Map(); // businessId -> { slug, cachedAt }
@@ -160,7 +161,82 @@ function initSocket(io) {
       }
     });
 
+    // === VIEWER TRACKING (no auth required — customers viewing the menu) ===
+    
+    socket.on('viewer:join', async (data) => {
+      if (!data || !data.businessId) return;
+      
+      const businessId = data.businessId.toString();
+      const viewer = viewerTracker.addViewer(businessId, socket.id, {
+        customerName: data.customerName,
+        phone: data.phone,
+        device: data.device,
+        currentView: 'menu'
+      });
+      
+      if (!viewer) return;
+      
+      // Check if returning customer
+      try {
+        if (data.phone) {
+          const Customer = require('../Models/Customer');
+          const customer = await Customer.findOne({ phone: data.phone, businessId }).select('totalOrders').lean();
+          if (customer && customer.totalOrders > 0) {
+            viewerTracker.markReturning(businessId, socket.id, customer.totalOrders);
+          }
+        }
+      } catch (err) {
+        logger.warn('[ViewerTracker] Error checking returning customer', { error: err.message });
+      }
+      
+      // Store businessId on socket for cleanup on disconnect
+      socket._viewerBusinessId = businessId;
+      
+      // Emit updated viewer list to admin panel
+      const viewers = viewerTracker.getViewers(businessId);
+      emitToBusiness(businessId, 'viewers_updated', {
+        count: viewers.length,
+        viewers
+      });
+    });
+    
+    socket.on('viewer:heartbeat', (data) => {
+      const businessId = viewerTracker.heartbeat(socket.id, data || {});
+      if (businessId) {
+        // Emit updated list only if cart changed
+        if (data && (data.cartItems !== undefined || data.currentView)) {
+          const viewers = viewerTracker.getViewers(businessId);
+          emitToBusiness(businessId, 'viewers_updated', {
+            count: viewers.length,
+            viewers
+          });
+        }
+      }
+    });
+    
+    socket.on('viewer:leave', () => {
+      const businessId = viewerTracker.removeViewerBySocketId(socket.id);
+      if (businessId) {
+        const viewers = viewerTracker.getViewers(businessId);
+        emitToBusiness(businessId, 'viewers_updated', {
+          count: viewers.length,
+          viewers
+        });
+      }
+    });
+
     socket.on('disconnect', () => {
+      // Clean up viewer tracking on disconnect
+      const viewerBid = socket._viewerBusinessId || viewerTracker.removeViewerBySocketId(socket.id);
+      if (viewerBid) {
+        viewerTracker.removeViewer(viewerBid, socket.id);
+        const viewers = viewerTracker.getViewers(viewerBid);
+        emitToBusiness(viewerBid, 'viewers_updated', {
+          count: viewers.length,
+          viewers
+        });
+      }
+      
       const clientInfo = connectedClients.get(socket.id);
       if (clientInfo) {
         logger.info('Cliente desconectado', { socketId: socket.id, sessionId: clientInfo.sessionId, clientType: clientInfo.clientType });
