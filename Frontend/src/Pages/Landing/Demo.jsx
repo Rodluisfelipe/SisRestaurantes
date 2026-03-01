@@ -1,261 +1,158 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
+const DEMOS = [
+  {
+    id: 'restaurant',
+    name: 'Restaurante',
+    emoji: '🍽️',
+    desc: 'Menú completo con categorías, productos y extras.',
+    menu: [
+      { cat: 'Entradas', items: [{ n: 'Nachos con Queso', p: '$12.900' }, { n: 'Alitas BBQ x8', p: '$18.500' }, { n: 'Empanadas x3', p: '$8.900' }] },
+      { cat: 'Platos Fuertes', items: [{ n: 'Hamburguesa Clásica', p: '$22.900' }, { n: 'Pasta Carbonara', p: '$19.900' }, { n: 'Pollo a la Plancha', p: '$21.500' }] },
+      { cat: 'Postres', items: [{ n: 'Tiramisú', p: '$12.000' }, { n: 'Brownie con Helado', p: '$10.500' }] },
+    ]
+  },
+  {
+    id: 'cafe',
+    name: 'Cafetería',
+    emoji: '☕',
+    desc: 'Bebidas, postres y snacks con estilo.',
+    menu: [
+      { cat: 'Bebidas Calientes', items: [{ n: 'Café Americano', p: '$5.500' }, { n: 'Cappuccino', p: '$7.900' }, { n: 'Latte', p: '$8.500' }] },
+      { cat: 'Bebidas Frías', items: [{ n: 'Frappé de Vainilla', p: '$12.900' }, { n: 'Iced Coffee', p: '$9.500' }] },
+      { cat: 'Snacks', items: [{ n: 'Croissant', p: '$6.500' }, { n: 'Muffin de Arándanos', p: '$7.200' }] },
+    ]
+  },
+  {
+    id: 'pizzeria',
+    name: 'Pizzería',
+    emoji: '🍕',
+    desc: 'Pizzas, combos y bebidas para toda ocasión.',
+    menu: [
+      { cat: 'Pizzas', items: [{ n: 'Margarita Personal', p: '$15.900' }, { n: 'Pepperoni Mediana', p: '$29.900' }, { n: 'Hawaiana Familiar', p: '$42.900' }] },
+      { cat: 'Combos', items: [{ n: 'Pizza + Gaseosa', p: '$22.900' }, { n: 'Familiar + 4 Gaseosas', p: '$49.900' }] },
+    ]
+  },
+  {
+    id: 'foodtruck',
+    name: 'Food Truck',
+    emoji: '🚚',
+    desc: 'Menú rápido y directo, ideal para la calle.',
+    menu: [
+      { cat: 'Especialidades', items: [{ n: 'Burger Gourmet', p: '$19.900' }, { n: 'Tacos de Carnitas x3', p: '$16.500' }, { n: 'Hot Dog Premium', p: '$13.900' }] },
+      { cat: 'Acompañamientos', items: [{ n: 'Papas Fritas', p: '$7.900' }, { n: 'Onion Rings', p: '$9.500' }] },
+    ]
+  },
+];
+
 const Demo = () => {
-  const [selectedDemo, setSelectedDemo] = useState('restaurant');
-
-  const demos = [
-    {
-      id: 'restaurant',
-      name: 'Restaurante',
-      description: 'Menú completo con categorías, productos y opciones',
-      image: '🍽️',
-      features: ['Categorías organizadas', 'Productos con imágenes', 'Opciones personalizables', 'Precios dinámicos'],
-      sampleMenu: [
-        { category: 'Entradas', items: ['Nachos con Queso', 'Alitas BBQ', 'Empanadas'] },
-        { category: 'Platos Principales', items: ['Hamburguesa Clásica', 'Pasta Carbonara', 'Pollo a la Plancha'] },
-        { category: 'Postres', items: ['Tiramisú', 'Brownie con Helado', 'Flan de Caramelo'] }
-      ]
-    },
-    {
-      id: 'cafe',
-      name: 'Cafetería',
-      description: 'Menú de bebidas y snacks con horarios especiales',
-      image: '☕',
-      features: ['Bebidas calientes y frías', 'Snacks y postres', 'Horarios de servicio', 'Promociones especiales'],
-      sampleMenu: [
-        { category: 'Bebidas Calientes', items: ['Café Americano', 'Cappuccino', 'Latte', 'Chocolate Caliente'] },
-        { category: 'Bebidas Frías', items: ['Frappé de Vainilla', 'Iced Coffee', 'Smoothie de Frutas'] },
-        { category: 'Snacks', items: ['Croissant', 'Muffin de Arándanos', 'Sándwich Club'] }
-      ]
-    },
-    {
-      id: 'bar',
-      name: 'Bar',
-      description: 'Carta de bebidas y comida con ambiente nocturno',
-      image: '🍸',
-      features: ['Cócteles y bebidas', 'Tapas y comida', 'Ambiente nocturno', 'Eventos especiales'],
-      sampleMenu: [
-        { category: 'Cócteles', items: ['Mojito', 'Margarita', 'Piña Colada', 'Martini'] },
-        { category: 'Tapas', items: ['Patatas Bravas', 'Jamón Ibérico', 'Queso Manchego'] },
-        { category: 'Bebidas', items: ['Cerveza Artesanal', 'Vino Tinto', 'Whisky Premium'] }
-      ]
-    },
-    {
-      id: 'foodtruck',
-      name: 'Food Truck',
-      description: 'Menú móvil con ubicación en tiempo real',
-      image: '🚚',
-      features: ['Ubicación en tiempo real', 'Menú estacional', 'Pedidos anticipados', 'Redes sociales'],
-      sampleMenu: [
-        { category: 'Especialidades', items: ['Burger Gourmet', 'Tacos de Carnitas', 'Hot Dog Premium'] },
-        { category: 'Acompañamientos', items: ['Papas Fritas', 'Onion Rings', 'Ensalada César'] },
-        { category: 'Bebidas', items: ['Refrescos', 'Agua', 'Jugos Naturales'] }
-      ]
-    }
-  ];
-
-  const currentDemo = demos.find(demo => demo.id === selectedDemo);
+  const [sel, setSel] = useState('restaurant');
+  const current = DEMOS.find(d => d.id === sel);
 
   return (
     <div className="min-h-screen bg-white">
-      
-      {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-br from-white via-red-50 to-white">
-        <div className="container mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center max-w-4xl mx-auto mb-16"
-          >
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Prueba Menuby antes de decidir
+      {/* Hero */}
+      <section className="pt-28 pb-12 bg-gradient-to-br from-white via-red-50/40 to-white">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
+            <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4">
+              Explora Menuby en acción
             </h1>
-            <p className="text-xl text-gray-600 mb-8">
-              Explora nuestros menús de ejemplo y descubre cómo Menuby puede transformar tu negocio
+            <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-8">
+              Selecciona un tipo de negocio y descubre cómo se vería tu menú digital.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href="https://www.menuby.tech/macdonalds"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-8 py-4 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center"
-              >
-                <span>Ver Demo en Vivo</span>
-                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </a>
-              <a
-                href="/register"
-                className="px-8 py-4 bg-transparent hover:bg-white hover:text-gray-900 text-[#E31E24] font-semibold rounded-xl border-2 border-[#E31E24] hover:border-gray-300 transition-all duration-300 transform hover:scale-105 flex items-center"
-              >
-                <span>Crear Mi Menú Gratis</span>
-                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </a>
-            </div>
           </motion.div>
 
-          {/* Demo Selector */}
+          {/* Selector */}
+          <div className="flex flex-wrap justify-center gap-3 mb-4">
+            {DEMOS.map(d => (
+              <button
+                key={d.id}
+                onClick={() => setSel(d.id)}
+                className={`px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                  sel === d.id
+                    ? 'bg-red-500 text-white shadow-lg shadow-red-500/25'
+                    : 'bg-white text-gray-600 border border-gray-200 hover:border-red-200'
+                }`}
+              >
+                {d.emoji} {d.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Demo Preview */}
+      <section className="pb-20">
+        <div className="max-w-4xl mx-auto px-4">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            key={sel}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.2 }}
-            className="max-w-6xl mx-auto"
+            transition={{ duration: 0.4 }}
+            className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              {demos.map((demo) => (
-                <motion.button
-                  key={demo.id}
-                  onClick={() => setSelectedDemo(demo.id)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className={`p-6 rounded-2xl border-2 transition-all duration-300 ${
-                    selectedDemo === demo.id
-                      ? 'border-[#E31E24] bg-red-50 shadow-lg'
-                      : 'border-gray-200 bg-white hover:border-[#E31E24] hover:shadow-md'
-                  }`}
-                >
-                  <div className="text-4xl mb-4">{demo.image}</div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{demo.name}</h3>
-                  <p className="text-sm text-gray-600">{demo.description}</p>
-                </motion.button>
-              ))}
+            {/* Browser bar */}
+            <div className="bg-gray-50 px-5 py-3 border-b border-gray-200 flex items-center gap-2">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 bg-red-400 rounded-full" />
+                <div className="w-3 h-3 bg-amber-400 rounded-full" />
+                <div className="w-3 h-3 bg-green-400 rounded-full" />
+              </div>
+              <div className="ml-3 flex-1 bg-white rounded-lg px-3 py-1.5 text-xs text-gray-500 border border-gray-200">
+                menuby.tech/{current?.id === 'restaurant' ? 'tu-restaurante' : current?.id}
+              </div>
             </div>
 
-            {/* Demo Preview */}
-            <motion.div
-              key={selectedDemo}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
-            >
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                  <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <span className="ml-4 text-sm text-gray-600">
-                    Menuby Demo - {currentDemo?.name} | www.menuby.tech/{currentDemo?.name.toLowerCase()}
-                  </span>
+            {/* Menu content */}
+            <div className="p-6 md:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-3xl">{current?.emoji}</span>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">{current?.name}</h3>
+                  <p className="text-sm text-gray-500">{current?.desc}</p>
                 </div>
               </div>
-              
-              <div className="p-8">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Menu Preview */}
-                  <div>
-                    <div className="flex items-center space-x-3 mb-6">
-                      <div className="text-3xl">{currentDemo?.image}</div>
-                      <div>
-                        <h3 className="text-2xl font-bold text-gray-900">{currentDemo?.name}</h3>
-                        <p className="text-gray-600">{currentDemo?.description}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-6">
-                      {currentDemo?.sampleMenu.map((category, index) => (
-                        <div key={index}>
-                          <h4 className="text-lg font-semibold text-gray-800 mb-3 border-b border-gray-200 pb-2">
-                            {category.category}
-                          </h4>
-                          <div className="space-y-3">
-                            {category.items.map((item, itemIndex) => (
-                              <div key={itemIndex} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-red-50 transition-colors duration-200">
-                                <div>
-                                  <h5 className="font-medium text-gray-900">{item}</h5>
-                                  <p className="text-sm text-gray-600">Descripción del producto</p>
-                                </div>
-                                <span className="text-lg font-bold text-[#E31E24]">
-                                  ${Math.floor(Math.random() * 20 + 10)}.000
-                                </span>
-                              </div>
-                            ))}
+
+              <div className="space-y-6">
+                {current?.menu.map((cat, ci) => (
+                  <div key={ci}>
+                    <h4 className="text-sm font-bold text-gray-800 mb-3 border-b border-gray-100 pb-2">{cat.cat}</h4>
+                    <div className="space-y-2">
+                      {cat.items.map((item, ii) => (
+                        <div key={ii} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-red-50/50 transition-colors">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{item.n}</p>
+                            <p className="text-xs text-gray-400">Descripción del producto</p>
                           </div>
+                          <span className="text-sm font-bold text-red-600">{item.p}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-
-                  {/* Features & CTA */}
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-900 mb-6">Características</h3>
-                    <div className="space-y-4 mb-8">
-                      {currentDemo?.features.map((feature, index) => (
-                        <motion.div
-                          key={index}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.5, delay: index * 0.1 }}
-                          className="flex items-center space-x-3"
-                        >
-                          <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
-                            <svg className="w-4 h-4 text-[#E31E24]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                          <span className="text-gray-700">{feature}</span>
-                        </motion.div>
-                      ))}
-                    </div>
-
-                    <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-6 border border-red-200">
-                      <h4 className="text-lg font-semibold text-red-800 mb-2">¿Te gusta lo que ves?</h4>
-                      <p className="text-gray-700 mb-4">
-                        Crea tu propio menú en minutos con nuestra plataforma fácil de usar.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <a
-                          href="https://www.menuby.tech/macdonalds"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex-1 px-4 py-3 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-lg transition-colors duration-200 text-center"
-                        >
-                          Ver Demo en Vivo
-                        </a>
-                        <a
-                          href="/register"
-                          className="flex-1 px-4 py-3 bg-transparent hover:bg-[#E31E24] hover:text-white text-[#E31E24] font-semibold rounded-lg border-2 border-[#E31E24] hover:border-[#C71A1F] transition-all duration-200 text-center"
-                        >
-                          Crear Mi Menú
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
-            </motion.div>
-          </motion.div>
 
-          {/* Stats Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="mt-20 text-center"
-          >
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">
-              Únete a miles de restaurantes exitosos
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-[#E31E24] mb-2">500+</div>
-                <div className="text-gray-600">Restaurantes activos</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-[#E31E24] mb-2">35%</div>
-                <div className="text-gray-600">Aumento promedio en ventas</div>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-[#E31E24] mb-2">24/7</div>
-                <div className="text-gray-600">Soporte disponible</div>
+              <div className="mt-8 bg-red-500 rounded-xl py-3 text-center cursor-pointer hover:bg-red-600 transition-colors">
+                <span className="text-white font-bold text-sm">🛒 Ver Carrito</span>
               </div>
             </div>
           </motion.div>
+
+          {/* CTA below demo */}
+          <div className="mt-10 text-center">
+            <p className="text-gray-500 mb-4">¿Te gusta lo que ves? Crea el tuyo.</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link to="/register" className="px-7 py-3.5 rounded-xl text-white font-bold text-sm shadow-lg shadow-red-500/25 hover:-translate-y-0.5 transition-all" style={{ backgroundColor: '#E31E24' }}>
+                Crear Mi Menú Gratis →
+              </Link>
+              <Link to="/pricing" className="px-7 py-3.5 rounded-xl bg-white text-gray-700 font-semibold text-sm border border-gray-200 hover:border-gray-300 transition-all">
+                Ver Precios
+              </Link>
+            </div>
+          </div>
         </div>
       </section>
     </div>
