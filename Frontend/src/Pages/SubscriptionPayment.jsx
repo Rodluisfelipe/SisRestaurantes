@@ -182,7 +182,7 @@ const SubscriptionPayment = () => {
     setProcessing(true);
     
     try {
-      const res = await api.post('/epayco/create', { months: selectedMonths });
+      const res = await api.post('/epayco/create', { months: selectedMonths, businessId });
       
       if (!res.data.success) {
         alert(res.data.message || 'Error al crear el pago');
