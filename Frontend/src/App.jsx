@@ -12,6 +12,7 @@ const SuperAdminDashboard = lazy(() => import("./Pages/SuperAdmin/SuperAdminDash
 const MenuByCatalog = lazy(() => import("./Pages/Catalog/MenuByCatalog"));
 const RestaurantDetail = lazy(() => import("./Pages/Catalog/RestaurantDetail"));
 const LeadCapturePage = lazy(() => import("./Pages/LeadCapturePage"));
+const PaymentResult = lazy(() => import("./Pages/PaymentResult"));
 
 // Lazy load landing pages (solo se usan en la landing, no en app de restaurante)
 const LandingHome = lazy(() => import("./Pages/Landing/Home"));
@@ -193,6 +194,16 @@ function App() {
               <BusinessProviderWrapper>
                 <CustomerOrderDisplay />
               </BusinessProviderWrapper>
+            }
+          />
+
+          {/* Payment Result - Public route for ePayco payment confirmation */}
+          <Route 
+            path="/:businessId/payment-result"
+            element={
+              <Suspense fallback={<div className="flex items-center justify-center h-screen bg-slate-900"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div></div>}>
+                <PaymentResult />
+              </Suspense>
             }
           />
         
