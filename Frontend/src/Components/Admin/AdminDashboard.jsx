@@ -363,8 +363,8 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
             </div>
           )}
 
-          {/* Search */}
-          <div className="mt-3.5 sm:mt-4 relative group/search">
+          {/* Search — mobile only, sidebar handles nav on desktop */}
+          <div className="mt-3.5 sm:mt-4 relative group/search lg:hidden">
             <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within/search:text-blue-400 transition-colors" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
@@ -393,9 +393,9 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
       {/* ═══ METRICS DASHBOARD ═══ */}
       {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} />}
 
-      {/* ═══ HERO CARDS ═══ */}
+      {/* ═══ HERO CARDS (mobile only — sidebar navigates on desktop) ═══ */}
       {!q && (
-        <div className="flex gap-3">
+        <div className="flex gap-3 lg:hidden">
           <HeroCard
             svgKey="orders"
             title="Pedidos"
@@ -415,9 +415,9 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
         </div>
       )}
 
-      {/* ═══ ONBOARDING (new users) ═══ */}
+      {/* ═══ ONBOARDING (new users, mobile only) ═══ */}
       {isNewUser && !q && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden lg:hidden">
           <div className="px-4 pt-4 pb-2 sm:px-5 sm:pt-5">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
@@ -491,7 +491,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
         </div>
       )}
 
-      {/* ═══ SECTION GRIDS ═══ */}
+      {/* ═══ SECTION GRIDS (mobile only — sidebar navigates on desktop) ═══ */}
       <AnimatePresence mode="wait">
         <motion.div
           key={q || 'all'}
@@ -499,7 +499,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="space-y-5 sm:space-y-6"
+          className="space-y-5 sm:space-y-6 lg:hidden"
         >
           {filteredSections.map((section) => {
             if (!section.items.length) return null;
