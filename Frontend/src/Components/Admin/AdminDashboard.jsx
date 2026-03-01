@@ -288,107 +288,13 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
   const fadeUp = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] } } };
 
   return (
-    <div className="space-y-4 sm:space-y-5 pb-6">
+    <div className="space-y-3 pb-6">
 
-      {/* ═══ HEADER ═══ */}
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900">
-        {/* Ambient light effects */}
-        <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-blue-500/[0.07] rounded-full blur-[60px]" />
-        <div className="absolute bottom-0 left-0 w-[160px] h-[160px] bg-violet-500/[0.05] rounded-full blur-[50px]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[100px] bg-slate-600/[0.08] rounded-full blur-[40px]" />
-
-        <div className="relative p-4 sm:p-6">
-          {/* Top row */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* Logo */}
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl overflow-hidden ring-1 ring-white/[0.08] shadow-xl flex-shrink-0 bg-white/[0.05]">
-              {businessConfig?.logo ? (
-                <img src={businessConfig.logo} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                  <svg className="w-6 h-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><path d="M3 3h18v18H3z" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 8v8m-4-4h8" strokeLinecap="round"/></svg>
-                </div>
-              )}
-            </div>
-
-            {/* Greeting + name */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-slate-400 text-[11px] sm:text-xs font-medium">{greeting}</p>
-                <StatusBadge businessConfig={businessConfig} />
-              </div>
-              <h1 className="text-base sm:text-lg md:text-xl font-extrabold text-white truncate mt-0.5 tracking-tight">
-                {businessConfig?.businessName || 'Tu Restaurante'}
-              </h1>
-            </div>
-
-            {/* Live orders pill */}
-            {pendingOrdersCount > 0 && (
-              <motion.button
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                whileTap={{ scale: 0.92 }}
-                onClick={() => handleNav('orders')}
-                className="flex items-center gap-2 bg-blue-500/15 hover:bg-blue-500/25 text-blue-300
-                           px-3.5 py-2 rounded-xl text-xs font-bold
-                           ring-1 ring-blue-400/15 transition-all flex-shrink-0"
-              >
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inset-0 rounded-full bg-blue-400 opacity-60" />
-                  <span className="relative rounded-full h-2 w-2 bg-blue-400" />
-                </span>
-                {pendingOrdersCount} {pendingOrdersCount === 1 ? 'pedido' : 'pedidos'}
-              </motion.button>
-            )}
-          </div>
-
-          {/* Onboarding progress */}
-          {isNewUser && (
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-semibold text-slate-300">Configuración</span>
-                <span className="text-[11px] text-blue-400 font-bold">{progressPercent}%</span>
-              </div>
-              <div className="w-full bg-white/[0.06] rounded-full h-1.5 overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 1, ease: 'easeOut', delay: 0.2 }}
-                  className="bg-gradient-to-r from-blue-400 to-emerald-400 rounded-full h-full"
-                />
-              </div>
-              {nextStep?.action && (
-                <p className="mt-1.5 text-[10px] text-slate-500 font-medium">→ {nextStep.action}</p>
-              )}
-            </div>
-          )}
-
-          {/* Search — mobile only, sidebar handles nav on desktop */}
-          <div className="mt-3.5 sm:mt-4 relative group/search lg:hidden">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within/search:text-blue-400 transition-colors" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar sección..."
-              className="w-full bg-white/[0.05] border border-white/[0.06] rounded-xl pl-10 pr-10 py-2.5 sm:py-3
-                         text-sm text-white placeholder:text-slate-500
-                         focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-transparent focus:bg-white/[0.07]
-                         transition-all duration-200"
-            />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors">
-                <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            )}
-          </div>
-        </div>
+      {/* ═══ GREETING ═══ */}
+      <div className="flex items-center justify-between px-1">
+        <p className="text-sm font-bold text-slate-700">{greeting}</p>
+        <StatusBadge businessConfig={businessConfig} />
       </div>
-
-      {/* ═══ SHARE LINK ═══ */}
-      {!q && <ShareBar businessConfig={businessConfig} />}
 
       {/* ═══ METRICS DASHBOARD ═══ */}
       {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} />}
