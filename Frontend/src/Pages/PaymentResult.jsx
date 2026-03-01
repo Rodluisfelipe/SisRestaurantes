@@ -65,7 +65,8 @@ const PaymentResult = () => {
   }, [statusCode]);
 
   const goToAdmin = () => {
-    navigate(`/${slug}/admin?tab=subscription`);
+    // Usar hard navigation para que AuthContext se reinicialice con los tokens restaurados
+    window.location.href = `/${slug}/admin?tab=subscription`;
   };
 
   const goToMenu = () => {
