@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from 'react-router-dom';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import BusinessSettings from "../Components/BusinessSettings";
 import CategorySettings from "../Components/CategorySettings";
@@ -104,9 +105,23 @@ function Admin() {
   } = useProductHandlers({ businessId, products, setProducts, toppingGroups, loadData });
 
   // --- UI local ---
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    // Si viene de ePayco redirect con ?tab=subscription
+    const tabParam = searchParams.get('tab');
+    return tabParam || 'dashboard';
+  });
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   const [showWelcome, setShowWelcome] = useState(false);
+
+  // Limpiar params de URL después de leerlos (no mostrar ?tab=... en la barra)
+  useEffect(() => {
+    if (searchParams.has('tab')) {
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('tab');
+      setSearchParams(newParams, { replace: true });
+    }
+  }, []);
 
   // Show welcome wizard for new users on first visit
   useEffect(() => {
