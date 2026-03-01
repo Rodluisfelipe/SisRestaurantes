@@ -252,68 +252,165 @@ const SubscriptionPayment = () => {
 
   const subStatus = getSubscriptionStatus();
 
-  return (
-    <div className="space-y-3">
-      {/* Resultado de pago (después de redirect) */}
-      <AnimatePresence>
-        {paymentResult && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className={`rounded-xl border p-4 ${
-              paymentResult.status === 'approved'
-                ? 'bg-emerald-50 border-emerald-200'
-                : paymentResult.status === 'pending'
-                ? 'bg-amber-50 border-amber-200'
-                : 'bg-red-50 border-red-200'
-            }`}
-          >
-            <div className="flex items-start gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                paymentResult.status === 'approved'
-                  ? 'bg-emerald-100'
-                  : paymentResult.status === 'pending'
-                  ? 'bg-amber-100'
-                  : 'bg-red-100'
-              }`}>
-                {paymentResult.status === 'approved' ? (
-                  <FaCheckCircle className="text-emerald-600 text-sm" />
-                ) : paymentResult.status === 'pending' ? (
-                  <FaClock className="text-amber-600 text-sm" />
-                ) : (
-                  <FaTimes className="text-red-600 text-sm" />
+  // ==========================================
+  // PANTALLA COMPLETA DE RESULTADO DE PAGO
+  // ==========================================
+  if (paymentResult) {
+    const isApproved = paymentResult.status === 'approved';
+    const isPending = paymentResult.status === 'pending';
+    
+    return (
+      <div className="space-y-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-lg"
+        >
+          {/* Header con icono grande */}
+          <div className={`px-6 py-8 text-center ${
+            isApproved ? 'bg-gradient-to-br from-emerald-50 to-emerald-100' :
+            isPending ? 'bg-gradient-to-br from-amber-50 to-amber-100' :
+            'bg-gradient-to-br from-red-50 to-red-100'
+          }`}>
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: 'spring', stiffness: 200, delay: 0.2 }}
+              className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 ${
+                isApproved ? 'bg-emerald-500 shadow-lg shadow-emerald-500/30' :
+                isPending ? 'bg-amber-500 shadow-lg shadow-amber-500/30' :
+                'bg-red-500 shadow-lg shadow-red-500/30'
+              }`}
+            >
+              {isApproved ? (
+                <FaCheckCircle className="text-white text-2xl" />
+              ) : isPending ? (
+                <FaClock className="text-white text-2xl" />
+              ) : (
+                <FaTimes className="text-white text-2xl" />
+              )}
+            </motion.div>
+            
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className={`text-xl font-bold ${
+                isApproved ? 'text-emerald-800' :
+                isPending ? 'text-amber-800' :
+                'text-red-800'
+              }`}
+            >
+              {isApproved ? '¡Pago Exitoso!' :
+               isPending ? 'Pago en Proceso' :
+               'Pago No Completado'}
+            </motion.h2>
+            
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="text-sm text-slate-600 mt-2 max-w-xs mx-auto"
+            >
+              {paymentResult.message}
+            </motion.p>
+          </div>
+
+          {/* Detalles */}
+          <div className="px-6 py-5 space-y-3">
+            {isApproved && subscription && (
+              <div className="bg-emerald-50 rounded-xl border border-emerald-200 p-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-500">Estado</span>
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    ✓ Activa
+                  </span>
+                </div>
+                {subscription.periodEnd && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Vigente hasta</span>
+                    <span className="text-xs font-bold text-slate-700">
+                      {new Date(subscription.periodEnd).toLocaleDateString('es-CO', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                )}
+                {subscription.lastMonthsPurchased && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-slate-500">Plan</span>
+                    <span className="text-xs font-bold text-slate-700">
+                      {subscription.lastMonthsPurchased} {subscription.lastMonthsPurchased === 1 ? 'mes' : 'meses'}
+                    </span>
+                  </div>
                 )}
               </div>
-              <div className="flex-1">
-                <p className={`text-xs font-bold ${
-                  paymentResult.status === 'approved' ? 'text-emerald-700' :
-                  paymentResult.status === 'pending' ? 'text-amber-700' :
-                  'text-red-700'
-                }`}>
-                  {paymentResult.status === 'approved' ? '¡Pago Exitoso!' :
-                   paymentResult.status === 'pending' ? 'Pago Pendiente' :
-                   'Pago No Completado'}
-                </p>
-                <p className="text-[11px] text-slate-600 mt-0.5">{paymentResult.message}</p>
-                {paymentResult.reference && (
-                  <p className="text-[10px] text-slate-400 mt-1 font-mono">Ref: {paymentResult.reference}</p>
-                )}
+            )}
+
+            {isPending && (
+              <div className="bg-amber-50 rounded-xl border border-amber-200 p-4">
+                <div className="flex items-start gap-3">
+                  <FaSyncAlt className="text-amber-500 text-sm mt-0.5 animate-spin" />
+                  <div>
+                    <p className="text-xs font-bold text-amber-700">Esperando confirmación</p>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Tu pago está siendo procesado por la entidad financiera. 
+                      Esta página se actualizará automáticamente cuando se confirme.
+                    </p>
+                  </div>
+                </div>
               </div>
+            )}
+
+            {paymentResult.reference && (
+              <div className="flex justify-between items-center py-2 border-t border-slate-100">
+                <span className="text-[10px] text-slate-400">Referencia</span>
+                <span className="text-[10px] text-slate-500 font-mono">{paymentResult.reference}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Botones */}
+          <div className="px-6 pb-6 space-y-2">
+            {isApproved && (
               <button
                 onClick={() => {
                   setPaymentResult(null);
                   window.history.replaceState({}, '', window.location.pathname);
                 }}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                className="w-full py-3 px-4 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-slate-900/20"
               >
-                <FaTimes className="text-xs" />
+                Continuar al Panel
               </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            )}
 
+            {!isApproved && (
+              <>
+                <button
+                  onClick={() => {
+                    setPaymentResult(null);
+                    window.history.replaceState({}, '', window.location.pathname);
+                  }}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-slate-900/20"
+                >
+                  {isPending ? 'Volver' : 'Intentar de Nuevo'}
+                </button>
+              </>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ==========================================
+  // VISTA NORMAL - SELECCIÓN DE PLAN Y PAGO
+  // ==========================================
+
+  return (
+    <div className="space-y-3">
       {/* Estado de Suscripción */}
       {subscription && (
         <div className={`rounded-xl border p-3 flex items-center justify-between ${
