@@ -284,6 +284,11 @@ function LiveViewers({ viewers = [], count = 0 }) {
                       {v.previousOrders}
                     </span>
                   )}
+                  {!v.isReturning && (
+                    <span className="text-[8px] font-bold text-amber-600 bg-amber-50 px-1 py-0.5 rounded shrink-0">
+                      Nuevo
+                    </span>
+                  )}
                   {v.source && v.source !== 'direct' && (
                     <span className={`text-[8px] font-bold px-1 py-0.5 rounded shrink-0 ${SOURCE_COLORS[v.source] || SOURCE_COLORS.other}`}>
                       {SOURCE_LABELS[v.source] || v.source}
