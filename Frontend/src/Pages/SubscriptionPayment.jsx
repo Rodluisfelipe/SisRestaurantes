@@ -30,7 +30,6 @@ const SubscriptionPayment = () => {
   const [selectedMonths, setSelectedMonths] = useState(1);
   const [epaycoConfig, setEpaycoConfig] = useState({ publicKey: '', isTest: false });
   const [paymentResult, setPaymentResult] = useState(null);
-  const [epaycoReady, setEpaycoReady] = useState(false);
   
   // Verificar resultado de pago (redirect de ePayco)
   useEffect(() => {
@@ -42,21 +41,7 @@ const SubscriptionPayment = () => {
     }
   }, [searchParams]);
 
-  // Cargar script de ePayco
-  useEffect(() => {
-    if (document.getElementById('epayco-script')) {
-      setEpaycoReady(true);
-      return;
-    }
-    
-    const script = document.createElement('script');
-    script.id = 'epayco-script';
-    script.src = 'https://checkout.epayco.co/checkout.js';
-    script.async = true;
-    script.onload = () => setEpaycoReady(true);
-    script.onerror = () => console.error('Error loading ePayco script');
-    document.head.appendChild(script);
-  }, []);
+  // ePayco se carga dinámicamente en cada intento de pago (evita caché del SDK)
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -174,10 +159,7 @@ const SubscriptionPayment = () => {
   };
 
   const handlePayWithEpayco = async () => {
-    if (!epaycoReady || !window.ePayco) {
-      alert('Cargando pasarela de pagos, intenta en un momento...');
-      return;
-    }
+    if (processing) return; // Prevenir doble clic
     
     setProcessing(true);
     
@@ -190,6 +172,27 @@ const SubscriptionPayment = () => {
       }
       
       const { checkoutData } = res.data;
+      
+      // Forzar recarga del SDK de ePayco para evitar caché
+      const oldScript = document.getElementById('epayco-script');
+      if (oldScript) {
+        oldScript.remove();
+        delete window.ePayco;
+      }
+      
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.id = 'epayco-script';
+        script.src = 'https://checkout.epayco.co/checkout.js';
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error('Error cargando ePayco'));
+        document.head.appendChild(script);
+      });
+      
+      if (!window.ePayco) {
+        throw new Error('ePayco SDK no disponible');
+      }
       
       const handler = window.ePayco.checkout.configure({
         key: checkoutData.key,
@@ -217,7 +220,7 @@ const SubscriptionPayment = () => {
       
     } catch (error) {
       console.error('Error initiating ePayco payment:', error);
-      alert(error.response?.data?.message || 'Error al iniciar el pago');
+      alert(error.response?.data?.message || error.message || 'Error al iniciar el pago');
     } finally {
       setProcessing(false);
     }
