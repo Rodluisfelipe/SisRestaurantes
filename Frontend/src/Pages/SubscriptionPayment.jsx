@@ -194,6 +194,15 @@ const SubscriptionPayment = () => {
         throw new Error('ePayco SDK no disponible');
       }
       
+      // Guardar sesión en localStorage ANTES del redirect a ePayco
+      // (ePayco external redirect borra sessionStorage al salir del dominio)
+      const currentToken = sessionStorage.getItem('accessToken');
+      const currentRefresh = sessionStorage.getItem('refreshToken');
+      const currentUser = sessionStorage.getItem('user');
+      if (currentToken) localStorage.setItem('accessToken', currentToken);
+      if (currentRefresh) localStorage.setItem('refreshToken', currentRefresh);
+      if (currentUser) localStorage.setItem('user', currentUser);
+      
       const handler = window.ePayco.checkout.configure({
         key: checkoutData.key,
         test: checkoutData.test,
