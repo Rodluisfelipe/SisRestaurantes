@@ -45,7 +45,6 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   const [nameFocused, setNameFocused] = useState(false);
   const [phoneFocused, setPhoneFocused] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
-  const [viewportH, setViewportH] = useState(null);
   const { businessConfig } = useBusinessConfig();
   const nameRef = useRef(null);
   const phoneRef = useRef(null);
@@ -62,27 +61,20 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
     : null;
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
 
-  /* ── Keyboard / viewport tracking ── */
+  /* ── Keyboard: detect via focus/blur, not viewport resize ── */
+  const openKeyboard = useCallback(() => setKeyboardOpen(true), []);
+  const closeKeyboard = useCallback(() => setKeyboardOpen(false), []);
+
   useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const fullH = window.innerHeight;
-    // Set body bg to white so no black shows behind
+    // White bg so nothing dark shows
     const prevBg = document.body.style.backgroundColor;
     document.body.style.backgroundColor = '#ffffff';
-    const update = () => {
-      const h = vv.height;
-      setViewportH(h);
-      setKeyboardOpen(h < fullH * 0.75);
-      window.scrollTo(0, 0);
-    };
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
+    // Prevent any scroll on this page
+    const preventScroll = () => window.scrollTo(0, 0);
+    window.addEventListener('scroll', preventScroll, { passive: false });
     return () => {
       document.body.style.backgroundColor = prevBg;
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
+      window.removeEventListener('scroll', preventScroll);
     };
   }, []);
 
@@ -136,12 +128,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
 
   return (
     <>
-      {/* Full-screen white backdrop so no black shows when container is smaller than screen */}
       <div className="fixed inset-0 z-40 bg-white" />
-      <div
-        className="fixed left-0 right-0 top-0 z-50 flex flex-col overflow-hidden touch-none bg-white"
-        style={{ height: viewportH ? `${viewportH}px` : '100vh' }}
-      >
+      <div className="fixed inset-0 z-50 flex flex-col overflow-hidden touch-none bg-white">
 
       {/* ═══════════════════════════════════════════
           HERO — top section with cover/gradient + logo
@@ -303,8 +291,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       type="text"
                       value={orderInfo.customerName}
                       onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                      onFocus={() => setNameFocused(true)}
-                      onBlur={() => setNameFocused(false)}
+                      onFocus={() => { setNameFocused(true); openKeyboard(); }}
+                      onBlur={() => { setNameFocused(false); closeKeyboard(); }}}
                       className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
                       placeholder="Ingresa tu nombre"
                       autoComplete="given-name"
@@ -333,8 +321,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       inputMode="tel"
                       value={orderInfo.phone || ''}
                       onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value })}
-                      onFocus={() => setPhoneFocused(true)}
-                      onBlur={() => setPhoneFocused(false)}
+                      onFocus={() => { setPhoneFocused(true); openKeyboard(); }}
+                      onBlur={() => { setPhoneFocused(false); closeKeyboard(); }}}
                       className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
                       placeholder="Ej: 3001234567"
                       autoComplete="tel"
