@@ -340,50 +340,41 @@ const SubscriptionPayment = () => {
   // VISTA PRINCIPAL
   // ==========================================
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       
       {/* MODO PRUEBAS Badge */}
       {isTestMode && (
         <div className="flex justify-center">
-          <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-3 py-1 rounded-full font-semibold tracking-wide">
+          <span className="text-[9px] bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold tracking-wide">
             MODO PRUEBAS — {selectedGateway === 'dlocal' ? 'dLocal' : 'ePayco'}
           </span>
         </div>
       )}
 
       {/* ==========================================
-          SUSCRIPCIÓN ACTUAL  
+          SUSCRIPCIÓN ACTUAL — Compact inline  
           ========================================== */}
-      <div className="bg-white rounded-2xl border border-[#DCE4F5] overflow-hidden shadow-sm">
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-[#1F2937]">Suscripción Actual</h3>
-            {subStatus && (
-              <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+      <div className="bg-white rounded-xl border border-[#DCE4F5] overflow-hidden shadow-sm">
+        <div className="px-3.5 py-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-[#1F2937]">Suscripción</h3>
+            {subStatus ? (
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
                 subStatus.color === 'green' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
                 subStatus.color === 'yellow' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
                 'bg-red-50 text-red-700 border border-red-200'
-              }`}>
-                {subStatus.text}
-              </span>
-            )}
-            {!subscription && (
-              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gray-50 text-[#6C7A92] border border-[#DCE4F5]">
-                Sin suscripción
-              </span>
+              }`}>{subStatus.text}</span>
+            ) : (
+              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gray-50 text-[#6C7A92] border border-[#DCE4F5]">Sin plan</span>
             )}
           </div>
 
           {subscription ? (
-            <div className="space-y-2.5">
-              {/* Progress bar visual */}
+            <>
+              {/* Compact progress bar */}
               {subscription.periodStart && subscription.periodEnd && (
-                <div>
-                  <div className="flex justify-between text-[10px] text-[#6C7A92] mb-1">
-                    <span>{formatDate(subscription.periodStart)}</span>
-                    <span>{formatDate(subscription.periodEnd)}</span>
-                  </div>
-                  <div className="h-2 bg-[#F4F6FB] rounded-full overflow-hidden">
+                <div className="mt-2">
+                  <div className="h-1.5 bg-[#F4F6FB] rounded-full overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(100, Math.max(2, ((Date.now() - new Date(subscription.periodStart).getTime()) / (new Date(subscription.periodEnd).getTime() - new Date(subscription.periodStart).getTime())) * 100))}%` }}
@@ -397,76 +388,45 @@ const SubscriptionPayment = () => {
                 </div>
               )}
               
-              {/* Info grid */}
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-[#F4F6FB] rounded-xl p-3">
-                  <p className="text-[10px] text-[#6C7A92] mb-0.5">Plan</p>
-                  <p className="text-xs font-bold text-[#1F2937]">
+              {/* Single row of key info */}
+              <div className="mt-2 flex items-center gap-3 text-[10px] text-[#6C7A92]">
+                <span>
+                  <span className="font-semibold text-[#1F2937]">
                     {subscription.lastMonthsPurchased 
                       ? `${subscription.lastMonthsPurchased} ${subscription.lastMonthsPurchased === 1 ? 'mes' : 'meses'}`
-                      : subscription.planType === 'annual' ? 'Anual' : 'Mensual'
-                    }
-                  </p>
-                </div>
-                <div className="bg-[#F4F6FB] rounded-xl p-3">
-                  <p className="text-[10px] text-[#6C7A92] mb-0.5">Vence</p>
-                  <p className="text-xs font-bold text-[#1F2937]">{formatDate(subscription.periodEnd)}</p>
-                </div>
-                {subscription.paymentMethod && (
-                  <div className="bg-[#F4F6FB] rounded-xl p-3">
-                    <p className="text-[10px] text-[#6C7A92] mb-0.5">Método</p>
-                    <p className="text-xs font-bold text-[#1F2937]">{subscription.paymentMethod}</p>
-                  </div>
-                )}
+                      : subscription.planType === 'annual' ? 'Anual' : 'Mensual'}
+                  </span>
+                </span>
+                <span className="text-[#DCE4F5]">|</span>
+                <span>Vence <span className="font-semibold text-[#1F2937]">{formatDate(subscription.periodEnd)}</span></span>
                 {subscription.price && (
-                  <div className="bg-[#F4F6FB] rounded-xl p-3">
-                    <p className="text-[10px] text-[#6C7A92] mb-0.5">Precio</p>
-                    <p className="text-xs font-bold text-[#1F2937]">{formatCurrency(subscription.price)}</p>
-                  </div>
+                  <>
+                    <span className="text-[#DCE4F5]">|</span>
+                    <span className="font-semibold text-[#1F2937]">{formatCurrency(subscription.price)}</span>
+                  </>
                 )}
               </div>
 
-              {/* Grace period warning */}
+              {/* Grace/Suspended compact warnings */}
               {subStatus?.status === 'grace' && (
-                <div className="bg-amber-50 rounded-xl border border-amber-200 p-3 flex items-start gap-2">
-                  <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-200">
+                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
-                  <div>
-                    <p className="text-[11px] font-bold text-amber-700">Período de gracia</p>
-                    <p className="text-[10px] text-amber-600 mt-0.5">
-                      {subscription.graceDaysRemaining > 0 
-                        ? `${subscription.graceDaysRemaining} día(s) restantes. Renueva para mantener tu menú activo.`
-                        : 'Tu menú será desactivado pronto. Renueva ahora.'
-                      }
-                    </p>
-                  </div>
+                  <span>Período de gracia — {subscription.graceDaysRemaining > 0 ? `${subscription.graceDaysRemaining} día(s)` : 'Renueva ahora'}</span>
                 </div>
               )}
-
-              {/* Suspended warning */}
               {subStatus?.status === 'suspended' && (
-                <div className="bg-red-50 rounded-xl border border-red-200 p-3 flex items-start gap-2">
-                  <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5 border border-red-200">
+                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                   </svg>
-                  <div>
-                    <p className="text-[11px] font-bold text-red-700">Menú desactivado</p>
-                    <p className="text-[10px] text-red-600 mt-0.5">Tu suscripción venció. Renueva para reactivar tu menú.</p>
-                  </div>
+                  <span>Menú desactivado — Renueva para reactivar</span>
                 </div>
               )}
-            </div>
+            </>
           ) : (
-            <div className="text-center py-4">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#F4F6FB] flex items-center justify-center">
-                <svg className="w-6 h-6 text-[#6C7A92]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <p className="text-xs text-[#6C7A92]">No tienes una suscripción activa</p>
-              <p className="text-[10px] text-[#6C7A92]/60 mt-0.5">Activa una para publicar tu menú digital</p>
-            </div>
+            <p className="mt-1 text-[10px] text-[#6C7A92]">Activa un plan para publicar tu menú digital</p>
           )}
         </div>
       </div>
@@ -474,219 +434,125 @@ const SubscriptionPayment = () => {
       {/* ==========================================
           TABS: RENOVAR / HISTORIAL
           ========================================== */}
-      <div className="bg-white rounded-2xl border border-[#DCE4F5] overflow-hidden shadow-sm">
+      <div className="bg-white rounded-xl border border-[#DCE4F5] overflow-hidden shadow-sm">
         {/* Tab headers */}
         <div className="flex border-b border-[#DCE4F5]">
-          <button
-            onClick={() => setActiveTab('plan')}
-            className={`flex-1 py-3 text-xs font-semibold transition-all relative ${
-              activeTab === 'plan' ? 'text-[#3A7AFF]' : 'text-[#6C7A92] hover:text-[#1F2937]'
-            }`}>
+          <button onClick={() => setActiveTab('plan')}
+            className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'plan' ? 'text-[#3A7AFF]' : 'text-[#6C7A92]'}`}>
             {subscription ? 'Renovar' : 'Activar Plan'}
-            {activeTab === 'plan' && (
-              <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#3A7AFF] rounded-full" />
-            )}
+            {activeTab === 'plan' && <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#3A7AFF] rounded-full" />}
           </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 py-3 text-xs font-semibold transition-all relative ${
-              activeTab === 'history' ? 'text-[#3A7AFF]' : 'text-[#6C7A92] hover:text-[#1F2937]'
-            }`}>
-            Historial
-            {paymentHistory.length > 0 && (
-              <span className="ml-1 text-[9px] bg-[#F4F6FB] text-[#6C7A92] px-1.5 py-0.5 rounded-full">{paymentHistory.length}</span>
-            )}
-            {activeTab === 'history' && (
-              <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#3A7AFF] rounded-full" />
-            )}
+          <button onClick={() => setActiveTab('history')}
+            className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'history' ? 'text-[#3A7AFF]' : 'text-[#6C7A92]'}`}>
+            Historial {paymentHistory.length > 0 && <span className="ml-0.5 text-[8px] bg-[#F4F6FB] text-[#6C7A92] px-1 py-0.5 rounded-full">{paymentHistory.length}</span>}
+            {activeTab === 'history' && <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#3A7AFF] rounded-full" />}
           </button>
         </div>
 
         <AnimatePresence mode="wait">
           {/* ==========================================
-              TAB: SELECCIÓN DE PLAN Y PAGO
+              TAB: PLAN + PASARELA + PAGAR (all compact)
               ========================================== */}
           {activeTab === 'plan' && (
-            <motion.div key="plan" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
-              className="p-4 space-y-4">
+            <motion.div key="plan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="p-3.5 space-y-3">
               
-              <p className="text-[11px] text-[#6C7A92]">Selecciona la duración de tu plan</p>
-
-              {/* Plan cards */}
+              {/* Plan selector — horizontal row */}
               {plans.length > 0 ? (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex gap-1.5">
                   {plans.map(plan => {
                     const isSelected = selectedMonths === plan.months;
                     const savingsVsMonthly = plan.months > 1 ? (plans[0]?.total * plan.months) - plan.total : 0;
                     const isBestValue = plan.months === 12;
                     
                     return (
-                      <motion.button
-                        key={plan.months}
-                        type="button"
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => setSelectedMonths(plan.months)}
-                        className={`relative p-3 rounded-xl border-2 transition-all text-center ${
+                      <button key={plan.months} type="button" onClick={() => setSelectedMonths(plan.months)}
+                        className={`relative flex-1 py-2 px-1 rounded-lg border transition-all text-center ${
                           isSelected
-                            ? 'border-[#3A7AFF] bg-[#3A7AFF]/5 shadow-sm shadow-[#3A7AFF]/10'
-                            : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30 bg-white'
-                        }`}
-                      >
+                            ? 'border-[#3A7AFF] bg-[#3A7AFF]/5 shadow-sm'
+                            : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
+                        }`}>
                         {isBestValue && (
-                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold bg-[#3A7AFF] text-white px-2 py-0.5 rounded-full whitespace-nowrap">
-                            MEJOR VALOR
+                          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[7px] font-bold bg-[#3A7AFF] text-white px-1.5 py-px rounded-full whitespace-nowrap leading-tight">
+                            MEJOR
                           </div>
                         )}
-                        <div className={`text-2xl font-bold ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>{plan.months}</div>
-                        <div className="text-[10px] text-[#6C7A92]">{plan.months === 1 ? 'mes' : 'meses'}</div>
-                        <div className="mt-2">
-                          <div className={`text-sm font-bold ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
-                            {formatCurrency(plan.total)}
-                          </div>
-                          <div className="text-[10px] text-[#6C7A92]">
-                            {formatCurrency(plan.pricePerMonth)}/mes
-                          </div>
+                        <div className={`text-sm font-bold leading-none ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>{plan.months}</div>
+                        <div className="text-[8px] text-[#6C7A92] leading-tight">{plan.months === 1 ? 'mes' : 'meses'}</div>
+                        <div className={`text-[10px] font-bold mt-0.5 leading-none ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
+                          {formatCurrency(plan.total)}
                         </div>
                         {savingsVsMonthly > 0 && (
-                          <div className="mt-1.5 text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold inline-block">
-                            Ahorras {formatCurrency(savingsVsMonthly)}
+                          <div className="text-[7px] text-emerald-600 font-semibold mt-0.5 leading-tight">
+                            -{formatCurrency(savingsVsMonthly)}
                           </div>
                         )}
-                        {/* Checkmark */}
-                        {isSelected && (
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                            className="absolute top-2 right-2 w-5 h-5 bg-[#3A7AFF] rounded-full flex items-center justify-center">
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </motion.div>
-                        )}
-                      </motion.button>
+                      </button>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <svg className="w-8 h-8 mx-auto text-amber-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                  <p className="text-xs text-[#6C7A92]">No se pudieron cargar los planes</p>
-                  <button onClick={loadData} className="mt-2 text-[#3A7AFF] text-[11px] font-medium">Reintentar</button>
+                <div className="text-center py-4">
+                  <p className="text-[11px] text-[#6C7A92]">No se pudieron cargar los planes</p>
+                  <button onClick={loadData} className="text-[#3A7AFF] text-[10px] font-medium mt-1">Reintentar</button>
                 </div>
               )}
 
-              {/* Selector de Pasarela */}
+              {/* Gateway selector — compact toggle */}
               {plans.length > 0 && (
-                <div>
-                  <p className="text-[11px] text-[#6C7A92] mb-2">Pasarela de pago</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => setSelectedGateway('dlocal')}
-                      className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                        selectedGateway === 'dlocal' ? 'border-[#3A7AFF] bg-[#3A7AFF]/5' : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30 bg-white'
-                      }`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs font-bold ${selectedGateway === 'dlocal' ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>dLocal</span>
-                        {selectedGateway === 'dlocal' && (
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                            className="w-4 h-4 bg-[#3A7AFF] rounded-full flex items-center justify-center">
-                            <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </motion.div>
-                        )}
-                      </div>
-                      <div className={`text-sm font-bold ${selectedGateway === 'dlocal' ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
-                        {formatCurrency(dlocalPlans.find(p => p.months === selectedMonths)?.total || 0)}
-                      </div>
-                      <div className="text-[10px] text-[#6C7A92]">1.99% + $840</div>
-                      <div className="mt-1.5 text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full font-semibold inline-block">
-                        Más económico
-                      </div>
-                    </button>
-                    <button type="button" onClick={() => setSelectedGateway('epayco')}
-                      className={`relative p-3 rounded-xl border-2 transition-all text-left ${
-                        selectedGateway === 'epayco' ? 'border-[#3A7AFF] bg-[#3A7AFF]/5' : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30 bg-white'
-                      }`}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`text-xs font-bold ${selectedGateway === 'epayco' ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>ePayco</span>
-                        {selectedGateway === 'epayco' && (
-                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
-                            className="w-4 h-4 bg-[#3A7AFF] rounded-full flex items-center justify-center">
-                            <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </motion.div>
-                        )}
-                      </div>
-                      <div className={`text-sm font-bold ${selectedGateway === 'epayco' ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
-                        {formatCurrency(epaycoPlans.find(p => p.months === selectedMonths)?.total || 0)}
-                      </div>
-                      <div className="text-[10px] text-[#6C7A92]">3.5% + $1,000</div>
-                    </button>
+                <div className="flex items-center gap-1.5 bg-[#F4F6FB] rounded-lg p-1">
+                  <button type="button" onClick={() => setSelectedGateway('dlocal')}
+                    className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                      selectedGateway === 'dlocal' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                    }`}>
+                    <span>dLocal</span>
+                    <span className="font-bold">{formatCurrency(dlocalPlans.find(p => p.months === selectedMonths)?.total || 0)}</span>
+                    {selectedGateway !== 'dlocal' && <span className="text-[8px] text-emerald-600 font-semibold">Menor costo</span>}
+                  </button>
+                  <button type="button" onClick={() => setSelectedGateway('epayco')}
+                    className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1.5 ${
+                      selectedGateway === 'epayco' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                    }`}>
+                    <span>ePayco</span>
+                    <span className="font-bold">{formatCurrency(epaycoPlans.find(p => p.months === selectedMonths)?.total || 0)}</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Desglose + Botón pagar — merged compact */}
+              {selectedPlan && (
+                <div className="bg-[#F4F6FB] rounded-lg p-3">
+                  <div className="flex items-center justify-between text-[10px] text-[#6C7A92]">
+                    <span>{selectedPlan.label} ({formatCurrency(selectedPlan.basePrice)}) + comisión {formatCurrency(selectedPlan.commission)}</span>
+                    <span className="text-sm font-bold text-[#1F2937]">{formatCurrency(selectedPlan.total)}</span>
                   </div>
                 </div>
               )}
 
-              {/* Desglose */}
+              {/* Botón pagar — compact */}
               {selectedPlan && (
-                <div className="bg-[#F4F6FB] rounded-xl p-3.5 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-[#6C7A92]">Suscripción {selectedPlan.label}</span>
-                    <span className="text-[11px] text-[#1F2937] font-medium">{formatCurrency(selectedPlan.basePrice)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[11px] text-[#6C7A92]">Comisión pasarela</span>
-                    <span className="text-[11px] text-[#6C7A92]">+{formatCurrency(selectedPlan.commission)}</span>
-                  </div>
-                  <div className="border-t border-[#DCE4F5] pt-2 flex justify-between items-center">
-                    <span className="text-xs font-bold text-[#1F2937]">Total</span>
-                    <span className="text-base font-bold text-[#3A7AFF]">
-                      {formatCurrency(selectedPlan.total)} <span className="text-[10px] font-normal text-[#6C7A92]">COP</span>
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Botón pagar */}
-              {selectedPlan && (
-                <motion.button
-                  type="button"
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handlePay}
-                  disabled={processing}
-                  className="w-full py-3.5 px-4 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 disabled:bg-[#DCE4F5] disabled:text-[#6C7A92] text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-[#3A7AFF]/20 disabled:shadow-none flex items-center justify-center gap-2"
-                >
+                <button type="button" onClick={handlePay} disabled={processing}
+                  className="w-full py-2.5 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 disabled:bg-[#DCE4F5] disabled:text-[#6C7A92] text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-[#3A7AFF]/20 disabled:shadow-none flex items-center justify-center gap-1.5">
                   {processing ? (
                     <>
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Preparando pago...</span>
+                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Procesando...</span>
                     </>
                   ) : (
                     <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
-                      <span>Pagar con {selectedGateway === 'dlocal' ? 'dLocal' : 'ePayco'} {formatCurrency(selectedPlan.total)} COP</span>
+                      <span>Pagar {formatCurrency(selectedPlan.total)} COP</span>
                     </>
                   )}
-                </motion.button>
+                </button>
               )}
 
-              {/* Security badges */}
-              <div className="flex items-center justify-center gap-4 pt-1">
-                <div className="flex items-center gap-1.5 text-[10px] text-[#6C7A92]">
-                  <svg className="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span>Pago seguro</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-[#6C7A92]">
-                  <svg className="w-3.5 h-3.5 text-[#6C7A92]/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  </svg>
-                  <span>Tarjeta, PSE, Nequi, Daviplata</span>
-                </div>
-              </div>
+              {/* Métodos — single compact line */}
+              <p className="text-center text-[9px] text-[#6C7A92]/60">
+                Tarjeta · PSE · Nequi · Daviplata · Pago seguro
+              </p>
             </motion.div>
           )}
 
@@ -694,74 +560,49 @@ const SubscriptionPayment = () => {
               TAB: HISTORIAL DE PAGOS
               ========================================== */}
           {activeTab === 'history' && (
-            <motion.div key="history" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
-              className="p-4">
+            <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="p-3.5">
               
               {paymentHistory.length === 0 ? (
-                <div className="text-center py-8">
-                  <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-[#F4F6FB] flex items-center justify-center">
-                    <svg className="w-6 h-6 text-[#6C7A92]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                    </svg>
-                  </div>
-                  <p className="text-xs text-[#6C7A92]">Sin historial de pagos</p>
-                  <p className="text-[10px] text-[#6C7A92]/60 mt-0.5">Los pagos realizados aparecerán aquí</p>
+                <div className="text-center py-6">
+                  <svg className="w-8 h-8 mx-auto text-[#DCE4F5] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  </svg>
+                  <p className="text-[11px] text-[#6C7A92]">Sin historial de pagos</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {paymentHistory.map((payment, i) => {
                     const statusColors = {
-                      approved: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'Aprobado' },
-                      pending: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Pendiente' },
-                      rejected: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Rechazado' },
-                      failed: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Fallido' },
-                      reversed: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', label: 'Reversado' },
-                      cancelled: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', label: 'Cancelado' },
-                      created: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Creado' },
+                      approved: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'OK' },
+                      pending: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Pend.' },
+                      rejected: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Rech.' },
+                      failed: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Falló' },
+                      reversed: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', label: 'Rev.' },
+                      cancelled: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', label: 'Canc.' },
+                      created: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Nuevo' },
                     };
                     const s = statusColors[payment.status] || statusColors.created;
                     
                     return (
-                      <motion.div
-                        key={payment._id || i}
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="bg-[#F4F6FB] rounded-xl p-3"
-                      >
-                        <div className="flex items-start justify-between mb-2">
+                      <div key={payment._id || i}
+                        className="flex items-center justify-between bg-[#F4F6FB] rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2.5">
+                          <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded border ${s.bg} ${s.text} ${s.border}`}>{s.label}</span>
                           <div>
-                            <p className="text-xs font-bold text-[#1F2937]">
-                              {payment.months} {payment.months === 1 ? 'mes' : 'meses'}
-                            </p>
-                            <p className="text-[10px] text-[#6C7A92]">{formatDate(payment.createdAt)}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-[#1F2937]">{formatCurrency(payment.totalAmount)}</span>
-                            <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border ${s.bg} ${s.text} ${s.border}`}>
-                              {s.label}
-                            </span>
+                            <span className="text-[11px] font-semibold text-[#1F2937]">{payment.months} {payment.months === 1 ? 'mes' : 'meses'}</span>
+                            <span className="text-[9px] text-[#6C7A92] ml-1.5">{formatDate(payment.createdAt)}</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 text-[10px] text-[#6C7A92]">
+                        <div className="flex items-center gap-2">
                           {payment.gateway && (
-                            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
+                            <span className={`text-[8px] font-medium px-1 py-0.5 rounded ${
                               payment.gateway === 'dLocal' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
                             }`}>{payment.gateway}</span>
                           )}
-                          {payment.paymentMethod && (
-                            <span className="flex items-center gap-1">
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                              </svg>
-                              {payment.paymentMethod}
-                            </span>
-                          )}
-                          {(payment.epaycoRef || payment.reference) && (
-                            <span className="font-mono">Ref: {payment.epaycoRef || payment.reference}</span>
-                          )}
+                          <span className="text-[11px] font-bold text-[#1F2937]">{formatCurrency(payment.totalAmount)}</span>
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })}
                 </div>
