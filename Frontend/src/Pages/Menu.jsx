@@ -345,7 +345,11 @@ export default function Menu() {
 
   // Viewer tracking con socket dedicado (sin auth, separado del admin socket)
   useEffect(() => {
-    if (showOrderTypeSelector || !businessId || !orderInfo?.customerName || !orderInfo?.phone) return;
+    console.log('[ViewerTracking] Effect fired:', { showOrderTypeSelector, businessId, customerName: orderInfo?.customerName, phone: orderInfo?.phone });
+    if (showOrderTypeSelector || !businessId || !orderInfo?.customerName || !orderInfo?.phone) {
+      console.log('[ViewerTracking] Skipped — missing data', { showOrderTypeSelector, businessId: !!businessId, name: !!orderInfo?.customerName, phone: !!orderInfo?.phone });
+      return;
+    }
     
     let viewerSocket = null;
     let heartbeatInterval = null;
@@ -356,12 +360,13 @@ export default function Menu() {
         if (!mounted) return;
         
         const backendUrl = import.meta.env.VITE_SOCKET_URL || 'https://157-245-125-216.nip.io';
+        console.log('[ViewerTracking] Connecting to', backendUrl, 'for business', businessId);
         
         viewerSocket = io(backendUrl, {
           autoConnect: true,
           reconnection: true,
-          reconnectionAttempts: 3,
-          timeout: 10000,
+          reconnectionAttempts: 5,
+          timeout: 15000,
           transports: ['polling', 'websocket'],
           path: '/socket.io',
           query: {
@@ -376,6 +381,7 @@ export default function Menu() {
         const device = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Desktop';
         
         viewerSocket.on('connect', () => {
+          console.log('[ViewerTracking] Connected! Socket ID:', viewerSocket.id);
           const c = cartRef.current;
           viewerSocket.emit('viewer:join', {
             businessId,
@@ -388,6 +394,14 @@ export default function Menu() {
             cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
             cartProducts: c?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
           });
+        });
+        
+        viewerSocket.on('connect_error', (err) => {
+          console.error('[ViewerTracking] Connect error:', err.message);
+        });
+        
+        viewerSocket.on('disconnect', (reason) => {
+          console.log('[ViewerTracking] Disconnected:', reason);
         });
         
         // Heartbeat cada 30 segundos (usa ref para valor fresco)
@@ -404,7 +418,7 @@ export default function Menu() {
           }
         }, 30000);
       } catch (err) {
-        console.debug('[ViewerTracking] Error:', err.message);
+        console.error('[ViewerTracking] Error:', err.message, err);
       }
     };
     
