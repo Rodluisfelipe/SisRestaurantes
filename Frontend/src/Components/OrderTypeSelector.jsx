@@ -151,10 +151,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
         className="relative flex-shrink-0 flex flex-col items-center justify-end"
-        style={{
-          height: keyboardOpen ? 120 : '42vh',
-          transition: 'height 0.3s ease'
-        }}
+        style={{ height: keyboardOpen ? 100 : '42vh' }}
       >
         {/* Background: cover image or themed gradient */}
         {coverUrl ? (
@@ -189,9 +186,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
           transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}
           className="relative z-20"
           style={{
-            marginBottom: keyboardOpen ? -24 : -36,
-            transform: keyboardOpen ? 'scale(0.7)' : 'scale(1)',
-            transition: 'margin-bottom 0.3s ease, transform 0.3s ease'
+            marginBottom: keyboardOpen ? -20 : -36,
+            transform: keyboardOpen ? 'scale(0.65)' : 'scale(1)'
           }}
         >
           <div className="relative">
@@ -240,8 +236,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             style={{
               opacity: keyboardOpen ? 0 : 1,
               maxHeight: keyboardOpen ? 0 : 40,
-              marginBottom: keyboardOpen ? 0 : 4,
-              transition: 'opacity 0.3s ease, max-height 0.4s ease, margin-bottom 0.4s ease'
+              marginBottom: keyboardOpen ? 0 : 4
             }}
           >
             <h1 className="text-[22px] font-bold text-gray-800 leading-tight">
@@ -257,8 +252,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             style={{
               opacity: (keyboardOpen && showOrderTypes) ? 0 : 1,
               maxHeight: (keyboardOpen && showOrderTypes) ? 0 : 30,
-              marginBottom: keyboardOpen ? 8 : 20,
-              transition: 'opacity 0.3s ease, max-height 0.4s ease, margin-bottom 0.4s ease'
+              marginBottom: keyboardOpen ? 6 : 20
             }}
           >
             {isReturning && orderInfo.customerName
