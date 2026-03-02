@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Procesando pago...</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: #f8fafc;
+    }
+    .card {
+      text-align: center; padding: 2.5rem; max-width: 360px;
+      background: white; border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .icon.success { color: #22c55e; }
+    .icon.fail { color: #ef4444; }
+    .icon.pending { color: #f59e0b; }
+    h2 { font-size: 1.25rem; color: #1e293b; margin-bottom: 0.5rem; }
+    p { color: #64748b; font-size: 0.9rem; line-height: 1.5; }
+    .closing { margin-top: 1rem; font-size: 0.8rem; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon" id="icon">⏳</div>
+    <h2 id="title">Procesando pago...</h2>
+    <p id="message">Cerrando esta ventana automáticamente...</p>
+    <p class="closing" id="closing">Esta ventana se cerrará en <span id="countdown">3</span>s</p>
+  </div>
+
+  <script>
+    (function() {
+      var params = new URLSearchParams(window.location.search);
+      var status = params.get('status');
+      var ref = params.get('ref');
+      var gw = params.get('gw') || 'dlocal';
+
+      // Show appropriate UI
+      var icon = document.getElementById('icon');
+      var title = document.getElementById('title');
+      var message = document.getElementById('message');
+
+      if (status === '1') {
+        icon.textContent = '✅';
+        icon.className = 'icon success';
+        title.textContent = '¡Pago exitoso!';
+        message.textContent = 'Tu pago ha sido procesado correctamente.';
+      } else if (status === '2') {
+        icon.textContent = '❌';
+        icon.className = 'icon fail';
+        title.textContent = 'Pago cancelado';
+        message.textContent = 'Has cancelado o salido del proceso de pago.';
+      } else {
+        icon.textContent = '⏳';
+        icon.className = 'icon pending';
+        title.textContent = 'Pago pendiente';
+        message.textContent = 'Tu pago está siendo procesado...';
+      }
+
+      // Send result to parent window
+      var result = { type: 'PAYMENT_CALLBACK', status: status, ref: ref, gw: gw };
+
+      if (window.opener) {
+        try {
+          window.opener.postMessage(result, '*');
+        } catch (e) { /* ignore */ }
+      }
+
+      // Auto-close after countdown
+      var seconds = 3;
+      var countdownEl = document.getElementById('countdown');
+      var interval = setInterval(function() {
+        seconds--;
+        countdownEl.textContent = seconds;
+        if (seconds <= 0) {
+          clearInterval(interval);
+          window.close();
+          // Fallback: if popup blocker prevents close, show message
+          document.getElementById('closing').textContent = 'Puedes cerrar esta ventana manualmente.';
+        }
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>

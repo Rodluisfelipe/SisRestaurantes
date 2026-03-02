@@ -212,29 +212,84 @@ const SubscriptionPayment = () => {
     if (processing) return;
     setProcessing(true);
     try {
-      // Guardar sesión antes del redirect
-      const t = sessionStorage.getItem('accessToken');
-      const r = sessionStorage.getItem('refreshToken');
-      const u = sessionStorage.getItem('user');
-      if (t) localStorage.setItem('accessToken', t);
-      if (r) localStorage.setItem('refreshToken', r);
-      if (u) localStorage.setItem('user', u);
-
       const res = await api.post('/dlocal/create', { months: selectedMonths, businessId });
       if (!res.data.success) { alert(res.data.message || 'Error al crear el pago'); return; }
 
-      // dLocal devuelve una URL de redirect
-      if (res.data.redirectUrl) {
+      if (!res.data.redirectUrl) { alert('No se recibió URL de pago de dLocal'); return; }
+
+      const paymentRef = res.data.reference;
+
+      // Abrir checkout de dLocal Go en popup (el usuario no sale del panel)
+      const w = 500, h = 650;
+      const left = window.screenX + (window.outerWidth - w) / 2;
+      const top = window.screenY + (window.outerHeight - h) / 2;
+      const popup = window.open(
+        res.data.redirectUrl,
+        'dlocal_checkout',
+        `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`
+      );
+
+      // Fallback: si el popup está bloqueado, hacer redirect clásico
+      if (!popup || popup.closed) {
+        // Guardar sesión para el redirect
+        const t = sessionStorage.getItem('accessToken');
+        const r = sessionStorage.getItem('refreshToken');
+        const u = sessionStorage.getItem('user');
+        if (t) localStorage.setItem('accessToken', t);
+        if (r) localStorage.setItem('refreshToken', r);
+        if (u) localStorage.setItem('user', u);
         window.location.href = res.data.redirectUrl;
-      } else {
-        alert('No se recibió URL de pago de dLocal');
+        return;
       }
+
+      // Escuchar postMessage del popup callback
+      const messageHandler = (event) => {
+        if (event.data?.type === 'PAYMENT_CALLBACK') {
+          window.removeEventListener('message', messageHandler);
+          clearInterval(pollInterval);
+          handleDlocalResult(event.data.status, paymentRef);
+        }
+      };
+      window.addEventListener('message', messageHandler);
+
+      // Poll: detectar si el popup se cerró manualmente
+      const pollInterval = setInterval(async () => {
+        if (popup.closed) {
+          clearInterval(pollInterval);
+          window.removeEventListener('message', messageHandler);
+          // Verificar estado del pago vía API
+          try {
+            const statusRes = await api.get(`/dlocal/status/${paymentRef}`);
+            const st = statusRes.data?.payment?.status;
+            handleDlocalResult(st === 'approved' ? '1' : st === 'pending' ? '3' : null, paymentRef);
+          } catch (e) {
+            handleDlocalResult(null, paymentRef);
+          }
+        }
+      }, 1000);
+
     } catch (error) {
       console.error('Error initiating dLocal payment:', error);
       alert(error.response?.data?.message || error.message || 'Error al iniciar el pago con dLocal');
     } finally {
       setProcessing(false);
     }
+  };
+
+  const handleDlocalResult = (statusCode, ref) => {
+    if (statusCode === '1' || statusCode === 1) {
+      setPaymentResult({ status: 'approved', message: '¡Pago aprobado! Tu suscripción será activada en breve.' });
+      loadSubscription();
+      loadPaymentHistory();
+    } else if (statusCode === '2' || statusCode === 2) {
+      setPaymentResult({ status: 'failed', message: 'El pago fue cancelado o rechazado.' });
+    } else if (statusCode === '3' || statusCode === 3) {
+      setPaymentResult({ status: 'pending', message: 'El pago está pendiente de confirmación. Recibirás una notificación cuando se procese.' });
+    } else {
+      // El popup se cerró sin resultado claro — verificar por polling
+      setPaymentResult({ status: 'pending', message: 'Verificando estado del pago... Si fue exitoso, tu suscripción se activará automáticamente.' });
+    }
+    loadPaymentHistory();
   };
 
   const handlePay = () => {
