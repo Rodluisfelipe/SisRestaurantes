@@ -65,7 +65,14 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const onResize = () => setKeyboardOpen(vv.height < window.innerHeight * 0.75);
+    const fullH = window.innerHeight;
+    const onResize = () => {
+      setKeyboardOpen(vv.height < fullH * 0.75);
+      // Prevent browser from scrolling the page behind the fixed container
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    };
     vv.addEventListener('resize', onResize);
     return () => vv.removeEventListener('resize', onResize);
   }, []);
@@ -77,9 +84,9 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
     }
   }, [initialTableNumber, orderInfo.tableNumber]);
 
-  /* ── Auto-focus ── */
+  /* ── Auto-focus (preventScroll avoids the page jump) ── */
   useEffect(() => {
-    const t = setTimeout(() => { if (!showOrderTypes) nameRef.current?.focus(); }, 700);
+    const t = setTimeout(() => { if (!showOrderTypes) nameRef.current?.focus({ preventScroll: true }); }, 700);
     return () => clearTimeout(t);
   }, [showOrderTypes]);
 
@@ -130,8 +137,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         transition={{ duration: 0.6 }}
         className="relative flex-shrink-0 flex flex-col items-center justify-end"
         style={{
-          height: keyboardOpen ? '20vh' : '42vh',
-          transition: 'height 0.3s ease'
+          height: keyboardOpen ? '18vh' : '42vh',
+          transition: 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
         {/* Background: cover image or themed gradient */}
@@ -273,13 +280,13 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       type="text"
                       value={orderInfo.customerName}
                       onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                      onFocus={() => setNameFocused(true)}
+                      onFocus={(e) => { setNameFocused(true); setTimeout(() => { window.scrollTo(0,0); document.body.scrollTop = 0; }, 50); }}
                       onBlur={() => setNameFocused(false)}
                       className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
                       placeholder="Ingresa tu nombre"
                       autoComplete="given-name"
                       enterKeyHint="next"
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); phoneRef.current?.focus(); } }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); phoneRef.current?.focus({ preventScroll: true }); } }}
                       required
                     />
                     <AnimatePresence>{nameValid && <CheckBadge color={themeColor} />}</AnimatePresence>
@@ -303,7 +310,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       inputMode="tel"
                       value={orderInfo.phone || ''}
                       onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value })}
-                      onFocus={() => setPhoneFocused(true)}
+                      onFocus={(e) => { setPhoneFocused(true); setTimeout(() => { window.scrollTo(0,0); document.body.scrollTop = 0; }, 50); }}
                       onBlur={() => setPhoneFocused(false)}
                       className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
                       placeholder="Ej: 3001234567"
