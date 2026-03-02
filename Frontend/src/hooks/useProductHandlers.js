@@ -96,7 +96,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
         setShowConfirmModal(true);
       } else {
         const response = await api.post('/products', formData);
-        showSuccessMessage('✨ Producto creado exitosamente');
+        showSuccessMessage('Producto creado exitosamente');
         resetForm();
         setTimeout(() => setShowProductModal(false), 500);
         setProducts(prev => [...prev, response.data]);
@@ -132,7 +132,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       resetForm();
       setShowConfirmModal(false);
       setTimeout(() => setShowProductModal(false), 500);
-      showSuccessMessage('✅ Producto actualizado correctamente');
+      showSuccessMessage('Producto actualizado correctamente');
       setTimeout(() => loadData(), 800);
     } catch (error) {
       console.error('Error al actualizar producto:', error);
@@ -171,7 +171,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     try {
       await api.delete(`/products/${productToDelete._id}`);
       setProducts(products.filter(p => p._id !== productToDelete._id));
-      showSuccessMessage('🗑️ Producto eliminado exitosamente');
+      showSuccessMessage('Producto eliminado exitosamente');
       setShowDeleteModal(false);
       setProductToDelete(null);
       setTimeout(() => loadData(), 500);
@@ -186,10 +186,10 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       const response = await api.patch(`/products/${productId}/toggle`);
       const updatedProduct = response.data.product;
       setProducts(prev => prev.map(p => p._id === productId ? { ...p, active: updatedProduct.active } : p));
-      showSuccessMessage(updatedProduct.active ? '✅ Producto activado correctamente' : '⏸️ Producto pausado correctamente');
+      showSuccessMessage(updatedProduct.active ? 'Producto activado correctamente' : 'Producto pausado correctamente');
     } catch (error) {
       console.error('Error al cambiar estado del producto:', error);
-      showErrorMessage('❌ Error al cambiar el estado del producto');
+      showErrorMessage('Error al cambiar el estado del producto');
     }
   };
 
@@ -202,26 +202,26 @@ export default function useProductHandlers({ businessId, products, setProducts, 
           ? { ...p, isFeatured: response.data.product.isFeatured, featuredOrder: response.data.product.featuredOrder }
           : p
       ));
-      showSuccessMessage(response.data.product.isFeatured ? '⭐ Producto marcado como destacado' : '✅ Producto removido de destacados');
+      showSuccessMessage(response.data.product.isFeatured ? 'Producto marcado como destacado' : 'Producto removido de destacados');
     } catch (error) {
       console.error('Error al cambiar estado destacado:', error);
-      showErrorMessage(error.response?.data?.message || '❌ Error al cambiar el estado destacado');
+      showErrorMessage(error.response?.data?.message || 'Error al cambiar el estado destacado');
     }
   };
 
   const handleReorderFeatured = async (newOrder) => {
     try {
       const orderedIds = newOrder.map(p => p._id);
-      if (!orderedIds || orderedIds.length === 0) { showErrorMessage('⚠️ No hay productos para reordenar'); return; }
+      if (!orderedIds || orderedIds.length === 0) { showErrorMessage('No hay productos para reordenar'); return; }
       await api.put('/products/reorder-featured', { orderedIds });
       setProducts(prev => prev.map(product => {
         const index = orderedIds.indexOf(product._id);
         return index !== -1 ? { ...product, featuredOrder: index + 1 } : product;
       }));
-      showSuccessMessage('🔄 Orden de destacados actualizado');
+      showSuccessMessage('Orden de destacados actualizado');
     } catch (error) {
       console.error('Error al reordenar destacados:', error);
-      showErrorMessage(error.response?.data?.message || '❌ Error al reordenar destacados');
+      showErrorMessage(error.response?.data?.message || 'Error al reordenar destacados');
     }
   };
 
