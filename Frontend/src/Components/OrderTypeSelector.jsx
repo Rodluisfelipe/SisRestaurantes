@@ -45,6 +45,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   const [nameFocused, setNameFocused] = useState(false);
   const [phoneFocused, setPhoneFocused] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [viewportH, setViewportH] = useState(null);
   const { businessConfig } = useBusinessConfig();
   const nameRef = useRef(null);
   const phoneRef = useRef(null);
@@ -61,20 +62,25 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
     : null;
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
 
-  /* ── Keyboard detect ── */
+  /* ── Keyboard / viewport tracking ── */
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const fullH = window.innerHeight;
-    const onResize = () => {
-      setKeyboardOpen(vv.height < fullH * 0.75);
-      // Prevent browser from scrolling the page behind the fixed container
+    const update = () => {
+      const h = vv.height;
+      setViewportH(h);
+      setKeyboardOpen(h < fullH * 0.75);
+      // Lock scroll so browser doesn't push content up
       window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
     };
-    vv.addEventListener('resize', onResize);
-    return () => vv.removeEventListener('resize', onResize);
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
   }, []);
 
   /* ── Table sync ── */
@@ -126,7 +132,10 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden touch-none">
+    <div
+      className="fixed left-0 right-0 top-0 z-50 flex flex-col overflow-hidden touch-none"
+      style={{ height: viewportH ? `${viewportH}px` : '100vh', transition: 'height 0.25s ease' }}
+    >
 
       {/* ═══════════════════════════════════════════
           HERO — top section with cover/gradient + logo
@@ -137,8 +146,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         transition={{ duration: 0.6 }}
         className="relative flex-shrink-0 flex flex-col items-center justify-end"
         style={{
-          height: keyboardOpen ? '28vh' : '42vh',
-          transition: 'height 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)'
+          height: keyboardOpen ? 120 : '42vh',
+          transition: 'height 0.3s ease'
         }}
       >
         {/* Background: cover image or themed gradient */}
@@ -174,8 +183,9 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
           transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}
           className="relative z-20"
           style={{
-            marginBottom: keyboardOpen ? -30 : -36,
-            transition: 'margin-bottom 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)'
+            marginBottom: keyboardOpen ? -24 : -36,
+            transform: keyboardOpen ? 'scale(0.7)' : 'scale(1)',
+            transition: 'margin-bottom 0.3s ease, transform 0.3s ease'
           }}
         >
           <div className="relative">
@@ -293,7 +303,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       type="text"
                       value={orderInfo.customerName}
                       onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                      onFocus={(e) => { setNameFocused(true); setTimeout(() => { window.scrollTo(0,0); document.body.scrollTop = 0; }, 50); }}
+                      onFocus={() => setNameFocused(true)}
                       onBlur={() => setNameFocused(false)}
                       className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
                       placeholder="Ingresa tu nombre"
@@ -323,7 +333,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       inputMode="tel"
                       value={orderInfo.phone || ''}
                       onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value })}
-                      onFocus={(e) => { setPhoneFocused(true); setTimeout(() => { window.scrollTo(0,0); document.body.scrollTop = 0; }, 50); }}
+                      onFocus={() => setPhoneFocused(true)}
                       onBlur={() => setPhoneFocused(false)}
                       className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
                       placeholder="Ej: 3001234567"
