@@ -111,19 +111,12 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   const phoneValid = (orderInfo.phone?.trim().length || 0) >= 7;
   const isFormValid = nameValid && phoneValid;
 
-  /* ── Shared input ── */
-  const InputWrap = ({ focused, children }) => (
-    <div
-      className="relative rounded-xl border transition-all duration-200"
-      style={{
-        borderColor: focused ? themeColor : '#e8eaed',
-        backgroundColor: focused ? '#fff' : '#f8f9fb',
-        boxShadow: focused ? `0 0 0 3px ${themeColor}15` : 'none'
-      }}
-    >
-      {children}
-    </div>
-  );
+  /* ── Shared input style helper ── */
+  const inputWrapStyle = (focused) => ({
+    borderColor: focused ? themeColor : '#e8eaed',
+    backgroundColor: focused ? '#fff' : '#f8f9fb',
+    boxShadow: focused ? `0 0 0 3px ${themeColor}15` : 'none'
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden touch-none">
@@ -269,7 +262,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                   <label className="block text-[11px] font-semibold text-gray-400 mb-1 tracking-wider uppercase pl-0.5">
                     Tu nombre
                   </label>
-                  <InputWrap focused={nameFocused}>
+                  <div className="relative rounded-xl border transition-all duration-200" style={inputWrapStyle(nameFocused)}>
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
                       <svg className="w-[17px] h-[17px]" style={{ color: nameFocused ? themeColor : '#b5bcc7' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -290,7 +283,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       required
                     />
                     <AnimatePresence>{nameValid && <CheckBadge color={themeColor} />}</AnimatePresence>
-                  </InputWrap>
+                  </div>
                 </div>
 
                 {/* Phone */}
@@ -298,7 +291,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                   <label className="block text-[11px] font-semibold text-gray-400 mb-1 tracking-wider uppercase pl-0.5">
                     Tu teléfono
                   </label>
-                  <InputWrap focused={phoneFocused}>
+                  <div className="relative rounded-xl border transition-all duration-200" style={inputWrapStyle(phoneFocused)}>
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
                       <svg className="w-[17px] h-[17px]" style={{ color: phoneFocused ? themeColor : '#b5bcc7' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
@@ -319,7 +312,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       required
                     />
                     <AnimatePresence>{phoneValid && <CheckBadge color={themeColor} />}</AnimatePresence>
-                  </InputWrap>
+                  </div>
                 </div>
 
                 {/* CTA */}
