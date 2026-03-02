@@ -13,12 +13,15 @@ const SubscriptionPayment = () => {
   const socket = useBusinessSocket(businessId);
   
   const [subscription, setSubscription] = useState(null);
-  const [plans, setPlans] = useState([]);
+  const [epaycoPlans, setEpaycoPlans] = useState([]);
+  const [dlocalPlans, setDlocalPlans] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedMonths, setSelectedMonths] = useState(1);
+  const [selectedGateway, setSelectedGateway] = useState('dlocal'); // 'epayco' | 'dlocal'
   const [epaycoConfig, setEpaycoConfig] = useState({ publicKey: '', isTest: false });
+  const [dlocalConfig, setDlocalConfig] = useState({ isTest: false });
   const [paymentResult, setPaymentResult] = useState(null);
   const [activeTab, setActiveTab] = useState('plan'); // 'plan' | 'history'
   
@@ -50,7 +53,7 @@ const SubscriptionPayment = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      await Promise.all([loadSubscription(), loadPlans(), loadPaymentHistory()]);
+      await Promise.all([loadSubscription(), loadEpaycoPlans(), loadDlocalPlans(), loadPaymentHistory()]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -81,53 +84,77 @@ const SubscriptionPayment = () => {
     }
   };
 
-  const loadPlans = async () => {
+  const loadEpaycoPlans = async () => {
     try {
       const res = await api.get('/epayco/plans');
       if (res.data.success) {
-        setPlans(res.data.plans);
+        setEpaycoPlans(res.data.plans);
         setEpaycoConfig({ publicKey: res.data.publicKey, isTest: res.data.isTest });
       }
     } catch (error) {
-      console.error('Error loading plans:', error);
+      console.error('Error loading ePayco plans:', error);
+    }
+  };
+
+  const loadDlocalPlans = async () => {
+    try {
+      const res = await api.get('/dlocal/plans');
+      if (res.data.success) {
+        setDlocalPlans(res.data.plans);
+        setDlocalConfig({ isTest: res.data.isTest });
+      }
+    } catch (error) {
+      console.error('Error loading dLocal plans:', error);
     }
   };
 
   const loadPaymentHistory = async () => {
     try {
-      const res = await api.get('/epayco/history');
-      if (res.data.success) {
-        setPaymentHistory(res.data.payments || []);
-      }
+      const [epaycoRes, dlocalRes] = await Promise.all([
+        api.get('/epayco/history').catch(() => ({ data: { payments: [] } })),
+        api.get('/dlocal/history').catch(() => ({ data: { payments: [] } })),
+      ]);
+      const all = [
+        ...(epaycoRes.data.payments || []).map(p => ({ ...p, gateway: 'ePayco' })),
+        ...(dlocalRes.data.payments || []).map(p => ({ ...p, gateway: 'dLocal' })),
+      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setPaymentHistory(all);
     } catch (error) {
       console.error('Error loading payment history:', error);
     }
   };
 
   const checkPaymentStatus = async (ref, statusCode) => {
-    try {
-      const res = await api.get(`/epayco/status/${ref}`);
-      if (res.data.success) {
-        const { payment } = res.data;
-        if (payment.status === 'approved') {
-          setPaymentResult({ status: 'approved', message: `¡Pago aprobado! Tu suscripción de ${payment.months} mes(es) está activa.`, reference: payment.reference });
-          await loadSubscription();
-        } else if (payment.status === 'pending') {
-          setPaymentResult({ status: 'pending', message: 'Tu pago está siendo procesado. Te notificaremos cuando se confirme.', reference: payment.reference });
-        } else {
-          setPaymentResult({ status: 'failed', message: payment.responseMessage || 'El pago no fue aprobado. Intenta de nuevo.', reference: payment.reference });
+    // Intentar con ambas pasarelas
+    const gw = searchParams.get('gw');
+    const endpoints = gw === 'dlocal' ? ['/dlocal/status/', '/epayco/status/'] : ['/epayco/status/', '/dlocal/status/'];
+    
+    for (const endpoint of endpoints) {
+      try {
+        const res = await api.get(`${endpoint}${ref}`);
+        if (res.data.success) {
+          const { payment } = res.data;
+          if (payment.status === 'approved') {
+            setPaymentResult({ status: 'approved', message: `¡Pago aprobado! Tu suscripción de ${payment.months} mes(es) está activa.`, reference: payment.reference });
+            await loadSubscription();
+          } else if (payment.status === 'pending') {
+            setPaymentResult({ status: 'pending', message: 'Tu pago está siendo procesado. Te notificaremos cuando se confirme.', reference: payment.reference });
+          } else {
+            setPaymentResult({ status: 'failed', message: payment.responseMessage || 'El pago no fue aprobado. Intenta de nuevo.', reference: payment.reference });
+          }
+          return;
         }
-      }
-    } catch (error) {
-      const code = parseInt(statusCode);
-      if (code === 1) {
-        setPaymentResult({ status: 'approved', message: '¡Pago procesado! Verificando activación...' });
-        await loadSubscription();
-      } else if (code === 3) {
-        setPaymentResult({ status: 'pending', message: 'Pago pendiente de confirmación.' });
-      } else {
-        setPaymentResult({ status: 'failed', message: 'El pago no fue completado.' });
-      }
+      } catch (e) { /* try next */ }
+    }
+    // Fallback por código
+    const code = parseInt(statusCode);
+    if (code === 1) {
+      setPaymentResult({ status: 'approved', message: '¡Pago procesado! Verificando activación...' });
+      await loadSubscription();
+    } else if (code === 3) {
+      setPaymentResult({ status: 'pending', message: 'Pago pendiente de confirmación.' });
+    } else {
+      setPaymentResult({ status: 'failed', message: 'El pago no fue completado.' });
     }
   };
 
@@ -181,6 +208,43 @@ const SubscriptionPayment = () => {
     }
   };
 
+  const handlePayWithDlocal = async () => {
+    if (processing) return;
+    setProcessing(true);
+    try {
+      // Guardar sesión antes del redirect
+      const t = sessionStorage.getItem('accessToken');
+      const r = sessionStorage.getItem('refreshToken');
+      const u = sessionStorage.getItem('user');
+      if (t) localStorage.setItem('accessToken', t);
+      if (r) localStorage.setItem('refreshToken', r);
+      if (u) localStorage.setItem('user', u);
+
+      const res = await api.post('/dlocal/create', { months: selectedMonths, businessId });
+      if (!res.data.success) { alert(res.data.message || 'Error al crear el pago'); return; }
+
+      // dLocal devuelve una URL de redirect
+      if (res.data.redirectUrl) {
+        window.location.href = res.data.redirectUrl;
+      } else {
+        alert('No se recibió URL de pago de dLocal');
+      }
+    } catch (error) {
+      console.error('Error initiating dLocal payment:', error);
+      alert(error.response?.data?.message || error.message || 'Error al iniciar el pago con dLocal');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handlePay = () => {
+    if (selectedGateway === 'dlocal') {
+      handlePayWithDlocal();
+    } else {
+      handlePayWithEpayco();
+    }
+  };
+
   const getSubscriptionStatus = () => {
     if (!subscription) return null;
     const now = new Date();
@@ -196,7 +260,9 @@ const SubscriptionPayment = () => {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
   const formatCurrency = (n) => `$${(n || 0).toLocaleString('es-CO')}`;
 
+  const plans = selectedGateway === 'dlocal' ? dlocalPlans : epaycoPlans;
   const selectedPlan = plans.find(p => p.months === selectedMonths);
+  const isTestMode = selectedGateway === 'dlocal' ? dlocalConfig.isTest : epaycoConfig.isTest;
   const subStatus = getSubscriptionStatus();
 
   if (loading) {
@@ -278,10 +344,10 @@ const SubscriptionPayment = () => {
     <div className="space-y-4">
       
       {/* MODO PRUEBAS Badge */}
-      {epaycoConfig.isTest && (
+      {isTestMode && (
         <div className="flex justify-center">
           <span className="text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-3 py-1 rounded-full font-semibold tracking-wide">
-            MODO PRUEBAS
+            MODO PRUEBAS — {selectedGateway === 'dlocal' ? 'dLocal' : 'ePayco'}
           </span>
         </div>
       )}
@@ -506,7 +572,59 @@ const SubscriptionPayment = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
                   <p className="text-xs text-[#6C7A92]">No se pudieron cargar los planes</p>
-                  <button onClick={loadPlans} className="mt-2 text-[#3A7AFF] text-[11px] font-medium">Reintentar</button>
+                  <button onClick={loadData} className="mt-2 text-[#3A7AFF] text-[11px] font-medium">Reintentar</button>
+                </div>
+              )}
+
+              {/* Selector de Pasarela */}
+              {plans.length > 0 && (
+                <div>
+                  <p className="text-[11px] text-[#6C7A92] mb-2">Pasarela de pago</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => setSelectedGateway('dlocal')}
+                      className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                        selectedGateway === 'dlocal' ? 'border-[#3A7AFF] bg-[#3A7AFF]/5' : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30 bg-white'
+                      }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs font-bold ${selectedGateway === 'dlocal' ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>dLocal</span>
+                        {selectedGateway === 'dlocal' && (
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                            className="w-4 h-4 bg-[#3A7AFF] rounded-full flex items-center justify-center">
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </motion.div>
+                        )}
+                      </div>
+                      <div className={`text-sm font-bold ${selectedGateway === 'dlocal' ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
+                        {formatCurrency(dlocalPlans.find(p => p.months === selectedMonths)?.total || 0)}
+                      </div>
+                      <div className="text-[10px] text-[#6C7A92]">1.99% + $840</div>
+                      <div className="mt-1.5 text-[8px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-full font-semibold inline-block">
+                        Más económico
+                      </div>
+                    </button>
+                    <button type="button" onClick={() => setSelectedGateway('epayco')}
+                      className={`relative p-3 rounded-xl border-2 transition-all text-left ${
+                        selectedGateway === 'epayco' ? 'border-[#3A7AFF] bg-[#3A7AFF]/5' : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30 bg-white'
+                      }`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-xs font-bold ${selectedGateway === 'epayco' ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>ePayco</span>
+                        {selectedGateway === 'epayco' && (
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}
+                            className="w-4 h-4 bg-[#3A7AFF] rounded-full flex items-center justify-center">
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </motion.div>
+                        )}
+                      </div>
+                      <div className={`text-sm font-bold ${selectedGateway === 'epayco' ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
+                        {formatCurrency(epaycoPlans.find(p => p.months === selectedMonths)?.total || 0)}
+                      </div>
+                      <div className="text-[10px] text-[#6C7A92]">3.5% + $1,000</div>
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -535,7 +653,7 @@ const SubscriptionPayment = () => {
                 <motion.button
                   type="button"
                   whileTap={{ scale: 0.98 }}
-                  onClick={handlePayWithEpayco}
+                  onClick={handlePay}
                   disabled={processing}
                   className="w-full py-3.5 px-4 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 disabled:bg-[#DCE4F5] disabled:text-[#6C7A92] text-white text-sm font-bold rounded-xl transition-all shadow-lg shadow-[#3A7AFF]/20 disabled:shadow-none flex items-center justify-center gap-2"
                 >
@@ -549,7 +667,7 @@ const SubscriptionPayment = () => {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                       </svg>
-                      <span>Pagar {formatCurrency(selectedPlan.total)} COP</span>
+                      <span>Pagar con {selectedGateway === 'dlocal' ? 'dLocal' : 'ePayco'} {formatCurrency(selectedPlan.total)} COP</span>
                     </>
                   )}
                 </motion.button>
@@ -627,6 +745,11 @@ const SubscriptionPayment = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-3 text-[10px] text-[#6C7A92]">
+                          {payment.gateway && (
+                            <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded ${
+                              payment.gateway === 'dLocal' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
+                            }`}>{payment.gateway}</span>
+                          )}
                           {payment.paymentMethod && (
                             <span className="flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -635,8 +758,8 @@ const SubscriptionPayment = () => {
                               {payment.paymentMethod}
                             </span>
                           )}
-                          {payment.epaycoRef && (
-                            <span className="font-mono">Ref: {payment.epaycoRef}</span>
+                          {(payment.epaycoRef || payment.reference) && (
+                            <span className="font-mono">Ref: {payment.epaycoRef || payment.reference}</span>
                           )}
                         </div>
                       </motion.div>
