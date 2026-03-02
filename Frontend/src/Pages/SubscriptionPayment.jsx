@@ -276,19 +276,44 @@ const SubscriptionPayment = () => {
     }
   };
 
-  const handleDlocalResult = (statusCode, ref) => {
-    if (statusCode === '1' || statusCode === 1) {
-      setPaymentResult({ status: 'approved', message: '¡Pago aprobado! Tu suscripción será activada en breve.' });
-      loadSubscription();
-      loadPaymentHistory();
-    } else if (statusCode === '2' || statusCode === 2) {
+  const handleDlocalResult = async (statusCode, ref) => {
+    // Paso 1: Mostrar estado de verificación
+    setPaymentResult({ status: 'pending', message: 'Verificando pago con dLocal...' });
+
+    if (statusCode === '2' || statusCode === 2) {
       setPaymentResult({ status: 'failed', message: 'El pago fue cancelado o rechazado.' });
-    } else if (statusCode === '3' || statusCode === 3) {
-      setPaymentResult({ status: 'pending', message: 'El pago está pendiente de confirmación. Recibirás una notificación cuando se procese.' });
-    } else {
-      // El popup se cerró sin resultado claro — verificar por polling
-      setPaymentResult({ status: 'pending', message: 'Verificando estado del pago... Si fue exitoso, tu suscripción se activará automáticamente.' });
+      loadPaymentHistory();
+      return;
     }
+
+    // Paso 2: Consultar backend (que a su vez consulta dLocal Go y activa suscripción)
+    const maxAttempts = 8;
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const statusRes = await api.get(`/dlocal/status/${ref}`);
+        const payment = statusRes.data?.payment;
+
+        if (payment?.status === 'approved') {
+          setPaymentResult({ status: 'approved', message: '¡Pago confirmado! Tu suscripción ha sido activada.' });
+          await loadSubscription();
+          loadPaymentHistory();
+          return;
+        }
+        if (payment?.status === 'rejected' || payment?.status === 'failed' || payment?.status === 'cancelled') {
+          setPaymentResult({ status: 'failed', message: `Pago ${payment.status === 'rejected' ? 'rechazado' : 'cancelado'}.` });
+          loadPaymentHistory();
+          return;
+        }
+        // Aún pending/created — esperar y reintentar
+        setPaymentResult({ status: 'pending', message: `Confirmando pago... (${i + 1}/${maxAttempts})` });
+      } catch (e) {
+        // Error de red, seguir intentando
+      }
+      await new Promise(r => setTimeout(r, 2500));
+    }
+
+    // Agotados los intentos
+    setPaymentResult({ status: 'pending', message: 'Pago en proceso. Si fue exitoso, tu suscripción se activará automáticamente en segundos.' });
     loadPaymentHistory();
   };
 
