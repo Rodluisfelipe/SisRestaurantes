@@ -155,7 +155,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-white overflow-auto"
+      className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden touch-none"
       style={{ paddingTop: 'env(safe-area-inset-top, 0px)', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       ref={scrollRef}
     >
