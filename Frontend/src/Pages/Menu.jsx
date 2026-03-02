@@ -345,11 +345,10 @@ export default function Menu() {
 
   // Viewer tracking con socket dedicado (sin auth, separado del admin socket)
   useEffect(() => {
-    console.log('[ViewerTracking] Effect fired:', { showOrderTypeSelector, businessId, customerName: orderInfo?.customerName, phone: orderInfo?.phone });
-    if (showOrderTypeSelector || !businessId || !orderInfo?.customerName || !orderInfo?.phone) {
-      console.log('[ViewerTracking] Skipped — missing data', { showOrderTypeSelector, businessId: !!businessId, name: !!orderInfo?.customerName, phone: !!orderInfo?.phone });
-      return;
-    }
+    // Only require businessId to start tracking — name/phone are optional (anonymous viewer)
+    if (!businessId) return;
+    // Don't track while on the order type selector screen
+    if (showOrderTypeSelector) return;
     
     let viewerSocket = null;
     let heartbeatInterval = null;
@@ -385,8 +384,8 @@ export default function Menu() {
           const c = cartRef.current;
           viewerSocket.emit('viewer:join', {
             businessId,
-            customerName: orderInfo.customerName,
-            phone: orderInfo.phone,
+            customerName: orderInfo?.customerName || 'Visitante',
+            phone: orderInfo?.phone || '',
             device,
             source: trafficSource,
             referrer: document.referrer || null,
@@ -398,10 +397,6 @@ export default function Menu() {
         
         viewerSocket.on('connect_error', (err) => {
           console.error('[ViewerTracking] Connect error:', err.message);
-        });
-        
-        viewerSocket.on('disconnect', (reason) => {
-          console.log('[ViewerTracking] Disconnected:', reason);
         });
         
         // Heartbeat cada 30 segundos (usa ref para valor fresco)
@@ -433,7 +428,7 @@ export default function Menu() {
       }
       viewerSocketRef.current = null;
     };
-  }, [showOrderTypeSelector, businessId, orderInfo?.customerName, orderInfo?.phone]);
+  }, [showOrderTypeSelector, businessId]);
 
   // Recover active order from backend if sessionStorage lost it (e.g. new session)
   useEffect(() => {

@@ -137,12 +137,15 @@ export const joinBusiness = (businessId) => {
   const freshToken = getAuthToken();
   socket.auth = { token: freshToken };
 
+  // Send token inline with joinBusiness for cases where handshake auth was empty
+  const payload = { businessId, token: freshToken };
+
   if (socket.connected) {
-    socket.emit('joinBusiness', businessId);
+    socket.emit('joinBusiness', payload);
   } else {
     socket.connect();
     socket.once('connect', () => {
-      socket.emit('joinBusiness', businessId);
+      socket.emit('joinBusiness', payload);
     });
   }
 };
