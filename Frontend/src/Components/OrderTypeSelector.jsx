@@ -137,8 +137,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         transition={{ duration: 0.6 }}
         className="relative flex-shrink-0 flex flex-col items-center justify-end"
         style={{
-          height: keyboardOpen ? '18vh' : '42vh',
-          transition: 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
+          height: keyboardOpen ? '28vh' : '42vh',
+          transition: 'height 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)'
         }}
       >
         {/* Background: cover image or themed gradient */}
@@ -173,7 +173,10 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}
           className="relative z-20"
-          style={{ marginBottom: keyboardOpen ? -28 : -36 }}
+          style={{
+            marginBottom: keyboardOpen ? -30 : -36,
+            transition: 'margin-bottom 0.4s cubic-bezier(0.25, 0.1, 0.25, 1)'
+          }}
         >
           <div className="relative">
             <div
@@ -217,8 +220,13 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="text-center mb-1"
-            style={{ display: keyboardOpen ? 'none' : 'block' }}
+            className="text-center mb-1 overflow-hidden"
+            style={{
+              opacity: keyboardOpen ? 0 : 1,
+              maxHeight: keyboardOpen ? 0 : 40,
+              marginBottom: keyboardOpen ? 0 : 4,
+              transition: 'opacity 0.3s ease, max-height 0.4s ease, margin-bottom 0.4s ease'
+            }}
           >
             <h1 className="text-[22px] font-bold text-gray-800 leading-tight">
               {businessConfig.businessName || 'Nuestro restaurante'}
@@ -229,8 +237,13 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.42 }}
-            className="text-[13px] text-gray-400 text-center"
-            style={{ marginBottom: keyboardOpen ? 12 : 24, display: keyboardOpen && showOrderTypes ? 'none' : 'block' }}
+            className="text-[13px] text-gray-400 text-center overflow-hidden"
+            style={{
+              opacity: (keyboardOpen && showOrderTypes) ? 0 : 1,
+              maxHeight: (keyboardOpen && showOrderTypes) ? 0 : 30,
+              marginBottom: keyboardOpen ? 8 : 20,
+              transition: 'opacity 0.3s ease, max-height 0.4s ease, margin-bottom 0.4s ease'
+            }}
           >
             {isReturning && orderInfo.customerName
               ? <>Hola de nuevo, <span className="font-semibold text-gray-600">{orderInfo.customerName.split(' ')[0]}</span></>
