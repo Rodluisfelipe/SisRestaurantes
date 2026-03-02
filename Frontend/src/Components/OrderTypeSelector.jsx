@@ -130,17 +130,15 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
 
       {/* ═══════════════════════════════════════════
           HERO — top section with cover/gradient + logo
-          (hidden when keyboard is open)
           ═══════════════════════════════════════════ */}
       <motion.div
         initial={{ opacity: 0 }}
-        animate={{ opacity: keyboardOpen ? 0 : 1 }}
-        transition={{ duration: 0.25 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6 }}
         className="relative flex-shrink-0 flex flex-col items-center justify-end"
         style={{
-          height: keyboardOpen ? 0 : '42vh',
-          overflow: 'hidden',
-          transition: 'height 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          height: keyboardOpen ? '18vh' : '42vh',
+          transition: 'height 0.35s cubic-bezier(0.4, 0, 0.2, 1)'
         }}
       >
         {/* Background: cover image or themed gradient */}
@@ -169,37 +167,35 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
           </>
         )}
 
-        {/* Logo — overlapping the card (only when keyboard closed) */}
-        {!keyboardOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.6, y: 30 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}
-            className="relative z-20"
-            style={{ marginBottom: -36 }}
-          >
-            <div className="relative">
-              <div
-                className="w-[76px] h-[76px] rounded-2xl overflow-hidden shadow-2xl ring-[3px] ring-white/90"
-                style={{ boxShadow: `0 8px 32px ${themeColor}40, 0 2px 8px rgba(0,0,0,0.15)` }}
-              >
-                <img
-                  src={logoUrl || defaultLogo}
-                  alt={businessConfig.businessName || 'Logo'}
-                  className="w-full h-full object-cover"
-                  onError={(e) => { e.target.src = defaultLogo; }}
-                />
-              </div>
-              {/* Online pulse */}
-              <div
-                className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[2.5px] border-white"
-                style={{ backgroundColor: '#22c55e' }}
-              >
-                <span className="absolute inset-0 rounded-full animate-ping opacity-40" style={{ backgroundColor: '#22c55e' }} />
-              </div>
+        {/* Logo — overlapping the card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.6, y: 30 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}
+          className="relative z-20"
+          style={{ marginBottom: keyboardOpen ? -28 : -36 }}
+        >
+          <div className="relative">
+            <div
+              className="w-[76px] h-[76px] rounded-2xl overflow-hidden shadow-2xl ring-[3px] ring-white/90"
+              style={{ boxShadow: `0 8px 32px ${themeColor}40, 0 2px 8px rgba(0,0,0,0.15)` }}
+            >
+              <img
+                src={logoUrl || defaultLogo}
+                alt={businessConfig.businessName || 'Logo'}
+                className="w-full h-full object-cover"
+                onError={(e) => { e.target.src = defaultLogo; }}
+              />
             </div>
-          </motion.div>
-        )}
+            {/* Online pulse */}
+            <div
+              className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[2.5px] border-white"
+              style={{ backgroundColor: '#22c55e' }}
+            >
+              <span className="absolute inset-0 rounded-full animate-ping opacity-40" style={{ backgroundColor: '#22c55e' }} />
+            </div>
+          </div>
+        </motion.div>
       </motion.div>
 
       {/* ═══════════════════════════════════════════
@@ -209,29 +205,13 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         initial={{ y: 60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 26, delay: 0.2 }}
-        className="relative z-10 flex-1 bg-white flex flex-col"
+        className="relative z-10 flex-1 bg-white rounded-t-[28px] flex flex-col"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          boxShadow: keyboardOpen ? 'none' : '0 -8px 30px rgba(0,0,0,0.08)',
-          borderTopLeftRadius: keyboardOpen ? 0 : 28,
-          borderTopRightRadius: keyboardOpen ? 0 : 28,
-          transition: 'border-radius 0.3s'
+          boxShadow: '0 -8px 30px rgba(0,0,0,0.08)'
         }}
       >
-        <div className="flex-1 flex flex-col px-6" style={{ paddingTop: keyboardOpen ? 20 : 48 }}>
-          {/* Mini logo when keyboard open */}
-          {keyboardOpen && (
-            <div className="flex items-center gap-2.5 mb-3">
-              <img
-                src={logoUrl || defaultLogo}
-                alt=""
-                className="w-9 h-9 rounded-lg object-cover shadow-sm"
-                onError={(e) => { e.target.src = defaultLogo; }}
-              />
-              <span className="text-[15px] font-semibold text-gray-700 truncate">{businessConfig.businessName || 'Menú'}</span>
-            </div>
-          )}
-
+        <div className="flex-1 flex flex-col px-6 pt-12">
           {/* Business name + greeting */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
