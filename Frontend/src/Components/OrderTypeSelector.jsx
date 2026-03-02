@@ -205,7 +205,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         }}
       >
         <div className="flex-1 flex flex-col px-6 pt-12">
-          {/* Business name + greeting */}
+          {/* Business name + info */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -216,6 +216,71 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             <h1 className="text-[22px] font-bold text-gray-800 leading-tight">
               {businessConfig.businessName || 'Nuestro restaurante'}
             </h1>
+
+            {/* Rating chip */}
+            {businessConfig?.reviewStats?.totalReviews > 0 && (
+              <div className="flex items-center justify-center gap-1 mt-1.5">
+                <div className="flex items-center gap-0.5">
+                  {[1,2,3,4,5].map(s => (
+                    <svg key={s} className="w-3 h-3" viewBox="0 0 20 20" fill={s <= Math.round(businessConfig.reviewStats.averageRating) ? '#facc15' : '#e5e7eb'}>
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <span className="text-[12px] font-semibold text-gray-700">{businessConfig.reviewStats.averageRating.toFixed(1)}</span>
+                <span className="text-[11px] text-gray-400">({businessConfig.reviewStats.totalReviews})</span>
+              </div>
+            )}
+
+            {/* Address */}
+            {businessConfig?.address && (
+              <a
+                href={businessConfig?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-gray-400 hover:text-gray-600 transition-colors max-w-[260px]"
+              >
+                <svg className="w-3 h-3 flex-shrink-0 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                </svg>
+                <span className="truncate">{businessConfig.address}</span>
+              </a>
+            )}
+
+            {/* Social media icons */}
+            {(() => {
+              const sm = businessConfig?.socialMedia;
+              const el = businessConfig?.extraLink;
+              const hasAny = (sm?.facebook?.isVisible && sm?.facebook?.url) ||
+                             (sm?.instagram?.isVisible && sm?.instagram?.url) ||
+                             (sm?.tiktok?.isVisible && sm?.tiktok?.url) ||
+                             (el?.isVisible && el?.url);
+              if (!hasAny) return null;
+              return (
+                <div className="flex items-center justify-center gap-3 mt-2">
+                  {sm?.facebook?.isVisible && sm?.facebook?.url && (
+                    <a href={sm.facebook.url} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-[#1877F2] transition-colors">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.77 7.46H14.5v-1.9c0-.9.6-1.1 1-1.1h3V.5h-4.33C10.24.5 9.5 3.44 9.5 5.32v2.15h-3v4h3v12h5v-12h3.85l.42-4z"/></svg>
+                    </a>
+                  )}
+                  {sm?.instagram?.isVisible && sm?.instagram?.url && (
+                    <a href={sm.instagram.url} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-[#E4405F] transition-colors">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                    </a>
+                  )}
+                  {sm?.tiktok?.isVisible && sm?.tiktok?.url && (
+                    <a href={sm.tiktok.url} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-black transition-colors">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 00-1-.08A6.34 6.34 0 003 15.66a6.34 6.34 0 0010.86 4.49v.02h3.45v-9.4a7.29 7.29 0 004.28 1.38V8.7a4.78 4.78 0 01-2-2.01z"/></svg>
+                    </a>
+                  )}
+                  {el?.isVisible && el?.url && (
+                    <a href={el.url} target="_blank" rel="noopener noreferrer" className="text-gray-300 hover:text-blue-500 transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
           </motion.div>
 
           <motion.p
