@@ -67,17 +67,20 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
     const vv = window.visualViewport;
     if (!vv) return;
     const fullH = window.innerHeight;
+    // Set body bg to white so no black shows behind
+    const prevBg = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = '#ffffff';
     const update = () => {
       const h = vv.height;
       setViewportH(h);
       setKeyboardOpen(h < fullH * 0.75);
-      // Lock scroll so browser doesn't push content up
       window.scrollTo(0, 0);
     };
     update();
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
     return () => {
+      document.body.style.backgroundColor = prevBg;
       vv.removeEventListener('resize', update);
       vv.removeEventListener('scroll', update);
     };
@@ -132,10 +135,13 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   });
 
   return (
-    <div
-      className="fixed left-0 right-0 top-0 z-50 flex flex-col overflow-hidden touch-none"
-      style={{ height: viewportH ? `${viewportH}px` : '100vh', transition: 'height 0.25s ease' }}
-    >
+    <>
+      {/* Full-screen white backdrop so no black shows when container is smaller than screen */}
+      <div className="fixed inset-0 z-40 bg-white" />
+      <div
+        className="fixed left-0 right-0 top-0 z-50 flex flex-col overflow-hidden touch-none bg-white"
+        style={{ height: viewportH ? `${viewportH}px` : '100vh' }}
+      >
 
       {/* ═══════════════════════════════════════════
           HERO — top section with cover/gradient + logo
@@ -477,7 +483,8 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
           </motion.p>
         )}
       </motion.div>
-    </div>
+      </div>
+    </>
   );
 }
 
