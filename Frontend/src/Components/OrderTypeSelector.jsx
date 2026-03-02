@@ -44,7 +44,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   const [showOrderTypes, setShowOrderTypes] = useState(false);
   const [nameFocused, setNameFocused] = useState(false);
   const [phoneFocused, setPhoneFocused] = useState(false);
-  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [kb, setKb] = useState(false);
   const { businessConfig } = useBusinessConfig();
   const nameRef = useRef(null);
   const phoneRef = useRef(null);
@@ -61,18 +61,18 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
 
   /* ── Keyboard: instant detection via focus/blur ── */
-  const openKb = useCallback(() => setKeyboardOpen(true), []);
-  const closeKb = useCallback(() => setKeyboardOpen(false), []);
+  const openKb = useCallback(() => setKb(true), []);
+  const closeKb = useCallback(() => setKb(false), []);
 
   /* ── Lock body ── */
   useEffect(() => {
+    const prev = document.body.style.overflow;
     const prevBg = document.body.style.backgroundColor;
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.backgroundColor = '#ffffff';
     document.body.style.overflow = 'hidden';
+    document.body.style.backgroundColor = '#ffffff';
     return () => {
+      document.body.style.overflow = prev;
       document.body.style.backgroundColor = prevBg;
-      document.body.style.overflow = prevOverflow;
     };
   }, []);
 
@@ -123,153 +123,16 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
     boxShadow: focused ? `0 0 0 3px ${themeColor}15` : 'none'
   });
 
-  /* ═══════════════════════════════════════════════════
-     KEYBOARD OPEN → compact layout: everything visible
-     ═══════════════════════════════════════════════════ */
-  if (keyboardOpen) {
-    return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col">
-        {/* Compact header: themed bar with logo + name */}
-        <div
-          className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5"
-          style={{ backgroundColor: themeColor }}
-        >
-          <div className="w-9 h-9 rounded-xl overflow-hidden ring-2 ring-white/30 flex-shrink-0">
-            <img
-              src={logoUrl || defaultLogo}
-              alt={businessConfig.businessName || 'Logo'}
-              className="w-full h-full object-cover"
-              onError={(e) => { e.target.src = defaultLogo; }}
-            />
-          </div>
-          <h1 className="text-[15px] font-bold truncate" style={{ color: themeTextColor }}>
-            {businessConfig.businessName || 'Nuestro restaurante'}
-          </h1>
-        </div>
+  /* ── Sizes that adapt when keyboard is open ── */
+  const heroH = kb ? '12vh' : '42vh';
+  const logoSize = kb ? 44 : 76;
+  const logoOverlap = kb ? -20 : -36;
+  const cardPt = kb ? 'pt-7' : 'pt-12';
+  const titleSize = kb ? 'text-[17px]' : 'text-[22px]';
+  const spacing = kb ? 'mb-2' : 'mb-5';
+  const inputPy = kb ? 'py-2' : 'py-3';
+  const btnPy = kb ? 'py-2.5' : 'py-3.5';
 
-        {/* Form area */}
-        <div className="flex-1 flex flex-col justify-center px-5 py-3">
-          <p className="text-[13px] text-gray-400 text-center mb-3">
-            {isReturning && orderInfo.customerName
-              ? <>Hola de nuevo, <span className="font-semibold text-gray-600">{orderInfo.customerName.split(' ')[0]}</span></>
-              : 'Ingresa tus datos para ver el menú'
-            }
-          </p>
-
-          <AnimatePresence mode="wait">
-            {!showOrderTypes && (
-              <form key="step-kb" onSubmit={handleSubmit} className="space-y-2.5">
-                {/* Name */}
-                <div className="relative rounded-xl border" style={inputWrapStyle(nameFocused)}>
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4" style={{ color: nameFocused ? themeColor : '#b5bcc7' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                  </div>
-                  <input
-                    ref={nameRef}
-                    type="text"
-                    value={orderInfo.customerName}
-                    onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
-                    onFocus={() => { setNameFocused(true); openKb(); }}
-                    onBlur={() => { setNameFocused(false); closeKb(); }}
-                    className="w-full pl-9 pr-9 py-2.5 bg-transparent text-gray-800 text-[14px] placeholder-gray-300 rounded-xl outline-none"
-                    placeholder="Tu nombre"
-                    autoComplete="given-name"
-                    enterKeyHint="next"
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); phoneRef.current?.focus({ preventScroll: true }); } }}
-                    required
-                  />
-                  <AnimatePresence>{nameValid && <CheckBadge color={themeColor} />}</AnimatePresence>
-                </div>
-
-                {/* Phone */}
-                <div className="relative rounded-xl border" style={inputWrapStyle(phoneFocused)}>
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                    <svg className="w-4 h-4" style={{ color: phoneFocused ? themeColor : '#b5bcc7' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                  </div>
-                  <input
-                    ref={phoneRef}
-                    type="tel"
-                    inputMode="tel"
-                    value={orderInfo.phone || ''}
-                    onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value })}
-                    onFocus={() => { setPhoneFocused(true); openKb(); }}
-                    onBlur={() => { setPhoneFocused(false); closeKb(); }}
-                    className="w-full pl-9 pr-9 py-2.5 bg-transparent text-gray-800 text-[14px] placeholder-gray-300 rounded-xl outline-none"
-                    placeholder="Tu teléfono"
-                    autoComplete="tel"
-                    enterKeyHint="go"
-                    required
-                  />
-                  <AnimatePresence>{phoneValid && <CheckBadge color={themeColor} />}</AnimatePresence>
-                </div>
-
-                {/* CTA */}
-                <button
-                  type="submit"
-                  disabled={!isFormValid}
-                  className="w-full py-3 rounded-2xl text-[14px] font-semibold disabled:opacity-30"
-                  style={{
-                    backgroundColor: isFormValid ? themeColor : '#e5e7eb',
-                    color: isFormValid ? themeTextColor : '#9ca3af'
-                  }}
-                >
-                  Ver menú →
-                </button>
-              </form>
-            )}
-
-            {showOrderTypes && (
-              <form key="step-kb-order" onSubmit={handleSubmit} className="space-y-2.5">
-                <p className="text-sm text-gray-500 text-center">
-                  Mesa <span className="font-bold" style={{ color: themeColor }}>{initialTableNumber}</span>
-                </p>
-                <div className="space-y-2">
-                  {[
-                    { type: 'inSite', title: 'En sitio' },
-                    { type: 'takeaway', title: 'Para llevar' }
-                  ].map(({ type, title }) => {
-                    const active = orderInfo.orderType === type;
-                    return (
-                      <button
-                        key={type} type="button"
-                        onClick={() => handleOrderTypeChange(type)}
-                        className="w-full py-3 rounded-xl flex items-center gap-3 px-4 border"
-                        style={{
-                          borderColor: active ? themeColor : '#e8eaed',
-                          backgroundColor: active ? `${themeColor}08` : '#fafafa'
-                        }}
-                      >
-                        <span className={`text-[14px] font-semibold ${active ? 'text-gray-800' : 'text-gray-500'}`}>{title}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <button
-                  type="submit" disabled={!orderInfo.orderType}
-                  className="w-full py-3 rounded-2xl text-[14px] font-semibold disabled:opacity-30"
-                  style={{
-                    backgroundColor: orderInfo.orderType ? themeColor : '#e5e7eb',
-                    color: orderInfo.orderType ? themeTextColor : '#9ca3af'
-                  }}
-                >
-                  Ver Menú →
-                </button>
-                <button type="button" onClick={() => setShowOrderTypes(false)} className="w-full text-center text-xs text-gray-400 py-1">← Cambiar datos</button>
-              </form>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-    );
-  }
-
-  /* ═══════════════════════════════════════════════════
-     NORMAL → full immersive hero + bottom sheet
-     ═══════════════════════════════════════════════════ */
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden touch-none bg-white">
 
@@ -279,7 +142,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.6 }}
         className="relative flex-shrink-0 flex flex-col items-center justify-end"
-        style={{ height: '42vh' }}
+        style={{ height: heroH }}
       >
         {coverUrl ? (
           <>
@@ -302,17 +165,25 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
           initial={{ opacity: 0, scale: 0.6, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.15 }}
-          className="relative z-20" style={{ marginBottom: -36 }}
+          className="relative z-20"
+          style={{ marginBottom: logoOverlap }}
         >
           <div className="relative">
-            <div className="w-[76px] h-[76px] rounded-2xl overflow-hidden shadow-2xl ring-[3px] ring-white/90"
-              style={{ boxShadow: `0 8px 32px ${themeColor}40, 0 2px 8px rgba(0,0,0,0.15)` }}>
+            <div
+              className="rounded-2xl overflow-hidden shadow-2xl ring-[3px] ring-white/90"
+              style={{
+                width: logoSize, height: logoSize,
+                boxShadow: `0 8px 32px ${themeColor}40, 0 2px 8px rgba(0,0,0,0.15)`
+              }}
+            >
               <img src={logoUrl || defaultLogo} alt={businessConfig.businessName || 'Logo'} className="w-full h-full object-cover"
                 onError={(e) => { e.target.src = defaultLogo; }} />
             </div>
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[2.5px] border-white" style={{ backgroundColor: '#22c55e' }}>
-              <span className="absolute inset-0 rounded-full animate-ping opacity-40" style={{ backgroundColor: '#22c55e' }} />
-            </div>
+            {!kb && (
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[2.5px] border-white" style={{ backgroundColor: '#22c55e' }}>
+                <span className="absolute inset-0 rounded-full animate-ping opacity-40" style={{ backgroundColor: '#22c55e' }} />
+              </div>
+            )}
           </div>
         </motion.div>
       </motion.div>
@@ -322,18 +193,18 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         initial={{ y: 60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 200, damping: 26, delay: 0.2 }}
-        className="relative z-10 flex-1 bg-white rounded-t-[28px] flex flex-col"
+        className={`relative z-10 flex-1 bg-white rounded-t-[28px] flex flex-col ${cardPt}`}
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', boxShadow: '0 -8px 30px rgba(0,0,0,0.08)' }}
       >
-        <div className="flex-1 flex flex-col px-6 pt-12">
+        <div className="flex-1 flex flex-col px-6">
           {/* Business name */}
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className="text-center mb-1">
-            <h1 className="text-[22px] font-bold text-gray-800 leading-tight">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }} className={`text-center ${kb ? 'mb-1' : 'mb-1'}`}>
+            <h1 className={`${titleSize} font-bold text-gray-800 leading-tight`}>
               {businessConfig.businessName || 'Nuestro restaurante'}
             </h1>
           </motion.div>
 
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }} className="text-[13px] text-gray-400 text-center mb-5">
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.42 }} className={`text-[13px] text-gray-400 text-center ${spacing}`}>
             {isReturning && orderInfo.customerName
               ? <>Hola de nuevo, <span className="font-semibold text-gray-600">{orderInfo.customerName.split(' ')[0]}</span></>
               : 'Ingresa tus datos para ver el menú'
@@ -342,7 +213,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
 
           {/* QR progress */}
           {isQRMode && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }} className="flex justify-center gap-1.5 mb-5">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }} className={`flex justify-center gap-1.5 ${spacing}`}>
               <div className="h-1 rounded-full" style={{ width: !showOrderTypes ? 24 : 10, backgroundColor: !showOrderTypes ? themeColor : '#d1d5db' }} />
               <div className="h-1 rounded-full" style={{ width: showOrderTypes ? 24 : 10, backgroundColor: showOrderTypes ? themeColor : '#d1d5db' }} />
             </motion.div>
@@ -352,9 +223,9 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
           <AnimatePresence mode="wait">
             {!showOrderTypes && (
               <motion.form key="step-info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}
-                onSubmit={handleSubmit} className="space-y-3">
+                onSubmit={handleSubmit} className={kb ? 'space-y-2' : 'space-y-3'}>
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-400 mb-1 tracking-wider uppercase pl-0.5">Tu nombre</label>
+                  {!kb && <label className="block text-[11px] font-semibold text-gray-400 mb-1 tracking-wider uppercase pl-0.5">Tu nombre</label>}
                   <div className="relative rounded-xl border transition-all duration-200" style={inputWrapStyle(nameFocused)}>
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
                       <svg className="w-[17px] h-[17px]" style={{ color: nameFocused ? themeColor : '#b5bcc7' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -365,15 +236,15 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       onChange={(e) => setOrderInfo({ ...orderInfo, customerName: e.target.value })}
                       onFocus={() => { setNameFocused(true); openKb(); }}
                       onBlur={() => { setNameFocused(false); closeKb(); }}
-                      className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
-                      placeholder="Ingresa tu nombre" autoComplete="given-name" enterKeyHint="next"
+                      className={`w-full pl-10 pr-10 ${inputPy} bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none`}
+                      placeholder="Tu nombre" autoComplete="given-name" enterKeyHint="next"
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); phoneRef.current?.focus({ preventScroll: true }); } }}
                       required />
                     <AnimatePresence>{nameValid && <CheckBadge color={themeColor} />}</AnimatePresence>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-400 mb-1 tracking-wider uppercase pl-0.5">Tu teléfono</label>
+                  {!kb && <label className="block text-[11px] font-semibold text-gray-400 mb-1 tracking-wider uppercase pl-0.5">Tu teléfono</label>}
                   <div className="relative rounded-xl border transition-all duration-200" style={inputWrapStyle(phoneFocused)}>
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
                       <svg className="w-[17px] h-[17px]" style={{ color: phoneFocused ? themeColor : '#b5bcc7' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -384,14 +255,14 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                       onChange={(e) => setOrderInfo({ ...orderInfo, phone: e.target.value })}
                       onFocus={() => { setPhoneFocused(true); openKb(); }}
                       onBlur={() => { setPhoneFocused(false); closeKb(); }}
-                      className="w-full pl-10 pr-10 py-3 bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none"
+                      className={`w-full pl-10 pr-10 ${inputPy} bg-transparent text-gray-800 text-[15px] placeholder-gray-300 rounded-xl outline-none`}
                       placeholder="Ej: 3001234567" autoComplete="tel" enterKeyHint="go" required />
                     <AnimatePresence>{phoneValid && <CheckBadge color={themeColor} />}</AnimatePresence>
                   </div>
                 </div>
-                <div className="pt-2">
+                <div className={kb ? 'pt-1' : 'pt-2'}>
                   <motion.button type="submit" disabled={!isFormValid} whileTap={{ scale: 0.97 }}
-                    className="relative w-full py-3.5 rounded-2xl text-[15px] font-semibold transition-all duration-200 overflow-hidden disabled:opacity-30"
+                    className={`relative w-full ${btnPy} rounded-2xl text-[15px] font-semibold transition-all duration-200 overflow-hidden disabled:opacity-30`}
                     style={{ backgroundColor: isFormValid ? themeColor : '#e5e7eb', color: isFormValid ? themeTextColor : '#9ca3af', boxShadow: isFormValid ? `0 4px 20px ${themeColor}35` : 'none' }}>
                     {isFormValid && (
                       <motion.div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
@@ -461,9 +332,11 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
         </div>
 
         {/* Footer */}
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 0.4 }} transition={{ delay: 0.8 }} className="text-center text-[10px] text-gray-400 pb-3 pt-2">
-          Powered by <span className="font-medium">MenuBy</span>
-        </motion.p>
+        {!kb && (
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 0.4 }} transition={{ delay: 0.8 }} className="text-center text-[10px] text-gray-400 pb-3 pt-2">
+            Powered by <span className="font-medium">MenuBy</span>
+          </motion.p>
+        )}
       </motion.div>
     </div>
   );
