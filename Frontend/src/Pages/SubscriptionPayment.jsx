@@ -212,109 +212,28 @@ const SubscriptionPayment = () => {
     if (processing) return;
     setProcessing(true);
     try {
+      // Guardar sesión antes del redirect
+      const t = sessionStorage.getItem('accessToken');
+      const r = sessionStorage.getItem('refreshToken');
+      const u = sessionStorage.getItem('user');
+      if (t) localStorage.setItem('accessToken', t);
+      if (r) localStorage.setItem('refreshToken', r);
+      if (u) localStorage.setItem('user', u);
+
       const res = await api.post('/dlocal/create', { months: selectedMonths, businessId });
       if (!res.data.success) { alert(res.data.message || 'Error al crear el pago'); return; }
 
-      if (!res.data.redirectUrl) { alert('No se recibió URL de pago de dLocal'); return; }
-
-      const paymentRef = res.data.reference;
-
-      // Abrir checkout de dLocal Go en popup (el usuario no sale del panel)
-      const w = 500, h = 650;
-      const left = window.screenX + (window.outerWidth - w) / 2;
-      const top = window.screenY + (window.outerHeight - h) / 2;
-      const popup = window.open(
-        res.data.redirectUrl,
-        'dlocal_checkout',
-        `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`
-      );
-
-      // Fallback: si el popup está bloqueado, hacer redirect clásico
-      if (!popup || popup.closed) {
-        // Guardar sesión para el redirect
-        const t = sessionStorage.getItem('accessToken');
-        const r = sessionStorage.getItem('refreshToken');
-        const u = sessionStorage.getItem('user');
-        if (t) localStorage.setItem('accessToken', t);
-        if (r) localStorage.setItem('refreshToken', r);
-        if (u) localStorage.setItem('user', u);
+      if (res.data.redirectUrl) {
         window.location.href = res.data.redirectUrl;
-        return;
+      } else {
+        alert('No se recibió URL de pago de dLocal');
       }
-
-      // Escuchar postMessage del popup callback
-      const messageHandler = (event) => {
-        if (event.data?.type === 'PAYMENT_CALLBACK') {
-          window.removeEventListener('message', messageHandler);
-          clearInterval(pollInterval);
-          handleDlocalResult(event.data.status, paymentRef);
-        }
-      };
-      window.addEventListener('message', messageHandler);
-
-      // Poll: detectar si el popup se cerró manualmente
-      const pollInterval = setInterval(async () => {
-        if (popup.closed) {
-          clearInterval(pollInterval);
-          window.removeEventListener('message', messageHandler);
-          // Verificar estado del pago vía API
-          try {
-            const statusRes = await api.get(`/dlocal/status/${paymentRef}`);
-            const st = statusRes.data?.payment?.status;
-            handleDlocalResult(st === 'approved' ? '1' : st === 'pending' ? '3' : null, paymentRef);
-          } catch (e) {
-            handleDlocalResult(null, paymentRef);
-          }
-        }
-      }, 1000);
-
     } catch (error) {
       console.error('Error initiating dLocal payment:', error);
       alert(error.response?.data?.message || error.message || 'Error al iniciar el pago con dLocal');
     } finally {
       setProcessing(false);
     }
-  };
-
-  const handleDlocalResult = async (statusCode, ref) => {
-    // Paso 1: Mostrar estado de verificación
-    setPaymentResult({ status: 'pending', message: 'Verificando pago con dLocal...' });
-
-    if (statusCode === '2' || statusCode === 2) {
-      setPaymentResult({ status: 'failed', message: 'El pago fue cancelado o rechazado.' });
-      loadPaymentHistory();
-      return;
-    }
-
-    // Paso 2: Consultar backend (que a su vez consulta dLocal Go y activa suscripción)
-    const maxAttempts = 8;
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const statusRes = await api.get(`/dlocal/status/${ref}`);
-        const payment = statusRes.data?.payment;
-
-        if (payment?.status === 'approved') {
-          setPaymentResult({ status: 'approved', message: '¡Pago confirmado! Tu suscripción ha sido activada.' });
-          await loadSubscription();
-          loadPaymentHistory();
-          return;
-        }
-        if (payment?.status === 'rejected' || payment?.status === 'failed' || payment?.status === 'cancelled') {
-          setPaymentResult({ status: 'failed', message: `Pago ${payment.status === 'rejected' ? 'rechazado' : 'cancelado'}.` });
-          loadPaymentHistory();
-          return;
-        }
-        // Aún pending/created — esperar y reintentar
-        setPaymentResult({ status: 'pending', message: `Confirmando pago... (${i + 1}/${maxAttempts})` });
-      } catch (e) {
-        // Error de red, seguir intentando
-      }
-      await new Promise(r => setTimeout(r, 2500));
-    }
-
-    // Agotados los intentos
-    setPaymentResult({ status: 'pending', message: 'Pago en proceso. Si fue exitoso, tu suscripción se activará automáticamente en segundos.' });
-    loadPaymentHistory();
   };
 
   const handlePay = () => {
