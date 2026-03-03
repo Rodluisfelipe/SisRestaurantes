@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
+import useLandingSEO from '../../hooks/useLandingSEO';
 
 /* ── Brand & Data ── */
 const BRAND = '#E31E24';
@@ -251,6 +252,13 @@ const ComparisonMobileCard = ({ row }) => {
 /* ═══════════ MAIN COMPONENT ═══════════ */
 /* ═══════════════════════════════════════ */
 export default function Home() {
+  useLandingSEO({
+    title: 'Crear Menú Digital para Restaurantes Gratis | Menuby Colombia',
+    description: 'Crea tu menú digital con código QR en 5 minutos. Recibe pedidos online por WhatsApp, gestiona cocina en tiempo real. Sin comisiones. 500+ restaurantes en Colombia. Prueba 14 días gratis.',
+    canonical: '/',
+    keywords: 'crear menú digital, menú digital restaurante, menú QR gratis, carta digital restaurante, pedidos online restaurante, código QR restaurante, menú digital Colombia, menú interactivo, crear menú digital gratis, plataforma menú digital sin comisiones',
+  });
+
   return (
     <div className="bg-white overflow-x-hidden">
 
@@ -276,15 +284,16 @@ export default function Home() {
               </div>
 
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-[1.1] tracking-tight">
-                Tu restaurante,{' '}
+                Crea tu{' '}
                 <span className="bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">
-                  100% digital
+                  Menú Digital
                 </span>
+                {' '}para Restaurantes
               </h1>
 
               <p className="mt-5 sm:mt-6 text-base sm:text-lg text-gray-600 max-w-lg mx-auto lg:mx-0 leading-relaxed">
-                Menú digital, pedidos por WhatsApp, pagos, zonas de entrega, cocina en tiempo real y mucho más.
-                Sin comisiones. Sin contratos. Listo en 5 minutos.
+                Menú digital con código QR, pedidos por WhatsApp, pagos online, zonas de entrega y pantalla de cocina en tiempo real.
+                <strong> Sin comisiones. Sin contratos. Listo en 5 minutos.</strong>
               </p>
 
               <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
@@ -356,10 +365,10 @@ export default function Home() {
           <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Cómo funciona</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
-              Listo en 3 simples pasos
+              Cómo Crear tu Menú Digital en 3 Pasos
             </h2>
             <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-500">
-              No necesitas conocimientos técnicos. En minutos tienes tu restaurante digital.
+              No necesitas conocimientos técnicos. Crea tu menú digital con código QR y recibe pedidos online en minutos.
             </p>
           </div>
 
@@ -396,10 +405,10 @@ export default function Home() {
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Funcionalidades</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
-              Todo lo que necesitas, en un solo lugar
+              Funcionalidades del Menú Digital para Restaurantes
             </h2>
             <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-500">
-              Herramientas profesionales para restaurantes de cualquier tamaño.
+              Herramientas profesionales de menú digital, pedidos online y gestión de cocina para restaurantes de cualquier tamaño.
             </p>
           </div>
 
@@ -438,7 +447,7 @@ export default function Home() {
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Testimonios</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
-              Lo que dicen nuestros restaurantes
+              Restaurantes que ya Usan su Menú Digital
             </h2>
           </div>
 
@@ -480,7 +489,7 @@ export default function Home() {
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Comparativa</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
-              ¿Por qué elegir Menuby?
+              Menuby vs Otras Plataformas de Menú Digital
             </h2>
           </div>
 
@@ -517,9 +526,9 @@ export default function Home() {
           <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Precios</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
-              Un solo plan, todo incluido
+              Precio del Menú Digital — Todo Incluido
             </h2>
-            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-500">Sin sorpresas, sin comisiones ocultas. Todo por un precio fijo mensual.</p>
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-500">Un solo plan con todas las funcionalidades. Sin comisiones ocultas, sin contratos. Menú digital profesional por un precio fijo mensual.</p>
           </div>
 
           <div className="max-w-md mx-auto">
@@ -569,10 +578,59 @@ export default function Home() {
           <div className="text-center mb-10 sm:mb-12">
             <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Preguntas Frecuentes</span>
             <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
-              ¿Tienes dudas?
+              Preguntas Frecuentes sobre el Menú Digital
             </h2>
           </div>
           <FAQAccordion />
+        </div>
+      </Section>
+
+      {/* ═══ SEMANTIC SEO CONTENT ═══ */}
+      <Section className="py-16 sm:py-20 lg:py-28 bg-white">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="prose prose-lg max-w-none text-gray-600">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6">
+              ¿Qué es un Menú Digital y Por Qué tu Restaurante lo Necesita?
+            </h2>
+            <p>
+              Un <strong>menú digital</strong> es una carta interactiva que tus clientes pueden consultar desde su celular escaneando un <strong>código QR</strong>. A diferencia del menú impreso tradicional, un menú digital para restaurantes se actualiza en tiempo real: puedes cambiar precios, agregar platos nuevos, marcar productos agotados y destacar promociones al instante, sin reimprimir nada.
+            </p>
+            <p>
+              En Colombia, la adopción del <strong>menú QR</strong> creció más del 300% desde 2020. Los restaurantes que implementan un menú digital reportan un <strong>aumento del 15-25% en el ticket promedio</strong> gracias a las fotos de alta calidad, descripciones detalladas y sugerencias automáticas de acompañamientos. Además, eliminan costos recurrentes de impresión y reducen errores en la toma de pedidos.
+            </p>
+
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-10 mb-4">
+              Cómo Crear un Menú Digital Gratis con Menuby
+            </h3>
+            <p>
+              Con <strong>Menuby</strong>, crear tu menú digital es gratis y toma menos de 5 minutos. Solo necesitas registrarte, subir los platos de tu restaurante con fotos y precios, y compartir tu enlace personalizado o <strong>código QR</strong>. Tus clientes podrán ver la carta, hacer pedidos y pagar desde su celular — sin descargar ninguna app.
+            </p>
+            <p>
+              A diferencia de otras plataformas de menú digital como Menupp, Yumm o Meniu, Menuby no cobra comisiones por pedido ni porcentaje sobre ventas. Pagas un precio fijo mensual de $30.000 COP y accedes a <strong>todas las funcionalidades</strong>: pedidos online, pagos con tarjeta, zonas de entrega, pantalla de cocina en tiempo real y notificaciones por WhatsApp.
+            </p>
+
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-10 mb-4">
+              Beneficios del Menú Digital para Restaurantes en Colombia
+            </h3>
+            <ul className="space-y-2 text-gray-600">
+              <li><strong>Sin comisiones:</strong> A diferencia de apps de delivery, Menuby no cobra porcentaje de tus ventas.</li>
+              <li><strong>Pedidos directos:</strong> Los clientes piden por tu menú digital y recibes el pedido por WhatsApp o en la pantalla de cocina.</li>
+              <li><strong>QR personalizado:</strong> Genera un código QR único para tu restaurante que puedes imprimir en mesas, volantes o redes sociales.</li>
+              <li><strong>Actualización instantánea:</strong> Cambia precios, agrega platos o marca productos agotados en segundos.</li>
+              <li><strong>Pagos online:</strong> Acepta pagos con tarjeta, PSE y otros métodos directamente en tu menú digital.</li>
+              <li><strong>Multi-idioma:</strong> Ideal para restaurantes turísticos que necesitan carta en español e inglés.</li>
+            </ul>
+
+            <p className="mt-8">
+              <Link to="/register" className="text-red-500 font-bold hover:text-red-600 transition-colors">
+                Crea tu menú digital gratis →
+              </Link>
+              {' '}o conoce todas nuestras{' '}
+              <Link to="/features" className="text-red-500 font-bold hover:text-red-600 transition-colors">
+                funcionalidades
+              </Link>.
+            </p>
+          </div>
         </div>
       </Section>
 

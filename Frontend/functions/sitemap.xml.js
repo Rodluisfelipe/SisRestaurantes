@@ -36,6 +36,20 @@ export async function onRequest(context) {
       { loc: '/demo', priority: '0.7', changefreq: 'monthly' },
       { loc: '/contact', priority: '0.6', changefreq: 'monthly' },
       { loc: '/register', priority: '0.7', changefreq: 'yearly' },
+      { loc: '/blog', priority: '0.8', changefreq: 'weekly' },
+      { loc: '/restaurantes', priority: '0.7', changefreq: 'daily' },
+    ];
+
+    // Blog articles
+    const blogPosts = [
+      'como-crear-menu-digital-restaurante',
+      'ventajas-menu-digital-vs-menu-impreso',
+      'como-recibir-pedidos-por-whatsapp',
+      'codigo-qr-para-restaurantes',
+      'pantalla-cocina-restaurante-tiempo-real',
+      'como-aumentar-ventas-restaurante-menu-digital',
+      'menu-digital-sin-comisiones-colombia',
+      'tendencias-restaurantes-digitales-2025',
     ];
 
     let xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -50,6 +64,17 @@ export async function onRequest(context) {
     <lastmod>${today}</lastmod>
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
+  </url>
+`;
+    }
+
+    // Add blog posts
+    for (const slug of blogPosts) {
+      xml += `  <url>
+    <loc>${SITE_ORIGIN}/blog/${slug}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
   </url>
 `;
     }

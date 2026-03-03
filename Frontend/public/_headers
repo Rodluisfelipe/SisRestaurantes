@@ -1,0 +1,61 @@
+# Landing pages - allow indexing
+/
+  X-Robots-Tag: index, follow
+  Cache-Control: public, max-age=3600
+
+/features
+  X-Robots-Tag: index, follow
+  Cache-Control: public, max-age=3600
+
+/pricing
+  X-Robots-Tag: index, follow
+  Cache-Control: public, max-age=3600
+
+/demo
+  X-Robots-Tag: index, follow
+  Cache-Control: public, max-age=3600
+
+/contact
+  X-Robots-Tag: index, follow
+  Cache-Control: public, max-age=3600
+
+/register
+  X-Robots-Tag: index, follow
+  Cache-Control: public, max-age=3600
+
+/blog/*
+  X-Robots-Tag: index, follow
+  Cache-Control: public, max-age=7200
+
+/restaurantes
+  X-Robots-Tag: index, follow
+  Cache-Control: public, max-age=3600
+
+# Static assets - aggressive caching
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.css
+  Cache-Control: public, max-age=31536000, immutable
+
+# Images
+/*.jpeg
+  Cache-Control: public, max-age=604800
+  
+/*.jpg
+  Cache-Control: public, max-age=604800
+
+/*.png
+  Cache-Control: public, max-age=604800
+
+/*.svg
+  Cache-Control: public, max-age=604800
+
+# Security headers
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin

@@ -27,6 +27,7 @@ const Navbar = () => {
     { name: 'Características', href: '/features' },
     { name: 'Precios', href: '/pricing' },
     { name: 'Demo', href: '/demo' },
+    { name: 'Blog', href: '/blog' },
     { name: 'Contacto', href: '/contact' },
   ];
 

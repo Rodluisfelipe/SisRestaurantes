@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import useLandingSEO from '../../hooks/useLandingSEO';
 
 const CONTACT_METHODS = [
   {
@@ -43,6 +44,13 @@ const FAQ = [
 ];
 
 const Contact = () => {
+  useLandingSEO({
+    title: 'Contacto | Menuby - Menú Digital para Restaurantes en Colombia',
+    description: 'Contáctanos por WhatsApp, email o teléfono. Soporte inmediato para configurar tu menú digital. +57 302 818 1520.',
+    canonical: '/contact',
+    keywords: 'contacto menuby, soporte menú digital, menú digital Colombia contacto',
+  });
+
   return (
     <div className="min-h-screen bg-white">
       {/* Hero */}

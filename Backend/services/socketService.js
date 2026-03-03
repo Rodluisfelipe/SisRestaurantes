@@ -39,9 +39,34 @@ function initSocket(io) {
     });
 
     // Unirse a un room por businessId con validación de pertenencia
-    socket.on('joinBusiness', async (businessId) => {
+    socket.on('joinBusiness', async (businessIdOrPayload) => {
+      // Support both: joinBusiness(businessId) and joinBusiness({ businessId, token })
+      let businessId, inlineToken;
+      if (typeof businessIdOrPayload === 'object' && businessIdOrPayload !== null) {
+        businessId = businessIdOrPayload.businessId;
+        inlineToken = businessIdOrPayload.token;
+      } else {
+        businessId = businessIdOrPayload;
+      }
+      
       if (businessId) {
         try {
+          // If socket.user is not set, try to authenticate with inline token or handshake auth
+          if (!socket.user) {
+            const tokenToTry = inlineToken || socket.handshake.auth?.token;
+            if (tokenToTry) {
+              try {
+                const decoded = verifyToken(tokenToTry);
+                if (decoded) {
+                  socket.user = decoded;
+                  logger.info('Socket authenticated via joinBusiness token', { socketId: socket.id });
+                }
+              } catch (e) {
+                logger.warn('joinBusiness inline token invalid', { socketId: socket.id, error: e.message });
+              }
+            }
+          }
+          
           // Enforce tenant guard: requiere socket.user y coincidencia de tenant (excepto SuperAdmin)
           if (!socket.user) {
             logger.warn('joinBusiness rechazado - no autenticado', { socketId: socket.id, businessId });
@@ -53,14 +78,28 @@ function initSocket(io) {
           const isSuperAdmin = socket.user.role === 'superadmin' || socket.user.isSuperAdmin;
 
           if (!isSuperAdmin) {
-            const requestedBusiness = businessId.toString();
+            // Resolve slug to ObjectId if needed
+            let resolvedBusinessId = businessId.toString();
             const tenantBusiness = (socket.user.businessId || '').toString();
+            
+            // If requestedBusiness is a slug (not a 24-char hex ObjectId), resolve it
+            if (!/^[0-9a-fA-F]{24}$/.test(resolvedBusinessId)) {
+              try {
+                const { resolveBusinessId } = require('../utils/businessResolver');
+                resolvedBusinessId = (await resolveBusinessId(resolvedBusinessId)).toString();
+              } catch (e) {
+                logger.warn('joinBusiness - could not resolve slug', { socketId: socket.id, slug: businessId, error: e.message });
+              }
+            }
 
-            if (!tenantBusiness || tenantBusiness !== requestedBusiness) {
-              logger.warn('joinBusiness rechazado - tenant mismatch', { socketId: socket.id, tokenTenant: tenantBusiness, requested: requestedBusiness });
+            if (!tenantBusiness || tenantBusiness !== resolvedBusinessId) {
+              logger.warn('joinBusiness rechazado - tenant mismatch', { socketId: socket.id, tokenTenant: tenantBusiness, requested: resolvedBusinessId, original: businessId });
               socket.emit('businessJoined', { businessId, success: false, error: 'forbidden' });
               return;
             }
+            
+            // Use the resolved ObjectId for room joining
+            businessId = resolvedBusinessId;
           }
 
           // Leave previous business room if any

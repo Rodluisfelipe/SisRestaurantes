@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import useLandingSEO from '../../hooks/useLandingSEO';
 
 const BRAND = '#E31E24';
 
@@ -27,6 +28,13 @@ const BENEFITS = [
 ];
 
 const Pricing = () => {
+  useLandingSEO({
+    title: 'Precios Menú Digital - $30.000/mes Todo Incluido | Menuby Colombia',
+    description: 'Menú digital profesional desde $30.000 COP al mes. Sin comisiones, sin contratos. Incluye menú QR, pedidos online, pantalla de cocina, pagos y soporte. 14 días gratis.',
+    canonical: '/pricing',
+    keywords: 'precio menú digital, menú digital barato, menú digital sin comisiones, plataforma restaurantes Colombia precio, menú QR precio',
+  });
+
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Hero */}
@@ -38,10 +46,10 @@ const Pricing = () => {
               Plan único, máximo valor
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
-              Inversión que se paga sola
+              Precio del Menú Digital — Todo Incluido desde $30.000/mes
             </h1>
             <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-              Un solo plan con todo incluido. Sin sorpresas, sin límites, sin comisiones ocultas.
+              Un solo plan con todas las funcionalidades para tu restaurante. Sin comisiones, sin límites, sin contratos.
             </p>
           </motion.div>
         </div>

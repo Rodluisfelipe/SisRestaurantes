@@ -22,6 +22,8 @@ const LandingFeatures = lazy(() => import("./Pages/Landing/Features"));
 const LandingDemo = lazy(() => import("./Pages/Landing/Demo"));
 const LandingContact = lazy(() => import("./Pages/Landing/Contact"));
 const LandingPricing = lazy(() => import("./Pages/Landing/Pricing"));
+const BlogIndex = lazy(() => import("./Pages/Blog/BlogIndex"));
+const BlogPost = lazy(() => import("./Pages/Blog/BlogPost"));
 
 import Login from "./Pages/Login";
 import CustomerOrderDisplay from "./Components/CustomerOrderDisplay";
@@ -111,7 +113,7 @@ function BusinessProviderWrapper({ children }) {
 }
 
 // Lista de rutas reservadas que no deben tratarse como IDs de negocio
-const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pricing', 'about', 'terms'];
+const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pricing', 'about', 'terms', 'blog'];
 
 function App() {
   return (
@@ -139,6 +141,8 @@ function App() {
           <Route path="/demo" element={<LandingDemo />} />
           <Route path="/contact" element={<LandingContact />} />
           <Route path="/pricing" element={<LandingPricing />} /> 
+          <Route path="/blog" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><BlogIndex /></Suspense>} />
+          <Route path="/blog/:slug" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><BlogPost /></Suspense>} />
           <Route path="/about" element={<LandingHome />} /> 
           <Route path="/terms" element={<LandingHome />} /> 
         </Route>

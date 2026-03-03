@@ -45,6 +45,18 @@ const completedOrderSchema = new mongoose.Schema({
     default: 'completed'
   },
   
+  // In-app ordering fields (for analytics breakdowns)
+  orderChannel: {
+    type: String,
+    enum: ['whatsapp', 'inapp'],
+    default: 'whatsapp'
+  },
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'nequi', 'daviplata', 'transfer', 'other'],
+    default: null
+  },
+  
   // Table information (for in-site orders)
   tableNumber: {
     type: String,

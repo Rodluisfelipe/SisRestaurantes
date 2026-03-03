@@ -11,11 +11,13 @@ const Footer = () => {
         { name: 'Características', to: '/features' },
         { name: 'Precios', to: '/pricing' },
         { name: 'Demo', to: '/demo' },
+        { name: 'Restaurantes', to: '/restaurantes' },
       ],
     },
     {
-      title: 'Empresa',
+      title: 'Recursos',
       links: [
+        { name: 'Blog', to: '/blog' },
         { name: 'Contacto', to: '/contact' },
       ],
     },

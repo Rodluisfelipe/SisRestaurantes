@@ -5,22 +5,17 @@ const logger = require('../utils/logger');
 const { ORDER_STATUS } = require('../utils/constants');
 
 /**
- * Servicio de limpieza automática de pedidos abandonados/expirados.
+ * Servicio de cierre automático de pedidos a medianoche (hora Colombia).
  * 
- * Cancela automáticamente pedidos que llevan demasiado tiempo en estados pendientes:
- * - pending_payment: 1 hora (el cliente no subió comprobante)
- * - pending: 30 minutos (pedido creado pero no procesado)  
- * - payment_uploaded: 24 horas (subió comprobante pero nunca se confirmó)
- * - cancelled: eliminación después de 2 horas (ya no sirven)
- *
- * Ejecuta cada 10 minutos.
+ * A las 12:00 AM (UTC-5) cancela pedidos que llevan más de 1 hora en estados pendientes.
+ * Esto simula un "cierre de día" automático.
  */
 
-// Timeouts por estado (en milisegundos)
+// Pedidos con más de 1 hora en estos estados se cancelan a medianoche
 const EXPIRATION_RULES = {
   pending_payment: 60 * 60 * 1000,         // 1 hora
-  pending: 30 * 60 * 1000,                 // 30 minutos
-  payment_uploaded: 24 * 60 * 60 * 1000,   // 24 horas
+  pending: 60 * 60 * 1000,                 // 1 hora
+  payment_uploaded: 60 * 60 * 1000,        // 1 hora
 };
 
 // Pedidos cancelados se archivan después de este tiempo (soft-delete)
@@ -129,27 +124,16 @@ async function runCleanup() {
 }
 
 /**
- * Inicia el cron job de limpieza de pedidos
- * Ejecuta cada 10 minutos
+ * Inicia el cron de cierre automático a medianoche Colombia (UTC-5)
  */
 function startOrderCleanupCron() {
-  // Ejecutar inmediatamente al iniciar para limpiar pedidos stale existentes
-  setTimeout(() => {
-    runCleanup().then(({ expired, cleaned }) => {
-      if (expired > 0 || cleaned > 0) {
-        logger.info(`[OrderCleanup] Limpieza inicial: ${expired} expirados, ${cleaned} archivados`);
-      }
-    }).catch(err => {
-      logger.error('[OrderCleanup] Error en limpieza inicial:', err);
-    });
-  }, 10000); // Esperar 10s después del inicio para que MongoDB esté listo
-
-  // Cron: cada 10 minutos
-  cron.schedule('*/10 * * * *', async () => {
+  // Cron: todos los días a las 00:00 hora Colombia (05:00 UTC)
+  cron.schedule('0 5 * * *', async () => {
+    logger.info('[OrderCleanup] Cierre automático de medianoche (Colombia)');
     await runCleanup();
   });
 
-  console.log('🧹 Order cleanup cron iniciado (cada 10 minutos)');
+  console.log('🧹 Order cleanup cron iniciado (medianoche Colombia / 05:00 UTC)');
 }
 
 module.exports = { startOrderCleanupCron, runCleanup, expireStaleOrders, cleanupCancelledOrders };

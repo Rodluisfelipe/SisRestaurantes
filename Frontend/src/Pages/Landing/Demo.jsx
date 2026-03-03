@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import useLandingSEO from '../../hooks/useLandingSEO';
 
 const DEMOS = [
   {
@@ -48,6 +49,13 @@ const DEMOS = [
 ];
 
 const Demo = () => {
+  useLandingSEO({
+    title: 'Demo Menú Digital Interactivo para Restaurantes | Menuby',
+    description: 'Explora la demo interactiva de Menuby. Mira cómo se ve un menú digital con QR para restaurante, cafetería y food truck. Prueba gratis.',
+    canonical: '/demo',
+    keywords: 'demo menú digital, ejemplo menú QR restaurante, menú digital interactivo, cómo se ve un menú digital',
+  });
+
   const [sel, setSel] = useState('restaurant');
   const current = DEMOS.find(d => d.id === sel);
 
@@ -58,10 +66,10 @@ const Demo = () => {
         <div className="max-w-4xl mx-auto px-4 text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
             <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-4">
-              Explora Menuby en acción
+              Demo del Menú Digital — Explora Menuby en Acción
             </h1>
             <p className="text-lg text-gray-500 max-w-2xl mx-auto mb-8">
-              Selecciona un tipo de negocio y descubre cómo se vería tu menú digital.
+              Selecciona un tipo de negocio y descubre cómo se ve un menú digital con código QR.
             </p>
           </motion.div>
 

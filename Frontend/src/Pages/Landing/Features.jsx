@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useInView } from 'framer-motion';
 import { useRef } from 'react';
+import useLandingSEO from '../../hooks/useLandingSEO';
 
 const FEATURES = [
   {
@@ -77,6 +78,13 @@ const Section = ({ children, className = '' }) => {
 };
 
 const Features = () => {
+  useLandingSEO({
+    title: 'Funcionalidades del Menú Digital para Restaurantes | Menuby',
+    description: 'Menú QR, pedidos a domicilio, pantalla de cocina en tiempo real, múltiples métodos de pago, WhatsApp integrado y más. Todas las herramientas que tu restaurante necesita en una sola plataforma.',
+    canonical: '/features',
+    keywords: 'funcionalidades menú digital, pedidos a domicilio restaurante, pantalla cocina tiempo real, menú QR restaurante, pedidos WhatsApp restaurante',
+  });
+
   return (
     <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Hero */}
@@ -88,10 +96,10 @@ const Features = () => {
               9 funcionalidades profesionales
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
-              Todo lo que tu restaurante necesita
+              Funcionalidades del Menú Digital para Restaurantes
             </h1>
             <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
-              Herramientas diseñadas para restaurantes reales. Sin complicaciones, sin código, listas para usar.
+              Menú QR, pedidos online, pantalla de cocina, pagos y WhatsApp. Todo lo que necesita tu restaurante, sin código, listo para usar.
             </p>
           </motion.div>
         </div>
