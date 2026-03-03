@@ -154,7 +154,7 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
                 value={couponCode}
                 onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setError(''); setPreviewData(null); }}
                 placeholder="Ej: VIP, PROMO2026…"
-                className="flex-1 pl-3 pr-3 py-2.5 rounded-xl text-sm font-semibold tracking-wider focus:outline-none focus:ring-2 transition-all"
+                className="flex-1 pl-3 pr-3 py-2.5 rounded-xl text-sm font-semibold tracking-wider focus:outline-none focus:ring-2 transition-all placeholder-white/50"
                 style={{
                   background: 'rgba(255,255,255,0.18)',
                   border: '1px solid rgba(255,255,255,0.25)',
