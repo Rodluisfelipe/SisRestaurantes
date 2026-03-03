@@ -1341,6 +1341,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 }}
                 customerId={orderInfo?.customerId}
                 businessId={businessConfig?.businessId || businessConfig?._id}
+                theme={businessConfig?.theme}
               />
 
               {/* ── Tipo de pedido inline ── */}
