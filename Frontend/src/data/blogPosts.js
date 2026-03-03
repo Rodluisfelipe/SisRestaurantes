@@ -31,7 +31,7 @@ Ve a [menuby.tech/register](/register) y crea tu cuenta gratis. Solo necesitas:
 2. Tu número de WhatsApp
 3. Un correo electrónico
 
-No se necesita tarjeta de crédito. Tienes **14 días gratis** para probar todas las funcionalidades.
+No se necesita tarjeta de crédito. Tienes **7 días gratis** para probar todas las funcionalidades.
 
 ## Paso 2: Configura tu menú (3 minutos)
 
@@ -58,7 +58,7 @@ Una vez configurado, Menuby genera automáticamente:
 
 ## ¿Cuánto cuesta un menú digital?
 
-Con Menuby, la creación del menú digital es **completamente gratis** durante 14 días. Después, el plan profesional cuesta **$30.000 COP al mes** (aproximadamente $7 USD) e incluye todas las funcionalidades sin comisiones por pedido.
+Con Menuby, la creación del menú digital es **completamente gratis** durante 7 días. Después, el plan profesional cuesta **$30.000 COP al mes** (aproximadamente $7 USD) e incluye todas las funcionalidades sin comisiones por pedido.
 
 Compara esto con el costo de reimprimir menús cada vez que cambias un precio ($50.000-$200.000 por impresión) y verás que **se paga solo desde el primer mes**.
 
@@ -116,7 +116,7 @@ Imprimir menús genera papel que termina en la basura cada vez que cambias algo.
 
 ## ¿Cómo empezar?
 
-La transición es más fácil de lo que piensas. Con [Menuby](/register) puedes crear tu menú digital en 5 minutos, generar tus códigos QR y empezar a recibir pedidos online el mismo día. **14 días gratis, sin tarjeta de crédito.**
+La transición es más fácil de lo que piensas. Con [Menuby](/register) puedes crear tu menú digital en 5 minutos, generar tus códigos QR y empezar a recibir pedidos online el mismo día. **7 días gratis, sin tarjeta de crédito.**
 
 **[Prueba Menuby gratis →](/register)**
     `,
@@ -517,7 +517,7 @@ La buena noticia es que no necesitas invertir millones. Con una plataforma como 
 4. ✅ Aceptar múltiples métodos de pago
 5. ✅ Obtener datos de tu negocio
 
-Todo por **$30.000/mes** y con 14 días de prueba gratis.
+Todo por **$30.000/mes** y con 7 días de prueba gratis.
 
 **[Digitaliza tu restaurante hoy →](/register)**
     `,

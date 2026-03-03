@@ -64,7 +64,7 @@ const PRICING_FEATURES = [
 ];
 
 const FAQ_ITEMS = [
-  { q: '¿Cuánto cuesta Menuby?', a: '$30.000 COP al mes, todo incluido. Sin comisiones por pedido. Empiezas con 14 días gratis sin necesidad de tarjeta.' },
+  { q: '¿Cuánto cuesta Menuby?', a: '$30.000 COP al mes, todo incluido. Sin comisiones por pedido. Empiezas con 7 días gratis sin necesidad de tarjeta.' },
   { q: '¿Cuánto tarda configurar mi menú?', a: 'Aproximadamente 5 minutos para el registro. Puedes tener tu menú completo con productos e imágenes en menos de una hora.' },
   { q: '¿Puedo modificar mi menú después?', a: 'Sí, puedes agregar, editar o eliminar productos, categorías, precios y fotos en cualquier momento desde tu panel.' },
   { q: '¿Cobran comisión por pedido?', a: 'No. Menuby cobra una tarifa fija mensual. No importa cuántos pedidos recibas, nunca se cobra comisión.' },
@@ -254,7 +254,7 @@ const ComparisonMobileCard = ({ row }) => {
 export default function Home() {
   useLandingSEO({
     title: 'Crear Menú Digital para Restaurantes Gratis | Menuby Colombia',
-    description: 'Crea tu menú digital con código QR en 5 minutos. Recibe pedidos online por WhatsApp, gestiona cocina en tiempo real. Sin comisiones. 500+ restaurantes en Colombia. Prueba 14 días gratis.',
+    description: 'Crea tu menú digital con código QR en 5 minutos. Recibe pedidos online por WhatsApp, gestiona cocina en tiempo real. Sin comisiones. 500+ restaurantes en Colombia. Prueba 7 días gratis.',
     canonical: '/',
     keywords: 'crear menú digital, menú digital restaurante, menú QR gratis, carta digital restaurante, pedidos online restaurante, código QR restaurante, menú digital Colombia, menú interactivo, crear menú digital gratis, plataforma menú digital sin comisiones',
   });
@@ -535,7 +535,7 @@ export default function Home() {
             <div className="relative bg-white rounded-3xl border-2 border-red-100 p-6 sm:p-8 shadow-xl shadow-red-50/50">
               {/* Trial badge */}
               <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[11px] sm:text-xs font-bold px-4 sm:px-5 py-1.5 rounded-full shadow-lg shadow-red-500/30 whitespace-nowrap">
-                14 días gratis · Sin tarjeta
+                7 días gratis · Sin tarjeta
               </div>
 
               <div className="text-center mt-4 mb-6 sm:mb-8">

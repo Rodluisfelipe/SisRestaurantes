@@ -47,7 +47,7 @@ const LANDING_PAGES = {
   },
   '/pricing': {
     title: 'Precios Menú Digital - $30.000/mes Todo Incluido | Menuby Colombia',
-    description: 'Menú digital profesional desde $30.000 COP al mes. Sin comisiones, sin contratos. 14 días gratis.',
+    description: 'Menú digital profesional desde $30.000 COP al mes. Sin comisiones, sin contratos. 7 días gratis.',
     keywords: 'precio menú digital, menú digital barato, menú digital sin comisiones, menú QR precio',
   },
   '/demo': {
@@ -67,7 +67,7 @@ const LANDING_PAGES = {
   },
   '/register': {
     title: 'Crear Cuenta Gratis | Menuby - Menú Digital para Restaurantes',
-    description: 'Regístrate gratis y crea tu menú digital con código QR en 5 minutos. Sin tarjeta de crédito. 14 días de prueba.',
+    description: 'Regístrate gratis y crea tu menú digital con código QR en 5 minutos. Sin tarjeta de crédito. 7 días de prueba.',
     keywords: 'crear cuenta menú digital, registro menuby, menú digital gratis registro',
   },
 };

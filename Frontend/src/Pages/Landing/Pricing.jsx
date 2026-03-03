@@ -30,7 +30,7 @@ const BENEFITS = [
 const Pricing = () => {
   useLandingSEO({
     title: 'Precios Menú Digital - $30.000/mes Todo Incluido | Menuby Colombia',
-    description: 'Menú digital profesional desde $30.000 COP al mes. Sin comisiones, sin contratos. Incluye menú QR, pedidos online, pantalla de cocina, pagos y soporte. 14 días gratis.',
+    description: 'Menú digital profesional desde $30.000 COP al mes. Sin comisiones, sin contratos. Incluye menú QR, pedidos online, pantalla de cocina, pagos y soporte. 7 días gratis.',
     canonical: '/pricing',
     keywords: 'precio menú digital, menú digital barato, menú digital sin comisiones, plataforma restaurantes Colombia precio, menú QR precio',
   });
@@ -65,7 +65,7 @@ const Pricing = () => {
             className="relative bg-white rounded-3xl border-2 border-red-100 p-6 sm:p-8 shadow-xl shadow-red-50/50"
           >
             <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white text-[11px] sm:text-xs font-bold px-4 sm:px-5 py-1.5 rounded-full shadow-lg shadow-red-500/30 whitespace-nowrap">
-              14 días gratis · Sin tarjeta
+              7 días gratis · Sin tarjeta
             </div>
 
             <div className="text-center mt-4 mb-6 sm:mb-8">

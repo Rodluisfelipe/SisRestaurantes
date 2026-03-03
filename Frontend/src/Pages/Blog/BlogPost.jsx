@@ -282,7 +282,7 @@ export default function BlogPost() {
               ¿Listo para digitalizar tu restaurante?
             </h3>
             <p className="text-gray-400 mb-6 max-w-md mx-auto">
-              Crea tu menú digital con código QR en 5 minutos. 14 días gratis, sin tarjeta de crédito.
+              Crea tu menú digital con código QR en 5 minutos. 7 días gratis, sin tarjeta de crédito.
             </p>
             <Link
               to="/register"
