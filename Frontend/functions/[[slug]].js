@@ -70,6 +70,67 @@ const LANDING_PAGES = {
     description: 'Regístrate gratis y crea tu menú digital con código QR en 5 minutos. Sin tarjeta de crédito. 7 días de prueba.',
     keywords: 'crear cuenta menú digital, registro menuby, menú digital gratis registro',
   },
+  // ── Niche landing pages ──
+  '/menu-digital-restaurante': {
+    title: 'Menú Digital para Restaurantes | Código QR + Pedidos Online | Menuby',
+    description: 'Crea tu menú digital para restaurante con código QR en 5 minutos. Recibe pedidos online, gestiona cocina en tiempo real. Sin comisiones. Prueba 7 días gratis.',
+    keywords: 'menú digital restaurante, carta digital restaurante, menú QR restaurante, menú online restaurante',
+  },
+  '/menu-digital-bar': {
+    title: 'Menú Digital para Bares | Carta Digital con QR | Menuby',
+    description: 'Menú digital para bares con código QR. Tus clientes ven la carta de cócteles y snacks desde el celular y piden sin esperar.',
+    keywords: 'menú digital bar, carta digital bar, menú QR bar, menú cócteles digital',
+  },
+  '/menu-digital-cafeteria': {
+    title: 'Menú Digital para Cafeterías | QR + Pedidos Online | Menuby',
+    description: 'Carta digital para cafeterías con QR. Muestra bebidas, postres y combos. Recibe pedidos para recoger o a domicilio.',
+    keywords: 'menú digital cafetería, carta digital café, menú QR cafetería, menú online cafetería',
+  },
+  '/menu-digital-pizzeria': {
+    title: 'Menú Digital para Pizzerías | Pedidos Online Sin Comisiones | Menuby',
+    description: 'Sistema de menú digital para pizzerías. Personaliza tamaños, masas y toppings. Recibe pedidos a domicilio sin comisiones.',
+    keywords: 'menú digital pizzería, carta digital pizzería, pedidos online pizza, menú QR pizzería',
+  },
+  '/menu-digital-hamburgueseria': {
+    title: 'Menú Digital para Hamburgueserías | Pedidos Online | Menuby',
+    description: 'Menú digital para hamburgueserías con QR. Combos, extras y adiciones configurables. Pedidos online sin intermediarios.',
+    keywords: 'menú digital hamburguesería, carta digital hamburguesas, pedidos online hamburguesas',
+  },
+  '/menu-digital-hotel': {
+    title: 'Menú Digital para Hoteles | Room Service Digital | Menuby',
+    description: 'Sistema de menú digital para hoteles y room service. QR por habitación, pedidos al restaurante del hotel. Multi-idioma.',
+    keywords: 'menú digital hotel, room service digital, menú QR hotel, carta digital hotel',
+  },
+  '/menu-digital-food-truck': {
+    title: 'Menú Digital para Food Trucks | Carta QR Móvil | Menuby',
+    description: 'Menú digital para food trucks. Comparte tu carta con QR portátil. Actualiza el menú del día al instante desde el celular.',
+    keywords: 'menú digital food truck, carta digital food truck, menú QR food truck',
+  },
+  '/menu-digital-panaderia': {
+    title: 'Menú Digital para Panaderías | Catálogo con QR | Menuby',
+    description: 'Menú digital para panaderías y pastelerías. Muestra panes, tortas y productos del día con fotos y precios actualizados.',
+    keywords: 'menú digital panadería, carta digital pastelería, menú QR panadería',
+  },
+  '/menu-digital-comida-rapida': {
+    title: 'Menú Digital para Comida Rápida | Pedidos Express | Menuby',
+    description: 'Sistema de menú digital para locales de comida rápida. Combos, promociones y pedidos rápidos desde el celular.',
+    keywords: 'menú digital comida rápida, carta digital fast food, pedidos online comida rápida',
+  },
+  '/menu-digital-sushi': {
+    title: 'Menú Digital para Restaurantes de Sushi | Menuby',
+    description: 'Menú digital optimizado para sushi. Rolls, combos y tablas con fotos. Pedidos a domicilio sin comisiones.',
+    keywords: 'menú digital sushi, carta digital sushi, pedidos online sushi, menú QR sushi',
+  },
+  '/menu-digital-asadero': {
+    title: 'Menú Digital para Asaderos | Carta QR + Pedidos | Menuby',
+    description: 'Menú digital para asaderos y restaurantes de carnes. Porciones, combos y bandejas. Pedidos sin intermediarios.',
+    keywords: 'menú digital asadero, carta digital asadero, menú QR asadero, pedidos online asadero',
+  },
+  '/menu-digital-heladeria': {
+    title: 'Menú Digital para Heladerías | Catálogo QR | Menuby',
+    description: 'Menú digital para heladerías. Muestra sabores, conos, copas y combos familiares con fotos profesionales.',
+    keywords: 'menú digital heladería, carta digital heladería, menú QR heladería',
+  },
 };
 
 function isCrawler(userAgent) {
@@ -144,6 +205,18 @@ function buildLandingPageHtml(page, pathname) {
     <a href="${SITE_ORIGIN}/contact">Contacto</a>
     <a href="${SITE_ORIGIN}/blog">Blog</a>
     <a href="${SITE_ORIGIN}/register">Crear Cuenta Gratis</a>
+    <a href="${SITE_ORIGIN}/menu-digital-restaurante">Menú Digital para Restaurantes</a>
+    <a href="${SITE_ORIGIN}/menu-digital-bar">Menú Digital para Bares</a>
+    <a href="${SITE_ORIGIN}/menu-digital-cafeteria">Menú Digital para Cafeterías</a>
+    <a href="${SITE_ORIGIN}/menu-digital-pizzeria">Menú Digital para Pizzerías</a>
+    <a href="${SITE_ORIGIN}/menu-digital-hamburgueseria">Menú Digital para Hamburgueserías</a>
+    <a href="${SITE_ORIGIN}/menu-digital-hotel">Menú Digital para Hoteles</a>
+    <a href="${SITE_ORIGIN}/menu-digital-food-truck">Menú Digital para Food Trucks</a>
+    <a href="${SITE_ORIGIN}/menu-digital-panaderia">Menú Digital para Panaderías</a>
+    <a href="${SITE_ORIGIN}/menu-digital-comida-rapida">Menú Digital para Comida Rápida</a>
+    <a href="${SITE_ORIGIN}/menu-digital-sushi">Menú Digital para Sushi</a>
+    <a href="${SITE_ORIGIN}/menu-digital-asadero">Menú Digital para Asaderos</a>
+    <a href="${SITE_ORIGIN}/menu-digital-heladeria">Menú Digital para Heladerías</a>
   </nav>
   <script>window.location.replace('${url}');</script>
 </body>

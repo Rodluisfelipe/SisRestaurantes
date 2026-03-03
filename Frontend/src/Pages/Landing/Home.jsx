@@ -38,14 +38,18 @@ const TESTIMONIALS = [
 ];
 
 const COMPARISON = [
-  { feature: 'Comisión por pedido', us: '0%', them: '15-30%' },
-  { feature: 'Tiempo de registro', us: '5 minutos', them: '1-2 semanas' },
-  { feature: 'Menú digital + QR', us: true, them: false },
-  { feature: 'Zonas de entrega', us: true, them: false },
-  { feature: 'Pantalla de cocina', us: true, them: false },
-  { feature: 'Personalización de marca', us: true, them: false },
-  { feature: 'Notificaciones push', us: true, them: false },
-  { feature: 'Costo mensual', us: '$30.000 COP', them: '$100.000+' },
+  { feature: 'Comisión por pedido', menuby: '0%', rappi: '15-30%', menupp: '0%', impreso: 'N/A' },
+  { feature: 'Costo mensual', menuby: '$30.000', rappi: 'Gratis*', menupp: '$49.900+', impreso: '$50.000+' },
+  { feature: 'Menú digital + QR', menuby: true, rappi: false, menupp: true, impreso: false },
+  { feature: 'Pedidos online', menuby: true, rappi: true, menupp: true, impreso: false },
+  { feature: 'Pantalla de cocina', menuby: true, rappi: false, menupp: false, impreso: false },
+  { feature: 'Zonas de entrega', menuby: true, rappi: true, menupp: false, impreso: false },
+  { feature: 'Pagos en línea', menuby: true, rappi: true, menupp: true, impreso: false },
+  { feature: 'Notificaciones push', menuby: true, rappi: true, menupp: false, impreso: false },
+  { feature: 'Reseñas de clientes', menuby: true, rappi: true, menupp: false, impreso: false },
+  { feature: 'Personalización marca', menuby: true, rappi: false, menupp: true, impreso: true },
+  { feature: 'Actualización al instante', menuby: true, rappi: false, menupp: true, impreso: false },
+  { feature: 'Reportes y analytics', menuby: true, rappi: true, menupp: false, impreso: false },
 ];
 
 const PRICING_FEATURES = [
@@ -228,20 +232,28 @@ function FAQAccordion() {
 }
 
 /* ── Comparison Card (mobile) ── */
+const CellVal = ({ val }) => typeof val === 'boolean' ? (val ? <Check /> : <Cross />) : <span className="text-xs font-semibold text-gray-700">{val}</span>;
+
 const ComparisonMobileCard = ({ row }) => {
-  const UsVal = typeof row.us === 'boolean' ? (row.us ? <Check /> : <Cross />) : <span className="font-bold text-gray-900 text-sm">{row.us}</span>;
-  const ThemVal = typeof row.them === 'boolean' ? (row.them ? <Check /> : <Cross />) : <span className="text-gray-500 text-sm">{row.them}</span>;
   return (
     <div className="bg-white rounded-xl border border-gray-100 p-4">
       <p className="text-sm font-semibold text-gray-800 mb-3">{row.feature}</p>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         <div className="flex items-center gap-2 bg-red-50/60 rounded-lg px-3 py-2">
           <span className="text-[10px] font-bold text-red-500 uppercase">Menuby</span>
-          {UsVal}
+          <CellVal val={row.menuby} />
         </div>
         <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
-          <span className="text-[10px] font-bold text-gray-400 uppercase">Otros</span>
-          {ThemVal}
+          <span className="text-[10px] font-bold text-gray-400 uppercase">Rappi</span>
+          <CellVal val={row.rappi} />
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+          <span className="text-[10px] font-bold text-gray-400 uppercase">Menupp</span>
+          <CellVal val={row.menupp} />
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+          <span className="text-[10px] font-bold text-gray-400 uppercase">Impreso</span>
+          <CellVal val={row.impreso} />
         </div>
       </div>
     </div>
@@ -500,22 +512,33 @@ export default function Home() {
 
           {/* Desktop: Table */}
           <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-            <div className="grid grid-cols-3 bg-gray-50 border-b border-gray-200 text-xs font-bold uppercase tracking-wider text-gray-500 py-3 px-4 sm:px-6">
+            <div className="grid grid-cols-5 bg-gray-50 border-b border-gray-200 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500 py-3 px-4 sm:px-6">
               <span>Característica</span>
               <span className="text-center text-red-600">Menuby</span>
-              <span className="text-center">Otros</span>
+              <span className="text-center">Rappi</span>
+              <span className="text-center">Menupp</span>
+              <span className="text-center">Impreso</span>
             </div>
             {COMPARISON.map((row, i) => (
-              <div key={i} className={`grid grid-cols-3 items-center py-3.5 px-4 sm:px-6 text-sm ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} ${i < COMPARISON.length - 1 ? 'border-b border-gray-100' : ''}`}>
+              <div key={i} className={`grid grid-cols-5 items-center py-3.5 px-4 sm:px-6 text-sm ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} ${i < COMPARISON.length - 1 ? 'border-b border-gray-100' : ''}`}>
                 <span className="text-gray-700 font-medium text-xs sm:text-sm">{row.feature}</span>
                 <span className="flex justify-center">
-                  {typeof row.us === 'boolean' ? (row.us ? <Check /> : <Cross />) : <span className="font-bold text-gray-900 text-xs sm:text-sm">{row.us}</span>}
+                  {typeof row.menuby === 'boolean' ? (row.menuby ? <Check /> : <Cross />) : <span className="font-bold text-gray-900 text-xs sm:text-sm">{row.menuby}</span>}
                 </span>
                 <span className="flex justify-center">
-                  {typeof row.them === 'boolean' ? (row.them ? <Check /> : <Cross />) : <span className="text-gray-500 text-xs sm:text-sm">{row.them}</span>}
+                  {typeof row.rappi === 'boolean' ? (row.rappi ? <Check /> : <Cross />) : <span className="text-gray-500 text-xs sm:text-sm">{row.rappi}</span>}
+                </span>
+                <span className="flex justify-center">
+                  {typeof row.menupp === 'boolean' ? (row.menupp ? <Check /> : <Cross />) : <span className="text-gray-500 text-xs sm:text-sm">{row.menupp}</span>}
+                </span>
+                <span className="flex justify-center">
+                  {typeof row.impreso === 'boolean' ? (row.impreso ? <Check /> : <Cross />) : <span className="text-gray-500 text-xs sm:text-sm">{row.impreso}</span>}
                 </span>
               </div>
             ))}
+            <div className="bg-red-50 px-4 sm:px-6 py-3 text-center text-xs text-gray-500">
+              * Rappi no cobra mensualidad pero retiene 15-30% de comisión por cada pedido
+            </div>
           </div>
         </div>
       </Section>

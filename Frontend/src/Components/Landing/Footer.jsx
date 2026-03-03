@@ -6,24 +6,63 @@ const Footer = () => {
 
   const sections = [
     {
-      title: 'Producto',
+      title: 'Soluciones',
       links: [
-        { name: 'Características', to: '/features' },
-        { name: 'Precios', to: '/pricing' },
-        { name: 'Demo', to: '/demo' },
-        { name: 'Restaurantes', to: '/restaurantes' },
+        { name: 'Menú para Restaurantes', to: '/menu-digital-restaurante' },
+        { name: 'Menú para Bares', to: '/menu-digital-bar' },
+        { name: 'Menú para Cafeterías', to: '/menu-digital-cafeteria' },
+        { name: 'Menú para Pizzerías', to: '/menu-digital-pizzeria' },
+        { name: 'Menú para Hamburgueserías', to: '/menu-digital-hamburgueseria' },
+        { name: 'Menú para Hoteles', to: '/menu-digital-hotel' },
+        { name: 'Menú para Food Trucks', to: '/menu-digital-food-truck' },
+        { name: 'Menú para Panaderías', to: '/menu-digital-panaderia' },
+        { name: 'Menú para Comida Rápida', to: '/menu-digital-comida-rapida' },
+        { name: 'Menú para Sushi', to: '/menu-digital-sushi' },
+        { name: 'Menú para Asaderos', to: '/menu-digital-asadero' },
+        { name: 'Menú para Heladerías', to: '/menu-digital-heladeria' },
+      ],
+    },
+    {
+      title: 'Funcionalidades',
+      links: [
+        { name: 'Menú Digital con QR', to: '/features' },
+        { name: 'Pedidos a Domicilio', to: '/features' },
+        { name: 'Pantalla de Cocina', to: '/features' },
+        { name: 'Pagos en Línea', to: '/features' },
+        { name: 'Zonas de Entrega', to: '/features' },
+        { name: 'Notificaciones Push', to: '/features' },
+        { name: 'Reportes de Ventas', to: '/features' },
+        { name: 'WhatsApp Integrado', to: '/features' },
       ],
     },
     {
       title: 'Recursos',
       links: [
         { name: 'Blog', to: '/blog' },
-        { name: 'Contacto', to: '/contact' },
+        { name: 'Cómo Crear Menú Digital', to: '/blog/como-crear-menu-digital-restaurante' },
+        { name: 'Menú Digital vs Impreso', to: '/blog/ventajas-menu-digital-vs-menu-impreso' },
+        { name: 'Pedidos por WhatsApp', to: '/blog/como-recibir-pedidos-por-whatsapp' },
+        { name: 'Código QR Restaurantes', to: '/blog/codigo-qr-para-restaurantes' },
+        { name: 'Aumentar Ventas', to: '/blog/como-aumentar-ventas-restaurante-menu-digital' },
+        { name: 'Menú sin Comisiones', to: '/blog/menu-digital-sin-comisiones-colombia' },
+        { name: 'Tendencias 2025', to: '/blog/tendencias-restaurantes-digitales-2025' },
+      ],
+    },
+    {
+      title: 'Producto',
+      links: [
+        { name: 'Características', to: '/features' },
+        { name: 'Precios', to: '/pricing' },
+        { name: 'Demo', to: '/demo' },
+        { name: 'Restaurantes', to: '/restaurantes' },
+        { name: 'Registrarse Gratis', to: '/register' },
+        { name: 'Iniciar Sesión', to: '/login' },
       ],
     },
     {
       title: 'Soporte',
       links: [
+        { name: 'Contacto', to: '/contact' },
         { name: 'WhatsApp', href: 'https://wa.me/573028181520' },
         { name: 'Email', href: 'mailto:administrador@menuby.tech' },
       ],
@@ -33,17 +72,17 @@ const Footer = () => {
   return (
     <footer className="bg-gray-950 text-gray-300">
       <div className="max-w-7xl mx-auto px-5 sm:px-6 pt-12 sm:pt-16 pb-10 sm:pb-12">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-8 lg:gap-6">
           {/* Brand */}
-          <div className="sm:col-span-2">
+          <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2.5 mb-4 sm:mb-5">
-              <img src="/logo.jpeg" alt="Menuby" className="w-9 h-9 rounded-xl object-cover" />
+              <img src="/logo.jpeg" alt="Menuby - Menú Digital para Restaurantes" className="w-9 h-9 rounded-xl object-cover" />
               <span className="text-xl font-black text-white tracking-tight">
                 Menu<span className="text-red-500">by</span>
               </span>
             </Link>
             <p className="text-gray-400 text-sm leading-relaxed mb-5 sm:mb-6 max-w-xs">
-              Menús digitales para restaurantes modernos. Sin comisiones, sin complicaciones. Hecho con ❤️ en Colombia.
+              La plataforma #1 de menú digital para restaurantes en Colombia. Sin comisiones, sin complicaciones. Más de 500 negocios confían en nosotros.
             </p>
             <a
               href="https://wa.me/573028181520"
@@ -59,16 +98,16 @@ const Footer = () => {
           {/* Links */}
           {sections.map((section) => (
             <div key={section.title}>
-              <h3 className="text-white text-sm font-bold uppercase tracking-wider mb-3 sm:mb-4">{section.title}</h3>
-              <ul className="space-y-2 sm:space-y-2.5">
+              <h3 className="text-white text-xs font-bold uppercase tracking-wider mb-3 sm:mb-4">{section.title}</h3>
+              <ul className="space-y-1.5 sm:space-y-2">
                 {section.links.map((link) => (
                   <li key={link.name}>
                     {link.to ? (
-                      <Link to={link.to} className="text-sm text-gray-400 hover:text-red-400 transition-colors py-1 inline-block">
+                      <Link to={link.to} className="text-xs sm:text-sm text-gray-400 hover:text-red-400 transition-colors py-0.5 inline-block leading-snug">
                         {link.name}
                       </Link>
                     ) : (
-                      <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-400 hover:text-red-400 transition-colors py-1 inline-block">
+                      <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-xs sm:text-sm text-gray-400 hover:text-red-400 transition-colors py-0.5 inline-block leading-snug">
                         {link.name}
                       </a>
                     )}
@@ -83,7 +122,9 @@ const Footer = () => {
       <div className="border-t border-gray-800/50">
         <div className="max-w-7xl mx-auto px-5 sm:px-6 py-5 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <p className="text-xs text-gray-500">© {year} Menuby. Todos los derechos reservados.</p>
-          <p className="text-xs text-gray-600">Hecho con pasión para restaurantes en Colombia 🇨🇴</p>
+          <div className="flex items-center gap-4 text-xs text-gray-600">
+            <span>Hecho con pasión para restaurantes en Colombia 🇨🇴</span>
+          </div>
         </div>
       </div>
     </footer>

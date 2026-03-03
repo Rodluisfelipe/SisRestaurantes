@@ -24,6 +24,7 @@ const LandingContact = lazy(() => import("./Pages/Landing/Contact"));
 const LandingPricing = lazy(() => import("./Pages/Landing/Pricing"));
 const BlogIndex = lazy(() => import("./Pages/Blog/BlogIndex"));
 const BlogPost = lazy(() => import("./Pages/Blog/BlogPost"));
+const NichePage = lazy(() => import("./Pages/Landing/NichePage"));
 
 import Login from "./Pages/Login";
 import CustomerOrderDisplay from "./Components/CustomerOrderDisplay";
@@ -113,7 +114,12 @@ function BusinessProviderWrapper({ children }) {
 }
 
 // Lista de rutas reservadas que no deben tratarse como IDs de negocio
-const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pricing', 'about', 'terms', 'blog'];
+const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pricing', 'about', 'terms', 'blog',
+  'menu-digital-restaurante', 'menu-digital-bar', 'menu-digital-cafeteria', 'menu-digital-pizzeria',
+  'menu-digital-hamburgueseria', 'menu-digital-hotel', 'menu-digital-food-truck', 'menu-digital-panaderia',
+  'menu-digital-comida-rapida', 'menu-digital-sushi', 'menu-digital-asadero', 'menu-digital-heladeria',
+  'restaurantes', 'health', 'superadmin', 'app-login'
+];
 
 function App() {
   return (
@@ -145,6 +151,19 @@ function App() {
           <Route path="/blog/:slug" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><BlogPost /></Suspense>} />
           <Route path="/about" element={<LandingHome />} /> 
           <Route path="/terms" element={<LandingHome />} /> 
+          {/* Niche SEO landing pages — explicit routes to avoid conflicts with /:businessId */}
+          <Route path="/menu-digital-restaurante" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-bar" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-cafeteria" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-pizzeria" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-hamburgueseria" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-hotel" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-food-truck" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-panaderia" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-comida-rapida" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-sushi" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-asadero" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
+          <Route path="/menu-digital-heladeria" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><NichePage /></Suspense>} />
         </Route>
         
         {/* Health check endpoint para Uptime Robot */}

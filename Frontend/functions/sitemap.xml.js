@@ -38,6 +38,19 @@ export async function onRequest(context) {
       { loc: '/register', priority: '0.7', changefreq: 'yearly' },
       { loc: '/blog', priority: '0.8', changefreq: 'weekly' },
       { loc: '/restaurantes', priority: '0.7', changefreq: 'daily' },
+      // Niche landing pages
+      { loc: '/menu-digital-restaurante', priority: '0.9', changefreq: 'monthly' },
+      { loc: '/menu-digital-bar', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-cafeteria', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-pizzeria', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-hamburgueseria', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-hotel', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-food-truck', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-panaderia', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-comida-rapida', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-sushi', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-asadero', priority: '0.8', changefreq: 'monthly' },
+      { loc: '/menu-digital-heladeria', priority: '0.8', changefreq: 'monthly' },
     ];
 
     // Blog articles
