@@ -128,7 +128,9 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
             <div className="relative flex items-start justify-between mb-3">
               <div>
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="text-xl">🎟️</span>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ color: btnText }}>
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1"/>
+                  </svg>
                   <h3 className="text-[17px] font-bold" style={{ color: btnText }}>Canjea tu cupón</h3>
                 </div>
                 <p className="text-[12px] opacity-75" style={{ color: btnText }}>
@@ -358,7 +360,11 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = btnColor; e.currentTarget.style.background = `${btnColor}08`; }}
           onMouseLeave={(e) => { e.currentTarget.style.borderColor = `${btnColor}40`; e.currentTarget.style.background = '#fff'; }}
         >
-          <span className="text-sm group-hover:scale-110 transition-transform duration-200">🎟️</span>
+          <span className="text-sm group-hover:scale-110 transition-transform duration-200" style={{ color: `${btnColor}99` }}>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1"/>
+            </svg>
+          </span>
           <span className="text-[12px] font-medium text-gray-500 transition-colors" style={{ '--hover-color': btnColor }}>
             ¿Tienes un cupón de descuento?
           </span>

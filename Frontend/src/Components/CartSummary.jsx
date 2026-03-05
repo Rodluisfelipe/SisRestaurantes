@@ -8,6 +8,24 @@ import BusinessClosedModal from './BusinessClosedModal';
 import api from '../services/api';
 import DeliveryZoneSelector from './DeliveryZoneSelector';
 
+/* ── Checkout SVG Icon System (admin-style, no emojis) ── */
+const CI = {
+  dineIn:    (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>,
+  takeaway:  (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg>,
+  delivery:  (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M14 18V6h-4a1 1 0 00-1 1v10a1 1 0 001 1h1"/><path d="M14 8h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="17.5" cy="18.5" r="1.5"/><path d="M3 10h6"/></svg>,
+  card:      (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>,
+  cash:      (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>,
+  bank:      (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>,
+  phone:     (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/></svg>,
+  copy:      (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>,
+  info:      (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>,
+  table:     (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M7 7h3v3H7zM14 7h3v3h-3zM7 14h3v3H7zM14 14h3v3h-3z"/></svg>,
+  mapPin:    (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  check:     (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>,
+  cartIcon:  (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>,
+  coupon:    (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><circle cx="7" cy="7" r="1"/></svg>,
+};
+
 // (Sin componente separado - el textarea estará directamente en el JSX)
 
 function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder, subscriptionStatus, isInAppMode = false }) {
@@ -659,13 +677,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     >
                       {checkingLocation ? (
                         <>
-                          <span className="animate-spin">🔄</span>
+                          <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                           Verificando ubicación...
                         </>
                       ) : (
-                        <>
-                          📍 Verificar costo de domicilio
-                        </>
+                        <span className="inline-flex items-center gap-2">
+                          {CI.mapPin('w-4 h-4')}
+                          Verificar costo de domicilio
+                        </span>
                       )}
                     </button>
                     <p className="text-xs text-gray-600 mt-2 text-center">
@@ -681,7 +700,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                       <div className="mt-4 p-4 bg-green-50 border-2 border-green-200 rounded-lg">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="text-xl">✅</span>
+                            <span className="text-green-600">{CI.check('w-5 h-5')}</span>
                             <div>
                               <p className="font-semibold text-green-800">Costo de envío</p>
                               <p className="text-xs text-green-700">Zona: {deliveryZoneInfo.zoneName}</p>
@@ -724,7 +743,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   /* Info de pago para modo in-app */
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">💳</span>
+                      <span className="text-blue-600">{CI.card('w-4 h-4')}</span>
                       <p className="text-sm text-blue-900 font-semibold">Medios de pago disponibles</p>
                     </div>
                     <p className="text-xs text-blue-700">Realiza tu pago y luego sube el comprobante desde el seguimiento del pedido.</p>
@@ -735,7 +754,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     ) && (
                       <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
                         <div className="flex items-center gap-2">
-                          <span className="text-base">📱</span>
+                          <span className="text-blue-600">{CI.phone('w-4 h-4')}</span>
                           <div>
                             <p className="text-xs text-gray-500">Nequi</p>
                             <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.nequi}</p>
@@ -759,7 +778,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     ) && (
                       <div className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-blue-100">
                         <div className="flex items-center gap-2">
-                          <span className="text-base">📲</span>
+                          <span className="text-blue-600">{CI.phone('w-4 h-4')}</span>
                           <div>
                             <p className="text-xs text-gray-500">Daviplata</p>
                             <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.daviplata}</p>
@@ -783,7 +802,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     ) && (
                       <div className="bg-white rounded-lg px-3 py-2 border border-blue-100 space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-base">🏦</span>
+                          <span className="text-blue-600">{CI.bank('w-4 h-4')}</span>
                           <p className="text-xs text-gray-500">Transferencia bancaria</p>
                         </div>
                         <div className="pl-7 space-y-0.5">
@@ -810,7 +829,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     )}
 
                     {businessConfig?.paymentInfo?.instructions && (
-                      <p className="text-xs text-blue-700 italic">💡 {businessConfig.paymentInfo.instructions}</p>
+                      <p className="text-xs text-blue-700 italic flex items-start gap-1.5">
+                        <span className="text-blue-500 flex-shrink-0 mt-0.5">{CI.info('w-3 h-3')}</span>
+                        {businessConfig.paymentInfo.instructions}
+                      </p>
                     )}
                   </div>
                 ) : (
@@ -824,14 +846,17 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         return pm[id].enabled && pm[id].modes?.whatsapp !== false;
                       };
                       const methods = [
-                        ...(isMethodEnabled('efectivo', true) ? [{ id: 'efectivo', label: 'Efectivo', icon: '💵' }] : []),
+                        ...(isMethodEnabled('efectivo', true) ? [{ id: 'efectivo', label: 'Efectivo', iconKey: 'cash' }] : []),
                         ...(isMethodEnabled('nequi', !!businessConfig?.paymentInfo?.nequi) ? [{ id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg' }] : []),
                         ...(isMethodEnabled('daviplata', !!businessConfig?.paymentInfo?.daviplata) ? [{ id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA' }] : []),
-                        ...(isMethodEnabled('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', icon: '🏦' }] : []),
+                        ...(isMethodEnabled('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', iconKey: 'bank' }] : []),
                       ];
                       return methods.length > 0 ? (
                         <div>
-                          <p className="text-xs font-semibold text-gray-600 mb-2">💳 Método de pago</p>
+                          <p className="text-xs font-semibold text-gray-600 mb-2 flex items-center gap-1.5">
+                            <span className="text-gray-400">{CI.card('w-3.5 h-3.5')}</span>
+                            Método de pago
+                          </p>
                           <div className={`grid gap-2 ${methods.length <= 2 ? 'grid-cols-2' : methods.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
                             {methods.map(m => (
                               <button
@@ -847,7 +872,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                                 {m.logo ? (
                                   <img src={m.logo} alt={m.label} className="w-7 h-7 object-contain rounded" />
                                 ) : (
-                                  <span className="text-lg">{m.icon}</span>
+                                  <span className={selectedPaymentMethod === m.id ? 'text-green-600' : 'text-gray-400'}>{CI[m.iconKey]('w-5 h-5')}</span>
                                 )}
                                 <span className={`text-[11px] font-semibold ${selectedPaymentMethod === m.id ? 'text-green-700' : 'text-gray-500'}`}>{m.label}</span>
                               </button>
@@ -863,7 +888,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                       </svg>
                       <div>
                         <p className="text-sm text-green-900 font-semibold">
-                          📱 Importante: Envía tu pedido por WhatsApp
+                          Importante: Envía tu pedido por WhatsApp
                         </p>
                         <p className="text-xs text-green-700 mt-1">
                           Al confirmar, se abrirá WhatsApp con tu pedido listo para enviar
@@ -1315,7 +1340,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             <div className="flex-1 flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-slate-50 flex items-center justify-center">
-                  <span className="text-3xl">🛒</span>
+                  {CI.cartIcon('w-7 h-7 text-slate-400')}
                 </div>
                 <p className="text-slate-500 text-sm mb-1">Tu carrito está vacío</p>
                 <p className="text-slate-500 text-xs mb-4">Agrega productos para armar tu pedido</p>
@@ -1356,38 +1381,38 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                     <button
                       type="button"
                       onClick={() => { setOrderType('inSite'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
-                      className={`flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 transition-colors ${
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all ${
                         orderType === 'inSite' 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-slate-200 bg-white'
+                          ? 'border-blue-500 bg-blue-50 shadow-sm' 
+                          : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
-                      <span className="text-sm">🍽️</span>
+                      <span className={`${orderType === 'inSite' ? 'text-blue-600' : 'text-slate-400'}`}>{CI.dineIn('w-4 h-4')}</span>
                       <span className={`text-[11px] font-semibold ${orderType === 'inSite' ? 'text-blue-700' : 'text-slate-500'}`}>En Sitio</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => { setOrderType('takeaway'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
-                      className={`flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 transition-colors ${
+                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all ${
                         orderType === 'takeaway' 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-slate-200 bg-white'
+                          ? 'border-blue-500 bg-blue-50 shadow-sm' 
+                          : 'border-slate-200 bg-white hover:border-slate-300'
                       }`}
                     >
-                      <span className="text-sm">📦</span>
+                      <span className={`${orderType === 'takeaway' ? 'text-blue-600' : 'text-slate-400'}`}>{CI.takeaway('w-4 h-4')}</span>
                       <span className={`text-[11px] font-semibold ${orderType === 'takeaway' ? 'text-blue-700' : 'text-slate-500'}`}>Llevar</span>
                     </button>
                     {!isFromTableQR && (
                       <button
                         type="button"
                         onClick={() => { setOrderType('delivery'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
-                        className={`flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 transition-colors ${
+                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all ${
                           orderType === 'delivery' 
-                            ? 'border-blue-500 bg-blue-50' 
-                            : 'border-slate-200 bg-white'
+                            ? 'border-blue-500 bg-blue-50 shadow-sm' 
+                            : 'border-slate-200 bg-white hover:border-slate-300'
                         }`}
                       >
-                        <span className="text-sm">🛵</span>
+                        <span className={`${orderType === 'delivery' ? 'text-blue-600' : 'text-slate-400'}`}>{CI.delivery('w-4 h-4')}</span>
                         <span className={`text-[11px] font-semibold ${orderType === 'delivery' ? 'text-blue-700' : 'text-slate-500'}`}>Domicilio</span>
                       </button>
                     )}
@@ -1404,16 +1429,19 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   return pm[id].enabled && pm[id].modes?.[currentMode] !== false;
                 };
                 const methods = [
-                  ...(isMethodOn('efectivo', true) ? [{ id: 'efectivo', label: 'Efectivo', icon: '💵' }] : []),
+                  ...(isMethodOn('efectivo', true) ? [{ id: 'efectivo', label: 'Efectivo', iconKey: 'cash' }] : []),
                   ...(isMethodOn('nequi', !!businessConfig?.paymentInfo?.nequi) ? [{ id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg' }] : []),
                   ...(isMethodOn('daviplata', !!businessConfig?.paymentInfo?.daviplata) ? [{ id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA' }] : []),
-                  ...(isMethodOn('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', icon: '🏦' }] : []),
+                  ...(isMethodOn('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', iconKey: 'bank' }] : []),
                 ];
                 if (methods.length === 0) return null;
                 return (
                   <div>
                     <p className={`text-[11px] font-semibold mb-1.5 ${!selectedPaymentMethod ? 'text-red-500' : 'text-slate-500'}`}>
-                      💳 Método de pago {!selectedPaymentMethod && <span className="text-red-400">*</span>}
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="text-slate-400">{CI.card('w-3.5 h-3.5')}</span>
+                        Método de pago {!selectedPaymentMethod && <span className="text-red-400">*</span>}
+                      </span>
                     </p>
                     <div className={`grid gap-1.5 ${methods.length <= 2 ? 'grid-cols-2' : methods.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
                       {methods.map(m => (
@@ -1430,7 +1458,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                           {m.logo ? (
                             <img src={m.logo} alt={m.label} className="w-6 h-6 object-contain rounded" />
                           ) : (
-                            <span className="text-base">{m.icon}</span>
+                            <span className={selectedPaymentMethod === m.id ? 'text-green-600' : 'text-slate-400'}>{CI[m.iconKey]('w-5 h-5')}</span>
                           )}
                           <span className={`text-[10px] font-semibold ${selectedPaymentMethod === m.id ? 'text-green-700' : 'text-slate-500'}`}>{m.label}</span>
                         </button>
@@ -1443,7 +1471,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         {selectedPaymentMethod === 'nequi' && businessConfig?.paymentInfo?.nequi && (
                           <div className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2.5 border border-green-200">
                             <div className="flex items-center gap-2">
-                              <span className="text-base">📱</span>
+                              <span className="text-green-600">{CI.phone('w-4 h-4')}</span>
                               <div>
                                 <p className="text-xs text-gray-500">Nequi</p>
                                 <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.nequi}</p>
@@ -1452,9 +1480,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                             <button
                               type="button"
                               onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.nequi)}
-                              className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
+                              className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100 inline-flex items-center gap-1"
                             >
-                              📋 Copiar
+                              {CI.copy('w-3 h-3')} Copiar
                             </button>
                           </div>
                         )}
@@ -1462,7 +1490,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         {selectedPaymentMethod === 'daviplata' && businessConfig?.paymentInfo?.daviplata && (
                           <div className="flex items-center justify-between bg-green-50 rounded-lg px-3 py-2.5 border border-green-200">
                             <div className="flex items-center gap-2">
-                              <span className="text-base">📲</span>
+                              <span className="text-green-600">{CI.phone('w-4 h-4')}</span>
                               <div>
                                 <p className="text-xs text-gray-500">Daviplata</p>
                                 <p className="text-sm font-semibold text-gray-900">{businessConfig.paymentInfo.daviplata}</p>
@@ -1471,9 +1499,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                             <button
                               type="button"
                               onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.daviplata)}
-                              className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
+                              className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100 inline-flex items-center gap-1"
                             >
-                              📋 Copiar
+                              {CI.copy('w-3 h-3')} Copiar
                             </button>
                           </div>
                         )}
@@ -1481,7 +1509,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         {selectedPaymentMethod === 'transferencia' && businessConfig?.paymentInfo?.bankAccountNumber && (
                           <div className="bg-green-50 rounded-lg px-3 py-2.5 border border-green-200 space-y-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-base">🏦</span>
+                              <span className="text-green-600">{CI.bank('w-4 h-4')}</span>
                               <p className="text-xs text-gray-500">Transferencia bancaria</p>
                             </div>
                             <div className="pl-7 space-y-0.5">
@@ -1493,9 +1521,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                                 <button
                                   type="button"
                                   onClick={() => navigator.clipboard.writeText(businessConfig.paymentInfo.bankAccountNumber)}
-                                  className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100"
+                                  className="text-green-600 hover:text-green-800 text-xs font-medium px-2 py-1 rounded hover:bg-green-100 inline-flex items-center gap-1"
                                 >
-                                  📋 Copiar
+                                  {CI.copy('w-3 h-3')} Copiar
                                 </button>
                               </div>
                               {businessConfig.paymentInfo.accountHolder && (
@@ -1506,7 +1534,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         )}
 
                         {businessConfig?.paymentInfo?.instructions && (
-                          <p className="text-xs text-gray-500 italic mt-2">💡 {businessConfig.paymentInfo.instructions}</p>
+                          <p className="text-xs text-gray-500 italic mt-2 flex items-start gap-1.5">
+                            <span className="text-slate-400 flex-shrink-0 mt-0.5">{CI.info('w-3 h-3')}</span>
+                            {businessConfig.paymentInfo.instructions}
+                          </p>
                         )}
                       </div>
                     )}
@@ -1535,7 +1566,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               {/* ── Info mesa QR ── */}
               {isFromTableQR && tableNumber && (
                 <div className="flex items-center gap-1.5 p-2 bg-blue-50 border border-blue-200 rounded-xl">
-                  <span className="text-xs">🪑</span>
+                  <span className="text-blue-500">{CI.table('w-3.5 h-3.5')}</span>
                   <p className="text-blue-800 font-semibold text-[11px]">Mesa {tableNumber} · En sitio</p>
                 </div>
               )}
@@ -1562,9 +1593,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                       className="w-full px-3 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-sm"
                     >
                       {checkingLocation ? (
-                        <><span className="animate-spin">🔄</span> Verificando...</>
+                        <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Verificando...</>
                       ) : (
-                        <>📍 Verificar costo de domicilio</>
+                        <span className="inline-flex items-center gap-2">{CI.mapPin('w-4 h-4')} Verificar costo de domicilio</span>
                       )}
                     </button>
                   )}
@@ -1574,7 +1605,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                       {deliveryFee && deliveryZoneInfo ? (
                         <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-xl">
                           <div className="flex items-center gap-1.5">
-                            <span className="text-sm">✅</span>
+                            <span className="text-green-600">{CI.check('w-3.5 h-3.5')}</span>
                             <span className="text-[11px] text-green-800 font-medium">{deliveryZoneInfo.zoneName}</span>
                           </div>
                           <span className="text-xs font-bold text-green-800">${deliveryFee.toLocaleString()}</span>

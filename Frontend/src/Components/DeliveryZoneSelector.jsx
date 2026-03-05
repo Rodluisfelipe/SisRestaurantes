@@ -134,7 +134,9 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
     return (
       <div className={compact ? "p-2 bg-slate-50 border border-slate-200 rounded-xl" : "mt-3 p-4 bg-slate-50 border border-slate-200 rounded-xl"}>
         <div className="flex items-center justify-center gap-2">
-          <span className={`animate-spin ${compact ? 'text-sm' : 'text-lg'}`}>⏳</span>
+          <span className={`${compact ? '' : ''} inline-block`}>
+            <svg className={compact ? 'w-4 h-4 animate-spin text-slate-500' : 'w-5 h-5 animate-spin text-slate-500'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/></svg>
+          </span>
           <p className={`${compact ? 'text-[11px]' : 'text-sm'} text-slate-600 font-medium`}>
             {geocoding ? 'Buscando tu dirección...' : 'Cargando zonas...'}
           </p>
@@ -148,7 +150,9 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
     return (
       <div className={compact ? "p-2 bg-amber-50 border border-amber-200 rounded-xl" : "mt-3 p-3 bg-amber-50 border border-amber-200 rounded-xl"}>
         <div className="flex items-center gap-2">
-          <span className="text-sm">⚠️</span>
+          <span className="text-amber-500">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </span>
           <p className="text-[11px] text-amber-800 font-medium">
             {error || 'Sin zonas configuradas. El costo será confirmado.'}
           </p>
@@ -161,7 +165,9 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
     <div className={compact ? "space-y-1.5" : "mt-3 space-y-2"}>
       {/* Header */}
       <div className="flex items-center gap-2 px-1">
-        <span className={compact ? "text-xs" : "text-sm"}>📍</span>
+        <span className={`text-slate-500 ${compact ? '' : ''}`}>
+          <svg className={compact ? 'w-3.5 h-3.5' : 'w-4 h-4'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        </span>
         <p className={`${compact ? 'text-[10px]' : 'text-xs'} font-semibold text-slate-700`}>Selecciona tu zona de entrega</p>
       </div>
 
@@ -215,7 +221,8 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
                       <div className="flex items-center gap-2 mt-0.5">
                         {/* Estimated time */}
                         <span className="text-[10px] text-slate-500 flex items-center gap-0.5">
-                          🕐 {zone.estimatedTime.min}-{zone.estimatedTime.max} min
+                          <svg className="w-3 h-3 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                          {zone.estimatedTime.min}-{zone.estimatedTime.max} min
                         </span>
                         
                         {/* Minimum order warning */}
@@ -280,7 +287,8 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
           className="text-[10px] font-medium underline underline-offset-2 transition-colors"
           style={{ color: btnColor }}
         >
-          🔄 Reintentar con GPS
+          <svg className="w-3 h-3 inline mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Reintentar con GPS
         </button>
         <p className="text-[9px] text-slate-400 italic">
           Selección manual · zona aprox.
