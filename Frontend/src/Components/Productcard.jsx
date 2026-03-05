@@ -1,6 +1,5 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaPlus, FaCheck, FaSlidersH } from 'react-icons/fa';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import ErrorBoundary from './ErrorBoundary';
 import { useBusinessConfig } from "../Context/BusinessContext";
@@ -8,6 +7,15 @@ import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import BusinessClosedModal from './BusinessClosedModal';
 import { useFlyToCart } from './FlyToCart';
 import ProductPeekWrapper from './ProductPeekWrapper';
+
+/* ── SVG icons (stroke-based) ── */
+const PCI = {
+  plus: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>,
+  check: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>,
+  sliders: (cls = 'w-3 h-3') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>,
+  flame: (cls = 'w-3 h-3') => <svg className={cls} viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 23c-3.6 0-7-2.4-7-7 0-3.2 2.1-5.8 3.8-7.8L12 4l3.2 4.2C16.9 10.2 19 12.8 19 16c0 4.6-3.4 7-7 7zm0-15.5L9.8 10.4C8.4 12.1 7 14.1 7 16c0 3.3 2.2 5 5 5s5-1.7 5-5c0-1.9-1.4-3.9-2.8-5.6L12 7.5z"/></svg>,
+  image: (cls = 'w-8 h-8') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,
+};
 
 function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus }) {
   const [showToppings, setShowToppings] = useState(false);
@@ -86,57 +94,57 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
           if (subscriptionStatus === 'suspended') return;
           handleShowToppings();
         }}
-        whileHover={!isDisabled ? { y: -4, scale: 1.01 } : {}}
-        whileTap={!isDisabled ? { scale: 0.97 } : {}}
+        whileHover={!isDisabled ? { y: -3 } : {}}
+        whileTap={!isDisabled ? { scale: 0.98 } : {}}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className={`group relative bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-100 overflow-hidden ${
+        className={`group relative bg-white rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 overflow-hidden transition-shadow duration-300 ${
           isDisabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
         {/* Product Image — aspect ratio based */}
-        <div className="relative aspect-square overflow-hidden bg-gray-50">
+        <div className="relative aspect-square overflow-hidden bg-slate-50">
           {product.image ? (
             <motion.img 
               src={product.image} 
               alt={product.name}
               loading="lazy"
               decoding="async"
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           ) : (
             <div 
               className="w-full h-full flex items-center justify-center"
               style={{
-                background: `linear-gradient(135deg, ${buttonColor}15, ${buttonColor}05)`
+                background: `linear-gradient(135deg, ${buttonColor}08, ${buttonColor}03)`
               }}
             >
-              <span className="text-5xl opacity-40 group-hover:opacity-60 transition-opacity duration-300">🍽️</span>
+              <span className="text-slate-200">{PCI.image('w-10 h-10 sm:w-12 sm:h-12')}</span>
             </div>
           )}
 
-          {/* Hover gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
           {/* "Personalizable" badge for products with toppings */}
           {hasToppings && (
             <div className="absolute top-2 left-2">
               <span 
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold backdrop-blur-md shadow-sm"
-                style={{ backgroundColor: `${buttonColor}e6`, color: buttonTextColor }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-semibold backdrop-blur-md shadow-sm bg-white/90 border border-white/50"
+                style={{ color: buttonColor }}
               >
-                <FaSlidersH className="text-[8px] sm:text-[10px]" />
+                {PCI.sliders('w-2.5 h-2.5 sm:w-3 sm:h-3')}
                 <span className="hidden sm:inline">Personalizable</span>
               </span>
             </div>
           )}
 
-          {/* "Favorito 🔥" badge for popular products */}
+          {/* "Favorito" badge */}
           {isFavorite && (
             <div className="absolute top-2 right-2">
-              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm backdrop-blur-md">
-                🔥
-                <span className="hidden sm:inline">Favorito</span>
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm backdrop-blur-md">
+                {PCI.flame('w-2.5 h-2.5')}
+                <span className="hidden sm:inline ml-0.5">Favorito</span>
               </span>
             </div>
           )}
@@ -155,10 +163,10 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
                   initial={{ scale: 0 }}
                   animate={{ scale: [0, 1.3, 1] }}
                   transition={{ duration: 0.5 }}
-                  className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl"
-                  style={{ backgroundColor: buttonColor }}
+                  className="w-12 h-12 rounded-full flex items-center justify-center shadow-xl"
+                  style={{ backgroundColor: buttonColor, color: buttonTextColor }}
                 >
-                  <FaCheck className="text-xl" style={{ color: buttonTextColor }} />
+                  {PCI.check('w-5 h-5')}
                 </motion.div>
               </motion.div>
             )}
@@ -166,12 +174,12 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
         </div>
 
         {/* Product Info */}
-        <div className="p-3 sm:p-4">
-          <h3 className="text-sm sm:text-base font-bold text-gray-800 leading-tight mb-1 line-clamp-2 group-hover:text-gray-900 transition-colors">
+        <div className="p-3 sm:p-3.5">
+          <h3 className="text-[13px] sm:text-sm font-bold text-slate-800 leading-tight mb-0.5 line-clamp-2 group-hover:text-slate-900 transition-colors">
             {product.name}
           </h3>
           {product.description && (
-            <p className="text-[11px] sm:text-xs text-gray-500 line-clamp-2 mb-2 leading-relaxed">
+            <p className="text-[10px] sm:text-[11px] text-slate-400 line-clamp-2 mb-2 leading-relaxed">
               {product.description}
             </p>
           )}
@@ -180,7 +188,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             {/* Price */}
             <div>
               <span 
-                className="text-lg sm:text-xl font-extrabold tracking-tight"
+                className="text-base sm:text-lg font-extrabold tracking-tight"
                 style={{ color: buttonColor }}
               >
                 ${(() => {
@@ -194,7 +202,6 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             <motion.button
               onClick={(e) => {
                 e.stopPropagation();
-                // Trigger fly-to-cart from the button position
                 if (flyToCart?.triggerFly && !hasToppings) {
                   const rect = e.currentTarget.getBoundingClientRect();
                   flyToCart.triggerFly({
@@ -206,21 +213,21 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
                 }
                 handleShowToppings();
               }}
-              whileHover={!isDisabled ? { scale: 1.15 } : {}}
-              whileTap={!isDisabled ? { scale: 0.85 } : {}}
+              whileHover={!isDisabled ? { scale: 1.1 } : {}}
+              whileTap={!isDisabled ? { scale: 0.88 } : {}}
               transition={{ type: "spring", stiffness: 400, damping: 15 }}
-              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-md transition-transform duration-200 ${
-                isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-lg active:shadow-sm'
+              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shadow-sm transition-all duration-200 ${
+                isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-md'
               }`}
               style={{
-                backgroundColor: isDisabled ? '#d1d5db' : buttonColor,
+                backgroundColor: isDisabled ? '#e2e8f0' : buttonColor,
                 color: buttonTextColor,
-                boxShadow: isDisabled ? undefined : `0 4px 14px ${buttonColor}40`
+                boxShadow: isDisabled ? undefined : `0 2px 8px ${buttonColor}30`
               }}
               aria-label={isDisabled ? "No disponible" : "Agregar al carrito"}
               disabled={isDisabled}
             >
-              <FaPlus className="text-sm sm:text-base" />
+              {PCI.plus('w-3.5 h-3.5 sm:w-4 sm:h-4')}
             </motion.button>
           </div>
         </div>

@@ -236,7 +236,7 @@ router.post('/redeem', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/coupons/validate/:code - Validar cupón (sin autenticación para compartir)
+// GET /api/coupons/validate/:code - Validar cupón de suscripción (sin autenticación para compartir)
 router.get('/validate/:code', async (req, res) => {
   try {
     const { code } = req.params;
@@ -274,6 +274,391 @@ router.get('/validate/:code', async (req, res) => {
   } catch (error) {
     logger.error('Error validating coupon', error, req);
     res.status(500).json(formatHttpError(req, 'Error al validar cupón', 500));
+  }
+});
+
+
+// ============================================================================
+// CUPONES DE DESCUENTO PARA NEGOCIOS (Business Coupons)
+// ============================================================================
+const BusinessCoupon = require('../Models/BusinessCoupon');
+const Order = require('../Models/Order');
+
+// GET /api/coupons - Listar cupones de un negocio (Admin)
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const {
+      businessId,
+      page = 1,
+      limit = 20,
+      search = '',
+      status = 'all',
+      discountType = 'all',
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = req.query;
+
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
+    }
+
+    // Build filter
+    const filter = { businessId };
+
+    if (search) {
+      const regex = new RegExp(search, 'i');
+      filter.$or = [
+        { code: regex },
+        { name: regex },
+        { description: regex },
+      ];
+    }
+
+    const now = new Date();
+    if (status === 'active') {
+      filter.isActive = true;
+      filter.validUntil = { $gte: now };
+      filter.validFrom = { $lte: now };
+    } else if (status === 'inactive') {
+      filter.isActive = false;
+    } else if (status === 'expired') {
+      filter.validUntil = { $lt: now };
+    }
+
+    if (discountType !== 'all') {
+      filter.discountType = discountType;
+    }
+
+    // Sort
+    const sort = {};
+    sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [coupons, total] = await Promise.all([
+      BusinessCoupon.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      BusinessCoupon.countDocuments(filter),
+    ]);
+
+    // Stats for this business
+    const allCoupons = await BusinessCoupon.find({ businessId }).lean();
+    const stats = {
+      totalCoupons: allCoupons.length,
+      activeCoupons: allCoupons.filter(c =>
+        c.isActive && new Date(c.validFrom) <= now && new Date(c.validUntil) >= now
+      ).length,
+      totalUsage: allCoupons.reduce((sum, c) => sum + (c.usageCount || 0), 0),
+      totalDiscountGiven: allCoupons.reduce((sum, c) => sum + (c.totalDiscountGiven || 0), 0),
+    };
+
+    res.json({
+      coupons: coupons.map(c => ({
+        ...c,
+        _id: c._id,
+        id: c._id,
+      })),
+      stats,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / parseInt(limit)),
+      },
+    });
+  } catch (error) {
+    logger.error('Error fetching business coupons', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al obtener cupones', 500));
+  }
+});
+
+// POST /api/coupons - Crear cupón de descuento (Admin)
+router.post('/', authMiddleware, async (req, res) => {
+  try {
+    const {
+      businessId,
+      code,
+      name,
+      description,
+      discountType,
+      discountValue,
+      maxDiscountAmount,
+      minimumOrderAmount,
+      usageLimit,
+      usageLimitPerCustomer,
+      validFrom,
+      validUntil,
+      applicableOrderTypes,
+      isActive,
+    } = req.body;
+
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
+    }
+    if (!code || !name) {
+      return res.status(400).json(formatHttpError(req, 'Código y nombre son requeridos', 400));
+    }
+    if (!discountType || !['percentage', 'fixed', 'free_delivery'].includes(discountType)) {
+      return res.status(400).json(formatHttpError(req, 'Tipo de descuento inválido', 400));
+    }
+    if (discountType !== 'free_delivery' && (!discountValue || discountValue <= 0)) {
+      return res.status(400).json(formatHttpError(req, 'Valor de descuento debe ser mayor a 0', 400));
+    }
+    if (discountType === 'percentage' && discountValue > 100) {
+      return res.status(400).json(formatHttpError(req, 'El porcentaje no puede ser mayor a 100', 400));
+    }
+
+    // Verificar código duplicado dentro del negocio
+    const existing = await BusinessCoupon.findOne({
+      businessId,
+      code: code.toUpperCase().trim(),
+    });
+    if (existing) {
+      return res.status(400).json(formatHttpError(req, 'Ya existe un cupón con este código en tu negocio', 400));
+    }
+
+    const coupon = new BusinessCoupon({
+      businessId,
+      code: code.toUpperCase().trim(),
+      name: name.trim(),
+      description: (description || '').trim(),
+      discountType,
+      discountValue: discountType === 'free_delivery' ? 0 : parseFloat(discountValue),
+      maxDiscountAmount: maxDiscountAmount ? parseFloat(maxDiscountAmount) : null,
+      minimumOrderAmount: minimumOrderAmount ? parseFloat(minimumOrderAmount) : 0,
+      usageLimit: usageLimit ? parseInt(usageLimit) : null,
+      usageLimitPerCustomer: usageLimitPerCustomer ? parseInt(usageLimitPerCustomer) : 1,
+      validFrom: new Date(validFrom || Date.now()),
+      validUntil: new Date(validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
+      applicableOrderTypes: applicableOrderTypes || ['inSite', 'takeaway', 'delivery'],
+      isActive: isActive !== undefined ? isActive : true,
+    });
+
+    await coupon.save();
+
+    logger.info('Business coupon created', {
+      couponId: coupon._id,
+      businessId,
+      code: coupon.code,
+      discountType,
+    }, req);
+
+    res.status(201).json({
+      success: true,
+      coupon,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json(formatHttpError(req, 'Ya existe un cupón con este código', 400));
+    }
+    logger.error('Error creating business coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al crear cupón', 500));
+  }
+});
+
+// POST /api/coupons/generate-code - Generar código único (Admin)
+router.post('/generate-code', authMiddleware, async (req, res) => {
+  try {
+    const { businessId, length = 8 } = req.body;
+
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
+    }
+
+    const code = await BusinessCoupon.generateCode(businessId, parseInt(length));
+
+    res.json({ code });
+  } catch (error) {
+    logger.error('Error generating coupon code', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al generar código', 500));
+  }
+});
+
+// POST /api/coupons/validate - Validar cupón para un pedido (público / cliente)
+router.post('/validate', async (req, res) => {
+  try {
+    const { businessId, code, orderData, customerId } = req.body;
+
+    if (!businessId || !code) {
+      return res.status(400).json({
+        valid: false,
+        message: 'businessId y código son requeridos',
+      });
+    }
+
+    // Resolver businessId: puede venir como ObjectId o como slug
+    let resolvedBusinessId = businessId;
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(businessId);
+
+    if (isObjectId) {
+      // Si es un ObjectId, buscar el slug en BusinessConfig
+      const config = await BusinessConfig.findById(businessId).select('slug').lean();
+      if (config?.slug) {
+        resolvedBusinessId = config.slug;
+      }
+    }
+
+    // Intentar buscar con el ID resuelto, y si falla, con el original
+    let coupon = await BusinessCoupon.findOne({
+      businessId: resolvedBusinessId,
+      code: code.toUpperCase().trim(),
+    });
+
+    // Fallback: si no se encontró y resolvedBusinessId !== businessId, intentar con el original
+    if (!coupon && resolvedBusinessId !== businessId) {
+      coupon = await BusinessCoupon.findOne({
+        businessId,
+        code: code.toUpperCase().trim(),
+      });
+    }
+
+    if (!coupon) {
+      return res.json({
+        valid: false,
+        message: 'Cupón no encontrado',
+      });
+    }
+
+    // Validar si puede usarse para este pedido
+    const validation = coupon.validateForOrder(orderData || {}, customerId);
+    if (!validation.valid) {
+      return res.json({
+        valid: false,
+        message: validation.message,
+      });
+    }
+
+    // Calcular descuento
+    const orderTotal = orderData?.totalAmount || orderData?.subtotal || 0;
+    const discountAmount = coupon.calculateDiscount(orderTotal);
+    const finalAmount = Math.max(0, orderTotal - discountAmount);
+
+    res.json({
+      valid: true,
+      coupon: {
+        _id: coupon._id,
+        code: coupon.code,
+        name: coupon.name,
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        description: coupon.description,
+        freeDelivery: coupon.discountType === 'free_delivery',
+      },
+      discountAmount,
+      finalAmount,
+      message: coupon.discountType === 'free_delivery'
+        ? '¡Envío gratis aplicado!'
+        : `Descuento de $${discountAmount.toLocaleString('es-CO')} aplicado`,
+    });
+  } catch (error) {
+    logger.error('Error validating business coupon', error, req);
+    res.status(500).json({
+      valid: false,
+      message: 'Error al validar cupón',
+    });
+  }
+});
+
+// PUT /api/coupons/:id - Actualizar cupón de descuento (Admin)
+router.put('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      businessId,
+      code,
+      name,
+      description,
+      discountType,
+      discountValue,
+      maxDiscountAmount,
+      minimumOrderAmount,
+      usageLimit,
+      usageLimitPerCustomer,
+      validFrom,
+      validUntil,
+      applicableOrderTypes,
+      isActive,
+    } = req.body;
+
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
+    }
+
+    const coupon = await BusinessCoupon.findOne({ _id: id, businessId });
+    if (!coupon) {
+      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
+    }
+
+    // Si cambian el código, verificar que no esté duplicado
+    if (code && code.toUpperCase().trim() !== coupon.code) {
+      const existing = await BusinessCoupon.findOne({
+        businessId,
+        code: code.toUpperCase().trim(),
+        _id: { $ne: id },
+      });
+      if (existing) {
+        return res.status(400).json(formatHttpError(req, 'Ya existe otro cupón con ese código', 400));
+      }
+      coupon.code = code.toUpperCase().trim();
+    }
+
+    if (name !== undefined) coupon.name = name.trim();
+    if (description !== undefined) coupon.description = (description || '').trim();
+    if (discountType !== undefined) coupon.discountType = discountType;
+    if (discountValue !== undefined) coupon.discountValue = parseFloat(discountValue);
+    if (maxDiscountAmount !== undefined) coupon.maxDiscountAmount = maxDiscountAmount ? parseFloat(maxDiscountAmount) : null;
+    if (minimumOrderAmount !== undefined) coupon.minimumOrderAmount = minimumOrderAmount ? parseFloat(minimumOrderAmount) : 0;
+    if (usageLimit !== undefined) coupon.usageLimit = usageLimit ? parseInt(usageLimit) : null;
+    if (usageLimitPerCustomer !== undefined) coupon.usageLimitPerCustomer = usageLimitPerCustomer ? parseInt(usageLimitPerCustomer) : 1;
+    if (validFrom !== undefined) coupon.validFrom = new Date(validFrom);
+    if (validUntil !== undefined) coupon.validUntil = new Date(validUntil);
+    if (applicableOrderTypes !== undefined) coupon.applicableOrderTypes = applicableOrderTypes;
+    if (isActive !== undefined) coupon.isActive = isActive;
+
+    await coupon.save();
+
+    logger.info('Business coupon updated', { couponId: id, businessId }, req);
+
+    res.json({
+      success: true,
+      coupon,
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json(formatHttpError(req, 'Ya existe un cupón con este código', 400));
+    }
+    logger.error('Error updating business coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al actualizar cupón', 500));
+  }
+});
+
+// DELETE /api/coupons/:id - Eliminar cupón de descuento (Admin)
+router.delete('/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { businessId } = req.query;
+
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, 'businessId es requerido', 400));
+    }
+
+    const coupon = await BusinessCoupon.findOneAndDelete({ _id: id, businessId });
+    if (!coupon) {
+      return res.status(404).json(formatHttpError(req, 'Cupón no encontrado', 404));
+    }
+
+    logger.info('Business coupon deleted', { couponId: id, businessId, code: coupon.code }, req);
+
+    res.json({
+      success: true,
+      message: 'Cupón eliminado exitosamente',
+    });
+  } catch (error) {
+    logger.error('Error deleting business coupon', error, req);
+    res.status(500).json(formatHttpError(req, 'Error al eliminar cupón', 500));
   }
 });
 

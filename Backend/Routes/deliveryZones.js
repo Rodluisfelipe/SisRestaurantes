@@ -159,6 +159,96 @@ router.get("/geocode/stats", authMiddleware, async (req, res) => {
 });
 
 // ============================================
+// ZONAS PÚBLICAS PARA CLIENTES (Sin auth)
+// ============================================
+
+/**
+ * GET /api/delivery-zones/public
+ * Devuelve las zonas activas de un negocio con info de precio y tiempo.
+ * No expone geometría completa (solo nombre, precio, tiempo, color).
+ * Usado cuando el GPS falla y el cliente elige manualmente su zona.
+ */
+router.get("/public", zoneLimiter, async (req, res) => {
+  try {
+    const { businessId } = req.query;
+    
+    if (!businessId) {
+      return res.status(400).json(
+        formatHttpError(req, "Se requiere el ID del negocio", 400)
+      );
+    }
+
+    // Resolver businessId (puede ser slug o ObjectId)
+    const { findBusinessByIdentifier } = require("../utils/businessHelper");
+    const resolvedBusiness = await findBusinessByIdentifier(businessId);
+    
+    if (!resolvedBusiness) {
+      return res.status(404).json(
+        formatHttpError(req, "Negocio no encontrado", 404)
+      );
+    }
+
+    const zones = await DeliveryZone.find({
+      businessId: resolvedBusiness._id,
+      isActive: true
+    }).sort({ priority: -1 });
+
+    if (zones.length === 0) {
+      return res.json({
+        success: true,
+        zones: [],
+        total: 0
+      });
+    }
+
+    // Devolver solo info pública relevante (sin geometría)
+    const publicZones = zones.map(zone => {
+      // Calcular precio a mostrar según modo
+      let displayPrice = zone.pricing.basePrice;
+      let priceLabel = `$${displayPrice.toLocaleString('es-CO')}`;
+      
+      if (zone.pricing.mode === 'distance') {
+        priceLabel = displayPrice > 0 
+          ? `Desde $${displayPrice.toLocaleString('es-CO')}`
+          : `$${zone.pricing.pricePerKm.toLocaleString('es-CO')}/km`;
+      } else if (zone.pricing.mode === 'tiered' && zone.pricing.tiers?.length > 0) {
+        const sorted = [...zone.pricing.tiers].sort((a, b) => a.maxDistance - b.maxDistance);
+        const minPrice = sorted[0].price;
+        const maxPrice = sorted[sorted.length - 1].price;
+        priceLabel = minPrice === maxPrice 
+          ? `$${minPrice.toLocaleString('es-CO')}`
+          : `$${minPrice.toLocaleString('es-CO')} - $${maxPrice.toLocaleString('es-CO')}`;
+        displayPrice = minPrice;
+      }
+
+      return {
+        id: zone._id,
+        name: zone.name,
+        description: zone.description || null,
+        color: zone.color,
+        pricing: {
+          mode: zone.pricing.mode,
+          displayPrice,
+          priceLabel,
+          minimumOrder: zone.pricing.minimumOrder
+        },
+        estimatedTime: zone.estimatedTime,
+        priority: zone.priority
+      };
+    });
+
+    res.json({
+      success: true,
+      zones: publicZones,
+      total: publicZones.length
+    });
+  } catch (error) {
+    logger.error("Error al obtener zonas públicas", error, req);
+    res.status(500).json(formatHttpError(req, "Error al obtener zonas de entrega", 500));
+  }
+});
+
+// ============================================
 // VERIFICACIÓN DE COBERTURA (Público/Cliente)
 // ============================================
 

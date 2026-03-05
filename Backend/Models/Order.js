@@ -59,7 +59,7 @@ const orderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'nequi', 'daviplata', 'transfer', 'other'],
+    enum: ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'other'],
     default: null
   },
   paymentProof: {

@@ -1,11 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { FaUser, FaHeart, FaClock, FaMapMarkerAlt } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import { socket } from '../services/socket';
 import AccountManagementModal from './AccountManagementModal';
 import { useCustomerData } from '../hooks/useCustomerData';
+
+/* ── Minimal SVG icons (stroke-based, admin panel style) ── */
+const HI = {
+  user: (cls = 'w-3.5 h-3.5') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  heart: (cls = 'w-3.5 h-3.5') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+  clock: (cls = 'w-3.5 h-3.5') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>,
+  mapPin: (cls = 'w-3 h-3') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  star: (cls = 'w-3.5 h-3.5') => <svg className={cls} viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>,
+  chevron: (cls = 'w-3 h-3') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg>,
+};
 
 const BusinessHeader = ({ 
   comesFromCatalog = false,
@@ -158,53 +167,72 @@ const BusinessHeader = ({
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ 
             backgroundImage: `url(${businessConfig.coverImage})`,
-            filter: 'brightness(0.7)'
+            filter: 'brightness(0.65)'
           }}
         />
       )}
       
       {/* Overlay for better text readability */}
-      <div className={`absolute inset-0 ${businessConfig.coverImage ? 'bg-black bg-opacity-40' : 'bg-white'}`} />
+      <div className={`absolute inset-0 ${businessConfig.coverImage ? 'bg-gradient-to-b from-black/30 via-black/20 to-black/50' : 'bg-white'}`} />
       
       {/* Content Container */}
-      <div className={`relative z-10 pt-3 pb-2 ${businessConfig.coverImage ? 'text-white' : 'text-gray-800'}`}>
-        {/* Top-right action buttons — compact icon-only row */}
+      <div className={`relative z-10 pt-3 pb-2 ${businessConfig.coverImage ? 'text-white' : 'text-slate-800'}`}>
+        {/* Top-right action buttons — compact icon row */}
         <div className="absolute right-2.5 top-3 z-20 flex items-center gap-1.5">
           {showFavoritesButton && (
             <button
               onClick={onShowFavorites}
-              className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform"
+              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
+                businessConfig.coverImage
+                  ? 'bg-white/15 backdrop-blur-sm text-white shadow-sm border border-white/10'
+                  : 'bg-slate-50 text-slate-500 hover:text-rose-500 border border-slate-200'
+              }`}
               aria-label="Favoritos"
             >
-              <FaHeart className="text-[10px]" />
+              {HI.heart('w-3.5 h-3.5')}
             </button>
           )}
           {showHistoryButton && (
             <button
               onClick={onShowHistory}
-              className="w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform"
+              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
+                businessConfig.coverImage
+                  ? 'bg-white/15 backdrop-blur-sm text-white shadow-sm border border-white/10'
+                  : 'bg-slate-50 text-slate-500 hover:text-blue-500 border border-slate-200'
+              }`}
               aria-label="Historial de pedidos"
             >
-              <FaClock className="text-[10px]" />
+              {HI.clock('w-3.5 h-3.5')}
             </button>
           )}
           <button
             onClick={() => setShowAccountModal(true)}
-            className="relative w-7 h-7 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white shadow-sm active:scale-90 transition-transform"
+            className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
+              businessConfig.coverImage
+                ? 'bg-white/15 backdrop-blur-sm text-white shadow-sm border border-white/10'
+                : 'bg-slate-50 text-slate-500 hover:text-slate-700 border border-slate-200'
+            }`}
             aria-label={hasActiveOrder ? 'Ver estado del pedido' : 'Mi cuenta'}
           >
-            <FaUser className="text-[10px]" />
+            {HI.user('w-3.5 h-3.5')}
             {hasActiveOrder && (
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-1 ring-white/50 animate-pulse" />
             )}
           </button>
         </div>
 
-        {/* Status Badge — top left */}
+        {/* Status Badge — top left with animated dot */}
         <div className={`absolute ${comesFromCatalog ? 'right-3 top-10' : 'left-2.5 top-3'} z-20`}>
           <span 
-            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] sm:text-xs rounded-full font-bold shadow-md ${getStatusDisplay().color} text-white`}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold rounded-full shadow-md ${
+              businessConfig.coverImage
+                ? 'bg-black/30 backdrop-blur-sm text-white border border-white/10'
+                : `${getStatusDisplay().color} text-white`
+            }`}
           >
+            <span className={`w-1.5 h-1.5 rounded-full ${
+              businessStatus?.isOpen ? 'bg-emerald-400' : 'bg-red-400'
+            } ${businessStatus?.isOpen ? 'animate-pulse' : ''}`} />
             {getStatusDisplay().text}
           </span>
         </div>
@@ -228,49 +256,56 @@ const BusinessHeader = ({
         </div>
 
         {/* Business Name & Info */}
-        <div className="flex flex-col items-center px-4">
-          <h1 className={`text-xl sm:text-2xl font-bold mb-0.5 ${businessConfig.coverImage ? 'text-white' : 'text-gray-800'}`}>
+        <div className="flex flex-col items-center px-4 gap-1.5">
+          <h1 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${businessConfig.coverImage ? 'text-white drop-shadow-sm' : 'text-slate-800'}`}>
             {businessConfig.businessName || 'Mi Restaurante'}
           </h1>
           
-          {/* Rating chip */}
-          {reviewStats && reviewStats.totalReviews > 0 && (
-            <button
-              onClick={onShowReviews}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all active:scale-95 ${
-                businessConfig.coverImage
-                  ? 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
-                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-              }`}
-            >
-              <span>⭐</span>
-              <span>{reviewStats.averageRating.toFixed(1)}</span>
-              <span className={businessConfig.coverImage ? 'text-white/60' : 'text-amber-400'}>·</span>
-              <span className={businessConfig.coverImage ? 'text-white/80' : 'text-amber-600'}>{reviewStats.totalReviews} reseñas</span>
-              <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-            </button>
-          )}
+          {/* Rating chip + Address — horizontal row */}
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            {/* Rating chip */}
+            {reviewStats && reviewStats.totalReviews > 0 && (
+              <button
+                onClick={onShowReviews}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all active:scale-95 ${
+                  businessConfig.coverImage
+                    ? 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
+                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                }`}
+              >
+                <span className={businessConfig.coverImage ? 'text-amber-300' : 'text-amber-400'}>{HI.star('w-3.5 h-3.5')}</span>
+                <span className="font-bold">{reviewStats.averageRating.toFixed(1)}</span>
+                <span className={businessConfig.coverImage ? 'text-white/40' : 'text-amber-300'}>·</span>
+                <span className={businessConfig.coverImage ? 'text-white/80' : 'text-amber-600'}>{reviewStats.totalReviews} reseñas</span>
+                {HI.chevron(`w-2.5 h-2.5 ${businessConfig.coverImage ? 'text-white/40' : 'text-amber-400'}`)}
+              </button>
+            )}
 
-          {/* Address + Social — compact inline row */}
-          <div className="flex items-center justify-center gap-2 flex-wrap">
-          {businessConfig?.address && (
-            <a 
-              href={businessConfig?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`inline-flex items-center gap-1 text-xs transition-colors max-w-[200px] truncate ${
-                businessConfig.coverImage 
-                  ? 'text-white/80 hover:text-white' 
-                  : 'text-gray-500 hover:text-blue-600'
-              }`}
-            >
-              <FaMapMarkerAlt className="text-[10px] flex-shrink-0" />
-              <span className="truncate">{businessConfig.address}</span>
-            </a>
-          )}
+            {/* Separator dot */}
+            {reviewStats && reviewStats.totalReviews > 0 && businessConfig?.address && (
+              <span className={`text-[8px] ${businessConfig.coverImage ? 'text-white/30' : 'text-slate-300'}`}>●</span>
+            )}
+
+            {/* Address */}
+            {businessConfig?.address && (
+              <a 
+                href={businessConfig?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center gap-1 text-[11px] sm:text-xs transition-colors max-w-[220px] ${
+                  businessConfig.coverImage 
+                    ? 'text-white/70 hover:text-white' 
+                    : 'text-slate-400 hover:text-blue-600'
+                }`}
+              >
+                <span className="flex-shrink-0">{HI.mapPin('w-2.5 h-2.5')}</span>
+                <span className="truncate">{businessConfig.address}</span>
+              </a>
+            )}
+          </div>
           
           {/* Social Media Icons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center gap-3.5 mt-1">
             {businessConfig?.socialMedia?.facebook?.isVisible && businessConfig?.socialMedia?.facebook?.url && (
               <a 
                 href={businessConfig?.socialMedia?.facebook?.url}
@@ -278,8 +313,8 @@ const BusinessHeader = ({
                 rel="noopener noreferrer"
                 className={`transition-colors ${
                   businessConfig.coverImage 
-                    ? 'text-white hover:text-blue-300' 
-                    : 'text-gray-600 hover:text-blue-600'
+                    ? 'text-white/60 hover:text-blue-300' 
+                    : 'text-slate-300 hover:text-blue-600'
                 }`}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -295,8 +330,8 @@ const BusinessHeader = ({
                 rel="noopener noreferrer"
                 className={`transition-colors ${
                   businessConfig.coverImage 
-                    ? 'text-white hover:text-pink-300' 
-                    : 'text-gray-600 hover:text-pink-600'
+                    ? 'text-white/60 hover:text-pink-300' 
+                    : 'text-slate-300 hover:text-pink-600'
                 }`}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -312,8 +347,8 @@ const BusinessHeader = ({
                 rel="noopener noreferrer"
                 className={`transition-colors ${
                   businessConfig.coverImage 
-                    ? 'text-white hover:text-gray-300' 
-                    : 'text-gray-600 hover:text-black'
+                    ? 'text-white/60 hover:text-gray-300' 
+                    : 'text-slate-300 hover:text-black'
                 }`}
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -329,8 +364,8 @@ const BusinessHeader = ({
                 rel="noopener noreferrer"
                 className={`transition-colors ${
                   businessConfig.coverImage 
-                    ? 'text-white hover:text-blue-300' 
-                    : 'text-gray-600 hover:text-blue-600'
+                    ? 'text-white/60 hover:text-blue-300' 
+                    : 'text-slate-300 hover:text-blue-600'
                 }`}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -338,7 +373,6 @@ const BusinessHeader = ({
                 </svg>
               </a>
             )}
-          </div>
           </div>
         </div>
       </div>

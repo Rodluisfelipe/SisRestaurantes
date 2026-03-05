@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaTimes } from 'react-icons/fa';
 import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -8,136 +7,110 @@ import FeaturedProducts from './FeaturedProducts';
 import PendingReviewCard from './PendingReviewCard';
 import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
 
-// Función para obtener emoji basado en el nombre de la categoría
-const getCategoryEmoji = (categoryName) => {
-  if (!categoryName) return '🍽️';
-  
-  const name = categoryName.toLowerCase();
-  
-  // Mapeo de categorías comunes a emojis
-  const emojiMap = {
-    'bebidas': '🥤',
-    'bebida': '🥤',
-    'drinks': '🥤',
-    'bebidas frías': '🧊',
-    'bebidas calientes': '☕',
-    'café': '☕',
-    'coffee': '☕',
-    'postres': '🍰',
-    'postre': '🍰',
-    'dessert': '🍰',
-    'dulces': '🍭',
-    'entradas': '🥗',
-    'entrada': '🥗',
-    'appetizer': '🥗',
-    'ensaladas': '🥗',
-    'ensalada': '🥗',
-    'salad': '🥗',
-    'sopas': '🍲',
-    'sopa': '🍲',
-    'soup': '🍲',
-    'platos principales': '🍽️',
-    'plato principal': '🍽️',
-    'main course': '🍽️',
-    'carnes': '🥩',
-    'carne': '🥩',
-    'meat': '🥩',
-    'pescado': '🐟',
-    'pescados': '🐟',
-    'fish': '🐟',
-    'mariscos': '🦐',
-    'marisco': '🦐',
-    'seafood': '🦐',
-    'pollo': '🍗',
-    'chicken': '🍗',
-    'pasta': '🍝',
-    'pastas': '🍝',
-    'pizza': '🍕',
-    'pizzas': '🍕',
-    'hamburguesas': '🍔',
-    'hamburguesa': '🍔',
-    'burger': '🍔',
-    'sandwiches': '🥪',
-    'sandwich': '🥪',
-    'tacos': '🌮',
-    'taco': '🌮',
-    'burritos': '🌯',
-    'burrito': '🌯',
-    'wraps': '🌯',
-    'wrap': '🌯',
-    'vegetariano': '🥬',
-    'vegetariana': '🥬',
-    'vegan': '🥬',
-    'vegano': '🥬',
-    'vegana': '🥬',
-    'desayunos': '🥞',
-    'desayuno': '🥞',
-    'breakfast': '🥞',
-    'almuerzos': '🍽️',
-    'almuerzo': '🍽️',
-    'lunch': '🍽️',
-    'cenas': '🌙',
-    'cena': '🌙',
-    'dinner': '🌙',
-    'especiales': '⭐',
-    'especial': '⭐',
-    'special': '⭐',
-    'promociones': '🎉',
-    'promoción': '🎉',
-    'promotion': '🎉',
-    'combo': '🍱',
-    'combos': '🍱',
-    'menú del día': '📅',
-    'menu del dia': '📅',
-    'daily menu': '📅',
-    'kids': '👶',
-    'niños': '👶',
-    'infantil': '👶',
-    'extras': '➕',
-    'adicionales': '➕',
-    'add-ons': '➕'
+/* ── SVG Icons (stroke-based, admin panel style) ── */
+const MI = {
+  search: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>,
+  x: (cls = 'w-3.5 h-3.5') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>,
+  grid: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>,
+  chevron: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7"/></svg>,
+  package: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M16.5 9.4l-9-5.19M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0022 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>,
+  clipboard: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>,
+  check: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>,
+  sparkle: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z"/></svg>,
+};
+
+/* ── Category SVG Icons (stroke-based, matching the design system) ── */
+const CI = {
+  // Burger / Hamburguesa
+  burger: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M4 15h16a1 1 0 010 2H4a1 1 0 010-2z"/><path d="M5 15V13a7 7 0 0114 0v2"/><path d="M4 17v1a2 2 0 002 2h12a2 2 0 002-2v-1"/><path d="M8 13h.01M12 13h.01M16 13h.01"/></svg>,
+  // Pizza
+  pizza: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L4 20h16L12 2z"/><circle cx="10" cy="13" r="1"/><circle cx="14" cy="11" r="1"/><circle cx="11" cy="8" r="1"/></svg>,
+  // Bebida / Drink — glass with straw
+  drink: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M17 8H7l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13z"/><path d="M7 8l-1-4h12l-1 4"/><path d="M14 4l2-2"/></svg>,
+  // Coffee / Café
+  coffee: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 010 8h-1"/><path d="M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/><path d="M6 2v3M10 2v3M14 2v3"/></svg>,
+  // Postre / Dessert — cake
+  dessert: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M4 18h16v2a1 1 0 01-1 1H5a1 1 0 01-1-1v-2z"/><path d="M4 18v-2a8 8 0 0116 0v2"/><path d="M12 4v4"/><circle cx="12" cy="3" r="1"/></svg>,
+  // Entrada / Appetizer — small plate
+  appetizer: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="14" rx="9" ry="4"/><path d="M3 14v1a9 4 0 0018 0v-1"/><path d="M12 6v4M9 8l3-4 3 4"/></svg>,
+  // Ensalada / Salad — leaf
+  salad: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.5S2 11.5 2 13.5s1.75 3.75 1.75 3.75"/></svg>,
+  // Sopa / Soup — bowl with steam
+  soup: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18"/><path d="M5 12v2a7 7 0 0014 0v-2"/><path d="M9 4c0 1.5-1 2-1 3M12 4c0 1.5-1 2-1 3M15 4c0 1.5-1 2-1 3"/></svg>,
+  // Pollo / Chicken — drumstick
+  chicken: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 2.5a5 5 0 010 7.07l-5.66 5.66a2 2 0 01-2.83 0l-.7-.71a2 2 0 010-2.83l5.65-5.65a5 5 0 017.07 0z" transform="rotate(-10 12 12)"/><path d="M7 14l-4 4M8 17l-2 2"/></svg>,
+  // Pasta / Noodles
+  pasta: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18"/><path d="M5 12c0 5 3 8 7 8s7-3 7-8"/><path d="M6 4c0 2.5 2 4 6 4s6-1.5 6-4"/><path d="M6 4v8M18 4v8M12 4v8"/></svg>,
+  // Mariscos / Seafood — fish
+  seafood: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M6.34 18.66l-2.83-2.83a2 2 0 010-2.83l9.9-9.9a2 2 0 012.83 0l2.83 2.83a2 2 0 010 2.83l-9.9 9.9a2 2 0 01-2.83 0z" transform="rotate(-15 12 12)"/><path d="M2 22l4-4M18 6l4-4"/><circle cx="15" cy="9" r="1"/></svg>,
+  // Taco
+  taco: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M4 18a8 8 0 0116 0"/><path d="M4 18c0 1 2 3 8 3s8-2 8-3"/><path d="M8 14v-2M12 14v-3M16 14v-2"/></svg>,
+  // Sandwich / Wrap
+  sandwich: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l9-14 9 14H3z"/><path d="M6 17h12"/><path d="M8 13h8"/></svg>,
+  // Desayuno / Breakfast — egg & toast
+  breakfast: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="13" r="6"/><circle cx="10" cy="13" r="2"/><path d="M18 8h2a2 2 0 012 2v4a2 2 0 01-2 2h-2V8z"/><path d="M18 8H14"/></svg>,
+  // Combo — stacked boxes
+  combo: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="13" width="10" height="9" rx="1"/><rect x="12" y="9" width="10" height="13" rx="1"/><path d="M2 17h10M12 15h10"/></svg>,
+  // Almuerzo / Cena — plate with utensils
+  meal: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><circle cx="12" cy="13" r="4"/><path d="M3 3l3 7M21 3l-3 7"/></svg>,
+  // Arroz / Rice — bowl
+  rice: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"/><path d="M5 12c0 5.5 3.5 9 7 9s7-3.5 7-9"/><path d="M8 9c0-2 2-4 4-4s4 2 4 4"/></svg>,
+  // Snack — cookie/chip
+  snack: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1"/><circle cx="14" cy="9" r="1"/><circle cx="11" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg>,
+  // Default — utensils
+  utensils: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v20M7 2v8a4 4 0 01-4 4"/><path d="M7 2v8a4 4 0 004 4v8"/><path d="M21 2v4a7 4 0 01-7 4v12"/><path d="M21 2c-1 0-3 1-3 4"/></svg>,
+};
+
+/* ── Map category name → SVG icon ── */
+const getCategoryIcon = (categoryName, cls = 'w-4 h-4') => {
+  const name = (categoryName || '').toLowerCase().trim();
+  const map = {
+    'hamburguesas': 'burger', 'hamburguesa': 'burger', 'burgers': 'burger', 'burger': 'burger',
+    'pizza': 'pizza', 'pizzas': 'pizza',
+    'bebidas': 'drink', 'bebida': 'drink', 'drinks': 'drink', 'bebidas frías': 'drink', 'bebidas frias': 'drink',
+    'bebidas calientes': 'coffee', 'café': 'coffee', 'cafés': 'coffee', 'cafe': 'coffee', 'coffee': 'coffee',
+    'jugos': 'drink', 'jugo': 'drink', 'batidos': 'drink', 'batido': 'drink', 'malteadas': 'drink',
+    'postres': 'dessert', 'postre': 'dessert', 'desserts': 'dessert', 'dulces': 'dessert',
+    'entradas': 'appetizer', 'entrada': 'appetizer', 'appetizers': 'appetizer', 'aperitivos': 'appetizer',
+    'ensaladas': 'salad', 'ensalada': 'salad', 'salads': 'salad',
+    'sopas': 'soup', 'sopa': 'soup', 'caldos': 'soup', 'cremas': 'soup',
+    'pollo': 'chicken', 'pollos': 'chicken', 'alitas': 'chicken', 'chicken': 'chicken',
+    'pasta': 'pasta', 'pastas': 'pasta',
+    'mariscos': 'seafood', 'pescado': 'seafood', 'pescados': 'seafood', 'seafood': 'seafood',
+    'tacos': 'taco', 'taco': 'taco',
+    'wraps': 'sandwich', 'wrap': 'sandwich', 'burritos': 'sandwich', 'burrito': 'sandwich',
+    'sandwiches': 'sandwich', 'sandwich': 'sandwich', 'sándwiches': 'sandwich',
+    'desayunos': 'breakfast', 'desayuno': 'breakfast', 'breakfast': 'breakfast',
+    'almuerzos': 'meal', 'almuerzo': 'meal', 'cenas': 'meal', 'cena': 'meal', 'platos fuertes': 'meal', 'plato fuerte': 'meal',
+    'combos': 'combo', 'combo': 'combo', 'promociones': 'combo', 'ofertas': 'combo',
+    'arroz': 'rice', 'arroces': 'rice',
+    'snacks': 'snack', 'snack': 'snack', 'acompañamientos': 'snack', 'acompañamiento': 'snack', 'extras': 'snack', 'complementos': 'snack',
   };
-  
-  // Buscar coincidencia exacta primero
-  if (emojiMap[name]) {
-    return emojiMap[name];
-  }
-  
-  // Buscar coincidencia parcial
-  for (const [key, emoji] of Object.entries(emojiMap)) {
-    if (name.includes(key) || key.includes(name)) {
-      return emoji;
-    }
-  }
-  
-  // Emoji por defecto basado en palabras clave
-  if (name.includes('bebida') || name.includes('drink')) return '🥤';
-  if (name.includes('postre') || name.includes('dessert')) return '🍰';
-  if (name.includes('entrada') || name.includes('appetizer')) return '🥗';
-  if (name.includes('sopa') || name.includes('soup')) return '🍲';
-  if (name.includes('carne') || name.includes('meat')) return '🥩';
-  if (name.includes('pescado') || name.includes('fish')) return '🐟';
-  if (name.includes('marisco') || name.includes('seafood')) return '🦐';
-  if (name.includes('pollo') || name.includes('chicken')) return '🍗';
-  if (name.includes('pasta')) return '🍝';
-  if (name.includes('pizza')) return '🍕';
-  if (name.includes('hamburguesa') || name.includes('burger')) return '🍔';
-  if (name.includes('sandwich')) return '🥪';
-  if (name.includes('taco')) return '🌮';
-  if (name.includes('burrito') || name.includes('wrap')) return '🌯';
-  if (name.includes('vegetar') || name.includes('vegan')) return '🥬';
-  if (name.includes('desayuno') || name.includes('breakfast')) return '🥞';
-  if (name.includes('almuerzo') || name.includes('lunch')) return '🍽️';
-  if (name.includes('cena') || name.includes('dinner')) return '🌙';
-  if (name.includes('especial') || name.includes('special')) return '⭐';
-  if (name.includes('promo') || name.includes('promotion')) return '🎉';
-  if (name.includes('combo')) return '🍱';
-  if (name.includes('menú') || name.includes('menu')) return '📅';
-  if (name.includes('niño') || name.includes('kids')) return '👶';
-  if (name.includes('extra') || name.includes('adicional')) return '➕';
-  
-  // Emoji por defecto
-  return '🍽️';
+
+  // Exact match
+  if (map[name]) return CI[map[name]](cls);
+
+  // Partial match
+  if (name.includes('burger') || name.includes('hamburguesa')) return CI.burger(cls);
+  if (name.includes('pizza')) return CI.pizza(cls);
+  if (name.includes('bebida') || name.includes('drink') || name.includes('jugo') || name.includes('batido')) return CI.drink(cls);
+  if (name.includes('café') || name.includes('cafe') || name.includes('coffee')) return CI.coffee(cls);
+  if (name.includes('postre') || name.includes('dessert') || name.includes('dulce')) return CI.dessert(cls);
+  if (name.includes('entrada') || name.includes('appetizer')) return CI.appetizer(cls);
+  if (name.includes('ensalada') || name.includes('salad')) return CI.salad(cls);
+  if (name.includes('sopa') || name.includes('caldo') || name.includes('crema')) return CI.soup(cls);
+  if (name.includes('pollo') || name.includes('chicken') || name.includes('alita')) return CI.chicken(cls);
+  if (name.includes('pasta')) return CI.pasta(cls);
+  if (name.includes('marisco') || name.includes('pescado') || name.includes('seafood')) return CI.seafood(cls);
+  if (name.includes('taco')) return CI.taco(cls);
+  if (name.includes('sandwich') || name.includes('wrap') || name.includes('burrito')) return CI.sandwich(cls);
+  if (name.includes('desayuno') || name.includes('breakfast')) return CI.breakfast(cls);
+  if (name.includes('almuerzo') || name.includes('cena') || name.includes('plato')) return CI.meal(cls);
+  if (name.includes('combo') || name.includes('promo')) return CI.combo(cls);
+  if (name.includes('arroz') || name.includes('rice')) return CI.rice(cls);
+  if (name.includes('snack') || name.includes('extra') || name.includes('complement')) return CI.snack(cls);
+
+  return CI.utensils(cls);
 };
 
 /**
@@ -225,12 +198,6 @@ const FilterableMenu = ({
       
       return orderA - orderB;
     });
-  };
-
-  // Get icon for category based on name (professional style without emojis)
-  const getCategoryIcon = (categoryName) => {
-    // Return empty string to remove all emojis for professional look
-    return '';
   };
 
   // ── Sticky detection via sentinel ──
@@ -426,15 +393,15 @@ const FilterableMenu = ({
         {hasActiveOrder && (() => {
           const isCompleted = activeOrderStatus === 'completed' || activeOrderStatus === 'ready';
           const statusMap = {
-            pending_payment: { label: 'Pendiente de pago', icon: '💳', sub: 'Realiza el pago para continuar' },
-            payment_uploaded: { label: 'Verificando pago', icon: '📤', sub: 'El restaurante revisa tu comprobante' },
-            payment_confirmed: { label: 'Pago confirmado', icon: '✅', sub: 'Tu pedido será preparado pronto' },
-            pending: { label: 'Pedido recibido', icon: '📋', sub: 'El restaurante recibió tu pedido' },
-            inProgress: { label: 'En preparación', icon: '👨\u200d\ud83c\udf73', sub: 'Están preparando tu pedido' },
-            ready: { label: '¡Pedido listo!', icon: '🎉', sub: 'Tu pedido está listo para recoger' },
-            completed: { label: '¡Pedido completado!', icon: '✨', sub: 'Tu pedido ha sido entregado' },
+            pending_payment: { label: 'Pendiente de pago', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Realiza el pago para continuar' },
+            payment_uploaded: { label: 'Verificando pago', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'El restaurante revisa tu comprobante' },
+            payment_confirmed: { label: 'Pago confirmado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido será preparado pronto' },
+            pending: { label: 'Pedido recibido', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'El restaurante recibió tu pedido' },
+            inProgress: { label: 'En preparación', icon: MI.package('w-5 h-5 text-white'), sub: 'Están preparando tu pedido' },
+            ready: { label: 'Pedido listo', icon: MI.sparkle('w-5 h-5 text-white'), sub: 'Tu pedido está listo para recoger' },
+            completed: { label: 'Pedido completado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido ha sido entregado' },
           };
-          const info = statusMap[activeOrderStatus] || { label: 'Pedido en curso', icon: '📋', sub: 'Toca para ver el estado' };
+          const info = statusMap[activeOrderStatus] || { label: 'Pedido en curso', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Toca para ver el estado' };
 
           return (
             <motion.div
@@ -453,7 +420,7 @@ const FilterableMenu = ({
               >
                 <div className="flex items-center gap-3 px-4 py-3">
                   <div className="relative flex-shrink-0">
-                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-lg">
+                    <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
                       {info.icon}
                     </div>
                     {!isCompleted && (
@@ -518,16 +485,18 @@ const FilterableMenu = ({
         className="mb-4 sm:mb-5"
       >
         <div className="relative">
-          <FaSearch 
-            className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-sm sm:text-base pointer-events-none"
+          <span
+            className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors"
             style={{ color: searchTerm ? themeColor : '#94a3b8' }}
-          />
+          >
+            {MI.search('w-[18px] h-[18px] sm:w-5 sm:h-5')}
+          </span>
           <input
             type="text"
             placeholder="Buscar productos..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full pl-10 sm:pl-12 pr-10 py-3 sm:py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:bg-white transition-colors duration-200 text-sm sm:text-base text-gray-700 placeholder-gray-400"
+            className="w-full pl-10 sm:pl-12 pr-10 py-3 sm:py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all duration-200 text-sm sm:text-base text-slate-700 placeholder-slate-400"
             style={{
               '--tw-ring-color': `${themeColor}40`,
               borderColor: searchTerm ? themeColor : undefined
@@ -540,10 +509,10 @@ const FilterableMenu = ({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0 }}
                 onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-gray-200 text-gray-500 hover:bg-gray-300 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-lg bg-slate-200 text-slate-500 hover:bg-slate-300 transition-colors"
                 aria-label="Limpiar búsqueda"
               >
-                <FaTimes className="text-xs" />
+                {MI.x('w-3 h-3')}
               </motion.button>
             )}
           </AnimatePresence>
@@ -558,7 +527,7 @@ const FilterableMenu = ({
         ref={pillBarRef}
         className={`z-40 ${
           isSticky
-            ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6 py-2 mb-4 sm:mb-5'
+            ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6 py-2.5 mb-4 sm:mb-5'
             : 'mb-4 sm:mb-5'
         }`}
       >
@@ -569,18 +538,21 @@ const FilterableMenu = ({
               ref={el => (pillRefs.current['all'] = el)}
               onClick={() => handlePillClick('all')}
               whileTap={{ scale: 0.93 }}
-              className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-colors duration-200 ${
+              className={`px-4 py-2 rounded-xl whitespace-nowrap font-semibold text-[13px] transition-all duration-200 ${
                 visualActive === 'all'
-                  ? 'shadow-lg'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 shadow-sm'
+                  ? 'shadow-md'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 shadow-sm'
               }`}
               style={visualActive === 'all' ? {
                 backgroundColor: themeColor,
                 color: themeTextColor,
-                boxShadow: `0 4px 14px ${themeColor}35`
+                boxShadow: `0 4px 14px ${themeColor}30`
               } : undefined}
             >
-              🍽️ Todos ({totalProductCount})
+              Todos
+              <span className={`ml-1.5 text-[11px] ${visualActive === 'all' ? 'opacity-80' : 'text-slate-400'}`}>
+                {totalProductCount}
+              </span>
             </motion.button>
 
             {/* Category pills */}
@@ -592,18 +564,22 @@ const FilterableMenu = ({
                   ref={el => (pillRefs.current[category._id] = el)}
                   onClick={() => handlePillClick(category._id)}
                   whileTap={{ scale: 0.93 }}
-                  className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold text-sm transition-colors duration-200 ${
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl whitespace-nowrap font-semibold text-[13px] transition-all duration-200 ${
                     isActive
-                      ? 'shadow-lg'
-                      : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300 shadow-sm'
+                      ? 'shadow-md'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 shadow-sm'
                   }`}
                   style={isActive ? {
                     backgroundColor: themeColor,
                     color: themeTextColor,
-                    boxShadow: `0 4px 14px ${themeColor}35`
+                    boxShadow: `0 4px 14px ${themeColor}30`
                   } : undefined}
                 >
-                  {getCategoryEmoji(category.name)} {category.name} ({category.count})
+                  <span className={isActive ? 'opacity-80' : 'opacity-50'}>{getCategoryIcon(category.name, 'w-3.5 h-3.5')}</span>
+                  {category.name}
+                  <span className={`text-[11px] ${isActive ? 'opacity-70' : 'text-slate-400'}`}>
+                    {category.count}
+                  </span>
                 </motion.button>
               );
             })}
@@ -611,7 +587,7 @@ const FilterableMenu = ({
         </div>
 
         {/* ── Scroll progress line ── */}
-        <div className="h-[2px] bg-gray-100 mt-1.5 rounded-full overflow-hidden">
+        <div className="h-[2px] bg-slate-100 mt-2 rounded-full overflow-hidden">
           <motion.div
             className="h-full rounded-full w-full origin-left"
             style={{ backgroundColor: themeColor }}
@@ -664,16 +640,17 @@ const FilterableMenu = ({
                 {/* Suggest popular categories */}
                 {categoriesWithProducts.length > 0 && (
                   <div className="mt-6 w-full">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Explora categorías</p>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Explora categorías</p>
                     <div className="flex flex-wrap justify-center gap-2">
                       {categoriesWithProducts.slice(0, 4).map(cat => (
                         <motion.button
                           key={cat._id}
                           whileTap={{ scale: 0.93 }}
                           onClick={() => { clearSearch(); handlePillClick(cat._id); }}
-                          className="px-3.5 py-2 rounded-full text-sm font-medium border border-gray-200 bg-white text-gray-700 shadow-sm hover:shadow-md transition-all"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-700 shadow-sm hover:shadow-md transition-all"
                         >
-                          {getCategoryEmoji(cat.name)} {cat.name}
+                          <span className="opacity-50">{getCategoryIcon(cat.name, 'w-3.5 h-3.5')}</span>
+                          {cat.name}
                         </motion.button>
                       ))}
                     </div>
@@ -717,20 +694,19 @@ const FilterableMenu = ({
                     transition={{ delay: categoryIndex * 0.06 }}
                   >
                     {/* Category Header */}
-                    <div className="flex items-center gap-3 mb-3 sm:mb-4">
+                    <div className="flex items-center gap-2.5 mb-3 sm:mb-4">
                       <div 
-                        className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-base sm:text-lg shadow-sm"
-                        style={{
-                          backgroundColor: `${themeColor}15`
-                        }}
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: `${themeColor}12`, color: themeColor }}
                       >
-                        {getCategoryEmoji(category.name)}
+                        {getCategoryIcon(category.name, 'w-4 h-4 sm:w-[18px] sm:h-[18px]')}
                       </div>
-                      <h2 className="text-base sm:text-lg font-bold text-gray-800">{category.name}</h2>
+                      <h2 className="text-[15px] sm:text-base font-bold text-slate-800 tracking-tight">{category.name}</h2>
+                      <span className="text-[11px] text-slate-400 font-medium">{categoryProducts.length}</span>
                       <div 
                         className="flex-1 h-px"
                         style={{
-                          background: `linear-gradient(to right, ${themeColor}30, transparent)`
+                          background: `linear-gradient(to right, ${themeColor}20, transparent)`
                         }}
                       />
                     </div>
@@ -764,21 +740,19 @@ const FilterableMenu = ({
                 {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => (
                   <div 
                     key={category._id}
-                    className="flex items-center gap-3 mb-3 sm:mb-4"
+                    className="flex items-center gap-2.5 mb-3 sm:mb-4"
                   >
                     <div 
-                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-lg sm:text-xl shadow-sm"
-                      style={{
-                        backgroundColor: `${themeColor}15`
-                      }}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${themeColor}12`, color: themeColor }}
                     >
-                      {getCategoryEmoji(category.name)}
+                      {getCategoryIcon(category.name, 'w-[18px] h-[18px] sm:w-5 sm:h-5')}
                     </div>
-                    <h2 className="text-lg sm:text-xl font-bold text-gray-800">{category.name}</h2>
+                    <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">{category.name}</h2>
                     <div 
                       className="flex-1 h-px"
                       style={{
-                        background: `linear-gradient(to right, ${themeColor}30, transparent)`
+                        background: `linear-gradient(to right, ${themeColor}20, transparent)`
                       }}
                     />
                   </div>

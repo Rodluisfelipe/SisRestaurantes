@@ -5,6 +5,7 @@ const Order = require("../Models/Order");
 const CompletedOrder = require("../Models/CompletedOrder");
 const Customer = require("../Models/Customer");
 const Coupon = require("../Models/Coupon");
+const BusinessCoupon = require("../Models/BusinessCoupon");
 const BusinessConfig = require("../Models/BusinessConfig");
 const { ObjectId } = require("mongoose").Types;
 const socketService = require("../services/socketService");
@@ -330,10 +331,32 @@ router.post("/", createOrderLimiter, async (req, res) => {
     let finalAmount = numericTotalAmount;
     
     if (couponCode) {
-      coupon = await Coupon.findOne({ 
-        businessId: businessObjectId, 
-        code: couponCode.toUpperCase() 
-      });
+      // Resolve businessId to slug for BusinessCoupon lookup
+      let businessSlug = null;
+      try {
+        const businessConfig = await BusinessConfig.findById(businessObjectId).select('slug').lean();
+        if (businessConfig && businessConfig.slug) {
+          businessSlug = businessConfig.slug; // slug like "felipe", "macdonalds"
+        }
+      } catch (err) {
+        logger.warn('Could not resolve business slug for coupon lookup', { error: err.message });
+      }
+
+      // Search in BusinessCoupon (business discount coupons) using slug
+      if (businessSlug) {
+        coupon = await BusinessCoupon.findOne({ 
+          businessId: businessSlug, 
+          code: couponCode.toUpperCase() 
+        });
+      }
+
+      // Fallback: search in subscription Coupon model with ObjectId
+      if (!coupon) {
+        coupon = await Coupon.findOne({ 
+          businessId: businessObjectId, 
+          code: couponCode.toUpperCase() 
+        });
+      }
       
       if (coupon) {
         const orderData = {
@@ -347,9 +370,7 @@ router.post("/", createOrderLimiter, async (req, res) => {
         if (validation.valid) {
           discountAmount = coupon.calculateDiscount(numericTotalAmount);
           finalAmount = numericTotalAmount - discountAmount;
-          
-          // Record coupon usage
-          await coupon.recordUsage(customer ? customer._id : null, discountAmount);
+          // Usage will be recorded after successful order save
         } else {
           return res.status(400).json({ 
             message: `Cupón inválido: ${validation.error}` 
@@ -412,6 +433,15 @@ router.post("/", createOrderLimiter, async (req, res) => {
     });
     
     const savedOrder = await newOrder.save();
+
+    // Record coupon usage AFTER successful order save
+    if (coupon) {
+      try {
+        await coupon.recordUsage(customer ? customer._id : null, discountAmount);
+      } catch (couponErr) {
+        logger.warn('Failed to record coupon usage (order was created)', { error: couponErr.message, orderId: savedOrder._id });
+      }
+    }
     
     // Emit socket event
     socketService.emitToBusiness(businessObjectId.toString(), "order_created", savedOrder);

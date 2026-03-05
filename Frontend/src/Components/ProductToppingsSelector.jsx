@@ -11,6 +11,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   const [quantity, setQuantity] = useState(1);
   const [isValid, setIsValid] = useState(false);
   const [scrollToRequired, setScrollToRequired] = useState(false);
+  const [imageExpanded, setImageExpanded] = useState(false);
 
   // Función para verificar si una opción es gratis
   const isFreeOption = (optionName) => {
@@ -516,279 +517,326 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   };
 
   // Renderizar el modal con los toppings
+  const themeBtn = businessConfig.theme?.buttonColor || '#3B82F6';
+  const themeTxt = businessConfig.theme?.buttonTextColor || '#ffffff';
+
   return (
+    <>
+    {/* ── Fullscreen image lightbox ── */}
+    {imageExpanded && product.image && (
+      <div
+        className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4"
+        onClick={() => setImageExpanded(false)}
+      >
+        <button
+          className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all flex items-center justify-center z-50"
+          onClick={() => setImageExpanded(false)}
+          aria-label="Cerrar imagen"
+        >
+          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+        <img
+          src={product.image}
+          alt={product.name}
+          className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        />
+        <p className="absolute bottom-6 left-0 right-0 text-center text-white/70 text-sm font-medium">{product.name}</p>
+      </div>
+    )}
+
     <div
       ref={backdropRef}
-      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-40"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-40"
       onMouseDown={handleBackdropPointerDown}
       onTouchEnd={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
         <div
-          className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200/50 backdrop-blur-lg flex flex-col modal-h-full pb-safe"
+          className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full shadow-2xl flex flex-col modal-h-full pb-safe"
           onClick={handleModalClick}
           onTouchStart={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
         >
-        {/* Encabezado del modal */}
-        <div className="sticky top-0 bg-gradient-to-r from-white to-slate-50 border-b border-slate-200 p-4 sm:p-6 flex justify-between items-center z-10 backdrop-blur-lg rounded-t-2xl">
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            <div 
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg"
-              style={{ backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6' }}
-            >
-              <span className="text-white text-sm sm:text-lg font-bold">🍽️</span>
-            </div>
-            <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-800">Personalizar Producto</h2>
-              <p className="text-xs sm:text-sm text-slate-500">{product.name}</p>
-            </div>
-          </div>
-          <button
-            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-800 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md"
-            onClick={onClose}
-            aria-label="Cerrar"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
 
-        {/* Cuerpo del modal - Scrolleable */}
-        <div className="flex-1 overflow-y-auto px-6 pt-4 pb-4 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 min-h-0">
-          {/* Imagen del producto */}
-          {product.image && (
-            <div className="relative w-full h-32 sm:h-40 mb-3 sm:mb-4 rounded-lg overflow-hidden bg-white">
+        {/* ── Header: product image hero + overlay info ── */}
+        <div className="relative flex-shrink-0">
+          {/* Drag indicator (mobile) */}
+          <div className="sm:hidden flex justify-center pt-2.5 pb-1 absolute top-0 left-0 right-0 z-30">
+            <div className="w-10 h-1 rounded-full bg-white/50" />
+          </div>
+
+          {product.image ? (
+            <div className="relative h-44 sm:h-52 overflow-hidden rounded-t-3xl sm:rounded-t-2xl">
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
+              {/* Expand image button */}
+              <button
+                className="absolute top-3 left-3 w-8 h-8 rounded-xl bg-black/30 backdrop-blur-md text-white/90 hover:bg-black/50 transition-all flex items-center justify-center z-20"
+                onClick={() => setImageExpanded(true)}
+                aria-label="Ampliar imagen"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+              </button>
+              {/* Close button */}
+              <button
+                className="absolute top-3 right-3 w-8 h-8 rounded-xl bg-black/30 backdrop-blur-md text-white/90 hover:bg-black/50 transition-all flex items-center justify-center z-20"
+                onClick={onClose}
+                aria-label="Cerrar"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+              {/* Product info over image */}
+              <div className="absolute bottom-0 left-0 right-0 p-4">
+                <h2 className="text-lg sm:text-xl font-extrabold text-white drop-shadow-lg leading-tight">{product.name}</h2>
+                {product.description && (
+                  <p className="text-[12px] sm:text-[13px] text-white/80 mt-1 line-clamp-2 leading-snug">{product.description}</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="px-4 pt-4 pb-3 flex items-start justify-between border-b border-slate-100 rounded-t-3xl sm:rounded-t-2xl">
+              <div className="flex items-center gap-3 min-w-0">
+                <div 
+                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                  style={{ backgroundColor: `${themeBtn}12`, color: themeBtn }}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v1m0 16v1m-8-9H3m18 0h-1M5.6 5.6l.7.7m12.1-.7l-.7.7M5.6 18.4l.7-.7m12.1.7l-.7-.7"/><circle cx="12" cy="12" r="4"/></svg>
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 truncate">{product.name}</h2>
+                  {product.description && (
+                    <p className="text-[12px] text-slate-400 mt-0.5 line-clamp-2 leading-snug">{product.description}</p>
+                  )}
+                </div>
+              </div>
+              <button
+                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 transition-all flex items-center justify-center flex-shrink-0 ml-2"
+                onClick={onClose}
+                aria-label="Cerrar"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
             </div>
           )}
+        </div>
 
-          {/* Descripción del producto */}
-          {product.description && (
-            <div className="mb-4">
-              <p className="text-gray-600">{product.description}</p>
-            </div>
-          )}
+        {/* ── Body: scrollable ── */}
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-4 min-h-0">
 
-          {/* Control de cantidad */}
-          <div className="mb-4 flex items-center justify-between">
-            <span className="text-gray-700 font-medium">Cantidad:</span>
-            <div className="flex items-center border rounded-lg overflow-hidden">
+          {/* Quantity stepper */}
+          <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <span className="text-sm font-semibold text-slate-700">Cantidad</span>
+            <div className="flex items-center gap-0.5">
               <button
                 onClick={() => quantity > 1 && setQuantity(quantity - 1)}
-                className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700"
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 transition-all active:scale-90"
+                style={quantity > 1 ? { backgroundColor: `${themeBtn}10`, color: themeBtn } : { backgroundColor: '#f1f5f9' }}
+                disabled={quantity <= 1}
                 aria-label="Disminuir cantidad"
               >
-                -
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M5 12h14"/></svg>
               </button>
-              <span className="px-4 py-1 font-medium text-gray-800">{quantity}</span>
+              <span className="w-10 text-center font-bold text-slate-800 tabular-nums">{quantity}</span>
               <button
                 onClick={() => setQuantity(quantity + 1)}
-                className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700"
+                className="w-8 h-8 rounded-lg flex items-center justify-center transition-all active:scale-90"
+                style={{ backgroundColor: `${themeBtn}10`, color: themeBtn }}
                 aria-label="Aumentar cantidad"
               >
-                +
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
               </button>
             </div>
           </div>
 
           {/* Indicador de opciones adicionales */}
           {uniqueToppingGroups.length > 0 && (
-            <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">!</span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-blue-800">Opciones adicionales disponibles</p>
-                    <p className="text-xs text-blue-600">Desliza hacia abajo para ver todas las opciones</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center">
-                  <svg className="w-4 h-4 text-blue-500 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                  <span className="text-xs text-blue-500 font-medium">↓</span>
-                </div>
+            <div className="mb-4 flex items-center gap-2.5 p-3 rounded-xl border border-slate-100 bg-slate-50/80">
+              <div 
+                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${themeBtn}12`, color: themeBtn }}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v1m0 16v1m-8-9H3m18 0h-1"/><circle cx="12" cy="12" r="4"/></svg>
               </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-semibold text-slate-700">Opciones adicionales disponibles</p>
+                <p className="text-[11px] text-slate-400">Desliza hacia abajo para ver todas las opciones</p>
+              </div>
+              <svg className="w-4 h-4 text-slate-300 animate-bounce flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
             </div>
           )}
 
           {/* Lista de grupos de toppings */}
           {uniqueToppingGroups.length > 0 ? (
-            <div className="space-y-4">
-              
+            <div className="space-y-3">
               {uniqueToppingGroups.map((group, index) => (
                 group && group._id ? (
                   <div
                     key={group._id}
                     id={`group-${group._id}`}
-                    className={`bg-gradient-to-r from-slate-50 to-white rounded-xl p-4 mb-4 last:mb-0 shadow-sm border border-slate-200/50 hover:shadow-md transition-all duration-200 ${
-                      scrollToRequired && group.isRequired 
-                        ? 'ring-2 ring-red-400 bg-red-50 shadow-lg' 
-                        : ''
+                    className={`rounded-xl border overflow-hidden transition-all duration-300 ${
+                      scrollToRequired && group.isRequired && !(selectedToppings[group._id]?.length > 0)
+                        ? 'border-red-300 bg-red-50/50 shadow-md ring-1 ring-red-200' 
+                        : countSelections(group) > 0
+                          ? 'border-slate-200 bg-white shadow-sm'
+                          : 'border-slate-150 bg-slate-50/50'
                     }`}
                   >
-                    {/* Encabezado del grupo */}
+                    {/* Group header */}
                     <div
                       onClick={() => toggleGroup(group._id)}
-                      className="flex items-center justify-between cursor-pointer mb-3"
+                      className="flex items-center gap-3 p-3.5 cursor-pointer select-none"
                     >
-                      <div className="flex-1">
-                        <div className="flex justify-between">
-                          <div>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <h3 className="font-medium text-gray-800">{group.name}</h3>
-                            {group.description && (
-                              <p className="text-sm text-gray-600">{group.description}</p>
-                            )}
-                              </div>
-                              {/* Verificar si hay opciones gratis en el grupo principal */}
-                              {group.options && group.options.some(option => isFreeOption(option.name)) && (
-                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full ml-2">
-                                  🎉 Opciones gratis
-                                </span>
-                              )}
-                              {/* Verificar si hay opciones gratis en subgrupos */}
-                              {group.subGroups && group.subGroups.some(subGroup => 
-                                subGroup.options && subGroup.options.some(option => isFreeOption(option.name))
-                              ) && (
-                                <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full ml-2">
-                                  🎉 Opciones gratis
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          
-                          {/* Indicador de selecciones */}
-                          {countSelections(group) > 0 && (
-                            <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                              {countSelections(group)} {countSelections(group) === 1 ? 'selección' : 'selecciones'}
+                      {/* Icon */}
+                      <div 
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ 
+                          backgroundColor: countSelections(group) > 0 ? `${themeBtn}15` : '#f1f5f9',
+                          color: countSelections(group) > 0 ? themeBtn : '#94a3b8'
+                        }}
+                      >
+                        {group.isMultipleChoice ? (
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 12l2 2 4-4"/></svg>
+                        ) : (
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3" fill="currentColor" stroke="none"/></svg>
+                        )}
+                      </div>
+
+                      {/* Text */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-sm text-slate-800 truncate">{group.name}</h3>
+                          {/* Free options badge */}
+                          {(
+                            (group.options && group.options.some(option => isFreeOption(option.name))) ||
+                            (group.subGroups && group.subGroups.some(subGroup => 
+                              subGroup.options && subGroup.options.some(option => isFreeOption(option.name))
+                            ))
+                          ) && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100 flex-shrink-0">
+                              <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z"/></svg>
+                              Gratis
                             </span>
                           )}
                         </div>
-                        
-                        <div className="text-xs mt-1 flex flex-wrap gap-2">
-                          {group.isRequired && (
-                            <span className="bg-red-100 text-red-800 px-1.5 py-0.5 rounded">
-                              Obligatorio
-                            </span>
-                          )}
-                          
-                          {group.isMultipleChoice ? (
-                            <span className="bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
-                              Selección múltiple
-                            </span>
+                        {/* Tags row */}
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          {group.isRequired ? (
+                            <span className="text-[10px] font-semibold text-red-500">Obligatorio</span>
                           ) : (
-                            <span className="bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">
-                              Selección única
-                            </span>
+                            <span className="text-[10px] font-medium text-slate-400">Opcional</span>
                           )}
-                          
+                          <span className="text-[8px] text-slate-300">●</span>
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {group.isMultipleChoice ? 'Selección múltiple' : 'Selección única'}
+                          </span>
                           {Number(group.basePrice) > 0 && (
-                            <span className="bg-green-100 text-green-800 px-1.5 py-0.5 rounded">
-                              +${group.basePrice}
-                            </span>
+                            <>
+                              <span className="text-[8px] text-slate-300">●</span>
+                              <span className="text-[10px] font-semibold text-emerald-600">+${group.basePrice?.toLocaleString()}</span>
+                            </>
                           )}
                         </div>
                       </div>
-                      
-                      <div className="flex items-center">
-                        {/* Botón para limpiar selecciones */}
+
+                      {/* Right side: count + clear + chevron */}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
                         {countSelections(group) > 0 && (
-                          <button
-                            onClick={(e) => clearGroupSelections(group._id, e)}
-                            className="mr-2 p-1 hover:bg-gray-200 rounded-full text-gray-500"
-                            aria-label="Limpiar selecciones"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
+                          <>
+                            <span 
+                              className="inline-flex items-center justify-center text-[10px] font-bold rounded-full w-5 h-5"
+                              style={{ backgroundColor: `${themeBtn}15`, color: themeBtn }}
+                            >
+                              {countSelections(group)}
+                            </span>
+                            <button
+                              onClick={(e) => clearGroupSelections(group._id, e)}
+                              className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                              aria-label="Limpiar selecciones"
+                            >
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </button>
+                          </>
                         )}
-                        
-                        {/* Flecha indicadora */}
                         <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className={`h-5 w-5 transform transition-transform ${expandedGroups[group._id] ? 'rotate-180' : ''}`}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
+                          className={`w-4 h-4 text-slate-400 transform transition-transform duration-200 ${expandedGroups[group._id] ? 'rotate-180' : ''}`}
+                          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"
                         >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          <path d="M6 9l6 6 6-6"/>
                         </svg>
                       </div>
                     </div>
                     
-                    {/* Contenido del grupo (opciones) */}
+                    {/* Expanded options */}
                     {expandedGroups[group._id] && (
-                      <div className="bg-white rounded-lg p-3 border border-slate-200/50">
-                        {/* Opciones principales */}
+                      <div className="px-3.5 pb-3.5 space-y-1.5">
+                        {/* Main options */}
                         {Array.isArray(group.options) && group.options.length > 0 && (
-                          <div className="space-y-2">
-                            {group.options.filter(option => option && option._id && option.active !== false).map(option => (
+                          <div className="space-y-1.5">
+                            {group.options.filter(option => option && option._id && option.active !== false).map(option => {
+                              const isSelected = (selectedToppings[group._id] || []).includes(option._id);
+                              return (
                                 <div
                                   key={option._id}
                                   onClick={() => handleOptionChange(group._id, option._id)}
-                                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                                    (selectedToppings[group._id] || []).includes(option._id)
-                                      ? 'bg-blue-50 border border-blue-200 shadow-sm'
-                                      : 'hover:bg-gray-50 border border-gray-200 hover:shadow-sm'
+                                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all duration-150 ${
+                                    isSelected
+                                      ? 'bg-white shadow-sm border-2'
+                                      : 'bg-white/60 hover:bg-white border border-slate-100 hover:border-slate-200'
                                   }`}
+                                  style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
                                 >
-                                  <div className="flex items-center">
-                                    {group.isMultipleChoice ? (
-                                      <input
-                                        type="checkbox"
-                                        checked={(selectedToppings[group._id] || []).includes(option._id)}
-                                        onChange={() => {}}
-                                        className="mr-2 h-4 w-4 text-blue-600 rounded"
-                                      />
-                                    ) : (
-                                      <input
-                                        type="radio"
-                                        checked={(selectedToppings[group._id] || []).includes(option._id)}
-                                        onChange={() => {}}
-                                        className="mr-2 h-4 w-4 text-blue-600"
-                                      />
-                                    )}
-                                    <span className="text-gray-800">{option.name || 'Opción'}</span>
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    {/* Custom checkbox/radio */}
+                                    <div
+                                      className={`w-5 h-5 flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                        group.isMultipleChoice ? 'rounded-md' : 'rounded-full'
+                                      }`}
+                                      style={isSelected 
+                                        ? { backgroundColor: themeBtn, borderColor: themeBtn } 
+                                        : { backgroundColor: 'transparent', border: '2px solid #cbd5e1' }
+                                      }
+                                    >
+                                      {isSelected && (
+                                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke={themeTxt} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                      )}
+                                    </div>
+                                    <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
                                   </div>
                                   
                                   {isFreeOption(option.name) ? (
-                                    <span className="text-green-600 font-medium">Gratis</span>
+                                    <span className="text-[11px] font-bold text-emerald-500 flex-shrink-0">GRATIS</span>
                                   ) : Number(option.price) > 0 ? (
-                                    <span className="text-gray-700">+${option.price}</span>
+                                    <span className={`text-[12px] font-semibold flex-shrink-0 ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
                                   ) : null}
                                 </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                         
-                        {/* Subgrupos */}
+                        {/* Subgroups */}
                         {Array.isArray(group.subGroups) && group.subGroups.length > 0 && (
-                          <div className="mt-4 space-y-3">
+                          <div className="mt-2 space-y-2.5">
                             {group.subGroups.filter(subGroup => subGroup && subGroup._id).map(subGroup => (
-                                <div key={subGroup._id} className="bg-slate-50 rounded-lg p-3 border border-slate-200/30">
+                                <div key={subGroup._id} className="rounded-xl bg-slate-50/80 border border-slate-100 p-3">
                                   <div className="flex items-center justify-between mb-2">
-                                    <h5 className="font-medium text-gray-800">{subGroup.title}</h5>
-                                    {/* Verificar si hay opciones gratis en este subgrupo */}
+                                    <h5 className="font-bold text-[13px] text-slate-700">{subGroup.title}</h5>
                                     {subGroup.options && subGroup.options.some(option => isFreeOption(option.name)) && (
-                                      <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                        🎉 Opciones gratis
+                                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold rounded-md bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                        <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z"/></svg>
+                                        Gratis
                                       </span>
                                     )}
                                   </div>
                                   
-                                  {/* Opciones del subgrupo */}
-                                  <div className="space-y-2">
-                                    {Array.isArray(subGroup.options) && subGroup.options.filter(option => option && option._id && option.active !== false).map(option => (
+                                  <div className="space-y-1.5">
+                                    {Array.isArray(subGroup.options) && subGroup.options.filter(option => option && option._id && option.active !== false).map(option => {
+                                      const isSelected = (selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id);
+                                      return (
                                         <div
                                           key={option._id}
                                           onClick={() => handleOptionChange(
@@ -798,38 +846,38 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
                                             subGroup._id,
                                             !subGroup.isMultipleChoice
                                           )}
-                                          className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                                            (selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id)
-                                              ? 'bg-blue-50 border border-blue-200 shadow-sm'
-                                              : 'hover:bg-gray-50 border border-gray-200 hover:shadow-sm'
+                                          className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all duration-150 ${
+                                            isSelected
+                                              ? 'bg-white shadow-sm border-2'
+                                              : 'bg-white/80 hover:bg-white border border-slate-100 hover:border-slate-200'
                                           }`}
+                                          style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
                                         >
-                                          <div className="flex items-center">
-                                            {subGroup.isMultipleChoice ? (
-                                              <input
-                                                type="checkbox"
-                                                checked={(selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id)}
-                                                onChange={() => {}}
-                                                className="mr-2 h-4 w-4 text-blue-600 rounded"
-                                              />
-                                            ) : (
-                                              <input
-                                                type="radio"
-                                                checked={(selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id)}
-                                                onChange={() => {}}
-                                                className="mr-2 h-4 w-4 text-blue-600"
-                                              />
-                                            )}
-                                            <span className="text-gray-800">{option.name || 'Opción'}</span>
+                                          <div className="flex items-center gap-2.5 min-w-0">
+                                            <div
+                                              className={`w-5 h-5 flex-shrink-0 flex items-center justify-center transition-all duration-150 ${
+                                                subGroup.isMultipleChoice ? 'rounded-md' : 'rounded-full'
+                                              }`}
+                                              style={isSelected 
+                                                ? { backgroundColor: themeBtn, borderColor: themeBtn } 
+                                                : { backgroundColor: 'transparent', border: '2px solid #cbd5e1' }
+                                              }
+                                            >
+                                              {isSelected && (
+                                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke={themeTxt} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                              )}
+                                            </div>
+                                            <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
                                           </div>
                                           
                                           {isFreeOption(option.name) ? (
-                                            <span className="text-green-600 font-medium">Gratis</span>
+                                            <span className="text-[11px] font-bold text-emerald-500 flex-shrink-0">GRATIS</span>
                                           ) : Number(option.price) > 0 ? (
-                                            <span className="text-gray-700">+${option.price}</span>
+                                            <span className={`text-[12px] font-semibold flex-shrink-0 ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
                                           ) : null}
                                         </div>
-                                    ))}
+                                      );
+                                    })}
                                   </div>
                                 </div>
                             ))}
@@ -842,79 +890,62 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-4 px-2 text-center rounded-lg bg-blue-50 border border-blue-100">
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-12 w-12 text-blue-500 mb-3" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
-              <p className="text-blue-700 font-medium mb-3">Este producto no requiere personalización adicional.</p>
-              <p className="text-gray-600 text-sm">Puedes ajustar la cantidad y agregarlo directamente al carrito.</p>
+            <div className="flex flex-col items-center justify-center py-6 px-4 text-center rounded-xl bg-slate-50 border border-slate-100">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
+                <svg className="w-6 h-6 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              </div>
+              <p className="text-sm font-semibold text-slate-600">Sin personalización adicional</p>
+              <p className="text-[12px] text-slate-400 mt-0.5">Ajusta la cantidad y agrega al carrito.</p>
             </div>
           )}
           
-          {/* Mostrar error si hay */}
+          {/* Error */}
           {error && (
-            <div className="mt-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md">
-              <p className="font-medium">Error</p>
-              <p>{error}</p>
-            </div>
-          )}
-
-          {/* Indicador de fin de opciones */}
-          {uniqueToppingGroups.length > 0 && (
-            <div className="mt-6 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
-              <div className="flex items-center justify-center space-x-2">
-                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <p className="text-sm font-medium text-green-800">¡Has visto todas las opciones disponibles!</p>
-              </div>
+            <div className="mt-3 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+              <p className="text-sm text-red-600">{error}</p>
             </div>
           )}
         </div>
         
-        {/* Pie del modal con precio y botón */}
-        <div className="border-t border-slate-200/80 bg-white p-4 sm:p-6 space-y-3 sm:space-y-4 shadow-xl rounded-b-2xl flex-shrink-0">
-          <div className="flex justify-between items-center p-3 sm:p-4 rounded-xl shadow-sm border border-slate-200/50" style={{ background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.063), rgba(0, 0, 0, 0.02))' }}>
+        {/* ── Footer: price + add button ── */}
+        <div className="border-t border-slate-100 bg-white px-4 py-3 sm:py-4 flex-shrink-0 rounded-b-2xl">
+          {/* Price row */}
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-xs sm:text-sm text-slate-600">Total personalización</p>
-              <p className="text-xl sm:text-2xl font-bold text-slate-800">${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}</p>
+              <p className="text-[11px] text-slate-400 font-medium">Total</p>
+              <p className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums tracking-tight">
+                ${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </p>
             </div>
-            <div 
-              className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shadow-lg"
-              style={{ backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6' }}
-            >
-              <span className="text-white text-lg sm:text-xl">💰</span>
-            </div>
+            {extraTotal > 0 && (
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400">Extras</p>
+                <p className="text-sm font-bold" style={{ color: themeBtn }}>+${extraTotal.toLocaleString()}</p>
+              </div>
+            )}
           </div>
           
-          
+          {/* Add to cart button */}
           <button
             onClick={handleAddToCart}
-            className="w-full py-2.5 sm:py-3 rounded-lg transition-colors duration-300 font-medium flex items-center justify-center gap-2 shadow-sm hover:shadow text-sm sm:text-base"
+            className={`w-full py-3.5 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98] shadow-lg ${
+              isValid ? 'hover:shadow-xl' : 'opacity-70'
+            }`}
             style={{ 
-              backgroundColor: businessConfig.theme?.buttonColor || '#3B82F6', 
-              color: businessConfig.theme?.buttonTextColor || 'white' 
+              backgroundColor: themeBtn, 
+              color: themeTxt,
+              boxShadow: isValid ? `0 8px 24px ${themeBtn}35` : undefined
             }}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-            </svg>
-            <span>
-              {uniqueToppingGroups.length > 0 
-                ? `Agregar al carrito ${extraTotal > 0 ? `(+$${extraTotal.toLocaleString()})` : ''}` 
-                : 'Agregar al carrito'
-              }
-            </span>
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+            <span>Agregar al carrito</span>
+            {quantity > 1 && <span className="opacity-70">× {quantity}</span>}
           </button>
         </div>
       </div>
     </div>
+    </>
   );
 }
 
