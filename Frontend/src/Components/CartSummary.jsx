@@ -6,6 +6,7 @@ import { logSystem } from '../utils/systemLogger';
 import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import BusinessClosedModal from './BusinessClosedModal';
 import api from '../services/api';
+import DeliveryZoneSelector from './DeliveryZoneSelector';
 
 // (Sin componente separado - el textarea estará directamente en el JSX)
 
@@ -690,20 +691,23 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-4 p-4 bg-amber-50 border-2 border-amber-200 rounded-lg">
-                        <div className="flex items-start gap-3">
-                          <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <div>
-                            <p className="text-sm text-amber-900 font-semibold">
-                              Costo de envío por confirmar
-                            </p>
-                            <p className="text-xs text-amber-700 mt-1">
-                              Tu ubicación está fuera de nuestras zonas automáticas. Te confirmaremos el costo al recibir tu pedido.
-                            </p>
-                          </div>
-                        </div>
+                      <div className="mt-4">
+                        <DeliveryZoneSelector
+                          businessId={businessId}
+                          address={deliveryAddressRef.current?.value}
+                          cart={cart}
+                          theme={businessConfig?.theme}
+                          onZoneSelect={({ fee, zoneInfo }) => {
+                            setDeliveryFee(fee);
+                            setDeliveryZoneInfo(zoneInfo);
+                          }}
+                          onRetryGPS={() => {
+                            setLocationChecked(false);
+                            setDeliveryFee(null);
+                            setDeliveryZoneInfo(null);
+                            detectLocationAndCalculateFee();
+                          }}
+                        />
                       </div>
                     )}
                   </>
@@ -1576,10 +1580,23 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                           <span className="text-xs font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 p-2 bg-amber-50 border border-amber-200 rounded-xl">
-                          <span className="text-sm text-amber-600">⚠️</span>
-                          <p className="text-[11px] text-amber-800 font-medium">Costo por confirmar</p>
-                        </div>
+                        <DeliveryZoneSelector
+                          businessId={businessId}
+                          address={deliveryAddressRef.current?.value}
+                          cart={cart}
+                          theme={businessConfig?.theme}
+                          compact
+                          onZoneSelect={({ fee, zoneInfo }) => {
+                            setDeliveryFee(fee);
+                            setDeliveryZoneInfo(zoneInfo);
+                          }}
+                          onRetryGPS={() => {
+                            setLocationChecked(false);
+                            setDeliveryFee(null);
+                            setDeliveryZoneInfo(null);
+                            detectLocationAndCalculateFee();
+                          }}
+                        />
                       )}
                     </>
                   )}
