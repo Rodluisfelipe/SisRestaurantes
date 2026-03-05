@@ -561,6 +561,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
           return;
         }
 
+        // Zone selection is mandatory when GPS fails
+        if (locationChecked && !deliveryZoneInfo) {
+          alert('Por favor selecciona tu zona de entrega para continuar');
+          return;
+        }
+
         setIsProcessing(true);
         setLocalIsSubmitting(true);
 
@@ -1693,7 +1699,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 return pmCfg[id].enabled && pmCfg[id].modes?.[curMode] !== false;
               });
               const needsPayment = anyPaymentAvailable && !selectedPaymentMethod;
-              const isDisabled = isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended' || needsPayment;
+              // Delivery requires zone selection when GPS fails
+              const isDeliveryWithoutZone = orderType === 'delivery' && !initialOrderTypeSelected && locationChecked && !deliveryZoneInfo;
+              const isDisabled = isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended' || needsPayment || isDeliveryWithoutZone;
 
               if (!showButton) return null;
 
@@ -1702,6 +1710,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 
                 if (anyPaymentAvailable && !selectedPaymentMethod) {
                   alert('Por favor selecciona un método de pago');
+                  return;
+                }
+                
+                if (isDeliveryWithoutZone) {
+                  alert('Por favor selecciona tu zona de entrega para continuar');
                   return;
                 }
                 
@@ -1745,7 +1758,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
               else if (initialOrderTypeSelected && orderInfo.orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
               else if (orderType === 'inSite') buttonLabel = `Confirmar · Mesa${formState.tableNumber ? ` ${formState.tableNumber}` : ''}`;
               else if (orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
-              else if (orderType === 'delivery') buttonLabel = 'Confirmar · Domicilio';
+              else if (orderType === 'delivery') buttonLabel = isDeliveryWithoutZone ? 'Selecciona una zona' : 'Confirmar · Domicilio';
 
               return (
                 <button
