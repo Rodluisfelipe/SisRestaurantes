@@ -61,10 +61,22 @@ export default function POSTicket({ order, businessConfig, onClose }) {
     `);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 400);
+
+    // Wait for all images (QR code) to load before printing
+    const images = printWindow.document.querySelectorAll('img');
+    const imagePromises = Array.from(images).map(img =>
+      img.complete ? Promise.resolve() : new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      })
+    );
+
+    Promise.all(imagePromises).then(() => {
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 200);
+    });
   }, [order]);
 
   if (!order) return null;
