@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
+import { socket, joinBusiness } from '../services/socket';
+import { SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
 import POSHeader from '../Components/POS/POSHeader';
 import POSProductGrid from '../Components/POS/POSProductGrid';
 import POSCart from '../Components/POS/POSCart';
@@ -28,8 +30,17 @@ export default function POS() {
   const [showCashOpen, setShowCashOpen] = useState(false);
   const [showCashClose, setShowCashClose] = useState(false);
   const [showMovements, setShowMovements] = useState(false);
-  const [showToppings, setShowToppings] = useState(null); // product with toppings
-  const [lastOrder, setLastOrder] = useState(null); // for ticket printing
+  const [showToppings, setShowToppings] = useState(null);
+  const [lastOrder, setLastOrder] = useState(null);
+
+  // Order notifications (web orders arriving)
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [newOrderNotification, setNewOrderNotification] = useState(null);
+  const [showOrderBanner, setShowOrderBanner] = useState(false);
+  const audioRef = useRef(null);
+
+  // Hold/park orders
+  const [heldOrders, setHeldOrders] = useState([]);
 
   const resolvedBusinessId = businessConfig?._id || businessId;
 
@@ -56,6 +67,56 @@ export default function POS() {
     fetchData();
   }, [resolvedBusinessId]);
 
+  // Socket.io: listen for web orders
+  useEffect(() => {
+    if (!resolvedBusinessId) return;
+
+    // Init audio
+    try {
+      audioRef.current = new Audio('/audio/new-order-notification.mp3');
+      audioRef.current.volume = 1;
+    } catch {}
+
+    // Connect & join business channel
+    if (!socket.connected) socket.connect();
+    joinBusiness(resolvedBusinessId);
+
+    // Load initial pending count
+    api.get(`/orders?businessId=${resolvedBusinessId}&status=pending`)
+      .then(res => setPendingOrdersCount(Array.isArray(res.data) ? res.data.length : 0))
+      .catch(() => {});
+
+    const handleNewOrder = (newOrder) => {
+      if (newOrder.status === ORDER_STATUS.PENDING) {
+        setNewOrderNotification(newOrder);
+        setShowOrderBanner(true);
+        setPendingOrdersCount(prev => prev + 1);
+        // Play sound
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(() => {
+            try { new Audio('/audio/new-order-notification.mp3').play(); } catch {}
+          });
+        }
+        setTimeout(() => setShowOrderBanner(false), 10000);
+      }
+    };
+
+    const handleOrderUpdated = (updatedOrder) => {
+      if (updatedOrder.status !== ORDER_STATUS.PENDING) {
+        setPendingOrdersCount(prev => Math.max(0, prev - 1));
+      }
+    };
+
+    socket.on(SOCKET_EVENTS.ORDER_CREATED, handleNewOrder);
+    socket.on(SOCKET_EVENTS.ORDER_UPDATED, handleOrderUpdated);
+
+    return () => {
+      socket.off(SOCKET_EVENTS.ORDER_CREATED, handleNewOrder);
+      socket.off(SOCKET_EVENTS.ORDER_UPDATED, handleOrderUpdated);
+    };
+  }, [resolvedBusinessId]);
+
   // Cart operations
   const addToCart = useCallback((product) => {
     setCart(prev => {
@@ -67,7 +128,8 @@ export default function POS() {
         next[idx] = { ...next[idx], quantity: next[idx].quantity + (product.quantity || 1) };
         return next;
       }
-      return [...prev, { ...product, uniqueId, quantity: product.quantity || 1 }];
+      const itemPrice = product.totalPrice || product.price || 0;
+      return [...prev, { ...product, totalPrice: itemPrice, uniqueId, quantity: product.quantity || 1 }];
     });
   }, []);
 
@@ -84,6 +146,39 @@ export default function POS() {
   }, []);
 
   const clearCart = useCallback(() => setCart([]), []);
+
+  // Hold/park current order
+  const holdOrder = useCallback(() => {
+    if (cart.length === 0) return;
+    setHeldOrders(prev => [...prev, { id: Date.now(), items: cart, heldAt: new Date() }]);
+    setCart([]);
+  }, [cart]);
+
+  // Recall a held order
+  const recallHeldOrder = useCallback((heldId) => {
+    const held = heldOrders.find(h => h.id === heldId);
+    if (!held) return;
+    // If current cart has items, hold it first
+    if (cart.length > 0) {
+      setHeldOrders(prev => [...prev.filter(h => h.id !== heldId), { id: Date.now(), items: cart, heldAt: new Date() }]);
+    } else {
+      setHeldOrders(prev => prev.filter(h => h.id !== heldId));
+    }
+    setCart(held.items);
+  }, [cart, heldOrders]);
+
+  // Delete a held order
+  const deleteHeldOrder = useCallback((heldId) => {
+    setHeldOrders(prev => prev.filter(h => h.id !== heldId));
+  }, []);
+
+  // Start new order (hold current if has items)
+  const startNewOrder = useCallback(() => {
+    if (cart.length > 0) {
+      setHeldOrders(prev => [...prev, { id: Date.now(), items: cart, heldAt: new Date() }]);
+    }
+    setCart([]);
+  }, [cart]);
 
   // Handle product click
   const handleProductClick = useCallback((product) => {
@@ -159,8 +254,14 @@ export default function POS() {
         businessConfig={businessConfig}
         cashRegister={cashRegister}
         user={user}
+        pendingOrdersCount={pendingOrdersCount}
+        showOrderBanner={showOrderBanner}
+        newOrderNotification={newOrderNotification}
+        onDismissBanner={() => setShowOrderBanner(false)}
+        onGoToOrders={() => navigate(`/${businessId}/admin`)}
         onOpenMovements={() => setShowMovements(true)}
         onCloseCash={() => setShowCashClose(true)}
+        onNewOrder={startNewOrder}
         onExit={() => navigate(`/${businessId}/admin`)}
       />
 
@@ -183,6 +284,10 @@ export default function POS() {
             removeFromCart={removeFromCart}
             clearCart={clearCart}
             onCheckout={() => setShowCheckout(true)}
+            onHoldOrder={holdOrder}
+            heldOrders={heldOrders}
+            onRecallHeldOrder={recallHeldOrder}
+            onDeleteHeldOrder={deleteHeldOrder}
             themeColor={themeColor}
           />
         </div>
@@ -233,6 +338,7 @@ export default function POS() {
           product={showToppings}
           onAddToCart={handleToppingsComplete}
           onClose={() => setShowToppings(null)}
+          compact
         />
       )}
 

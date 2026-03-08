@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBusinessConfig } from "../Context/BusinessContext";
 
-function ProductToppingsSelector({ product, onAddToCart, onClose }) {
+function ProductToppingsSelector({ product, onAddToCart, onClose, compact = false }) {
   const [selectedToppings, setSelectedToppings] = useState({});
   const [totalPrice, setTotalPrice] = useState(product.price || 0);
   const [displayTotal, setDisplayTotal] = useState(product.price || 0);
@@ -89,8 +89,14 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
       return;
     }
     
-    // Expande todos los grupos por defecto si hay pocos
-    if (uniqueToppingGroups.length > 0 && uniqueToppingGroups.length <= 3) {
+    // In compact/POS mode expand ALL groups; otherwise expand if few
+    if (compact && uniqueToppingGroups.length > 0) {
+      const initialExpandedState = {};
+      uniqueToppingGroups.forEach(group => {
+        if (group && group._id) initialExpandedState[group._id] = true;
+      });
+      setExpandedGroups(initialExpandedState);
+    } else if (uniqueToppingGroups.length > 0 && uniqueToppingGroups.length <= 3) {
       const initialExpandedState = {};
       uniqueToppingGroups.forEach(group => {
         if (group && group._id) {
@@ -520,6 +526,171 @@ function ProductToppingsSelector({ product, onAddToCart, onClose }) {
   const themeBtn = businessConfig.theme?.buttonColor || '#3B82F6';
   const themeTxt = businessConfig.theme?.buttonTextColor || '#ffffff';
 
+  // ── Compact (POS) mode: no image, simple flat header ──
+  if (compact) {
+    return (
+      <div
+        ref={backdropRef}
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40"
+        onMouseDown={handleBackdropPointerDown}
+      >
+        <div
+          className="bg-white rounded-2xl max-w-md w-full mx-4 shadow-2xl flex flex-col max-h-[85vh]"
+          onClick={handleModalClick}
+        >
+          {/* Simple header — name + price + close */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 flex-shrink-0">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-black text-slate-900 truncate">{product.name}</h2>
+              <p className="text-sm font-bold mt-0.5" style={{ color: themeBtn }}>${product.price?.toLocaleString()}</p>
+            </div>
+            <button onClick={onClose} className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center flex-shrink-0 ml-3 transition-colors">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          {/* Body: quantity + topping groups */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 min-h-0">
+            {/* Quantity */}
+            <div className="flex items-center justify-between mb-4 p-3 bg-slate-50 rounded-xl">
+              <span className="text-sm font-bold text-slate-700">Cantidad</span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => quantity > 1 && setQuantity(quantity - 1)} className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 active:scale-90 transition-all" style={quantity > 1 ? { backgroundColor: `${themeBtn}10`, color: themeBtn } : { backgroundColor: '#f1f5f9' }} disabled={quantity <= 1}>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M5 12h14"/></svg>
+                </button>
+                <span className="w-10 text-center font-black text-slate-800 text-lg tabular-nums">{quantity}</span>
+                <button onClick={() => setQuantity(quantity + 1)} className="w-9 h-9 rounded-lg flex items-center justify-center active:scale-90 transition-all" style={{ backgroundColor: `${themeBtn}10`, color: themeBtn }}>
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Topping groups — all expanded */}
+            {uniqueToppingGroups.length > 0 ? (
+              <div className="space-y-3">
+                {uniqueToppingGroups.map(group => group && group._id ? (
+                  <div key={group._id} id={`group-${group._id}`} className={`rounded-xl border overflow-hidden ${
+                    scrollToRequired && group.isRequired && !(selectedToppings[group._id]?.length > 0)
+                      ? 'border-red-300 bg-red-50/50' : countSelections(group) > 0 ? 'border-slate-200 bg-white' : 'border-slate-100 bg-slate-50/50'
+                  }`}>
+                    <div onClick={() => toggleGroup(group._id)} className="flex items-center gap-3 p-3 cursor-pointer select-none">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-sm text-slate-800 truncate">{group.name}</h3>
+                          {group.isRequired && <span className="text-[10px] font-bold text-red-500">Obligatorio</span>}
+                          {Number(group.basePrice) > 0 && <span className="text-[10px] font-bold text-emerald-600">+${group.basePrice?.toLocaleString()}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {countSelections(group) > 0 && (
+                          <>
+                            <span className="inline-flex items-center justify-center text-[10px] font-bold rounded-full w-5 h-5" style={{ backgroundColor: `${themeBtn}15`, color: themeBtn }}>{countSelections(group)}</span>
+                            <button onClick={(e) => clearGroupSelections(group._id, e)} className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                              <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                            </button>
+                          </>
+                        )}
+                        <svg className={`w-4 h-4 text-slate-400 transition-transform ${expandedGroups[group._id] ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M6 9l6 6 6-6"/></svg>
+                      </div>
+                    </div>
+
+                    {expandedGroups[group._id] && (
+                      <div className="px-3 pb-3 space-y-1.5">
+                        {Array.isArray(group.options) && group.options.filter(o => o && o._id && o.active !== false).map(option => {
+                          const isSelected = (selectedToppings[group._id] || []).includes(option._id);
+                          return (
+                            <div key={option._id} onClick={() => handleOptionChange(group._id, option._id)}
+                              className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-white shadow-sm border-2' : 'bg-white/60 hover:bg-white border border-slate-100'}`}
+                              style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className={`w-5 h-5 flex-shrink-0 flex items-center justify-center ${group.isMultipleChoice ? 'rounded-md' : 'rounded-full'}`}
+                                  style={isSelected ? { backgroundColor: themeBtn } : { border: '2px solid #cbd5e1' }}>
+                                  {isSelected && <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke={themeTxt} strokeWidth={3} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                                </div>
+                                <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name}</span>
+                              </div>
+                              {isFreeOption(option.name) ? (
+                                <span className="text-[11px] font-bold text-emerald-500">GRATIS</span>
+                              ) : Number(option.price) > 0 ? (
+                                <span className={`text-[12px] font-semibold ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+
+                        {/* Subgroups */}
+                        {Array.isArray(group.subGroups) && group.subGroups.filter(s => s && s._id).map(subGroup => (
+                          <div key={subGroup._id} className="rounded-lg bg-slate-50 border border-slate-100 p-2.5 mt-2">
+                            <h5 className="font-bold text-[13px] text-slate-700 mb-2">{subGroup.title}</h5>
+                            <div className="space-y-1.5">
+                              {Array.isArray(subGroup.options) && subGroup.options.filter(o => o && o._id && o.active !== false).map(option => {
+                                const isSelected = (selectedToppings[`${group._id}_${subGroup._id}`] || []).includes(option._id);
+                                return (
+                                  <div key={option._id} onClick={() => handleOptionChange(group._id, option._id, true, subGroup._id, !subGroup.isMultipleChoice)}
+                                    className={`flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-white shadow-sm border-2' : 'bg-white/80 hover:bg-white border border-slate-100'}`}
+                                    style={isSelected ? { borderColor: `${themeBtn}40`, backgroundColor: `${themeBtn}05` } : undefined}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className={`w-5 h-5 flex-shrink-0 flex items-center justify-center ${subGroup.isMultipleChoice ? 'rounded-md' : 'rounded-full'}`}
+                                        style={isSelected ? { backgroundColor: themeBtn } : { border: '2px solid #cbd5e1' }}>
+                                        {isSelected && <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke={themeTxt} strokeWidth={3} strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                                      </div>
+                                      <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name}</span>
+                                    </div>
+                                    {isFreeOption(option.name) ? (
+                                      <span className="text-[11px] font-bold text-emerald-500">GRATIS</span>
+                                    ) : Number(option.price) > 0 ? (
+                                      <span className={`text-[12px] font-semibold ${isSelected ? 'text-slate-700' : 'text-slate-400'}`}>+${option.price?.toLocaleString()}</span>
+                                    ) : null}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null)}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center rounded-xl bg-slate-50">
+                <p className="text-sm font-semibold text-slate-600">Sin personalización</p>
+                <p className="text-[12px] text-slate-400 mt-0.5">Ajusta la cantidad y agrega.</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="mt-3 flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <svg className="w-4 h-4 text-red-500 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer: total + add button */}
+          <div className="border-t border-slate-100 px-5 py-3 flex items-center gap-3 flex-shrink-0">
+            <div className="flex-1">
+              <p className="text-2xl font-black text-slate-900 tabular-nums">${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</p>
+              {extraTotal > 0 && <p className="text-[11px] font-bold" style={{ color: themeBtn }}>+${extraTotal.toLocaleString()} extras</p>}
+            </div>
+            <button
+              onClick={handleAddToCart}
+              className={`px-6 py-3 rounded-xl font-bold text-[15px] flex items-center gap-2 transition-all active:scale-[0.97] shadow-lg ${isValid ? 'hover:shadow-xl' : 'opacity-70'}`}
+              style={{ backgroundColor: themeBtn, color: themeTxt, boxShadow: isValid ? `0 8px 24px ${themeBtn}35` : undefined }}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              Agregar
+              {quantity > 1 && <span className="opacity-70">× {quantity}</span>}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Standard (menu) mode ──
   return (
     <>
     {/* ── Fullscreen image lightbox ── */}
