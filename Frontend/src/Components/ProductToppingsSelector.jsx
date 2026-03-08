@@ -494,11 +494,13 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       const selectedToppingsData = prepareSelectedToppingsData();
       
       // Crear un objeto con los datos del producto y sus opciones seleccionadas
+      // totalPrice debe ser el precio UNITARIO (producto + extras), sin multiplicar por cantidad
+      const unitPrice = (Number(product.price || 0) + (extraTotal || 0));
       const productToAdd = {
         ...product,
         selectedToppings: selectedToppingsData,
         quantity: quantity,
-        totalPrice: totalPrice
+        totalPrice: unitPrice
       };
       
       // Llamar a la función de callback
