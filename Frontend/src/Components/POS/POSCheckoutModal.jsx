@@ -119,222 +119,243 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[95vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800">Cobrar venta</h2>
+        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold text-slate-800">Cobrar venta</h2>
+            <span className="text-2xl font-black" style={{ color: themeColor }}>${total.toLocaleString()}</span>
+            {orderType === 'delivery' && deliveryFee > 0 && (
+              <span className="text-xs text-slate-400">
+                (Productos ${subtotal.toLocaleString()} + Domicilio ${deliveryFee.toLocaleString()})
+              </span>
+            )}
+          </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
-          {/* Total */}
-          <div className="text-center">
-            <p className="text-sm text-slate-500 font-medium">Total a cobrar</p>
-            <p className="text-4xl font-black text-slate-900 mt-1">${total.toLocaleString()}</p>
-            {orderType === 'delivery' && deliveryFee > 0 && (
-              <p className="text-xs text-slate-400 mt-1">
-                Productos: ${subtotal.toLocaleString()} + Domicilio: ${deliveryFee.toLocaleString()}
-              </p>
-            )}
-          </div>
-
-          {/* Order type */}
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tipo de orden</p>
-            <div className="grid grid-cols-3 gap-2">
-              {ORDER_TYPES.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => { setOrderType(t.id); if (t.id !== 'delivery') setSelectedZone(null); }}
-                  className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center gap-1 ${
-                    orderType === t.id
-                      ? 'text-white border-transparent shadow-md'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                  }`}
-                  style={orderType === t.id ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={t.icon}/></svg>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Payment method */}
-          <div>
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Método de pago</p>
-            <div className="grid grid-cols-4 gap-2">
-              {PAYMENT_METHODS.map(m => (
-                <button
-                  key={m.id}
-                  onClick={() => setPaymentMethod(m.id)}
-                  className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all ${
-                    paymentMethod === m.id
-                      ? 'text-white border-transparent shadow-md'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                  }`}
-                  style={paymentMethod === m.id ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Cash input — only for cash */}
-          {paymentMethod === 'cash' && (
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Efectivo recibido</p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={cashReceived ? `$${parseInt(cashReceived).toLocaleString()}` : ''}
-                  readOnly
-                  className="w-full text-center text-2xl font-bold py-3 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-800 focus:outline-none"
-                  placeholder="$0"
-                />
-              </div>
-
-              {/* Quick amounts */}
-              <div className="grid grid-cols-4 gap-1.5">
-                {QUICK_AMOUNTS.map(a => (
-                  <button key={a} onClick={() => handleQuickAmount(a)} className="py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors">
-                    +${(a / 1000)}K
-                  </button>
-                ))}
-                <button onClick={handleExact} className="py-2 rounded-lg text-xs font-bold text-white transition-colors col-span-2" style={{ backgroundColor: themeColor }}>
-                  Exacto
-                </button>
-                <button onClick={() => handleNumpad('C')} className="py-2 rounded-lg bg-red-50 hover:bg-red-100 text-xs font-bold text-red-600 transition-colors col-span-2">
-                  Borrar
-                </button>
-              </div>
-
-              {/* Numpad */}
-              <div className="grid grid-cols-3 gap-1.5">
-                {['1','2','3','4','5','6','7','8','9','00','0','⌫'].map(k => (
-                  <button key={k} onClick={() => handleNumpad(k)} className="py-3 rounded-lg bg-slate-100 hover:bg-slate-200 text-base font-bold text-slate-700 transition-colors active:scale-95">
-                    {k}
+        {/* Two-column body */}
+        <div className="flex-1 grid grid-cols-2 min-h-0 overflow-hidden">
+          {/* LEFT COLUMN — Order details */}
+          <div className="p-5 space-y-4 overflow-y-auto border-r border-slate-100">
+            {/* Order type */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tipo de orden</p>
+              <div className="grid grid-cols-3 gap-2">
+                {ORDER_TYPES.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => { setOrderType(t.id); if (t.id !== 'delivery') setSelectedZone(null); }}
+                    className={`py-2 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center gap-1 ${
+                      orderType === t.id
+                        ? 'text-white border-transparent shadow-md'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                    style={orderType === t.id ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={t.icon}/></svg>
+                    {t.label}
                   </button>
                 ))}
               </div>
+            </div>
 
-              {/* Change */}
-              {cashNum > 0 && (
-                <div className={`text-center p-3 rounded-xl ${change >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                  <p className="text-xs font-medium text-slate-500">Cambio</p>
-                  <p className={`text-2xl font-black ${change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    ${Math.abs(change).toLocaleString()}
-                  </p>
-                  {change < 0 && <p className="text-xs text-red-500 mt-0.5">Falta dinero</p>}
+            {/* Order-type specific fields */}
+            {orderType === 'inSite' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
+                  <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                 </div>
-              )}
-            </div>
-          )}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Mesa (opcional)</label>
+                  <input type="text" value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ej: 5" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                </div>
+              </div>
+            )}
 
-          {/* Order-type specific fields */}
-          {orderType === 'inSite' && (
-            <div className="grid grid-cols-2 gap-3">
+            {orderType === 'takeaway' && (
               <div>
                 <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
                 <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">Mesa (opcional)</label>
-                <input type="text" value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ej: 5" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
-              </div>
-            </div>
-          )}
+            )}
 
-          {orderType === 'takeaway' && (
-            <div>
-              <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
-              <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
-            </div>
-          )}
-
-          {orderType === 'delivery' && (
-            <div className="space-y-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Datos de entrega</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Nombre *</label>
-                  <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre del cliente" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Teléfono</label>
-                  <input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="300 123 4567" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
-                </div>
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-500 block mb-1">Dirección *</label>
-                <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Calle, barrio, referencia..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
-              </div>
-              {deliveryZones.length > 0 && (
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Zona de entrega *</label>
-                  {!selectedZone && (
-                    <p className="text-xs text-amber-600 mb-1.5">⚠ Selecciona una zona para calcular el domicilio</p>
-                  )}
-                  <div className="grid grid-cols-2 gap-2">
-                    {deliveryZones.map(z => {
-                      const zoneKey = z.id || z._id;
-                      const selectedKey = selectedZone?.id || selectedZone?._id;
-                      const isSelected = selectedKey === zoneKey;
-                      return (
-                      <button
-                        key={zoneKey}
-                        onClick={() => setSelectedZone(isSelected ? null : z)}
-                        className={`p-2 rounded-lg border-2 text-left transition-all ${
-                          isSelected
-                            ? 'border-transparent text-white shadow-md'
-                            : 'bg-white border-slate-200 hover:border-slate-300'
-                        }`}
-                        style={isSelected ? { backgroundColor: z.color || themeColor, borderColor: z.color || themeColor } : undefined}
-                      >
-                        <p className="text-xs font-bold">{z.name}</p>
-                        <p className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
-                          {z.pricing?.priceLabel || `$${(z.pricing?.displayPrice || 0).toLocaleString()}`}
-                          {z.estimatedTime ? ` · ${z.estimatedTime}` : ''}
-                        </p>
-                      </button>
-                      );
-                    })}
+            {orderType === 'delivery' && (
+              <div className="space-y-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Datos de entrega</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Nombre *</label>
+                    <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre del cliente" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Teléfono</label>
+                    <input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="300 123 4567" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                   </div>
                 </div>
-              )}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Dirección *</label>
+                  <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Calle, barrio, referencia..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                </div>
+                {deliveryZones.length > 0 && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 block mb-1">Zona de entrega *</label>
+                    {!selectedZone && (
+                      <p className="text-xs text-amber-600 mb-1.5">Selecciona una zona para calcular el domicilio</p>
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      {deliveryZones.map(z => {
+                        const zoneKey = z.id || z._id;
+                        const selectedKey = selectedZone?.id || selectedZone?._id;
+                        const isSelected = selectedKey === zoneKey;
+                        return (
+                        <button
+                          key={zoneKey}
+                          onClick={() => setSelectedZone(isSelected ? null : z)}
+                          className={`p-2 rounded-lg border-2 text-left transition-all ${
+                            isSelected
+                              ? 'border-transparent text-white shadow-md'
+                              : 'bg-white border-slate-200 hover:border-slate-300'
+                          }`}
+                          style={isSelected ? { backgroundColor: z.color || themeColor, borderColor: z.color || themeColor } : undefined}
+                        >
+                          <p className="text-xs font-bold">{z.name}</p>
+                          <p className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                            {z.pricing?.priceLabel || `$${(z.pricing?.displayPrice || 0).toLocaleString()}`}
+                            {z.estimatedTime ? ` · ${z.estimatedTime}` : ''}
+                          </p>
+                        </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Notes */}
+            <div>
+              <label className="text-xs font-semibold text-slate-500 block mb-1">Notas (opcional)</label>
+              <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Instrucciones especiales..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
             </div>
-          )}
-          <div>
-            <label className="text-xs font-semibold text-slate-500 block mb-1">Notas (opcional)</label>
-            <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Instrucciones especiales..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+
+            {/* Cart summary */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Resumen ({cart.reduce((s, i) => s + i.quantity, 0)} artículos)</p>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                {cart.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center text-sm py-1.5 px-2 rounded-lg bg-slate-50">
+                    <span className="text-slate-700 truncate flex-1">
+                      <span className="font-bold text-slate-500 mr-1">{item.quantity}x</span>
+                      {item.name}
+                    </span>
+                    <span className="font-bold text-slate-800 ml-2 shrink-0">${((item.totalPrice || item.price || 0) * item.quantity).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {error && (
-            <div className="text-center text-sm text-red-600 bg-red-50 py-2 rounded-lg">{error}</div>
-          )}
-        </div>
+          {/* RIGHT COLUMN — Payment */}
+          <div className="p-5 flex flex-col gap-4 overflow-y-auto">
+            {/* Payment method */}
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Método de pago</p>
+              <div className="grid grid-cols-2 gap-2">
+                {PAYMENT_METHODS.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setPaymentMethod(m.id)}
+                    className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all ${
+                      paymentMethod === m.id
+                        ? 'text-white border-transparent shadow-md'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                    }`}
+                    style={paymentMethod === m.id ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* Submit */}
-        <div className="px-6 pb-6">
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || !canSubmit || !canSubmitDelivery}
-            className="w-full py-4 rounded-xl text-white font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
-            style={{ backgroundColor: themeColor }}
-          >
-            {submitting ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
-            ) : (
-              <>
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                Confirmar cobro
-              </>
+            {/* Cash input — only for cash */}
+            {paymentMethod === 'cash' && (
+              <div className="space-y-2 flex-1">
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Efectivo recibido</p>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={cashReceived ? `$${parseInt(cashReceived).toLocaleString()}` : ''}
+                    readOnly
+                    className="w-full text-center text-xl font-bold py-2 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-800 focus:outline-none"
+                    placeholder="$0"
+                  />
+                </div>
+
+                {/* Quick amounts */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {QUICK_AMOUNTS.map(a => (
+                    <button key={a} onClick={() => handleQuickAmount(a)} className="py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 transition-colors">
+                      +${(a / 1000)}K
+                    </button>
+                  ))}
+                  <button onClick={handleExact} className="py-1.5 rounded-lg text-xs font-bold text-white transition-colors col-span-2" style={{ backgroundColor: themeColor }}>
+                    Exacto
+                  </button>
+                  <button onClick={() => handleNumpad('C')} className="py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-xs font-bold text-red-600 transition-colors col-span-2">
+                    Borrar
+                  </button>
+                </div>
+
+                {/* Numpad */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {['1','2','3','4','5','6','7','8','9','00','0','⌫'].map(k => (
+                    <button key={k} onClick={() => handleNumpad(k)} className="py-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-sm font-bold text-slate-700 transition-colors active:scale-95">
+                      {k}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Change */}
+                {cashNum > 0 && (
+                  <div className={`text-center p-2.5 rounded-xl ${change >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                    <p className="text-xs font-medium text-slate-500">Cambio</p>
+                    <p className={`text-xl font-black ${change >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                      ${Math.abs(change).toLocaleString()}
+                    </p>
+                    {change < 0 && <p className="text-xs text-red-500 mt-0.5">Falta dinero</p>}
+                  </div>
+                )}
+              </div>
             )}
-          </button>
+
+            {/* Error */}
+            {error && (
+              <div className="text-center text-sm text-red-600 bg-red-50 py-2 rounded-lg">{error}</div>
+            )}
+
+            {/* Submit — always at bottom */}
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !canSubmit || !canSubmitDelivery}
+              className="w-full py-3.5 rounded-xl text-white font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shrink-0 mt-auto"
+              style={{ backgroundColor: themeColor }}
+            >
+              {submitting ? (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+              ) : (
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Confirmar cobro · ${total.toLocaleString()}
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>
