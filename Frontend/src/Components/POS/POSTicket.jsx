@@ -20,7 +20,7 @@ export default function POSTicket({ order, businessConfig, onClose }) {
 
   const themeColor = businessConfig?.theme?.buttonColor || '#3B82F6';
   const businessName = businessConfig?.businessName || 'Restaurante';
-  const businessAddress = businessConfig?.address || businessConfig?.location?.address || '';
+  const businessAddress = businessConfig?.address || '';
   const businessPhone = businessConfig?.whatsappNumber || '';
   const nit = businessConfig?.nit || '';
   const slug = businessConfig?.slug || '';
