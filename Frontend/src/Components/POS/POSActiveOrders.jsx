@@ -16,6 +16,7 @@ const METHOD_LABELS = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata'
 const TYPE_LABELS = { inSite: 'Mesa', takeaway: 'Para llevar', delivery: 'Domicilio' };
 
 export default function POSActiveOrders({ businessId, themeColor }) {
+  console.log('[POSActiveOrders] MOUNTED, businessId:', businessId);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
