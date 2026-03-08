@@ -114,6 +114,8 @@ export default function POSActiveOrders({ businessId, themeColor }) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
+      {/* DEBUG — remove later */}
+      <div className="px-4 pt-2 text-[10px] text-red-500 font-mono">DEBUG: bID={businessId} | orders={orders.length}</div>
       {/* Filter pills */}
       <div className="px-4 py-3 flex items-center gap-2 flex-shrink-0">
         {[
