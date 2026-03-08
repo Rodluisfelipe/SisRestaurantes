@@ -22,11 +22,15 @@ export default function POSActiveOrders({ businessId, themeColor }) {
   const [filter, setFilter] = useState('all'); // all, pos, menuby
 
   const fetchOrders = useCallback(async () => {
+    if (!businessId) return;
     try {
+      console.log('[POSActiveOrders] fetching businessId:', businessId);
       const res = await api.get(`/orders?businessId=${businessId}&status=pending,pending_payment,payment_uploaded,payment_confirmed,confirmed,preparing,ready`);
+      console.log('[POSActiveOrders] got', Array.isArray(res.data) ? res.data.length : 0, 'orders');
       const data = Array.isArray(res.data) ? res.data : [];
       setOrders(data.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
-    } catch {
+    } catch (err) {
+      console.error('[POSActiveOrders] fetch error:', err?.response?.status, err?.response?.data, 'businessId:', businessId);
       setOrders([]);
     } finally {
       setLoading(false);
