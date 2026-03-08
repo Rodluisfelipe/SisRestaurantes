@@ -22,7 +22,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'orders', label: 'Pedidos', Icon: FaClipboardList, badge: pendingOrdersCount },
         { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
-        { id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null },
+        ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null }] : []),
       ]
     },
     {
