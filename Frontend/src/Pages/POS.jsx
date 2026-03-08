@@ -12,6 +12,7 @@ import POSCheckoutModal from '../Components/POS/POSCheckoutModal';
 import POSCashRegister from '../Components/POS/POSCashRegister';
 import POSTicket from '../Components/POS/POSTicket';
 import POSTableMap from '../Components/POS/POSTableMap';
+import POSActiveOrders from '../Components/POS/POSActiveOrders';
 import ProductToppingsSelector from '../Components/ProductToppingsSelector';
 
 export default function POS() {
@@ -35,6 +36,7 @@ export default function POS() {
   const [lastOrder, setLastOrder] = useState(null);
   const [selectedTable, setSelectedTable] = useState(null);
   const [showTables, setShowTables] = useState(false);
+  const [activeTab, setActiveTab] = useState('products'); // products, tables, orders
   const [activeOrders, setActiveOrders] = useState([]);
 
   // Order notifications (web orders arriving)
@@ -302,7 +304,7 @@ export default function POS() {
         showOrderBanner={showOrderBanner}
         newOrderNotification={newOrderNotification}
         onDismissBanner={() => setShowOrderBanner(false)}
-        onGoToOrders={() => navigate(`/${businessId}/admin`)}
+        onGoToOrders={() => { setActiveTab('orders'); setShowTables(false); }}
         onOpenMovements={() => setShowMovements(true)}
         onCloseCash={() => setShowCashClose(true)}
         onNewOrder={startNewOrder}
@@ -316,18 +318,30 @@ export default function POS() {
           <div className="px-4 pt-3 pb-2 bg-white border-b border-slate-100 flex-shrink-0">
             <div className="inline-flex bg-slate-100 rounded-xl p-1 gap-0.5">
               <button
-                onClick={() => setShowTables(false)}
+                onClick={() => { setActiveTab('products'); setShowTables(false); }}
                 className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                  !showTables ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  activeTab === 'products' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                 Productos
               </button>
               <button
-                onClick={() => setShowTables(true)}
+                onClick={() => { setActiveTab('orders'); setShowTables(false); }}
                 className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-                  showTables ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  activeTab === 'orders' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+                Órdenes
+                {activeOrders.length > 0 && (
+                  <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-black min-w-[18px] text-center animate-pulse">{activeOrders.length}</span>
+                )}
+              </button>
+              <button
+                onClick={() => { setActiveTab('tables'); setShowTables(true); }}
+                className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  activeTab === 'tables' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -341,13 +355,18 @@ export default function POS() {
 
           {/* Content */}
           <div className="flex-1 min-h-0">
-            {showTables ? (
+            {activeTab === 'tables' ? (
               <POSTableMap
                 businessId={resolvedBusinessId}
                 selectedTable={selectedTable}
                 onSelectTable={setSelectedTable}
                 activeOrders={activeOrders}
                 heldOrders={heldOrders}
+              />
+            ) : activeTab === 'orders' ? (
+              <POSActiveOrders
+                businessId={resolvedBusinessId}
+                themeColor={themeColor}
               />
             ) : (
               <POSProductGrid
