@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useBusinessConfig } from '../Context/BusinessContext';
-import { QRCodeSVG } from 'qrcode.react';
-import { FaDownload } from 'react-icons/fa';
 import api from '../services/api';
 import TableMapEditor from './TableMapEditor';
 
@@ -19,9 +17,6 @@ const TableSettings = () => {
   const [tables, setTables] = useState([]);
   const [saving, setSaving] = useState(false);
   const [saveTimer, setSaveTimer] = useState(null);
-
-  // --- QR ---
-  const [qrTable, setQrTable] = useState(null);
 
   // Load floors
   useEffect(() => {
@@ -139,37 +134,6 @@ const TableSettings = () => {
     }
   };
 
-  // --- QR ---
-  const getMenuQRCodeUrl = (tableNumber) => {
-    const baseUrl = window.location.origin;
-    return tableNumber ? `${baseUrl}/${businessId}/mesa/${tableNumber}` : `${baseUrl}/${businessId}`;
-  };
-
-  const handleDownloadQR = (tableNumber) => {
-    const svgElement = document.getElementById('table-qr-code');
-    if (!svgElement) return;
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 300;
-    canvas.height = 300;
-    const image = new Image();
-    image.onload = function() {
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, 0, 0, 300, 300);
-      const pngUrl = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = pngUrl;
-      link.download = `mesa-${tableNumber || 'menu'}-qr.png`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    };
-    const svgData = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-    image.src = URL.createObjectURL(svgBlob);
-  };
-
   return (
     <div className="space-y-6">
       {/* ═══ Section 1: Floors (Salones) ═══ */}
@@ -267,87 +231,16 @@ const TableSettings = () => {
               {floorTables.map(table => (
                 <div
                   key={table._id}
-                  className="border rounded-lg p-2 text-center hover:border-blue-400 cursor-pointer transition-colors"
-                  onClick={() => setQrTable(table)}
+                  className="border rounded-lg p-2 text-center transition-colors"
                 >
                   <div className="font-bold text-sm text-gray-800">Mesa {table.tableNumber}</div>
                   <div className="text-xs text-gray-500">{table.capacity} personas</div>
-                  <div className="text-[10px] text-blue-500 mt-1">QR ↗</div>
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
-
-      {/* ═══ Section 3: QR Code del Menú General ═══ */}
-      <div className="bg-white rounded-xl shadow-sm border p-5">
-        <div className="text-center">
-          <h2 className="text-lg font-bold text-gray-800 mb-2">Código QR del Menú</h2>
-          <p className="text-gray-500 text-sm mb-4">
-            Los clientes pueden escanear este código para acceder al menú de tu negocio
-          </p>
-          <div className="flex justify-center mb-4">
-            <div className="p-3 bg-white border-2 border-gray-200 rounded-lg shadow-sm">
-              <QRCodeSVG
-                id="menu-qr-code"
-                value={getMenuQRCodeUrl()}
-                size={200}
-                level="H"
-                includeMargin={true}
-              />
-            </div>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-lg mb-4 max-w-md mx-auto">
-            <p className="text-xs text-gray-500 break-all font-mono">{getMenuQRCodeUrl()}</p>
-          </div>
-          <button
-            onClick={() => {
-              // Temporarily swap id for download
-              const el = document.getElementById('menu-qr-code');
-              if (el) { el.id = 'table-qr-code'; handleDownloadQR('menu'); el.id = 'menu-qr-code'; }
-            }}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 inline-flex items-center gap-2"
-          >
-            <FaDownload size={14} /> Descargar QR
-          </button>
-        </div>
-      </div>
-
-      {/* ═══ QR Modal for individual table ═══ */}
-      {qrTable && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50" onClick={() => setQrTable(null)}>
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="text-center">
-              <h3 className="text-lg font-bold text-gray-800 mb-1">Mesa {qrTable.tableNumber}</h3>
-              <p className="text-sm text-gray-500 mb-4">Escanea para pedir desde esta mesa</p>
-              <div className="flex justify-center mb-4">
-                <div className="p-3 bg-white border-2 border-gray-200 rounded-lg">
-                  <QRCodeSVG
-                    id="table-qr-code"
-                    value={getMenuQRCodeUrl(qrTable.tableNumber)}
-                    size={200}
-                    level="H"
-                    includeMargin={true}
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-gray-400 mb-4 break-all">{getMenuQRCodeUrl(qrTable.tableNumber)}</p>
-              <div className="flex justify-center gap-3">
-                <button
-                  onClick={() => handleDownloadQR(qrTable.tableNumber)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center gap-2"
-                >
-                  <FaDownload size={14} /> Descargar
-                </button>
-                <button onClick={() => setQrTable(null)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200">
-                  Cerrar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -16,13 +16,13 @@ const ORDER_TYPES = [
 
 const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
 
-export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister }) {
+export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister, preselectedTable }) {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [cashReceived, setCashReceived] = useState('');
-  const [orderType, setOrderType] = useState('takeaway');
+  const [orderType, setOrderType] = useState(preselectedTable ? 'inSite' : 'takeaway');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [tableNumber, setTableNumber] = useState('');
+  const [tableNumber, setTableNumber] = useState(preselectedTable?.tableNumber || '');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryZones, setDeliveryZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState(null);

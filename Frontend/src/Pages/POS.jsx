@@ -11,6 +11,7 @@ import POSCart from '../Components/POS/POSCart';
 import POSCheckoutModal from '../Components/POS/POSCheckoutModal';
 import POSCashRegister from '../Components/POS/POSCashRegister';
 import POSTicket from '../Components/POS/POSTicket';
+import POSTableMap from '../Components/POS/POSTableMap';
 import ProductToppingsSelector from '../Components/ProductToppingsSelector';
 
 export default function POS() {
@@ -32,6 +33,9 @@ export default function POS() {
   const [showMovements, setShowMovements] = useState(false);
   const [showToppings, setShowToppings] = useState(null);
   const [lastOrder, setLastOrder] = useState(null);
+  const [selectedTable, setSelectedTable] = useState(null);
+  const [showTables, setShowTables] = useState(false);
+  const [activeOrders, setActiveOrders] = useState([]);
 
   // Order notifications (web orders arriving)
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
@@ -57,6 +61,19 @@ export default function POS() {
       }
     } catch {}
   }, [heldOrders, resolvedBusinessId]);
+
+  // Fetch active orders (for table occupancy)
+  useEffect(() => {
+    if (!resolvedBusinessId) return;
+    const fetchActive = () => {
+      api.get(`/orders?businessId=${resolvedBusinessId}&status=confirmed,preparing,ready`)
+        .then(res => setActiveOrders(Array.isArray(res.data) ? res.data : []))
+        .catch(() => {});
+    };
+    fetchActive();
+    const interval = setInterval(fetchActive, 15000);
+    return () => clearInterval(interval);
+  }, [resolvedBusinessId]);
 
   // Fetch products, categories, and cash register
   useEffect(() => {
@@ -164,9 +181,10 @@ export default function POS() {
   // Hold/park current order
   const holdOrder = useCallback(() => {
     if (cart.length === 0) return;
-    setHeldOrders(prev => [...prev, { id: Date.now(), items: cart, heldAt: new Date() }]);
+    setHeldOrders(prev => [...prev, { id: Date.now(), items: cart, heldAt: new Date(), tableNumber: selectedTable?.tableNumber || '' }]);
     setCart([]);
-  }, [cart]);
+    setSelectedTable(null);
+  }, [cart, selectedTable]);
 
   // Recall a held order
   const recallHeldOrder = useCallback((heldId) => {
@@ -174,12 +192,22 @@ export default function POS() {
     if (!held) return;
     // If current cart has items, hold it first
     if (cart.length > 0) {
-      setHeldOrders(prev => [...prev.filter(h => h.id !== heldId), { id: Date.now(), items: cart, heldAt: new Date() }]);
+      setHeldOrders(prev => [...prev.filter(h => h.id !== heldId), { id: Date.now(), items: cart, heldAt: new Date(), tableNumber: selectedTable?.tableNumber || '' }]);
     } else {
       setHeldOrders(prev => prev.filter(h => h.id !== heldId));
     }
     setCart(held.items);
-  }, [cart, heldOrders]);
+    // Restore table if the held order had one
+    if (held.tableNumber) {
+      api.get(`/tables?businessId=${resolvedBusinessId}`).then(res => {
+        const t = (res.data || []).find(tb => String(tb.tableNumber) === String(held.tableNumber));
+        if (t) setSelectedTable(t);
+        else setSelectedTable(null);
+      }).catch(() => setSelectedTable(null));
+    } else {
+      setSelectedTable(null);
+    }
+  }, [cart, heldOrders, selectedTable, resolvedBusinessId]);
 
   // Delete a held order
   const deleteHeldOrder = useCallback((heldId) => {
@@ -189,10 +217,11 @@ export default function POS() {
   // Start new order (hold current if has items)
   const startNewOrder = useCallback(() => {
     if (cart.length > 0) {
-      setHeldOrders(prev => [...prev, { id: Date.now(), items: cart, heldAt: new Date() }]);
+      setHeldOrders(prev => [...prev, { id: Date.now(), items: cart, heldAt: new Date(), tableNumber: selectedTable?.tableNumber || '' }]);
     }
     setCart([]);
-  }, [cart]);
+    setSelectedTable(null);
+  }, [cart, selectedTable]);
 
   // Handle product click
   const handleProductClick = useCallback((product) => {
@@ -214,6 +243,7 @@ export default function POS() {
     setLastOrder(order);
     setShowCheckout(false);
     clearCart();
+    setSelectedTable(null);
     // Refresh cash register
     api.get(`/cash-register/current?businessId=${resolvedBusinessId}`)
       .then(res => setCashRegister(res.data))
@@ -280,14 +310,53 @@ export default function POS() {
       />
 
       <div className="flex-1 flex min-h-0">
-        {/* Product grid — left ~65% */}
-        <div className="flex-1 min-w-0">
-          <POSProductGrid
-            products={products}
-            categories={categories}
-            onProductClick={handleProductClick}
-            themeColor={themeColor}
-          />
+        {/* Left panel: product grid or table map */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Tab bar */}
+          <div className="flex gap-1 px-3 pt-2 pb-1 bg-white border-b border-slate-200 flex-shrink-0">
+            <button
+              onClick={() => setShowTables(false)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                !showTables ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+              style={!showTables ? { backgroundColor: themeColor } : {}}
+            >
+              Productos
+            </button>
+            <button
+              onClick={() => setShowTables(true)}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
+                showTables ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+              style={showTables ? { backgroundColor: themeColor } : {}}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              Mesas
+              {selectedTable && (
+                <span className="bg-white/30 px-1.5 py-0.5 rounded text-[10px]">M{selectedTable.tableNumber}</span>
+              )}
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-h-0">
+            {showTables ? (
+              <POSTableMap
+                businessId={resolvedBusinessId}
+                selectedTable={selectedTable}
+                onSelectTable={setSelectedTable}
+                activeOrders={activeOrders}
+                heldOrders={heldOrders}
+              />
+            ) : (
+              <POSProductGrid
+                products={products}
+                categories={categories}
+                onProductClick={handleProductClick}
+                themeColor={themeColor}
+              />
+            )}
+          </div>
         </div>
 
         {/* Cart — right ~35% */}
@@ -302,6 +371,8 @@ export default function POS() {
             heldOrders={heldOrders}
             onRecallHeldOrder={recallHeldOrder}
             onDeleteHeldOrder={deleteHeldOrder}
+            selectedTable={selectedTable}
+            onClearTable={() => setSelectedTable(null)}
             themeColor={themeColor}
           />
         </div>
@@ -315,6 +386,7 @@ export default function POS() {
           onClose={() => setShowCheckout(false)}
           onOrderComplete={handleOrderComplete}
           cashRegister={cashRegister}
+          preselectedTable={selectedTable}
         />
       )}
 

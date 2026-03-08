@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function POSCart({ cart, updateQuantity, removeFromCart, clearCart, onCheckout, onHoldOrder, heldOrders, onRecallHeldOrder, onDeleteHeldOrder, themeColor }) {
+export default function POSCart({ cart, updateQuantity, removeFromCart, clearCart, onCheckout, onHoldOrder, heldOrders, onRecallHeldOrder, onDeleteHeldOrder, selectedTable, onClearTable, themeColor }) {
   const total = cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0);
   const [showHeld, setShowHeld] = useState(false);
 
@@ -11,6 +11,12 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
         <div className="flex items-center gap-2">
           <svg className="w-5 h-5 text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
           <h2 className="font-bold text-slate-800">Venta actual</h2>
+          {selectedTable && (
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-bold">
+              Mesa {selectedTable.tableNumber}
+              <button onClick={onClearTable} className="ml-0.5 text-blue-400 hover:text-blue-600">✕</button>
+            </span>
+          )}
           {cart.length > 0 && (
             <span className="text-xs text-white rounded-full w-5 h-5 flex items-center justify-center font-bold" style={{ backgroundColor: themeColor }}>
               {cart.reduce((s, i) => s + i.quantity, 0)}
@@ -52,7 +58,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               <div key={held.id} className="flex items-center gap-2 bg-white rounded-lg px-2.5 py-2 border border-amber-200/60">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-slate-700 truncate">{itemCount} producto(s) · ${heldTotal.toLocaleString()}</p>
-                  <p className="text-[10px] text-slate-400">hace {mins < 1 ? '<1' : mins} min</p>
+                  <p className="text-[10px] text-slate-400">{held.tableNumber ? `Mesa ${held.tableNumber} · ` : ''}hace {mins < 1 ? '<1' : mins} min</p>
                 </div>
                 <button onClick={() => { onRecallHeldOrder(held.id); setShowHeld(false); }} className="px-2 py-1 rounded-md bg-amber-500 text-white text-[10px] font-bold hover:bg-amber-600 transition-colors">
                   Retomar
