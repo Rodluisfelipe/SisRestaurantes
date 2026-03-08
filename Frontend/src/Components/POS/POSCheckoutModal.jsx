@@ -62,7 +62,8 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
     setCashReceived(prev => prev + val);
   };
 
-  const canSubmitDelivery = orderType !== 'delivery' || (deliveryAddress.trim() && customerName.trim());
+  const hasZones = deliveryZones.length > 0;
+  const canSubmitDelivery = orderType !== 'delivery' || (deliveryAddress.trim() && customerName.trim() && (!hasZones || selectedZone));
 
   const handleSubmit = async () => {
     if (submitting || !canSubmit || !canSubmitDelivery) return;
@@ -117,7 +118,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-800">Cobrar venta</h2>
@@ -273,7 +274,10 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
               </div>
               {deliveryZones.length > 0 && (
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Zona de entrega</label>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Zona de entrega *</label>
+                  {!selectedZone && (
+                    <p className="text-xs text-amber-600 mb-1.5">⚠ Selecciona una zona para calcular el domicilio</p>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
                     {deliveryZones.map(z => (
                       <button
