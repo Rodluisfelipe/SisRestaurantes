@@ -312,30 +312,31 @@ export default function POS() {
       <div className="flex-1 flex min-h-0">
         {/* Left panel: product grid or table map */}
         <div className="flex-1 min-w-0 flex flex-col">
-          {/* Tab bar */}
-          <div className="flex gap-1 px-3 pt-2 pb-1 bg-white border-b border-slate-200 flex-shrink-0">
-            <button
-              onClick={() => setShowTables(false)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                !showTables ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-              style={!showTables ? { backgroundColor: themeColor } : {}}
-            >
-              Productos
-            </button>
-            <button
-              onClick={() => setShowTables(true)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
-                showTables ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-              style={showTables ? { backgroundColor: themeColor } : {}}
-            >
-              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-              Mesas
-              {selectedTable && (
-                <span className="bg-white/30 px-1.5 py-0.5 rounded text-[10px]">M{selectedTable.tableNumber}</span>
-              )}
-            </button>
+          {/* Tab bar — segmented control */}
+          <div className="px-4 pt-3 pb-2 bg-white border-b border-slate-100 flex-shrink-0">
+            <div className="inline-flex bg-slate-100 rounded-xl p-1 gap-0.5">
+              <button
+                onClick={() => setShowTables(false)}
+                className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  !showTables ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Productos
+              </button>
+              <button
+                onClick={() => setShowTables(true)}
+                className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  showTables ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                Mesas
+                {selectedTable && (
+                  <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">M{selectedTable.tableNumber}</span>
+                )}
+              </button>
+            </div>
           </div>
 
           {/* Content */}
