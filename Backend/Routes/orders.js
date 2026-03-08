@@ -126,6 +126,7 @@ router.get("/", tenantAuth, async (req, res) => {
     const orders = await Order.find(filter).sort({ createdAt: -1 });
     
     logger.info(`Retrieved ${orders.length} orders for business ${businessId}`);
+    res.set('Cache-Control', 'no-store');
     res.json(orders);
   } catch (error) {
     logger.error("Error fetching orders", error);

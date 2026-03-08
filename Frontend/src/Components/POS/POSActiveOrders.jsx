@@ -16,7 +16,6 @@ const METHOD_LABELS = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata'
 const TYPE_LABELS = { inSite: 'Mesa', takeaway: 'Para llevar', delivery: 'Domicilio' };
 
 export default function POSActiveOrders({ businessId, themeColor }) {
-  console.log('[POSActiveOrders] MOUNTED, businessId:', businessId);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
@@ -25,13 +24,10 @@ export default function POSActiveOrders({ businessId, themeColor }) {
   const fetchOrders = useCallback(async () => {
     if (!businessId) return;
     try {
-      console.log('[POSActiveOrders] fetching businessId:', businessId);
       const res = await api.get(`/orders?businessId=${businessId}&status=pending,pending_payment,payment_uploaded,payment_confirmed,confirmed,preparing,ready`);
-      console.log('[POSActiveOrders] got', Array.isArray(res.data) ? res.data.length : 0, 'orders');
       const data = Array.isArray(res.data) ? res.data : [];
       setOrders(data.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
-    } catch (err) {
-      console.error('[POSActiveOrders] fetch error:', err?.response?.status, err?.response?.data, 'businessId:', businessId);
+    } catch {
       setOrders([]);
     } finally {
       setLoading(false);
@@ -114,8 +110,6 @@ export default function POSActiveOrders({ businessId, themeColor }) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
-      {/* DEBUG — remove later */}
-      <div className="px-4 pt-2 text-[10px] text-red-500 font-mono">DEBUG: bID={businessId} | orders={orders.length}</div>
       {/* Filter pills */}
       <div className="px-4 py-3 flex items-center gap-2 flex-shrink-0">
         {[
