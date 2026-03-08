@@ -79,34 +79,34 @@ export default function POSProductGrid({ products, categories, onProductClick, t
             <p className="text-sm text-slate-400 font-medium">No se encontraron productos</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {filtered.map(product => {
               const hasExtras = product.toppingGroups && product.toppingGroups.length > 0;
               return (
                 <button
                   key={product._id}
                   onClick={() => onProductClick(product)}
-                  className="group bg-white rounded-xl border-2 border-slate-100 hover:border-slate-300 hover:shadow-lg transition-all duration-100 active:scale-[0.96] text-left p-3 flex flex-col justify-between relative min-h-[80px]"
+                  className="group bg-white rounded-2xl border-2 border-slate-100 hover:border-slate-300 hover:shadow-lg transition-all duration-100 active:scale-[0.97] text-left p-4 flex flex-col justify-between relative min-h-[100px]"
                 >
-                  {/* Image peek button — only shown if product has image */}
+                  {/* Image peek button */}
                   {product.image && (
                     <span
                       onClick={(e) => { e.stopPropagation(); setPreviewImage(product.image); }}
-                      className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors z-10 opacity-60 group-hover:opacity-100"
+                      className="absolute top-3 right-3 w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors z-10 opacity-50 group-hover:opacity-100"
                       title="Ver imagen"
                     >
-                      <svg className="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      <svg className="w-4.5 h-4.5 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                     </span>
                   )}
 
-                  {/* Product name — big and readable */}
-                  <p className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 pr-6">{product.name}</p>
+                  {/* Product name — large and easy to tap */}
+                  <p className="text-base font-bold text-slate-800 leading-snug line-clamp-2 pr-8">{product.name}</p>
 
                   {/* Price + extras indicator */}
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-base font-black text-slate-900">${product.price?.toLocaleString()}</span>
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="text-lg font-black text-slate-900">${product.price?.toLocaleString()}</span>
                     {hasExtras && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white" style={{ backgroundColor: themeColor }}>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-lg text-white" style={{ backgroundColor: themeColor }}>
                         +Extras
                       </span>
                     )}
