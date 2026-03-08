@@ -20,6 +20,26 @@ router.get('/business', superadmin.listarNegocios);
 // Activar/desactivar negocio
 router.patch('/business/:id/activate', superadmin.activarNegocio);
 
+// Toggle POS beta para un negocio
+router.patch('/business/:id/pos-beta', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled } = req.body;
+    const negocio = await BusinessConfig.findByIdAndUpdate(
+      id,
+      { 'features.posBetaEnabled': !!enabled },
+      { new: true }
+    );
+    if (!negocio) return res.status(404).json({ message: 'Negocio no encontrado' });
+    const io = req.app.get('io');
+    if (io) io.emit('businesses-updated');
+    res.json(negocio);
+  } catch (error) {
+    logger.error('Error toggling POS beta', error);
+    res.status(500).json({ message: 'Error al cambiar POS beta' });
+  }
+});
+
 // Eliminar negocio
 router.delete('/business/:id', superadmin.eliminarNegocio);
 

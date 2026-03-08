@@ -434,6 +434,28 @@ router.post("/", createOrderLimiter, async (req, res) => {
     
     const savedOrder = await newOrder.save();
 
+    // POS: Auto-register sale in open cash register (only for POS orders)
+    if (orderChannel === 'pos') {
+      try {
+        const CashRegister = require('../Models/CashRegister');
+        const openRegister = await CashRegister.findOne({ businessId: businessObjectId, status: 'open' });
+        if (openRegister) {
+          openRegister.movements.push({
+            type: 'sale',
+            amount: finalAmount,
+            paymentMethod: paymentMethod || 'cash',
+            orderId: savedOrder._id,
+            orderNumber: orderNumber,
+            description: `Venta #${orderNumber} - ${customerName}`,
+            createdAt: new Date()
+          });
+          await openRegister.save();
+        }
+      } catch (cashErr) {
+        logger.warn('Failed to register sale in cash register', { error: cashErr.message, orderId: savedOrder._id });
+      }
+    }
+
     // Record coupon usage AFTER successful order save
     if (coupon) {
       try {

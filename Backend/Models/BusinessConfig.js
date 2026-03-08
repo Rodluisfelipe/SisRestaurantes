@@ -140,7 +140,8 @@ const businessConfigSchema = new mongoose.Schema({
   // Feature flags
   features: {
     favoritesEnabled: { type: Boolean, default: true },
-    orderHistoryEnabled: { type: Boolean, default: true }
+    orderHistoryEnabled: { type: Boolean, default: true },
+    posBetaEnabled: { type: Boolean, default: false }
   },
   // In-app ordering configuration
   orderingMode: {

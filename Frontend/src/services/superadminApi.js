@@ -118,6 +118,15 @@ export const activateBusiness = async (id, isActive) => {
   }
 };
 
+export const togglePosBeta = async (id, enabled) => {
+  try {
+    const response = await superadminApi.patch(`/business/${id}/pos-beta`, { enabled });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const deleteBusiness = async (id) => {
   try {
     const response = await superadminApi.delete(`/business/${id}`);

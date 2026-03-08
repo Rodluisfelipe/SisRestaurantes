@@ -8,6 +8,7 @@ const HealthCheckLazy = lazy(() => import('./Pages/HealthCheck'));
 const Menu = lazy(() => import("./Pages/Menu"));
 const Admin = lazy(() => import("./Pages/Admin"));
 const Kitchen = lazy(() => import("./Pages/Kitchen"));
+const POS = lazy(() => import("./Pages/POS"));
 const SuperAdminDashboard = lazy(() => import("./Pages/SuperAdmin/SuperAdminDashboard"));
 const MenuByCatalog = lazy(() => import("./Pages/Catalog/MenuByCatalog"));
 const RestaurantDetail = lazy(() => import("./Pages/Catalog/RestaurantDetail"));
@@ -205,6 +206,17 @@ function App() {
               <BusinessProviderWrapper>
                 <ProtectedRoute>
                   <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><Kitchen /></Suspense>
+                </ProtectedRoute>
+              </BusinessProviderWrapper>
+            } 
+          />
+
+          <Route 
+          path="/:businessId/pos"
+            element={
+              <BusinessProviderWrapper>
+                <ProtectedRoute>
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><POS /></Suspense>
                 </ProtectedRoute>
               </BusinessProviderWrapper>
             } 

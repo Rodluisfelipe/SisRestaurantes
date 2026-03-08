@@ -201,6 +201,22 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         </div>
       )}
 
+      {/* Punto de Venta Button */}
+      {businessConfig?._id && businessConfig?.features?.posBetaEnabled && (
+        <div className="px-4 pb-3">
+          <a
+            href={`/${businessConfig._id}/pos`}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-200/80 bg-purple-50 hover:bg-purple-100 transition-all duration-200 group"
+          >
+            <FaShoppingBag className="text-[11px] shrink-0 text-purple-500" />
+            <span className="text-[11px] font-semibold text-purple-700 flex-1 text-left">
+              Punto de Venta
+            </span>
+            <FaExternalLinkAlt className="text-[9px] text-purple-300" />
+          </a>
+        </div>
+      )}
+
       {/* Divider */}
       <div className="mx-4 border-t border-slate-100" />
 

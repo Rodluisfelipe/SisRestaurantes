@@ -71,6 +71,7 @@ const SECTIONS = [
       { tab: 'payment-config',   svgKey: 'payment',   title: 'Pagos',         desc: 'Métodos de cobro',       color: 'teal' },
       { tab: 'customers',        svgKey: 'customers', title: 'Clientes',      desc: 'Base de datos',         color: 'cyan' },
       { tab: 'reviews',          svgKey: 'reviews',   title: 'Reseñas',       desc: 'Calificaciones',        color: 'amber' },
+      { tab: 'pos',               svgKey: 'reorder',   title: 'Punto de Venta', desc: 'Sistema de caja',       color: 'purple', isRoute: true, isBeta: true },
     ],
   },
   {
@@ -273,13 +274,15 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
 
   /* Search logic */
   const q = search.trim().toLowerCase();
+  const posBetaOn = businessConfig?.features?.posBetaEnabled;
   const filteredSections = useMemo(() => {
-    if (!q) return SECTIONS;
+    const filterBeta = (items) => items.filter(i => !i.isBeta || posBetaOn);
+    if (!q) return SECTIONS.map(s => ({ ...s, items: filterBeta(s.items) }));
     const results = ALL_ITEMS.filter(i =>
-      i.title.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)
+      (i.title.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)) && (!i.isBeta || posBetaOn)
     );
     return [{ id: 'search', label: 'Resultados', items: results }];
-  }, [q]);
+  }, [q, posBetaOn]);
 
   const handleNav = useCallback((tab) => setActiveTab(tab), [setActiveTab]);
 
@@ -428,7 +431,13 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                     <motion.div key={item.tab} variants={fadeUp}>
                       <DashCard
                         item={item}
-                        onClick={() => handleNav(item.tab)}
+                        onClick={() => {
+                          if (item.isRoute) {
+                            window.location.href = `/${businessConfig?._id}/pos`;
+                          } else {
+                            handleNav(item.tab);
+                          }
+                        }}
                         pendingOrdersCount={pendingOrdersCount}
                       />
                     </motion.div>
