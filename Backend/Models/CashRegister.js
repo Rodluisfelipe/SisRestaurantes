@@ -11,6 +11,7 @@ const movementSchema = new mongoose.Schema({
   paymentMethod: { type: String, trim: true, default: '' },
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' },
   orderNumber: { type: String, default: '' },
+  orderChannel: { type: String, enum: ['pos', 'menuby', ''], default: '' },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
   createdAt: { type: Date, default: Date.now }
 });
@@ -45,7 +46,9 @@ const cashRegisterSchema = new mongoose.Schema({
   salesSummary: {
     totalSales: { type: Number, default: 0 },
     totalOrders: { type: Number, default: 0 },
-    byPaymentMethod: { type: Map, of: { count: Number, total: Number } }
+    byPaymentMethod: { type: Map, of: { count: Number, total: Number } },
+    posSales: { total: { type: Number, default: 0 }, count: { type: Number, default: 0 } },
+    menubySales: { total: { type: Number, default: 0 }, count: { type: Number, default: 0 } }
   }
 }, { timestamps: true });
 

@@ -456,7 +456,8 @@ router.post("/", (req, res, next) => {
             paymentMethod: paymentMethod || 'cash',
             orderId: savedOrder._id,
             orderNumber: orderNumber,
-            description: `Venta #${orderNumber} - ${customerName}`,
+            orderChannel: 'pos',
+            description: `Venta POS #${orderNumber} - ${customerName}`,
             createdAt: new Date()
           });
           await openRegister.save();
@@ -738,6 +739,29 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
     
     // If order is completed, move it to CompletedOrders collection
     if (status === "completed") {
+      // Register MenuBy orders in cash register if one is open
+      if (updatedOrder.orderChannel !== 'pos') {
+        try {
+          const CashRegister = require('../Models/CashRegister');
+          const openRegister = await CashRegister.findOne({ businessId: updatedOrder.businessId, status: 'open' });
+          if (openRegister) {
+            openRegister.movements.push({
+              type: 'sale',
+              amount: updatedOrder.finalAmount || updatedOrder.totalAmount,
+              paymentMethod: updatedOrder.paymentMethod || 'cash',
+              orderId: updatedOrder._id,
+              orderNumber: updatedOrder.orderNumber,
+              orderChannel: 'menuby',
+              description: `MenuBy #${updatedOrder.orderNumber} - ${updatedOrder.customerName}`,
+              createdAt: new Date()
+            });
+            await openRegister.save();
+          }
+        } catch (cashErr) {
+          logger.warn('Failed to register MenuBy sale in cash register', { error: cashErr.message, orderId: updatedOrder._id });
+        }
+      }
+
       try {
         // Convert Mongoose document to plain object
         const orderData = updatedOrder.toObject();

@@ -106,6 +106,10 @@ router.post("/close", authMiddleware, checkPosBeta, async (req, res) => {
     const incomeMovements = cashRegister.movements.filter(m => m.type === 'income');
     const expenseMovements = cashRegister.movements.filter(m => m.type === 'expense');
 
+    // Separar ventas POS vs MenuBy
+    const posSales = salesMovements.filter(m => m.orderChannel === 'pos' || !m.orderChannel);
+    const menubySales = salesMovements.filter(m => m.orderChannel === 'menuby');
+
     const totalSales = salesMovements.reduce((sum, m) => sum + m.amount, 0);
     const totalRefunds = refundMovements.reduce((sum, m) => sum + m.amount, 0);
     const totalIncome = incomeMovements.reduce((sum, m) => sum + m.amount, 0);
@@ -118,6 +122,24 @@ router.post("/close", authMiddleware, checkPosBeta, async (req, res) => {
       if (!byPaymentMethod[method]) byPaymentMethod[method] = { count: 0, total: 0 };
       byPaymentMethod[method].count += 1;
       byPaymentMethod[method].total += m.amount;
+    });
+
+    // Desglose por método de pago POS
+    const posByPaymentMethod = {};
+    posSales.forEach(m => {
+      const method = m.paymentMethod || 'cash';
+      if (!posByPaymentMethod[method]) posByPaymentMethod[method] = { count: 0, total: 0 };
+      posByPaymentMethod[method].count += 1;
+      posByPaymentMethod[method].total += m.amount;
+    });
+
+    // Desglose por método de pago MenuBy
+    const menubyByPaymentMethod = {};
+    menubySales.forEach(m => {
+      const method = m.paymentMethod || 'cash';
+      if (!menubyByPaymentMethod[method]) menubyByPaymentMethod[method] = { count: 0, total: 0 };
+      menubyByPaymentMethod[method].count += 1;
+      menubyByPaymentMethod[method].total += m.amount;
     });
 
     // Efectivo esperado = apertura + ventas en efectivo + ingresos - retiros - reembolsos en efectivo
@@ -134,7 +156,17 @@ router.post("/close", authMiddleware, checkPosBeta, async (req, res) => {
     cashRegister.salesSummary = {
       totalSales,
       totalOrders: salesMovements.length,
-      byPaymentMethod
+      byPaymentMethod,
+      posSales: {
+        total: posSales.reduce((s, m) => s + m.amount, 0),
+        count: posSales.length,
+        byPaymentMethod: posByPaymentMethod
+      },
+      menubySales: {
+        total: menubySales.reduce((s, m) => s + m.amount, 0),
+        count: menubySales.length,
+        byPaymentMethod: menubyByPaymentMethod
+      }
     };
 
     const saved = await cashRegister.save();
