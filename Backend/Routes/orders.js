@@ -116,7 +116,10 @@ router.get("/", tenantAuth, async (req, res) => {
     const filter = await createBusinessFilter(businessId);
     
     // Add optional filters
-    if (status) filter.status = status;
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
+      filter.status = statuses.length > 1 ? { $in: statuses } : statuses[0];
+    }
     if (orderType) filter.orderType = orderType;
     
     // Get orders sorted by creation date (newest first)
