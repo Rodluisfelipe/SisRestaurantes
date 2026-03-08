@@ -40,6 +40,7 @@ import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 import WelcomeWizard from "../Components/Admin/WelcomeWizard";
 import FloatingHelpChat from "../Components/Admin/FloatingHelpChat";
 import AdminReviews from "../Components/Admin/AdminReviews";
+import CashClosings from "../Components/Admin/CashClosings";
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -389,6 +390,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Pedidos Completados" onGoBack={() => setActiveTab('dashboard')}>
                       <EnhancedCompletedOrders />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'cash-closings' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Cierres de Caja" onGoBack={() => setActiveTab('dashboard')}>
+                      <CashClosings />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

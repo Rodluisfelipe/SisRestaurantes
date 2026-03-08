@@ -8,7 +8,7 @@ import {
   FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar,
-  FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint
+  FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding }) => {
@@ -22,6 +22,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'orders', label: 'Pedidos', Icon: FaClipboardList, badge: pendingOrdersCount },
         { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
+        { id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null },
       ]
     },
     {
