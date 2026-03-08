@@ -3,7 +3,6 @@ import React, { useState, useMemo } from 'react';
 export default function POSProductGrid({ products, categories, onProductClick, themeColor }) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
-  const [previewImage, setPreviewImage] = useState(null);
 
   const filtered = useMemo(() => {
     let items = products;
@@ -106,16 +105,7 @@ export default function POSProductGrid({ products, categories, onProductClick, t
                   onClick={() => onProductClick(product)}
                   className="group bg-white rounded-xl shadow-sm hover:shadow-md border border-slate-100 hover:border-slate-200 transition-all duration-150 active:scale-[0.96] text-left p-3.5 flex flex-col justify-between relative"
                 >
-                  {product.image && (
-                    <span
-                      onClick={(e) => { e.stopPropagation(); setPreviewImage(product.image); }}
-                      className="absolute top-2.5 right-2.5 w-9 h-9 rounded-lg overflow-hidden border-2 border-white shadow-sm opacity-80 group-hover:opacity-100 transition-opacity z-10"
-                    >
-                      <img src={product.image} alt="" className="w-full h-full object-cover" />
-                    </span>
-                  )}
-
-                  <p className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 pr-10">{product.name}</p>
+                  <p className="text-sm font-bold text-slate-800 leading-snug line-clamp-2">{product.name}</p>
 
                   <div className="flex items-center gap-2 mt-2.5">
                     <span className="text-base font-black" style={{ color: themeColor }}>${product.price?.toLocaleString()}</span>
@@ -132,20 +122,6 @@ export default function POSProductGrid({ products, categories, onProductClick, t
         )}
       </div>
 
-      {/* Image preview */}
-      {previewImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setPreviewImage(null)}>
-          <div className="relative max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
-            <img src={previewImage} alt="" className="w-full rounded-2xl shadow-2xl object-contain max-h-[70vh]" />
-            <button
-              onClick={() => setPreviewImage(null)}
-              className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-slate-100 transition-colors"
-            >
-              <svg className="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
