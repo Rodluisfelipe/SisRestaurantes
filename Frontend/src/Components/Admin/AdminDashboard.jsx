@@ -433,7 +433,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                         item={item}
                         onClick={() => {
                           if (item.isRoute) {
-                            window.location.href = `/${businessConfig?._id}/pos`;
+                            window.location.href = `/${businessConfig?.slug || businessConfig?._id}/pos`;
                           } else {
                             handleNav(item.tab);
                           }

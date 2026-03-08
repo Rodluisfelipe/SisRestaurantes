@@ -207,7 +207,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       {businessConfig?._id && businessConfig?.features?.posBetaEnabled && (
         <div className="px-4 pb-3">
           <a
-            href={`/${businessConfig._id}/pos`}
+            href={`/${businessConfig.slug || businessConfig._id}/pos`}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-purple-200/80 bg-purple-50 hover:bg-purple-100 transition-all duration-200 group"
           >
             <FaShoppingBag className="text-[11px] shrink-0 text-purple-500" />
