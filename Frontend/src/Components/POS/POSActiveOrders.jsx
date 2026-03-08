@@ -3,12 +3,13 @@ import api from '../../services/api';
 import { socket } from '../../services/socket';
 
 const STATUS_CONFIG = {
-  pending: { label: 'Pendiente', bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-400', next: 'confirmed', nextLabel: 'Confirmar' },
+  pending: { label: 'Pendiente', bg: 'bg-yellow-100', text: 'text-yellow-800', dot: 'bg-yellow-400', next: 'inProgress', nextLabel: 'Iniciar' },
   pending_payment: { label: 'Pago pendiente', bg: 'bg-orange-100', text: 'text-orange-800', dot: 'bg-orange-400', next: null, nextLabel: null },
-  payment_uploaded: { label: 'Pago subido', bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-400', next: 'payment_confirmed', nextLabel: 'Confirmar pago' },
-  payment_confirmed: { label: 'Pago confirmado', bg: 'bg-indigo-100', text: 'text-indigo-800', dot: 'bg-indigo-400', next: 'confirmed', nextLabel: 'Confirmar' },
-  confirmed: { label: 'Confirmada', bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-400', next: 'preparing', nextLabel: 'Preparar' },
-  preparing: { label: 'En preparación', bg: 'bg-amber-100', text: 'text-amber-800', dot: 'bg-amber-400', next: 'ready', nextLabel: 'Lista' },
+  payment_uploaded: { label: 'Pago subido', bg: 'bg-purple-100', text: 'text-purple-800', dot: 'bg-purple-400', next: 'payment_confirmed', nextLabel: 'Confirmar pago' },
+  payment_confirmed: { label: 'Pago confirmado', bg: 'bg-teal-100', text: 'text-teal-800', dot: 'bg-teal-400', next: 'inProgress', nextLabel: 'Iniciar' },
+  confirmed: { label: 'Confirmada', bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-400', next: 'inProgress', nextLabel: 'Iniciar' },
+  inProgress: { label: 'En progreso', bg: 'bg-blue-100', text: 'text-blue-800', dot: 'bg-blue-400', next: 'completed', nextLabel: 'Completar' },
+  preparing: { label: 'En preparación', bg: 'bg-amber-100', text: 'text-amber-800', dot: 'bg-amber-400', next: 'completed', nextLabel: 'Completar' },
   ready: { label: 'Lista', bg: 'bg-emerald-100', text: 'text-emerald-800', dot: 'bg-emerald-400', next: 'completed', nextLabel: 'Completar' },
 };
 
@@ -24,7 +25,7 @@ export default function POSActiveOrders({ businessId, themeColor }) {
   const fetchOrders = useCallback(async () => {
     if (!businessId) return;
     try {
-      const res = await api.get(`/orders?businessId=${businessId}&status=pending,pending_payment,payment_uploaded,payment_confirmed,confirmed,preparing,ready&_t=${Date.now()}`);
+      const res = await api.get(`/orders?businessId=${businessId}&status=pending,pending_payment,payment_uploaded,payment_confirmed,confirmed,inProgress,preparing,ready&_t=${Date.now()}`);
       const data = Array.isArray(res.data) ? res.data : [];
       setOrders(data.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
     } catch {
@@ -230,9 +231,9 @@ export default function POSActiveOrders({ businessId, themeColor }) {
                           <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
                         ) : (
                           <>
-                            {config.next === 'preparing' && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>}
-                            {config.next === 'ready' && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+                            {config.next === 'inProgress' && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>}
                             {config.next === 'completed' && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
+                            {config.next === 'payment_confirmed' && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
                             {config.nextLabel}
                           </>
                         )}
