@@ -1,12 +1,27 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import api from '../../services/api';
 
-export default function POSCashRegister({ mode, businessId, businessName, cashRegister, onComplete, onMovementAdded, onClose }) {
+// Ticket styles — matches POSTicket for consistency
+const S = {
+  center: { textAlign: 'center', fontWeight: '900', color: '#000' },
+  divider: { borderTop: '2px dashed #000', margin: '8px 0' },
+  row: { display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontWeight: '900', fontSize: '15px', color: '#000' },
+  sectionTitle: { fontWeight: '900', fontSize: '14px', color: '#000', textAlign: 'center', padding: '4px 0', letterSpacing: '0.5px' },
+  totalRow: { display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: '20px', fontWeight: '900', color: '#000' },
+  big: { fontSize: '22px', fontWeight: '900', color: '#000' },
+  small: { fontSize: '13px', fontWeight: '900', color: '#000', paddingLeft: '8px' },
+};
+
+export default function POSCashRegister({ mode, businessId, businessConfig, businessName: businessNameProp, cashRegister, onComplete, onMovementAdded, onClose }) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [movementType, setMovementType] = useState('income');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const ticketRef = useRef();
+
+  const businessName = businessConfig?.businessName || businessNameProp || 'Mi Negocio';
+  const paperSize = businessConfig?.printerSettings?.paperSize || '55';
 
   const handleOpen = async () => {
     if (submitting) return;
@@ -100,76 +115,46 @@ export default function POSCashRegister({ mode, businessId, businessName, cashRe
   const closingNum = parseFloat(amount) || 0;
   const difference = closeData ? closingNum - closeData.expected : 0;
 
-  // Print report
-  const handlePrint = () => {
-    if (!closeData) return;
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    const timeStr = now.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-    const openDate = cashRegister?.openedAt ? new Date(cashRegister.openedAt).toLocaleString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+  // Print report — same style as POSTicket, adapted to printer paper size
+  const handlePrint = useCallback(() => {
+    const content = ticketRef.current;
+    if (!content || !closeData) return;
 
-    const buildMethodLines = (byMethod) => {
-      return Object.entries(byMethod).map(([method, amt]) =>
-        `    ${methodLabels[method] || method}: $${amt.toLocaleString()}`
-      ).join('\n');
-    };
-
-    const diffLabel = difference === 0 ? 'CUADRE PERFECTO' : difference > 0 ? `SOBRANTE: +$${difference.toLocaleString()}` : `FALTANTE: -$${Math.abs(difference).toLocaleString()}`;
-
-    const lines = [
-      '='.repeat(40),
-      `  ${(businessName || 'Mi Negocio').toUpperCase()}`,
-      '  CIERRE DE CAJA',
-      '='.repeat(40),
-      `Apertura: ${openDate}`,
-      `Cierre:   ${dateStr} ${timeStr}`,
-      '-'.repeat(40),
-      '',
-      '--- VENTAS POS ---',
-      `Órdenes: ${closeData.pos.count}`,
-      `Total:   $${closeData.pos.total.toLocaleString()}`,
-    ];
-    if (Object.keys(closeData.pos.byMethod).length > 0) {
-      lines.push(buildMethodLines(closeData.pos.byMethod));
-    }
-
-    lines.push('');
-    lines.push('--- VENTAS MENUBY ---');
-    lines.push(`Órdenes: ${closeData.menuby.count}`);
-    lines.push(`Total:   $${closeData.menuby.total.toLocaleString()}`);
-    if (Object.keys(closeData.menuby.byMethod).length > 0) {
-      lines.push(buildMethodLines(closeData.menuby.byMethod));
-    }
-
-    lines.push('');
-    lines.push('-'.repeat(40));
-    lines.push(`TOTAL VENTAS (${closeData.totalOrders}): $${closeData.totalSales.toLocaleString()}`);
-    lines.push('-'.repeat(40));
-
-    if (closeData.income > 0) lines.push(`Ingresos:      +$${closeData.income.toLocaleString()}`);
-    if (closeData.expenses > 0) lines.push(`Gastos:        -$${closeData.expenses.toLocaleString()}`);
-    if (closeData.refunds > 0) lines.push(`Devoluciones:  -$${closeData.refunds.toLocaleString()}`);
-
-    lines.push('');
-    lines.push(`Apertura:      $${(cashRegister?.openingAmount || 0).toLocaleString()}`);
-    lines.push(`Esperado:      $${closeData.expected.toLocaleString()}`);
-    lines.push(`Monto real:    $${closingNum.toLocaleString()}`);
-    lines.push('='.repeat(40));
-    lines.push(`  ${diffLabel}`);
-    lines.push('='.repeat(40));
-
-    const content = lines.join('\n');
-
-    const printWindow = window.open('', '_blank', 'width=350,height=600');
+    const printWindow = window.open('', '_blank', 'width=260,height=700');
     if (!printWindow) return;
-    printWindow.document.write(`<!DOCTYPE html><html><head><title>Cierre de Caja</title><style>
-      @page { margin: 5mm; size: 80mm auto; }
-      body { font-family: 'Courier New', monospace; font-size: 12px; margin: 0; padding: 10px; white-space: pre-wrap; word-wrap: break-word; }
-    </style></head><body>${content.replace(/\n/g, '\n')}</body></html>`);
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html><head>
+        <title>Cierre de Caja</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 15px;
+            font-weight: 900;
+            width: ${paperSize}mm;
+            padding: 2mm;
+            color: #000;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          @media print {
+            body { width: ${paperSize}mm; }
+            @page { margin: 0; size: ${paperSize}mm auto; }
+          }
+        </style>
+      </head><body>
+        ${content.innerHTML}
+      </body></html>
+    `);
     printWindow.document.close();
     printWindow.focus();
-    printWindow.print();
-  };
+    setTimeout(() => {
+      printWindow.print();
+      printWindow.close();
+    }, 200);
+  }, [closeData, paperSize]);
 
   // Render a sales channel section
   const SalesSection = ({ label, icon, color, data }) => {
@@ -322,6 +307,82 @@ export default function POSCashRegister({ mode, businessId, businessName, cashRe
               )}
 
               {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+
+              {/* Hidden print ticket template */}
+              <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+                <div ref={ticketRef}>
+                  <div style={{ height: '20px' }} />
+                  <div style={{ ...S.center, fontSize: '20px', marginBottom: '2px', letterSpacing: '0.5px' }}>{businessName}</div>
+                  <div style={S.divider} />
+                  <div style={{ ...S.center, fontSize: '18px', marginBottom: '4px' }}>CIERRE DE CAJA</div>
+                  <div style={S.divider} />
+
+                  <div style={S.row}><span>Apertura:</span><span>{cashRegister?.openedAt ? new Date(cashRegister.openedAt).toLocaleString('es-CO', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}</span></div>
+                  <div style={S.row}><span>Cierre:</span><span>{new Date().toLocaleString('es-CO', { month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>
+
+                  <div style={S.divider} />
+
+                  {/* POS Section */}
+                  <div style={S.sectionTitle}>── VENTAS POS ──</div>
+                  <div style={S.row}><span>Órdenes:</span><span>{closeData.pos.count}</span></div>
+                  <div style={S.row}><span>Total:</span><span>${closeData.pos.total.toLocaleString()}</span></div>
+                  {Object.entries(closeData.pos.byMethod).map(([method, amt]) => (
+                    <div key={`pos-${method}`} style={{ ...S.small, display: 'flex', justifyContent: 'space-between', padding: '2px 0 2px 8px' }}>
+                      <span>{methodLabels[method] || method}</span>
+                      <span>${amt.toLocaleString()}</span>
+                    </div>
+                  ))}
+
+                  <div style={{ height: '6px' }} />
+
+                  {/* MenuBy Section */}
+                  <div style={S.sectionTitle}>── VENTAS MENUBY ──</div>
+                  <div style={S.row}><span>Órdenes:</span><span>{closeData.menuby.count}</span></div>
+                  <div style={S.row}><span>Total:</span><span>${closeData.menuby.total.toLocaleString()}</span></div>
+                  {Object.entries(closeData.menuby.byMethod).map(([method, amt]) => (
+                    <div key={`mb-${method}`} style={{ ...S.small, display: 'flex', justifyContent: 'space-between', padding: '2px 0 2px 8px' }}>
+                      <span>{methodLabels[method] || method}</span>
+                      <span>${amt.toLocaleString()}</span>
+                    </div>
+                  ))}
+
+                  <div style={S.divider} />
+
+                  {/* Combined totals */}
+                  <div style={S.totalRow}>
+                    <span>VENTAS ({closeData.totalOrders})</span>
+                    <span style={S.big}>${closeData.totalSales.toLocaleString()}</span>
+                  </div>
+
+                  <div style={S.divider} />
+
+                  {closeData.income > 0 && <div style={S.row}><span>Ingresos:</span><span>+${closeData.income.toLocaleString()}</span></div>}
+                  {closeData.expenses > 0 && <div style={S.row}><span>Gastos:</span><span>-${closeData.expenses.toLocaleString()}</span></div>}
+                  {closeData.refunds > 0 && <div style={S.row}><span>Devoluciones:</span><span>-${closeData.refunds.toLocaleString()}</span></div>}
+
+                  <div style={S.divider} />
+
+                  <div style={S.row}><span>Apertura:</span><span>${(cashRegister?.openingAmount || 0).toLocaleString()}</span></div>
+                  <div style={S.row}><span>Esperado:</span><span>${closeData.expected.toLocaleString()}</span></div>
+                  <div style={{ ...S.row, fontSize: '16px' }}><span>Monto real:</span><span>${closingNum.toLocaleString()}</span></div>
+
+                  <div style={S.divider} />
+
+                  <div style={{
+                    textAlign: 'center',
+                    fontSize: '20px',
+                    fontWeight: '900',
+                    color: '#000',
+                    padding: '6px 0'
+                  }}>
+                    {difference === 0 ? 'CUADRE PERFECTO ✓' : difference > 0 ? `SOBRANTE: +$${difference.toLocaleString()}` : `FALTANTE: -$${Math.abs(difference).toLocaleString()}`}
+                  </div>
+
+                  <div style={S.divider} />
+                  <div style={{ ...S.center, fontSize: '11px', marginTop: '6px', color: '#333' }}>Gracias por usar MenuBy</div>
+                  <div style={{ ...S.center, fontSize: '10px', color: '#555', marginTop: '1px' }}>menuby.tech</div>
+                </div>
+              </div>
 
               <div className="flex gap-2">
                 <button onClick={handlePrint} className="flex-1 py-3.5 rounded-xl border-2 border-slate-200 hover:bg-slate-50 text-slate-700 font-bold transition-colors flex items-center justify-center gap-2">

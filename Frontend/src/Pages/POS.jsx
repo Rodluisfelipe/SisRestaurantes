@@ -404,7 +404,7 @@ export default function POS() {
         <POSCashRegister
           mode="close"
           businessId={resolvedBusinessId}
-          businessName={businessConfig?.businessName || 'Mi Negocio'}
+          businessConfig={businessConfig}
           cashRegister={cashRegister}
           onComplete={handleCashClosed}
           onClose={() => setShowCashClose(false)}
