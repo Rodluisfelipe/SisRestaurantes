@@ -126,8 +126,9 @@ router.get("/", tenantAuth, async (req, res) => {
     const orders = await Order.find(filter).sort({ createdAt: -1 });
     
     logger.info(`Retrieved ${orders.length} orders for business ${businessId}`);
-    res.set('Cache-Control', 'no-store');
-    res.json(orders);
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Surrogate-Control', 'no-store');
+    res.status(200).json(orders);
   } catch (error) {
     logger.error("Error fetching orders", error);
     res.status(500).json({ message: 'Error interno del servidor' });

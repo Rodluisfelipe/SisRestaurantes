@@ -68,7 +68,7 @@ export default function POS() {
   useEffect(() => {
     if (!resolvedBusinessId) return;
     const fetchActive = () => {
-      api.get(`/orders?businessId=${resolvedBusinessId}&status=confirmed,preparing,ready`)
+      api.get(`/orders?businessId=${resolvedBusinessId}&status=confirmed,preparing,ready&_t=${Date.now()}`)
         .then(res => setActiveOrders(Array.isArray(res.data) ? res.data : []))
         .catch(() => {});
     };

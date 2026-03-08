@@ -24,7 +24,7 @@ export default function POSActiveOrders({ businessId, themeColor }) {
   const fetchOrders = useCallback(async () => {
     if (!businessId) return;
     try {
-      const res = await api.get(`/orders?businessId=${businessId}&status=pending,pending_payment,payment_uploaded,payment_confirmed,confirmed,preparing,ready`);
+      const res = await api.get(`/orders?businessId=${businessId}&status=pending,pending_payment,payment_uploaded,payment_confirmed,confirmed,preparing,ready&_t=${Date.now()}`);
       const data = Array.isArray(res.data) ? res.data : [];
       setOrders(data.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)));
     } catch {
