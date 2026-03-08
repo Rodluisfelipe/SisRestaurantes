@@ -213,15 +213,13 @@ export default function POSActiveOrders({ businessId, themeColor }) {
                   {/* Actions */}
                   {config.next && (
                     <div className="px-3.5 py-2 border-t border-slate-50 flex gap-2">
-                      {order.status !== 'pending' && (
-                        <button
-                          onClick={() => handleStatusChange(order._id, 'cancelled')}
-                          disabled={isUpdating}
-                          className="px-3 py-2 rounded-lg text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
-                        >
-                          Cancelar
-                        </button>
-                      )}
+                      <button
+                        onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) handleStatusChange(order._id, 'cancelled'); }}
+                        disabled={isUpdating}
+                        className="px-3 py-2 rounded-lg text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+                      >
+                        Cancelar
+                      </button>
                       <button
                         onClick={() => handleStatusChange(order._id, config.next)}
                         disabled={isUpdating}

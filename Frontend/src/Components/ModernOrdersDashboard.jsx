@@ -1087,6 +1087,16 @@ function ModernOrdersDashboard() {
                                 <span>Completar</span>
                               </button>
                             )}
+
+                            {/* Cancel button for all active orders */}
+                            {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
+                              <button
+                                onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) updateOrderStatus(order._id, ORDER_STATUS.CANCELLED); }}
+                                className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 px-2.5 py-2 rounded-lg text-xs font-semibold border border-red-200 transition-colors"
+                              >
+                                <FaTimes className="text-[9px]" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       </>
@@ -1179,6 +1189,17 @@ function ModernOrdersDashboard() {
                                 className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
                               >
                                 <FaCheck className="text-xs" />
+                              </button>
+                            )}
+
+                            {/* Cancel button */}
+                            {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
+                              <button
+                                onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) updateOrderStatus(order._id, ORDER_STATUS.CANCELLED); }}
+                                className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors border border-red-200"
+                                title="Cancelar pedido"
+                              >
+                                <FaTimes className="text-xs" />
                               </button>
                             )}
                           </div>

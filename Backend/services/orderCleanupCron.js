@@ -118,9 +118,10 @@ async function cleanupCancelledOrders() {
  * Ejecuta ambas tareas de limpieza
  */
 async function runCleanup() {
-  const expired = await expireStaleOrders();
+  // Auto-expiration disabled — cancellation is now manual from admin/POS
+  // const expired = await expireStaleOrders();
   const cleaned = await cleanupCancelledOrders();
-  return { expired, cleaned };
+  return { expired: 0, cleaned };
 }
 
 /**
