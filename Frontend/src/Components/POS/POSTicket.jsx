@@ -1,15 +1,18 @@
 import React, { useRef, useCallback } from 'react';
 
-// 55mm thermal printer styles — everything bold, large, ultra-clear
+// QR code via Google Charts API — generates inline QR image
+const qrUrl = (url, size = 200) =>
+  `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&format=png`;
+
+// 55mm thermal printer styles — everything bold, XL, ultra-clear for kitchen readability
 const S = {
-  center: { textAlign: 'center', fontWeight: 'bold' },
-  bold: { fontWeight: 'bold' },
-  divider: { borderTop: '2px dashed #000', margin: '6px 0' },
-  row: { display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontWeight: 'bold', fontSize: '13px' },
-  itemName: { fontWeight: '900', fontSize: '14px' },
-  topping: { paddingLeft: '8px', fontSize: '12px', fontWeight: 'bold', color: '#000' },
-  totalRow: { display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: '18px', fontWeight: '900' },
-  big: { fontSize: '20px', fontWeight: '900' },
+  center: { textAlign: 'center', fontWeight: '900', color: '#000' },
+  divider: { borderTop: '2px dashed #000', margin: '8px 0' },
+  row: { display: 'flex', justifyContent: 'space-between', padding: '3px 0', fontWeight: '900', fontSize: '15px', color: '#000' },
+  itemName: { fontWeight: '900', fontSize: '16px', color: '#000' },
+  topping: { paddingLeft: '8px', fontSize: '14px', fontWeight: '900', color: '#000' },
+  totalRow: { display: 'flex', justifyContent: 'space-between', padding: '5px 0', fontSize: '20px', fontWeight: '900', color: '#000' },
+  big: { fontSize: '22px', fontWeight: '900', color: '#000' },
 };
 
 export default function POSTicket({ order, businessConfig, onClose }) {
@@ -19,13 +22,15 @@ export default function POSTicket({ order, businessConfig, onClose }) {
   const businessName = businessConfig?.businessName || 'Restaurante';
   const businessAddress = businessConfig?.address || businessConfig?.location?.address || '';
   const businessPhone = businessConfig?.whatsappNumber || '';
+  const slug = businessConfig?.slug || '';
+  const menuLink = slug ? `https://menuby.tech/${slug}` : '';
   const extra = order?._posExtra || {};
 
   const handlePrint = useCallback(() => {
     const content = ticketRef.current;
     if (!content) return;
 
-    const printWindow = window.open('', '_blank', 'width=260,height=600');
+    const printWindow = window.open('', '_blank', 'width=260,height=700');
     if (!printWindow) return;
 
     printWindow.document.write(`
@@ -36,13 +41,15 @@ export default function POSTicket({ order, businessConfig, onClose }) {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body {
             font-family: 'Courier New', monospace;
-            font-size: 13px;
-            font-weight: bold;
+            font-size: 15px;
+            font-weight: 900;
             width: 55mm;
             padding: 2mm;
             color: #000;
             -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
+          img { display: block; margin: 0 auto; }
           @media print {
             body { width: 55mm; }
             @page { margin: 0; size: 55mm auto; }
@@ -57,7 +64,7 @@ export default function POSTicket({ order, businessConfig, onClose }) {
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
-    }, 250);
+    }, 400);
   }, [order]);
 
   if (!order) return null;
@@ -85,32 +92,35 @@ export default function POSTicket({ order, businessConfig, onClose }) {
 
         {/* Ticket preview — simulates 55mm paper */}
         <div className="p-4 max-h-[70vh] overflow-y-auto">
-          <div className="bg-white border-2 border-slate-300 rounded-lg p-3 font-mono text-sm font-bold" style={{ maxWidth: '240px', margin: '0 auto' }}>
+          <div className="bg-white border-2 border-slate-300 rounded-lg p-3 font-mono text-sm font-black" style={{ maxWidth: '240px', margin: '0 auto', color: '#000' }}>
             <div ref={ticketRef}>
+              {/* ---- Hanger space (espacio cuelga-comandas) ---- */}
+              <div style={{ height: '20px' }} />
+
               {/* Business name — big and clear */}
-              <div style={{ ...S.center, fontSize: '18px', fontWeight: '900', marginBottom: '2px', letterSpacing: '0.5px' }}>{businessName}</div>
-              {businessAddress && <div style={{ ...S.center, fontSize: '11px' }}>{businessAddress}</div>}
-              {businessPhone && <div style={{ ...S.center, fontSize: '11px' }}>Tel: {businessPhone}</div>}
+              <div style={{ ...S.center, fontSize: '20px', marginBottom: '2px', letterSpacing: '0.5px' }}>{businessName}</div>
+              {businessAddress && <div style={{ ...S.center, fontSize: '12px' }}>{businessAddress}</div>}
+              {businessPhone && <div style={{ ...S.center, fontSize: '12px' }}>Tel: {businessPhone}</div>}
 
               <div style={S.divider} />
 
-              {/* Order info */}
-              <div style={S.row}><span>Orden:</span><span style={{ fontWeight: '900' }}>#{order.orderNumber}</span></div>
+              {/* Order info — larger & darker */}
+              <div style={S.row}><span>Orden:</span><span style={{ fontWeight: '900', fontSize: '16px' }}>#{order.orderNumber}</span></div>
               <div style={S.row}><span>Fecha:</span><span>{date.toLocaleDateString('es-CO')}</span></div>
               <div style={S.row}><span>Hora:</span><span>{date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span></div>
               {order.customerName && order.customerName !== 'POS' && (
                 <div style={S.row}><span>Cliente:</span><span>{order.customerName}</span></div>
               )}
-              {order.tableNumber && <div style={S.row}><span>Mesa:</span><span>{order.tableNumber}</span></div>}
+              {order.tableNumber && <div style={S.row}><span>Mesa:</span><span style={{ fontSize: '16px' }}>{order.tableNumber}</span></div>}
 
               <div style={S.divider} />
 
-              {/* Items — bold and large */}
+              {/* Items — extra bold, large, kitchen-readable */}
               {items.map((item, i) => (
-                <div key={i} style={{ marginBottom: '5px' }}>
-                  <div style={{ ...S.row, fontSize: '14px' }}>
+                <div key={i} style={{ marginBottom: '6px' }}>
+                  <div style={{ ...S.row, fontSize: '16px' }}>
                     <span style={S.itemName}>{item.quantity}x {item.name}</span>
-                    <span style={{ fontWeight: '900' }}>${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
+                    <span style={{ fontWeight: '900', fontSize: '15px' }}>${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
                   </div>
                   {item.selectedToppings && item.selectedToppings.map((t, j) => (
                     <div key={j} style={S.topping}>+ {t.optionName || t.name}{t.price > 0 ? ` ($${t.price.toLocaleString()})` : ''}</div>
@@ -130,15 +140,36 @@ export default function POSTicket({ order, businessConfig, onClose }) {
               {extra.paymentMethod && (
                 <>
                   <div style={S.divider} />
-                  <div style={S.row}><span>Pago:</span><span style={{ fontWeight: '900' }}>{extra.paymentMethod === 'cash' ? 'Efectivo' : extra.paymentMethod === 'nequi' ? 'Nequi' : extra.paymentMethod === 'daviplata' ? 'Daviplata' : 'Transferencia'}</span></div>
+                  <div style={S.row}><span>Pago:</span><span>{extra.paymentMethod === 'cash' ? 'Efectivo' : extra.paymentMethod === 'nequi' ? 'Nequi' : extra.paymentMethod === 'daviplata' ? 'Daviplata' : 'Transferencia'}</span></div>
                   {extra.cashReceived != null && <div style={S.row}><span>Recibido:</span><span>${extra.cashReceived.toLocaleString()}</span></div>}
                   {extra.change != null && extra.change > 0 && <div style={S.row}><span>Cambio:</span><span>${extra.change.toLocaleString()}</span></div>}
                 </>
               )}
 
               <div style={S.divider} />
-              <div style={{ ...S.center, marginTop: '6px', fontSize: '12px', fontWeight: '900' }}>¡Gracias por su compra!</div>
-              <div style={{ ...S.center, fontSize: '10px', color: '#555', marginTop: '3px' }}>Powered by MenuBy</div>
+              <div style={{ ...S.center, marginTop: '6px', fontSize: '14px' }}>¡Gracias por su compra!</div>
+
+              {/* QR code — menu link with promo text */}
+              {menuLink && (
+                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                  <div style={{ ...S.center, fontSize: '13px', marginBottom: '6px' }}>
+                    ¡Pide desde tu celular!
+                  </div>
+                  <img
+                    src={qrUrl(menuLink, 180)}
+                    alt="QR Menú"
+                    width="160"
+                    height="160"
+                    style={{ display: 'block', margin: '0 auto' }}
+                  />
+                  <div style={{ ...S.center, fontSize: '12px', marginTop: '6px' }}>
+                    Escanea y pide con descuento
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: '900', color: '#000', marginTop: '2px' }}>{menuLink}</div>
+                </div>
+              )}
+
+              <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 'bold', color: '#555', marginTop: '8px' }}>Powered by MenuBy</div>
             </div>
           </div>
         </div>
