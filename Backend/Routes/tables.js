@@ -194,13 +194,22 @@ router.post("/", tenantAuth, async (req, res) => {
     const baseUrl = process.env.FRONTEND_URL || 'https://sisrestaurantes.com';
     const qrCodeUrl = `${baseUrl}/${originalBusinessId}/mesa/${tableNumber}`;
     
+    const { floorId, posX, posY, shape, width, height, capacity, rotation } = req.body;
     const newTable = new Table({
       businessId,
       tableNumber,
       tableName: tableName || `Mesa ${tableNumber}`,
       qrCodeUrl,
       notes: notes || '',
-      isActive: true
+      isActive: true,
+      floorId: floorId || null,
+      posX: posX ?? 10,
+      posY: posY ?? 10,
+      shape: shape || 'square',
+      width: width ?? 10,
+      height: height ?? 10,
+      capacity: capacity ?? 4,
+      rotation: rotation ?? 0
     });
     
     await newTable.save();
@@ -215,7 +224,7 @@ router.post("/", tenantAuth, async (req, res) => {
 router.put("/:id", tenantAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { businessId, tableNumber, tableName, notes, isActive } = req.body;
+    const { businessId, tableNumber, tableName, notes, isActive, floorId, posX, posY, shape, width, height, capacity, rotation } = req.body;
     
     if (!isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid table ID format" });
@@ -234,10 +243,24 @@ router.put("/:id", tenantAuth, async (req, res) => {
       }
     }
     
+    const update = {};
+    if (tableNumber !== undefined) update.tableNumber = tableNumber;
+    if (tableName !== undefined) update.tableName = tableName;
+    if (notes !== undefined) update.notes = notes;
+    if (isActive !== undefined) update.isActive = isActive;
+    if (floorId !== undefined) update.floorId = floorId || null;
+    if (posX !== undefined) update.posX = posX;
+    if (posY !== undefined) update.posY = posY;
+    if (shape !== undefined) update.shape = shape;
+    if (width !== undefined) update.width = width;
+    if (height !== undefined) update.height = height;
+    if (capacity !== undefined) update.capacity = capacity;
+    if (rotation !== undefined) update.rotation = rotation;
+
     // Find the table and update it
     const updatedTable = await Table.findOneAndUpdate(
       { _id: id, businessId },
-      { tableNumber, tableName, notes, isActive },
+      update,
       { new: true, runValidators: true }
     );
     
@@ -285,6 +308,30 @@ router.delete("/:id", tenantAuth, async (req, res) => {
   } catch (error) {
     console.error("Error deleting table:", error);
     res.status(500).json({ message: "Error deleting table" });
+  }
+});
+
+// Batch update positions (drag & drop)
+router.put("/batch/positions", tenantAuth, async (req, res) => {
+  try {
+    const { businessId, updates } = req.body;
+    if (!businessId || !isValidObjectId(businessId)) {
+      return res.status(400).json({ message: "businessId válido es requerido" });
+    }
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ message: "updates array es requerido" });
+    }
+    const ops = updates.map(u => ({
+      updateOne: {
+        filter: { _id: u._id, businessId },
+        update: { $set: { posX: u.posX, posY: u.posY } }
+      }
+    }));
+    await Table.bulkWrite(ops);
+    res.json({ message: "Posiciones actualizadas" });
+  } catch (error) {
+    console.error("Error batch updating positions:", error);
+    res.status(500).json({ message: "Error al actualizar posiciones" });
   }
 });
 

@@ -163,6 +163,7 @@ app.use("/api/customers", require("./Routes/customers"));
 app.use("/api/coupons", require("./Routes/coupons"));
 app.use("/api/auth", require("./Routes/auth"));
 app.use("/api/tables", require("./Routes/tables"));
+app.use("/api/floors", require("./Routes/floors"));
 app.use("/api/orders", require("./Routes/orders"));
 app.use("/api/favorites", require("./Routes/favorites")); // Productos favoritos del cliente
 app.use("/api/delivery-zones", require("./Routes/deliveryZones")); // Zonas de entrega
