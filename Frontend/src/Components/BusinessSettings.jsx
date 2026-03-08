@@ -21,6 +21,7 @@ const BusinessSettings = () => {
     isOpen: true,
     whatsappNumber: '',
     address: '',
+    nit: '',
     googleMapsUrl: '',
     socialMedia: {
       facebook: { url: '', isVisible: true },
@@ -53,6 +54,7 @@ const BusinessSettings = () => {
           isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
           whatsappNumber: response.data.whatsappNumber || '',
           address: response.data.address || '',
+          nit: response.data.nit || '',
           googleMapsUrl: response.data.googleMapsUrl || '',
           socialMedia: {
             ...initialSettings.socialMedia,
@@ -145,6 +147,7 @@ const BusinessSettings = () => {
         isOpen: settings.isOpen !== undefined ? settings.isOpen : true,
         whatsappNumber: settings.whatsappNumber || "",
         address: settings.address || "",
+        nit: settings.nit || "",
         googleMapsUrl: settings.googleMapsUrl || "",
         socialMedia: {
           facebook: {
@@ -414,6 +417,24 @@ const BusinessSettings = () => {
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="Ej: Calle Principal #123, Ciudad"
                 />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  NIT
+                </label>
+                <input
+                  type="text"
+                  name="nit"
+                  value={settings.nit}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
+                  placeholder="Ej: 900.123.456-7"
+                />
+                <p className="mt-1 text-[10px] text-slate-400 flex items-center gap-1">
+                  <FaInfoCircle className="text-[8px]" />
+                  Se mostrará en las comandas impresas
+                </p>
               </div>
 
               <div>

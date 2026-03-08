@@ -21,6 +21,7 @@ import MultiSessionWarning from "../Components/MultiSessionWarning";
 import DeliveryZoneManager from "../Components/DeliveryZoneManager";
 import PushNotificationToggle from "../Components/PushNotificationToggle";
 import PaymentConfig from "../Components/Admin/PaymentConfig";
+import PrinterSettings from "../Components/PrinterSettings";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Componentes extraidos del monolito
@@ -327,6 +328,11 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <BusinessSettings />
                     <PushNotificationToggle businessId={businessId} userId={null} />
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'printer' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <PrinterSettings />
                   </AdminTabWrapper>
                 )}
                 {activeTab === 'categories' && (

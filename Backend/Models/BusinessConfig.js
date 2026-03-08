@@ -108,6 +108,16 @@ const businessConfigSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  // NIT / Tax ID del negocio
+  nit: {
+    type: String,
+    default: ""
+  },
+  // Printer / ticket settings
+  printerSettings: {
+    paperSize: { type: String, enum: ['55', '58'], default: '55' },
+    showQR: { type: Boolean, default: true }
+  },
   location: {
     coordinates: {
       lat: {

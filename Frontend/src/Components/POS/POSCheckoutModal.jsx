@@ -22,7 +22,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
   const themeColor = businessConfig?.theme?.buttonColor || '#3B82F6';
   const businessId = businessConfig?._id;
 
-  const total = useMemo(() => cart.reduce((sum, item) => sum + item.totalPrice * item.quantity, 0), [cart]);
+  const total = useMemo(() => cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0), [cart]);
   const cashNum = parseFloat(cashReceived) || 0;
   const change = paymentMethod === 'cash' ? cashNum - total : 0;
 

@@ -22,9 +22,12 @@ export default function POSTicket({ order, businessConfig, onClose }) {
   const businessName = businessConfig?.businessName || 'Restaurante';
   const businessAddress = businessConfig?.address || businessConfig?.location?.address || '';
   const businessPhone = businessConfig?.whatsappNumber || '';
+  const nit = businessConfig?.nit || '';
   const slug = businessConfig?.slug || '';
   const menuLink = slug ? `https://menuby.tech/${slug}` : '';
   const extra = order?._posExtra || {};
+  const paperSize = businessConfig?.printerSettings?.paperSize || '55';
+  const showQR = businessConfig?.printerSettings?.showQR !== false;
 
   const handlePrint = useCallback(() => {
     const content = ticketRef.current;
@@ -43,7 +46,7 @@ export default function POSTicket({ order, businessConfig, onClose }) {
             font-family: 'Courier New', monospace;
             font-size: 15px;
             font-weight: 900;
-            width: 55mm;
+            width: ${paperSize}mm;
             padding: 2mm;
             color: #000;
             -webkit-print-color-adjust: exact;
@@ -51,8 +54,8 @@ export default function POSTicket({ order, businessConfig, onClose }) {
           }
           img { display: block; margin: 0 auto; }
           @media print {
-            body { width: 55mm; }
-            @page { margin: 0; size: 55mm auto; }
+            body { width: ${paperSize}mm; }
+            @page { margin: 0; size: ${paperSize}mm auto; }
           }
         </style>
       </head><body>
@@ -102,9 +105,9 @@ export default function POSTicket({ order, businessConfig, onClose }) {
           </div>
         </div>
 
-        {/* Ticket preview — simulates 55mm paper */}
+        {/* Ticket preview */}
         <div className="p-4 max-h-[70vh] overflow-y-auto">
-          <div className="bg-white border-2 border-slate-300 rounded-lg p-3 font-mono text-sm font-black" style={{ maxWidth: '240px', margin: '0 auto', color: '#000' }}>
+          <div className="bg-white border-2 border-slate-300 rounded-lg p-3 font-mono text-sm font-black" style={{ maxWidth: paperSize === '58' ? '250px' : '240px', margin: '0 auto', color: '#000' }}>
             <div ref={ticketRef}>
               {/* ---- Hanger space (espacio cuelga-comandas) ---- */}
               <div style={{ height: '20px' }} />
@@ -113,6 +116,7 @@ export default function POSTicket({ order, businessConfig, onClose }) {
               <div style={{ ...S.center, fontSize: '20px', marginBottom: '2px', letterSpacing: '0.5px' }}>{businessName}</div>
               {businessAddress && <div style={{ ...S.center, fontSize: '12px' }}>{businessAddress}</div>}
               {businessPhone && <div style={{ ...S.center, fontSize: '12px' }}>Tel: {businessPhone}</div>}
+              {nit && <div style={{ ...S.center, fontSize: '12px' }}>NIT: {nit}</div>}
 
               <div style={S.divider} />
 
@@ -161,8 +165,8 @@ export default function POSTicket({ order, businessConfig, onClose }) {
               <div style={S.divider} />
               <div style={{ ...S.center, marginTop: '6px', fontSize: '14px' }}>¡Gracias por su compra!</div>
 
-              {/* QR code — menu link with promo text */}
-              {menuLink && (
+              {/* QR code — respects printer settings */}
+              {showQR && menuLink && (
                 <div style={{ textAlign: 'center', marginTop: '10px' }}>
                   <div style={{ ...S.center, fontSize: '13px', marginBottom: '6px' }}>
                     ¡Pide desde tu celular!
@@ -181,7 +185,12 @@ export default function POSTicket({ order, businessConfig, onClose }) {
                 </div>
               )}
 
-              <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 'bold', color: '#555', marginTop: '8px' }}>Powered by MenuBy</div>
+              <div style={{ textAlign: 'center', fontSize: '11px', fontWeight: '900', color: '#333', marginTop: '8px' }}>
+                Gracias por usar MenuBy ❤️
+              </div>
+              <div style={{ textAlign: 'center', fontSize: '10px', fontWeight: 'bold', color: '#555', marginTop: '1px' }}>
+                menuby.tech
+              </div>
             </div>
           </div>
         </div>
