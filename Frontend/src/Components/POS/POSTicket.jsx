@@ -25,7 +25,11 @@ export default function POSTicket({ order, businessConfig, onClose }) {
   const nit = businessConfig?.nit || '';
   const slug = businessConfig?.slug || '';
   const menuLink = slug ? `https://menuby.tech/${slug}` : '';
-  const extra = order?._posExtra || {};
+  const extra = order?._posExtra || {
+    paymentMethod: order?.paymentMethod,
+    cashReceived: order?.posPaymentInfo?.cashReceived ?? null,
+    change: order?.posPaymentInfo?.change ?? null,
+  };
   const paperSize = businessConfig?.printerSettings?.paperSize || '55';
   const showQR = businessConfig?.printerSettings?.showQR !== false;
 
@@ -149,7 +153,12 @@ export default function POSTicket({ order, businessConfig, onClose }) {
                     <span style={{ fontWeight: '900', fontSize: '15px' }}>${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
                   </div>
                   {item.selectedToppings && item.selectedToppings.map((t, j) => (
-                    <div key={j} style={S.topping}>+ {t.optionName || t.name}{t.price > 0 ? ` ($${t.price.toLocaleString()})` : ''}</div>
+                    <React.Fragment key={j}>
+                      <div style={S.topping}>+ {t.optionName || t.name}{t.price > 0 ? ` ($${t.price.toLocaleString()})` : ''}</div>
+                      {t.subGroups && t.subGroups.map((sg, k) => (
+                        <div key={k} style={{ ...S.topping, paddingLeft: '16px', fontSize: '13px' }}>+ {sg.optionName}{sg.price > 0 ? ` ($${sg.price.toLocaleString()})` : ''}</div>
+                      ))}
+                    </React.Fragment>
                   ))}
                 </div>
               ))}

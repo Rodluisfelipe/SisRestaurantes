@@ -130,8 +130,11 @@ router.get("/", tenantAuth, async (req, res) => {
   }
 });
 
-// Create a new order
-router.post("/", createOrderLimiter, async (req, res) => {
+// Create a new order (POS orders skip rate limiter)
+router.post("/", (req, res, next) => {
+  if (req.body.orderChannel === 'pos') return next();
+  return createOrderLimiter(req, res, next);
+}, async (req, res) => {
   try {
 
 
@@ -149,13 +152,16 @@ router.post("/", createOrderLimiter, async (req, res) => {
       // Datos de delivery zone
       deliveryFee,
       deliveryZoneName,
+      deliveryZoneId,
       deliveryZoneInfo,
       deliveryCalculated,
       deliveryNeedsConfirmation,
       // In-app ordering fields
       orderChannel,
       paymentMethod,
-      customerNotes
+      customerNotes,
+      // POS payment details (for ticket reprinting)
+      posPaymentInfo
     } = req.body;
     
 
@@ -385,7 +391,8 @@ router.post("/", createOrderLimiter, async (req, res) => {
 
     // Determine initial status based on ordering channel
     const isInApp = orderChannel === 'inapp';
-    const initialStatus = isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
+    const isPOS = orderChannel === 'pos';
+    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
     const customerToken = isInApp ? generateCustomerToken() : null;
 
     // Create the order
@@ -416,6 +423,9 @@ router.post("/", createOrderLimiter, async (req, res) => {
       deliveryZoneInfo: deliveryZoneInfo || null,
       deliveryCalculated: deliveryCalculated || false,
       deliveryNeedsConfirmation: deliveryNeedsConfirmation || false,
+      deliveryZoneId: deliveryZoneId || null,
+      // POS: persist payment info for ticket reprinting
+      posPaymentInfo: isPOS && posPaymentInfo ? posPaymentInfo : undefined,
       // Map delivery zone details to top-level fields
       deliveryCoordinates: deliveryZoneInfo?.coordinates || { lat: null, lon: null },
       deliveryDistance: deliveryZoneInfo?.distance || 0,

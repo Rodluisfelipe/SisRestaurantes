@@ -177,6 +177,12 @@ const orderSchema = new mongoose.Schema({
     default: false
   },
   
+  // POS payment details (persisted for ticket reprinting)
+  posPaymentInfo: {
+    cashReceived: { type: Number, default: null },
+    change: { type: Number, default: null },
+  },
+
   // Order items
   items: [{
     productId: {

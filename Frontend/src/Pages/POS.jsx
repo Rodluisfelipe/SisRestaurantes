@@ -39,10 +39,24 @@ export default function POS() {
   const [showOrderBanner, setShowOrderBanner] = useState(false);
   const audioRef = useRef(null);
 
-  // Hold/park orders
-  const [heldOrders, setHeldOrders] = useState([]);
+  // Hold/park orders (persisted in localStorage)
+  const [heldOrders, setHeldOrders] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`pos_held_${businessConfig?._id || businessId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 
   const resolvedBusinessId = businessConfig?._id || businessId;
+
+  // Sync held orders to localStorage
+  useEffect(() => {
+    try {
+      if (resolvedBusinessId) {
+        localStorage.setItem(`pos_held_${resolvedBusinessId}`, JSON.stringify(heldOrders));
+      }
+    } catch {}
+  }, [heldOrders, resolvedBusinessId]);
 
   // Fetch products, categories, and cash register
   useEffect(() => {

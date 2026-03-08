@@ -91,6 +91,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
         paymentMethod,
         orderChannel: 'pos',
         customerNotes: notes.trim(),
+        posPaymentInfo: paymentMethod === 'cash' ? { cashReceived: cashNum, change } : undefined,
       };
 
       if (orderType === 'delivery' && selectedZone) {
@@ -279,24 +280,29 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
                     <p className="text-xs text-amber-600 mb-1.5">⚠ Selecciona una zona para calcular el domicilio</p>
                   )}
                   <div className="grid grid-cols-2 gap-2">
-                    {deliveryZones.map(z => (
+                    {deliveryZones.map(z => {
+                      const zoneKey = z.id || z._id;
+                      const selectedKey = selectedZone?.id || selectedZone?._id;
+                      const isSelected = selectedKey === zoneKey;
+                      return (
                       <button
-                        key={z.id || z._id}
-                        onClick={() => setSelectedZone(selectedZone?.id === z.id && selectedZone?._id === z._id ? null : z)}
+                        key={zoneKey}
+                        onClick={() => setSelectedZone(isSelected ? null : z)}
                         className={`p-2 rounded-lg border-2 text-left transition-all ${
-                          (selectedZone?.id === z.id && selectedZone?._id === z._id)
+                          isSelected
                             ? 'border-transparent text-white shadow-md'
                             : 'bg-white border-slate-200 hover:border-slate-300'
                         }`}
-                        style={(selectedZone?.id === z.id && selectedZone?._id === z._id) ? { backgroundColor: z.color || themeColor, borderColor: z.color || themeColor } : undefined}
+                        style={isSelected ? { backgroundColor: z.color || themeColor, borderColor: z.color || themeColor } : undefined}
                       >
                         <p className="text-xs font-bold">{z.name}</p>
-                        <p className={`text-[10px] ${(selectedZone?.id === z.id && selectedZone?._id === z._id) ? 'text-white/80' : 'text-slate-400'}`}>
+                        <p className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
                           {z.pricing?.priceLabel || `$${(z.pricing?.displayPrice || 0).toLocaleString()}`}
                           {z.estimatedTime ? ` · ${z.estimatedTime}` : ''}
                         </p>
                       </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

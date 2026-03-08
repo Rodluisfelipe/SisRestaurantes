@@ -63,16 +63,14 @@ export default function POSCashRegister({ mode, businessId, cashRegister, onComp
     }
   };
 
-  // Calculate expected for close mode
+  // Calculate expected for close mode (matches backend calculation)
   const expectedAmount = cashRegister ? (() => {
-    let exp = cashRegister.openingAmount || 0;
-    (cashRegister.movements || []).forEach(m => {
-      if (m.paymentMethod === 'cash' || !m.paymentMethod) {
-        if (m.type === 'sale' || m.type === 'income') exp += m.amount;
-        if (m.type === 'expense' || m.type === 'refund') exp -= m.amount;
-      }
-    });
-    return exp;
+    const moves = cashRegister.movements || [];
+    const cashSales = moves.filter(m => m.type === 'sale' && (m.paymentMethod === 'cash' || !m.paymentMethod)).reduce((s, m) => s + m.amount, 0);
+    const totalIncome = moves.filter(m => m.type === 'income').reduce((s, m) => s + m.amount, 0);
+    const totalExpense = moves.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
+    const totalRefunds = moves.filter(m => m.type === 'refund').reduce((s, m) => s + m.amount, 0);
+    return (cashRegister.openingAmount || 0) + cashSales + totalIncome - totalExpense - totalRefunds;
   })() : 0;
 
   const closingNum = parseFloat(amount) || 0;
@@ -146,12 +144,28 @@ export default function POSCashRegister({ mode, businessId, cashRegister, onComp
                   const expenses = moves.filter(m => m.type === 'expense').reduce((s, m) => s + m.amount, 0);
                   const refunds = moves.filter(m => m.type === 'refund').reduce((s, m) => s + m.amount, 0);
                   const totalOrders = moves.filter(m => m.type === 'sale').length;
+                  const salesByMethod = {};
+                  moves.filter(m => m.type === 'sale').forEach(m => {
+                    const method = m.paymentMethod || 'cash';
+                    salesByMethod[method] = (salesByMethod[method] || 0) + m.amount;
+                  });
+                  const methodLabels = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia' };
                   return (
                     <>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500">Ventas ({totalOrders})</span>
                         <span className="font-semibold text-emerald-600">+${sales.toLocaleString()}</span>
                       </div>
+                      {Object.keys(salesByMethod).length > 1 && (
+                        <div className="pl-3 space-y-0.5">
+                          {Object.entries(salesByMethod).map(([method, amt]) => (
+                            <div key={method} className="flex justify-between text-xs">
+                              <span className="text-slate-400">{methodLabels[method] || method}</span>
+                              <span className="font-semibold text-slate-500">${amt.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {income > 0 && <div className="flex justify-between text-sm"><span className="text-slate-500">Ingresos</span><span className="font-semibold text-emerald-600">+${income.toLocaleString()}</span></div>}
                       {expenses > 0 && <div className="flex justify-between text-sm"><span className="text-slate-500">Gastos</span><span className="font-semibold text-red-600">-${expenses.toLocaleString()}</span></div>}
                       {refunds > 0 && <div className="flex justify-between text-sm"><span className="text-slate-500">Devoluciones</span><span className="font-semibold text-red-600">-${refunds.toLocaleString()}</span></div>}
