@@ -3,6 +3,7 @@ import React, { useState, useMemo } from 'react';
 export default function POSProductGrid({ products, categories, onProductClick, themeColor }) {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
+  const [previewImage, setPreviewImage] = useState(null);
 
   const filtered = useMemo(() => {
     let items = products;
@@ -70,7 +71,7 @@ export default function POSProductGrid({ products, categories, onProductClick, t
         ))}
       </div>
 
-      {/* Product grid */}
+      {/* Product grid — text-only, compact, fast */}
       <div className="flex-1 overflow-y-auto px-3 pb-3">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -78,41 +79,59 @@ export default function POSProductGrid({ products, categories, onProductClick, t
             <p className="text-sm text-slate-400 font-medium">No se encontraron productos</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
-            {filtered.map(product => (
-              <button
-                key={product._id}
-                onClick={() => onProductClick(product)}
-                className="group bg-white rounded-xl border border-slate-100 hover:border-slate-200 hover:shadow-md transition-all duration-150 active:scale-[0.96] text-left overflow-hidden flex flex-col"
-              >
-                {/* Image */}
-                {product.image ? (
-                  <div className="aspect-square w-full overflow-hidden bg-slate-50">
-                    <img src={product.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" loading="lazy" />
-                  </div>
-                ) : (
-                  <div className="aspect-square w-full bg-slate-50 flex items-center justify-center">
-                    <svg className="w-8 h-8 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-                  </div>
-                )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2">
+            {filtered.map(product => {
+              const hasExtras = product.toppingGroups && product.toppingGroups.length > 0;
+              return (
+                <button
+                  key={product._id}
+                  onClick={() => onProductClick(product)}
+                  className="group bg-white rounded-xl border-2 border-slate-100 hover:border-slate-300 hover:shadow-lg transition-all duration-100 active:scale-[0.96] text-left p-3 flex flex-col justify-between relative min-h-[80px]"
+                >
+                  {/* Image peek button — only shown if product has image */}
+                  {product.image && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); setPreviewImage(product.image); }}
+                      className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors z-10 opacity-60 group-hover:opacity-100"
+                      title="Ver imagen"
+                    >
+                      <svg className="w-4 h-4 text-slate-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </span>
+                  )}
 
-                {/* Info */}
-                <div className="p-2 flex-1 flex flex-col justify-between min-h-[52px]">
-                  <p className="text-[11px] sm:text-xs font-semibold text-slate-700 leading-tight line-clamp-2">{product.name}</p>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900">${product.price?.toLocaleString()}</span>
-                    {product.toppingGroups && product.toppingGroups.length > 0 && (
-                      <span className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: `${themeColor}15` }}>
-                        <svg className="w-2.5 h-2.5" style={{ color: themeColor }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  {/* Product name — big and readable */}
+                  <p className="text-sm font-bold text-slate-800 leading-snug line-clamp-2 pr-6">{product.name}</p>
+
+                  {/* Price + extras indicator */}
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-base font-black text-slate-900">${product.price?.toLocaleString()}</span>
+                    {hasExtras && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md text-white" style={{ backgroundColor: themeColor }}>
+                        +Extras
                       </span>
                     )}
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Image preview overlay */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setPreviewImage(null)}>
+          <div className="relative max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+            <img src={previewImage} alt="" className="w-full rounded-2xl shadow-2xl object-contain max-h-[70vh]" />
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-slate-100 transition-colors"
+            >
+              <svg className="w-5 h-5 text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
