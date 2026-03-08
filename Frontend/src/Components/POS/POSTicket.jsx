@@ -128,6 +128,16 @@ export default function POSTicket({ order, businessConfig, onClose }) {
                 <div style={S.row}><span>Cliente:</span><span>{order.customerName}</span></div>
               )}
               {order.tableNumber && <div style={S.row}><span>Mesa:</span><span style={{ fontSize: '16px' }}>{order.tableNumber}</span></div>}
+              {order.orderType === 'delivery' && (
+                <>
+                  <div style={S.row}><span>Tipo:</span><span style={{ fontWeight: '900' }}>DOMICILIO</span></div>
+                  {order.address && <div style={{ fontSize: '12px', marginTop: '2px' }}>Dir: {order.address}</div>}
+                  {order.deliveryZoneName && <div style={{ fontSize: '12px' }}>Zona: {order.deliveryZoneName}</div>}
+                  {order.phone && <div style={{ fontSize: '12px' }}>Tel: {order.phone}</div>}
+                </>
+              )}
+              {order.orderType === 'inSite' && !order.tableNumber && <div style={S.row}><span>Tipo:</span><span>En mesa</span></div>}
+              {order.orderType === 'takeaway' && <div style={S.row}><span>Tipo:</span><span>Para llevar</span></div>}
 
               <div style={S.divider} />
 
@@ -145,6 +155,14 @@ export default function POSTicket({ order, businessConfig, onClose }) {
               ))}
 
               <div style={S.divider} />
+
+              {/* Delivery fee */}
+              {order.deliveryFee > 0 && (
+                <div style={S.row}>
+                  <span>Domicilio:</span>
+                  <span>${parseFloat(order.deliveryFee).toLocaleString()}</span>
+                </div>
+              )}
 
               {/* Total — huge and unmissable */}
               <div style={S.totalRow}>

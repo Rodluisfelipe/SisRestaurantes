@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import api from '../../services/api';
 
 const PAYMENT_METHODS = [
@@ -8,13 +8,24 @@ const PAYMENT_METHODS = [
   { id: 'transfer', label: 'Transferencia', icon: null },
 ];
 
+const ORDER_TYPES = [
+  { id: 'inSite', label: 'En mesa', icon: 'M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12v6a2 2 0 002 2h10a2 2 0 002-2v-6' },
+  { id: 'takeaway', label: 'Para llevar', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' },
+  { id: 'delivery', label: 'Domicilio', icon: 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0' },
+];
+
 const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
 
 export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister }) {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [cashReceived, setCashReceived] = useState('');
+  const [orderType, setOrderType] = useState('takeaway');
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [tableNumber, setTableNumber] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [deliveryZones, setDeliveryZones] = useState([]);
+  const [selectedZone, setSelectedZone] = useState(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -22,7 +33,18 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
   const themeColor = businessConfig?.theme?.buttonColor || '#3B82F6';
   const businessId = businessConfig?._id;
 
-  const total = useMemo(() => cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0), [cart]);
+  // Fetch delivery zones
+  useEffect(() => {
+    if (businessId) {
+      api.get(`/delivery-zones/public?businessId=${businessId}`)
+        .then(res => setDeliveryZones(res.data?.zones || []))
+        .catch(() => {});
+    }
+  }, [businessId]);
+
+  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0), [cart]);
+  const deliveryFee = selectedZone?.pricing?.displayPrice || 0;
+  const total = orderType === 'delivery' ? subtotal + deliveryFee : subtotal;
   const cashNum = parseFloat(cashReceived) || 0;
   const change = paymentMethod === 'cash' ? cashNum - total : 0;
 
@@ -40,8 +62,10 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
     setCashReceived(prev => prev + val);
   };
 
+  const canSubmitDelivery = orderType !== 'delivery' || (deliveryAddress.trim() && customerName.trim());
+
   const handleSubmit = async () => {
-    if (submitting || !canSubmit) return;
+    if (submitting || !canSubmit || !canSubmitDelivery) return;
     setSubmitting(true);
     setError('');
 
@@ -57,10 +81,10 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
       const orderData = {
         businessId,
         customerName: customerName.trim() || 'POS',
-        orderType: tableNumber.trim() ? 'inSite' : 'takeaway',
-        tableNumber: tableNumber.trim() || '',
-        phone: '',
-        address: '',
+        orderType,
+        tableNumber: orderType === 'inSite' ? tableNumber.trim() : '',
+        phone: customerPhone.trim(),
+        address: orderType === 'delivery' ? deliveryAddress.trim() : '',
         items,
         totalAmount: String(total),
         paymentMethod,
@@ -68,10 +92,16 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
         customerNotes: notes.trim(),
       };
 
+      if (orderType === 'delivery' && selectedZone) {
+        orderData.deliveryFee = deliveryFee;
+        orderData.deliveryZoneName = selectedZone.name;
+        orderData.deliveryZoneId = selectedZone.id || selectedZone._id;
+        orderData.deliveryCalculated = true;
+      }
+
       const res = await api.post('/orders', orderData);
       const order = res.data?.order || res.data;
 
-      // Attach extra info for ticket
       order._posExtra = {
         paymentMethod,
         cashReceived: paymentMethod === 'cash' ? cashNum : null,
@@ -101,6 +131,33 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
           <div className="text-center">
             <p className="text-sm text-slate-500 font-medium">Total a cobrar</p>
             <p className="text-4xl font-black text-slate-900 mt-1">${total.toLocaleString()}</p>
+            {orderType === 'delivery' && deliveryFee > 0 && (
+              <p className="text-xs text-slate-400 mt-1">
+                Productos: ${subtotal.toLocaleString()} + Domicilio: ${deliveryFee.toLocaleString()}
+              </p>
+            )}
+          </div>
+
+          {/* Order type */}
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tipo de orden</p>
+            <div className="grid grid-cols-3 gap-2">
+              {ORDER_TYPES.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => { setOrderType(t.id); if (t.id !== 'delivery') setSelectedZone(null); }}
+                  className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center gap-1 ${
+                    orderType === t.id
+                      ? 'text-white border-transparent shadow-md'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  }`}
+                  style={orderType === t.id ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={t.icon}/></svg>
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Payment method */}
@@ -176,17 +233,71 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
             </div>
           )}
 
-          {/* Optional fields */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Order-type specific fields */}
+          {orderType === 'inSite' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
+                <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Mesa (opcional)</label>
+                <input type="text" value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ej: 5" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+              </div>
+            </div>
+          )}
+
+          {orderType === 'takeaway' && (
             <div>
               <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
               <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 block mb-1">Mesa (opcional)</label>
-              <input type="text" value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ej: 5" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+          )}
+
+          {orderType === 'delivery' && (
+            <div className="space-y-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Datos de entrega</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Nombre *</label>
+                  <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre del cliente" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Teléfono</label>
+                  <input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="300 123 4567" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Dirección *</label>
+                <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Calle, barrio, referencia..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+              </div>
+              {deliveryZones.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Zona de entrega</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {deliveryZones.map(z => (
+                      <button
+                        key={z.id || z._id}
+                        onClick={() => setSelectedZone(selectedZone?.id === z.id && selectedZone?._id === z._id ? null : z)}
+                        className={`p-2 rounded-lg border-2 text-left transition-all ${
+                          (selectedZone?.id === z.id && selectedZone?._id === z._id)
+                            ? 'border-transparent text-white shadow-md'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                        style={(selectedZone?.id === z.id && selectedZone?._id === z._id) ? { backgroundColor: z.color || themeColor, borderColor: z.color || themeColor } : undefined}
+                      >
+                        <p className="text-xs font-bold">{z.name}</p>
+                        <p className={`text-[10px] ${(selectedZone?.id === z.id && selectedZone?._id === z._id) ? 'text-white/80' : 'text-slate-400'}`}>
+                          {z.pricing?.priceLabel || `$${(z.pricing?.displayPrice || 0).toLocaleString()}`}
+                          {z.estimatedTime ? ` · ${z.estimatedTime}` : ''}
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
+          )}
           <div>
             <label className="text-xs font-semibold text-slate-500 block mb-1">Notas (opcional)</label>
             <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Instrucciones especiales..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
@@ -201,7 +312,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
         <div className="px-6 pb-6">
           <button
             onClick={handleSubmit}
-            disabled={submitting || !canSubmit}
+            disabled={submitting || !canSubmit || !canSubmitDelivery}
             className="w-full py-4 rounded-xl text-white font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
             style={{ backgroundColor: themeColor }}
           >
