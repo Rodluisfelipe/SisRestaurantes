@@ -49,10 +49,11 @@ const REWARD_TYPE_LABELS = {
   free_delivery: '🛵 Envío gratis'
 };
 
-const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme }) => {
+const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, products = [], addToCart }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);
+  const [redeeming, setRedeeming] = useState(null);
 
   const btnColor = theme?.buttonColor || '#f97316';
   const btnText = theme?.buttonTextColor || '#ffffff';
@@ -99,6 +100,57 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme }) 
     if (!data?.rewards) return [];
     return data.rewards.filter(r => r.isActive);
   }, [data?.rewards]);
+
+  // Find the full product data for a reward's productId
+  const getProductForReward = useCallback((reward) => {
+    if (reward.type !== 'free_product' || !reward.productId) return null;
+    return products.find(p => p._id === reward.productId) || null;
+  }, [products]);
+
+  // Handle redeeming a free product reward
+  const handleRedeemFreeProduct = useCallback(async (reward) => {
+    if (!phone || !businessId || redeeming) return;
+    if (data.points < reward.pointsCost) return;
+
+    const product = getProductForReward(reward);
+    if (!product && !reward.productName) return;
+
+    setRedeeming(reward._id);
+    try {
+      // Redeem points immediately for free product
+      await api.post('/loyalty/redeem', {
+        businessId,
+        phone,
+        rewardId: reward._id
+      });
+
+      // Add product to cart with price 0 and loyalty tag
+      if (addToCart) {
+        addToCart({
+          _id: product?._id || reward.productId,
+          name: product?.name || reward.productName,
+          price: 0,
+          finalPrice: 0,
+          image: product?.image || '',
+          quantity: 1,
+          selectedToppings: [],
+          isLoyaltyReward: true,
+          loyaltyRewardName: reward.name
+        });
+      }
+
+      // Refresh balance
+      await fetchBalance();
+
+      // Close loyalty page so user sees the cart
+      onClose();
+    } catch (err) {
+      console.error('Error redeeming free product:', err);
+      alert('No se pudo canjear la recompensa. Intenta de nuevo.');
+    } finally {
+      setRedeeming(null);
+    }
+  }, [phone, businessId, data, redeeming, getProductForReward, addToCart, fetchBalance, onClose]);
 
   if (!show) return null;
 
@@ -302,7 +354,6 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme }) 
                     </div>
                   )}
 
-                  {/* ══════ REWARDS SECTION ══════ */}
                   {availableRewards.length > 0 && (
                     <div className="rounded-2xl bg-white border border-slate-100 shadow-sm p-4">
                       <div className="flex items-center gap-2 mb-3">
@@ -314,6 +365,8 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme }) 
                           const canAfford = data.points >= reward.pointsCost;
                           const progress = Math.min(100, (data.points / reward.pointsCost) * 100);
                           const remaining = Math.max(0, reward.pointsCost - data.points);
+                          const product = getProductForReward(reward);
+                          const isRedeeming = redeeming === reward._id;
 
                           return (
                             <div
@@ -324,6 +377,17 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme }) 
                                   : 'border-slate-100 bg-slate-50/50'
                               }`}
                             >
+                              {/* Product image for free_product */}
+                              {reward.type === 'free_product' && product?.image && (
+                                <div className="w-full h-28 rounded-lg overflow-hidden mb-2 bg-slate-100">
+                                  <img
+                                    src={product.image}
+                                    alt={product.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+
                               <div className="flex items-start gap-3">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${
                                   canAfford ? 'bg-green-100' : 'bg-slate-100'
@@ -339,6 +403,9 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme }) 
                                     {REWARD_TYPE_LABELS[reward.type] || reward.type}
                                     {(reward.type === 'discount_percent' || reward.type === 'discount_fixed') && (
                                       <> · {reward.type === 'discount_percent' ? `${reward.discountValue}%` : `$${reward.discountValue.toLocaleString('es-CO')}`}</>
+                                    )}
+                                    {reward.type === 'free_product' && reward.productName && (
+                                      <> · {reward.productName}</>
                                     )}
                                   </p>
 
@@ -360,6 +427,18 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme }) 
                                       />
                                     </div>
                                   </div>
+
+                                  {/* Redeem button for free_product */}
+                                  {reward.type === 'free_product' && canAfford && (
+                                    <button
+                                      onClick={() => handleRedeemFreeProduct(reward)}
+                                      disabled={isRedeeming}
+                                      className="mt-2 w-full py-2 rounded-lg text-white text-xs font-bold transition-all active:scale-95 disabled:opacity-50"
+                                      style={{ backgroundColor: btnColor }}
+                                    >
+                                      {isRedeeming ? 'Canjeando...' : '🎁 Canjear y agregar al pedido'}
+                                    </button>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -367,7 +446,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme }) 
                         })}
                       </div>
                       <p className="text-[10px] text-center text-slate-400 mt-3">
-                        Aplica tus recompensas al momento de hacer tu pedido
+                        Los descuentos se aplican al momento de hacer tu pedido desde el carrito
                       </p>
                     </div>
                   )}

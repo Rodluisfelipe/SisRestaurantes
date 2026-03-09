@@ -1314,6 +1314,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-slate-800 text-sm leading-tight truncate">{item.name}</h3>
+                    {item.isLoyaltyReward && (
+                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold whitespace-nowrap shrink-0">🎁 Gratis</span>
+                    )}
                     <button
                       onClick={() => removeFromCart(item.uniqueId || item._id)}
                       className="p-1 text-slate-300 hover:text-red-400 transition-colors flex-shrink-0"

@@ -56,7 +56,8 @@ function ModernOrdersDashboard() {
     let itemsHtml = '';
     items.forEach(item => {
       const lineTotal = ((item.totalPrice || item.price || 0) * (item.quantity || 1));
-      itemsHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span style="font-weight:900;font-size:16px;color:#000">${item.quantity}x ${item.name}</span><span style="font-weight:900;font-size:15px">$${lineTotal.toLocaleString()}</span></div>`;
+      const loyaltyTag = item.isLoyaltyReward ? ' 🎁' : '';
+      itemsHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span style="font-weight:900;font-size:16px;color:#000">${item.quantity}x ${item.name}${loyaltyTag}</span><span style="font-weight:900;font-size:15px">${item.isLoyaltyReward ? 'GRATIS' : '$' + lineTotal.toLocaleString()}</span></div>`;
       if (item.selectedToppings) {
         item.selectedToppings.forEach(t => {
           const tName = t.optionName || t.name || '';
@@ -1369,6 +1370,9 @@ function ModernOrdersDashboard() {
                           <div className="flex items-center gap-2">
                             <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
                             <span className="text-[11px] text-slate-400">x{item.quantity}</span>
+                            {item.isLoyaltyReward && (
+                              <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold">🎁 Loyalty</span>
+                            )}
                           </div>
                           
                           {item.selectedToppings && item.selectedToppings.length > 0 && (

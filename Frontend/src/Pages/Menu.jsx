@@ -1076,9 +1076,10 @@ export default function Menu() {
         items: cartItems.map(item => ({
           productId: item._id,
           name: item.name,
-          price: item.finalPrice || item.price,
+          price: item.finalPrice ?? item.price,
           quantity: item.quantity || 1,
-          selectedToppings: item.selectedToppings || []
+          selectedToppings: item.selectedToppings || [],
+          ...(item.isLoyaltyReward && { isLoyaltyReward: true, loyaltyRewardName: item.loyaltyRewardName })
         })),
         totalAmount: totalAmount.toString(), // Convertir a string para evitar problemas con 0
         // Payment method (available in both WhatsApp and in-app modes)
@@ -1711,6 +1712,8 @@ export default function Menu() {
         businessId={businessId}
         businessName={businessConfig?.businessName}
         theme={businessConfig?.theme}
+        products={products}
+        addToCart={addToCart}
       />
 
       {/* Footer - MenuBy Branding */}

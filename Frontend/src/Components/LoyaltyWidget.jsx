@@ -43,6 +43,8 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected, orderMode }
     if (!data?.rewards) return [];
     return data.rewards.filter(r => {
       if (!r.isActive) return false;
+      // free_product rewards are redeemed from LoyaltyPage, not widget
+      if (r.type === 'free_product') return false;
       if (orderMode && r.applicableOrderModes?.length > 0) {
         return r.applicableOrderModes.includes(orderMode);
       }

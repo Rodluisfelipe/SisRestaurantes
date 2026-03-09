@@ -212,7 +212,9 @@ const orderSchema = new mongoose.Schema({
         optionName: String,
         price: Number
       }]
-    }]
+    }],
+    isLoyaltyReward: { type: Boolean, default: false },
+    loyaltyRewardName: { type: String }
   }],
   
   // Order totals
