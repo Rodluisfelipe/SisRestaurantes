@@ -189,6 +189,7 @@ app.use("/api/subscriptions", require("./Routes/subscriptions"));
 app.use("/api/admin/subscriptions", require("./Routes/adminSubscriptions"));
 app.use("/api/whatsapp-templates", require("./Routes/whatsappTemplates"));
 app.use("/api/announcements", require("./Routes/announcements")); // Sistema de anuncios/novedades
+app.use("/api/loyalty", require("./Routes/loyalty")); // Programa de fidelidad
 app.use("/api/epayco", require("./Routes/epaycoPayments")); // Pagos automáticos ePayco
 app.use("/api/dlocal", require("./Routes/dlocalPayments")); // Pagos automáticos dLocal Go
 

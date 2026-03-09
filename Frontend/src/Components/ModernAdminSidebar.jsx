@@ -7,7 +7,7 @@ import {
   FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, 
   FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
-  FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar,
+  FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister
 } from 'react-icons/fa';
 
@@ -41,6 +41,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'customers', label: 'Clientes', Icon: FaUsers, badge: null },
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
+        { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null },
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
         { id: 'tables', label: 'Mesas', Icon: FaChair, badge: null },
         { id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null },

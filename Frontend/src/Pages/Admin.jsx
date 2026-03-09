@@ -17,6 +17,7 @@ import ModernAdminSidebar from "../Components/ModernAdminSidebar";
 import SubscriptionStatus from "../Components/SubscriptionStatus";
 import CustomersManager from "../Components/CustomersManager";
 import CouponsManager from "../Components/CouponsManager";
+import LoyaltyManager from "../Components/LoyaltyManager";
 import MultiSessionWarning from "../Components/MultiSessionWarning";
 import DeliveryZoneManager from "../Components/DeliveryZoneManager";
 import PushNotificationToggle from "../Components/PushNotificationToggle";
@@ -411,6 +412,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Cupones" onGoBack={() => setActiveTab('dashboard')}>
                       <CouponsManager />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'loyalty' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Fidelidad" onGoBack={() => setActiveTab('dashboard')}>
+                      <LoyaltyManager />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

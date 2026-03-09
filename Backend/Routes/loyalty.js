@@ -1,0 +1,261 @@
+const express = require('express');
+const router = express.Router();
+const LoyaltyProgram = require('../Models/LoyaltyProgram');
+const CustomerLoyalty = require('../Models/CustomerLoyalty');
+const Customer = require('../Models/Customer');
+const { tenantAuth } = require('../middleware/tenantAuth');
+const rateLimit = require('express-rate-limit');
+const logger = require('../utils/logger');
+
+const publicLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { message: 'Demasiadas solicitudes. Intenta de nuevo en unos minutos.' }
+});
+
+// ─── ADMIN: Get loyalty program config ───
+router.get('/program', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    let program = await LoyaltyProgram.findOne({ businessId }).lean();
+    if (!program) {
+      // Return default (not yet created)
+      program = {
+        businessId,
+        isActive: false,
+        pointsPerAmount: 1,
+        amountPerPoints: 10000,
+        firstOrderBonus: 0,
+        referralBonus: 0,
+        pointsExpiryDays: 90,
+        tiersEnabled: false,
+        tiers: [],
+        rewards: []
+      };
+    }
+    res.json(program);
+  } catch (error) {
+    logger.error('Error fetching loyalty program:', error);
+    res.status(500).json({ message: 'Error al obtener programa de fidelidad' });
+  }
+});
+
+// ─── ADMIN: Create or update loyalty program ───
+router.put('/program', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const {
+      isActive, pointsPerAmount, amountPerPoints,
+      firstOrderBonus, referralBonus, pointsExpiryDays,
+      tiersEnabled, tiers, rewards
+    } = req.body;
+
+    const update = {
+      isActive: !!isActive,
+      pointsPerAmount: Math.max(1, Number(pointsPerAmount) || 1),
+      amountPerPoints: Math.max(1, Number(amountPerPoints) || 10000),
+      firstOrderBonus: Math.max(0, Number(firstOrderBonus) || 0),
+      referralBonus: Math.max(0, Number(referralBonus) || 0),
+      pointsExpiryDays: Math.max(0, Number(pointsExpiryDays) || 0),
+      tiersEnabled: !!tiersEnabled
+    };
+
+    if (Array.isArray(tiers)) {
+      update.tiers = tiers.map(t => ({
+        name: String(t.name || '').slice(0, 50),
+        minPoints: Math.max(0, Number(t.minPoints) || 0),
+        multiplier: Math.max(1, Number(t.multiplier) || 1),
+        color: String(t.color || '#94a3b8').slice(0, 7),
+        icon: String(t.icon || 'star').slice(0, 20),
+        benefits: Array.isArray(t.benefits) ? t.benefits.map(b => String(b).slice(0, 100)) : []
+      }));
+    }
+
+    if (Array.isArray(rewards)) {
+      update.rewards = rewards.map(r => ({
+        ...(r._id ? { _id: r._id } : {}),
+        name: String(r.name || '').slice(0, 100),
+        description: String(r.description || '').slice(0, 200),
+        type: ['free_product', 'discount_percent', 'discount_fixed', 'free_delivery'].includes(r.type) ? r.type : 'discount_fixed',
+        productId: r.productId || undefined,
+        productName: r.productName ? String(r.productName).slice(0, 100) : undefined,
+        discountValue: Math.max(0, Number(r.discountValue) || 0),
+        maxDiscount: Math.max(0, Number(r.maxDiscount) || 0),
+        pointsCost: Math.max(1, Number(r.pointsCost) || 1),
+        isActive: r.isActive !== false,
+        timesRedeemed: r.timesRedeemed || 0
+      }));
+    }
+
+    const program = await LoyaltyProgram.findOneAndUpdate(
+      { businessId },
+      { $set: update },
+      { new: true, upsert: true, runValidators: true }
+    );
+
+    res.json(program);
+  } catch (error) {
+    logger.error('Error updating loyalty program:', error);
+    res.status(500).json({ message: 'Error al guardar programa de fidelidad' });
+  }
+});
+
+// ─── ADMIN: Get loyalty dashboard stats ───
+router.get('/stats', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const [totalMembers, aggregation] = await Promise.all([
+      CustomerLoyalty.countDocuments({ businessId }),
+      CustomerLoyalty.aggregate([
+        { $match: { businessId: require('mongoose').Types.ObjectId.createFromHexString(businessId.toString()) } },
+        { $group: {
+          _id: null,
+          totalPointsIssued: { $sum: '$totalEarned' },
+          totalPointsRedeemed: { $sum: '$totalRedeemed' },
+          totalPointsActive: { $sum: '$points' },
+          avgPointsPerMember: { $avg: '$points' }
+        }}
+      ])
+    ]);
+
+    const stats = aggregation[0] || { totalPointsIssued: 0, totalPointsRedeemed: 0, totalPointsActive: 0, avgPointsPerMember: 0 };
+    res.json({ totalMembers, ...stats });
+  } catch (error) {
+    logger.error('Error fetching loyalty stats:', error);
+    res.status(500).json({ message: 'Error al obtener estadísticas' });
+  }
+});
+
+// ─── ADMIN: Get top loyal customers ───
+router.get('/top-customers', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.user.businessId;
+    const limit = Math.min(Number(req.query.limit) || 20, 100);
+    const customers = await CustomerLoyalty.find({ businessId })
+      .sort({ totalEarned: -1 })
+      .limit(limit)
+      .populate('customerId', 'name phone')
+      .lean();
+    res.json(customers);
+  } catch (error) {
+    logger.error('Error fetching top customers:', error);
+    res.status(500).json({ message: 'Error al obtener clientes top' });
+  }
+});
+
+// ─── PUBLIC: Get customer loyalty balance (by phone + businessId) ───
+router.get('/balance', publicLimiter, async (req, res) => {
+  try {
+    const { businessId, phone } = req.query;
+    if (!businessId || !phone) {
+      return res.status(400).json({ message: 'businessId y phone son requeridos' });
+    }
+
+    // Check if loyalty program is active
+    const program = await LoyaltyProgram.findOne({ businessId, isActive: true }).lean();
+    if (!program) {
+      return res.json({ active: false });
+    }
+
+    const loyalty = await CustomerLoyalty.findOne({ businessId, phone }).lean();
+    if (!loyalty) {
+      return res.json({
+        active: true,
+        points: 0,
+        currentTier: program.tiers?.[0]?.name || '',
+        rewards: program.rewards.filter(r => r.isActive),
+        tiers: program.tiersEnabled ? program.tiers : [],
+        totalEarned: 0,
+        pointsPerAmount: program.pointsPerAmount,
+        amountPerPoints: program.amountPerPoints
+      });
+    }
+
+    res.json({
+      active: true,
+      points: loyalty.points,
+      totalEarned: loyalty.totalEarned,
+      currentTier: loyalty.currentTier,
+      rewards: program.rewards.filter(r => r.isActive),
+      tiers: program.tiersEnabled ? program.tiers : [],
+      pointsPerAmount: program.pointsPerAmount,
+      amountPerPoints: program.amountPerPoints,
+      recentTransactions: (loyalty.transactions || []).slice(-10).reverse()
+    });
+  } catch (error) {
+    logger.error('Error fetching loyalty balance:', error);
+    res.status(500).json({ message: 'Error al consultar puntos' });
+  }
+});
+
+// ─── PUBLIC: Redeem a reward ───
+router.post('/redeem', publicLimiter, async (req, res) => {
+  try {
+    const { businessId, phone, rewardId } = req.body;
+    if (!businessId || !phone || !rewardId) {
+      return res.status(400).json({ message: 'businessId, phone y rewardId son requeridos' });
+    }
+
+    const program = await LoyaltyProgram.findOne({ businessId, isActive: true });
+    if (!program) {
+      return res.status(404).json({ message: 'Programa de fidelidad no disponible' });
+    }
+
+    const reward = program.rewards.id(rewardId);
+    if (!reward || !reward.isActive) {
+      return res.status(404).json({ message: 'Recompensa no encontrada o inactiva' });
+    }
+
+    const loyalty = await CustomerLoyalty.findOne({ businessId, phone });
+    if (!loyalty) {
+      return res.status(404).json({ message: 'No tienes puntos acumulados' });
+    }
+
+    if (loyalty.points < reward.pointsCost) {
+      return res.status(400).json({
+        message: 'Puntos insuficientes',
+        required: reward.pointsCost,
+        available: loyalty.points
+      });
+    }
+
+    // Redeem
+    loyalty.redeemPoints(reward.pointsCost, reward._id, reward.name);
+
+    // Update tier
+    if (program.tiersEnabled && program.tiers.length) {
+      loyalty.computeTier(program.tiers);
+    }
+
+    await loyalty.save();
+
+    // Increment reward counter
+    reward.timesRedeemed = (reward.timesRedeemed || 0) + 1;
+    await program.save();
+
+    // Build the discount info to return
+    const redemptionResult = {
+      success: true,
+      pointsSpent: reward.pointsCost,
+      remainingPoints: loyalty.points,
+      reward: {
+        name: reward.name,
+        type: reward.type,
+        discountValue: reward.discountValue,
+        maxDiscount: reward.maxDiscount,
+        productId: reward.productId,
+        productName: reward.productName
+      }
+    };
+
+    res.json(redemptionResult);
+  } catch (error) {
+    if (error.message === 'Puntos insuficientes') {
+      return res.status(400).json({ message: error.message });
+    }
+    logger.error('Error redeeming reward:', error);
+    res.status(500).json({ message: 'Error al canjear recompensa' });
+  }
+});
+
+module.exports = router;

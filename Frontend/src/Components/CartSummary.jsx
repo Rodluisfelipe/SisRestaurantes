@@ -8,6 +8,7 @@ import BusinessClosedModal from './BusinessClosedModal';
 import api from '../services/api';
 import DeliveryZoneSelector from './DeliveryZoneSelector';
 import SuggestedProducts from './SuggestedProducts';
+import LoyaltyWidget from './LoyaltyWidget';
 
 /* ── Checkout SVG Icon System (admin-style, no emojis) ── */
 const CI = {
@@ -1389,6 +1390,15 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 businessId={businessConfig?.businessId || businessConfig?._id}
                 theme={businessConfig?.theme}
               />
+
+              {/* Loyalty Widget */}
+              {orderInfo?.phone && (
+                <LoyaltyWidget
+                  phone={orderInfo.phone}
+                  businessId={businessConfig?.businessId || businessConfig?._id}
+                  theme={businessConfig?.theme}
+                />
+              )}
 
               {/* ── Tipo de pedido inline ── */}
               {!initialOrderTypeSelected && (
