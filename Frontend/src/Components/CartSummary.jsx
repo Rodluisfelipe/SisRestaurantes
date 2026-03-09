@@ -1438,6 +1438,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   businessId={businessConfig?.businessId || businessConfig?._id}
                   theme={businessConfig?.theme}
                   onRewardSelected={handleRewardSelected}
+                  orderMode={orderInfo?.orderType}
                 />
               )}
 

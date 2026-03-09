@@ -14,7 +14,7 @@ const CheckIcon = ({ className = 'w-4 h-4' }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
 );
 
-const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected }) => {
+const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected, orderMode }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedRewardId, setSelectedRewardId] = useState(null);
@@ -41,8 +41,14 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected }) => {
 
   const availableRewards = useMemo(() => {
     if (!data?.rewards) return [];
-    return data.rewards.filter(r => r.isActive);
-  }, [data]);
+    return data.rewards.filter(r => {
+      if (!r.isActive) return false;
+      if (orderMode && r.applicableOrderModes?.length > 0) {
+        return r.applicableOrderModes.includes(orderMode);
+      }
+      return true;
+    });
+  }, [data, orderMode]);
 
   const handleToggleReward = (reward) => {
     if (data.points < reward.pointsCost) return;

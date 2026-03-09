@@ -18,6 +18,11 @@ const rewardSchema = new mongoose.Schema({
   maxDiscount: { type: Number, default: 0 },
   // Cost in points
   pointsCost: { type: Number, required: true, min: 1 },
+  // Which order modes this reward applies to (empty = all)
+  applicableOrderModes: [{
+    type: String,
+    enum: ['inSite', 'takeaway', 'delivery']
+  }],
   isActive: { type: Boolean, default: true },
   timesRedeemed: { type: Number, default: 0 }
 }, { _id: true });

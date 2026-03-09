@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaGift, FaStar, FaTrophy, FaChartBar, FaPlus, FaEdit, FaTrash,
   FaToggleOn, FaToggleOff, FaSave, FaUsers, FaCoins, FaMedal,
-  FaPercent, FaTruck, FaHamburger, FaChevronDown, FaChevronUp, FaTimes
+  FaPercent, FaTruck, FaHamburger, FaChevronDown, FaChevronUp, FaTimes, FaSearch
 } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -13,6 +13,12 @@ const REWARD_TYPES = [
   { value: 'discount_fixed', label: 'Descuento $', icon: FaCoins, color: 'text-green-600' },
   { value: 'free_product', label: 'Producto gratis', icon: FaHamburger, color: 'text-orange-600' },
   { value: 'free_delivery', label: 'Envío gratis', icon: FaTruck, color: 'text-purple-600' },
+];
+
+const ORDER_MODE_OPTIONS = [
+  { value: 'inSite', label: 'En mesa' },
+  { value: 'takeaway', label: 'Para llevar' },
+  { value: 'delivery', label: 'Domicilio' },
 ];
 
 const DEFAULT_TIERS = [
@@ -49,8 +55,11 @@ const LoyaltyManager = () => {
   const [rewardForm, setRewardForm] = useState({
     name: '', description: '', type: 'discount_percent',
     discountValue: 10, maxDiscount: 0, pointsCost: 100,
-    productName: '', isActive: true
+    productName: '', productId: '', isActive: true,
+    applicableOrderModes: []
   });
+  const [products, setProducts] = useState([]);
+  const [productSearch, setProductSearch] = useState('');
 
   const fetchProgram = useCallback(async () => {
     if (!bizId) return;
@@ -107,22 +116,38 @@ const LoyaltyManager = () => {
     }));
   };
 
+  // Fetch products for the picker
+  const fetchProducts = useCallback(async () => {
+    if (!bizId) return;
+    try {
+      const { data } = await api.get(`/products?businessId=${bizId}`);
+      setProducts(data.filter(p => p.active !== false));
+    } catch (err) {
+      console.error('Error loading products:', err);
+    }
+  }, [bizId]);
+
   // ── Reward CRUD ──
   const openRewardModal = (reward = null) => {
+    fetchProducts();
+    setProductSearch('');
     if (reward) {
       setEditingReward(reward);
       setRewardForm({
         name: reward.name, description: reward.description || '',
         type: reward.type, discountValue: reward.discountValue || 0,
         maxDiscount: reward.maxDiscount || 0, pointsCost: reward.pointsCost,
-        productName: reward.productName || '', isActive: reward.isActive
+        productName: reward.productName || '', productId: reward.productId || '',
+        isActive: reward.isActive,
+        applicableOrderModes: reward.applicableOrderModes || []
       });
     } else {
       setEditingReward(null);
       setRewardForm({
         name: '', description: '', type: 'discount_percent',
         discountValue: 10, maxDiscount: 0, pointsCost: 100,
-        productName: '', isActive: true
+        productName: '', productId: '', isActive: true,
+        applicableOrderModes: []
       });
     }
     setShowRewardModal(true);
@@ -347,6 +372,11 @@ const LoyaltyManager = () => {
                       {reward.type === 'free_product' && `Producto gratis: ${reward.productName || 'Por definir'}`}
                       {reward.type === 'free_delivery' && 'Envío gratuito'}
                       {' · '}{reward.pointsCost} pts
+                      {reward.applicableOrderModes?.length > 0 && (
+                        <span className="ml-1 text-slate-400">
+                          · {reward.applicableOrderModes.map(v => ORDER_MODE_OPTIONS.find(o => o.value === v)?.label).filter(Boolean).join(', ')}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -584,13 +614,46 @@ const LoyaltyManager = () => {
 
                 {rewardForm.type === 'free_product' && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Nombre del producto</label>
-                    <input
-                      value={rewardForm.productName}
-                      onChange={e => setRewardForm(f => ({ ...f, productName: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
-                      placeholder="Ej: Brownie de chocolate"
-                    />
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Seleccionar producto</label>
+                    <div className="relative">
+                      <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
+                        <FaSearch className="w-3 h-3 text-slate-400 ml-3" />
+                        <input
+                          value={productSearch}
+                          onChange={e => setProductSearch(e.target.value)}
+                          className="w-full px-2 py-2 text-sm outline-none"
+                          placeholder="Buscar producto..."
+                        />
+                      </div>
+                      <div className="mt-1 max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                        {products
+                          .filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                          .map(p => (
+                            <button
+                              key={p._id}
+                              type="button"
+                              onClick={() => {
+                                setRewardForm(f => ({ ...f, productId: p._id, productName: p.name }));
+                                setProductSearch('');
+                              }}
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center justify-between ${
+                                rewardForm.productId === p._id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'
+                              }`}
+                            >
+                              <span className="truncate">{p.name}</span>
+                              {p.price != null && <span className="text-xs text-slate-400 ml-2 shrink-0">${Number(p.price).toLocaleString('es-CO')}</span>}
+                            </button>
+                          ))}
+                        {products.filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())).length === 0 && (
+                          <p className="px-3 py-2 text-xs text-slate-400">No se encontraron productos</p>
+                        )}
+                      </div>
+                    </div>
+                    {rewardForm.productName && (
+                      <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
+                        ✓ Seleccionado: <span className="font-medium">{rewardForm.productName}</span>
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -613,6 +676,41 @@ const LoyaltyManager = () => {
                     className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm"
                     placeholder="Ej: Disfruta un postre por cuenta de la casa"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Aplica para</label>
+                  <div className="flex gap-2">
+                    {ORDER_MODE_OPTIONS.map(mode => {
+                      const checked = rewardForm.applicableOrderModes.length === 0 || rewardForm.applicableOrderModes.includes(mode.value);
+                      return (
+                        <button
+                          key={mode.value}
+                          type="button"
+                          onClick={() => {
+                            setRewardForm(f => {
+                              const current = f.applicableOrderModes.length === 0
+                                ? ORDER_MODE_OPTIONS.map(m => m.value)
+                                : [...f.applicableOrderModes];
+                              const next = current.includes(mode.value)
+                                ? current.filter(v => v !== mode.value)
+                                : [...current, mode.value];
+                              // If all selected, store empty (means all)
+                              return { ...f, applicableOrderModes: next.length === ORDER_MODE_OPTIONS.length ? [] : next };
+                            });
+                          }}
+                          className={`flex-1 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
+                            checked ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-400'
+                          }`}
+                        >
+                          {mode.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    {rewardForm.applicableOrderModes.length === 0 ? 'Aplica para todos los modos' : `Solo para: ${rewardForm.applicableOrderModes.map(v => ORDER_MODE_OPTIONS.find(o => o.value === v)?.label).join(', ')}`}
+                  </p>
                 </div>
               </div>
 
