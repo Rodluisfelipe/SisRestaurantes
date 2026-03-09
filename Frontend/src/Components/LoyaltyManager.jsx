@@ -60,6 +60,7 @@ const LoyaltyManager = () => {
   });
   const [products, setProducts] = useState([]);
   const [productSearch, setProductSearch] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
 
   const fetchProgram = useCallback(async () => {
     if (!bizId) return;
@@ -131,6 +132,7 @@ const LoyaltyManager = () => {
   const openRewardModal = (reward = null) => {
     fetchProducts();
     setProductSearch('');
+    setShowProductDropdown(false);
     if (reward) {
       setEditingReward(reward);
       setRewardForm({
@@ -543,9 +545,9 @@ const LoyaltyManager = () => {
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="bg-white rounded-2xl w-full max-w-md p-5 shadow-xl"
+              className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] flex flex-col"
             >
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between p-4 pb-2 shrink-0">
                 <h3 className="text-base font-bold text-slate-800">
                   {editingReward ? 'Editar recompensa' : 'Nueva recompensa'}
                 </h3>
@@ -554,7 +556,7 @@ const LoyaltyManager = () => {
                 </button>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 overflow-y-auto px-4 pb-2 flex-1 min-h-0">
                 <div>
                   <label className="block text-xs font-medium text-slate-500 mb-1">Nombre</label>
                   <input
@@ -614,45 +616,56 @@ const LoyaltyManager = () => {
 
                 {rewardForm.type === 'free_product' && (
                   <div>
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Seleccionar producto</label>
-                    <div className="relative">
-                      <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
-                        <FaSearch className="w-3 h-3 text-slate-400 ml-3" />
-                        <input
-                          value={productSearch}
-                          onChange={e => setProductSearch(e.target.value)}
-                          className="w-full px-2 py-2 text-sm outline-none"
-                          placeholder="Buscar producto..."
-                        />
+                    <label className="block text-xs font-medium text-slate-500 mb-1">Producto</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowProductDropdown(v => !v)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition-all ${
+                        rewardForm.productName
+                          ? 'border-green-300 bg-green-50 text-green-700'
+                          : 'border-slate-200 text-slate-400'
+                      }`}
+                    >
+                      <span className="truncate">{rewardForm.productName || 'Seleccionar producto...'}</span>
+                      <FaChevronDown className={`w-3 h-3 shrink-0 transition-transform ${showProductDropdown ? 'rotate-180' : ''}`} />
+                    </button>
+                    {showProductDropdown && (
+                      <div className="mt-1 rounded-lg border border-slate-200 bg-white overflow-hidden">
+                        <div className="flex items-center border-b border-slate-100 px-2">
+                          <FaSearch className="w-3 h-3 text-slate-400" />
+                          <input
+                            value={productSearch}
+                            onChange={e => setProductSearch(e.target.value)}
+                            className="w-full px-2 py-1.5 text-sm outline-none"
+                            placeholder="Buscar..."
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-32 overflow-y-auto">
+                          {products
+                            .filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                            .map(p => (
+                              <button
+                                key={p._id}
+                                type="button"
+                                onClick={() => {
+                                  setRewardForm(f => ({ ...f, productId: p._id, productName: p.name }));
+                                  setProductSearch('');
+                                  setShowProductDropdown(false);
+                                }}
+                                className={`w-full text-left px-3 py-1.5 text-sm hover:bg-slate-50 flex items-center justify-between ${
+                                  rewardForm.productId === p._id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'
+                                }`}
+                              >
+                                <span className="truncate">{p.name}</span>
+                                {p.price != null && <span className="text-[11px] text-slate-400 ml-2 shrink-0">${Number(p.price).toLocaleString('es-CO')}</span>}
+                              </button>
+                            ))}
+                          {products.filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())).length === 0 && (
+                            <p className="px-3 py-2 text-xs text-slate-400">No se encontraron productos</p>
+                          )}
+                        </div>
                       </div>
-                      <div className="mt-1 max-h-36 overflow-y-auto rounded-lg border border-slate-200 bg-white">
-                        {products
-                          .filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()))
-                          .map(p => (
-                            <button
-                              key={p._id}
-                              type="button"
-                              onClick={() => {
-                                setRewardForm(f => ({ ...f, productId: p._id, productName: p.name }));
-                                setProductSearch('');
-                              }}
-                              className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 flex items-center justify-between ${
-                                rewardForm.productId === p._id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'
-                              }`}
-                            >
-                              <span className="truncate">{p.name}</span>
-                              {p.price != null && <span className="text-xs text-slate-400 ml-2 shrink-0">${Number(p.price).toLocaleString('es-CO')}</span>}
-                            </button>
-                          ))}
-                        {products.filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())).length === 0 && (
-                          <p className="px-3 py-2 text-xs text-slate-400">No se encontraron productos</p>
-                        )}
-                      </div>
-                    </div>
-                    {rewardForm.productName && (
-                      <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
-                        ✓ Seleccionado: <span className="font-medium">{rewardForm.productName}</span>
-                      </p>
                     )}
                   </div>
                 )}
@@ -714,7 +727,7 @@ const LoyaltyManager = () => {
                 </div>
               </div>
 
-              <div className="flex gap-2 mt-5">
+              <div className="flex gap-2 p-4 pt-2 shrink-0">
                 <button onClick={() => setShowRewardModal(false)} className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50">
                   Cancelar
                 </button>
