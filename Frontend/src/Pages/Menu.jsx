@@ -1174,6 +1174,21 @@ export default function Menu() {
       logger.info('Enviando datos del pedido a la API:', orderData);
       const response = await api.post('/orders', orderData);
       logger.info('Pedido creado exitosamente:', response.data);
+
+      // Canjear puntos de fidelidad después de confirmar el pedido
+      if (orderDetails.loyaltyRewardId && orderDetails.phone) {
+        try {
+          await api.post('/loyalty/redeem', {
+            businessId,
+            phone: orderDetails.phone,
+            rewardId: orderDetails.loyaltyRewardId
+          });
+          logger.info('Puntos de fidelidad canjeados exitosamente');
+        } catch (loyaltyError) {
+          logger.error('Error al canjear puntos de fidelidad:', loyaltyError);
+          // No fallar el pedido si no se pueden canjear los puntos
+        }
+      }
       
       // Si es un pedido a domicilio, actualizar la dirección del cliente en la BD
       if (orderDetails.orderType === 'delivery' && orderDetails.address && orderDetails.phone) {

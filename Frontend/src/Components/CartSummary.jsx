@@ -158,20 +158,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     setAppliedCoupon(null);
   };
 
-  // Manejar canjeo de recompensa de fidelidad
-  const handleRewardRedeemed = (result) => {
-    setLoyaltyReward(result);
-    loyaltyRewardRef.current = result;
+  // Manejar selección de recompensa de fidelidad (aún no canjeada)
+  const handleRewardSelected = (selection) => {
+    setLoyaltyReward(selection);
+    loyaltyRewardRef.current = selection;
   };
 
   // Wrap onOrder to include loyalty reward info
   const onOrder = useCallback((info, coupon) => {
-    const reward = loyaltyRewardRef.current;
-    if (reward) {
+    const selection = loyaltyRewardRef.current;
+    if (selection) {
       const enriched = {
         ...info,
-        loyaltyReward: reward.reward,
-        loyaltyPointsSpent: reward.pointsSpent
+        loyaltyReward: selection.reward,
+        loyaltyRewardId: selection.rewardId,
+        loyaltyPointsCost: selection.pointsCost
       };
       onOrderProp(enriched, coupon);
     } else {
@@ -1436,7 +1437,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   phone={orderInfo.phone}
                   businessId={businessConfig?.businessId || businessConfig?._id}
                   theme={businessConfig?.theme}
-                  onRewardRedeemed={handleRewardRedeemed}
+                  onRewardSelected={handleRewardSelected}
                 />
               )}
 

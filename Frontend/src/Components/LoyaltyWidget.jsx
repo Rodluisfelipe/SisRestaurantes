@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { getBusinessSlug } from '../utils/getBusinessId';
@@ -14,11 +14,10 @@ const CheckIcon = ({ className = 'w-4 h-4' }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
 );
 
-const LoyaltyWidget = ({ phone, businessId, theme, onRewardRedeemed }) => {
+const LoyaltyWidget = ({ phone, businessId, theme, onRewardSelected }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [redeeming, setRedeeming] = useState(null);
-  const [redeemed, setRedeemed] = useState(null);
+  const [selectedRewardId, setSelectedRewardId] = useState(null);
   const [expanded, setExpanded] = useState(false);
 
   const btnColor = theme?.buttonColor || '#f97316';
@@ -45,29 +44,28 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardRedeemed }) => {
     return data.rewards.filter(r => r.isActive);
   }, [data]);
 
-  const redeemingRef = useRef(false);
-
-  const handleRedeem = async (reward) => {
-    // Already redeemed a reward this session, or currently redeeming
-    if (redeemed || redeemingRef.current || data.points < reward.pointsCost) return;
-    redeemingRef.current = true;
-    try {
-      setRedeeming(reward._id);
-      const bid = businessId || getBusinessSlug();
-      const { data: result } = await api.post('/loyalty/redeem', {
-        businessId: bid,
-        phone,
-        rewardId: reward._id
+  const handleToggleReward = (reward) => {
+    if (data.points < reward.pointsCost) return;
+    const isSelected = selectedRewardId === reward._id;
+    if (isSelected) {
+      // Deselect
+      setSelectedRewardId(null);
+      if (onRewardSelected) onRewardSelected(null);
+    } else {
+      // Select this reward (preview only, not yet redeemed)
+      setSelectedRewardId(reward._id);
+      if (onRewardSelected) onRewardSelected({
+        rewardId: reward._id,
+        pointsCost: reward.pointsCost,
+        reward: {
+          name: reward.name,
+          type: reward.type,
+          discountValue: reward.discountValue,
+          maxDiscount: reward.maxDiscount,
+          productId: reward.productId,
+          productName: reward.productName
+        }
       });
-      setRedeemed(result);
-      setData(prev => prev ? { ...prev, points: result.remainingPoints } : prev);
-      if (onRewardRedeemed) onRewardRedeemed(result);
-    } catch (err) {
-      redeemingRef.current = false;
-      const msg = err.response?.data?.message || 'Error al canjear';
-      alert(msg);
-    } finally {
-      setRedeeming(null);
     }
   };
 
@@ -128,17 +126,6 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardRedeemed }) => {
                 </div>
               )}
 
-              {/* Redeemed success */}
-              {redeemed && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-green-50 border border-green-200">
-                  <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-xs font-semibold text-green-800">¡Canjeado!</p>
-                    <p className="text-[10px] text-green-600">{redeemed.reward.name} · Quedan {redeemed.remainingPoints} pts</p>
-                  </div>
-                </div>
-              )}
-
               {/* Available rewards */}
               {availableRewards.length > 0 && (
                 <div>
@@ -146,24 +133,29 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardRedeemed }) => {
                   <div className="space-y-1.5">
                     {availableRewards.map(reward => {
                       const canRedeem = data.points >= reward.pointsCost;
+                      const isSelected = selectedRewardId === reward._id;
                       return (
-                        <div key={reward._id} className="flex items-center gap-2 p-2 rounded-lg bg-white/70 border border-amber-100">
-                          <GiftIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                        <div key={reward._id} className={`flex items-center gap-2 p-2 rounded-lg border ${
+                          isSelected ? 'bg-green-50 border-green-300' : 'bg-white/70 border-amber-100'
+                        }`}>
+                          {isSelected ? <CheckIcon className="w-4 h-4 text-green-600 flex-shrink-0" /> : <GiftIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />}
                           <div className="flex-1 min-w-0">
                             <p className="text-[11px] font-medium text-slate-700 truncate">{reward.name}</p>
                             <p className="text-[10px] text-slate-400">{reward.pointsCost} puntos</p>
                           </div>
                           <button
-                            onClick={() => handleRedeem(reward)}
-                            disabled={!!redeemed || !canRedeem || !!redeeming}
+                            onClick={() => handleToggleReward(reward)}
+                            disabled={!canRedeem && !isSelected}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${
-                              canRedeem && !redeemed
-                                ? 'text-white active:scale-95'
-                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                              isSelected
+                                ? 'bg-green-500 text-white active:scale-95'
+                                : canRedeem
+                                  ? 'text-white active:scale-95'
+                                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                             }`}
-                            style={canRedeem && !redeemed ? { backgroundColor: btnColor } : {}}
+                            style={!isSelected && canRedeem ? { backgroundColor: btnColor } : {}}
                           >
-                            {redeeming === reward._id ? '...' : redeemed ? 'Canjeado' : canRedeem ? 'Canjear' : `Faltan ${reward.pointsCost - data.points}`}
+                            {isSelected ? '✓ Aplicado' : canRedeem ? 'Aplicar' : `Faltan ${reward.pointsCost - data.points}`}
                           </button>
                         </div>
                       );
