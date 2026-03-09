@@ -221,7 +221,7 @@ function ModernOrdersDashboard() {
     setLoading(true);
     try {
       console.log('Fetching orders for business:', businessId);
-      const response = await api.get(`/orders?businessId=${businessId}`);
+      const response = await api.get(`/orders?businessId=${businessId}&status=pending,pending_payment,payment_uploaded,payment_confirmed,confirmed,inProgress,preparing,ready&_t=${Date.now()}`);
       setOrders(response.data);
       
       // Check for pending orders that need notification
