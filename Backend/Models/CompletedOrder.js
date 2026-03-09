@@ -53,7 +53,7 @@ const completedOrderSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['cash', 'nequi', 'daviplata', 'transfer', 'other'],
+    enum: ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'other'],
     default: null
   },
   
@@ -107,6 +107,32 @@ const completedOrderSchema = new mongoose.Schema({
   totalAmount: {
     type: Number,
     required: true
+  },
+  finalAmount: {
+    type: Number,
+    default: null
+  },
+  discountAmount: {
+    type: Number,
+    default: 0
+  },
+  couponCode: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  deliveryFee: {
+    type: Number,
+    default: 0
+  },
+  deliveryZoneName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  posPaymentInfo: {
+    cashReceived: { type: Number, default: null },
+    change: { type: Number, default: null },
   },
   
   // Timestamps

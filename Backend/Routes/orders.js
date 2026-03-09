@@ -860,19 +860,19 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
             // Remove from active orders
             await Order.findByIdAndDelete(id);
             socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_deleted", { _id: id });
-          } catch (err) {
-
+          } catch (delErr) {
+            logger.error('Error deleting completed order from active orders', { error: delErr.message, orderId: id });
           }
         }, 5000); // 5 seconds delay
       } catch (err) {
-
+        logger.error('Error saving completed order', { error: err.message, orderId: id });
         // Continue with response even if saving to CompletedOrder fails
       }
     }
     
     res.json(updatedOrder);
   } catch (error) {
-
+    logger.error('Error updating order status', { error: error.message, orderId: req.params.id });
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
