@@ -193,7 +193,7 @@ router.post("/", (req, res, next) => {
       return res.status(400).json({ message: "Too many items in order (max 100)" });
     }
     for (const item of items) {
-      if (!item.name || typeof item.name !== 'string' || !item.quantity || !item.price) {
+      if (!item.name || typeof item.name !== 'string' || !item.quantity || item.price == null) {
         return res.status(400).json({ message: "Each item must have name (string), quantity and price" });
       }
     }
