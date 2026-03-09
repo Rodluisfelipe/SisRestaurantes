@@ -368,11 +368,16 @@ function ModernOrdersDashboard() {
       });
 
       // Update local state
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order._id === orderId ? response.data : order
-        )
-      );
+      const removeStatuses = [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED];
+      if (removeStatuses.includes(newStatus)) {
+        setOrders(prevOrders => prevOrders.filter(order => order._id !== orderId));
+      } else {
+        setOrders(prevOrders => 
+          prevOrders.map(order => 
+            order._id === orderId ? response.data : order
+          )
+        );
+      }
 
       // Remove from pending notifications if status changed from pending
       if (newStatus !== ORDER_STATUS.PENDING) {
