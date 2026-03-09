@@ -72,19 +72,30 @@ router.put('/program', tenantAuth, async (req, res) => {
     }
 
     if (Array.isArray(rewards)) {
-      update.rewards = rewards.map(r => ({
-        ...(r._id ? { _id: r._id } : {}),
-        name: String(r.name || '').slice(0, 100),
-        description: String(r.description || '').slice(0, 200),
-        type: ['free_product', 'discount_percent', 'discount_fixed', 'free_delivery'].includes(r.type) ? r.type : 'discount_fixed',
-        productId: r.productId || undefined,
-        productName: r.productName ? String(r.productName).slice(0, 100) : undefined,
-        discountValue: Math.max(0, Number(r.discountValue) || 0),
-        maxDiscount: Math.max(0, Number(r.maxDiscount) || 0),
-        pointsCost: Math.max(1, Number(r.pointsCost) || 1),
-        isActive: r.isActive !== false,
-        timesRedeemed: r.timesRedeemed || 0
-      }));
+      update.rewards = rewards.map(r => {
+        const reward = {
+          name: String(r.name || '').slice(0, 100),
+          description: String(r.description || '').slice(0, 200),
+          type: ['free_product', 'discount_percent', 'discount_fixed', 'free_delivery'].includes(r.type) ? r.type : 'discount_fixed',
+          discountValue: Math.max(0, Number(r.discountValue) || 0),
+          maxDiscount: Math.max(0, Number(r.maxDiscount) || 0),
+          pointsCost: Math.max(1, Number(r.pointsCost) || 1),
+          isActive: r.isActive !== false,
+          timesRedeemed: r.timesRedeemed || 0
+        };
+        // Only include _id if it's a valid ObjectId (not temp_*)
+        if (r._id && !String(r._id).startsWith('temp_')) {
+          reward._id = r._id;
+        }
+        // Only include productId if it's a valid value
+        if (r.productId && String(r.productId).length === 24) {
+          reward.productId = r.productId;
+        }
+        if (r.productName) {
+          reward.productName = String(r.productName).slice(0, 100);
+        }
+        return reward;
+      });
     }
 
     const program = await LoyaltyProgram.findOneAndUpdate(
