@@ -17,7 +17,7 @@ const ORDER_TYPES = [
 
 const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
 
-export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister, preselectedTable }) {
+export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister, preselectedTable, isOnline = true }) {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [cashReceived, setCashReceived] = useState('');
   const [orderType, setOrderType] = useState(preselectedTable ? 'inSite' : 'takeaway');
