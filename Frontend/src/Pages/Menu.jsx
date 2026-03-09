@@ -104,9 +104,10 @@ export default function Menu() {
   const { businessStatus, loading: statusLoading } = useBusinessStatus(businessId);
   const [closedOverlayDismissed, setClosedOverlayDismissed] = useState(false);
 
-  // Estados para modales de favoritos e historial
+  // Estados para modales de favoritos, historial y loyalty
   const [showFavorites, setShowFavorites] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showLoyalty, setShowLoyalty] = useState(false);
   
   // Reviews states
   const [showReviewModal, setShowReviewModal] = useState(false);
@@ -1402,8 +1403,10 @@ export default function Menu() {
         comesFromCatalog={comesFromCatalog}
         onShowFavorites={() => setShowFavorites(true)}
         onShowHistory={() => setShowHistory(true)}
+        onShowLoyalty={() => setShowLoyalty(true)}
         showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
         showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
+        showLoyaltyButton={!!orderInfo.phone}
         onShowReviews={() => setShowReviewsSheet(true)}
         reviewStats={businessConfig?.reviewStats}
       />
@@ -1698,6 +1701,16 @@ export default function Menu() {
           />
         )}
       </Suspense>
+
+      {/* Loyalty Page - Full gamified loyalty view */}
+      <LoyaltyPage
+        show={showLoyalty}
+        onClose={() => setShowLoyalty(false)}
+        phone={orderInfo.phone}
+        businessId={businessId}
+        businessName={businessConfig?.businessName}
+        theme={businessConfig?.theme}
+      />
 
       {/* Footer - MenuBy Branding */}
       <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-4 mt-8">

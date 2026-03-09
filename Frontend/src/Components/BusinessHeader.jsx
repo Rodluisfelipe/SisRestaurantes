@@ -20,8 +20,10 @@ const BusinessHeader = ({
   comesFromCatalog = false,
   onShowFavorites,
   onShowHistory,
+  onShowLoyalty,
   showFavoritesButton = false,
   showHistoryButton = false,
+  showLoyaltyButton = false,
   onShowReviews,
   reviewStats
 }) => {
@@ -179,6 +181,19 @@ const BusinessHeader = ({
       <div className={`relative z-10 pt-3 pb-2 ${businessConfig.coverImage ? 'text-white' : 'text-slate-800'}`}>
         {/* Top-right action buttons — compact icon row */}
         <div className="absolute right-2.5 top-3 z-20 flex items-center gap-1.5">
+          {showLoyaltyButton && (
+            <button
+              onClick={onShowLoyalty}
+              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
+                businessConfig.coverImage
+                  ? 'bg-white/15 backdrop-blur-sm text-yellow-300 shadow-sm border border-white/10'
+                  : 'bg-amber-50 text-amber-500 hover:text-amber-600 border border-amber-200'
+              }`}
+              aria-label="Puntos de fidelidad"
+            >
+              {HI.star('w-3.5 h-3.5')}
+            </button>
+          )}
           {showFavoritesButton && (
             <button
               onClick={onShowFavorites}
