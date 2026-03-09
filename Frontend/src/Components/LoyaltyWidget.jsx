@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { getBusinessSlug } from '../utils/getBusinessId';
@@ -45,8 +45,12 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardRedeemed }) => {
     return data.rewards.filter(r => r.isActive);
   }, [data]);
 
+  const redeemingRef = useRef(false);
+
   const handleRedeem = async (reward) => {
-    if (redeeming || data.points < reward.pointsCost) return;
+    // Already redeemed a reward this session, or currently redeeming
+    if (redeemed || redeemingRef.current || data.points < reward.pointsCost) return;
+    redeemingRef.current = true;
     try {
       setRedeeming(reward._id);
       const bid = businessId || getBusinessSlug();
@@ -59,6 +63,7 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardRedeemed }) => {
       setData(prev => prev ? { ...prev, points: result.remainingPoints } : prev);
       if (onRewardRedeemed) onRewardRedeemed(result);
     } catch (err) {
+      redeemingRef.current = false;
       const msg = err.response?.data?.message || 'Error al canjear';
       alert(msg);
     } finally {
@@ -150,15 +155,15 @@ const LoyaltyWidget = ({ phone, businessId, theme, onRewardRedeemed }) => {
                           </div>
                           <button
                             onClick={() => handleRedeem(reward)}
-                            disabled={!canRedeem || redeeming === reward._id}
+                            disabled={!!redeemed || !canRedeem || !!redeeming}
                             className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${
-                              canRedeem
+                              canRedeem && !redeemed
                                 ? 'text-white active:scale-95'
                                 : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                             }`}
-                            style={canRedeem ? { backgroundColor: btnColor } : {}}
+                            style={canRedeem && !redeemed ? { backgroundColor: btnColor } : {}}
                           >
-                            {redeeming === reward._id ? '...' : canRedeem ? 'Canjear' : `Faltan ${reward.pointsCost - data.points}`}
+                            {redeeming === reward._id ? '...' : redeemed ? 'Canjeado' : canRedeem ? 'Canjear' : `Faltan ${reward.pointsCost - data.points}`}
                           </button>
                         </div>
                       );

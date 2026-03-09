@@ -247,28 +247,44 @@ router.post('/redeem', publicLimiter, async (req, res) => {
       return res.status(404).json({ message: 'Recompensa no encontrada o inactiva' });
     }
 
-    const loyalty = await CustomerLoyalty.findOne({ businessId, phone });
-    if (!loyalty) {
-      return res.status(404).json({ message: 'No tienes puntos acumulados' });
-    }
+    // Atomic deduction: only succeeds if points >= cost (prevents race conditions)
+    const loyalty = await CustomerLoyalty.findOneAndUpdate(
+      { businessId, phone, points: { $gte: reward.pointsCost } },
+      {
+        $inc: { points: -reward.pointsCost, totalRedeemed: reward.pointsCost },
+        $set: { lastActivityAt: new Date() },
+        $push: {
+          transactions: {
+            type: 'redeem',
+            points: -reward.pointsCost,
+            description: `Canjeo: ${reward.name}`,
+            rewardId: reward._id,
+            rewardName: reward.name,
+            createdAt: new Date()
+          }
+        }
+      },
+      { new: true }
+    );
 
-    if (loyalty.points < reward.pointsCost) {
+    if (!loyalty) {
+      // Check if customer exists at all
+      const exists = await CustomerLoyalty.findOne({ businessId, phone });
+      if (!exists) {
+        return res.status(404).json({ message: 'No tienes puntos acumulados' });
+      }
       return res.status(400).json({
         message: 'Puntos insuficientes',
         required: reward.pointsCost,
-        available: loyalty.points
+        available: exists.points
       });
     }
 
-    // Redeem
-    loyalty.redeemPoints(reward.pointsCost, reward._id, reward.name);
-
-    // Update tier
+    // Update tier after atomic deduction
     if (program.tiersEnabled && program.tiers.length) {
       loyalty.computeTier(program.tiers);
+      await loyalty.save();
     }
-
-    await loyalty.save();
 
     // Increment reward counter
     reward.timesRedeemed = (reward.timesRedeemed || 0) + 1;
