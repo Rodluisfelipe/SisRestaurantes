@@ -12,6 +12,7 @@ import OrderConfirmationModal from "../Components/OrderConfirmationModal";
 import CartBar from "../Components/CartBar";
 import FavoritesModal from "../Components/FavoritesModal";
 import OrderHistoryModal from "../Components/OrderHistoryModal";
+import LoyaltyPage from "../Components/LoyaltyPage";
 import FeaturedProducts from "../Components/FeaturedProducts";
 import { FlyToCartProvider } from "../Components/FlyToCart";
 import { FilterableMenuSkeleton, BusinessHeaderSkeleton } from "../Components/MenuSkeletons";
