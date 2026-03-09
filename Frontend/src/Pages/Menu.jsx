@@ -1570,6 +1570,8 @@ export default function Menu() {
           isSubmittingOrder={isSubmittingOrder}
           subscriptionStatus={subscriptionStatus}
           isInAppMode={isInAppMode}
+          allProducts={products}
+          addToCart={addToCart}
         />
       )}
 

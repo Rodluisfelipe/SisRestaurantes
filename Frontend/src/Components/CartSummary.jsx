@@ -7,6 +7,7 @@ import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import BusinessClosedModal from './BusinessClosedModal';
 import api from '../services/api';
 import DeliveryZoneSelector from './DeliveryZoneSelector';
+import SuggestedProducts from './SuggestedProducts';
 
 /* ── Checkout SVG Icon System (admin-style, no emojis) ── */
 const CI = {
@@ -28,7 +29,7 @@ const CI = {
 
 // (Sin componente separado - el textarea estará directamente en el JSX)
 
-function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder, subscriptionStatus, isInAppMode = false }) {
+function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder, subscriptionStatus, isInAppMode = false, allProducts, addToCart }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
   const [orderType, setOrderType] = useState('');
@@ -1359,6 +1360,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 </button>
               </div>
             </div>
+          )}
+
+          {/* ── Suggested products (upsell) ── */}
+          {cart.length > 0 && allProducts && (
+            <SuggestedProducts
+              allProducts={allProducts}
+              cart={cart}
+              onAddToCart={addToCart}
+              themeColor={businessConfig?.theme?.buttonColor}
+            />
           )}
 
           {/* ── Checkout section (inside scroll) ── */}
