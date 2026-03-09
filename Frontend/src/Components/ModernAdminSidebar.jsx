@@ -41,7 +41,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'customers', label: 'Clientes', Icon: FaUsers, badge: null },
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
-        { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null },
+        { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
         { id: 'tables', label: 'Mesas', Icon: FaChair, badge: null },
         { id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null },
@@ -301,6 +301,14 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                               }`}>
                                 {item.label}
                               </span>
+                              {item.beta && (
+                                <span
+                                  className="ml-1 px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full bg-amber-100 text-amber-600 border border-amber-200/80 cursor-default"
+                                  title="Función en fase experimental. Puede presentar errores menores."
+                                >
+                                  Beta
+                                </span>
+                              )}
                             </div>
 
                             {/* Badge */}
