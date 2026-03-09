@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 
-export default function POSHeader({ businessConfig, cashRegister, user, pendingOrdersCount, showOrderBanner, newOrderNotification, onDismissBanner, onGoToOrders, onOpenMovements, onCloseCash, onNewOrder, onExit }) {
+export default function POSHeader({ businessConfig, cashRegister, user, pendingOrdersCount, showOrderBanner, newOrderNotification, onDismissBanner, onGoToOrders, onOpenMovements, onCloseCash, onNewOrder, onExit, offline }) {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -70,6 +70,31 @@ export default function POSHeader({ businessConfig, cashRegister, user, pendingO
             <div className={`w-2 h-2 rounded-full ${cashRegister ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
             {cashRegister ? 'Caja abierta' : 'Caja cerrada'}
           </div>
+
+          {/* Connection status */}
+          {offline && (
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${offline.isOnline ? 'bg-emerald-500/15 text-emerald-400' : 'bg-amber-500/15 text-amber-400'}`}>
+              {offline.isSyncing ? (
+                <div className="w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <div className={`w-2 h-2 rounded-full ${offline.isOnline ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+              )}
+              {offline.isSyncing
+                ? 'Sincronizando...'
+                : offline.isOnline
+                  ? (offline.pendingSyncCount > 0 ? `Online · ${offline.pendingSyncCount} pendiente${offline.pendingSyncCount > 1 ? 's' : ''}` : 'Online')
+                  : 'Sin conexión'}
+              {offline.pendingSyncCount > 0 && !offline.isSyncing && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); offline.syncNow(); }}
+                  className="ml-1 p-0.5 rounded hover:bg-white/10 transition-colors"
+                  title="Sincronizar ahora"
+                >
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Cashier name */}
           <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 text-xs text-slate-300">

@@ -5,6 +5,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import api from '../services/api';
 import { socket, joinBusiness } from '../services/socket';
 import { SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
+import usePOSOffline from '../hooks/usePOSOffline';
+import { cacheProducts, getCachedProducts, cacheCategories, getCachedCategories } from '../services/posOfflineStore';
 import POSHeader from '../Components/POS/POSHeader';
 import POSProductGrid from '../Components/POS/POSProductGrid';
 import POSCart from '../Components/POS/POSCart';
@@ -45,6 +47,9 @@ export default function POS() {
   const [showOrderBanner, setShowOrderBanner] = useState(false);
   const audioRef = useRef(null);
 
+  // Offline mode
+  const offline = usePOSOffline();
+
   // Hold/park orders (persisted in localStorage)
   const [heldOrders, setHeldOrders] = useState(() => {
     try {
@@ -77,7 +82,7 @@ export default function POS() {
     return () => clearInterval(interval);
   }, [resolvedBusinessId]);
 
-  // Fetch products, categories, and cash register
+  // Fetch products, categories, and cash register (with offline fallback)
   useEffect(() => {
     if (!resolvedBusinessId) return;
     const fetchData = async () => {
@@ -87,12 +92,26 @@ export default function POS() {
           api.get(`/categories?businessId=${resolvedBusinessId}`),
           api.get(`/cash-register/current?businessId=${resolvedBusinessId}`)
         ]);
-        setProducts(productsRes.data.filter(p => p.active !== false));
-        setCategories(categoriesRes.data.filter(c => c.active !== false).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)));
+        const filteredProducts = productsRes.data.filter(p => p.active !== false);
+        const filteredCategories = categoriesRes.data.filter(c => c.active !== false).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+        setProducts(filteredProducts);
+        setCategories(filteredCategories);
         setCashRegister(cashRes.data);
         if (!cashRes.data) setShowCashOpen(true);
+        // Cache for offline use
+        cacheProducts(filteredProducts).catch(() => {});
+        cacheCategories(filteredCategories).catch(() => {});
       } catch (err) {
         console.error('POS fetch error:', err);
+        // Offline fallback: load from IndexedDB
+        try {
+          const cachedProducts = await getCachedProducts();
+          const cachedCategories = await getCachedCategories();
+          if (cachedProducts.length > 0) {
+            setProducts(cachedProducts);
+            setCategories(cachedCategories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0)));
+          }
+        } catch {}
       } finally {
         setLoading(false);
       }
@@ -246,10 +265,12 @@ export default function POS() {
     setShowCheckout(false);
     clearCart();
     setSelectedTable(null);
-    // Refresh cash register
-    api.get(`/cash-register/current?businessId=${resolvedBusinessId}`)
-      .then(res => setCashRegister(res.data))
-      .catch(() => {});
+    // Only refresh cash register if order was created online
+    if (!order._offline) {
+      api.get(`/cash-register/current?businessId=${resolvedBusinessId}`)
+        .then(res => setCashRegister(res.data))
+        .catch(() => {});
+    }
   }, [clearCart, resolvedBusinessId]);
 
   // Cash register opened
@@ -309,6 +330,7 @@ export default function POS() {
         onCloseCash={() => setShowCashClose(true)}
         onNewOrder={startNewOrder}
         onExit={() => navigate(`/${businessId}/admin`)}
+        offline={offline}
       />
 
       <div className="flex-1 flex min-h-0">
@@ -407,6 +429,7 @@ export default function POS() {
           onOrderComplete={handleOrderComplete}
           cashRegister={cashRegister}
           preselectedTable={selectedTable}
+          isOnline={offline.isOnline}
         />
       )}
 

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import api from '../../services/api';
+import { queueOfflineOrder } from '../../services/posOfflineStore';
 
 const PAYMENT_METHODS = [
   { id: 'cash', label: 'Efectivo', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm0-5c-.83 0-1.5-.67-1.5-1.5V7c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v3c0 .83-.67 1.5-1.5 1.5z' },
@@ -101,8 +102,42 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
         orderData.deliveryCalculated = true;
       }
 
-      const res = await api.post('/orders', orderData);
-      const order = res.data?.order || res.data;
+      let order;
+
+      if (!isOnline) {
+        // Offline: queue order locally
+        const queued = await queueOfflineOrder(orderData);
+        order = {
+          ...orderData,
+          _id: queued.offlineId,
+          localOrderNumber: queued.localOrderNumber,
+          orderNumber: queued.localOrderNumber,
+          status: 'pending',
+          _offline: true,
+          createdAt: new Date().toISOString(),
+        };
+      } else {
+        try {
+          const res = await api.post('/orders', orderData);
+          order = res.data?.order || res.data;
+        } catch (networkErr) {
+          // Network error while online — fallback to offline queue
+          if (!networkErr.response) {
+            const queued = await queueOfflineOrder(orderData);
+            order = {
+              ...orderData,
+              _id: queued.offlineId,
+              localOrderNumber: queued.localOrderNumber,
+              orderNumber: queued.localOrderNumber,
+              status: 'pending',
+              _offline: true,
+              createdAt: new Date().toISOString(),
+            };
+          } else {
+            throw networkErr;
+          }
+        }
+      }
 
       order._posExtra = {
         paymentMethod,
@@ -340,18 +375,24 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
             )}
 
             {/* Submit — always at bottom */}
+            {!isOnline && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-xs shrink-0">
+                <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0119 12.55M5 12.55a10.94 10.94 0 015.17-2.39M10.71 5.05A16 16 0 0122.56 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+                Sin conexión — la orden se guardará localmente
+              </div>
+            )}
             <button
               onClick={handleSubmit}
               disabled={submitting || !canSubmit || !canSubmitDelivery}
               className="w-full py-3.5 rounded-xl text-white font-bold text-base shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shrink-0 mt-auto"
-              style={{ backgroundColor: themeColor }}
+              style={{ backgroundColor: !isOnline ? '#d97706' : themeColor }}
             >
               {submitting ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
               ) : (
                 <>
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  Confirmar cobro · ${total.toLocaleString()}
+                  {!isOnline ? `Guardar offline · $${total.toLocaleString()}` : `Confirmar cobro · $${total.toLocaleString()}`}
                 </>
               )}
             </button>
