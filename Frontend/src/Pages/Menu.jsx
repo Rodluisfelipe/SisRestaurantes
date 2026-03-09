@@ -1095,7 +1095,7 @@ export default function Menu() {
         }),
         // Información de zona de entrega
         ...(orderDetails.orderType === 'delivery' && {
-          deliveryFee: orderDetails.deliveryFee || null,
+          deliveryFee: orderDetails.loyaltyReward?.type === 'free_delivery' ? 0 : (orderDetails.deliveryFee || null),
           deliveryZoneName: orderDetails.deliveryZoneName || null,
           deliveryZoneInfo: orderDetails.deliveryZoneInfo || null,
           deliveryCalculated: orderDetails.deliveryCalculated || false,

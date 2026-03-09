@@ -23,7 +23,8 @@ const DEFAULT_TIERS = [
 ];
 
 const LoyaltyManager = () => {
-  const { businessConfig } = useBusinessConfig();
+  const { businessConfig, businessId } = useBusinessConfig();
+  const bizId = businessId || businessConfig?._id;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [stats, setStats] = useState(null);
@@ -52,29 +53,31 @@ const LoyaltyManager = () => {
   });
 
   const fetchProgram = useCallback(async () => {
+    if (!bizId) return;
     try {
       setLoading(true);
-      const { data } = await api.get('/loyalty/program');
+      const { data } = await api.get(`/loyalty/program?businessId=${bizId}`);
       setProgram(data);
     } catch (err) {
       console.error('Error loading loyalty program:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [bizId]);
 
   const fetchStats = useCallback(async () => {
+    if (!bizId) return;
     try {
       const [statsRes, topRes] = await Promise.all([
-        api.get('/loyalty/stats'),
-        api.get('/loyalty/top-customers?limit=10')
+        api.get(`/loyalty/stats?businessId=${bizId}`),
+        api.get(`/loyalty/top-customers?limit=10&businessId=${bizId}`)
       ]);
       setStats(statsRes.data);
       setTopCustomers(topRes.data);
     } catch (err) {
       console.error('Error loading loyalty stats:', err);
     }
-  }, []);
+  }, [bizId]);
 
   useEffect(() => { fetchProgram(); }, [fetchProgram]);
   useEffect(() => { if (activeSection === 'stats') fetchStats(); }, [activeSection, fetchStats]);
@@ -82,7 +85,7 @@ const LoyaltyManager = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const { data } = await api.put('/loyalty/program', program);
+      const { data } = await api.put('/loyalty/program', { ...program, businessId: bizId });
       setProgram(data);
     } catch (err) {
       console.error('Error saving loyalty program:', err);

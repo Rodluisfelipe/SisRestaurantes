@@ -30,12 +30,14 @@ const CI = {
 
 // (Sin componente separado - el textarea estará directamente en el JSX)
 
-function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder, subscriptionStatus, isInAppMode = false, allProducts, addToCart }) {
+function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: onOrderProp, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder, subscriptionStatus, isInAppMode = false, allProducts, addToCart }) {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
   const [orderType, setOrderType] = useState('');
   const [tableNumber, setTableNumber] = useState(orderInfo?.tableNumber || '');
   const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [loyaltyReward, setLoyaltyReward] = useState(null);
+  const loyaltyRewardRef = useRef(null);
   const [deliveryFee, setDeliveryFee] = useState(null);
   const [deliveryZoneInfo, setDeliveryZoneInfo] = useState(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
@@ -128,8 +130,24 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
     return sum + totalItemPrice;
   }, 0);
 
-  // Calcular total final con descuento de cupón
-  const finalAmount = appliedCoupon ? appliedCoupon.finalAmount : totalAmount;
+  // Calcular total final con descuento de cupón y/o loyalty
+  let finalAmount = appliedCoupon ? appliedCoupon.finalAmount : totalAmount;
+
+  // Apply loyalty reward discount (stacks with coupon)
+  let loyaltyDiscountAmount = 0;
+  if (loyaltyReward) {
+    const r = loyaltyReward.reward;
+    if (r.type === 'discount_fixed') {
+      loyaltyDiscountAmount = Math.min(r.discountValue, finalAmount);
+    } else if (r.type === 'discount_percent') {
+      loyaltyDiscountAmount = Math.round(finalAmount * r.discountValue / 100);
+      if (r.maxDiscount > 0) loyaltyDiscountAmount = Math.min(loyaltyDiscountAmount, r.maxDiscount);
+    } else if (r.type === 'free_delivery') {
+      // Delivery discount handled separately
+      loyaltyDiscountAmount = 0;
+    }
+    finalAmount = Math.max(0, finalAmount - loyaltyDiscountAmount);
+  }
 
   // Funciones para manejar cupones
   const handleCouponApplied = (couponData) => {
@@ -139,6 +157,27 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
   const handleCouponRemoved = () => {
     setAppliedCoupon(null);
   };
+
+  // Manejar canjeo de recompensa de fidelidad
+  const handleRewardRedeemed = (result) => {
+    setLoyaltyReward(result);
+    loyaltyRewardRef.current = result;
+  };
+
+  // Wrap onOrder to include loyalty reward info
+  const onOrder = useCallback((info, coupon) => {
+    const reward = loyaltyRewardRef.current;
+    if (reward) {
+      const enriched = {
+        ...info,
+        loyaltyReward: reward.reward,
+        loyaltyPointsSpent: reward.pointsSpent
+      };
+      onOrderProp(enriched, coupon);
+    } else {
+      onOrderProp(info, coupon);
+    }
+  }, [onOrderProp]);
 
   // Sincronizar tableNumber con orderInfo
   useEffect(() => {
@@ -1397,6 +1436,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                   phone={orderInfo.phone}
                   businessId={businessConfig?.businessId || businessConfig?._id}
                   theme={businessConfig?.theme}
+                  onRewardRedeemed={handleRewardRedeemed}
                 />
               )}
 
@@ -1681,13 +1721,25 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
                 {deliveryFee > 0 && (
                   <div className="flex justify-between text-xs text-slate-400">
                     <span>Envío</span>
-                    <span>${deliveryFee.toLocaleString('es-CO')}</span>
+                    <span>{loyaltyReward?.reward?.type === 'free_delivery' ? <span className="line-through">${deliveryFee.toLocaleString('es-CO')}</span> : `$${deliveryFee.toLocaleString('es-CO')}`}</span>
+                  </div>
+                )}
+                {loyaltyReward?.reward?.type === 'free_delivery' && deliveryFee > 0 && (
+                  <div className="flex justify-between text-xs text-amber-500">
+                    <span>🎁 Envío gratis</span>
+                    <span>-${deliveryFee.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 {appliedCoupon && (
                   <div className="flex justify-between text-xs text-green-500">
-                    <span>Descuento</span>
+                    <span>Descuento cupón</span>
                     <span>-${appliedCoupon.discountAmount.toLocaleString('es-CO')}</span>
+                  </div>
+                )}
+                {loyaltyDiscountAmount > 0 && (
+                  <div className="flex justify-between text-xs text-amber-500">
+                    <span>🎁 {loyaltyReward.reward.name}</span>
+                    <span>-${loyaltyDiscountAmount.toLocaleString('es-CO')}</span>
                   </div>
                 )}
                 <div className="border-t border-dashed border-slate-200" />
@@ -1698,11 +1750,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder, o
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm font-semibold text-slate-500">Total</span>
               <div className="flex items-baseline gap-2">
-                {appliedCoupon && (
+                {(appliedCoupon || loyaltyDiscountAmount > 0 || loyaltyReward?.reward?.type === 'free_delivery') && (
                   <span className="text-xs line-through text-slate-300">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</span>
                 )}
                 <span className="text-2xl font-extrabold text-slate-900">
-                  ${(appliedCoupon ? ((deliveryFee || 0) + finalAmount) : ((deliveryFee || 0) + totalAmount)).toLocaleString('es-CO')}
+                  ${(finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0)).toLocaleString('es-CO')}
                 </span>
               </div>
             </div>

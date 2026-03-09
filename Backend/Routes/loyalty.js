@@ -4,8 +4,19 @@ const LoyaltyProgram = require('../Models/LoyaltyProgram');
 const CustomerLoyalty = require('../Models/CustomerLoyalty');
 const Customer = require('../Models/Customer');
 const { tenantAuth } = require('../middleware/tenantAuth');
+const { resolveBusinessId } = require('../utils/businessResolver');
 const rateLimit = require('express-rate-limit');
 const logger = require('../utils/logger');
+
+// Helper: get the effective businessId for admin routes
+async function getAdminBusinessId(req) {
+  // Normal admin: businessId is in the JWT
+  if (req.user.businessId) return req.user.businessId;
+  // SuperAdmin: must pass businessId in query or body
+  const raw = req.query.businessId || req.body.businessId;
+  if (!raw) return null;
+  return resolveBusinessId(raw);
+}
 
 const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -16,7 +27,8 @@ const publicLimiter = rateLimit({
 // ─── ADMIN: Get loyalty program config ───
 router.get('/program', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = await getAdminBusinessId(req);
+    if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
     let program = await LoyaltyProgram.findOne({ businessId }).lean();
     if (!program) {
       // Return default (not yet created)
@@ -43,7 +55,8 @@ router.get('/program', tenantAuth, async (req, res) => {
 // ─── ADMIN: Create or update loyalty program ───
 router.put('/program', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = await getAdminBusinessId(req);
+    if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
     const {
       isActive, pointsPerAmount, amountPerPoints,
       firstOrderBonus, referralBonus, pointsExpiryDays,
@@ -114,7 +127,8 @@ router.put('/program', tenantAuth, async (req, res) => {
 // ─── ADMIN: Get loyalty dashboard stats ───
 router.get('/stats', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = await getAdminBusinessId(req);
+    if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
     const [totalMembers, aggregation] = await Promise.all([
       CustomerLoyalty.countDocuments({ businessId }),
       CustomerLoyalty.aggregate([
@@ -140,7 +154,8 @@ router.get('/stats', tenantAuth, async (req, res) => {
 // ─── ADMIN: Get top loyal customers ───
 router.get('/top-customers', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = await getAdminBusinessId(req);
+    if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
     const limit = Math.min(Number(req.query.limit) || 20, 100);
     const customers = await CustomerLoyalty.find({ businessId })
       .sort({ totalEarned: -1 })
@@ -157,9 +172,17 @@ router.get('/top-customers', tenantAuth, async (req, res) => {
 // ─── PUBLIC: Get customer loyalty balance (by phone + businessId) ───
 router.get('/balance', publicLimiter, async (req, res) => {
   try {
-    const { businessId, phone } = req.query;
-    if (!businessId || !phone) {
+    const { businessId: rawBizId, phone } = req.query;
+    if (!rawBizId || !phone) {
       return res.status(400).json({ message: 'businessId y phone son requeridos' });
+    }
+
+    // Resolve businessId (could be slug or ObjectId)
+    let businessId;
+    try {
+      businessId = await resolveBusinessId(rawBizId);
+    } catch {
+      return res.json({ active: false });
     }
 
     // Check if loyalty program is active
@@ -202,9 +225,16 @@ router.get('/balance', publicLimiter, async (req, res) => {
 // ─── PUBLIC: Redeem a reward ───
 router.post('/redeem', publicLimiter, async (req, res) => {
   try {
-    const { businessId, phone, rewardId } = req.body;
-    if (!businessId || !phone || !rewardId) {
+    const { businessId: rawBizId, phone, rewardId } = req.body;
+    if (!rawBizId || !phone || !rewardId) {
       return res.status(400).json({ message: 'businessId, phone y rewardId son requeridos' });
+    }
+
+    let businessId;
+    try {
+      businessId = await resolveBusinessId(rawBizId);
+    } catch {
+      return res.status(404).json({ message: 'Negocio no encontrado' });
     }
 
     const program = await LoyaltyProgram.findOne({ businessId, isActive: true });
