@@ -126,7 +126,6 @@ export default function POSTicket({ order, businessConfig, onClose }) {
 
               {/* Order info — larger & darker */}
               <div style={S.row}><span>Orden:</span><span style={{ fontWeight: '900', fontSize: '16px' }}>#{order.orderNumber}</span></div>
-              {order._offline && <div style={{ ...S.center, fontSize: '11px', fontWeight: '700', margin: '4px 0', padding: '2px 8px', border: '1px dashed #666' }}>GUARDADA LOCALMENTE — PENDIENTE SYNC</div>}
               <div style={S.row}><span>Fecha:</span><span>{date.toLocaleDateString('es-CO')}</span></div>
               <div style={S.row}><span>Hora:</span><span>{date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span></div>
               {order.customerName && order.customerName !== 'POS' && (
