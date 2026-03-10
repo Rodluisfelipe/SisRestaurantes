@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import logger from '../utils/logger';
 import ProductToppingsSelector from './ProductToppingsSelector';
@@ -25,10 +25,22 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showToppings, setShowToppings] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef(null);
   const flyToCart = useFlyToCart();
 
   const buttonColor = theme?.buttonColor || '#f97316';
   const buttonTextColor = theme?.buttonTextColor || '#ffffff';
+
+  // Track scroll position for pagination dots
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardWidth = el.firstElementChild?.offsetWidth || 1;
+    const gap = 12; // gap-3 = 12px
+    const idx = Math.round(el.scrollLeft / (cardWidth + gap));
+    setActiveIndex(Math.min(idx, featuredProducts.length - 1));
+  }, [featuredProducts.length]);
 
   useEffect(() => {
     if (businessId) {
@@ -91,10 +103,16 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
     <motion.div
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-5 sm:mb-6"
+      className="mb-5 sm:mb-6 relative"
     >
-      <div className="px-3 sm:px-4 lg:px-6">
-        {/* Header — premium look */}
+      {/* ── Glowing Aura backdrop ── */}
+      <div
+        className="absolute -inset-x-4 -top-6 -bottom-4 rounded-3xl opacity-[0.07] blur-3xl pointer-events-none"
+        style={{ background: `radial-gradient(ellipse at 50% 40%, ${buttonColor}, transparent 70%)` }}
+      />
+
+      <div className="relative px-3 sm:px-4 lg:px-6">
+        {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
             <div 
@@ -111,104 +129,125 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
           <span className="text-[11px] font-semibold text-slate-400">{featuredProducts.length} productos</span>
         </div>
 
-        {/* Horizontal scroll — premium cards */}
-        <div className="flex overflow-x-auto gap-3 pb-3 snap-x snap-mandatory scrollbar-hide -mx-3 px-3 sm:-mx-4 sm:px-4">
-          {featuredProducts.map((product, index) => (
-            <motion.div
-              key={product._id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => handleProductClick(product)}
-              className="flex-shrink-0 w-[200px] sm:w-[220px] bg-white rounded-2xl shadow-md border border-slate-100/80 overflow-hidden snap-start cursor-pointer group hover:shadow-xl transition-all duration-300"
-            >
-              {/* Image with overlay */}
-              <div className="relative aspect-[4/3] bg-slate-100 overflow-hidden">
-                {product.image ? (
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-50">
-                    <span className="text-slate-200">{FI.star('w-8 h-8')}</span>
-                  </div>
-                )}
-                {/* Bottom gradient for text contrast */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/5 to-transparent" />
-                
-                {/* Featured badge — glass + shimmer */}
-                <span 
-                  className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold shadow-md overflow-hidden"
-                  style={{ 
-                    backgroundColor: buttonColor, 
-                    color: buttonTextColor,
-                    boxShadow: `0 2px 8px ${buttonColor}40`
-                  }}
-                >
-                  {FI.star('w-2.5 h-2.5')}
-                  Destacado
-                  {/* Shimmer animation */}
-                  <span className="absolute inset-0 overflow-hidden rounded-lg">
-                    <span 
-                      className="absolute inset-0 -translate-x-full animate-shimmer"
-                      style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent)' }}
+        {/* ── Panoramic Carousel ── */}
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="flex overflow-x-auto gap-3 pb-1 snap-x snap-mandatory scrollbar-hide -mx-3 px-3 sm:-mx-4 sm:px-4"
+        >
+          {featuredProducts.map((product, index) => {
+            const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
+            return (
+              <motion.div
+                key={product._id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.06 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => handleProductClick(product)}
+                className="flex-shrink-0 w-[85vw] max-w-[380px] sm:w-[340px] rounded-2xl overflow-hidden snap-center cursor-pointer group shadow-lg hover:shadow-2xl transition-shadow duration-300"
+                style={{ boxShadow: `0 8px 30px ${buttonColor}15` }}
+              >
+                {/* Image — ultra panoramic */}
+                <div className="relative aspect-[16/9] bg-slate-100 overflow-hidden">
+                  {product.image ? (
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
-                  </span>
-                </span>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-50">
+                      <span className="text-slate-200">{FI.star('w-10 h-10')}</span>
+                    </div>
+                  )}
 
-                {/* Price — over image bottom */}
-                <div className="absolute bottom-2 left-2.5">
-                  <span className="text-lg sm:text-xl font-black text-white drop-shadow-lg">
-                    ${product.price?.toLocaleString()}
+                  {/* Subtle bottom-only gradient — just enough for text readability */}
+                  <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/70 via-black/25 to-transparent pointer-events-none" />
+
+                  {/* Featured badge — top left with shimmer */}
+                  <span 
+                    className="absolute top-3 left-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-md overflow-hidden backdrop-blur-sm"
+                    style={{ 
+                      backgroundColor: `${buttonColor}d0`,
+                      color: buttonTextColor,
+                      boxShadow: `0 2px 10px ${buttonColor}40`
+                    }}
+                  >
+                    {FI.star('w-2.5 h-2.5')}
+                    Destacado
+                    <span className="absolute inset-0 overflow-hidden rounded-lg">
+                      <span 
+                        className="absolute inset-0 -translate-x-full animate-shimmer"
+                        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)' }}
+                      />
+                    </span>
                   </span>
+
+                  {/* ── Compact info bar — no blur, just text over gradient ── */}
+                  <div className="absolute bottom-0 inset-x-0 px-3.5 py-2.5">
+                    <div className="flex items-end justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm text-white truncate leading-tight drop-shadow-sm">
+                          {product.name}
+                        </h4>
+                        <span className="text-lg font-black text-white drop-shadow-lg inline-block">
+                          ${product.price?.toLocaleString()}
+                        </span>
+                      </div>
+
+                      {/* Add button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (flyToCart?.triggerFly && !hasToppings) {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            flyToCart.triggerFly({
+                              x: rect.left + rect.width / 2,
+                              y: rect.top + rect.height / 2,
+                              image: product.image,
+                              color: buttonColor
+                            });
+                          }
+                          handleProductClick(product);
+                        }}
+                        className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg transition-all active:scale-90 backdrop-blur-md"
+                        style={{ 
+                          backgroundColor: `${buttonColor}e0`,
+                          color: buttonTextColor,
+                          boxShadow: `0 4px 16px ${buttonColor}50`
+                        }}
+                        aria-label={hasToppings ? `Personalizar ${product.name}` : `Agregar ${product.name} al carrito`}
+                      >
+                        {hasToppings ? FI.plus('w-4.5 h-4.5') : FI.cart('w-4 h-4')}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-
-                {/* Add button — over image bottom right */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
-                    if (flyToCart?.triggerFly && !hasToppings) {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      flyToCart.triggerFly({
-                        x: rect.left + rect.width / 2,
-                        y: rect.top + rect.height / 2,
-                        image: product.image,
-                        color: buttonColor
-                      });
-                    }
-                    handleProductClick(product);
-                  }}
-                  className="absolute bottom-2 right-2 w-9 h-9 rounded-xl flex items-center justify-center shadow-lg transition-all active:scale-90 hover:shadow-xl"
-                  style={{ 
-                    backgroundColor: buttonColor, 
-                    color: buttonTextColor,
-                    boxShadow: `0 4px 14px ${buttonColor}50`
-                  }}
-                  aria-label={product.toppingGroups && product.toppingGroups.length > 0 ? `Personalizar ${product.name}` : `Agregar ${product.name} al carrito`}
-                >
-                  {product.toppingGroups && product.toppingGroups.length > 0 
-                    ? FI.plus('w-4 h-4')
-                    : FI.cart('w-4 h-4')
-                  }
-                </button>
-              </div>
-
-              {/* Content — name + description */}
-              <div className="px-3 py-2.5">
-                <h4 className="font-bold text-[13px] sm:text-sm text-slate-900 truncate leading-tight">{product.name}</h4>
-                {product.description && (
-                  <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1 leading-snug">{product.description}</p>
-                )}
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
+
+        {/* ── Dynamic Pagination Dots ── */}
+        {featuredProducts.length > 1 && (
+          <div className="flex items-center justify-center gap-1.5 mt-3">
+            {featuredProducts.map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{
+                  width: i === activeIndex ? 20 : 6,
+                  opacity: i === activeIndex ? 1 : 0.3,
+                }}
+                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                className="h-[5px] rounded-full"
+                style={{ backgroundColor: buttonColor }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Modal de Toppings */}
