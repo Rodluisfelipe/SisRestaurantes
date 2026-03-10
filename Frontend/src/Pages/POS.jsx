@@ -389,6 +389,7 @@ export default function POS() {
               <POSActiveOrders
                 businessId={resolvedBusinessId}
                 themeColor={themeColor}
+                businessConfig={businessConfig}
               />
             ) : (
               <POSProductGrid
