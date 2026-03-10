@@ -61,8 +61,15 @@ const CI = {
   utensils: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v20M7 2v8a4 4 0 01-4 4"/><path d="M7 2v8a4 4 0 004 4v8"/><path d="M21 2v4a7 4 0 01-7 4v12"/><path d="M21 2c-1 0-3 1-3 4"/></svg>,
 };
 
-/* ── Map category name → SVG icon ── */
-const getCategoryIcon = (categoryName, cls = 'w-4 h-4') => {
+/* ── Map category name → Emoji ── */
+const CATEGORY_EMOJIS = {
+  burger: '🍔', pizza: '🍕', drink: '🥤', coffee: '☕', dessert: '🍰',
+  appetizer: '🍽️', salad: '🥗', soup: '🍲', chicken: '🍗', pasta: '🍝',
+  seafood: '🐟', taco: '🌮', sandwich: '🥪', breakfast: '🍳', meal: '🍛',
+  combo: '🎁', rice: '🍚', snack: '🍿', utensils: '🍴',
+};
+
+const getCategoryEmoji = (categoryName) => {
   const name = (categoryName || '').toLowerCase().trim();
   const map = {
     'hamburguesas': 'burger', 'hamburguesa': 'burger', 'burgers': 'burger', 'burger': 'burger',
@@ -87,10 +94,56 @@ const getCategoryIcon = (categoryName, cls = 'w-4 h-4') => {
     'snacks': 'snack', 'snack': 'snack', 'acompañamientos': 'snack', 'acompañamiento': 'snack', 'extras': 'snack', 'complementos': 'snack',
   };
 
-  // Exact match
-  if (map[name]) return CI[map[name]](cls);
+  if (map[name]) return CATEGORY_EMOJIS[map[name]];
 
-  // Partial match
+  if (name.includes('burger') || name.includes('hamburguesa')) return CATEGORY_EMOJIS.burger;
+  if (name.includes('pizza')) return CATEGORY_EMOJIS.pizza;
+  if (name.includes('bebida') || name.includes('drink') || name.includes('jugo') || name.includes('batido')) return CATEGORY_EMOJIS.drink;
+  if (name.includes('café') || name.includes('cafe') || name.includes('coffee')) return CATEGORY_EMOJIS.coffee;
+  if (name.includes('postre') || name.includes('dessert') || name.includes('dulce')) return CATEGORY_EMOJIS.dessert;
+  if (name.includes('entrada') || name.includes('appetizer')) return CATEGORY_EMOJIS.appetizer;
+  if (name.includes('ensalada') || name.includes('salad')) return CATEGORY_EMOJIS.salad;
+  if (name.includes('sopa') || name.includes('caldo') || name.includes('crema')) return CATEGORY_EMOJIS.soup;
+  if (name.includes('pollo') || name.includes('chicken') || name.includes('alita')) return CATEGORY_EMOJIS.chicken;
+  if (name.includes('pasta')) return CATEGORY_EMOJIS.pasta;
+  if (name.includes('marisco') || name.includes('pescado') || name.includes('seafood')) return CATEGORY_EMOJIS.seafood;
+  if (name.includes('taco')) return CATEGORY_EMOJIS.taco;
+  if (name.includes('sandwich') || name.includes('wrap') || name.includes('burrito')) return CATEGORY_EMOJIS.sandwich;
+  if (name.includes('desayuno') || name.includes('breakfast')) return CATEGORY_EMOJIS.breakfast;
+  if (name.includes('almuerzo') || name.includes('cena') || name.includes('plato')) return CATEGORY_EMOJIS.meal;
+  if (name.includes('combo') || name.includes('promo')) return CATEGORY_EMOJIS.combo;
+  if (name.includes('arroz') || name.includes('rice')) return CATEGORY_EMOJIS.rice;
+  if (name.includes('snack') || name.includes('extra') || name.includes('complement')) return CATEGORY_EMOJIS.snack;
+
+  return CATEGORY_EMOJIS.utensils;
+};
+
+/* ── Legacy SVG icon getter (kept for pill bar) ── */
+const getCategoryIcon = (categoryName, cls = 'w-4 h-4') => {
+  const name = (categoryName || '').toLowerCase().trim();
+  const map = {
+    'hamburguesas': 'burger', 'hamburguesa': 'burger', 'burgers': 'burger', 'burger': 'burger',
+    'pizza': 'pizza', 'pizzas': 'pizza',
+    'bebidas': 'drink', 'bebida': 'drink', 'drinks': 'drink', 'bebidas frías': 'drink', 'bebidas frias': 'drink',
+    'bebidas calientes': 'coffee', 'café': 'coffee', 'cafés': 'coffee', 'cafe': 'coffee', 'coffee': 'coffee',
+    'jugos': 'drink', 'jugo': 'drink', 'batidos': 'drink', 'batido': 'drink', 'malteadas': 'drink',
+    'postres': 'dessert', 'postre': 'dessert', 'desserts': 'dessert', 'dulces': 'dessert',
+    'entradas': 'appetizer', 'entrada': 'appetizer', 'appetizers': 'appetizer', 'aperitivos': 'appetizer',
+    'ensaladas': 'salad', 'ensalada': 'salad', 'salads': 'salad',
+    'sopas': 'soup', 'sopa': 'soup', 'caldos': 'soup', 'cremas': 'soup',
+    'pollo': 'chicken', 'pollos': 'chicken', 'alitas': 'chicken', 'chicken': 'chicken',
+    'pasta': 'pasta', 'pastas': 'pasta',
+    'mariscos': 'seafood', 'pescado': 'seafood', 'pescados': 'seafood', 'seafood': 'seafood',
+    'tacos': 'taco', 'taco': 'taco',
+    'wraps': 'sandwich', 'wrap': 'sandwich', 'burritos': 'sandwich', 'burrito': 'sandwich',
+    'sandwiches': 'sandwich', 'sandwich': 'sandwich', 'sándwiches': 'sandwich',
+    'desayunos': 'breakfast', 'desayuno': 'breakfast', 'breakfast': 'breakfast',
+    'almuerzos': 'meal', 'almuerzo': 'meal', 'cenas': 'meal', 'cena': 'meal', 'platos fuertes': 'meal', 'plato fuerte': 'meal',
+    'combos': 'combo', 'combo': 'combo', 'promociones': 'combo', 'ofertas': 'combo',
+    'arroz': 'rice', 'arroces': 'rice',
+    'snacks': 'snack', 'snack': 'snack', 'acompañamientos': 'snack', 'acompañamiento': 'snack', 'extras': 'snack', 'complementos': 'snack',
+  };
+  if (map[name]) return CI[map[name]](cls);
   if (name.includes('burger') || name.includes('hamburguesa')) return CI.burger(cls);
   if (name.includes('pizza')) return CI.pizza(cls);
   if (name.includes('bebida') || name.includes('drink') || name.includes('jugo') || name.includes('batido')) return CI.drink(cls);
@@ -109,7 +162,6 @@ const getCategoryIcon = (categoryName, cls = 'w-4 h-4') => {
   if (name.includes('combo') || name.includes('promo')) return CI.combo(cls);
   if (name.includes('arroz') || name.includes('rice')) return CI.rice(cls);
   if (name.includes('snack') || name.includes('extra') || name.includes('complement')) return CI.snack(cls);
-
   return CI.utensils(cls);
 };
 
@@ -776,17 +828,23 @@ const FilterableMenu = ({
                     transition={{ delay: categoryIndex * 0.06 }}
                   >
                     {/* Category Header */}
-                    <div className="flex items-center gap-2.5 mb-3 sm:mb-4">
+                    <div className="flex items-center gap-3 mb-3 sm:mb-4">
                       <div 
-                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: `${themeColor}12`, color: themeColor }}
+                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                        style={{ 
+                          background: `linear-gradient(135deg, ${themeColor}18, ${themeColor}08)`,
+                          boxShadow: `0 2px 8px ${themeColor}15`,
+                          border: `1px solid ${themeColor}15`
+                        }}
                       >
-                        {getCategoryIcon(category.name, 'w-4 h-4 sm:w-[18px] sm:h-[18px]')}
+                        <span className="text-lg sm:text-xl leading-none" role="img">{getCategoryEmoji(category.name)}</span>
                       </div>
-                      <h2 className="text-[15px] sm:text-base font-bold text-slate-800 tracking-tight">{category.name}</h2>
-                      <span className="text-[11px] text-slate-400 font-medium">{categoryProducts.length}</span>
+                      <div className="flex flex-col">
+                        <h2 className="text-[15px] sm:text-base font-bold text-slate-800 tracking-tight leading-tight">{category.name}</h2>
+                        <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{categoryProducts.length} {categoryProducts.length === 1 ? 'producto' : 'productos'}</span>
+                      </div>
                       <div 
-                        className="flex-1 h-px"
+                        className="flex-1 h-px ml-1"
                         style={{
                           background: `linear-gradient(to right, ${themeColor}20, transparent)`
                         }}
@@ -799,7 +857,7 @@ const FilterableMenu = ({
                       animate="visible"
                     >
                       {categoryProducts.map((product, productIndex) => {
-                        const isFirstHero = productIndex === 0 && categoryProducts.length > 2 && product.image;
+                        const isFirstHero = productIndex === 0 && product.image && categoryProducts.length !== 2;
                         return isFirstHero ? (
                           <div key={product._id} className="col-span-2">
                             <ProductCard
@@ -833,26 +891,36 @@ const FilterableMenu = ({
                 animate={{ opacity: 1, y: 0 }}
               >
                 {/* Category Header */}
-                {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => (
+                {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => {
+                  const singleCatProducts = filteredProducts.filter(p => p.category === category._id);
+                  return (
                   <div 
                     key={category._id}
-                    className="flex items-center gap-2.5 mb-3 sm:mb-4"
+                    className="flex items-center gap-3 mb-3 sm:mb-4"
                   >
                     <div 
-                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: `${themeColor}12`, color: themeColor }}
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${themeColor}18, ${themeColor}08)`,
+                        boxShadow: `0 2px 8px ${themeColor}15`,
+                        border: `1px solid ${themeColor}15`
+                      }}
                     >
-                      {getCategoryIcon(category.name, 'w-[18px] h-[18px] sm:w-5 sm:h-5')}
+                      <span className="text-lg sm:text-xl leading-none" role="img">{getCategoryEmoji(category.name)}</span>
                     </div>
-                    <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight">{category.name}</h2>
+                    <div className="flex flex-col">
+                      <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight leading-tight">{category.name}</h2>
+                      <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{singleCatProducts.length} {singleCatProducts.length === 1 ? 'producto' : 'productos'}</span>
+                    </div>
                     <div 
-                      className="flex-1 h-px"
+                      className="flex-1 h-px ml-1"
                       style={{
                         background: `linear-gradient(to right, ${themeColor}20, transparent)`
                       }}
                     />
                   </div>
-                ))}
+                  );
+                })}
                 
                 <motion.div 
                   className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4"
@@ -861,7 +929,7 @@ const FilterableMenu = ({
                   animate="visible"
                 >
                   {filteredProducts.map((product, productIndex) => {
-                    const isFirstHero = productIndex === 0 && filteredProducts.length > 2 && product.image;
+                    const isFirstHero = productIndex === 0 && product.image && filteredProducts.length !== 2;
                     return isFirstHero ? (
                       <div key={product._id} className="col-span-2">
                         <ProductCard
