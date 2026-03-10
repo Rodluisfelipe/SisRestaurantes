@@ -46,6 +46,7 @@ const BusinessHeader = ({
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [activeOrderType, setActiveOrderType] = useState('');
+  const [loyaltyPoints, setLoyaltyPoints] = useState(null);
   const { businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
   const { customerData, customerOrders, reloadCustomerData } = useCustomerData();
@@ -161,9 +162,19 @@ const BusinessHeader = ({
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
 
+  // Fetch loyalty points for the customer
+  useEffect(() => {
+    if (!showLoyaltyButton || !customerData?.phone || !businessId) return;
+    api.get('/loyalty/balance', { params: { businessId, phone: customerData.phone } })
+      .then(res => {
+        if (res.data?.active) setLoyaltyPoints(res.data.points ?? 0);
+      })
+      .catch(() => {});
+  }, [showLoyaltyButton, customerData?.phone, businessId]);
+
   // Collect visible action buttons for the pill bar
   const actionButtons = [];
-  if (showLoyaltyButton) actionButtons.push({ key: 'loyalty', icon: HI.star, label: 'Puntos de fidelidad', onClick: onShowLoyalty, color: 'text-yellow-300', colorLight: 'text-amber-500' });
+  if (showLoyaltyButton) actionButtons.push({ key: 'loyalty', icon: HI.star, label: 'Puntos de fidelidad', onClick: onShowLoyalty, color: 'text-yellow-300', colorLight: 'text-amber-500', badge: loyaltyPoints !== null ? loyaltyPoints : false });
   if (showFavoritesButton) actionButtons.push({ key: 'favs', icon: HI.heart, label: 'Favoritos', onClick: onShowFavorites, color: 'text-white', colorLight: 'text-rose-500' });
   if (showHistoryButton) actionButtons.push({ key: 'history', icon: HI.clock, label: 'Historial', onClick: onShowHistory, color: 'text-white', colorLight: 'text-blue-500' });
   actionButtons.push({ key: 'account', icon: HI.user, label: hasActiveOrder ? 'Ver pedido' : 'Mi cuenta', onClick: () => setShowAccountModal(true), color: 'text-white', colorLight: 'text-slate-600', badge: hasActiveOrder });
@@ -224,8 +235,18 @@ const BusinessHeader = ({
                   aria-label={btn.label}
                 >
                   {btn.icon('w-3.5 h-3.5')}
-                  {btn.badge && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full ring-1 ring-white/50 animate-pulse" />
+                  {btn.badge !== undefined && btn.badge !== false && (
+                    typeof btn.badge === 'number' ? (
+                      <span className={`absolute -top-1.5 -right-2 min-w-[16px] h-[16px] flex items-center justify-center px-1 rounded-full text-[8px] font-bold ring-1 ${
+                        hasCover
+                          ? 'bg-amber-400 text-amber-950 ring-black/20'
+                          : 'bg-amber-400 text-amber-950 ring-white'
+                      }`}>
+                        {btn.badge}
+                      </span>
+                    ) : (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full ring-1 ring-white/50 animate-pulse" />
+                    )
                   )}
                 </button>
               ))}
