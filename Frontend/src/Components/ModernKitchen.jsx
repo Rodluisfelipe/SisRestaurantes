@@ -696,11 +696,22 @@ function ModernKitchen() {
                                   <div className="mt-2">
                                     <p className="text-xs font-medium text-slate-400 mb-1">Extras:</p>
                                     <div className="space-y-1">
-                                      {item.selectedToppings.map((topping, toppingIndex) => (
-                                        <p key={toppingIndex} className="text-xs text-slate-500">
-                                          • {topping.optionName}
-                                        </p>
-                                      ))}
+                                      {item.selectedToppings.flatMap((topping, toppingIndex) => {
+                                        const items = [];
+                                        if (topping.optionName) {
+                                          items.push(
+                                            <p key={`t-${toppingIndex}`} className="text-xs text-slate-500">• {topping.optionName}</p>
+                                          );
+                                        }
+                                        if (topping.subGroups) {
+                                          topping.subGroups.forEach((sg, si) => {
+                                            items.push(
+                                              <p key={`s-${toppingIndex}-${si}`} className="text-xs text-slate-500 pl-2">• {sg.optionName}</p>
+                                            );
+                                          });
+                                        }
+                                        return items;
+                                      })}
                                     </div>
                                   </div>
                                 )}

@@ -348,12 +348,28 @@ function EnhancedCompletedOrders() {
                       </p>
                       {item.selectedToppings && item.selectedToppings.length > 0 && (
                         <div className="mt-1 space-y-0.5">
-                          {item.selectedToppings.map((topping, idx) => (
-                            <p key={idx} className="text-xs text-slate-500">
-                              + {topping.groupName}: {topping.optionName}
-                              {topping.price > 0 && ` (+$${topping.price.toFixed(2)})`}
-                            </p>
-                          ))}
+                          {item.selectedToppings.flatMap((topping, idx) => {
+                            const items = [];
+                            if (topping.optionName) {
+                              items.push(
+                                <p key={`t-${idx}`} className="text-xs text-slate-500">
+                                  + {topping.groupName}: {topping.optionName}
+                                  {topping.price > 0 && ` (+$${topping.price.toLocaleString()})`}
+                                </p>
+                              );
+                            }
+                            if (topping.subGroups) {
+                              topping.subGroups.forEach((sg, si) => {
+                                items.push(
+                                  <p key={`s-${idx}-${si}`} className="text-xs text-orange-600 pl-2">
+                                    + {sg.subGroupTitle}: {sg.optionName}
+                                    {sg.price > 0 && ` (+$${sg.price.toLocaleString()})`}
+                                  </p>
+                                );
+                              });
+                            }
+                            return items;
+                          })}
                         </div>
                       )}
                     </div>

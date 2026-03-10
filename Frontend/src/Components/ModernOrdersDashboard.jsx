@@ -62,7 +62,13 @@ function ModernOrdersDashboard() {
         item.selectedToppings.forEach(t => {
           const tName = t.optionName || t.name || '';
           const tPrice = t.price > 0 ? ` ($${t.price.toLocaleString()})` : '';
-          itemsHtml += `<div style="padding-left:8px;font-size:14px;font-weight:900;color:#000">+ ${tName}${tPrice}</div>`;
+          if (tName) itemsHtml += `<div style="padding-left:8px;font-size:14px;font-weight:900;color:#000">+ ${tName}${tPrice}</div>`;
+          if (t.subGroups) {
+            t.subGroups.forEach(sg => {
+              const sgPrice = sg.price > 0 ? ` ($${sg.price.toLocaleString()})` : '';
+              itemsHtml += `<div style="padding-left:16px;font-size:13px;font-weight:900;color:#000">+ ${sg.optionName}${sgPrice}</div>`;
+            });
+          }
         });
       }
     });
@@ -1417,11 +1423,26 @@ function ModernOrdersDashboard() {
                           
                           {item.selectedToppings && item.selectedToppings.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-1">
-                              {item.selectedToppings.map((topping, toppingIndex) => (
-                                <span key={toppingIndex} className="text-[11px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
-                                  + {topping.optionName} (${topping.price})
-                                </span>
-                              ))}
+                              {item.selectedToppings.flatMap((topping, toppingIndex) => {
+                                const tags = [];
+                                if (topping.optionName) {
+                                  tags.push(
+                                    <span key={`t-${toppingIndex}`} className="text-[11px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
+                                      + {topping.optionName}{topping.price > 0 && ` ($${topping.price.toLocaleString()})`}
+                                    </span>
+                                  );
+                                }
+                                if (topping.subGroups) {
+                                  topping.subGroups.forEach((sg, si) => {
+                                    tags.push(
+                                      <span key={`s-${toppingIndex}-${si}`} className="text-[11px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                                        + {sg.optionName}{sg.price > 0 && ` ($${sg.price.toLocaleString()})`}
+                                      </span>
+                                    );
+                                  });
+                                }
+                                return tags;
+                              })}
                             </div>
                           )}
                         </div>

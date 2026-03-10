@@ -101,7 +101,13 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
         item.selectedToppings.forEach(t => {
           const tName = t.optionName || t.name || '';
           const tPrice = t.price > 0 ? ` ($${t.price.toLocaleString()})` : '';
-          itemsHtml += `<div style="padding-left:8px;font-size:14px;font-weight:900;color:#000">+ ${tName}${tPrice}</div>`;
+          if (tName) itemsHtml += `<div style="padding-left:8px;font-size:14px;font-weight:900;color:#000">+ ${tName}${tPrice}</div>`;
+          if (t.subGroups) {
+            t.subGroups.forEach(sg => {
+              const sgPrice = sg.price > 0 ? ` ($${sg.price.toLocaleString()})` : '';
+              itemsHtml += `<div style="padding-left:16px;font-size:13px;font-weight:900;color:#000">+ ${sg.optionName}${sgPrice}</div>`;
+            });
+          }
         });
       }
     });

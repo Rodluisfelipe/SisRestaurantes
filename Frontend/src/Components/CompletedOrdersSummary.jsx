@@ -214,12 +214,28 @@ function CompletedOrdersSummary() {
                           </p>
                           {item.selectedToppings && item.selectedToppings.length > 0 && (
                             <ul className="mt-1 space-y-1">
-                              {item.selectedToppings.map((topping, idx) => (
-                                <li key={idx} className="text-sm text-gray-500">
-                                  • {topping.groupName}: {topping.optionName}
-                                  {topping.price > 0 && ` (+$${topping.price.toFixed(2)})`}
-                                </li>
-                              ))}
+                              {item.selectedToppings.flatMap((topping, idx) => {
+                                const items = [];
+                                if (topping.optionName) {
+                                  items.push(
+                                    <li key={`t-${idx}`} className="text-sm text-gray-500">
+                                      • {topping.groupName}: {topping.optionName}
+                                      {topping.price > 0 && ` (+$${topping.price.toLocaleString()})`}
+                                    </li>
+                                  );
+                                }
+                                if (topping.subGroups) {
+                                  topping.subGroups.forEach((sg, si) => {
+                                    items.push(
+                                      <li key={`s-${idx}-${si}`} className="text-sm text-gray-500 pl-3">
+                                        • {sg.subGroupTitle}: {sg.optionName}
+                                        {sg.price > 0 && ` (+$${sg.price.toLocaleString()})`}
+                                      </li>
+                                    );
+                                  });
+                                }
+                                return items;
+                              })}
                             </ul>
                           )}
                         </div>
