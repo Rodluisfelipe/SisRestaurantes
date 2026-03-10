@@ -171,7 +171,7 @@ const BusinessHeader = ({
   const hasCover = !!businessConfig.coverImage;
 
   return (
-    <div className="w-full relative">
+    <div className="w-full relative -mt-[env(safe-area-inset-top,0px)]">
       {/* ── Immersive Header — everything inside the cover ── */}
       <div className="relative">
         {/* Background: cover image or fallback gradient */}
@@ -191,12 +191,12 @@ const BusinessHeader = ({
         )}
 
         {/* ── Content floating inside the cover ── */}
-        <div className="relative z-10 px-3 pt-2.5 pb-3">
+        <div className="relative z-10 px-4 pt-[max(env(safe-area-inset-top,4px),4px)] pb-4">
           {/* Top row: Status left — Action buttons right */}
-          <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center justify-between mb-2">
             {/* Status Badge */}
             <span 
-              className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-full ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] sm:text-xs font-bold rounded-full ${
                 hasCover
                   ? 'bg-black/30 backdrop-blur-sm text-white border border-white/10'
                   : `${getStatusDisplay().color} text-white`
@@ -236,7 +236,7 @@ const BusinessHeader = ({
           <div className="flex flex-col items-center gap-1.5">
             {/* Logo */}
             <div 
-              className="w-[68px] h-[68px] sm:w-[78px] sm:h-[78px] rounded-full p-[2.5px] shadow-lg"
+              className="w-[80px] h-[80px] sm:w-[92px] sm:h-[92px] rounded-full p-[3px] shadow-xl"
               style={{ 
                 background: businessStatus?.isOpen 
                   ? `linear-gradient(135deg, ${themeColor}, ${themeColor}90)` 
@@ -249,8 +249,8 @@ const BusinessHeader = ({
                   alt={`Logo de ${businessConfig.businessName || 'negocio'}`}
                   className="w-full h-full object-cover"
                   loading="eager"
-                  width="78"
-                  height="78"
+                  width="92"
+                  height="92"
                   fetchPriority="high"
                   onError={(e) => {
                     if (!logoError) { setLogoError(true); e.target.src = defaultLogo; }

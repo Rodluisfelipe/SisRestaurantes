@@ -579,34 +579,36 @@ const FilterableMenu = ({
         <div className="overflow-x-auto scrollbar-hide">
           <LayoutGroup>
           <div className="flex gap-2 pb-1 px-0.5 min-w-max">
-            {/* "All" pill — with sliding layoutId indicator */}
+            {/* "All" pill — iOS style */}
             <motion.button
               ref={el => (pillRefs.current['all'] = el)}
               onClick={() => handlePillClick('all')}
               whileTap={{ scale: 0.93 }}
-              className="relative px-4 py-2 rounded-xl whitespace-nowrap font-semibold text-[13px] transition-colors duration-200"
-              style={{ color: visualActive === 'all' ? themeTextColor : '#475569' }}
+              className="relative inline-flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap font-semibold text-[13px] transition-colors duration-200"
+              style={{ color: visualActive === 'all' ? '#fff' : '#334155' }}
             >
               {visualActive === 'all' && (
                 <motion.div
                   layoutId="activePillBg"
-                  className="absolute inset-0 rounded-xl shadow-md"
-                  style={{ backgroundColor: themeColor, boxShadow: `0 4px 14px ${themeColor}30` }}
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  className="absolute inset-0 rounded-full"
+                  style={{ backgroundColor: '#0f172a', boxShadow: '0 4px 12px rgba(15,23,42,0.25)' }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
               {visualActive !== 'all' && (
-                <div className="absolute inset-0 rounded-xl bg-white border border-slate-200 shadow-sm" />
+                <div className="absolute inset-0 rounded-full bg-slate-100" />
               )}
-              <span className="relative z-10">
-                Todos
-                <span className={`ml-1.5 text-[11px] ${visualActive === 'all' ? 'opacity-80' : 'text-slate-400'}`}>
-                  {totalProductCount}
-                </span>
+              <span className="relative z-10">Todos</span>
+              <span className={`relative z-10 min-w-[20px] h-5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 ${
+                visualActive === 'all' 
+                  ? 'bg-white/20 text-white' 
+                  : 'bg-slate-200 text-slate-500'
+              }`}>
+                {totalProductCount}
               </span>
             </motion.button>
 
-            {/* Category pills — liquid sliding active indicator */}
+            {/* Category pills — iOS minimal with count bubble */}
             {categoriesWithProducts.map((category) => {
               const isActive = visualActive === category._id;
               return (
@@ -615,23 +617,26 @@ const FilterableMenu = ({
                   ref={el => (pillRefs.current[category._id] = el)}
                   onClick={() => handlePillClick(category._id)}
                   whileTap={{ scale: 0.93 }}
-                  className="relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl whitespace-nowrap font-semibold text-[13px] transition-colors duration-200"
-                  style={{ color: isActive ? themeTextColor : '#475569' }}
+                  className="relative inline-flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap font-semibold text-[13px] transition-colors duration-200"
+                  style={{ color: isActive ? '#fff' : '#334155' }}
                 >
                   {isActive && (
                     <motion.div
                       layoutId="activePillBg"
-                      className="absolute inset-0 rounded-xl shadow-md"
-                      style={{ backgroundColor: themeColor, boxShadow: `0 4px 14px ${themeColor}30` }}
-                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      className="absolute inset-0 rounded-full"
+                      style={{ backgroundColor: '#0f172a', boxShadow: '0 4px 12px rgba(15,23,42,0.25)' }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
                   )}
                   {!isActive && (
-                    <div className="absolute inset-0 rounded-xl bg-white border border-slate-200 shadow-sm" />
+                    <div className="absolute inset-0 rounded-full bg-slate-100" />
                   )}
-                  <span className={`relative z-10 ${isActive ? 'opacity-90' : 'opacity-50'}`}>{getCategoryIcon(category.name, 'w-3.5 h-3.5')}</span>
                   <span className="relative z-10">{category.name}</span>
-                  <span className={`relative z-10 text-[11px] ${isActive ? 'opacity-70' : 'text-slate-400'}`}>
+                  <span className={`relative z-10 min-w-[20px] h-5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 ${
+                    isActive 
+                      ? 'bg-white/20 text-white' 
+                      : 'bg-slate-200 text-slate-500'
+                  }`}>
                     {category.count}
                   </span>
                 </motion.button>
