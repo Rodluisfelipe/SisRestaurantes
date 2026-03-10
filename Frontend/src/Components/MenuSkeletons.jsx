@@ -95,32 +95,38 @@ export const FilterableMenuSkeleton = () => (
 );
 
 /* ------------------------------------------------------------------ */
-/*  BusinessHeaderSkeleton                                             */
+/*  BusinessHeaderSkeleton — matches immersive header                  */
 /* ------------------------------------------------------------------ */
 export const BusinessHeaderSkeleton = () => (
-  <div className="w-full text-center relative bg-gray-100 animate-fadeIn min-h-[160px] sm:min-h-[200px]">
-    {/* Cover area */}
-    <div className={`h-36 sm:h-44 bg-gray-200 ${shimmerClass}`} />
-
-    {/* Overlaid content */}
-    <div className="relative -mt-12 z-10 flex flex-col items-center">
-      {/* Logo */}
-      <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gray-300 border-2 border-white shadow-lg ${shimmerClass}`} />
-      {/* Name */}
-      <div className={`mt-1.5 h-6 w-40 rounded-full bg-gray-200 ${shimmerClass}`} />
-      {/* Address + social inline */}
-      <div className="flex items-center gap-2 mt-1.5 mb-2">
-        <div className={`h-3 w-28 rounded-full bg-gray-100 ${shimmerClass}`} />
-        {[1, 2].map(i => (
-          <div key={i} className={`w-4 h-4 rounded-full bg-gray-200 ${shimmerClass}`} />
-        ))}
+  <div className="w-full relative animate-fadeIn">
+    {/* Immersive cover area */}
+    <div className={`relative bg-gray-200 ${shimmerClass}`} style={{ paddingBottom: '38%' }}>
+      {/* Status badge skeleton — top left */}
+      <div className="absolute left-3 top-3 z-10">
+        <div className={`h-6 w-16 rounded-full bg-gray-300/50 ${shimmerClass}`} />
+      </div>
+      {/* Action pill skeleton — top right */}
+      <div className="absolute right-3 top-3 z-10">
+        <div className={`h-8 w-28 rounded-2xl bg-gray-300/50 ${shimmerClass}`} />
+      </div>
+      {/* Centered content over cover */}
+      <div className="absolute inset-0 flex flex-col items-center justify-end pb-4">
+        {/* Logo */}
+        <div className={`w-[68px] h-[68px] sm:w-[80px] sm:h-[80px] rounded-full bg-gray-300 border-2 border-white/50 shadow-lg ${shimmerClass}`} />
+        {/* Name */}
+        <div className={`mt-2 h-5 w-36 rounded-full bg-gray-300/60 ${shimmerClass}`} />
+        {/* Meta chips */}
+        <div className="flex items-center gap-2 mt-1.5">
+          <div className={`h-4 w-14 rounded-full bg-gray-300/40 ${shimmerClass}`} />
+          <div className={`h-3 w-28 rounded-full bg-gray-300/30 ${shimmerClass}`} />
+        </div>
       </div>
     </div>
   </div>
 );
 
 /* ------------------------------------------------------------------ */
-/*  FeaturedProductsSkeleton                                           */
+/*  FeaturedProductsSkeleton — panoramic 16:9 snap cards               */
 /* ------------------------------------------------------------------ */
 export const FeaturedProductsSkeleton = () => (
   <div className="mb-4 sm:mb-5 px-3 sm:px-4 lg:px-6 animate-fadeIn">
@@ -129,17 +135,16 @@ export const FeaturedProductsSkeleton = () => (
       <div className={`h-4 w-24 rounded-full bg-gray-200 ${shimmerClass}`} />
     </div>
     <div className="flex gap-3 overflow-hidden -mx-3 px-3 sm:-mx-4 sm:px-4">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="flex-shrink-0 w-40 sm:w-48 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className={`aspect-[4/3] bg-gray-200 ${shimmerClass}`} />
-          <div className="p-2.5 space-y-2">
-            <div className={`h-3.5 w-3/4 rounded-full bg-gray-200 ${shimmerClass}`} />
-            <div className="flex items-center justify-between">
-              <div className={`h-4 w-14 rounded-full bg-gray-200 ${shimmerClass}`} />
-              <div className={`w-7 h-7 rounded-lg bg-gray-200 ${shimmerClass}`} />
-            </div>
-          </div>
+      {[1, 2].map(i => (
+        <div key={i} className="flex-shrink-0 w-[80%] sm:w-[70%] rounded-2xl overflow-hidden bg-gray-200 shadow-sm">
+          <div className={`aspect-[16/9] bg-gray-200 ${shimmerClass}`} />
         </div>
+      ))}
+    </div>
+    {/* Pagination dots */}
+    <div className="flex justify-center gap-1.5 mt-3">
+      {[1, 2, 3].map(i => (
+        <div key={i} className={`w-1.5 h-1.5 rounded-full ${i === 1 ? 'bg-gray-400' : 'bg-gray-200'}`} />
       ))}
     </div>
   </div>

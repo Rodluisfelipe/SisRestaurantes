@@ -1051,37 +1051,32 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
         
         {/* ── Footer: price + add button ── */}
         <div className="border-t border-slate-100 bg-white px-4 py-3 sm:py-4 flex-shrink-0 rounded-b-2xl">
-          {/* Price row */}
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[11px] text-slate-400 font-medium">Total</p>
-              <p className="text-2xl sm:text-3xl font-black text-slate-900 tabular-nums tracking-tight">
-                ${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </p>
-            </div>
-            {extraTotal > 0 && (
-              <div className="text-right">
-                <p className="text-[10px] text-slate-400">Extras</p>
-                <p className="text-sm font-bold" style={{ color: themeBtn }}>+${extraTotal.toLocaleString()}</p>
-              </div>
-            )}
-          </div>
-          
-          {/* Add to cart button */}
+          {/* Add to cart button — full width capsule with price embedded */}
           <button
             onClick={handleAddToCart}
-            className={`w-full py-3.5 rounded-xl font-bold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 active:scale-[0.98] shadow-lg ${
-              isValid ? 'hover:shadow-xl' : 'opacity-70'
+            className={`w-full py-4 rounded-full font-bold text-[15px] flex items-center justify-center gap-3 transition-all duration-200 active:scale-[0.97] ${
+              isValid ? '' : 'opacity-60'
             }`}
             style={{ 
               backgroundColor: themeBtn, 
               color: themeTxt,
-              boxShadow: isValid ? `0 8px 24px ${themeBtn}35` : undefined
+              boxShadow: isValid ? `0 8px 24px ${themeBtn}40` : undefined
             }}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
-            <span>Agregar al carrito</span>
-            {quantity > 1 && <span className="opacity-70">× {quantity}</span>}
+            <span className="flex items-center gap-2">
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+              <span>Agregar</span>
+              {quantity > 1 && <span className="opacity-70">× {quantity}</span>}
+            </span>
+            <span className="w-px h-5 bg-white/20" />
+            <span className="font-extrabold tabular-nums text-base">
+              ${displayTotal.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </span>
+            {extraTotal > 0 && (
+              <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-white/15">
+                +${extraTotal.toLocaleString()}
+              </span>
+            )}
           </button>
         </div>
       </div>

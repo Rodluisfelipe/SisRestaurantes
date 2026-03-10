@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef, memo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
@@ -82,6 +83,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const [isProcessing, setIsProcessing] = useState(false);
   const { businessConfig, businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
+  const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
+  const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
   
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
@@ -1250,28 +1253,39 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   };
 
   return (
-    <div 
+    <motion.div
       ref={backdropRef}
-      className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-40"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-40"
       onMouseDown={(e) => { if (e.target === backdropRef.current) touchStartedOnBackdrop.current = true; }}
       onMouseUp={(e) => { if (e.target === backdropRef.current && touchStartedOnBackdrop.current) onClose(); touchStartedOnBackdrop.current = false; }}
       onTouchStart={(e) => { if (e.target === backdropRef.current) touchStartedOnBackdrop.current = true; else touchStartedOnBackdrop.current = false; }}
       onTouchEnd={(e) => { if (e.target === backdropRef.current && touchStartedOnBackdrop.current) onClose(); touchStartedOnBackdrop.current = false; }}
     >
-      <div 
-        className="bg-white sm:rounded-2xl rounded-t-2xl max-w-lg w-full modal-h-full sm:modal-h-desktop shadow-2xl border border-slate-200/50 flex flex-col"
+      <motion.div
+        initial={{ y: '100%', opacity: 0.5 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: '100%', opacity: 0 }}
+        transition={{ type: 'spring', damping: 30, stiffness: 350 }}
+        className="bg-white sm:rounded-2xl rounded-t-[20px] max-w-lg w-full modal-h-full sm:modal-h-desktop shadow-2xl border border-slate-200/50 flex flex-col"
         onTouchStart={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
       >
         {/* Drag handle (mobile sheet) */}
-        <div className="flex justify-center pt-2 pb-0 sm:hidden flex-shrink-0">
-          <div className="w-10 h-1 rounded-full bg-slate-300" />
+        <div className="flex justify-center pt-2.5 pb-0 sm:hidden flex-shrink-0">
+          <div className="w-10 h-[5px] rounded-full bg-slate-200" />
         </div>
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-slate-100 px-4 py-2.5 sm:px-6 sm:py-3 flex justify-between items-center z-10 rounded-t-2xl flex-shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 py-2.5 sm:px-6 sm:py-3 flex justify-between items-center z-10 rounded-t-[20px] flex-shrink-0">
+          <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-bold text-slate-800">Tu pedido</h2>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">{totalItems}</span>
+            <span
+              className="text-[11px] font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: `${themeColor}15`, color: themeColor }}
+            >{totalItems}</span>
           </div>
           <button
             onClick={onClose}
@@ -1359,23 +1373,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   {/* Price + quantity row */}
                   <div className="flex items-center justify-between mt-2">
                     <p className="text-sm font-bold text-slate-800">${calculateItemTotal(item).toLocaleString('es-CO')}</p>
-                    <div className="flex items-center gap-0 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="flex items-center gap-0 rounded-full" style={{ backgroundColor: `${themeColor}10` }}>
                       <button
                         onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) - 1)}
-                        className="w-7 h-7 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-full transition-colors"
+                        style={{ color: themeColor }}
                         aria-label="Disminuir cantidad"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" /></svg>
                       </button>
-                      <span className="w-6 text-center text-sm font-semibold text-slate-800">{item.quantity || 0}</span>
+                      <span className="w-6 text-center text-[13px] font-bold" style={{ color: themeColor }}>{item.quantity || 0}</span>
                       <button
                         onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) + 1)}
-                        className="w-7 h-7 flex items-center justify-center rounded-r-lg transition-colors"
+                        className="w-7 h-7 flex items-center justify-center rounded-full transition-colors"
+                        style={{ color: themeColor }}
                         aria-label="Aumentar cantidad"
-                        style={{
-                          backgroundColor: businessConfig?.theme?.buttonColor || '#f97316',
-                          color: businessConfig?.theme?.buttonTextColor || '#ffffff'
-                        }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                       </button>
@@ -1449,45 +1461,28 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               {!initialOrderTypeSelected && (
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Tipo de pedido</p>
-                  <div className={isFromTableQR ? 'grid grid-cols-2 gap-1.5' : 'grid grid-cols-3 gap-1.5'}>
-                    <button
-                      type="button"
-                      onClick={() => { setOrderType('inSite'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all ${
-                        orderType === 'inSite' 
-                          ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <span className={`${orderType === 'inSite' ? 'text-blue-600' : 'text-slate-400'}`}>{CI.dineIn('w-4 h-4')}</span>
-                      <span className={`text-[11px] font-semibold ${orderType === 'inSite' ? 'text-blue-700' : 'text-slate-500'}`}>En Sitio</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setOrderType('takeaway'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
-                      className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all ${
-                        orderType === 'takeaway' 
-                          ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                          : 'border-slate-200 bg-white hover:border-slate-300'
-                      }`}
-                    >
-                      <span className={`${orderType === 'takeaway' ? 'text-blue-600' : 'text-slate-400'}`}>{CI.takeaway('w-4 h-4')}</span>
-                      <span className={`text-[11px] font-semibold ${orderType === 'takeaway' ? 'text-blue-700' : 'text-slate-500'}`}>Llevar</span>
-                    </button>
-                    {!isFromTableQR && (
-                      <button
-                        type="button"
-                        onClick={() => { setOrderType('delivery'); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
-                        className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 transition-all ${
-                          orderType === 'delivery' 
-                            ? 'border-blue-500 bg-blue-50 shadow-sm' 
-                            : 'border-slate-200 bg-white hover:border-slate-300'
-                        }`}
-                      >
-                        <span className={`${orderType === 'delivery' ? 'text-blue-600' : 'text-slate-400'}`}>{CI.delivery('w-4 h-4')}</span>
-                        <span className={`text-[11px] font-semibold ${orderType === 'delivery' ? 'text-blue-700' : 'text-slate-500'}`}>Domicilio</span>
-                      </button>
-                    )}
+                  <div className={`relative p-1 rounded-2xl bg-slate-100 ${isFromTableQR ? 'grid grid-cols-2' : 'grid grid-cols-3'}`}>
+                    {[
+                      { id: 'inSite', label: 'En Sitio', icon: CI.dineIn },
+                      { id: 'takeaway', label: 'Llevar', icon: CI.takeaway },
+                      ...(!isFromTableQR ? [{ id: 'delivery', label: 'Domicilio', icon: CI.delivery }] : [])
+                    ].map(opt => {
+                      const isActive = orderType === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => { setOrderType(opt.id); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
+                          className={`relative flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 ${
+                            isActive ? 'bg-white shadow-sm' : ''
+                          }`}
+                          style={{ color: isActive ? themeColor : '#64748b' }}
+                        >
+                          <span>{opt.icon('w-3.5 h-3.5')}</span>
+                          <span>{opt.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1516,25 +1511,27 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                       </span>
                     </p>
                     <div className={`grid gap-1.5 ${methods.length <= 2 ? 'grid-cols-2' : methods.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
-                      {methods.map(m => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => setSelectedPaymentMethod(selectedPaymentMethod === m.id ? null : m.id)}
-                          className={`flex flex-col items-center gap-0.5 py-2 rounded-xl border-2 transition-all text-center ${
-                            selectedPaymentMethod === m.id
-                              ? 'border-green-500 bg-green-50 shadow-sm'
-                              : !selectedPaymentMethod ? 'border-red-200 bg-white' : 'border-slate-200 bg-white'
-                          }`}
-                        >
-                          {m.logo ? (
-                            <img src={m.logo} alt={m.label} className="w-6 h-6 object-contain rounded" />
-                          ) : (
-                            <span className={selectedPaymentMethod === m.id ? 'text-green-600' : 'text-slate-400'}>{CI[m.iconKey]('w-5 h-5')}</span>
-                          )}
-                          <span className={`text-[10px] font-semibold ${selectedPaymentMethod === m.id ? 'text-green-700' : 'text-slate-500'}`}>{m.label}</span>
-                        </button>
-                      ))}
+                      {methods.map(m => {
+                        const isSelected = selectedPaymentMethod === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setSelectedPaymentMethod(isSelected ? null : m.id)}
+                            className={`flex flex-col items-center gap-0.5 py-2 rounded-xl border-2 transition-all text-center ${
+                              !selectedPaymentMethod && !isSelected ? 'border-red-200 bg-white' : !isSelected ? 'border-slate-200 bg-white' : ''
+                            }`}
+                            style={isSelected ? { borderColor: themeColor, backgroundColor: `${themeColor}10` } : undefined}
+                          >
+                            {m.logo ? (
+                              <img src={m.logo} alt={m.label} className="w-6 h-6 object-contain rounded" />
+                            ) : (
+                              <span style={{ color: isSelected ? themeColor : '#94a3b8' }}>{CI[m.iconKey]('w-5 h-5')}</span>
+                            )}
+                            <span className="text-[10px] font-semibold" style={{ color: isSelected ? themeColor : '#64748b' }}>{m.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     {/* Payment info details based on selected method */}
@@ -1838,32 +1835,39 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               else if (orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
               else if (orderType === 'delivery') buttonLabel = isDeliveryWithoutZone ? 'Selecciona una zona' : 'Confirmar · Domicilio';
 
+              const displayTotal = (finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0));
+
               return (
                 <button
                   onClick={handleConfirmClick}
                   style={{ 
-                    backgroundColor: isDisabled ? '#9ca3af' : (businessConfig.theme.buttonColor || '#f97316'),
-                    color: businessConfig.theme.buttonTextColor || '#ffffff'
+                    backgroundColor: isDisabled ? '#cbd5e1' : themeColor,
+                    color: themeTextColor,
+                    boxShadow: isDisabled ? undefined : `0 8px 24px ${themeColor}40`
                   }}
-                  className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 text-[15px] shadow-lg transition-[transform,opacity] ${
-                    isDisabled ? 'opacity-50 cursor-not-allowed' : 'active:scale-[0.98] hover:shadow-xl'
+                  className={`w-full py-4 rounded-full font-bold flex items-center justify-center gap-3 text-[15px] transition-all duration-200 ${
+                    isDisabled ? 'opacity-60 cursor-not-allowed' : 'active:scale-[0.97]'
                   }`}
                   disabled={isDisabled}
                 >
                   {isSubmitting ? (
                     <>
-                      <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
                       <span>Procesando...</span>
                     </>
                   ) : (
-                    <span>{buttonLabel}</span>
+                    <>
+                      <span>{buttonLabel}</span>
+                      <span className="w-px h-5 bg-current opacity-20" />
+                      <span className="font-extrabold tabular-nums">${displayTotal.toLocaleString('es-CO')}</span>
+                    </>
                   )}
                 </button>
               );
             })()}
           </div>
         )}
-        </div>
+        </motion.div>
         
       {/* Modal de negocio cerrado */}
       <BusinessClosedModal
@@ -1871,7 +1875,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         onClose={() => setShowClosedModal(false)}
         businessStatus={businessStatus}
       />
-    </div>
+    </motion.div>
   );
 }
 

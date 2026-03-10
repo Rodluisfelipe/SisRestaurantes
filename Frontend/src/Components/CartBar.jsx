@@ -79,59 +79,52 @@ const CartBar = ({
             ? { duration: 0.75, ease: [0.22, 1, 0.36, 1], times: [0, 0.45, 0.7, 1] }
             : { type: "spring", stiffness: 300, damping: 25 }
         }
-        className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-3 sm:px-4 sm:pb-4"
+        className="fixed bottom-4 left-4 right-4 z-50"
       >
         <motion.button
           onClick={onShowCart}
           disabled={isSuspended}
           whileHover={!isSuspended ? { scale: 1.02, y: -2 } : {}}
-          whileTap={!isSuspended ? { scale: 0.98 } : {}}
+          whileTap={!isSuspended ? { scale: 0.97 } : {}}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          className={`w-full flex items-center justify-between px-5 py-3.5 sm:py-4 rounded-2xl shadow-2xl backdrop-blur-md transition-transform duration-200 ${
+          className={`w-full flex items-center justify-between px-5 py-3.5 rounded-full ${
             isSuspended ? 'opacity-50 cursor-not-allowed' : ''
           }`}
           style={{
-            backgroundColor: isSuspended ? '#6b7280' : buttonColor,
+            backgroundColor: isSuspended ? '#1e293b' : buttonColor,
             color: buttonTextColor,
-            boxShadow: isSuspended ? undefined : `0 8px 32px ${buttonColor}50`
+            boxShadow: isSuspended ? undefined : `0 8px 30px ${buttonColor}50, 0 0 0 1px rgba(255,255,255,0.1) inset`
           }}
         >
-          {/* Left: bag icon + item count */}
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <FaShoppingBag className="text-lg sm:text-xl" style={{ color: buttonTextColor }} />
-              <motion.span
-                key={totalItems}
-                animate={countControls}
-                className="absolute -top-2 -right-2 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm"
-                style={{ 
-                  backgroundColor: buttonTextColor, 
-                  color: buttonColor 
-                }}
-              >
-                {totalItems}
-              </motion.span>
-            </div>
-            <span className="text-sm font-medium opacity-90">
-              {totalItems === 1 ? '1 producto' : `${totalItems} productos`}
+          {/* Left: item count badge */}
+          <div className="flex items-center gap-2.5">
+            <motion.span
+              key={totalItems}
+              animate={countControls}
+              className="w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center bg-white/20"
+              style={{ 
+                color: buttonTextColor 
+              }}
+            >
+              {totalItems}
+            </motion.span>
+            <span className="text-sm font-semibold text-white/80">
+              Ver carrito
             </span>
           </div>
 
-          {/* Center: label */}
-          <span className="font-bold text-base sm:text-lg tracking-wide">
-            Ver Carrito
-          </span>
-
-          {/* Right: total + arrow */}
+          {/* Right: total price */}
           <div className="flex items-center gap-2">
             <motion.span
               key={totalAmount}
               animate={priceControls}
-              className="font-extrabold text-base sm:text-lg"
+              className="font-extrabold text-base tabular-nums"
             >
               ${totalAmount.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </motion.span>
-            <FaArrowRight className="text-sm opacity-70" />
+            <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+              <FaArrowRight className="text-[10px] text-white/70" />
+            </div>
           </div>
         </motion.button>
         </motion.div>

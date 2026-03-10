@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -213,32 +213,66 @@ const FilterableMenu = ({
     return () => obs.disconnect();
   }, []);
 
-  // ── Scroll-spy: IntersectionObserver watches each category section ──
+  // ── Scroll-spy: scroll-event based (more reliable than IntersectionObserver) ──
   useEffect(() => {
-    if (userTapped) return; // pause spy while programmatic scroll is in-flight
-    const sections = Object.entries(sectionRefs.current).filter(([, el]) => el);
-    if (sections.length === 0) return;
+    if (userTapped) return;
 
-    const obs = new IntersectionObserver(
-      (entries) => {
-        // Find the topmost visible section
-        let topEntry = null;
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            if (!topEntry || entry.boundingClientRect.top < topEntry.boundingClientRect.top) {
-              topEntry = entry;
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const sections = Object.entries(sectionRefs.current).filter(([, el]) => el);
+        if (sections.length === 0) return;
+
+        // Offset = height of sticky pill bar + a small margin
+        const offset = (pillBarRef.current?.offsetHeight || 60) + 24;
+        let found = null;
+
+        // Walk sections top→bottom, pick the last one whose top is above the offset line
+        for (const [id, el] of sections) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= offset && rect.bottom > offset) {
+            found = id;
+          }
+        }
+        // If nothing overlaps the line, pick the closest section above it
+        if (!found) {
+          let closest = null;
+          let closestDist = Infinity;
+          for (const [id, el] of sections) {
+            const top = el.getBoundingClientRect().top;
+            if (top <= offset) {
+              const dist = offset - top;
+              if (dist < closestDist) { closestDist = dist; closest = id; }
             }
           }
-        });
-        if (topEntry) {
-          setSpyCategory(topEntry.target.getAttribute('data-category-id'));
+          found = closest;
         }
-      },
-      { rootMargin: '-80px 0px -60% 0px', threshold: 0 }
-    );
 
-    sections.forEach(([, el]) => obs.observe(el));
-    return () => obs.disconnect();
+        // If still at the very top (before first section), show "all"
+        const nextCat = found || 'all';
+        setSpyCategory(prev => {
+          if (prev !== nextCat) {
+            // Auto-scroll pill bar to keep active pill visible
+            const pillEl = pillRefs.current[nextCat];
+            const container = pillBarRef.current?.querySelector('.overflow-x-auto');
+            if (pillEl && container) {
+              const cRect = container.getBoundingClientRect();
+              const pRect = pillEl.getBoundingClientRect();
+              const scrollLeft = pillEl.offsetLeft - container.offsetLeft - (cRect.width / 2) + (pRect.width / 2);
+              container.scrollTo({ left: Math.max(0, scrollLeft), behavior: 'smooth' });
+            }
+          }
+          return nextCat;
+        });
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // run once to set initial state
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [userTapped, filteredProducts]);
 
   // ── Notify parent of visible category (for viewer tracking) ──
@@ -483,7 +517,7 @@ const FilterableMenu = ({
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-4 sm:mb-5 relative z-50"
+        className="mb-4 sm:mb-5 relative z-20"
       >
         {/* Backdrop blur when focused (no text) */}
         <AnimatePresence>
@@ -493,13 +527,13 @@ const FilterableMenu = ({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-20"
               onClick={() => { setSearchFocused(false); document.activeElement?.blur(); }}
             />
           )}
         </AnimatePresence>
 
-        <div className={`relative z-50 transition-transform duration-300 ${searchFocused && !searchTerm ? 'scale-[1.02]' : ''}`}>
+        <div className={`relative z-20 transition-transform duration-300 ${searchFocused && !searchTerm ? 'scale-[1.02]' : ''}`}>
           <span
             className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors z-10"
             style={{ color: searchTerm ? themeColor : '#94a3b8' }}
@@ -545,7 +579,7 @@ const FilterableMenu = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ delay: 0.1 }}
-              className="relative z-50 flex flex-wrap gap-2 mt-3"
+              className="relative z-20 flex flex-wrap gap-2 mt-3"
             >
               {categoriesWithProducts.slice(0, 5).map(cat => (
                 <motion.button
@@ -570,34 +604,28 @@ const FilterableMenu = ({
       {/* ── Sticky Category Filter Pills + Progress Bar ── */}
       <div
         ref={pillBarRef}
-        className={`z-40 ${
+        className={`z-40 py-2.5 mb-4 sm:mb-5 ${
           isSticky
-            ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6 py-2.5 mb-4 sm:mb-5'
-            : 'mb-4 sm:mb-5'
+            ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6'
+            : ''
         }`}
       >
         <div className="overflow-x-auto scrollbar-hide">
-          <LayoutGroup>
           <div className="flex gap-2 pb-1 px-0.5 min-w-max">
             {/* "All" pill — iOS style */}
-            <motion.button
+            <button
               ref={el => (pillRefs.current['all'] = el)}
               onClick={() => handlePillClick('all')}
-              whileTap={{ scale: 0.93 }}
-              className="relative inline-flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap font-semibold text-[13px] transition-colors duration-200"
+              className="relative inline-flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap font-semibold text-[13px] transition-all duration-200 active:scale-[0.93]"
               style={{ color: visualActive === 'all' ? '#fff' : '#334155' }}
             >
-              {visualActive === 'all' && (
-                <motion.div
-                  layoutId="activePillBg"
-                  className="absolute inset-0 rounded-full"
-                  style={{ backgroundColor: '#0f172a', boxShadow: '0 4px 12px rgba(15,23,42,0.25)' }}
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              {visualActive !== 'all' && (
-                <div className="absolute inset-0 rounded-full bg-slate-100" />
-              )}
+              <div
+                className="absolute inset-0 rounded-full transition-all duration-200"
+                style={visualActive === 'all'
+                  ? { backgroundColor: themeColor, boxShadow: `0 4px 12px ${themeColor}40` }
+                  : { backgroundColor: '#f1f5f9' }
+                }
+              />
               <span className="relative z-10">Todos</span>
               <span className={`relative z-10 min-w-[20px] h-5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 ${
                 visualActive === 'all' 
@@ -606,31 +634,26 @@ const FilterableMenu = ({
               }`}>
                 {totalProductCount}
               </span>
-            </motion.button>
+            </button>
 
-            {/* Category pills — iOS minimal with count bubble */}
+            {/* Category pills */}
             {categoriesWithProducts.map((category) => {
               const isActive = visualActive === category._id;
               return (
-                <motion.button
+                <button
                   key={category._id}
                   ref={el => (pillRefs.current[category._id] = el)}
                   onClick={() => handlePillClick(category._id)}
-                  whileTap={{ scale: 0.93 }}
-                  className="relative inline-flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap font-semibold text-[13px] transition-colors duration-200"
+                  className="relative inline-flex items-center gap-1.5 px-4 py-2 rounded-full whitespace-nowrap font-semibold text-[13px] transition-all duration-200 active:scale-[0.93]"
                   style={{ color: isActive ? '#fff' : '#334155' }}
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="activePillBg"
-                      className="absolute inset-0 rounded-full"
-                      style={{ backgroundColor: '#0f172a', boxShadow: '0 4px 12px rgba(15,23,42,0.25)' }}
-                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                    />
-                  )}
-                  {!isActive && (
-                    <div className="absolute inset-0 rounded-full bg-slate-100" />
-                  )}
+                  <div
+                    className="absolute inset-0 rounded-full transition-all duration-200"
+                    style={isActive
+                      ? { backgroundColor: themeColor, boxShadow: `0 4px 12px ${themeColor}40` }
+                      : { backgroundColor: '#f1f5f9' }
+                    }
+                  />
                   <span className="relative z-10">{category.name}</span>
                   <span className={`relative z-10 min-w-[20px] h-5 inline-flex items-center justify-center rounded-full text-[10px] font-bold px-1.5 ${
                     isActive 
@@ -639,11 +662,10 @@ const FilterableMenu = ({
                   }`}>
                     {category.count}
                   </span>
-                </motion.button>
+                </button>
               );
             })}
           </div>
-          </LayoutGroup>
         </div>
 
         {/* ── Scroll progress line ── */}
