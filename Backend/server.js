@@ -148,9 +148,26 @@ app.use('/uploads/announcements', express.static('uploads/announcements'));
 app.use('/uploads/products', express.static('uploads/products'));
 
 // Authenticated access to payment proofs and order proofs
-const proofAuthMiddleware = require('./middleware/authMiddleware');
-app.use('/uploads/proofs', proofAuthMiddleware, express.static('uploads/proofs'));
-app.use('/uploads/order-proofs', proofAuthMiddleware, express.static('uploads/order-proofs'));
+// Accepts token via Authorization header OR ?token= query param (for <img> tags)
+const jwt = require('jsonwebtoken');
+const proofAuth = (req, res, next) => {
+  let token = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query.token) {
+    token = req.query.token;
+  }
+  if (!token) return res.status(401).json({ message: 'No token' });
+  try {
+    jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ message: 'Invalid token' });
+  }
+};
+app.use('/uploads/proofs', proofAuth, express.static('uploads/proofs'));
+app.use('/uploads/order-proofs', proofAuth, express.static('uploads/order-proofs'));
 
 // Rutas API original
 app.use("/api/products", require("./Routes/products"));

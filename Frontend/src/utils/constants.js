@@ -36,8 +36,13 @@ export const ORDER_STATUS = {
   PENDING_PAYMENT: 'pending_payment',
   PAYMENT_UPLOADED: 'payment_uploaded',
   PAYMENT_CONFIRMED: 'payment_confirmed',
+  CONFIRMED: 'confirmed',
+  PREPARING: 'preparing',
+  READY: 'ready',
   IN_PROGRESS: 'inProgress',
   COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
+  DELIVERED: 'delivered',
 };
 
 // Tipos de pedidos

@@ -461,6 +461,12 @@ function ModernOrdersDashboard() {
   const [showProofModal, setShowProofModal] = useState(false);
   const [proofImageUrl, setProofImageUrl] = useState('');
 
+  // Build authenticated proof URL (token via query param for <img> tags)
+  const getProofUrl = (proofPath) => {
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('superadmin_token');
+    return `${BACKEND_URL}${proofPath}${token ? `?token=${token}` : ''}`;
+  };
+
   // Navigate to kitchen screen
   const goToKitchenScreen = () => {
     // Obtener el slug actual para mantener el mismo negocio
@@ -1034,7 +1040,7 @@ function ModernOrdersDashboard() {
                             {order.paymentProof && (
                               <button
                                 onClick={() => {
-                                  setProofImageUrl(`${BACKEND_URL}${order.paymentProof}`);
+                                  setProofImageUrl(getProofUrl(order.paymentProof));
                                   setShowProofModal(true);
                                 }}
                                 className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-2 rounded-lg text-xs font-semibold border border-purple-200 transition-colors"
@@ -1143,7 +1149,7 @@ function ModernOrdersDashboard() {
                             {order.paymentProof && (
                               <button
                                 onClick={() => {
-                                  setProofImageUrl(`${BACKEND_URL}${order.paymentProof}`);
+                                  setProofImageUrl(getProofUrl(order.paymentProof));
                                   setShowProofModal(true);
                                 }}
                                 className="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-500 transition-colors"
@@ -1466,11 +1472,11 @@ function ModernOrdersDashboard() {
                     <h3 className="text-sm font-semibold text-slate-800 mb-2">Comprobante de pago</h3>
                     <div className="border border-slate-200 rounded-lg overflow-hidden">
                       <img 
-                        src={`${BACKEND_URL}${orderDetails.paymentProof}`} 
+                        src={getProofUrl(orderDetails.paymentProof)} 
                         alt="Comprobante de pago"
                         className="w-full max-h-64 object-contain bg-slate-50 cursor-pointer"
                         onClick={() => {
-                          setProofImageUrl(`${BACKEND_URL}${orderDetails.paymentProof}`);
+                          setProofImageUrl(getProofUrl(orderDetails.paymentProof));
                           setShowProofModal(true);
                         }}
                       />
