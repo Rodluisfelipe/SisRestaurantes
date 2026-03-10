@@ -138,6 +138,7 @@ function ModernKitchen() {
           pulse: true
         };
       case 'inProgress':
+      case 'preparing':
         return { 
           color: 'bg-blue-500', 
           textColor: 'text-blue-700',
@@ -146,6 +147,16 @@ function ModernKitchen() {
           icon: Icons.Play,
           pulse: false
         };
+      case 'confirmed':
+        return { 
+          color: 'bg-indigo-500', 
+          textColor: 'text-indigo-700',
+          bgColor: 'bg-indigo-50',
+          label: 'Confirmado',
+          icon: Icons.Check,
+          pulse: true
+        };
+      case 'ready':
       case 'completed':
         return { 
           color: 'bg-green-500', 
@@ -183,7 +194,7 @@ function ModernKitchen() {
       const response = await api.get(`/orders?businessId=${businessId}`);
       // Only show orders sent to kitchen and that are pending or in progress
       const filteredOrders = response.data.filter(order => 
-        order.sentToKitchen && (order.status === 'pending' || order.status === 'inProgress')
+        order.sentToKitchen && ['pending', 'confirmed', 'inProgress', 'preparing'].includes(order.status)
       );
       setOrders(filteredOrders);
       setLastUpdated(new Date());
@@ -208,8 +219,8 @@ function ModernKitchen() {
         prevOrders.map(order => 
           order._id === orderId ? response.data : order
         ).filter(order => 
-          // Keep only pending and inProgress orders
-          order.status === 'pending' || order.status === 'inProgress'
+          // Keep only active kitchen orders
+          ['pending', 'confirmed', 'inProgress', 'preparing'].includes(order.status)
         )
       );
 
@@ -261,7 +272,7 @@ function ModernKitchen() {
     socket.on('order_created', (newOrder) => {
       console.log('New order received:', newOrder);
       setOrders(prevOrders => {
-        if (newOrder.sentToKitchen && (newOrder.status === 'pending' || newOrder.status === 'inProgress')) {
+        if (newOrder.sentToKitchen && ['pending', 'confirmed', 'inProgress', 'preparing'].includes(newOrder.status)) {
           return [newOrder, ...prevOrders];
         }
         return prevOrders;
@@ -275,7 +286,7 @@ function ModernKitchen() {
         prevOrders.map(order => 
           order._id === updatedOrder._id ? updatedOrder : order
         ).filter(order => 
-          order.sentToKitchen && (order.status === 'pending' || order.status === 'inProgress')
+          order.sentToKitchen && ['pending', 'confirmed', 'inProgress', 'preparing'].includes(order.status)
         )
       );
       setLastUpdated(new Date());

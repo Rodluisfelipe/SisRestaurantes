@@ -190,6 +190,30 @@ function ModernOrdersDashboard() {
           label: 'Pago confirmado',
           Icon: FaCheckCircle
         };
+      case ORDER_STATUS.CONFIRMED:
+        return { 
+          color: 'bg-indigo-500', 
+          textColor: 'text-indigo-700',
+          bgColor: 'bg-indigo-50',
+          label: 'Confirmado',
+          Icon: FaCheckCircle
+        };
+      case ORDER_STATUS.PREPARING:
+        return { 
+          color: 'bg-orange-500', 
+          textColor: 'text-orange-700',
+          bgColor: 'bg-orange-50',
+          label: 'Preparando',
+          Icon: FaUtensils
+        };
+      case ORDER_STATUS.READY:
+        return { 
+          color: 'bg-green-500', 
+          textColor: 'text-green-700',
+          bgColor: 'bg-green-50',
+          label: 'Listo',
+          Icon: FaCheck
+        };
       case ORDER_STATUS.IN_PROGRESS:
         return { 
           color: 'bg-blue-500', 
@@ -587,7 +611,7 @@ function ModernOrdersDashboard() {
   }, [businessId]);
 
   // Only show orders with known, actionable statuses
-  const VISIBLE_STATUSES = ['pending', 'inProgress', 'completed', 'ready', 'payment_uploaded'];
+  const VISIBLE_STATUSES = ['pending', 'pending_payment', 'payment_uploaded', 'payment_confirmed', 'confirmed', 'preparing', 'inProgress', 'ready', 'completed'];
 
   // Filter orders based on search and status
   const filteredOrders = orders.filter(order => {
@@ -598,7 +622,15 @@ function ModernOrdersDashboard() {
     const search = searchTerm.toLowerCase();
     const matchesSearch = name.includes(search) || number.includes(search);
     
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    let matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    // Group related statuses under the same filter tab
+    if (statusFilter === ORDER_STATUS.PAYMENT_UPLOADED) {
+      matchesStatus = order.status === ORDER_STATUS.PAYMENT_UPLOADED || order.status === ORDER_STATUS.PAYMENT_CONFIRMED;
+    } else if (statusFilter === ORDER_STATUS.IN_PROGRESS) {
+      matchesStatus = order.status === ORDER_STATUS.IN_PROGRESS || order.status === ORDER_STATUS.PREPARING || order.status === ORDER_STATUS.CONFIRMED;
+    } else if (statusFilter === ORDER_STATUS.COMPLETED) {
+      matchesStatus = order.status === ORDER_STATUS.COMPLETED || order.status === ORDER_STATUS.READY;
+    }
     
     return matchesSearch && matchesStatus;
   });
@@ -676,6 +708,7 @@ function ModernOrdersDashboard() {
   const statusFilters = [
     { value: 'all', label: 'Todos', icon: FaClipboardList },
     { value: ORDER_STATUS.PENDING, label: 'Pendientes', icon: FaClock },
+    { value: ORDER_STATUS.PAYMENT_UPLOADED, label: 'Por cobrar', icon: FaImage },
     { value: ORDER_STATUS.IN_PROGRESS, label: 'En curso', icon: FaUtensils },
     { value: ORDER_STATUS.COMPLETED, label: 'Listos', icon: FaCheck },
   ];
@@ -683,8 +716,9 @@ function ModernOrdersDashboard() {
   const orderCounts = {
     all: filteredOrders.length,
     [ORDER_STATUS.PENDING]: orders.filter(o => o?.status === ORDER_STATUS.PENDING).length,
-    [ORDER_STATUS.IN_PROGRESS]: orders.filter(o => o?.status === ORDER_STATUS.IN_PROGRESS).length,
-    [ORDER_STATUS.COMPLETED]: orders.filter(o => o?.status === ORDER_STATUS.COMPLETED).length,
+    [ORDER_STATUS.PAYMENT_UPLOADED]: orders.filter(o => o?.status === ORDER_STATUS.PAYMENT_UPLOADED || o?.status === ORDER_STATUS.PAYMENT_CONFIRMED).length,
+    [ORDER_STATUS.IN_PROGRESS]: orders.filter(o => o?.status === ORDER_STATUS.IN_PROGRESS || o?.status === ORDER_STATUS.PREPARING).length,
+    [ORDER_STATUS.COMPLETED]: orders.filter(o => o?.status === ORDER_STATUS.COMPLETED || o?.status === ORDER_STATUS.READY).length,
   };
 
   return (

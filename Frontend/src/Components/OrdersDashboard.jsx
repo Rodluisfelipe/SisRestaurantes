@@ -357,7 +357,7 @@ function OrdersDashboard() {
   // Filter orders based on search term and status
   const filterOrders = () => {
     // Exclude cancelled and unknown-status orders from the main panel
-    const VISIBLE_STATUSES = ['pending', 'inProgress', 'completed'];
+    const VISIBLE_STATUSES = ['pending', 'pending_payment', 'payment_uploaded', 'payment_confirmed', 'confirmed', 'preparing', 'inProgress', 'ready', 'completed'];
     let filteredOrders = orders.filter(order => VISIBLE_STATUSES.includes(order.status));
     
     if (searchTerm) {

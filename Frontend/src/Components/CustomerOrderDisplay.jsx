@@ -19,6 +19,7 @@ const getStatusConfig = (status) => {
         priority: 1
       };
     case 'inProgress':
+    case 'preparing':
       return {
         label: 'PREPARANDO',
         color: 'from-blue-500 to-purple-600',
@@ -29,6 +30,18 @@ const getStatusConfig = (status) => {
         pulse: true,
         priority: 2
       };
+    case 'confirmed':
+      return {
+        label: 'PEDIDO CONFIRMADO',
+        color: 'from-indigo-500 to-blue-600',
+        bgColor: 'bg-indigo-100',
+        textColor: 'text-indigo-800',
+        borderColor: 'border-indigo-300',
+        icon: '✔️',
+        pulse: true,
+        priority: 1
+      };
+    case 'ready':
     case 'completed':
       return {
         label: '¡LISTO PARA RECOGER!',
@@ -139,10 +152,11 @@ function CustomerOrderDisplay() {
     try {
       const response = await api.get(`/orders?businessId=${businessId}`);
       // Show orders that are pending, in progress, or recently completed
+      const ACTIVE_CUSTOMER_STATUSES = ['pending', 'confirmed', 'inProgress', 'preparing'];
+      const DONE_CUSTOMER_STATUSES = ['ready', 'completed'];
       const activeOrders = response.data.filter(order => 
-        order.status === 'pending' || 
-        order.status === 'inProgress' || 
-        (order.status === 'completed' && 
+        ACTIVE_CUSTOMER_STATUSES.includes(order.status) || 
+        (DONE_CUSTOMER_STATUSES.includes(order.status) && 
          new Date() - new Date(order.updatedAt) < 5 * 60 * 1000) // Show completed orders for 5 minutes
       );
       
