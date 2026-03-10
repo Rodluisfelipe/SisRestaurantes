@@ -22,6 +22,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   const [hasError, setHasError] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
+  const [expandedDesc, setExpandedDesc] = useState(false);
   const { businessConfig, businessId } = useBusinessConfig();
   const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
   const flyToCart = useFlyToCart();
@@ -220,9 +221,20 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             {product.name}
           </h3>
           {product.description && (
-            <p className={`text-slate-400 line-clamp-1 mt-0.5 leading-relaxed ${isHero ? 'text-xs' : 'text-[10px] sm:text-[11px]'}`}>
-              {product.description}
-            </p>
+            <div className="mt-0.5">
+              <p className={`text-slate-400 leading-relaxed ${isHero ? 'text-xs' : 'text-[10px] sm:text-[11px]'} ${expandedDesc ? '' : 'line-clamp-1'}`}>
+                {product.description}
+              </p>
+              {product.description.length > 40 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setExpandedDesc(!expandedDesc); }}
+                  className={`font-semibold mt-0.5 ${isHero ? 'text-xs' : 'text-[10px] sm:text-[11px]'}`}
+                  style={{ color: buttonColor }}
+                >
+                  {expandedDesc ? 'ver menos' : 'ver más'}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </motion.div>
