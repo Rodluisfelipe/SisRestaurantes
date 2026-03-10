@@ -700,13 +700,13 @@ function ModernKitchen() {
                                         const items = [];
                                         if (topping.optionName) {
                                           items.push(
-                                            <p key={`t-${toppingIndex}`} className="text-xs text-slate-500">• {topping.optionName}</p>
+                                            <p key={`t-${toppingIndex}`} className="text-xs text-slate-500">• {topping.groupName && <span className="text-slate-400">{topping.groupName}: </span>}{topping.optionName}</p>
                                           );
                                         }
                                         if (topping.subGroups) {
                                           topping.subGroups.forEach((sg, si) => {
                                             items.push(
-                                              <p key={`s-${toppingIndex}-${si}`} className="text-xs text-slate-500 pl-2">• {sg.optionName}</p>
+                                              <p key={`s-${toppingIndex}-${si}`} className="text-xs text-slate-500 pl-2">• {sg.subGroupTitle && <span className="text-slate-400">{sg.subGroupTitle}: </span>}{sg.optionName}</p>
                                             );
                                           });
                                         }
