@@ -159,235 +159,165 @@ const BusinessHeader = ({
   }, [businessId]);
 
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
+  const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
 
+  // Collect visible action buttons for the pill bar
+  const actionButtons = [];
+  if (showLoyaltyButton) actionButtons.push({ key: 'loyalty', icon: HI.star, label: 'Puntos de fidelidad', onClick: onShowLoyalty, color: 'text-yellow-300', colorLight: 'text-amber-500' });
+  if (showFavoritesButton) actionButtons.push({ key: 'favs', icon: HI.heart, label: 'Favoritos', onClick: onShowFavorites, color: 'text-white', colorLight: 'text-rose-500' });
+  if (showHistoryButton) actionButtons.push({ key: 'history', icon: HI.clock, label: 'Historial', onClick: onShowHistory, color: 'text-white', colorLight: 'text-blue-500' });
+  actionButtons.push({ key: 'account', icon: HI.user, label: hasActiveOrder ? 'Ver pedido' : 'Mi cuenta', onClick: () => setShowAccountModal(true), color: 'text-white', colorLight: 'text-slate-600', badge: hasActiveOrder });
+
+  const hasCover = !!businessConfig.coverImage;
 
   return (
-    <div className="w-full text-center relative min-h-[160px] sm:min-h-[200px]">
-      {/* Cover Image Background */}
-      {businessConfig.coverImage && (
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ 
-            backgroundImage: `url(${businessConfig.coverImage})`,
-            filter: 'brightness(0.65)'
-          }}
-        />
-      )}
-      
-      {/* Overlay for better text readability */}
-      <div className={`absolute inset-0 ${businessConfig.coverImage ? 'bg-gradient-to-b from-black/30 via-black/20 to-black/50' : 'bg-white'}`} />
-      
-      {/* Content Container */}
-      <div className={`relative z-10 pt-3 pb-2 ${businessConfig.coverImage ? 'text-white' : 'text-slate-800'}`}>
-        {/* Top-right action buttons — compact icon row */}
-        <div className="absolute right-2.5 top-3 z-20 flex items-center gap-1.5">
-          {showLoyaltyButton && (
-            <button
-              onClick={onShowLoyalty}
-              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
-                businessConfig.coverImage
-                  ? 'bg-white/15 backdrop-blur-sm text-yellow-300 shadow-sm border border-white/10'
-                  : 'bg-amber-50 text-amber-500 hover:text-amber-600 border border-amber-200'
-              }`}
-              aria-label="Puntos de fidelidad"
-            >
-              {HI.star('w-3.5 h-3.5')}
-            </button>
-          )}
-          {showFavoritesButton && (
-            <button
-              onClick={onShowFavorites}
-              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
-                businessConfig.coverImage
-                  ? 'bg-white/15 backdrop-blur-sm text-white shadow-sm border border-white/10'
-                  : 'bg-slate-50 text-slate-500 hover:text-rose-500 border border-slate-200'
-              }`}
-              aria-label="Favoritos"
-            >
-              {HI.heart('w-3.5 h-3.5')}
-            </button>
-          )}
-          {showHistoryButton && (
-            <button
-              onClick={onShowHistory}
-              className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
-                businessConfig.coverImage
-                  ? 'bg-white/15 backdrop-blur-sm text-white shadow-sm border border-white/10'
-                  : 'bg-slate-50 text-slate-500 hover:text-blue-500 border border-slate-200'
-              }`}
-              aria-label="Historial de pedidos"
-            >
-              {HI.clock('w-3.5 h-3.5')}
-            </button>
-          )}
-          <button
-            onClick={() => setShowAccountModal(true)}
-            className={`relative w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
-              businessConfig.coverImage
-                ? 'bg-white/15 backdrop-blur-sm text-white shadow-sm border border-white/10'
-                : 'bg-slate-50 text-slate-500 hover:text-slate-700 border border-slate-200'
-            }`}
-            aria-label={hasActiveOrder ? 'Ver estado del pedido' : 'Mi cuenta'}
-          >
-            {HI.user('w-3.5 h-3.5')}
-            {hasActiveOrder && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full ring-1 ring-white/50 animate-pulse" />
-            )}
-          </button>
-        </div>
-
-        {/* Status Badge — top left with animated dot */}
-        <div className={`absolute ${comesFromCatalog ? 'right-3 top-10' : 'left-2.5 top-3'} z-20`}>
-          <span 
-            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-[10px] sm:text-xs font-bold rounded-full shadow-md ${
-              businessConfig.coverImage
-                ? 'bg-black/30 backdrop-blur-sm text-white border border-white/10'
-                : `${getStatusDisplay().color} text-white`
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${
-              businessStatus?.isOpen ? 'bg-emerald-400' : 'bg-red-400'
-            } ${businessStatus?.isOpen ? 'animate-pulse' : ''}`} />
-            {getStatusDisplay().text}
-          </span>
-        </div>
-
-        {/* Logo */}
-        <div className="flex justify-center mb-1">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-white shadow-lg border-2 border-white">
-            <img 
-              src={businessConfig.logo || defaultLogo}
-              alt={`Logo de ${businessConfig.businessName || 'negocio'}`}
-              className="w-full h-full object-cover"
-              loading="eager"
-              width="80"
-              height="80"
-              fetchPriority="high"
-              onError={(e) => {
-                if (!logoError) { setLogoError(true); e.target.src = defaultLogo; }
-              }}
+    <div className="w-full relative">
+      {/* ── Immersive Header — everything inside the cover ── */}
+      <div className="relative">
+        {/* Background: cover image or fallback gradient */}
+        {hasCover ? (
+          <>
+            <div 
+              className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+              style={{ backgroundImage: `url(${businessConfig.coverImage})` }}
             />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/60" />
+          </>
+        ) : (
+          <div 
+            className="absolute inset-0"
+            style={{ background: `linear-gradient(135deg, ${themeColor}30 0%, ${themeColor}15 50%, ${themeColor}25 100%)` }}
+          />
+        )}
+
+        {/* ── Content floating inside the cover ── */}
+        <div className="relative z-10 px-3 pt-2.5 pb-3">
+          {/* Top row: Status left — Action buttons right */}
+          <div className="flex items-center justify-between mb-2.5">
+            {/* Status Badge */}
+            <span 
+              className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold rounded-full ${
+                hasCover
+                  ? 'bg-black/30 backdrop-blur-sm text-white border border-white/10'
+                  : `${getStatusDisplay().color} text-white`
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                businessStatus?.isOpen ? 'bg-emerald-400' : 'bg-red-400'
+              } ${businessStatus?.isOpen ? 'animate-pulse' : ''}`} />
+              {getStatusDisplay().text}
+            </span>
+
+            {/* Frosted Action Pill */}
+            <div className={`inline-flex items-center gap-0.5 px-0.5 py-0.5 rounded-2xl ${
+              hasCover
+                ? 'bg-black/25 backdrop-blur-md border border-white/10'
+                : 'bg-slate-100 border border-slate-200'
+            }`}>
+              {actionButtons.map((btn) => (
+                <button
+                  key={btn.key}
+                  onClick={btn.onClick}
+                  className={`relative w-7 h-7 rounded-xl flex items-center justify-center transition-all active:scale-90 ${
+                    hasCover ? `${btn.color} hover:bg-white/15` : `${btn.colorLight} hover:bg-slate-200`
+                  }`}
+                  aria-label={btn.label}
+                >
+                  {btn.icon('w-3.5 h-3.5')}
+                  {btn.badge && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-400 rounded-full ring-1 ring-white/50 animate-pulse" />
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Business Name & Info */}
-        <div className="flex flex-col items-center px-4 gap-1.5">
-          <h1 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${businessConfig.coverImage ? 'text-white drop-shadow-sm' : 'text-slate-800'}`}>
-            {businessConfig.businessName || 'Mi Restaurante'}
-          </h1>
-          
-          {/* Rating chip + Address — horizontal row */}
-          <div className="flex items-center gap-2 flex-wrap justify-center">
-            {/* Rating chip */}
-            {reviewStats && reviewStats.totalReviews > 0 && (
-              <button
-                onClick={onShowReviews}
-                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold transition-all active:scale-95 ${
-                  businessConfig.coverImage
-                    ? 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
-                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                }`}
-              >
-                <span className={businessConfig.coverImage ? 'text-amber-300' : 'text-amber-400'}>{HI.star('w-3.5 h-3.5')}</span>
-                <span className="font-bold">{reviewStats.averageRating.toFixed(1)}</span>
-                <span className={businessConfig.coverImage ? 'text-white/40' : 'text-amber-300'}>·</span>
-                <span className={businessConfig.coverImage ? 'text-white/80' : 'text-amber-600'}>{reviewStats.totalReviews} reseñas</span>
-                {HI.chevron(`w-2.5 h-2.5 ${businessConfig.coverImage ? 'text-white/40' : 'text-amber-400'}`)}
-              </button>
-            )}
+          {/* Center: Logo + Name + Info — centered column */}
+          <div className="flex flex-col items-center gap-1.5">
+            {/* Logo */}
+            <div 
+              className="w-[68px] h-[68px] sm:w-[78px] sm:h-[78px] rounded-full p-[2.5px] shadow-lg"
+              style={{ 
+                background: businessStatus?.isOpen 
+                  ? `linear-gradient(135deg, ${themeColor}, ${themeColor}90)` 
+                  : 'linear-gradient(135deg, #94a3b8, #cbd5e1)'
+              }}
+            >
+              <div className="w-full h-full rounded-full overflow-hidden bg-white">
+                <img 
+                  src={businessConfig.logo || defaultLogo}
+                  alt={`Logo de ${businessConfig.businessName || 'negocio'}`}
+                  className="w-full h-full object-cover"
+                  loading="eager"
+                  width="78"
+                  height="78"
+                  fetchPriority="high"
+                  onError={(e) => {
+                    if (!logoError) { setLogoError(true); e.target.src = defaultLogo; }
+                  }}
+                />
+              </div>
+            </div>
 
-            {/* Separator dot */}
-            {reviewStats && reviewStats.totalReviews > 0 && businessConfig?.address && (
-              <span className={`text-[8px] ${businessConfig.coverImage ? 'text-white/30' : 'text-slate-300'}`}>●</span>
-            )}
+            {/* Name */}
+            <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight leading-tight text-center ${hasCover ? 'text-white drop-shadow-md' : 'text-slate-800'}`}>
+              {businessConfig.businessName || 'Mi Restaurante'}
+            </h1>
 
-            {/* Address */}
-            {businessConfig?.address && (
-              <a 
-                href={businessConfig?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`inline-flex items-center gap-1 text-[11px] sm:text-xs transition-colors max-w-[220px] ${
-                  businessConfig.coverImage 
-                    ? 'text-white/70 hover:text-white' 
-                    : 'text-slate-400 hover:text-blue-600'
-                }`}
-              >
-                <span className="flex-shrink-0">{HI.mapPin('w-2.5 h-2.5')}</span>
-                <span className="truncate">{businessConfig.address}</span>
-              </a>
-            )}
-          </div>
-          
-          {/* Social Media Icons */}
-          <div className="flex items-center justify-center gap-3.5 mt-1">
-            {businessConfig?.socialMedia?.facebook?.isVisible && businessConfig?.socialMedia?.facebook?.url && (
-              <a 
-                href={businessConfig?.socialMedia?.facebook?.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`transition-colors ${
-                  businessConfig.coverImage 
-                    ? 'text-white/60 hover:text-blue-300' 
-                    : 'text-slate-300 hover:text-blue-600'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18.77 7.46H14.5v-1.9c0-.9.6-1.1 1-1.1h3V.5h-4.33C10.24.5 9.5 3.44 9.5 5.32v2.15h-3v4h3v12h5v-12h3.85l.42-4z"/>
-                </svg>
-              </a>
-            )}
-            
-            {businessConfig?.socialMedia?.instagram?.isVisible && businessConfig?.socialMedia?.instagram?.url && (
-              <a 
-                href={businessConfig?.socialMedia?.instagram?.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`transition-colors ${
-                  businessConfig.coverImage 
-                    ? 'text-white/60 hover:text-pink-300' 
-                    : 'text-slate-300 hover:text-pink-600'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                </svg>
-              </a>
-            )}
-            
-            {businessConfig?.socialMedia?.tiktok?.isVisible && businessConfig?.socialMedia?.tiktok?.url && (
-              <a 
-                href={businessConfig?.socialMedia?.tiktok?.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`transition-colors ${
-                  businessConfig.coverImage 
-                    ? 'text-white/60 hover:text-gray-300' 
-                    : 'text-slate-300 hover:text-black'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 00-1-.08A6.34 6.34 0 003 15.66a6.34 6.34 0 0010.86 4.49v.02h3.45v-9.4a7.29 7.29 0 004.28 1.38V8.7a4.78 4.78 0 01-2-2.01z"/>
-                </svg>
-              </a>
-            )}
-            
-            {businessConfig?.extraLink?.isVisible && businessConfig?.extraLink?.url && (
-              <a 
-                href={businessConfig?.extraLink?.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`transition-colors ${
-                  businessConfig.coverImage 
-                    ? 'text-white/60 hover:text-blue-300' 
-                    : 'text-slate-300 hover:text-blue-600'
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-              </a>
-            )}
+            {/* Meta row: rating + address + socials */}
+            <div className="flex items-center gap-2 flex-wrap justify-center">
+                {/* Rating */}
+                {reviewStats && reviewStats.totalReviews > 0 && (
+                  <button
+                    onClick={onShowReviews}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 ${
+                      hasCover ? 'bg-white/15 backdrop-blur-sm text-white' : 'bg-amber-50 text-amber-700'
+                    }`}
+                  >
+                    <span className={hasCover ? 'text-amber-300' : 'text-amber-400'}>{HI.star('w-3 h-3')}</span>
+                    <span className="font-bold">{reviewStats.averageRating.toFixed(1)}</span>
+                    <span className="opacity-50">·</span>
+                    <span className="opacity-70">{reviewStats.totalReviews}</span>
+                  </button>
+                )}
+
+                {/* Address */}
+                {businessConfig?.address && (
+                  <a 
+                    href={businessConfig?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`inline-flex items-center gap-1 text-[11px] max-w-[180px] ${
+                      hasCover ? 'text-white/60 hover:text-white/90' : 'text-slate-400 hover:text-slate-600'
+                    } transition-colors`}
+                  >
+                    {HI.mapPin('w-3 h-3 flex-shrink-0')}
+                    <span className="truncate">{businessConfig.address}</span>
+                  </a>
+                )}
+
+                {/* Social icons inline */}
+                {businessConfig?.socialMedia?.facebook?.isVisible && businessConfig?.socialMedia?.facebook?.url && (
+                  <a href={businessConfig.socialMedia.facebook.url} target="_blank" rel="noopener noreferrer" className={`${hasCover ? 'text-white/40 hover:text-white/80' : 'text-slate-300 hover:text-blue-600'} transition-colors`}>
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.77 7.46H14.5v-1.9c0-.9.6-1.1 1-1.1h3V.5h-4.33C10.24.5 9.5 3.44 9.5 5.32v2.15h-3v4h3v12h5v-12h3.85l.42-4z"/></svg>
+                  </a>
+                )}
+                {businessConfig?.socialMedia?.instagram?.isVisible && businessConfig?.socialMedia?.instagram?.url && (
+                  <a href={businessConfig.socialMedia.instagram.url} target="_blank" rel="noopener noreferrer" className={`${hasCover ? 'text-white/40 hover:text-white/80' : 'text-slate-300 hover:text-pink-600'} transition-colors`}>
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12s.014 3.668.072 4.948c.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24s3.668-.014 4.948-.072c4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                  </a>
+                )}
+                {businessConfig?.socialMedia?.tiktok?.isVisible && businessConfig?.socialMedia?.tiktok?.url && (
+                  <a href={businessConfig.socialMedia.tiktok.url} target="_blank" rel="noopener noreferrer" className={`${hasCover ? 'text-white/40 hover:text-white/80' : 'text-slate-300 hover:text-black'} transition-colors`}>
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64c.298-.002.595.042.88.13V9.4a6.33 6.33 0 00-1-.08A6.34 6.34 0 003 15.66a6.34 6.34 0 0010.86 4.49v.02h3.45v-9.4a7.29 7.29 0 004.28 1.38V8.7a4.78 4.78 0 01-2-2.01z"/></svg>
+                  </a>
+                )}
+                {businessConfig?.extraLink?.isVisible && businessConfig?.extraLink?.url && (
+                  <a href={businessConfig.extraLink.url} target="_blank" rel="noopener noreferrer" className={`${hasCover ? 'text-white/40 hover:text-white/80' : 'text-slate-300 hover:text-blue-600'} transition-colors`}>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+                  </a>
+                )}
+              </div>
           </div>
         </div>
       </div>
