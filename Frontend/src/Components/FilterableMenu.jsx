@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -148,6 +148,7 @@ const FilterableMenu = ({
   const [spyCategory, setSpyCategory] = useState('all');  // category visible by scroll
   const [isSticky, setIsSticky] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [searchFocused, setSearchFocused] = useState(false);
   const [userTapped, setUserTapped] = useState(false);     // true while programmatic scroll
   const pillBarRef = useRef(null);
   const pillBarSentinelRef = useRef(null);
@@ -478,25 +479,43 @@ const FilterableMenu = ({
         />
       )}
 
-      {/* Search Bar */}
+      {/* Spotlight Search — iOS style */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-4 sm:mb-5"
+        className="mb-4 sm:mb-5 relative z-50"
       >
-        <div className="relative">
+        {/* Backdrop blur when focused (no text) */}
+        <AnimatePresence>
+          {searchFocused && !searchTerm && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40"
+              onClick={() => { setSearchFocused(false); document.activeElement?.blur(); }}
+            />
+          )}
+        </AnimatePresence>
+
+        <div className={`relative z-50 transition-transform duration-300 ${searchFocused && !searchTerm ? 'scale-[1.02]' : ''}`}>
           <span
-            className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors"
+            className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors z-10"
             style={{ color: searchTerm ? themeColor : '#94a3b8' }}
           >
             {MI.search('w-[18px] h-[18px] sm:w-5 sm:h-5')}
           </span>
           <input
             type="text"
-            placeholder="Buscar productos..."
+            placeholder="¿Qué se te antoja hoy?"
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full pl-10 sm:pl-12 pr-10 py-3 sm:py-3.5 bg-slate-50 border border-slate-200 rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all duration-200 text-sm sm:text-base text-slate-700 placeholder-slate-400"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setTimeout(() => setSearchFocused(false), 250)}
+            className={`w-full pl-10 sm:pl-12 pr-10 py-3 sm:py-3.5 border rounded-2xl focus:outline-none focus:ring-2 transition-all duration-200 text-sm sm:text-base text-slate-700 placeholder-slate-400 ${
+              searchFocused ? 'bg-white border-transparent shadow-2xl' : 'bg-slate-50 border-slate-200'
+            }`}
             style={{
               '--tw-ring-color': `${themeColor}40`,
               borderColor: searchTerm ? themeColor : undefined
@@ -509,7 +528,7 @@ const FilterableMenu = ({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0 }}
                 onClick={clearSearch}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-lg bg-slate-200 text-slate-500 hover:bg-slate-300 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-lg bg-slate-200 text-slate-500 hover:bg-slate-300 transition-colors z-10"
                 aria-label="Limpiar búsqueda"
               >
                 {MI.x('w-3 h-3')}
@@ -517,6 +536,32 @@ const FilterableMenu = ({
             )}
           </AnimatePresence>
         </div>
+
+        {/* Quick suggestion chips */}
+        <AnimatePresence>
+          {searchFocused && !searchTerm && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ delay: 0.1 }}
+              className="relative z-50 flex flex-wrap gap-2 mt-3"
+            >
+              {categoriesWithProducts.slice(0, 5).map(cat => (
+                <motion.button
+                  key={cat._id}
+                  whileTap={{ scale: 0.93 }}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => { setSearchTerm(cat.name); setSearchFocused(false); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/90 backdrop-blur-md text-slate-700 shadow-md border border-white/50 active:bg-white transition-all"
+                >
+                  <span className="opacity-60">{getCategoryIcon(cat.name, 'w-3 h-3')}</span>
+                  {cat.name}
+                </motion.button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* Sentinel — when this scrolls out of view, the pill bar becomes sticky */}
@@ -532,30 +577,36 @@ const FilterableMenu = ({
         }`}
       >
         <div className="overflow-x-auto scrollbar-hide">
+          <LayoutGroup>
           <div className="flex gap-2 pb-1 px-0.5 min-w-max">
-            {/* "All" pill */}
+            {/* "All" pill — with sliding layoutId indicator */}
             <motion.button
               ref={el => (pillRefs.current['all'] = el)}
               onClick={() => handlePillClick('all')}
               whileTap={{ scale: 0.93 }}
-              className={`px-4 py-2 rounded-xl whitespace-nowrap font-semibold text-[13px] transition-all duration-200 ${
-                visualActive === 'all'
-                  ? 'shadow-md'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 shadow-sm'
-              }`}
-              style={visualActive === 'all' ? {
-                backgroundColor: themeColor,
-                color: themeTextColor,
-                boxShadow: `0 4px 14px ${themeColor}30`
-              } : undefined}
+              className="relative px-4 py-2 rounded-xl whitespace-nowrap font-semibold text-[13px] transition-colors duration-200"
+              style={{ color: visualActive === 'all' ? themeTextColor : '#475569' }}
             >
-              Todos
-              <span className={`ml-1.5 text-[11px] ${visualActive === 'all' ? 'opacity-80' : 'text-slate-400'}`}>
-                {totalProductCount}
+              {visualActive === 'all' && (
+                <motion.div
+                  layoutId="activePillBg"
+                  className="absolute inset-0 rounded-xl shadow-md"
+                  style={{ backgroundColor: themeColor, boxShadow: `0 4px 14px ${themeColor}30` }}
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              {visualActive !== 'all' && (
+                <div className="absolute inset-0 rounded-xl bg-white border border-slate-200 shadow-sm" />
+              )}
+              <span className="relative z-10">
+                Todos
+                <span className={`ml-1.5 text-[11px] ${visualActive === 'all' ? 'opacity-80' : 'text-slate-400'}`}>
+                  {totalProductCount}
+                </span>
               </span>
             </motion.button>
 
-            {/* Category pills */}
+            {/* Category pills — liquid sliding active indicator */}
             {categoriesWithProducts.map((category) => {
               const isActive = visualActive === category._id;
               return (
@@ -564,26 +615,30 @@ const FilterableMenu = ({
                   ref={el => (pillRefs.current[category._id] = el)}
                   onClick={() => handlePillClick(category._id)}
                   whileTap={{ scale: 0.93 }}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl whitespace-nowrap font-semibold text-[13px] transition-all duration-200 ${
-                    isActive
-                      ? 'shadow-md'
-                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300 shadow-sm'
-                  }`}
-                  style={isActive ? {
-                    backgroundColor: themeColor,
-                    color: themeTextColor,
-                    boxShadow: `0 4px 14px ${themeColor}30`
-                  } : undefined}
+                  className="relative inline-flex items-center gap-1.5 px-4 py-2 rounded-xl whitespace-nowrap font-semibold text-[13px] transition-colors duration-200"
+                  style={{ color: isActive ? themeTextColor : '#475569' }}
                 >
-                  <span className={isActive ? 'opacity-80' : 'opacity-50'}>{getCategoryIcon(category.name, 'w-3.5 h-3.5')}</span>
-                  {category.name}
-                  <span className={`text-[11px] ${isActive ? 'opacity-70' : 'text-slate-400'}`}>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activePillBg"
+                      className="absolute inset-0 rounded-xl shadow-md"
+                      style={{ backgroundColor: themeColor, boxShadow: `0 4px 14px ${themeColor}30` }}
+                      transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                    />
+                  )}
+                  {!isActive && (
+                    <div className="absolute inset-0 rounded-xl bg-white border border-slate-200 shadow-sm" />
+                  )}
+                  <span className={`relative z-10 ${isActive ? 'opacity-90' : 'opacity-50'}`}>{getCategoryIcon(category.name, 'w-3.5 h-3.5')}</span>
+                  <span className="relative z-10">{category.name}</span>
+                  <span className={`relative z-10 text-[11px] ${isActive ? 'opacity-70' : 'text-slate-400'}`}>
                     {category.count}
                   </span>
                 </motion.button>
               );
             })}
           </div>
+          </LayoutGroup>
         </div>
 
         {/* ── Scroll progress line ── */}
@@ -716,16 +771,30 @@ const FilterableMenu = ({
                       initial="hidden"
                       animate="visible"
                     >
-                      {categoryProducts.map((product) => (
-                        <ProductCard
-                          key={product._id}
-                          product={product}
-                          addToCart={addToCart}
-                          onToppingsOpen={onToppingsOpen}
-                          onToppingsClose={onToppingsClose}
-                          subscriptionStatus={subscriptionStatus}
-                        />
-                      ))}
+                      {categoryProducts.map((product, productIndex) => {
+                        const isFirstHero = productIndex === 0 && categoryProducts.length > 2 && product.image;
+                        return isFirstHero ? (
+                          <div key={product._id} className="col-span-2">
+                            <ProductCard
+                              product={product}
+                              addToCart={addToCart}
+                              onToppingsOpen={onToppingsOpen}
+                              onToppingsClose={onToppingsClose}
+                              subscriptionStatus={subscriptionStatus}
+                              isHero
+                            />
+                          </div>
+                        ) : (
+                          <ProductCard
+                            key={product._id}
+                            product={product}
+                            addToCart={addToCart}
+                            onToppingsOpen={onToppingsOpen}
+                            onToppingsClose={onToppingsClose}
+                            subscriptionStatus={subscriptionStatus}
+                          />
+                        );
+                      })}
                     </motion.div>
                   </motion.div>
               );
@@ -764,16 +833,30 @@ const FilterableMenu = ({
                   initial="hidden"
                   animate="visible"
                 >
-                  {filteredProducts.map((product) => (
-                    <ProductCard
-                      key={product._id}
-                      product={product}
-                      addToCart={addToCart}
-                      onToppingsOpen={onToppingsOpen}
-                      onToppingsClose={onToppingsClose}
-                      subscriptionStatus={subscriptionStatus}
-                    />
-                  ))}
+                  {filteredProducts.map((product, productIndex) => {
+                    const isFirstHero = productIndex === 0 && filteredProducts.length > 2 && product.image;
+                    return isFirstHero ? (
+                      <div key={product._id} className="col-span-2">
+                        <ProductCard
+                          product={product}
+                          addToCart={addToCart}
+                          onToppingsOpen={onToppingsOpen}
+                          onToppingsClose={onToppingsClose}
+                          subscriptionStatus={subscriptionStatus}
+                          isHero
+                        />
+                      </div>
+                    ) : (
+                      <ProductCard
+                        key={product._id}
+                        product={product}
+                        addToCart={addToCart}
+                        onToppingsOpen={onToppingsOpen}
+                        onToppingsClose={onToppingsClose}
+                        subscriptionStatus={subscriptionStatus}
+                      />
+                    );
+                  })}
                 </motion.div>
               </motion.div>
             )}

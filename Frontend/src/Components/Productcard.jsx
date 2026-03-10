@@ -17,7 +17,7 @@ const PCI = {
   image: (cls = 'w-8 h-8') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,
 };
 
-function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus }) {
+function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus, isHero = false }) {
   const [showToppings, setShowToppings] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
@@ -101,8 +101,8 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
           isDisabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
         }`}
       >
-        {/* Product Image — aspect ratio based */}
-        <div className="relative aspect-square overflow-hidden bg-slate-50">
+        {/* Product Image — cinematic, hero gets landscape ratio */}
+        <div className={`relative overflow-hidden bg-slate-50 ${isHero ? 'aspect-[2/1]' : 'aspect-square'}`}>
           {product.image ? (
             <motion.img 
               src={product.image} 
@@ -123,8 +123,8 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </div>
           )}
 
-          {/* Subtle gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          {/* Cinematic gradient overlay — always on for price/button readability */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent pointer-events-none" />
 
           {/* "Personalizable" badge for products with toppings */}
           {hasToppings && (
@@ -149,6 +149,47 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </div>
           )}
 
+          {/* Price — overlaid on image bottom-left */}
+          <div className="absolute bottom-2.5 left-3 z-[2]">
+            <span className={`font-black text-white drop-shadow-lg ${isHero ? 'text-xl sm:text-2xl' : 'text-[15px] sm:text-lg'}`}>
+              ${(() => {
+                const p = Number(product.price);
+                return p.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+              })()}
+            </span>
+          </div>
+
+          {/* Glassmorphism Add Button — floating on image */}
+          <motion.button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (flyToCart?.triggerFly && !hasToppings) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                flyToCart.triggerFly({
+                  x: rect.left + rect.width / 2,
+                  y: rect.top + rect.height / 2,
+                  image: product.image,
+                  color: buttonColor
+                });
+              }
+              handleShowToppings();
+            }}
+            whileTap={!isDisabled ? { scale: 0.85 } : {}}
+            transition={{ type: "spring", stiffness: 400, damping: 15 }}
+            className={`absolute bottom-2 right-2.5 z-[2] w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-md transition-all duration-200 ${
+              isDisabled ? 'opacity-40 cursor-not-allowed' : 'active:shadow-xl'
+            }`}
+            style={{
+              backgroundColor: isDisabled ? 'rgba(226,232,240,0.8)' : `${buttonColor}e0`,
+              color: buttonTextColor,
+              boxShadow: isDisabled ? undefined : `0 4px 16px ${buttonColor}40`
+            }}
+            aria-label={isDisabled ? "No disponible" : "Agregar al carrito"}
+            disabled={isDisabled}
+          >
+            {PCI.plus('w-4 h-4')}
+          </motion.button>
+
           {/* "Added" feedback overlay */}
           <AnimatePresence>
             {justAdded && (
@@ -163,73 +204,26 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
                   initial={{ scale: 0 }}
                   animate={{ scale: [0, 1.3, 1] }}
                   transition={{ duration: 0.5 }}
-                  className="w-12 h-12 rounded-full flex items-center justify-center shadow-xl"
+                  className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl"
                   style={{ backgroundColor: buttonColor, color: buttonTextColor }}
                 >
-                  {PCI.check('w-5 h-5')}
+                  {PCI.check('w-6 h-6')}
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        {/* Product Info */}
-        <div className="p-3 sm:p-3.5">
-          <h3 className="text-[13px] sm:text-sm font-bold text-slate-800 leading-tight mb-0.5 line-clamp-2 group-hover:text-slate-900 transition-colors">
+        {/* Product Info — compact, name + description only */}
+        <div className={isHero ? 'px-3 py-2.5 sm:px-4 sm:py-3' : 'px-3 py-2 sm:px-3.5'}>
+          <h3 className={`font-bold text-slate-800 leading-tight line-clamp-1 group-hover:text-slate-900 transition-colors ${isHero ? 'text-sm sm:text-base' : 'text-[13px] sm:text-sm'}`}>
             {product.name}
           </h3>
           {product.description && (
-            <p className="text-[10px] sm:text-[11px] text-slate-400 line-clamp-2 mb-2 leading-relaxed">
+            <p className={`text-slate-400 line-clamp-1 mt-0.5 leading-relaxed ${isHero ? 'text-xs' : 'text-[10px] sm:text-[11px]'}`}>
               {product.description}
             </p>
           )}
-          
-          <div className="flex items-end justify-between mt-auto">
-            {/* Price */}
-            <div>
-              <span 
-                className="text-base sm:text-lg font-extrabold tracking-tight"
-                style={{ color: buttonColor }}
-              >
-                ${(() => {
-                  const price = Number(product.price);
-                  return price.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-                })()}
-              </span>
-            </div>
-            
-            {/* Add button */}
-            <motion.button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (flyToCart?.triggerFly && !hasToppings) {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  flyToCart.triggerFly({
-                    x: rect.left + rect.width / 2,
-                    y: rect.top + rect.height / 2,
-                    image: product.image,
-                    color: buttonColor
-                  });
-                }
-                handleShowToppings();
-              }}
-              whileHover={!isDisabled ? { scale: 1.1 } : {}}
-              whileTap={!isDisabled ? { scale: 0.88 } : {}}
-              transition={{ type: "spring", stiffness: 400, damping: 15 }}
-              className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shadow-sm transition-all duration-200 ${
-                isDisabled ? 'opacity-40 cursor-not-allowed' : 'hover:shadow-md'
-              }`}
-              style={{
-                backgroundColor: isDisabled ? '#e2e8f0' : buttonColor,
-                color: buttonTextColor,
-                boxShadow: isDisabled ? undefined : `0 2px 8px ${buttonColor}30`
-              }}
-              aria-label={isDisabled ? "No disponible" : "Agregar al carrito"}
-              disabled={isDisabled}
-            >
-              {PCI.plus('w-3.5 h-3.5 sm:w-4 sm:h-4')}
-            </motion.button>
-          </div>
         </div>
       </motion.div>
 
