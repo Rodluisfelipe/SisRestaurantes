@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import ErrorBoundary from './ErrorBoundary';
 import { useBusinessConfig } from "../Context/BusinessContext";
-import { useBusinessStatus } from '../hooks/useBusinessStatus';
 import BusinessClosedModal from './BusinessClosedModal';
 import { useFlyToCart } from './FlyToCart';
 import ProductPeekWrapper from './ProductPeekWrapper';
@@ -23,8 +22,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   const [showClosedModal, setShowClosedModal] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const [expandedDesc, setExpandedDesc] = useState(false);
-  const { businessConfig, businessId } = useBusinessConfig();
-  const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
+  const { businessConfig, businessId, businessStatus } = useBusinessConfig();
   const flyToCart = useFlyToCart();
 
   const buttonColor = businessConfig?.theme?.buttonColor || '#f97316';

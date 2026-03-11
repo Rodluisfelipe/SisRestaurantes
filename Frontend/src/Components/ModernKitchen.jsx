@@ -69,6 +69,25 @@ const Icons = {
   )
 };
 
+// Isolated clock component — prevents 1-second re-renders from propagating to order cards
+function KitchenClock() {
+  const [time, setTime] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="text-right">
+      <div className="text-xl font-mono text-slate-100">
+        {time.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      </div>
+      <div className="text-sm text-slate-400 capitalize">
+        {time.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      </div>
+    </div>
+  );
+}
+
 function ModernKitchen() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -77,7 +96,6 @@ function ModernKitchen() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const refreshIntervalRef = useRef(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   // Time formatting
   const formatTime = (date) => {
@@ -85,15 +103,6 @@ function ModernKitchen() {
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
-    });
-  };
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
     });
   };
 
@@ -178,14 +187,8 @@ function ModernKitchen() {
     }
   };
 
-  // Update current time
-  useEffect(() => {
-    const timeInterval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    
-    return () => clearInterval(timeInterval);
-  }, []);
+  // Update current time — removed from parent state to avoid full re-renders every second
+  // Extracted into KitchenClock component below
 
   // Fetch orders from the API
   const fetchOrders = async () => {
@@ -314,11 +317,12 @@ function ModernKitchen() {
   }, [businessId]);
 
   // Auto-refresh every 30 seconds
+  // Polling as fallback (socket is primary). 60s with visibility check.
   useEffect(() => {
     if (businessId) {
       refreshIntervalRef.current = setInterval(() => {
-        fetchOrders();
-      }, 30000);
+        if (!document.hidden) fetchOrders();
+      }, 60000);
     }
 
     return () => {
@@ -487,10 +491,7 @@ function ModernKitchen() {
 
             <div className="flex items-center space-x-6">
               {/* Current Time */}
-              <div className="text-right">
-                <div className="text-xl font-mono text-slate-100">{formatTime(currentTime)}</div>
-                <div className="text-sm text-slate-400 capitalize">{formatDate(currentTime)}</div>
-              </div>
+              <KitchenClock />
 
               {/* Connection Status */}
               <div className="flex items-center space-x-2">

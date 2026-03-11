@@ -21,7 +21,6 @@ import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
 import PaymentUpload from "../Components/PaymentUpload";
 import MyOrders from "../Components/MyOrders";
-import { useBusinessStatus } from "../hooks/useBusinessStatus";
 import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
@@ -90,7 +89,8 @@ export default function Menu() {
   const [showSplash, setShowSplash] = useState(true);
   const [showCartSummary, setShowCartSummary] = useState(false);
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
-  const { businessConfig, businessId, error: businessError } = useBusinessConfig();
+  const { businessConfig, businessId, businessStatus, error: businessError } = useBusinessConfig();
+  const statusLoading = false; // status now derived from businessConfig synchronously
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [showOrderConfirmationModal, setShowOrderConfirmationModal] = useState(false);
   const [orderConfirmationDetails, setOrderConfirmationDetails] = useState({
@@ -98,11 +98,8 @@ export default function Menu() {
     message: ''
   });
   const [businessNotFound, setBusinessNotFound] = useState(false);
-  const [subscriptionStatus, setSubscriptionStatus] = useState(null); // null, 'active', 'grace', 'suspended'
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
-  
-  // Business hours status (open/closed)
-  const { businessStatus, loading: statusLoading } = useBusinessStatus(businessId);
   const [closedOverlayDismissed, setClosedOverlayDismissed] = useState(false);
 
   // Estados para modales de favoritos, historial y loyalty

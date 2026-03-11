@@ -224,9 +224,17 @@ router.post("/", (req, res, next) => {
     try {
       let calculatedTotal = 0;
       const debugItems = [];
+
+      // Batch-fetch all products in one query instead of N sequential findOne calls
+      const productIds = items.filter(i => i.productId).map(i => i.productId);
+      const dbProducts = productIds.length > 0
+        ? await Product.find({ _id: { $in: productIds }, businessId: businessObjectId }).lean()
+        : [];
+      const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
+
       for (const item of items) {
         if (item.productId) {
-          const dbProduct = await Product.findOne({ _id: item.productId, businessId: businessObjectId });
+          const dbProduct = productMap.get(item.productId.toString());
           if (dbProduct) {
             let itemPrice = dbProduct.price;
             const debugToppings = [];

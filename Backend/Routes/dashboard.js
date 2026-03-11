@@ -10,6 +10,10 @@ const { tenantAuth } = require('../middleware/tenantAuth');
 const { startOfDayCOL, endOfDayCOL } = require('../utils/timezone');
 const logger = require('../utils/logger');
 
+// ── Dashboard stats cache (60-second TTL per business) ──
+const _statsCache = new Map();
+const STATS_CACHE_TTL = 60 * 1000; // 60 seconds
+
 /**
  * GET /api/dashboard/stats
  * 
@@ -30,6 +34,13 @@ router.get('/stats', tenantAuth, async (req, res) => {
 
     if (!businessId) {
       return res.status(400).json({ message: 'businessId requerido' });
+    }
+
+    // Check cache first (60s TTL)
+    const cacheKey = businessId.toString();
+    const cached = _statsCache.get(cacheKey);
+    if (cached && Date.now() < cached.expires) {
+      return res.json(cached.data);
     }
 
     const bid = new mongoose.Types.ObjectId(businessId);
@@ -278,7 +289,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
     const reviewStats = businessInfo?.reviewStats || { averageRating: 0, totalReviews: 0 };
 
     // ── Build response ──
-    res.json({
+    const responseData = {
       // KPIs
       today: {
         orders: today.totalOrders,
@@ -338,7 +349,17 @@ router.get('/stats', tenantAuth, async (req, res) => {
         itemCount: o.items?.length || 0,
         createdAt: o._sortDate || o.createdAt,
       })),
-    });
+    };
+
+    // Cache the result for 60 seconds
+    _statsCache.set(cacheKey, { data: responseData, expires: Date.now() + STATS_CACHE_TTL });
+    // Prevent unbounded growth
+    if (_statsCache.size > 100) {
+      const oldest = _statsCache.keys().next().value;
+      _statsCache.delete(oldest);
+    }
+
+    res.json(responseData);
 
   } catch (error) {
     logger.error('Dashboard stats error', error);

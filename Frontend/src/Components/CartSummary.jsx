@@ -4,7 +4,7 @@ import { useBusinessConfig } from "../Context/BusinessContext";
 import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
 import { logSystem } from '../utils/systemLogger';
-import { useBusinessStatus } from '../hooks/useBusinessStatus';
+
 import BusinessClosedModal from './BusinessClosedModal';
 import api from '../services/api';
 import DeliveryZoneSelector from './DeliveryZoneSelector';
@@ -81,8 +81,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     }, 150);
   }, []);
   const [isProcessing, setIsProcessing] = useState(false);
-  const { businessConfig, businessId } = useBusinessConfig();
-  const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
+  const { businessConfig, businessId, businessStatus, getStatusDisplay } = useBusinessConfig();
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
   

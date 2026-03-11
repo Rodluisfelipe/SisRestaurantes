@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
-import { useBusinessStatus } from '../hooks/useBusinessStatus';
-import { socket } from '../services/socket';
 import AccountManagementModal from './AccountManagementModal';
 import { useCustomerData } from '../hooks/useCustomerData';
 
@@ -27,28 +25,12 @@ const BusinessHeader = ({
   onShowReviews,
   reviewStats
 }) => {
-  const [businessConfig, setBusinessConfig] = useState({
-    businessName: '',
-    logo: '',
-    coverImage: '',
-    isOpen: true,
-    whatsappNumber: '',
-    address: '',
-    googleMapsUrl: '',
-    socialMedia: {
-      facebook: { url: '', isVisible: true },
-      instagram: { url: '', isVisible: true },
-      tiktok: { url: '', isVisible: true }
-    },
-    extraLink: { url: '', isVisible: true }
-  });
   const [logoError, setLogoError] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [activeOrderType, setActiveOrderType] = useState('');
   const [loyaltyPoints, setLoyaltyPoints] = useState(null);
-  const { businessId } = useBusinessConfig();
-  const { businessStatus, getStatusDisplay } = useBusinessStatus(businessId);
+  const { businessId, businessConfig, businessStatus, getStatusDisplay } = useBusinessConfig();
   const { customerData, customerOrders, reloadCustomerData } = useCustomerData();
 
   // Detectar pedidos activos
@@ -89,75 +71,6 @@ const BusinessHeader = ({
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [reloadCustomerData]);
-
-  useEffect(() => {
-    const fetchBusinessConfig = async () => {
-      try {
-        const response = await api.get(`/business-config?businessId=${businessId}`);
-        if (response.data && typeof response.data === 'object') {
-          setBusinessConfig(prevConfig => ({
-            ...prevConfig,
-            ...response.data,
-            coverImage: response.data.coverImage || '',
-            isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
-            whatsappNumber: response.data.whatsappNumber || '',
-            address: response.data.address || '',
-            googleMapsUrl: response.data.googleMapsUrl || '',
-            socialMedia: {
-              facebook: { url: '', isVisible: false, ...response.data?.socialMedia?.facebook },
-              instagram: { url: '', isVisible: false, ...response.data?.socialMedia?.instagram },
-              tiktok: { url: '', isVisible: false, ...response.data?.socialMedia?.tiktok }
-            },
-            extraLink: {
-              url: '',
-              isVisible: false,
-              ...response.data?.extraLink
-            }
-          }));
-        }
-      } catch (error) {
-        // Error silencioso
-      }
-    };
-    fetchBusinessConfig();
-    // --- WebSocket: Conexión y listeners ---
-    if (socket) {
-      socket.connect();
-      socket.emit('joinBusiness', businessId);
-      socket.on('business_config_update', (data) => {
-      setBusinessConfig(prevConfig => ({
-        ...prevConfig,
-        ...data,
-        coverImage: data.coverImage || '',
-        isOpen: data.isOpen !== undefined ? data.isOpen : true,
-        whatsappNumber: data.whatsappNumber || '',
-        address: data.address || '',
-        googleMapsUrl: data.googleMapsUrl || '',
-        socialMedia: {
-          facebook: { url: '', isVisible: false, ...data?.socialMedia?.facebook },
-          instagram: { url: '', isVisible: false, ...data?.socialMedia?.instagram },
-          tiktok: { url: '', isVisible: false, ...data?.socialMedia?.tiktok }
-        },
-        extraLink: {
-          url: '',
-          isVisible: false,
-          ...data?.extraLink
-        }
-      }));
-    });
-    }
-    
-    return () => {
-      if (socket) {
-        socket.emit('leaveBusiness', businessId);
-        socket.off('business_config_update');
-        socket.disconnect();
-      }
-    };
-    // Reducir la frecuencia de actualización a cada 5 minutos
-    // const intervalId = setInterval(fetchBusinessConfig, 5 * 60 * 1000);
-    // return () => clearInterval(intervalId);
-  }, [businessId]);
 
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';

@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => ({
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-motion': ['framer-motion'],
           'vendor-sentry': ['@sentry/react'],
+          'vendor-maps': ['leaflet', 'react-leaflet'],
+          'vendor-pdf': ['jspdf', 'jspdf-autotable', 'html2canvas'],
         }
       }
     }

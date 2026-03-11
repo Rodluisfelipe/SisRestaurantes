@@ -1,8 +1,47 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import api from '../services/api';
 import { socket } from '../services/socket';
 import { getBusinessIdFromSlug } from '../utils/getBusinessId';
 import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
+
+// ── Business hours helpers (moved from useBusinessStatus) ──
+function isCurrentlyOpen(businessHours) {
+  if (!businessHours) return true;
+  const now = new Date();
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  const currentTime = now.toTimeString().substring(0, 5);
+  const dayHours = businessHours[currentDay];
+  if (!dayHours || !dayHours.isOpen) return false;
+  return currentTime >= dayHours.openTime && currentTime <= dayHours.closeTime;
+}
+
+function getNextOpenTime(businessHours) {
+  if (!businessHours) return null;
+  const now = new Date();
+  const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+  const currentDayIndex = dayOrder.indexOf(currentDay);
+  for (let i = 0; i < 7; i++) {
+    const dayIndex = (currentDayIndex + i) % 7;
+    const dayKey = dayOrder[dayIndex];
+    const dayHours = businessHours[dayKey];
+    if (dayHours && dayHours.isOpen) return { day: dayKey, time: dayHours.openTime };
+  }
+  return null;
+}
+
+function computeBusinessStatus(config) {
+  if (!config) return { isOpen: true, isOpenByHours: true, isMenuActive: true, menuStatus: 'active', nextOpenTime: null };
+  const isOpenByHours = isCurrentlyOpen(config.businessHours);
+  const isMenuActive = (config.menuStatus || 'active') === 'active';
+  return {
+    isOpen: (config.isOpen !== false) && isOpenByHours && isMenuActive,
+    isOpenByHours,
+    isMenuActive,
+    menuStatus: config.menuStatus || 'active',
+    nextOpenTime: getNextOpenTime(config.businessHours),
+  };
+}
 
 const BusinessContext = createContext();
 
@@ -187,7 +226,7 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
   }, [businessId]);
 
   // Función para actualizar la configuración
-  const updateConfig = async (newConfig) => {
+  const updateConfig = useCallback(async (newConfig) => {
     try {
       const response = await api.put('/business-config', { ...newConfig, businessId });
       setBusinessConfig(response.data);
@@ -196,15 +235,25 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
       // Error silencioso
       throw error;
     }
-  };
+  }, [businessId]);
 
-  const value = {
+  // Derive business status from config (replaces useBusinessStatus for same-business components)
+  const businessStatus = useMemo(() => computeBusinessStatus(businessConfig), [businessConfig]);
+
+  const getStatusDisplay = useCallback(() => {
+    if (businessStatus.isOpen) return { text: 'Abierto', color: 'bg-green-500', icon: '🟢' };
+    return { text: 'Cerrado', color: 'bg-red-500', icon: '🔴' };
+  }, [businessStatus.isOpen]);
+
+  const value = useMemo(() => ({
     businessId,
     businessConfig,
+    businessStatus,
+    getStatusDisplay,
     loading,
     error,
     updateConfig
-  };
+  }), [businessId, businessConfig, businessStatus, getStatusDisplay, loading, error, updateConfig]);
 
   return (
     <BusinessContext.Provider value={value}>

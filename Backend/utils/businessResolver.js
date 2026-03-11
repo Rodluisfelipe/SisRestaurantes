@@ -5,7 +5,28 @@ const { isValidObjectId } = require('./validators');
 /**
  * Utilidad centralizada para resolución de businessId (ObjectId o slug)
  * DRY: unifica toda la lógica de resolución de negocio
+ * Incluye cache en memoria con TTL de 5 minutos para evitar queries repetitivos
  */
+
+// ── In-memory cache for resolved business IDs ──
+const _resolveCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function _cacheGet(key) {
+  const entry = _resolveCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expires) { _resolveCache.delete(key); return undefined; }
+  return entry.value;
+}
+
+function _cacheSet(key, value) {
+  _resolveCache.set(key, { value, expires: Date.now() + CACHE_TTL });
+  // Prevent unbounded growth
+  if (_resolveCache.size > 500) {
+    const oldest = _resolveCache.keys().next().value;
+    _resolveCache.delete(oldest);
+  }
+}
 
 /**
  * Resuelve un identificador de negocio (ObjectId o slug) a ObjectId
@@ -18,22 +39,32 @@ async function resolveBusinessId(identifier) {
     throw new Error('Business identifier is required');
   }
 
+  // Check cache first
+  const cached = _cacheGet(identifier);
+  if (cached) return cached;
+
   // Si es un ObjectId válido, verificar que existe
   if (isValidObjectId(identifier)) {
-    const business = await BusinessConfig.findById(identifier);
+    const business = await BusinessConfig.findById(identifier).select('_id').lean();
     if (!business) {
       throw new Error(`Business not found with ID: ${identifier}`);
     }
-    return identifier.toString();
+    const result = identifier.toString();
+    _cacheSet(identifier, result);
+    return result;
   }
 
   // Si no es ObjectId, tratar como slug
-  const business = await BusinessConfig.findOne({ slug: identifier });
+  const business = await BusinessConfig.findOne({ slug: identifier }).select('_id').lean();
   if (!business) {
     throw new Error(`Business not found with slug: ${identifier}`);
   }
 
-  return business._id.toString();
+  const result = business._id.toString();
+  _cacheSet(identifier, result);
+  // Also cache by the resolved ObjectId
+  _cacheSet(result, result);
+  return result;
 }
 
 /**

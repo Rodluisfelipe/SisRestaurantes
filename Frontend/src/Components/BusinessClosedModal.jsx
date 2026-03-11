@@ -1,7 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from '../Context/BusinessContext';
-import { useBusinessStatus } from '../hooks/useBusinessStatus';
 
 const BusinessClosedModal = ({ isOpen, onClose, businessStatus }) => {
   const { businessConfig } = useBusinessConfig();
