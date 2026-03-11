@@ -317,12 +317,12 @@ function ModernKitchen() {
   }, [businessId]);
 
   // Auto-refresh every 30 seconds
-  // Polling as fallback (socket is primary). 60s with visibility check.
+  // Polling as fallback (socket is primary). 30s with visibility check.
   useEffect(() => {
     if (businessId) {
       refreshIntervalRef.current = setInterval(() => {
         if (!document.hidden) fetchOrders();
-      }, 60000);
+      }, 30000);
     }
 
     return () => {

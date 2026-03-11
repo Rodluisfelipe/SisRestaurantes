@@ -25,6 +25,8 @@ function ModernOrdersDashboard() {
   const [pendingNotifications, setPendingNotifications] = useState([]);
   const notificationAudioRef = useRef(null);
   const notificationIntervalRef = useRef(null);
+  // Ref for selectedOrder to avoid re-registering socket listeners on every order click
+  const selectedOrderRef = useRef(null);
   const [generatingReport, setGeneratingReport] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -518,6 +520,10 @@ function ModernOrdersDashboard() {
 
   // Set up socket connection for real-time updates
   useEffect(() => {
+    selectedOrderRef.current = selectedOrder;
+  }, [selectedOrder]);
+
+  useEffect(() => {
     if (!businessId) return;
     
     console.log('Connecting to socket for business:', businessId);
@@ -556,8 +562,8 @@ function ModernOrdersDashboard() {
           setPendingNotifications(prev => prev.filter(id => id !== updatedOrder._id));
         }
         
-        // Update details if the selected order was updated
-        if (selectedOrder === updatedOrder._id) {
+        // Update details if the selected order was updated (use ref to avoid dep)
+        if (selectedOrderRef.current === updatedOrder._id) {
           setOrderDetails(updatedOrder);
         }
       });
@@ -573,7 +579,7 @@ function ModernOrdersDashboard() {
         setPendingNotifications(prev => prev.filter(id => id !== deletedOrder._id));
         
         // Close details if the deleted order was selected
-        if (selectedOrder === deletedOrder._id) {
+        if (selectedOrderRef.current === deletedOrder._id) {
           setSelectedOrder(null);
           setOrderDetails(null);
         }
@@ -591,7 +597,7 @@ function ModernOrdersDashboard() {
               order?._id === freshOrder._id ? freshOrder : order
             )
           );
-          if (selectedOrder === freshOrder._id) {
+          if (selectedOrderRef.current === freshOrder._id) {
             setOrderDetails(freshOrder);
           }
           // Add to pending notifications
@@ -609,12 +615,16 @@ function ModernOrdersDashboard() {
         socket.off('payment_proof_uploaded');
       }
     };
-  }, [businessId, selectedOrder]);
+  }, [businessId]);
 
-  // Load orders on mount
+  // Load orders on mount + polling fallback every 30s (safety net for missed socket events)
   useEffect(() => {
     if (businessId) {
       fetchOrders();
+      const interval = setInterval(() => {
+        if (!document.hidden) fetchOrders();
+      }, 30000);
+      return () => clearInterval(interval);
     }
   }, [businessId]);
 

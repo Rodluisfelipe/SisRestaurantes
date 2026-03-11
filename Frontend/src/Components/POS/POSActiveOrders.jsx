@@ -37,10 +37,10 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
 
   useEffect(() => {
     fetchOrders();
-    // Polling as fallback only (socket is primary). 60s with visibility check.
+    // Polling as fallback only (socket is primary). 30s with visibility check.
     const interval = setInterval(() => {
       if (!document.hidden) fetchOrders();
-    }, 60000);
+    }, 30000);
 
     const handleOrderCreated = (order) => {
       if (order?.businessId === businessId || order?.businessId?._id === businessId) {

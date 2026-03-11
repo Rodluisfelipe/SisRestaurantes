@@ -124,6 +124,9 @@ socket.on('connect', () => {
     logSystemStatus();
   });
 
+// Track the current business room to auto-rejoin on reconnect
+let _currentBusinessId = null;
+
 // Función para unirse a un canal de negocio específico
 export const joinBusiness = (businessId) => {
   if (!businessId) {
@@ -132,6 +135,9 @@ export const joinBusiness = (businessId) => {
     logSystemStatus();
     return;
   }
+
+  // Remember business for auto-rejoin on reconnect
+  _currentBusinessId = businessId;
 
   // Always update auth token before joining
   const freshToken = getAuthToken();
@@ -149,6 +155,14 @@ export const joinBusiness = (businessId) => {
     });
   }
 };
+
+// Auto-rejoin business room after every reconnect
+socket.on('connect', () => {
+  if (_currentBusinessId) {
+    const freshToken = getAuthToken();
+    socket.emit('joinBusiness', { businessId: _currentBusinessId, token: freshToken });
+  }
+});
 
 // Función para unirse al canal de superadmin
 export const joinSuperAdmin = () => {
