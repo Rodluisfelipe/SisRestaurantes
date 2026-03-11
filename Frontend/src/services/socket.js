@@ -107,7 +107,11 @@ socket.on('connect', () => {
     systemStatus.lastUpdate = new Date();
     logSystemStatus();
     
-    if (reason === 'io server disconnect' || reason === 'transport close') {
+    // Only manually reconnect for server-initiated disconnect.
+    // 'transport close' is already handled by Socket.IO's built-in reconnection
+    // (reconnection: true). Calling socket.connect() here would race with it,
+    // creating duplicate sessions where one gets 400.
+    if (reason === 'io server disconnect') {
       socket.connect();
     }
   });
