@@ -544,7 +544,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
           {/* Header: name + price + qty + close */}
           <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
             <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-black text-slate-900 truncate">{product.name}</h2>
+              <h2 className="text-lg font-black text-slate-900 line-clamp-2">{product.name}</h2>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0 ml-3">
               {/* Inline quantity */}
@@ -759,7 +759,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v1m0 16v1m-8-9H3m18 0h-1M5.6 5.6l.7.7m12.1-.7l-.7.7M5.6 18.4l.7-.7m12.1.7l-.7-.7"/><circle cx="12" cy="12" r="4"/></svg>
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 truncate">{product.name}</h2>
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 line-clamp-2">{product.name}</h2>
                   {product.description && (
                     <div className="mt-0.5">
                       <p className={`text-[12px] text-slate-400 leading-snug ${expandedDesc ? '' : 'line-clamp-2'}`}>{product.description}</p>
