@@ -59,9 +59,7 @@ const BusinessSettingsAdmin = () => {
     }
     return () => {
       if (socket) {
-        socket.emit('leaveBusiness', businessId);
         socket.off('business_config_update');
-        socket.disconnect();
       }
     };
     // --- Fin WebSocket ---

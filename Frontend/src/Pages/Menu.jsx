@@ -25,7 +25,6 @@ import api from "../services/api";
 import { useBusinessConfig } from "../Context/BusinessContext";
 import '../../styles/scrollbar.css';
 import { socket } from '../services/socket';
-import { io } from 'socket.io-client';
 import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
 import * as SessionManager from '../utils/sessionManager';
 import { calculateItemPrice as calcItemPriceUtil, calculateTotalAmount as calcTotalUtil, calculateTotalItems, createWhatsAppMessage } from '../utils/orderUtils';
@@ -325,14 +324,10 @@ export default function Menu() {
     currentCategoryRef.current = categoryName;
   }, []);
   
-  // Ref para el socket del viewer (para enviar updates desde otros effects)
-  const viewerSocketRef = useRef(null);
-  
-  // Enviar update de carrito cada vez que cambia
+  // Send cart update to viewer tracking when cart changes
   useEffect(() => {
-    const vs = viewerSocketRef.current;
-    if (vs?.connected) {
-      vs.emit('viewer:heartbeat', {
+    if (socket?.connected) {
+      socket.emit('viewer:heartbeat', {
         currentView: 'menu',
         currentCategory: currentCategoryRef.current,
         cartItems: cart?.length || 0,
@@ -342,78 +337,55 @@ export default function Menu() {
     }
   }, [cart]);
 
-  // Viewer tracking con socket dedicado (sin auth, separado del admin socket)
+  // Viewer tracking using the singleton socket (no separate connection needed)
   useEffect(() => {
-    // Only require businessId to start tracking — name/phone are optional (anonymous viewer)
     if (!businessId) return;
-    // Don't track while on the order type selector screen
     if (showOrderTypeSelector) return;
     
-    let viewerSocket = null;
     let heartbeatInterval = null;
     let mounted = true;
     
-    const startTracking = async () => {
-      try {
-        if (!mounted) return;
-        
-        const backendUrl = import.meta.env.VITE_SOCKET_URL || 'https://157-245-125-216.nip.io';
-        console.log('[ViewerTracking] Connecting to', backendUrl, 'for business', businessId);
-        
-        viewerSocket = io(backendUrl, {
-          autoConnect: true,
-          reconnection: true,
-          reconnectionAttempts: 5,
-          timeout: 15000,
-          transports: ['polling', 'websocket'],
-          path: '/socket.io',
-          query: {
-            sessionId: `viewer_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-            clientType: 'viewer'
-          }
+    const startTracking = () => {
+      if (!mounted) return;
+      if (!socket.connected) socket.connect();
+      
+      const ua = navigator.userAgent;
+      const device = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Desktop';
+      
+      const emitJoin = () => {
+        const c = cartRef.current;
+        socket.emit('viewer:join', {
+          businessId,
+          customerName: orderInfo?.customerName || 'Visitante',
+          phone: orderInfo?.phone || '',
+          device,
+          source: trafficSource,
+          referrer: document.referrer || null,
+          cartItems: c?.length || 0,
+          cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
+          cartProducts: c?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
         });
-        
-        viewerSocketRef.current = viewerSocket;
-        
-        const ua = navigator.userAgent;
-        const device = /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : 'Desktop';
-        
-        viewerSocket.on('connect', () => {
-          console.log('[ViewerTracking] Connected! Socket ID:', viewerSocket.id);
+      };
+      
+      if (socket.connected) {
+        emitJoin();
+      } else {
+        socket.once('connect', emitJoin);
+      }
+      
+      // Heartbeat every 30 seconds
+      heartbeatInterval = setInterval(() => {
+        if (socket?.connected) {
           const c = cartRef.current;
-          viewerSocket.emit('viewer:join', {
-            businessId,
-            customerName: orderInfo?.customerName || 'Visitante',
-            phone: orderInfo?.phone || '',
-            device,
-            source: trafficSource,
-            referrer: document.referrer || null,
+          socket.emit('viewer:heartbeat', {
+            currentView: 'menu',
+            currentCategory: currentCategoryRef.current,
             cartItems: c?.length || 0,
             cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
             cartProducts: c?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
           });
-        });
-        
-        viewerSocket.on('connect_error', (err) => {
-          console.error('[ViewerTracking] Connect error:', err.message);
-        });
-        
-        // Heartbeat cada 30 segundos (usa ref para valor fresco)
-        heartbeatInterval = setInterval(() => {
-          if (viewerSocket?.connected) {
-            const c = cartRef.current;
-            viewerSocket.emit('viewer:heartbeat', {
-              currentView: 'menu',
-              currentCategory: currentCategoryRef.current,
-              cartItems: c?.length || 0,
-              cartTotal: c?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0,
-              cartProducts: c?.map(item => ({ name: item.name, qty: item.quantity, price: item.price })) || []
-            });
-          }
-        }, 30000);
-      } catch (err) {
-        console.error('[ViewerTracking] Error:', err.message, err);
-      }
+        }
+      }, 30000);
     };
     
     startTracking();
@@ -421,11 +393,9 @@ export default function Menu() {
     return () => {
       mounted = false;
       if (heartbeatInterval) clearInterval(heartbeatInterval);
-      if (viewerSocket) {
-        viewerSocket.emit('viewer:leave');
-        viewerSocket.disconnect();
+      if (socket?.connected) {
+        socket.emit('viewer:leave');
       }
-      viewerSocketRef.current = null;
     };
   }, [showOrderTypeSelector, businessId]);
 
@@ -747,7 +717,6 @@ export default function Menu() {
     
     return () => {
       if (socket) {
-        socket.emit('leaveBusiness', businessId);
         socket.off('products_update');
         socket.off('categories_update');
       }

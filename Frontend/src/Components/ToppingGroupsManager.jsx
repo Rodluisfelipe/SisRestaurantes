@@ -33,9 +33,7 @@ function ToppingGroupsManager() {
     }
     return () => {
       if (socket) {
-        socket.emit('leaveBusiness', businessId);
         socket.off('topping_groups_update');
-        socket.disconnect();
       }
     };
     // --- Fin WebSocket ---
