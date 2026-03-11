@@ -86,18 +86,17 @@ const generateCustomerToken = () => {
 // Helper function to get order number
 const generateOrderNumber = async (businessId) => {
   try {
-    // Find the highest order number for this business and increment
-    const latestOrder = await Order.findOne({ businessId })
-      .sort({ createdAt: -1 })
-      .limit(1);
+    // Check both active and completed orders to avoid duplicates
+    const [latestOrder, latestCompleted] = await Promise.all([
+      Order.findOne({ businessId }).sort({ createdAt: -1 }).limit(1),
+      CompletedOrder.findOne({ businessId }).sort({ createdAt: -1 }).limit(1)
+    ]);
     
-    if (!latestOrder) {
-      return "1"; // Start from 1
-    }
+    const activeNum = latestOrder ? parseInt(latestOrder.orderNumber, 10) || 0 : 0;
+    const completedNum = latestCompleted ? parseInt(latestCompleted.orderNumber, 10) || 0 : 0;
+    const highest = Math.max(activeNum, completedNum);
     
-    // Extract the number and increment
-    const lastNumber = parseInt(latestOrder.orderNumber, 10);
-    return (lastNumber + 1).toString();
+    return (highest + 1).toString();
   } catch (error) {
 
     // Fallback to timestamp-based order number
