@@ -10,6 +10,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
   const [error, setError] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [isValid, setIsValid] = useState(false);
+  const [expandedDesc, setExpandedDesc] = useState(false);
   const [scrollToRequired, setScrollToRequired] = useState(false);
   const [imageExpanded, setImageExpanded] = useState(false);
 
@@ -734,7 +735,17 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
               <div className="absolute bottom-0 left-0 right-0 p-4">
                 <h2 className="text-lg sm:text-xl font-extrabold text-white drop-shadow-lg leading-tight">{product.name}</h2>
                 {product.description && (
-                  <p className="text-[12px] sm:text-[13px] text-white/80 mt-1 leading-snug">{product.description}</p>
+                  <div className="mt-1">
+                    <p className={`text-[12px] sm:text-[13px] text-white/80 leading-snug ${expandedDesc ? '' : 'line-clamp-2'}`}>{product.description}</p>
+                    {product.description.length > 60 && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setExpandedDesc(!expandedDesc); }}
+                        className="text-[11px] font-semibold text-white/60 hover:text-white/90 mt-0.5"
+                      >
+                        {expandedDesc ? 'ver menos' : 'ver más'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -750,7 +761,18 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                 <div className="min-w-0">
                   <h2 className="text-base sm:text-lg font-extrabold text-slate-900 truncate">{product.name}</h2>
                   {product.description && (
-                    <p className="text-[12px] text-slate-400 mt-0.5 leading-snug">{product.description}</p>
+                    <div className="mt-0.5">
+                      <p className={`text-[12px] text-slate-400 leading-snug ${expandedDesc ? '' : 'line-clamp-2'}`}>{product.description}</p>
+                      {product.description.length > 60 && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setExpandedDesc(!expandedDesc); }}
+                          className="text-[11px] font-semibold mt-0.5"
+                          style={{ color: themeBtn }}
+                        >
+                          {expandedDesc ? 'ver menos' : 'ver más'}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
