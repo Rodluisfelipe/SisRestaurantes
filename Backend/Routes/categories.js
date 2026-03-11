@@ -12,7 +12,7 @@ const { tenantAuth } = require("../middleware/tenantAuth");
 // Función auxiliar para obtener todas las categorías
 const getAllCategories = async (businessId = null) => {
   const filter = await createBusinessFilter(businessId);
-  return await Category.find(filter);
+  return await Category.find(filter).lean();
 };
 
 // Obtener todas las categorías
@@ -22,7 +22,7 @@ router.get("/", async (req, res) => {
     
     // Crear filtro basado en businessId o slug
     const filter = await createBusinessFilter(businessId);
-    const categories = await Category.find(filter).sort({ displayOrder: 1, createdAt: 1 });
+    const categories = await Category.find(filter).sort({ displayOrder: 1, createdAt: 1 }).lean();
     
     logger.info(`Retrieved ${categories.length} categories for business ${businessId}`, { count: categories.length }, req);
     res.json(categories);

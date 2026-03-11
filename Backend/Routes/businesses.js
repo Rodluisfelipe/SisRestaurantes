@@ -142,7 +142,7 @@ router.get('/', async (req, res) => {
     // Obtener todos los negocios activos
     const businesses = await BusinessConfig.find({ 
       isActive: true
-    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt');
+    }).select('businessName slug logo coverImage description theme isActive isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt updatedAt').lean();
 
     // Si hay ubicación, filtrar por cobertura
     let businessesToShow = businesses;
@@ -153,42 +153,51 @@ router.get('/', async (req, res) => {
         lon: parseFloat(lon)
       };
       
-      const businessesWithCoverage = await Promise.all(
-        businesses.map(async (business) => {
-          const zones = await DeliveryZone.find({
-            businessId: business._id,
-            isActive: true
-          });
-          
-          if (zones.length === 0) return null;
-          
-          let matchedZone = null;
-          for (const zone of zones.sort((a, b) => b.priority - a.priority)) {
-            let isInZone = false;
-            if (zone.type === 'polygon') {
-              const polygonRing = zone.geometry.coordinates[0];
-              isInZone = pointInPolygon(userPoint, polygonRing);
-            } else if (zone.type === 'circle') {
-              const center = {
-                lat: zone.geometry.center.coordinates[1],
-                lon: zone.geometry.center.coordinates[0]
-              };
-              isInZone = pointInRadius(userPoint, center, zone.geometry.radius);
-            }
-            if (isInZone) { matchedZone = zone; break; }
-          }
-          
-          if (matchedZone) {
-            business._doc.deliveryZone = {
-              name: matchedZone.name,
-              estimatedTime: matchedZone.estimatedTime,
-              pricing: matchedZone.pricing
+      // Batch: fetch ALL delivery zones for all businesses in ONE query (eliminates N+1)
+      const allBusinessIds = businesses.map(b => b._id);
+      const allZones = await DeliveryZone.find({
+        businessId: { $in: allBusinessIds },
+        isActive: true
+      }).lean();
+      
+      // Group zones by businessId
+      const zonesByBusiness = {};
+      for (const zone of allZones) {
+        const bid = zone.businessId.toString();
+        if (!zonesByBusiness[bid]) zonesByBusiness[bid] = [];
+        zonesByBusiness[bid].push(zone);
+      }
+      
+      const businessesWithCoverage = businesses.map((business) => {
+        const zones = zonesByBusiness[business._id.toString()] || [];
+        if (zones.length === 0) return null;
+        
+        let matchedZone = null;
+        for (const zone of zones.sort((a, b) => b.priority - a.priority)) {
+          let isInZone = false;
+          if (zone.type === 'polygon') {
+            const polygonRing = zone.geometry.coordinates[0];
+            isInZone = pointInPolygon(userPoint, polygonRing);
+          } else if (zone.type === 'circle') {
+            const center = {
+              lat: zone.geometry.center.coordinates[1],
+              lon: zone.geometry.center.coordinates[0]
             };
-            return business;
+            isInZone = pointInRadius(userPoint, center, zone.geometry.radius);
           }
-          return null;
-        })
-      );
+          if (isInZone) { matchedZone = zone; break; }
+        }
+        
+        if (matchedZone) {
+          business.deliveryZone = {
+            name: matchedZone.name,
+            estimatedTime: matchedZone.estimatedTime,
+            pricing: matchedZone.pricing
+          };
+          return business;
+        }
+        return null;
+      });
       
       businessesToShow = businessesWithCoverage.filter(b => b !== null);
     }
@@ -290,7 +299,8 @@ router.get('/featured', async (req, res) => {
     const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
 
     const businesses = await BusinessConfig.find({ isActive: true })
-      .select('businessName slug logo coverImage description isOpen businessHours location department city reviewStats createdAt').lean();
+      .select('businessName slug logo coverImage description isOpen businessHours location department city reviewStats createdAt')
+      .lean();
 
     const businessIds = businesses.map(b => b._id);
     const batchInfo = await getBatchBusinessInfo(businessIds);
@@ -471,7 +481,8 @@ router.get('/search', async (req, res) => {
       .select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt')
       .limit(parseInt(limit))
       .skip(parseInt(offset))
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     const businessIds = businesses.map(b => b._id);
     const batchInfo = await getBatchBusinessInfo(businessIds);

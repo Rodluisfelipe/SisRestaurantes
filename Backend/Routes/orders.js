@@ -124,7 +124,7 @@ router.get("/", tenantAuth, async (req, res) => {
     if (orderType) filter.orderType = orderType;
     
     // Get orders sorted by creation date (newest first)
-    const orders = await Order.find(filter).sort({ createdAt: -1 });
+    const orders = await Order.find(filter).sort({ createdAt: -1 }).lean();
     
     logger.info(`Retrieved ${orders.length} orders for business ${businessId}`);
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -610,9 +610,11 @@ router.get("/completed", tenantAuth, async (req, res) => {
     
     if (limitNum > 0) {
       query = query.limit(limitNum).skip(pageNum > 0 ? (pageNum - 1) * limitNum : 0);
+    } else {
+      query = query.limit(500);
     }
     
-    const completedOrders = await query;
+    const completedOrders = await query.lean();
     
     // If paginated, include total count
     if (limitNum > 0) {
@@ -708,13 +710,13 @@ router.get('/my-orders', publicOrderLimiter, async (req, res) => {
       businessId: businessObjectId,
       phone: phone,
       status: { $nin: [ORDER_STATUS.COMPLETED, ORDER_STATUS.CANCELLED, ORDER_STATUS.DELIVERED] }
-    }).sort({ createdAt: -1 }).limit(10);
+    }).sort({ createdAt: -1 }).limit(10).lean();
 
     // Get recent completed orders
     const completedOrders = await CompletedOrder.find({
       businessId: businessObjectId,
       phone: phone
-    }).sort({ completedAt: -1 }).limit(10);
+    }).sort({ completedAt: -1 }).limit(10).lean();
 
     res.json({
       active: activeOrders,
@@ -1348,7 +1350,7 @@ router.get('/customer/:phone', tenantAuth, async (req, res) => {
     const orders = await Order.find({
       businessId: businessObjectId,
       phone: phone
-    }).sort({ createdAt: -1 });
+    }).sort({ createdAt: -1 }).limit(100).lean();
     
     logger.info(`Retrieved ${orders.length} orders for customer ${phone} in business ${businessObjectId}`);
     res.json(orders);

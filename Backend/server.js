@@ -6,6 +6,7 @@ const path = require("path");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
+const compression = require("compression");
 const Sentry = require("@sentry/node");
 
 // Cargar variables de entorno - ESTO DEBE IR PRIMERO
@@ -135,6 +136,8 @@ app.use(helmet({
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
+
+app.use(compression());
 
 app.use(express.json());
 

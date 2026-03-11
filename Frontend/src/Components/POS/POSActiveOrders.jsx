@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import api from '../../services/api';
 import { socket } from '../../services/socket';
 
@@ -194,14 +194,14 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
     }
   };
 
-  const filteredOrders = orders.filter(o => {
+  const filteredOrders = useMemo(() => orders.filter(o => {
     if (filter === 'pos') return o.orderChannel === 'pos';
     if (filter === 'menuby') return o.orderChannel !== 'pos';
     return true;
-  });
+  }), [orders, filter]);
 
-  const posCount = orders.filter(o => o.orderChannel === 'pos').length;
-  const menubyCount = orders.filter(o => o.orderChannel !== 'pos').length;
+  const posCount = useMemo(() => orders.filter(o => o.orderChannel === 'pos').length, [orders]);
+  const menubyCount = useMemo(() => orders.filter(o => o.orderChannel !== 'pos').length, [orders]);
 
   if (loading) {
     return (

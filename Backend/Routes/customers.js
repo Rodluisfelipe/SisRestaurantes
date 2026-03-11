@@ -74,7 +74,8 @@ router.get('/', tenantAuth, async (req, res) => {
     const customers = await Customer.find(filter)
       .sort(sort)
       .limit(parseInt(limit))
-      .skip((parseInt(page) - 1) * parseInt(limit));
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .lean();
 
     const totalCustomers = await Customer.countDocuments(filter);
 
@@ -237,8 +238,8 @@ router.get('/:phone/orders', customerRateLimiter, async (req, res) => {
     }
 
     const [activeOrders, completedOrders] = await Promise.all([
-      Order.find(orderFilter).sort({ createdAt: -1 }).limit(parseInt(limit)),
-      CompletedOrder.find(completedFilter).sort({ completedAt: -1 }).limit(parseInt(limit))
+      Order.find(orderFilter).sort({ createdAt: -1 }).limit(parseInt(limit)).lean(),
+      CompletedOrder.find(completedFilter).sort({ completedAt: -1 }).limit(parseInt(limit)).lean()
     ]);
 
     // Merge and sort by date (newest first)

@@ -27,7 +27,8 @@ const getAllProducts = async () => {
       path: 'toppingGroups',
       match: { active: true },
       select: 'name description isMultipleChoice isRequired options basePrice subGroups'
-    });
+    })
+    .lean();
   
   logger.debug(`Found ${products.length} products`);
   return products;
@@ -60,7 +61,8 @@ router.get("/", async (req, res) => {
         match: { active: true },
         select: 'name description isMultipleChoice isRequired options basePrice subGroups'
       })
-      .sort({ displayOrder: 1, createdAt: 1 });
+      .sort({ displayOrder: 1, createdAt: 1 })
+      .lean();
     
     logger.info(`Found ${products.length} products for business ${businessId}`);
     res.json(products);
@@ -91,7 +93,8 @@ router.get("/featured", async (req, res) => {
       match: { active: true },
       select: 'name description isMultipleChoice isRequired options basePrice subGroups'
     })
-    .sort({ featuredOrder: 1, displayOrder: 1 });
+    .sort({ featuredOrder: 1, displayOrder: 1 })
+    .lean();
 
     logger.info(`Found ${featuredProducts.length} featured products for business ${businessId}`);
     res.json(featuredProducts);
