@@ -53,22 +53,33 @@ const sendPushToBusinessId = async (businessId, payload) => {
     throw new Error('Push payload must include title and body');
   }
 
-  const subscriptions = await PushSubscription.find({ businessId, isActive: true });
+  const subscriptions = await PushSubscription.find({ businessId, isActive: true }).lean();
   let sent = 0;
   let failed = 0;
   let removed = 0;
 
-  for (const sub of subscriptions) {
-    try {
-      await webpush.sendNotification(sub, JSON.stringify(payload));
+  const results = await Promise.allSettled(
+    subscriptions.map(sub =>
+      webpush.sendNotification(sub, JSON.stringify(payload))
+        .then(() => ({ status: 'sent', subId: sub._id }))
+        .catch(error => ({ status: 'failed', subId: sub._id, error }))
+    )
+  );
+
+  for (const result of results) {
+    const val = result.status === 'fulfilled' ? result.value : result.reason;
+    if (val?.status === 'sent') {
       sent++;
-    } catch (error) {
+    } else {
       failed++;
-      logger.error(`Failed to send push to subscription ${sub._id}: ${error.message}`, error);
-      if (error.statusCode === 410 || error.statusCode === 404) { // Subscription expired or not found
-        await PushSubscription.findByIdAndUpdate(sub._id, { isActive: false });
-        removed++;
-        logger.info(`Removed expired push subscription ${sub._id}`);
+      const error = val?.error;
+      if (error) {
+        logger.error(`Failed to send push to subscription ${val.subId}: ${error.message}`);
+        if (error.statusCode === 410 || error.statusCode === 404) {
+          await PushSubscription.findByIdAndUpdate(val.subId, { isActive: false });
+          removed++;
+          logger.info(`Removed expired push subscription ${val.subId}`);
+        }
       }
     }
   }
@@ -110,19 +121,30 @@ const sendPushToCustomer = async (customerToken, payload, businessId) => {
   if (businessId) {
     filter.businessId = businessId;
   }
-  const subscriptions = await PushSubscription.find(filter);
+  const subscriptions = await PushSubscription.find(filter).lean();
   let sent = 0, failed = 0, removed = 0;
 
-  for (const sub of subscriptions) {
-    try {
-      await webpush.sendNotification(sub, JSON.stringify(payload));
+  const results = await Promise.allSettled(
+    subscriptions.map(sub =>
+      webpush.sendNotification(sub, JSON.stringify(payload))
+        .then(() => ({ status: 'sent', subId: sub._id }))
+        .catch(error => ({ status: 'failed', subId: sub._id, error }))
+    )
+  );
+
+  for (const result of results) {
+    const val = result.status === 'fulfilled' ? result.value : result.reason;
+    if (val?.status === 'sent') {
       sent++;
-    } catch (error) {
+    } else {
       failed++;
-      logger.error(`Failed to send customer push to ${sub._id}: ${error.message}`);
-      if (error.statusCode === 410 || error.statusCode === 404) {
-        await PushSubscription.findByIdAndUpdate(sub._id, { isActive: false });
-        removed++;
+      const error = val?.error;
+      if (error) {
+        logger.error(`Failed to send customer push to ${val.subId}: ${error.message}`);
+        if (error.statusCode === 410 || error.statusCode === 404) {
+          await PushSubscription.findByIdAndUpdate(val.subId, { isActive: false });
+          removed++;
+        }
       }
     }
   }

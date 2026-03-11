@@ -219,7 +219,8 @@ router.get('/', async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .select('customerName rating comment reply repliedAt orderType thumbsUp createdAt'),
+        .select('customerName rating comment reply repliedAt orderType thumbsUp createdAt')
+        .lean(),
       Review.countDocuments(filter)
     ]);
 
@@ -499,7 +500,8 @@ router.get('/admin', authMiddleware, async (req, res) => {
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(parseInt(limit))
-        .select('customerName phone rating comment reply repliedAt orderType orderTotal thumbsUp isVisible createdAt'),
+        .select('customerName rating comment reply repliedAt orderType thumbsUp createdAt')
+        .lean(),
       Review.countDocuments(filter)
     ]);
 
@@ -536,11 +538,12 @@ router.get('/stats', authMiddleware, async (req, res) => {
       return res.status(400).json(formatHttpError(req, 'businessId no disponible', 400));
     }
 
-    const config = await BusinessConfig.findById(businessId).select('reviewStats');
+    const config = await BusinessConfig.findById(businessId).select('reviewStats').lean();
     const recentReviews = await Review.find({ businessId })
       .sort({ createdAt: -1 })
       .limit(5)
-      .select('customerName rating comment reply repliedAt createdAt isVisible');
+      .select('customerName rating comment reply repliedAt createdAt isVisible')
+      .lean();
 
     res.json({
       success: true,

@@ -191,7 +191,7 @@ router.get("/public", zoneLimiter, async (req, res) => {
     const zones = await DeliveryZone.find({
       businessId: resolvedBusiness._id,
       isActive: true
-    }).sort({ priority: -1 });
+    }).sort({ priority: -1 }).lean();
 
     if (zones.length === 0) {
       return res.json({

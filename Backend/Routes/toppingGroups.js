@@ -21,21 +21,18 @@ router.get("/", async (req, res) => {
     logger.debug('Buscando topping groups con filtro', filter, req);
     
     // Obtener todos los grupos activos del negocio
-    const groups = await ToppingGroup.find(filter);
+    const groups = await ToppingGroup.find(filter).lean();
     
     // Transformar los datos para asegurar que basePrice siempre esté presente
     const transformedGroups = groups.map(group => {
-      // Convertir el documento Mongoose a un objeto simple
-      const plainGroup = group.toObject();
-      
-      // Asegurar que basePrice exista y sea un número
-      if (plainGroup.basePrice === undefined) {
-        plainGroup.basePrice = 0;
+      // Con .lean() ya es un objeto plano
+      if (group.basePrice === undefined) {
+        group.basePrice = 0;
       } else {
-        plainGroup.basePrice = Number(plainGroup.basePrice);
+        group.basePrice = Number(group.basePrice);
       }
       
-      return plainGroup;
+      return group;
     });
     
     logger.info(`Retrieved ${transformedGroups.length} topping groups for business ${businessId}`, { count: transformedGroups.length }, req);

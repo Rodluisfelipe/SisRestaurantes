@@ -191,7 +191,8 @@ router.get("/history", authMiddleware, checkPosBeta, async (req, res) => {
         .skip(skip)
         .limit(Number(limit))
         .populate('openedBy', 'name username')
-        .populate('closedBy', 'name username'),
+        .populate('closedBy', 'name username')
+        .lean(),
       CashRegister.countDocuments({ businessId, status: 'closed' })
     ]);
 

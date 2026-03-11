@@ -284,5 +284,5 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
 }
 
 
-export default ProductCard;
+export default React.memo(ProductCard);
   
