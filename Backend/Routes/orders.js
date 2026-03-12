@@ -490,61 +490,7 @@ router.post("/", (req, res, next) => {
       }
     }
 
-    // ─── Loyalty: award points ───
-    if (customer) {
-      try {
-        const loyaltyProgram = await LoyaltyProgram.findOne({ businessId: businessObjectId, isActive: true }).lean();
-        if (loyaltyProgram) {
-          const amountForPoints = finalAmount;
-          let pointsToAward = Math.floor(amountForPoints / loyaltyProgram.amountPerPoints) * loyaltyProgram.pointsPerAmount;
-
-          // Apply tier multiplier
-          if (loyaltyProgram.tiersEnabled && loyaltyProgram.tiers.length) {
-            const existingLoyalty = await CustomerLoyalty.findOne({ businessId: businessObjectId, customerId: customer._id }).lean();
-            if (existingLoyalty) {
-              const sorted = [...loyaltyProgram.tiers].sort((a, b) => b.minPoints - a.minPoints);
-              const tier = sorted.find(t => existingLoyalty.totalEarned >= t.minPoints);
-              if (tier && tier.multiplier > 1) {
-                pointsToAward = Math.floor(pointsToAward * tier.multiplier);
-              }
-            }
-          }
-
-          if (pointsToAward > 0) {
-            const expiresAt = loyaltyProgram.pointsExpiryDays > 0
-              ? new Date(Date.now() + loyaltyProgram.pointsExpiryDays * 86400000)
-              : undefined;
-
-            let loyalty = await CustomerLoyalty.findOne({ businessId: businessObjectId, customerId: customer._id });
-            const isFirstOrder = !loyalty;
-
-            if (!loyalty) {
-              loyalty = new CustomerLoyalty({
-                businessId: businessObjectId,
-                customerId: customer._id,
-                phone: customer.phone
-              });
-            }
-
-            loyalty.earnPoints(pointsToAward, savedOrder._id, `Pedido #${orderNumber}`, expiresAt);
-
-            // First order bonus
-            if (isFirstOrder && loyaltyProgram.firstOrderBonus > 0) {
-              loyalty.earnPoints(loyaltyProgram.firstOrderBonus, savedOrder._id, 'Bonus primer pedido', expiresAt);
-            }
-
-            // Compute tier
-            if (loyaltyProgram.tiersEnabled && loyaltyProgram.tiers.length) {
-              loyalty.computeTier(loyaltyProgram.tiers);
-            }
-
-            await loyalty.save();
-          }
-        }
-      } catch (loyaltyErr) {
-        logger.warn('Failed to award loyalty points (order was created)', { error: loyaltyErr.message, orderId: savedOrder._id });
-      }
-    }
+    // NOTE: Loyalty points are awarded only when admin completes the order (PATCH /:id/status → completed)
 
     // Emit socket event
     socketService.emitToBusiness(businessObjectId.toString(), "order_created", savedOrder);
@@ -862,7 +808,65 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
         
         // Save completed order
         await completedOrder.save();
-        
+
+        // ─── Loyalty: award points on completion ───
+        if (updatedOrder.customerId) {
+          try {
+            const loyaltyProgram = await LoyaltyProgram.findOne({ businessId: updatedOrder.businessId, isActive: true }).lean();
+            if (loyaltyProgram) {
+              const amountForPoints = updatedOrder.finalAmount || updatedOrder.totalAmount;
+              let pointsToAward = Math.floor(amountForPoints / loyaltyProgram.amountPerPoints) * loyaltyProgram.pointsPerAmount;
+
+              // Apply tier multiplier
+              if (loyaltyProgram.tiersEnabled && loyaltyProgram.tiers.length) {
+                const existingLoyalty = await CustomerLoyalty.findOne({ businessId: updatedOrder.businessId, customerId: updatedOrder.customerId }).lean();
+                if (existingLoyalty) {
+                  const sorted = [...loyaltyProgram.tiers].sort((a, b) => b.minPoints - a.minPoints);
+                  const tier = sorted.find(t => existingLoyalty.totalEarned >= t.minPoints);
+                  if (tier && tier.multiplier > 1) {
+                    pointsToAward = Math.floor(pointsToAward * tier.multiplier);
+                  }
+                }
+              }
+
+              if (pointsToAward > 0) {
+                const expiresAt = loyaltyProgram.pointsExpiryDays > 0
+                  ? new Date(Date.now() + loyaltyProgram.pointsExpiryDays * 86400000)
+                  : undefined;
+
+                let loyalty = await CustomerLoyalty.findOne({ businessId: updatedOrder.businessId, customerId: updatedOrder.customerId });
+                const isFirstOrder = !loyalty;
+
+                if (!loyalty) {
+                  const customer = await Customer.findById(updatedOrder.customerId).lean();
+                  loyalty = new CustomerLoyalty({
+                    businessId: updatedOrder.businessId,
+                    customerId: updatedOrder.customerId,
+                    phone: customer ? customer.phone : ''
+                  });
+                }
+
+                loyalty.earnPoints(pointsToAward, updatedOrder._id, `Pedido #${updatedOrder.orderNumber}`, expiresAt);
+
+                // First order bonus
+                if (isFirstOrder && loyaltyProgram.firstOrderBonus > 0) {
+                  loyalty.earnPoints(loyaltyProgram.firstOrderBonus, updatedOrder._id, 'Bonus primer pedido', expiresAt);
+                }
+
+                // Compute tier
+                if (loyaltyProgram.tiersEnabled && loyaltyProgram.tiers.length) {
+                  loyalty.computeTier(loyaltyProgram.tiers);
+                }
+
+                await loyalty.save();
+                logger.info(`Loyalty points awarded on completion: ${pointsToAward} pts for order #${updatedOrder.orderNumber}`);
+              }
+            }
+          } catch (loyaltyErr) {
+            logger.warn('Failed to award loyalty points on order completion', { error: loyaltyErr.message, orderId: updatedOrder._id });
+          }
+        }
+
         // Wait a bit to ensure clients receive the update before removing from active orders
         setTimeout(async () => {
           try {
