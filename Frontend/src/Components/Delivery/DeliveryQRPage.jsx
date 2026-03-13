@@ -22,7 +22,7 @@ const DeliveryQRPage = () => {
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/delivery/${token}`);
+        const res = await fetch(`${API_BASE}/delivery/${token}`);
         if (res.status === 410) {
           const data = await res.json();
           setError(data.message || 'Este enlace ha expirado');
@@ -84,7 +84,7 @@ const DeliveryQRPage = () => {
 
   const handlePicked = async () => {
     try {
-      await fetch(`${API_BASE}/api/delivery/${token}/picked`, { method: 'POST' });
+      await fetch(`${API_BASE}/delivery/${token}/picked`, { method: 'POST' });
       setPicked(true);
     } catch { /* error */ }
   };
@@ -97,7 +97,7 @@ const DeliveryQRPage = () => {
     setConfirming(true);
     setConfirmError('');
     try {
-      const res = await fetch(`${API_BASE}/api/delivery/${token}/confirm`, {
+      const res = await fetch(`${API_BASE}/delivery/${token}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: confirmCode })

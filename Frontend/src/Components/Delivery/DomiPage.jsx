@@ -31,7 +31,7 @@ const DomiPage = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/api/restaurants/${slug}/domi/auth`, {
+      const res = await fetch(`${API_BASE}/restaurants/${slug}/domi/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
@@ -53,7 +53,7 @@ const DomiPage = () => {
   const fetchOrders = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/api/restaurants/${slug}/domi/orders`, {
+      const res = await fetch(`${API_BASE}/restaurants/${slug}/domi/orders`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.status === 401) {
@@ -117,7 +117,7 @@ const DomiPage = () => {
   // Mark as picked up
   const handlePicked = async (orderId) => {
     try {
-      await fetch(`${API_BASE}/api/restaurants/${slug}/domi/orders/${orderId}/picked`, {
+      await fetch(`${API_BASE}/restaurants/${slug}/domi/orders/${orderId}/picked`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
@@ -157,7 +157,7 @@ const DomiPage = () => {
     setLoading(true);
     setConfirmError('');
     try {
-      const res = await fetch(`${API_BASE}/api/restaurants/${slug}/domi/orders/${orderId}/confirm`, {
+      const res = await fetch(`${API_BASE}/restaurants/${slug}/domi/orders/${orderId}/confirm`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: confirmCode })

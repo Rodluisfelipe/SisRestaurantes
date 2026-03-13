@@ -38,7 +38,7 @@ const DeliveryTracker = () => {
   useEffect(() => {
     const fetchOrder = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/restaurants/${slug}/track/${orderId}`);
+        const res = await fetch(`${API_BASE}/restaurants/${slug}/track/${orderId}`);
         if (!res.ok) throw new Error('Pedido no encontrado');
         const data = await res.json();
         setOrder(data);
