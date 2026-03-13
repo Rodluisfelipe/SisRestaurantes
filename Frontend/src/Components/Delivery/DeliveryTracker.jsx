@@ -53,13 +53,19 @@ const DeliveryTracker = () => {
 
   // Socket connection for live updates
   useEffect(() => {
-    if (!order) return;
+    if (!order || !orderId) return;
 
+    console.log('[Tracker] Connecting socket to:', SOCKET_URL, 'for orderId:', orderId);
     const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
     socket.on('connect', () => {
+      console.log('[Tracker] Socket connected:', socket.id, '- joining room order:', orderId);
       socket.emit('delivery:track', { orderId });
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('[Tracker] Socket connect error:', err.message);
     });
 
     socket.on('order:status', (data) => {
@@ -67,6 +73,7 @@ const DeliveryTracker = () => {
     });
 
     socket.on('domi:location', (data) => {
+      console.log('[Tracker] Received domi:location', data);
       setDomiLocation({ lat: data.lat, lng: data.lng });
     });
 
@@ -75,9 +82,11 @@ const DeliveryTracker = () => {
     });
 
     return () => {
+      console.log('[Tracker] Disconnecting socket');
       socket.disconnect();
     };
-  }, [order?._id || orderId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!order, orderId]);
 
   // Initialize Leaflet map
   useEffect(() => {
