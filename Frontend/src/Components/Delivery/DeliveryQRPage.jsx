@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
 import { FaMapMarkerAlt, FaPhone, FaCheck, FaBoxOpen, FaLocationArrow } from 'react-icons/fa';
+import 'leaflet/dist/leaflet.css';
 
 const API_BASE = API_URL;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
@@ -50,14 +51,6 @@ const DeliveryQRPage = () => {
   // Initialize map if coordinates exist
   useEffect(() => {
     if (!order?.deliveryCoordinates?.lat || !mapRef.current) return;
-
-    // Load Leaflet CSS
-    if (!document.querySelector('link[href*="leaflet"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
 
     const initMap = async () => {
       const L = await import('leaflet');

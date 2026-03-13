@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
 import { FaPhone, FaMotorcycle, FaCheckCircle } from 'react-icons/fa';
+import 'leaflet/dist/leaflet.css';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
 const API_BASE = API_URL;
@@ -96,17 +97,6 @@ const DeliveryTracker = () => {
     let cancelled = false;
 
     const initMap = async () => {
-      // Inject Leaflet CSS inline to avoid async load issues with tiles
-      if (!document.getElementById('leaflet-css-inline')) {
-        const link = document.createElement('link');
-        link.id = 'leaflet-css-inline';
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-        // Wait for CSS to load and paint
-        await new Promise(r => setTimeout(r, 500));
-      }
-
       if (cancelled) return;
       const L = await import('leaflet');
       if (cancelled || !mapRef.current) return;
