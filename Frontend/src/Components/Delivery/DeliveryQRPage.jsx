@@ -99,15 +99,23 @@ const DeliveryQRPage = () => {
   const startTracking = () => {
     if (!order?.orderId) return;
 
-    // Connect socket
+    // Connect socket first
     const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
-    setTracking(true);
 
-    // Start GPS
+    socket.on('connect', () => {
+      console.log('[Domi] Socket connected:', socket.id);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.error('[Domi] Socket connection error:', err.message);
+    });
+
+    // Start GPS — only set tracking=true once we actually get a position
     if (navigator.geolocation) {
       geoWatchRef.current = navigator.geolocation.watchPosition(
         (pos) => {
+          setTracking(true);
           socket.emit('domi:location', {
             orderId: order.orderId,
             lat: pos.coords.latitude,
@@ -115,8 +123,11 @@ const DeliveryQRPage = () => {
             timestamp: Date.now()
           });
         },
-        () => { /* GPS denied */ },
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+        (err) => {
+          console.error('[Domi] GPS error:', err.code, err.message);
+          setTracking(false);
+        },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
       );
     }
   };
@@ -257,6 +268,12 @@ const DeliveryQRPage = () => {
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center gap-2">
             <FaLocationArrow className="text-emerald-500 animate-pulse" />
             <span className="text-sm text-emerald-700 font-medium">Compartiendo ubicación con el cliente…</span>
+          </div>
+        )}
+        {picked && !tracking && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-2">
+            <FaLocationArrow className="text-amber-500" />
+            <span className="text-sm text-amber-700 font-medium">Permite el acceso a tu ubicación para compartirla</span>
           </div>
         )}
 
