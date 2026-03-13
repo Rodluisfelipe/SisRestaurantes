@@ -30,6 +30,7 @@ import AdminDashboard from "../Components/Admin/AdminDashboard";
 import AdminTabWrapper from "../Components/Admin/AdminTabWrapper";
 import AdminHeader from "../Components/Admin/AdminHeader";
 import AdminToasts from "../Components/Admin/AdminToasts";
+import DomiStats from '../Components/Delivery/DomiStats';
 import ProductManager from "../Components/Admin/ProductManager";
 import FeaturedProductsManager from "../Components/Admin/FeaturedProductsManager";
 import ConfirmationModal from "../Components/Admin/ConfirmationModal";
@@ -426,6 +427,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Zonas de Entrega" onGoBack={() => setActiveTab('dashboard')}>
                       <DeliveryZoneManager />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'delivery' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Domicilios" onGoBack={() => setActiveTab('dashboard')}>
+                      <DomiStats />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

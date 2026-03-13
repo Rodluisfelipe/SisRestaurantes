@@ -12,11 +12,14 @@ import {
   FaUtensils, FaTv, FaShoppingBag, FaEye, FaPlay, FaCheck,
   FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaClock, FaTimes,
   FaChair, FaHome, FaTag, FaExclamationTriangle, FaWifi,
-  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint
+  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle
 } from 'react-icons/fa';
+
+import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
 
 function ModernOrdersDashboard() {
   const [orders, setOrders] = useState([]);
+  const [assignDomiOrder, setAssignDomiOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -1143,13 +1146,24 @@ function ModernOrdersDashboard() {
                             )}
                             
                             {order.status === ORDER_STATUS.IN_PROGRESS && (
-                              <button
-                                onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
-                              >
-                                <FaCheck className="text-[9px]" />
-                                <span>Completar</span>
-                              </button>
+                              <div className="flex w-full gap-2">
+                                {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
+                                  <button
+                                    onClick={() => setAssignDomiOrder(order)}
+                                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                  >
+                                    <FaMotorcycle className="text-[11px]" />
+                                    <span>Asignar Domi</span>
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
+                                  className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                >
+                                  <FaCheck className="text-[9px]" />
+                                  <span>{order.orderType === 'delivery' ? 'Completar (Forzado)' : 'Completar'}</span>
+                                </button>
+                              </div>
                             )}
 
                             {/* Cancel button for all active orders */}
@@ -1248,12 +1262,24 @@ function ModernOrdersDashboard() {
                             )}
                             
                             {order.status === ORDER_STATUS.IN_PROGRESS && (
-                              <button
-                                onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
-                              >
-                                <FaCheck className="text-xs" />
-                              </button>
+                              <div className="flex gap-1">
+                                {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
+                                  <button
+                                    onClick={() => setAssignDomiOrder(order)}
+                                    className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                                    title="Asignar Domiciliario"
+                                  >
+                                    <FaMotorcycle className="text-xs" />
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
+                                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+                                  title="Marcar como Completado"
+                                >
+                                  <FaCheck className="text-xs" />
+                                </button>
+                              </div>
                             )}
 
                             {/* Cancel button */}
@@ -1617,13 +1643,24 @@ function ModernOrdersDashboard() {
                   )}
                   
                   {orderDetails.status === ORDER_STATUS.IN_PROGRESS && (
-                    <button
-                      onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                    >
-                      <FaCheck className="text-xs" />
-                      <span>Marcar como completado</span>
-                    </button>
+                    <>
+                      {orderDetails.orderType === 'delivery' && !orderDetails.deliveryToken && !orderDetails.deliveryPersonId && !orderDetails.confirmationCode && (
+                        <button
+                          onClick={() => setAssignDomiOrder(orderDetails)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                        >
+                          <FaMotorcycle className="text-xs" />
+                          <span>Asignar Domi</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}
+                        className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                      >
+                        <FaCheck className="text-xs" />
+                        <span>{orderDetails.orderType === 'delivery' ? 'Completar (Forzado)' : 'Marcar como completado'}</span>
+                      </button>
+                    </>
                   )}
                   
                   {!orderDetails.sentToKitchen && (
@@ -1674,6 +1711,18 @@ function ModernOrdersDashboard() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AssignDeliveryModal 
+        isOpen={!!assignDomiOrder}
+        onClose={() => setAssignDomiOrder(null)}
+        order={assignDomiOrder}
+        businessId={businessId}
+        onAssigned={(data) => {
+          // You could optionally do something here, like optimistic update
+          // updateOrderStatus(assignDomiOrder._id, ORDER_STATUS.IN_PROGRESS); 
+          // Since it will be reflected via Socket anyway, doing nothing is also fine.
+        }}
+      />
     </div>
   );
 }

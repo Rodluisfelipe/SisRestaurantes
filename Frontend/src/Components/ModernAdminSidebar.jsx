@@ -4,7 +4,7 @@ import SubscriptionStatus from './SubscriptionStatus';
 import GuideOverlay from './Admin/GuideOverlay';
 import { 
   FaClipboardList, FaHamburger, FaSortAmountDown, FaFolderOpen, 
-  FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, 
+  FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, FaMotorcycle,
   FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
@@ -45,6 +45,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
         { id: 'tables', label: 'Mesas', Icon: FaChair, badge: null },
         { id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null },
+        { id: 'delivery', label: 'Domiciliarios', Icon: FaMotorcycle, badge: null },
       ]
     },
     {
