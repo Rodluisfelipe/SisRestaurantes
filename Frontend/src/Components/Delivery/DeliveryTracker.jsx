@@ -93,37 +93,74 @@ const DeliveryTracker = () => {
     if (!domiLocation || !mapRef.current) return;
     if (typeof window === 'undefined') return;
 
-    // Dynamically load Leaflet CSS if not already loaded
-    if (!document.querySelector('link[href*="leaflet"]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
+    // Load Leaflet CSS and wait for it before rendering map
+    const ensureLeafletCSS = () => {
+      return new Promise((resolve) => {
+        if (document.querySelector('link[href*="leaflet"]')) {
+          resolve();
+          return;
+        }
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.onload = resolve;
+        link.onerror = resolve; // proceed even if CSS fails
+        document.head.appendChild(link);
+      });
+    };
 
     const initMap = async () => {
+      await ensureLeafletCSS();
       const L = await import('leaflet');
 
+      // Fix default icon path issue
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+
       if (!mapInstanceRef.current) {
-        mapInstanceRef.current = L.map(mapRef.current).setView([domiLocation.lat, domiLocation.lng], 15);
+        mapInstanceRef.current = L.map(mapRef.current, {
+          zoomControl: true,
+          attributionControl: false,
+        }).setView([domiLocation.lat, domiLocation.lng], 16);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: '&copy; OpenStreetMap'
         }).addTo(mapInstanceRef.current);
+
+        // Fix broken tiles when container just mounted
+        setTimeout(() => {
+          mapInstanceRef.current?.invalidateSize();
+        }, 300);
       }
+
+      const domiIcon = L.divIcon({
+        html: `<div style="
+          background:#ef4444;
+          width:20px;height:20px;
+          border-radius:50%;
+          border:3px solid white;
+          box-shadow:0 2px 8px rgba(0,0,0,0.4);
+          position:relative;
+        "><div style="
+          position:absolute;top:-6px;left:50%;transform:translateX(-50%);
+          font-size:14px;
+        ">🛵</div></div>`,
+        className: 'domi-marker',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      });
 
       if (markerRef.current) {
         markerRef.current.setLatLng([domiLocation.lat, domiLocation.lng]);
       } else {
-        const icon = L.divIcon({
-          html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)"></div>',
-          className: '',
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
-        });
-        markerRef.current = L.marker([domiLocation.lat, domiLocation.lng], { icon }).addTo(mapInstanceRef.current);
+        markerRef.current = L.marker([domiLocation.lat, domiLocation.lng], { icon: domiIcon }).addTo(mapInstanceRef.current);
       }
 
-      mapInstanceRef.current.panTo([domiLocation.lat, domiLocation.lng]);
+      mapInstanceRef.current.setView([domiLocation.lat, domiLocation.lng], mapInstanceRef.current.getZoom());
+      mapInstanceRef.current.invalidateSize();
     };
 
     initMap();
@@ -220,13 +257,14 @@ const DeliveryTracker = () => {
         {/* Map */}
         {domiLocation && !isDelivered && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <style>{`.domi-marker { background: none !important; border: none !important; }`}</style>
             <div className="p-4 border-b border-slate-100 flex items-center gap-2">
-              <FaMotorcycle className="text-red-500" />
+              <FaMotorcycle className="text-red-500 animate-pulse" />
               <span className="font-medium text-slate-800 text-sm">
                 {order.deliveryPersonName ? `${order.deliveryPersonName} en camino` : 'Domiciliario en camino'}
               </span>
             </div>
-            <div ref={mapRef} className="h-64 w-full" />
+            <div ref={mapRef} className="h-72 w-full" style={{ minHeight: '288px' }} />
           </div>
         )}
 
