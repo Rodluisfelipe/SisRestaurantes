@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { getBusinessBySlug } from "../services/api";
 
@@ -11,7 +11,6 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [showMultiSessionWarning, setShowMultiSessionWarning] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
 
   // Helper para guardar tokens
   const saveTokens = (token, refreshToken, userObj) => {
@@ -46,7 +45,8 @@ export function AuthProvider({ children }) {
     // Contar sesiones únicas basándose en los prefijos
     const uniqueSessions = new Set();
     sessionKeys.forEach(key => {
-      const sessionId = key.split('_').slice(2).join('_');
+      // Keys: accessToken_admin_123_abc → sessionId: admin_123_abc
+      const sessionId = key.substring(key.indexOf('_') + 1);
       uniqueSessions.add(sessionId);
     });
     
@@ -161,12 +161,13 @@ export function AuthProvider({ children }) {
     return res.data.token;
   }, []);
 
-  // Validar token al montar
+  // Validar token al montar (solo una vez, no en cada cambio de ruta)
   useEffect(() => {
     const checkAuth = async () => {
       // Detectar rutas especiales donde no necesitamos verificar token
-      const isSuperAdminRoute = location.pathname.startsWith('/superadmin');
-      const isResetPasswordRoute = location.pathname.startsWith('/reset-password');
+      const currentPath = window.location.pathname;
+      const isSuperAdminRoute = currentPath.startsWith('/superadmin');
+      const isResetPasswordRoute = currentPath.startsWith('/reset-password');
       
       // Si estamos en rutas especiales, no necesitamos verificar token de usuario normal
       if (isSuperAdminRoute || isResetPasswordRoute) {
@@ -185,7 +186,7 @@ export function AuthProvider({ children }) {
           // Verify TTL — reject handoffs older than allowed window
           if (tokenData._ts && tokenData._ttl && (Date.now() - tokenData._ts > tokenData._ttl)) {
             console.warn('[Auth] SA handoff expired');
-            navigate(location.pathname, { replace: true });
+            navigate(window.location.pathname, { replace: true });
             setLoading(false);
             return;
           }
@@ -218,7 +219,7 @@ export function AuthProvider({ children }) {
                 setLoading(false);
                 
                 // Remove source param from URL if present
-                navigate(location.pathname, { replace: true });
+                navigate(window.location.pathname, { replace: true });
                 return;
               }
             } catch (verifyError) {
@@ -228,11 +229,11 @@ export function AuthProvider({ children }) {
           }
           
           // Remove source param from URL
-          navigate(location.pathname, { replace: true });
+          navigate(window.location.pathname, { replace: true });
         } catch (error) {
           // Error silencioso — malformed handoff data
           localStorage.removeItem('sa_handoff');
-          navigate(location.pathname, { replace: true });
+          navigate(window.location.pathname, { replace: true });
         }
       }
       
@@ -303,7 +304,24 @@ export function AuthProvider({ children }) {
     
     // Verificar sesiones múltiples al cargar
     checkMultipleSessions();
-  }, [refreshToken, navigate, location]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Detectar cuando otra pestaña limpia los tokens de localStorage
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'accessToken' && !e.newValue && isAuthenticated) {
+        // Otra pestaña limpió el token — verificar si aún tenemos sesión propia
+        const ownToken = sessionStorage.getItem('accessToken');
+        if (!ownToken) {
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [isAuthenticated]);
 
   // Función para limpiar sesiones antiguas
   const cleanupOldSessions = () => {
@@ -314,7 +332,9 @@ export function AuthProvider({ children }) {
       if (key.startsWith('accessToken_admin_') || 
           key.startsWith('refreshToken_admin_') || 
           key.startsWith('user_admin_')) {
-        const sessionId = key.split('_').slice(2).join('_');
+        // Keys look like: accessToken_admin_1234567890_abc123
+        // SessionId is: admin_1234567890_abc123 (everything after first _)
+        const sessionId = key.substring(key.indexOf('_') + 1);
         if (sessionId !== currentSessionId) {
           localStorage.removeItem(key);
         }

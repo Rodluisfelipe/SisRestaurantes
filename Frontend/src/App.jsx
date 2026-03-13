@@ -41,7 +41,19 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const { businessId } = useParams();
   
-  if (loading) return null; // O un spinner si prefieres
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative w-16 h-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-red-100" />
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500 animate-spin" style={{ animationDuration: '0.8s' }} />
+          </div>
+          <p className="text-slate-500 text-sm">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Rely on server-validated auth state from AuthContext, not raw localStorage
   if (!isAuthenticated) {

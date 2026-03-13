@@ -33,7 +33,8 @@ api.interceptors.request.use(
     // Adjuntar access token si existe (pero NO sobreescribir si ya fue puesto explícitamente)
     const hasExplicitAuth = config.headers?.Authorization || config.headers?.authorization;
     if (!hasExplicitAuth) {
-      const token = localStorage.getItem('accessToken');
+      // Prefer sessionStorage (per-tab) over localStorage (shared) to avoid cross-tab conflicts
+      const token = sessionStorage.getItem('accessToken') || localStorage.getItem('accessToken');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
       }
@@ -51,7 +52,12 @@ let isRefreshing = false;
 let refreshSubscribers = [];
 
 function onRefreshed(token) {
-  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers.forEach((cb) => cb(null, token));
+  refreshSubscribers = [];
+}
+
+function onRefreshFailed(err) {
+  refreshSubscribers.forEach((cb) => cb(err, null));
   refreshSubscribers = [];
 }
 
@@ -73,7 +79,8 @@ api.interceptors.response.use(
       if (isRefreshing) {
         // Esperar a que el token se refresque
         return new Promise((resolve, reject) => {
-          addRefreshSubscriber((token) => {
+          addRefreshSubscriber((err, token) => {
+            if (err) return reject(err);
             originalRequest.headers['Authorization'] = 'Bearer ' + token;
             resolve(api(originalRequest));
           });
@@ -92,7 +99,8 @@ api.interceptors.response.use(
         onRefreshed(newToken);
         return api(originalRequest);
       } catch (refreshError) {
-        // If refresh fails, clean up stale tokens and redirect to login
+        // If refresh fails, reject all queued requests, clean up and redirect to login
+        onRefreshFailed(refreshError);
         console.error('Error al refrescar el token:', refreshError);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
