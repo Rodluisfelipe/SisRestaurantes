@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
 import { FaPhone, FaMotorcycle, FaCheckCircle } from 'react-icons/fa';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
@@ -92,15 +93,8 @@ const DeliveryTracker = () => {
   // Initialize Leaflet map
   useEffect(() => {
     if (!domiLocation || !mapRef.current) return;
-    if (typeof window === 'undefined') return;
 
-    let cancelled = false;
-
-    const initMap = async () => {
-      if (cancelled) return;
-      const L = await import('leaflet');
-      if (cancelled || !mapRef.current) return;
-
+    try {
       if (!mapInstanceRef.current) {
         const map = L.map(mapRef.current, {
           zoomControl: true,
@@ -113,11 +107,9 @@ const DeliveryTracker = () => {
 
         mapInstanceRef.current = map;
 
-        // Multiple invalidateSize calls to handle CSS paint timing
-        const fixSize = () => { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); };
-        setTimeout(fixSize, 100);
-        setTimeout(fixSize, 400);
-        setTimeout(fixSize, 1000);
+        // Fix tile rendering after container mount
+        setTimeout(() => map.invalidateSize(), 200);
+        setTimeout(() => map.invalidateSize(), 800);
       }
 
       const domiIcon = L.divIcon({
@@ -134,12 +126,9 @@ const DeliveryTracker = () => {
       }
 
       mapInstanceRef.current.setView([domiLocation.lat, domiLocation.lng], mapInstanceRef.current.getZoom());
-      mapInstanceRef.current.invalidateSize();
-    };
-
-    initMap();
-
-    return () => { cancelled = true; };
+    } catch (err) {
+      console.error('[Tracker] Map error:', err);
+    }
   }, [domiLocation]);
 
   // Cleanup map on unmount
