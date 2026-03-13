@@ -37,6 +37,7 @@ const DeliveryQRPage = () => {
         const data = await res.json();
         setOrder(data);
         if (data.status === 'delivered' || data.status === 'completed') setDelivered(true);
+        if (data.deliveryPickedAt) setPicked(true);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -139,6 +140,13 @@ const DeliveryQRPage = () => {
       if (socketRef.current) socketRef.current.disconnect();
     };
   }, []);
+
+  // Auto-start tracking on reload if order was already picked
+  useEffect(() => {
+    if (order?.deliveryPickedAt && picked && !tracking && !delivered && !socketRef.current) {
+      startTracking();
+    }
+  }, [order, picked]);
 
   const handleConfirm = async () => {
     if (confirmCode.length !== 4) {
