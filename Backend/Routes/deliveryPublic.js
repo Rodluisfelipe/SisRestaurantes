@@ -209,7 +209,7 @@ router.post('/:token/picked', deliveryLimiter, async (req, res) => {
 // ============================================
 
 // POST /api/restaurants/:slug/domi/auth — Authenticate domiciliario
-router.post('/restaurants/:slug/domi/auth', deliveryLimiter, async (req, res) => {
+router.post('/:slug/domi/auth', deliveryLimiter, async (req, res) => {
   try {
     const business = await resolveSlug(req.params.slug);
     const { code } = req.body;
@@ -262,7 +262,7 @@ router.post('/restaurants/:slug/domi/auth', deliveryLimiter, async (req, res) =>
 });
 
 // GET /api/restaurants/:slug/domi/orders — Get assigned orders for domi
-router.get('/restaurants/:slug/domi/orders', domiAuth, async (req, res) => {
+router.get('/:slug/domi/orders', domiAuth, async (req, res) => {
   try {
     const { dpId, businessId, mode } = req.domi;
 
@@ -294,7 +294,7 @@ router.get('/restaurants/:slug/domi/orders', domiAuth, async (req, res) => {
 });
 
 // POST /api/restaurants/:slug/domi/orders/:id/confirm — Domi confirms with code
-router.post('/restaurants/:slug/domi/orders/:id/confirm', confirmLimiter, domiAuth, async (req, res) => {
+router.post('/:slug/domi/orders/:id/confirm', confirmLimiter, domiAuth, async (req, res) => {
   try {
     const { businessId } = req.domi;
     const { code } = req.body;
@@ -367,7 +367,7 @@ router.post('/restaurants/:slug/domi/orders/:id/confirm', confirmLimiter, domiAu
 });
 
 // POST /api/restaurants/:slug/domi/orders/:id/picked — Domi picks up order
-router.post('/restaurants/:slug/domi/orders/:id/picked', deliveryLimiter, domiAuth, async (req, res) => {
+router.post('/:slug/domi/orders/:id/picked', deliveryLimiter, domiAuth, async (req, res) => {
   try {
     const { businessId } = req.domi;
     const order = await Order.findOne({ _id: req.params.id, businessId });
@@ -392,7 +392,7 @@ router.post('/restaurants/:slug/domi/orders/:id/picked', deliveryLimiter, domiAu
 // ============================================
 
 // GET /api/restaurants/:slug/track/:orderId
-router.get('/restaurants/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
+router.get('/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
   try {
     const business = await resolveSlug(req.params.slug);
     const order = await Order.findOne({ _id: req.params.orderId, businessId: business._id })
