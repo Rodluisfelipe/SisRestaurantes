@@ -93,64 +93,48 @@ const DeliveryTracker = () => {
     if (!domiLocation || !mapRef.current) return;
     if (typeof window === 'undefined') return;
 
-    // Load Leaflet CSS and wait for it before rendering map
-    const ensureLeafletCSS = () => {
-      return new Promise((resolve) => {
-        if (document.querySelector('link[href*="leaflet"]')) {
-          resolve();
-          return;
-        }
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        link.onload = resolve;
-        link.onerror = resolve; // proceed even if CSS fails
-        document.head.appendChild(link);
-      });
-    };
+    let cancelled = false;
 
     const initMap = async () => {
-      await ensureLeafletCSS();
-      const L = await import('leaflet');
+      // Inject Leaflet CSS inline to avoid async load issues with tiles
+      if (!document.getElementById('leaflet-css-inline')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css-inline';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+        // Wait for CSS to load and paint
+        await new Promise(r => setTimeout(r, 500));
+      }
 
-      // Fix default icon path issue
-      delete L.Icon.Default.prototype._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
+      if (cancelled) return;
+      const L = await import('leaflet');
+      if (cancelled || !mapRef.current) return;
 
       if (!mapInstanceRef.current) {
-        mapInstanceRef.current = L.map(mapRef.current, {
+        const map = L.map(mapRef.current, {
           zoomControl: true,
           attributionControl: false,
         }).setView([domiLocation.lat, domiLocation.lng], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap'
-        }).addTo(mapInstanceRef.current);
 
-        // Fix broken tiles when container just mounted
-        setTimeout(() => {
-          mapInstanceRef.current?.invalidateSize();
-        }, 300);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+        }).addTo(map);
+
+        mapInstanceRef.current = map;
+
+        // Multiple invalidateSize calls to handle CSS paint timing
+        const fixSize = () => { if (mapInstanceRef.current) mapInstanceRef.current.invalidateSize(); };
+        setTimeout(fixSize, 100);
+        setTimeout(fixSize, 400);
+        setTimeout(fixSize, 1000);
       }
 
       const domiIcon = L.divIcon({
-        html: `<div style="
-          background:#ef4444;
-          width:20px;height:20px;
-          border-radius:50%;
-          border:3px solid white;
-          box-shadow:0 2px 8px rgba(0,0,0,0.4);
-          position:relative;
-        "><div style="
-          position:absolute;top:-6px;left:50%;transform:translateX(-50%);
-          font-size:14px;
-        ">🛵</div></div>`,
+        html: '<div style="background:#ef4444;width:22px;height:22px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;">🛵</div>',
         className: 'domi-marker',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
       });
 
       if (markerRef.current) {
@@ -164,6 +148,8 @@ const DeliveryTracker = () => {
     };
 
     initMap();
+
+    return () => { cancelled = true; };
   }, [domiLocation]);
 
   // Cleanup map on unmount
@@ -256,15 +242,19 @@ const DeliveryTracker = () => {
 
         {/* Map */}
         {domiLocation && !isDelivered && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <style>{`.domi-marker { background: none !important; border: none !important; }`}</style>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+            <style>{`
+              .domi-marker { background: none !important; border: none !important; }
+              .leaflet-container { width: 100% !important; height: 100% !important; }
+              .leaflet-tile-pane img { visibility: visible !important; }
+            `}</style>
             <div className="p-4 border-b border-slate-100 flex items-center gap-2">
               <FaMotorcycle className="text-red-500 animate-pulse" />
               <span className="font-medium text-slate-800 text-sm">
                 {order.deliveryPersonName ? `${order.deliveryPersonName} en camino` : 'Domiciliario en camino'}
               </span>
             </div>
-            <div ref={mapRef} className="h-72 w-full" style={{ minHeight: '288px' }} />
+            <div ref={mapRef} style={{ height: '300px', width: '100%', position: 'relative' }} />
           </div>
         )}
 
