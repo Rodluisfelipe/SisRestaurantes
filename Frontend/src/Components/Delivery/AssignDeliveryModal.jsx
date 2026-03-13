@@ -5,7 +5,7 @@ import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import { FaQrcode, FaUserAlt, FaMotorcycle, FaWhatsapp, FaCopy, FaTimes, FaCheck, FaMapMarkerAlt } from 'react-icons/fa';
 
-const AssignDeliveryModal = ({ order, onClose, onAssigned }) => {
+const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
   const { businessId, businessConfig } = useBusinessConfig();
   const [step, setStep] = useState('choose'); // choose | qr_result | domi_result
   const [loading, setLoading] = useState(false);
@@ -15,8 +15,13 @@ const AssignDeliveryModal = ({ order, onClose, onAssigned }) => {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetchDomis();
-  }, []);
+    if (isOpen) {
+      fetchDomis();
+      setStep('choose');
+      setResult(null);
+      setSelectedDomi(null);
+    }
+  }, [isOpen]);
 
   const fetchDomis = async () => {
     try {
@@ -74,6 +79,7 @@ const AssignDeliveryModal = ({ order, onClose, onAssigned }) => {
 
   return (
     <AnimatePresence>
+      {isOpen && (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -262,6 +268,7 @@ const AssignDeliveryModal = ({ order, onClose, onAssigned }) => {
           </div>
         </motion.div>
       </motion.div>
+      )}
     </AnimatePresence>
   );
 };
