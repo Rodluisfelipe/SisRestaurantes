@@ -20,7 +20,7 @@ const DeliveryQRPage = () => {
   const [delivered, setDelivered] = useState(false);
   const [picked, setPicked] = useState(false);
   const [tracking, setTracking] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [gpsError, setGpsError] = useState(null);
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const socketRef = useRef(null);
@@ -89,23 +89,34 @@ const DeliveryQRPage = () => {
 
   const startTracking = () => {
     if (!order?.orderId) return;
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-    socketRef.current = socket;
-    if (navigator.geolocation) {
-      geoWatchRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          setTracking(true);
-          socket.emit('domi:location', {
-            orderId: order.orderId,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            timestamp: Date.now()
-          });
-        },
-        () => setTracking(false),
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-      );
+    if (!navigator.geolocation) { setGpsError('Tu navegador no soporta geolocalización'); return; }
+    setGpsError(null);
+    // Reuse existing socket or create new
+    if (!socketRef.current || socketRef.current.disconnected) {
+      socketRef.current = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     }
+    const socket = socketRef.current;
+    // Clear previous watch if any
+    if (geoWatchRef.current) navigator.geolocation.clearWatch(geoWatchRef.current);
+    geoWatchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        setTracking(true);
+        setGpsError(null);
+        socket.emit('domi:location', {
+          orderId: order.orderId,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          timestamp: Date.now()
+        });
+      },
+      (err) => {
+        setTracking(false);
+        if (err.code === 1) setGpsError('Permiso de ubicación denegado');
+        else if (err.code === 2) setGpsError('Ubicación no disponible');
+        else setGpsError('No se pudo obtener la ubicación');
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
   };
 
   useEffect(() => {
@@ -285,14 +296,34 @@ const DeliveryQRPage = () => {
           </motion.button>
         )}
 
-        {/* GPS warning */}
-        {picked && !tracking && (
+        {/* GPS error with retry */}
+        {picked && !tracking && gpsError && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+            className="bg-red-50 border border-red-200 rounded-2xl p-3">
+            <div className="flex items-center gap-2.5 mb-2">
+              <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <FaLocationArrow className="text-red-500 text-sm" />
+              </div>
+              <p className="text-xs text-red-700 font-medium flex-1">{gpsError}</p>
+            </div>
+            <button
+              onClick={startTracking}
+              className="w-full text-sm font-bold py-2 rounded-xl text-white flex items-center justify-center gap-2"
+              style={{ background: brandColor }}
+            >
+              <FaLocationArrow className="text-xs" /> Reintentar GPS
+            </button>
+          </motion.div>
+        )}
+
+        {/* GPS waiting (no error yet) */}
+        {picked && !tracking && !gpsError && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
             className="bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <FaLocationArrow className="text-amber-500 text-sm" />
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-amber-300 border-t-amber-600" />
             </div>
-            <p className="text-xs text-amber-700 font-medium">Permite el acceso a tu ubicación para que el cliente pueda seguir el pedido</p>
+            <p className="text-xs text-amber-700 font-medium">Conectando GPS...</p>
           </motion.div>
         )}
 
