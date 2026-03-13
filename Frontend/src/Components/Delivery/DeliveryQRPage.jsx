@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { API_URL } from '../../config';
-import { FaMapMarkerAlt, FaPhone, FaCheck, FaBoxOpen } from 'react-icons/fa';
+import { io } from 'socket.io-client';
+import { FaMapMarkerAlt, FaPhone, FaCheck, FaBoxOpen, FaLocationArrow } from 'react-icons/fa';
 
 const API_BASE = API_URL;
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
 
 const DeliveryQRPage = () => {
   const { token } = useParams();
@@ -16,8 +18,11 @@ const DeliveryQRPage = () => {
   const [confirming, setConfirming] = useState(false);
   const [delivered, setDelivered] = useState(false);
   const [picked, setPicked] = useState(false);
+  const [tracking, setTracking] = useState(false);
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const socketRef = useRef(null);
+  const geoWatchRef = useRef(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -86,8 +91,43 @@ const DeliveryQRPage = () => {
     try {
       await fetch(`${API_BASE}/delivery/${token}/picked`, { method: 'POST' });
       setPicked(true);
+      startTracking();
     } catch { /* error */ }
   };
+
+  // Connect socket and start GPS tracking
+  const startTracking = () => {
+    if (!order?.orderId) return;
+
+    // Connect socket
+    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
+    socketRef.current = socket;
+    setTracking(true);
+
+    // Start GPS
+    if (navigator.geolocation) {
+      geoWatchRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          socket.emit('domi:location', {
+            orderId: order.orderId,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            timestamp: Date.now()
+          });
+        },
+        () => { /* GPS denied */ },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+      );
+    }
+  };
+
+  // Cleanup socket + GPS on unmount
+  useEffect(() => {
+    return () => {
+      if (geoWatchRef.current) navigator.geolocation.clearWatch(geoWatchRef.current);
+      if (socketRef.current) socketRef.current.disconnect();
+    };
+  }, []);
 
   const handleConfirm = async () => {
     if (confirmCode.length !== 4) {
@@ -104,6 +144,16 @@ const DeliveryQRPage = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
+      // Stop GPS tracking on successful delivery
+      if (geoWatchRef.current) {
+        navigator.geolocation.clearWatch(geoWatchRef.current);
+        geoWatchRef.current = null;
+      }
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+      setTracking(false);
       setDelivered(true);
     } catch (err) {
       setConfirmError(err.message);
@@ -201,6 +251,14 @@ const DeliveryQRPage = () => {
             <span>${((order?.total || 0) + (order?.deliveryFee || 0)).toLocaleString()}</span>
           </div>
         </div>
+
+        {/* GPS Tracking indicator */}
+        {tracking && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center gap-2">
+            <FaLocationArrow className="text-emerald-500 animate-pulse" />
+            <span className="text-sm text-emerald-700 font-medium">Compartiendo ubicación con el cliente…</span>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="space-y-3 pb-6">
