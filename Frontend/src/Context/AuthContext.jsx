@@ -17,6 +17,15 @@ export function AuthProvider({ children }) {
     // Generar un ID único para esta sesión
     const sessionId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
+    // Limpiar sesiones previas de ESTE navegador antes de guardar
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('accessToken_admin_') || 
+          key.startsWith('refreshToken_admin_') || 
+          key.startsWith('user_admin_')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
     // Guardar en sessionStorage para esta sesión específica
     sessionStorage.setItem('accessToken', token);
     sessionStorage.setItem('refreshToken', refreshToken);
@@ -36,23 +45,31 @@ export function AuthProvider({ children }) {
 
   // Helper para detectar múltiples sesiones
   const checkMultipleSessions = () => {
+    // Limpiar primero sesiones huérfanas (>24h) automáticamente
+    const now = Date.now();
+    const maxAge = 24 * 60 * 60 * 1000; // 24 horas
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('accessToken_admin_')) {
+        // Extraer timestamp del sessionId: admin_<TIMESTAMP>_<random>
+        const match = key.match(/accessToken_admin_(\d+)_/);
+        if (match && now - parseInt(match[1]) > maxAge) {
+          const sessionId = key.substring(key.indexOf('_') + 1);
+          localStorage.removeItem(`accessToken_${sessionId}`);
+          localStorage.removeItem(`refreshToken_${sessionId}`);
+          localStorage.removeItem(`user_${sessionId}`);
+        }
+      }
+    });
+
+    // Ahora contar sesiones restantes
     const sessionKeys = Object.keys(localStorage).filter(key => 
-      key.startsWith('accessToken_admin_') || 
-      key.startsWith('refreshToken_admin_') || 
-      key.startsWith('user_admin_')
+      key.startsWith('accessToken_admin_')
     );
     
-    // Contar sesiones únicas basándose en los prefijos
-    const uniqueSessions = new Set();
-    sessionKeys.forEach(key => {
-      // Keys: accessToken_admin_123_abc → sessionId: admin_123_abc
-      const sessionId = key.substring(key.indexOf('_') + 1);
-      uniqueSessions.add(sessionId);
-    });
-    
-    const count = uniqueSessions.size;
-    setShowMultiSessionWarning(count > 1);
-    return count;
+    // Solo mostrar warning si hay más de 1 sesión en ESTE navegador
+    // (que indicaría un problema real, no solo 2 dispositivos)
+    setShowMultiSessionWarning(sessionKeys.length > 1);
+    return sessionKeys.length;
   };
 
   // Helper para limpiar tokens
