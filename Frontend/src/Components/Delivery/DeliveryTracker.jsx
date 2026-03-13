@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
 import { FaPhone, FaMotorcycle, FaCheckCircle } from 'react-icons/fa';
-import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
@@ -17,12 +16,11 @@ const STEPS = [
   { key: 'delivered', label: 'Entregado', icon: '✅' }
 ];
 
-// Map order status to step index
 function getStepIndex(status, pickedAt) {
   if (status === 'delivered' || status === 'completed') return 3;
   if (pickedAt || status === 'inProgress') return 2;
   if (status === 'preparing' || status === 'ready') return 1;
-  return 0; // pending, confirmed, payment_*
+  return 0;
 }
 
 const DeliveryTracker = () => {
@@ -31,10 +29,11 @@ const DeliveryTracker = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [domiLocation, setDomiLocation] = useState(null);
+  const mapContainerRef = useRef(null);
   const mapRef = useRef(null);
-  const mapInstanceRef = useRef(null);
   const markerRef = useRef(null);
   const socketRef = useRef(null);
+  const leafletRef = useRef(null);
 
   // Fetch order data
   useEffect(() => {
@@ -53,21 +52,15 @@ const DeliveryTracker = () => {
     fetchOrder();
   }, [slug, orderId]);
 
-  // Socket connection for live updates
+  // Socket connection
   useEffect(() => {
     if (!order || !orderId) return;
 
-    console.log('[Tracker] Connecting socket to:', SOCKET_URL, 'for orderId:', orderId);
     const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      console.log('[Tracker] Socket connected:', socket.id, '- joining room order:', orderId);
       socket.emit('delivery:track', { orderId });
-    });
-
-    socket.on('connect_error', (err) => {
-      console.error('[Tracker] Socket connect error:', err.message);
     });
 
     socket.on('order:status', (data) => {
@@ -75,69 +68,88 @@ const DeliveryTracker = () => {
     });
 
     socket.on('domi:location', (data) => {
-      console.log('[Tracker] Received domi:location', data);
-      setDomiLocation({ lat: data.lat, lng: data.lng });
+      if (data?.lat != null && data?.lng != null) {
+        setDomiLocation({ lat: data.lat, lng: data.lng });
+      }
     });
 
     socket.on('delivery:confirmed', (data) => {
       setOrder(prev => prev ? { ...prev, status: 'delivered', deliveredAt: data.deliveredAt } : prev);
     });
 
-    return () => {
-      console.log('[Tracker] Disconnecting socket');
-      socket.disconnect();
-    };
+    return () => { socket.disconnect(); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [!!order, orderId]);
 
-  // Initialize Leaflet map
-  useEffect(() => {
-    if (!domiLocation || !mapRef.current) return;
-
+  // Initialize map when we first get a location
+  const ensureMap = useCallback(async (lat, lng) => {
     try {
-      if (!mapInstanceRef.current) {
-        const map = L.map(mapRef.current, {
+      if (!mapContainerRef.current) return;
+
+      // Load leaflet dynamically to avoid SSR issues
+      if (!leafletRef.current) {
+        const mod = await import('leaflet');
+        leafletRef.current = mod.default || mod;
+      }
+      const L = leafletRef.current;
+
+      if (!mapRef.current) {
+        // Create map
+        const map = L.map(mapContainerRef.current, {
+          center: [lat, lng],
+          zoom: 16,
           zoomControl: true,
           attributionControl: false,
-        }).setView([domiLocation.lat, domiLocation.lng], 16);
+        });
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        mapRef.current = map;
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-        }).addTo(map);
-
-        mapInstanceRef.current = map;
-
-        // Fix tile rendering after container mount
-        setTimeout(() => map.invalidateSize(), 200);
-        setTimeout(() => map.invalidateSize(), 800);
+        // Invalidate after paint
+        requestAnimationFrame(() => {
+          map.invalidateSize();
+          setTimeout(() => map.invalidateSize(), 300);
+          setTimeout(() => map.invalidateSize(), 1000);
+        });
       }
 
-      const domiIcon = L.divIcon({
-        html: '<div style="background:#ef4444;width:22px;height:22px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;">🛵</div>',
-        className: 'domi-marker',
-        iconSize: [22, 22],
-        iconAnchor: [11, 11]
+      // Update or create marker
+      const icon = L.divIcon({
+        html: '<div style="background:#ef4444;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:13px;">🛵</div>',
+        className: 'domi-icon',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
       });
 
       if (markerRef.current) {
-        markerRef.current.setLatLng([domiLocation.lat, domiLocation.lng]);
+        markerRef.current.setLatLng([lat, lng]);
       } else {
-        markerRef.current = L.marker([domiLocation.lat, domiLocation.lng], { icon: domiIcon }).addTo(mapInstanceRef.current);
+        markerRef.current = L.marker([lat, lng], { icon }).addTo(mapRef.current);
       }
 
-      mapInstanceRef.current.setView([domiLocation.lat, domiLocation.lng], mapInstanceRef.current.getZoom());
+      mapRef.current.setView([lat, lng], mapRef.current.getZoom(), { animate: true });
     } catch (err) {
       console.error('[Tracker] Map error:', err);
     }
+  }, []);
+
+  // React to domiLocation changes
+  useEffect(() => {
+    if (domiLocation) {
+      ensureMap(domiLocation.lat, domiLocation.lng);
+    }
+  }, [domiLocation, ensureMap]);
+
+  // Invalidate map when it becomes visible
+  useEffect(() => {
+    if (domiLocation && mapRef.current) {
+      setTimeout(() => mapRef.current?.invalidateSize(), 100);
+    }
   }, [domiLocation]);
 
-  // Cleanup map on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
     };
   }, []);
 
@@ -163,9 +175,12 @@ const DeliveryTracker = () => {
 
   const currentStep = getStepIndex(order.status, order.deliveryPickedAt);
   const isDelivered = order.status === 'delivered' || order.status === 'completed';
+  const showMap = !!domiLocation && !isDelivered;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      <style>{`.domi-icon{background:none!important;border:none!important}`}</style>
+
       {/* Header */}
       <div className="bg-white border-b border-slate-100 px-4 py-4">
         <div className="max-w-lg mx-auto">
@@ -197,9 +212,7 @@ const DeliveryTracker = () => {
                       animate={{ scale: isCurrent ? [1, 1.15, 1] : 1 }}
                       transition={{ repeat: isCurrent ? Infinity : 0, duration: 1.5 }}
                       className={`w-10 h-10 rounded-full flex items-center justify-center text-lg border-2 ${
-                        isActive
-                          ? 'bg-emerald-100 border-emerald-500'
-                          : 'bg-slate-50 border-slate-200'
+                        isActive ? 'bg-emerald-100 border-emerald-500' : 'bg-slate-50 border-slate-200'
                       }`}
                     >
                       {step.icon}
@@ -219,28 +232,34 @@ const DeliveryTracker = () => {
           </div>
         </div>
 
-        {/* Map */}
-        {domiLocation && !isDelivered && (
+        {/* Map section - container always in DOM, visibility toggled */}
+        {showMap && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
-            <style>{`
-              .domi-marker { background: none !important; border: none !important; }
-              .leaflet-container { width: 100% !important; height: 100% !important; }
-              .leaflet-tile-pane img { visibility: visible !important; }
-            `}</style>
             <div className="p-4 border-b border-slate-100 flex items-center gap-2">
               <FaMotorcycle className="text-red-500 animate-pulse" />
               <span className="font-medium text-slate-800 text-sm">
                 {order.deliveryPersonName ? `${order.deliveryPersonName} en camino` : 'Domiciliario en camino'}
               </span>
             </div>
-            <div ref={mapRef} style={{ height: '300px', width: '100%', position: 'relative' }} />
           </div>
         )}
+        {/* Map container - ALWAYS rendered, hidden when not needed */}
+        <div
+          ref={mapContainerRef}
+          style={{
+            height: showMap ? '300px' : '0px',
+            width: '100%',
+            overflow: 'hidden',
+            borderRadius: '0 0 16px 16px',
+            marginTop: showMap ? '-24px' : '0',
+            transition: 'height 0.3s ease',
+          }}
+        />
 
         {!domiLocation && !isDelivered && order.trackingEnabled && (
           <div className="bg-slate-50 rounded-2xl p-4 text-center">
             <FaMotorcycle className="text-slate-300 text-3xl mx-auto mb-2" />
-            <p className="text-slate-500 text-sm">Ubicación no disponible</p>
+            <p className="text-slate-500 text-sm">Esperando ubicación del domiciliario...</p>
           </div>
         )}
 
@@ -275,7 +294,6 @@ const DeliveryTracker = () => {
           </a>
         )}
 
-        {/* Powered by */}
         <p className="text-center text-xs text-slate-400 pb-4">
           Seguimiento por <span className="font-bold text-red-500">MenuBy</span>
         </p>
