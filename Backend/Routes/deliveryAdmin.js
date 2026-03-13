@@ -148,18 +148,21 @@ router.post('/restaurants/:slug/orders/:id/assign-qr', tenantAuth, async (req, r
     if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
     if (order.orderType !== 'delivery') return res.status(400).json({ message: 'Solo pedidos de delivery' });
 
-    const token = generateDeliveryToken();
-    const code = generateConfirmationCode();
+    // Reuse existing token/code if already assigned
+    const token = order.deliveryToken || generateDeliveryToken();
+    const code = order.confirmationCode || generateConfirmationCode();
 
-    order.deliveryMode = 'qr';
-    order.deliveryToken = token;
-    order.deliveryTokenExpiresAt = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
-    order.confirmationCode = code;
-    order.confirmationAttempts = 0;
-    order.deliveryAssignedAt = new Date();
-    order.status = 'inProgress';
-    order.statusHistory.push({ status: 'inProgress', timestamp: new Date(), note: 'Domiciliario asignado (QR)' });
-    await order.save();
+    if (!order.deliveryToken) {
+      order.deliveryMode = 'qr';
+      order.deliveryToken = token;
+      order.deliveryTokenExpiresAt = new Date(Date.now() + 4 * 60 * 60 * 1000);
+      order.confirmationCode = code;
+      order.confirmationAttempts = 0;
+      order.deliveryAssignedAt = new Date();
+      order.status = 'inProgress';
+      order.statusHistory.push({ status: 'inProgress', timestamp: new Date(), note: 'Domiciliario asignado (QR)' });
+      await order.save();
+    }
 
     // Notify dashboard
     socketService.emitToBusiness(businessId, 'orderUpdated', order.toObject());
@@ -190,14 +193,17 @@ router.post('/restaurants/:slug/orders/:id/assign-delivery-person', tenantAuth, 
     if (order.orderType !== 'delivery') return res.status(400).json({ message: 'Solo pedidos de delivery' });
 
     const { deliveryPersonId, mode } = req.body; // mode: 'fixed' or 'profile'
-    const code = generateConfirmationCode();
+    const code = order.confirmationCode || generateConfirmationCode();
+    const isNewAssignment = !order.confirmationCode;
 
-    order.deliveryMode = mode === 'fixed' ? 'fixed' : 'profile';
-    order.confirmationCode = code;
-    order.confirmationAttempts = 0;
-    order.deliveryAssignedAt = new Date();
-    order.status = 'inProgress';
-    order.statusHistory.push({ status: 'inProgress', timestamp: new Date(), note: `Domiciliario asignado (${order.deliveryMode})` });
+    if (isNewAssignment) {
+      order.deliveryMode = mode === 'fixed' ? 'fixed' : 'profile';
+      order.confirmationCode = code;
+      order.confirmationAttempts = 0;
+      order.deliveryAssignedAt = new Date();
+      order.status = 'inProgress';
+      order.statusHistory.push({ status: 'inProgress', timestamp: new Date(), note: `Domiciliario asignado (${order.deliveryMode})` });
+    }
 
     if (deliveryPersonId) {
       order.deliveryPersonId = deliveryPersonId;
