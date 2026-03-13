@@ -5,7 +5,7 @@ import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
 import { FaPhone, FaMotorcycle, FaCheckCircle } from 'react-icons/fa';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL;
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
 const API_BASE = API_URL;
 
 const STEPS = [
