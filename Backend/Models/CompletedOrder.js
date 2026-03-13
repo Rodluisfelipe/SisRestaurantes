@@ -135,6 +135,34 @@ const completedOrderSchema = new mongoose.Schema({
     change: { type: Number, default: null },
   },
   
+  // Delivery person / domiciliario fields
+  deliveryMode: {
+    type: String,
+    enum: ['qr', 'fixed', 'profile'],
+    default: null
+  },
+  deliveryPersonId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryPerson',
+    default: null
+  },
+  confirmationAttempts: {
+    type: Number,
+    default: 0
+  },
+  deliveryAssignedAt: {
+    type: Date,
+    default: null
+  },
+  deliveryPickedAt: {
+    type: Date,
+    default: null
+  },
+  deliveredAt: {
+    type: Date,
+    default: null
+  },
+  
   // Timestamps
   createdAt: {
     type: Date,

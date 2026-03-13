@@ -10,6 +10,9 @@ const Admin = lazy(() => import("./Pages/Admin"));
 const Kitchen = lazy(() => import("./Pages/Kitchen"));
 const POS = lazy(() => import("./Pages/POS"));
 const SuperAdminDashboard = lazy(() => import("./Pages/SuperAdmin/SuperAdminDashboard"));
+const DomiPage = lazy(() => import("./Components/Delivery/DomiPage"));
+const DeliveryTracker = lazy(() => import("./Components/Delivery/DeliveryTracker"));
+const DeliveryQRPage = lazy(() => import("./Components/Delivery/DeliveryQRPage"));
 const MenuByCatalog = lazy(() => import("./Pages/Catalog/MenuByCatalog"));
 const RestaurantDetail = lazy(() => import("./Pages/Catalog/RestaurantDetail"));
 const LeadCapturePage = lazy(() => import("./Pages/LeadCapturePage"));
@@ -264,6 +267,37 @@ function App() {
           />
         
         {/* Ruta genérica para ID de negocio - IMPORTANTE: debe ir después de las rutas específicas */}
+
+        {/* Delivery: Domiciliario page */}
+        <Route
+          path="/:businessId/domi"
+          element={
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}>
+              <DomiPage />
+            </Suspense>
+          }
+        />
+
+        {/* Delivery: Client tracking page */}
+        <Route
+          path="/:businessId/track/:orderId"
+          element={
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}>
+              <DeliveryTracker />
+            </Suspense>
+          }
+        />
+
+        {/* Delivery: QR page (public, token-based) */}
+        <Route
+          path="/:businessId/delivery/:token"
+          element={
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}>
+              <DeliveryQRPage />
+            </Suspense>
+          }
+        />
+
         <Route
           path="/:businessId/*"
           element={

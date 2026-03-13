@@ -177,6 +177,51 @@ const orderSchema = new mongoose.Schema({
     default: false
   },
   
+  // Delivery person / domiciliario fields
+  deliveryMode: {
+    type: String,
+    enum: ['qr', 'fixed', 'profile'],
+    default: null
+  },
+  deliveryToken: {
+    type: String,
+    default: null,
+    index: true
+  },
+  deliveryTokenExpiresAt: {
+    type: Date,
+    default: null
+  },
+  deliveryPersonId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryPerson',
+    default: null
+  },
+  confirmationCode: {
+    type: String,
+    default: null
+  },
+  confirmationAttempts: {
+    type: Number,
+    default: 0
+  },
+  deliveryAssignedAt: {
+    type: Date,
+    default: null
+  },
+  deliveryPickedAt: {
+    type: Date,
+    default: null
+  },
+  deliveredAt: {
+    type: Date,
+    default: null
+  },
+  trackingEnabled: {
+    type: Boolean,
+    default: false
+  },
+  
   // POS payment details (persisted for ticket reprinting)
   posPaymentInfo: {
     cashReceived: { type: Number, default: null },

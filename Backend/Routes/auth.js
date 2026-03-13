@@ -254,7 +254,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     // Generar tokens para el inicio de sesión automático
     const token = generateToken(admin._id, businessConfig._id);
     const refreshToken = generateRefreshToken(admin._id);
-    admin.refreshToken = refreshToken;
+    admin.addRefreshToken(refreshToken);
     await admin.save();
 
     res.status(201).json({
@@ -415,7 +415,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     // Generar tokens
     const token = generateToken(admin._id, admin.businessId);
     const refreshToken = generateRefreshToken(admin._id);
-    admin.refreshToken = refreshToken;
+    admin.addRefreshToken(refreshToken);
     await admin.save();
 
     res.json({
@@ -521,7 +521,7 @@ router.post('/logout', async (req, res) => {
     }
     const admin = await Admin.findById(decoded.id);
     if (admin) {
-      admin.refreshToken = null;
+      admin.removeRefreshToken(refreshToken);
       await admin.save();
     }
     res.json({ message: 'Logout exitoso' });
@@ -677,7 +677,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       admin.lastLogin = new Date();
       const token = generateToken(admin._id, admin.businessId);
       const refreshToken = generateRefreshToken(admin._id);
-      admin.refreshToken = refreshToken;
+      admin.addRefreshToken(refreshToken);
       await admin.save();
 
       // Obtener slug del negocio
@@ -814,7 +814,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
     // Generar tokens
     const token = generateToken(admin._id, businessConfig._id);
     const refreshToken = generateRefreshToken(admin._id);
-    admin.refreshToken = refreshToken;
+    admin.addRefreshToken(refreshToken);
     await admin.save();
 
     logger.info(`Nuevo negocio registrado via Google: ${sanitizedBusinessName} (${email})`);

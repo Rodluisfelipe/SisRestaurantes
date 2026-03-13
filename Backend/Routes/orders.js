@@ -755,8 +755,8 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
       logger.warn('Failed to send customer push for status change', { error: pushErr.message });
     }
     
-    // If order is completed, move it to CompletedOrders collection
-    if (status === "completed") {
+    // If order is completed or delivered, move it to CompletedOrders collection
+    if (status === "completed" || status === "delivered") {
       // Register MenuBy orders in cash register if one is open
       if (updatedOrder.orderChannel !== 'pos') {
         try {

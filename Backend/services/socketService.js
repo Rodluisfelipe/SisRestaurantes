@@ -200,6 +200,48 @@ function initSocket(io) {
       }
     });
 
+    // === DELIVERY / DOMI TRACKING ===
+
+    // Domi joins their personal delivery room (Mode 3)
+    socket.on('domi:join', ({ deliveryPersonId, businessId }) => {
+      if (!deliveryPersonId || !businessId) return;
+      socket.join(`delivery:${deliveryPersonId}`);
+      socket.join(`restaurant:${businessId}:delivery`);
+      socket._domiId = deliveryPersonId;
+      socket._domiBusinessId = businessId;
+      logger.info('Domi joined delivery room', { socketId: socket.id, deliveryPersonId });
+      emitToBusiness(businessId, 'domi:status', { deliveryPersonId, status: 'connected' });
+    });
+
+    // Fixed domi joins the restaurant delivery room (Mode 2)
+    socket.on('domi:joinFixed', ({ businessId }) => {
+      if (!businessId) return;
+      socket.join(`restaurant:${businessId}:delivery`);
+      socket._domiBusinessId = businessId;
+      logger.info('Fixed domi joined restaurant delivery room', { socketId: socket.id, businessId });
+    });
+
+    // Customer joins order tracking room for delivery tracking
+    socket.on('delivery:track', ({ orderId }) => {
+      if (!orderId) return;
+      socket.join(`order:${orderId}`);
+      logger.debug('Client joined delivery tracking room', { socketId: socket.id, orderId });
+    });
+
+    // Domi sends location update (every ~10 seconds)
+    socket.on('domi:location', ({ deliveryPersonId, orderId, lat, lng, timestamp }) => {
+      if (!orderId || lat == null || lng == null) return;
+      // Relay to order room (customer tracking page + dashboard)
+      ioInstance.to(`order:${orderId}`).emit('domi:location', { lat, lng, timestamp });
+      // Also relay to business dashboard
+      if (socket._domiBusinessId) {
+        emitToBusiness(socket._domiBusinessId, 'domi:location', {
+          deliveryPersonId: deliveryPersonId || socket._domiId,
+          orderId, lat, lng, timestamp
+        });
+      }
+    });
+
     // === VIEWER TRACKING (no auth required — customers viewing the menu) ===
     
     socket.on('viewer:join', async (data) => {
@@ -278,6 +320,14 @@ function initSocket(io) {
     });
 
     socket.on('disconnect', () => {
+      // Clean up domi tracking on disconnect
+      if (socket._domiId && socket._domiBusinessId) {
+        emitToBusiness(socket._domiBusinessId, 'domi:status', {
+          deliveryPersonId: socket._domiId,
+          status: 'disconnected'
+        });
+      }
+
       // Clean up viewer tracking on disconnect
       const viewerBid = socket._viewerBusinessId;
       if (viewerBid) {
