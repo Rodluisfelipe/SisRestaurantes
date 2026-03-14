@@ -931,8 +931,8 @@ export default function Menu() {
         }
       }
 
-      // Verificar mesa para pedidos en sitio
-      if (finalOrderInfo.orderType === 'inSite') {
+      // Verificar mesa para pedidos en sitio (no aplica para reservas/citas)
+      if (finalOrderInfo.orderType === 'inSite' && !finalOrderInfo.isBooking) {
         const currentTable = finalOrderInfo.tableNumber ? finalOrderInfo.tableNumber.trim() : '';
         
         logger.info('Verificando mesa para pedido en sitio:', currentTable);
@@ -966,7 +966,7 @@ export default function Menu() {
       console.log('=== FIN CÁLCULO ===');
       
       // Realizar últimas validaciones
-      if (finalOrderInfo.orderType === 'inSite' && !finalOrderInfo.tableNumber) {
+      if (finalOrderInfo.orderType === 'inSite' && !finalOrderInfo.tableNumber && !finalOrderInfo.isBooking) {
         logger.error('Error: Intento de enviar pedido en sitio sin número de mesa');
         alert('Error: Falta el número de mesa');
         setIsSubmittingOrder(false);
@@ -1069,6 +1069,11 @@ export default function Menu() {
           deliveryZoneInfo: orderDetails.deliveryZoneInfo || null,
           deliveryCalculated: orderDetails.deliveryCalculated || false,
           deliveryNeedsConfirmation: orderDetails.deliveryNeedsConfirmation || false
+        }),
+        // Información de reserva/cita
+        ...(orderDetails.isBooking && {
+          isBooking: true,
+          bookingDate: orderDetails.bookingDate
         })
       };
 
