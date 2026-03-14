@@ -17,7 +17,7 @@ const StaffManager = ({ businessId }) => {
 
   const fetchStaff = async () => {
     try {
-      const res = await api.get('/auth/staff');
+      const res = await api.get(`/auth/staff?businessId=${businessId}`);
       setStaff(res.data.staff || []);
     } catch { /* empty */ }
     setLoading(false);
@@ -38,7 +38,7 @@ const StaffManager = ({ businessId }) => {
     }
     setSaving(true);
     try {
-      await api.post('/auth/staff', form);
+      await api.post('/auth/staff', { ...form, businessId });
       setForm({ username: '', password: '', name: '', role: 'staff' });
       setShowForm(false);
       fetchStaff();
@@ -50,7 +50,7 @@ const StaffManager = ({ businessId }) => {
 
   const handleDelete = async (id) => {
     try {
-      await api.delete(`/auth/staff/${id}`);
+      await api.delete(`/auth/staff/${id}?businessId=${businessId}`);
       setStaff(prev => prev.filter(s => s._id !== id));
       setDeleteId(null);
     } catch { /* empty */ }

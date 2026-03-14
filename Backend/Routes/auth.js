@@ -1014,10 +1014,12 @@ router.get('/business-types', (req, res) => {
 const { requireRole } = require('../middleware/authMiddleware');
 
 // GET /auth/staff — list staff users for this business
-router.get('/staff', authMiddleware, requireRole('admin'), async (req, res) => {
+router.get('/staff', authMiddleware, requireRole('admin', 'superadmin'), async (req, res) => {
   try {
+    const bId = req.user.businessId || req.query.businessId;
+    if (!bId) return res.status(400).json({ message: 'businessId requerido' });
     const staff = await Admin.find({
-      businessId: req.user.businessId,
+      businessId: bId,
       role: { $in: ['staff', 'manager'] }
     }).select('username name role lastLogin createdAt').sort('-createdAt');
     res.json({ staff });
@@ -1028,9 +1030,11 @@ router.get('/staff', authMiddleware, requireRole('admin'), async (req, res) => {
 });
 
 // POST /auth/staff — create a staff user
-router.post('/staff', authMiddleware, requireRole('admin'), async (req, res) => {
+router.post('/staff', authMiddleware, requireRole('admin', 'superadmin'), async (req, res) => {
   try {
-    const { username, password, name, role } = req.body;
+    const { username, password, name, role, businessId: bodyBizId } = req.body;
+    const bId = req.user.businessId || bodyBizId;
+    if (!bId) return res.status(400).json({ message: 'businessId requerido' });
 
     if (!username || !password) {
       return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
@@ -1053,7 +1057,7 @@ router.post('/staff', authMiddleware, requireRole('admin'), async (req, res) => 
       password,
       name: name || username,
       role: staffRole,
-      businessId: req.user.businessId,
+      businessId: bId,
       authProvider: 'local'
     });
     await staff.save();
@@ -1074,12 +1078,14 @@ router.post('/staff', authMiddleware, requireRole('admin'), async (req, res) => 
 });
 
 // DELETE /auth/staff/:id — delete a staff user
-router.delete('/staff/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+router.delete('/staff/:id', authMiddleware, requireRole('admin', 'superadmin'), async (req, res) => {
   try {
     const staffId = req.params.id;
+    const bId = req.user.businessId || req.query.businessId;
+    if (!bId) return res.status(400).json({ message: 'businessId requerido' });
     const staff = await Admin.findOne({
       _id: staffId,
-      businessId: req.user.businessId,
+      businessId: bId,
       role: { $in: ['staff', 'manager'] }
     });
 
