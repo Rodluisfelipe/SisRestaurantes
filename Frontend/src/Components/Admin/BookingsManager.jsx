@@ -5,7 +5,9 @@ import { socket } from '../../services/socket';
 import {
   FaCalendarAlt, FaList, FaChevronLeft, FaChevronRight,
   FaCheck, FaTimes, FaBan, FaUser, FaClock, FaPhone,
-  FaChevronDown, FaFilter
+  FaChevronDown, FaFilter, FaChartBar, FaWhatsapp,
+  FaStar, FaHistory, FaArrowLeft, FaDollarSign,
+  FaUserSlash, FaCalendarCheck, FaCalendarTimes
 } from 'react-icons/fa';
 
 const STATUS_LABELS = {
@@ -33,7 +35,7 @@ function getDateStr(date) {
 export default function BookingsManager({ businessId }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState('list'); // 'list' | 'calendar'
+  const [view, setView] = useState('list'); // 'list' | 'calendar' | 'stats'
   const [dateRange, setDateRange] = useState(() => {
     const today = new Date();
     const end = new Date(today);
@@ -41,7 +43,22 @@ export default function BookingsManager({ businessId }) {
     return { from: getDateStr(today), to: getDateStr(end) };
   });
   const [calendarDate, setCalendarDate] = useState(new Date());
-  const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'
+  const [filter, setFilter] = useState('all');
+
+  // Stats state
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsRange, setStatsRange] = useState(() => {
+    const today = new Date();
+    const start = new Date(today);
+    start.setDate(start.getDate() - 30);
+    return { from: getDateStr(start), to: getDateStr(today) };
+  });
+
+  // Customer detail panel
+  const [selectedCustomer, setSelectedCustomer] = useState(null); // { phone, name }
+  const [customerData, setCustomerData] = useState(null);
+  const [customerLoading, setCustomerLoading] = useState(false);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -55,9 +72,37 @@ export default function BookingsManager({ businessId }) {
     }
   }, [businessId, dateRange]);
 
+  const fetchStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const res = await api.get(`/bookings/stats?businessId=${businessId}&from=${statsRange.from}&to=${statsRange.to}`);
+      setStats(res.data);
+    } catch (err) {
+      console.error('Error loading stats', err);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [businessId, statsRange]);
+
+  const fetchCustomer = useCallback(async (phone) => {
+    setCustomerLoading(true);
+    try {
+      const res = await api.get(`/bookings/customer/${encodeURIComponent(phone)}?businessId=${businessId}`);
+      setCustomerData(res.data);
+    } catch (err) {
+      console.error('Error loading customer', err);
+    } finally {
+      setCustomerLoading(false);
+    }
+  }, [businessId]);
+
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
+  useEffect(() => {
+    if (view === 'stats') fetchStats();
+  }, [view, fetchStats]);
 
   // Listen for real-time booking events
   useEffect(() => {
@@ -78,6 +123,16 @@ export default function BookingsManager({ businessId }) {
     } catch (err) {
       console.error('Error updating booking status', err);
     }
+  };
+
+  const openCustomerPanel = (phone, name) => {
+    setSelectedCustomer({ phone, name });
+    fetchCustomer(phone);
+  };
+
+  const closeCustomerPanel = () => {
+    setSelectedCustomer(null);
+    setCustomerData(null);
   };
 
   const filtered = bookings.filter(b => filter === 'all' || b.bookingStatus === filter);
@@ -126,6 +181,18 @@ export default function BookingsManager({ businessId }) {
     });
   };
 
+  // Stats period presets
+  const setStatsPeriod = (period) => {
+    const today = new Date();
+    const start = new Date(today);
+    if (period === '7d') start.setDate(start.getDate() - 7);
+    else if (period === '30d') start.setDate(start.getDate() - 30);
+    else if (period === '90d') start.setDate(start.getDate() - 90);
+    setStatsRange({ from: getDateStr(start), to: getDateStr(today) });
+  };
+
+  const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -143,15 +210,17 @@ export default function BookingsManager({ businessId }) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Filter */}
-          <select value={filter} onChange={e => setFilter(e.target.value)}
-            className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
-            <option value="all">Todas</option>
-            <option value="pending">Pendientes</option>
-            <option value="confirmed">Confirmadas</option>
-            <option value="completed">Completadas</option>
-            <option value="cancelled">Canceladas</option>
-          </select>
+          {/* Filter (not shown in stats view) */}
+          {view !== 'stats' && (
+            <select value={filter} onChange={e => setFilter(e.target.value)}
+              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+              <option value="all">Todas</option>
+              <option value="pending">Pendientes</option>
+              <option value="confirmed">Confirmadas</option>
+              <option value="completed">Completadas</option>
+              <option value="cancelled">Canceladas</option>
+            </select>
+          )}
 
           {/* View Toggle */}
           <div className="flex bg-slate-100 rounded-lg p-0.5">
@@ -163,9 +232,33 @@ export default function BookingsManager({ businessId }) {
               className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${view === 'calendar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
               <FaCalendarAlt className="inline mr-1" />Calendario
             </button>
+            <button onClick={() => setView('stats')}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${view === 'stats' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              <FaChartBar className="inline mr-1" />Reportes
+            </button>
           </div>
         </div>
       </div>
+
+      {/* KPI Strip (visible in list and calendar views) */}
+      {view !== 'stats' && bookings.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {[
+            { label: 'Pendientes', value: bookings.filter(b => b.bookingStatus === 'pending').length, icon: FaClock, color: 'text-amber-600 bg-amber-50' },
+            { label: 'Confirmadas', value: bookings.filter(b => b.bookingStatus === 'confirmed').length, icon: FaCalendarCheck, color: 'text-emerald-600 bg-emerald-50' },
+            { label: 'Completadas', value: bookings.filter(b => b.bookingStatus === 'completed').length, icon: FaCheck, color: 'text-blue-600 bg-blue-50' },
+            { label: 'Canceladas', value: bookings.filter(b => b.bookingStatus === 'cancelled').length + bookings.filter(b => b.bookingStatus === 'no_show').length, icon: FaCalendarTimes, color: 'text-red-600 bg-red-50' },
+          ].map((kpi) => (
+            <div key={kpi.label} className={`rounded-xl p-3 ${kpi.color}`}>
+              <div className="flex items-center gap-2">
+                <kpi.icon className="text-sm opacity-60" />
+                <span className="text-lg font-bold">{kpi.value}</span>
+              </div>
+              <p className="text-[10px] font-medium opacity-70 mt-0.5">{kpi.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* LIST VIEW */}
       {view === 'list' && (
@@ -220,11 +313,13 @@ export default function BookingsManager({ businessId }) {
                       </div>
                     </div>
 
-                    {/* Customer + Service */}
-                    <div className="flex-1 min-w-0">
+                    {/* Customer + Service — clickable for customer panel */}
+                    <div className="flex-1 min-w-0 cursor-pointer hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors"
+                         onClick={() => booking.phone && openCustomerPanel(booking.phone, booking.customerName)}>
                       <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
                         <FaUser className="text-[10px] text-slate-400" />
                         {booking.customerName}
+                        {booking.phone && <span className="text-[10px] text-indigo-400 ml-1">ver ficha →</span>}
                       </p>
                       <p className="text-xs text-slate-500 truncate">
                         {booking.items?.map(i => i.name).join(', ')}
@@ -329,7 +424,10 @@ export default function BookingsManager({ businessId }) {
                           {cellBookings.map(b => {
                             const st = STATUS_LABELS[b.bookingStatus] || STATUS_LABELS.pending;
                             return (
-                              <div key={b._id} className={`rounded px-1 py-0.5 text-[9px] font-medium truncate ${st.color}`} title={`${b.customerName} — ${b.items?.map(i => i.name).join(', ')}`}>
+                              <div key={b._id}
+                                className={`rounded px-1 py-0.5 text-[9px] font-medium truncate cursor-pointer hover:opacity-80 ${st.color}`}
+                                title={`${b.customerName} — ${b.items?.map(i => i.name).join(', ')}`}
+                                onClick={() => b.phone && openCustomerPanel(b.phone, b.customerName)}>
                                 {b.customerName}
                               </div>
                             );
@@ -344,6 +442,260 @@ export default function BookingsManager({ businessId }) {
           </div>
         </div>
       )}
+
+      {/* STATS VIEW */}
+      {view === 'stats' && (
+        <div className="space-y-4">
+          {/* Period selector */}
+          <div className="flex items-center justify-center gap-2">
+            {[
+              { label: '7 días', key: '7d' },
+              { label: '30 días', key: '30d' },
+              { label: '90 días', key: '90d' },
+            ].map(p => (
+              <button key={p.key} onClick={() => setStatsPeriod(p.key)}
+                className="px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-700 transition-colors">
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {statsLoading ? (
+            <div className="text-center py-12 text-slate-400 text-sm">Cargando reportes...</div>
+          ) : !stats ? (
+            <div className="text-center py-12 text-slate-400 text-sm">Sin datos</div>
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { label: 'Total Citas', value: stats.total, icon: FaCalendarAlt, color: 'text-indigo-600 bg-indigo-50' },
+                  { label: 'Completadas', value: stats.byStatus.completed, icon: FaCheck, color: 'text-emerald-600 bg-emerald-50' },
+                  { label: 'Confirmadas', value: stats.byStatus.confirmed, icon: FaCalendarCheck, color: 'text-blue-600 bg-blue-50' },
+                  { label: 'Canceladas', value: stats.byStatus.cancelled, icon: FaCalendarTimes, color: 'text-red-600 bg-red-50' },
+                  { label: 'No asistió', value: stats.byStatus.no_show, icon: FaUserSlash, color: 'text-orange-600 bg-orange-50' },
+                  { label: 'Ingresos', value: `$${(stats.revenue || 0).toLocaleString()}`, icon: FaDollarSign, color: 'text-green-600 bg-green-50' },
+                ].map(kpi => (
+                  <div key={kpi.label} className={`rounded-xl p-3 ${kpi.color}`}>
+                    <kpi.icon className="text-sm opacity-60 mb-1" />
+                    <p className="text-xl font-bold">{kpi.value}</p>
+                    <p className="text-[10px] font-medium opacity-70">{kpi.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Rates */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Tasa de Cancelación</h3>
+                  <div className="flex items-end gap-3">
+                    <span className="text-3xl font-bold text-red-600">{stats.cancellationRate}%</span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+                      <div className="bg-red-400 h-full rounded-full transition-all" style={{ width: `${stats.cancellationRate}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Tasa de No Asistencia</h3>
+                  <div className="flex items-end gap-3">
+                    <span className="text-3xl font-bold text-orange-600">{stats.noShowRate}%</span>
+                    <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+                      <div className="bg-orange-400 h-full rounded-full transition-all" style={{ width: `${stats.noShowRate}%` }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Top Services */}
+              {stats.topServices?.length > 0 && (
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Servicios Más Populares</h3>
+                  <div className="space-y-2">
+                    {stats.topServices.map((s, i) => {
+                      const maxCount = stats.topServices[0].count;
+                      return (
+                        <div key={i} className="flex items-center gap-3">
+                          <span className="w-5 text-xs font-bold text-slate-400">{i + 1}</span>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-sm font-medium text-slate-800">{s.name}</span>
+                              <span className="text-xs font-bold text-indigo-600">{s.count}</span>
+                            </div>
+                            <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                              <div className="bg-indigo-400 h-full rounded-full transition-all" style={{ width: `${(s.count / maxCount) * 100}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Daily Distribution */}
+              {stats.dailyDistribution && (
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Citas por Día de la Semana</h3>
+                  <div className="flex items-end gap-2 h-32">
+                    {stats.dailyDistribution.map((count, i) => {
+                      const max = Math.max(...stats.dailyDistribution, 1);
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-[10px] font-bold text-indigo-600">{count || ''}</span>
+                          <div className="w-full bg-slate-100 rounded-t-md overflow-hidden flex-1 flex items-end">
+                            <div className="w-full bg-indigo-400 rounded-t-md transition-all" style={{ height: `${(count / max) * 100}%` }} />
+                          </div>
+                          <span className="text-[10px] font-medium text-slate-500">{DAY_NAMES[i]}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* CUSTOMER DETAIL PANEL (Slide-over) */}
+      <AnimatePresence>
+        {selectedCustomer && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/30 z-40"
+              onClick={closeCustomerPanel}
+            />
+            {/* Panel */}
+            <motion.div
+              initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 250 }}
+              className="fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 overflow-y-auto"
+            >
+              {/* Panel Header */}
+              <div className="sticky top-0 bg-white border-b border-slate-200 p-4 flex items-center gap-3 z-10">
+                <button onClick={closeCustomerPanel} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500">
+                  <FaArrowLeft className="text-sm" />
+                </button>
+                <h3 className="font-bold text-slate-900">Ficha del Cliente</h3>
+              </div>
+
+              {customerLoading ? (
+                <div className="p-8 text-center text-slate-400 text-sm">Cargando...</div>
+              ) : customerData ? (
+                <div className="p-4 space-y-4">
+                  {/* Customer Info Card */}
+                  <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-12 h-12 rounded-full bg-indigo-200 flex items-center justify-center">
+                        <FaUser className="text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900">{customerData.customer.name}</p>
+                        <p className="text-sm text-slate-500 flex items-center gap-1">
+                          <FaPhone className="text-[10px]" />{customerData.customer.phone}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Quick actions */}
+                    <div className="flex gap-2">
+                      <a href={`https://wa.me/${customerData.customer.phone.replace(/\D/g, '')}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-green-500 text-white text-xs font-medium hover:bg-green-600 transition-colors">
+                        <FaWhatsapp /> WhatsApp
+                      </a>
+                      <a href={`tel:${customerData.customer.phone}`}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-300 transition-colors">
+                        <FaPhone className="text-[10px]" /> Llamar
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Customer Stats */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
+                      <p className="text-lg font-bold text-indigo-600">{customerData.stats.totalBookings}</p>
+                      <p className="text-[10px] text-slate-500">Total Citas</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
+                      <p className="text-lg font-bold text-emerald-600">{customerData.stats.completed}</p>
+                      <p className="text-[10px] text-slate-500">Completadas</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
+                      <p className="text-lg font-bold text-red-600">{customerData.stats.cancelled}</p>
+                      <p className="text-[10px] text-slate-500">Canceladas</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
+                      <p className="text-lg font-bold text-green-600">${(customerData.stats.revenue || 0).toLocaleString()}</p>
+                      <p className="text-[10px] text-slate-500">Ingresos</p>
+                    </div>
+                  </div>
+
+                  {/* General customer data */}
+                  {customerData.customer.totalOrders > 0 && (
+                    <div className="bg-slate-50 rounded-xl p-3">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Datos Generales</p>
+                      <div className="space-y-1 text-xs text-slate-600">
+                        <p>Total pedidos/citas: <span className="font-bold">{customerData.customer.totalOrders}</span></p>
+                        <p>Total gastado: <span className="font-bold">${(customerData.customer.totalSpent || 0).toLocaleString()}</span></p>
+                        {customerData.customer.lastOrderDate && (
+                          <p>Última actividad: <span className="font-bold">{new Date(customerData.customer.lastOrderDate).toLocaleDateString('es-CO')}</span></p>
+                        )}
+                        {customerData.customer.status && (
+                          <p>Estado: <span className={`font-bold ${customerData.customer.status === 'vip' ? 'text-amber-600' : 'text-slate-800'}`}>
+                            {customerData.customer.status === 'vip' ? '⭐ VIP' : customerData.customer.status === 'active' ? 'Activo' : 'Inactivo'}
+                          </span></p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Booking History */}
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
+                      <FaHistory className="text-[9px]" /> Historial de Citas
+                    </p>
+                    {customerData.bookings.length === 0 ? (
+                      <p className="text-xs text-slate-400 text-center py-4">Sin citas registradas</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {customerData.bookings.map(b => {
+                          const st = STATUS_LABELS[b.bookingStatus] || STATUS_LABELS.pending;
+                          return (
+                            <div key={b._id} className="bg-white border border-slate-200 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-bold text-slate-900">
+                                  {new Date(b.bookingDate).toLocaleDateString('es-CO', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                </span>
+                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-bold ${st.color}`}>
+                                  {st.label}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500">
+                                {formatTime(b.bookingDate)}
+                                {b.bookingEndDate && ` — ${formatTime(b.bookingEndDate)}`}
+                              </p>
+                              <p className="text-[11px] text-slate-400 truncate">
+                                {b.items?.map(i => i.name).join(', ')}
+                              </p>
+                              {(b.finalAmount || b.totalAmount) > 0 && (
+                                <p className="text-[11px] font-medium text-green-600 mt-0.5">
+                                  ${(b.finalAmount || b.totalAmount).toLocaleString()}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
