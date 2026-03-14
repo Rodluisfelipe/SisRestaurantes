@@ -185,15 +185,28 @@ router.patch('/:id/status', async (req, res) => {
       order.status = 'cancelled';
     } else if (bookingStatus === 'completed') {
       order.status = 'completed';
+    } else if (bookingStatus === 'confirmed') {
+      order.status = 'confirmed';
     }
 
     order.statusHistory.push({
       status: `booking_${bookingStatus}`,
       timestamp: new Date(),
-      note: `Booking ${bookingStatus}`
+      note: bookingStatus === 'confirmed' ? 'Cita confirmada' : bookingStatus === 'cancelled' ? 'Cita cancelada' : bookingStatus === 'completed' ? 'Cita completada' : bookingStatus === 'no_show' ? 'No asistió' : `Booking ${bookingStatus}`
     });
 
     await order.save();
+
+    // Emit socket event so customer OrderTracker updates in real-time
+    try {
+      const socketService = require('../services/socketService');
+      socketService.emitToOrder(order._id.toString(), 'order_status_changed', {
+        orderId: order._id.toString(),
+        status: order.status,
+        order: order.toObject()
+      });
+    } catch (e) { /* socket emit is best-effort */ }
+
     res.json({ message: 'Booking status updated', bookingStatus: order.bookingStatus });
   } catch (error) {
     logger.error('Error updating booking status', error);

@@ -116,6 +116,9 @@ router.get("/", tenantAuth, async (req, res) => {
     // Use the centralized business validation
     const filter = await createBusinessFilter(businessId);
     
+    // Exclude bookings from the regular orders list — they go to the Agenda
+    filter.isBooking = { $ne: true };
+    
     // Add optional filters
     if (status) {
       const statuses = status.split(',').map(s => s.trim()).filter(Boolean);
@@ -409,7 +412,8 @@ router.post("/", (req, res, next) => {
     // Determine initial status based on ordering channel
     const isInApp = orderChannel === 'inapp';
     const isPOS = orderChannel === 'pos';
-    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
+    // Bookings skip payment flow — go directly to pending/confirmed
+    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : (isInApp && !isBooking) ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
     const customerToken = isInApp ? generateCustomerToken() : null;
 
     // === BOOKING VALIDATION ===

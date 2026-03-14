@@ -74,7 +74,7 @@ export default function BookingsManager({ businessId }) {
   const updateBookingStatus = async (id, bookingStatus) => {
     try {
       await api.patch(`/bookings/${id}/status`, { bookingStatus });
-      setBookings(prev => prev.map(b => b._id === id ? { ...b, bookingStatus, status: bookingStatus === 'cancelled' ? 'cancelled' : bookingStatus === 'completed' ? 'completed' : b.status } : b));
+      setBookings(prev => prev.map(b => b._id === id ? { ...b, bookingStatus, status: bookingStatus === 'cancelled' ? 'cancelled' : bookingStatus === 'completed' ? 'completed' : bookingStatus === 'confirmed' ? 'confirmed' : b.status } : b));
     } catch (err) {
       console.error('Error updating booking status', err);
     }
