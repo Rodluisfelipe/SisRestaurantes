@@ -1236,7 +1236,8 @@ export default function Menu() {
       } else {
         setOrderConfirmationDetails({
           type: orderDetails.orderType,
-          message: confirmMessage
+          message: confirmMessage,
+          isBooking: !!orderDetails.isBooking
         });
         setShowOrderConfirmationModal(true);
       }

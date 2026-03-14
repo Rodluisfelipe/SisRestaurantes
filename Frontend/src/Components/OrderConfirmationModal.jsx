@@ -4,7 +4,7 @@ import logger from '../utils/logger';
 import api from '../services/api';
 import ConfettiBurst from './ConfettiBurst';
 
-const CancelConfirmationModal = ({ onConfirm, onCancel, isLoading }) => {
+const CancelConfirmationModal = ({ onConfirm, onCancel, isLoading, isBooking }) => {
   return (
     <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 z-[60]">
       <div className="bg-white rounded-xl sm:rounded-2xl max-w-xs sm:max-w-md w-full overflow-hidden shadow-2xl border border-red-100 transform transition-all">
@@ -14,9 +14,9 @@ const CancelConfirmationModal = ({ onConfirm, onCancel, isLoading }) => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
           </div>
-          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">¿Cancelar Pedido?</h3>
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">¿Cancelar {isBooking ? 'Cita' : 'Pedido'}?</h3>
           <p className="text-gray-600 mb-4 sm:mb-6 text-xs sm:text-sm leading-relaxed">
-            Esta acción eliminará tu pedido inmediatamente y no se podrá deshacer. ¿Estás seguro?
+            Esta acción {isBooking ? 'cancelará tu cita' : 'eliminará tu pedido'} inmediatamente y no se podrá deshacer. ¿Estás seguro?
           </p>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button
@@ -28,7 +28,7 @@ const CancelConfirmationModal = ({ onConfirm, onCancel, isLoading }) => {
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                Mantener Pedido
+                Mantener {isBooking ? 'Cita' : 'Pedido'}
               </span>
             </button>
             <button
@@ -49,7 +49,7 @@ const CancelConfirmationModal = ({ onConfirm, onCancel, isLoading }) => {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5 mr-1 sm:mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
-                  Sí, Cancelar Pedido
+                  Sí, Cancelar {isBooking ? 'Cita' : 'Pedido'}
                 </span>
               )}
             </button>
@@ -242,11 +242,11 @@ const OrderConfirmationModal = ({
                   </svg>
                 )}
               </div>
-              <h2 className="text-lg sm:text-xl font-bold mb-1">¡Pedido Confirmado!</h2>
+              <h2 className="text-lg sm:text-xl font-bold mb-1">{orderConfirmationDetails?.isBooking ? '¡Cita Agendada!' : '¡Pedido Confirmado!'}</h2>
               <p className="text-sm sm:text-base opacity-90 mb-1">{businessConfig.businessName || 'Nuestro Restaurante'}</p>
               {orderNumber && (
                 <div className="inline-flex items-center justify-center px-3 py-1 bg-white/20 rounded-full backdrop-blur-sm">
-                  <span className="text-xs sm:text-sm font-semibold">Orden #{orderNumber}</span>
+                  <span className="text-xs sm:text-sm font-semibold">{orderConfirmationDetails?.isBooking ? 'Cita' : 'Orden'} #{orderNumber}</span>
                 </div>
               )}
             </div>
@@ -273,7 +273,7 @@ const OrderConfirmationModal = ({
                 </div>
               )}
               
-              {orderConfirmationDetails.type === 'inSite' && orderInfo.tableNumber && (
+              {orderConfirmationDetails.type === 'inSite' && orderInfo.tableNumber && !orderConfirmationDetails?.isBooking && (
                 <div className="inline-flex items-center justify-center px-3 py-1 bg-blue-50 rounded-full border border-blue-200">
                   <span className="text-blue-600 text-xs sm:text-sm font-medium">
                     🪑 Será servido en la <span className="font-bold">Mesa {orderInfo.tableNumber}</span>
@@ -304,7 +304,7 @@ const OrderConfirmationModal = ({
                 >
                   <span className="flex items-center justify-center space-x-1 sm:space-x-2">
                     <span>❌</span>
-                    <span>Cancelar Pedido ({countdown}s)</span>
+                    <span>Cancelar {orderConfirmationDetails?.isBooking ? 'Cita' : 'Pedido'} ({countdown}s)</span>
                   </span>
                 </button>
               )}
@@ -319,6 +319,7 @@ const OrderConfirmationModal = ({
           onConfirm={handleCancelOrder}
           onCancel={() => setShowCancelConfirmation(false)}
           isLoading={isCancelling}
+          isBooking={orderConfirmationDetails?.isBooking}
         />
       )}
     </>
