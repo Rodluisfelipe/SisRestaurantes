@@ -118,6 +118,14 @@ const getCategoryEmoji = (categoryName) => {
   return CATEGORY_EMOJIS.utensils;
 };
 
+// Service-aware emoji: returns ✨ instead of 🍴 for service businesses
+const getCategoryEmojiForBusiness = (categoryName, businessType) => {
+  const isServiceBiz = ['salon', 'spa', 'clinic', 'services'].includes(businessType);
+  const emoji = getCategoryEmoji(categoryName);
+  if (isServiceBiz && emoji === CATEGORY_EMOJIS.utensils) return '✨';
+  return emoji;
+};
+
 /* ── Legacy SVG icon getter (kept for pill bar) ── */
 const getCategoryIcon = (categoryName, cls = 'w-4 h-4') => {
   const name = (categoryName || '').toLowerCase().trim();
@@ -195,6 +203,7 @@ const FilterableMenu = ({
   const [showToppings, setShowToppings] = useState(false);
   const { businessConfig: businessConfigContext } = useBusinessConfig();
   const businessConfig = businessConfigProp || businessConfigContext;
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   // ── Scroll-spy + sticky state ──
   const [spyCategory, setSpyCategory] = useState('all');  // category visible by scroll
@@ -594,7 +603,7 @@ const FilterableMenu = ({
           </span>
           <input
             type="text"
-            placeholder="¿Qué se te antoja hoy?"
+            placeholder={isService ? '¿Qué servicio buscas?' : '¿Qué se te antoja hoy?'}
             value={searchTerm}
             onChange={handleSearchChange}
             onFocus={() => setSearchFocused(true)}
@@ -761,7 +770,7 @@ const FilterableMenu = ({
                   No encontramos resultados
                 </h3>
                 <p className="mt-1.5 text-sm text-gray-500 max-w-xs">
-                  No hay productos que coincidan con <span className="font-semibold text-gray-600">"{searchTerm}"</span>
+                  No hay {isService ? 'servicios' : 'productos'} que coincidan con <span className="font-semibold text-gray-600">"{searchTerm}"</span>
                 </p>
                 <button
                   onClick={clearSearch}
@@ -795,10 +804,10 @@ const FilterableMenu = ({
               <>
                 <EmptyMenuIllustration themeColor={themeColor} size={150} />
                 <h3 className="mt-4 text-lg font-bold text-gray-700">
-                  Menú vacío
+                  {isService ? 'Sin servicios' : 'Menú vacío'}
                 </h3>
                 <p className="mt-1.5 text-sm text-gray-500 max-w-xs">
-                  Aún no hay productos disponibles en esta categoría.
+                  Aún no hay {isService ? 'servicios disponibles' : 'productos disponibles en esta categoría'}.
                 </p>
               </>
             )}
@@ -837,11 +846,11 @@ const FilterableMenu = ({
                           border: `1px solid ${themeColor}15`
                         }}
                       >
-                        <span className="text-lg sm:text-xl leading-none" role="img">{getCategoryEmoji(category.name)}</span>
+                        <span className="text-lg sm:text-xl leading-none" role="img">{getCategoryEmojiForBusiness(category.name, businessConfig?.businessType)}</span>
                       </div>
                       <div className="flex flex-col">
                         <h2 className="text-[15px] sm:text-base font-bold text-slate-800 tracking-tight leading-tight">{category.name}</h2>
-                        <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{categoryProducts.length} {categoryProducts.length === 1 ? 'producto' : 'productos'}</span>
+                        <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{categoryProducts.length} {categoryProducts.length === 1 ? (isService ? 'servicio' : 'producto') : (isService ? 'servicios' : 'productos')}</span>
                       </div>
                       <div 
                         className="flex-1 h-px ml-1"
@@ -906,11 +915,11 @@ const FilterableMenu = ({
                         border: `1px solid ${themeColor}15`
                       }}
                     >
-                      <span className="text-lg sm:text-xl leading-none" role="img">{getCategoryEmoji(category.name)}</span>
+                      <span className="text-lg sm:text-xl leading-none" role="img">{getCategoryEmojiForBusiness(category.name, businessConfig?.businessType)}</span>
                     </div>
                     <div className="flex flex-col">
                       <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight leading-tight">{category.name}</h2>
-                      <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{singleCatProducts.length} {singleCatProducts.length === 1 ? 'producto' : 'productos'}</span>
+                      <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium">{singleCatProducts.length} {singleCatProducts.length === 1 ? (isService ? 'servicio' : 'producto') : (isService ? 'servicios' : 'productos')}</span>
                     </div>
                     <div 
                       className="flex-1 h-px ml-1"

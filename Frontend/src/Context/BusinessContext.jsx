@@ -52,7 +52,7 @@ export function useBusinessConfig() {
     return {
       businessId: null,
       businessConfig: {
-        businessName: 'Mi Restaurante',
+        businessName: 'Mi Negocio',
         logo: '',
         theme: { buttonColor: '#2563eb', buttonTextColor: '#ffffff' }
       },
@@ -65,7 +65,7 @@ export function useBusinessConfig() {
 export function BusinessProvider({ children, businessId: propBusinessId, onError, onLoaded }) {
   const [businessId, setBusinessId] = useState(propBusinessId || null);
   const [businessConfig, setBusinessConfig] = useState({
-    businessName: 'Mi Restaurante',
+    businessName: 'Mi Negocio',
     logo: '',
     coverImage: '',
     isOpen: true,
