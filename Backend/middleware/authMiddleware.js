@@ -72,4 +72,15 @@ module.exports = async function authMiddleware(req, res, next) {
     const message = err.name === 'TokenExpiredError' ? 'Token expired' : 'Invalid token';
     return res.status(401).json({ message });
   }
-} 
+}
+
+// Middleware factory: restrict access to specific roles
+module.exports.requireRole = (...allowedRoles) => {
+  return (req, res, next) => {
+    const userRole = req.user?.role || 'admin';
+    if (!allowedRoles.includes(userRole)) {
+      return res.status(403).json({ message: 'No tienes permiso para esta acción' });
+    }
+    next();
+  };
+};

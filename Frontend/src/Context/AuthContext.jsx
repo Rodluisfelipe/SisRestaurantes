@@ -118,7 +118,9 @@ export function AuthProvider({ children }) {
       // fallback: usar businessId si no se encuentra el slug
       slug = res.data.user.businessId;
     }
-    navigate(`/${slug}/admin`, { replace: true });
+    // Staff goes directly to orders tab
+    const adminPath = res.data.user.role === 'staff' ? `/${slug}/admin?tab=orders` : `/${slug}/admin`;
+    navigate(adminPath, { replace: true });
   }, [navigate]);
 
   // Login con Google (ya tiene tokens del backend)
@@ -130,7 +132,8 @@ export function AuthProvider({ children }) {
     
     const slug = data.business?.slug || data.user.businessId;
     localStorage.setItem('businessSlug', slug);
-    navigate(`/${slug}/admin`, { replace: true });
+    const adminPath = data.user.role === 'staff' ? `/${slug}/admin?tab=orders` : `/${slug}/admin`;
+    navigate(adminPath, { replace: true });
   }, [navigate]);
 
   // Logout

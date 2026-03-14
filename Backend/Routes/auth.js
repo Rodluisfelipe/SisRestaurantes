@@ -413,7 +413,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     admin.lastLogin = new Date();
 
     // Generar tokens
-    const token = generateToken(admin._id, admin.businessId);
+    const token = generateToken(admin._id, admin.businessId, admin.role);
     const refreshToken = generateRefreshToken(admin._id);
     admin.addRefreshToken(refreshToken);
     await admin.save();
@@ -485,7 +485,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     // Try Admin first
     const admin = await Admin.findByRefreshToken(decoded.id, refreshToken);
     if (admin) {
-      const token = generateToken(admin._id, admin.businessId);
+      const token = generateToken(admin._id, admin.businessId, admin.role);
       return res.json({ token });
     }
 
@@ -675,7 +675,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       }
 
       admin.lastLogin = new Date();
-      const token = generateToken(admin._id, admin.businessId);
+      const token = generateToken(admin._id, admin.businessId, admin.role);
       const refreshToken = generateRefreshToken(admin._id);
       admin.addRefreshToken(refreshToken);
       await admin.save();
@@ -1007,6 +1007,92 @@ router.get('/business-types', (req, res) => {
     categoryCount: val.categories.length
   }));
   res.json({ types });
+});
+
+// ==================== STAFF (SUB-USER) MANAGEMENT ====================
+
+const { requireRole } = require('../middleware/authMiddleware');
+
+// GET /auth/staff — list staff users for this business
+router.get('/staff', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const staff = await Admin.find({
+      businessId: req.user.businessId,
+      role: { $in: ['staff', 'manager'] }
+    }).select('username name role lastLogin createdAt').sort('-createdAt');
+    res.json({ staff });
+  } catch (error) {
+    logger.error('Error listing staff', error);
+    res.status(500).json({ message: 'Error al listar el equipo' });
+  }
+});
+
+// POST /auth/staff — create a staff user
+router.post('/staff', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const { username, password, name, role } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ message: 'Usuario y contraseña son requeridos' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    const allowedRoles = ['staff', 'manager'];
+    const staffRole = allowedRoles.includes(role) ? role : 'staff';
+
+    // Check if username already exists
+    const existing = await Admin.findOne({ username: username.toLowerCase().trim() });
+    if (existing) {
+      return res.status(400).json({ message: 'Este nombre de usuario ya está en uso' });
+    }
+
+    const staff = new Admin({
+      username: username.toLowerCase().trim(),
+      password,
+      name: name || username,
+      role: staffRole,
+      businessId: req.user.businessId,
+      authProvider: 'local'
+    });
+    await staff.save();
+
+    res.status(201).json({
+      staff: {
+        id: staff._id,
+        username: staff.username,
+        name: staff.name,
+        role: staff.role,
+        createdAt: staff.createdAt
+      }
+    });
+  } catch (error) {
+    logger.error('Error creating staff user', error);
+    res.status(500).json({ message: 'Error al crear el usuario' });
+  }
+});
+
+// DELETE /auth/staff/:id — delete a staff user
+router.delete('/staff/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const staffId = req.params.id;
+    const staff = await Admin.findOne({
+      _id: staffId,
+      businessId: req.user.businessId,
+      role: { $in: ['staff', 'manager'] }
+    });
+
+    if (!staff) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    await Admin.deleteOne({ _id: staffId });
+    res.json({ message: 'Usuario eliminado' });
+  } catch (error) {
+    logger.error('Error deleting staff user', error);
+    res.status(500).json({ message: 'Error al eliminar el usuario' });
+  }
 });
 
 module.exports = router; 

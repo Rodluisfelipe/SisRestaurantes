@@ -11,7 +11,8 @@ import {
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister
 } from 'react-icons/fa';
 
-const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding }) => {
+const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding, userRole }) => {
+  const isStaff = userRole === 'staff';
   // Guide overlay state
   const [guideSection, setGuideSection] = useState(null);
   // Grouped menu sections — same items as original sidebar
@@ -62,6 +63,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       label: 'Configuración',
       items: [
         { id: 'subscription', label: 'Suscripción', Icon: FaCreditCard, badge: null },
+        { id: 'team', label: 'Equipo', Icon: FaUsers, badge: null },
         { id: 'business', label: 'Negocio', Icon: FaStore, badge: null },
         { id: 'printer', label: 'Impresoras', Icon: FaPrint, badge: null },
         { id: 'theme', label: 'Tema', Icon: FaPalette, badge: null },
@@ -71,16 +73,27 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     },
   ];
 
+  // Staff tabs whitelist
+  const STAFF_ALLOWED_TABS = ['orders', 'completed_orders', 'cash-closings', 'change-password'];
+  const filteredSections = isStaff
+    ? menuSections
+        .map(section => ({
+          ...section,
+          items: section.items.filter(item => STAFF_ALLOWED_TABS.includes(item.id))
+        }))
+        .filter(section => section.items.length > 0)
+    : menuSections;
+
   const [collapsedSections, setCollapsedSections] = useState({});
 
   const getActiveSectionId = useCallback(() => {
-    for (const section of menuSections) {
+    for (const section of filteredSections) {
       if (section.items.some(item => item.id === activeTab)) {
         return section.id;
       }
     }
     return 'operations';
-  }, [activeTab]);
+  }, [activeTab, filteredSections]);
 
   const toggleSection = (sectionId) => {
     setCollapsedSections(prev => ({
@@ -123,7 +136,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       </div>
 
       {/* Subscription Status */}
-      {businessConfig && businessConfig._id && subscriptionData && (
+      {businessConfig && businessConfig._id && subscriptionData && !isStaff && (
         <div className="px-4 pb-3">
           <SubscriptionStatus 
             {...subscriptionData}
@@ -134,6 +147,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       )}
 
       {/* Dashboard Button */}
+      {!isStaff && (
       <div className="px-4 pb-2">
         <button
           onClick={() => setActiveTab('dashboard')}
@@ -151,6 +165,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
           }`}>Dashboard</span>
         </button>
       </div>
+      )}
 
       {/* Orders Indicator Card */}
       <div className="px-4 pb-3">
@@ -186,7 +201,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       </div>
 
       {/* Ver Menú Button */}
-      {businessConfig?.slug && (
+      {businessConfig?.slug && !isStaff && (
         <div className="px-4 pb-3">
           <a
             href={`https://menuby.tech/${businessConfig.slug}`}
@@ -226,7 +241,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
 
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-        {menuSections.map((section) => {
+        {filteredSections.map((section) => {
           const isCollapsed = isSectionCollapsed(section.id);
           const hasActiveItem = section.items.some(item => item.id === activeTab);
           const hasBadge = section.items.some(item => item.badge && item.badge > 0);

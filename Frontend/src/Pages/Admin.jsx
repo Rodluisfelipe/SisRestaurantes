@@ -42,6 +42,7 @@ import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 import WelcomeWizard from "../Components/Admin/WelcomeWizard";
 import FloatingHelpChat from "../Components/Admin/FloatingHelpChat";
 import AdminReviews from "../Components/Admin/AdminReviews";
+import StaffManager from "../Components/Admin/StaffManager";
 import CashClosings from "../Components/Admin/CashClosings";
 
 // Custom hooks
@@ -126,6 +127,18 @@ function Admin() {
       setSearchParams(newParams, { replace: true });
     }
   }, []);
+
+  // Staff role tab guard — restrict to allowed tabs only
+  const STAFF_ALLOWED_TABS = ['orders', 'completed_orders', 'cash-closings', 'change-password'];
+  useEffect(() => {
+    if (user?.role === 'staff' && !STAFF_ALLOWED_TABS.includes(activeTab)) {
+      setActiveTab('orders');
+    }
+    // Staff also blocked from team tab
+    if (user?.role === 'staff' && activeTab === 'team') {
+      setActiveTab('orders');
+    }
+  }, [activeTab, user?.role]);
 
   // Show welcome wizard for new users on first visit
   useEffect(() => {
@@ -277,6 +290,7 @@ function Admin() {
           pendingOrdersCount={pendingOrdersCount}
           subscriptionData={subscriptionData}
           onboarding={onboardingData}
+          userRole={user?.role}
         />
 
         {/* Main Content */}
@@ -495,6 +509,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Reseñas" onGoBack={() => setActiveTab('dashboard')}>
                       <AdminReviews />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'team' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Equipo" onGoBack={() => setActiveTab('dashboard')}>
+                      <StaffManager businessId={businessId} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
