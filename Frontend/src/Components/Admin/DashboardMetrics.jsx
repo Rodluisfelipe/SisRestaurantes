@@ -93,7 +93,7 @@ const PAYMENT_LABELS = {
   null: "En local",
 };
 
-const TYPE_LABELS = { inSite: "En mesa", takeaway: "Para llevar", delivery: "Domicilio", unknown: "Otro", null: "Otro" };
+const TYPE_LABELS = { inSite: "En sitio", takeaway: "Para llevar", delivery: "Domicilio", unknown: "Otro", null: "Otro" };
 const TYPE_COLORS = { inSite: "bg-blue-400", takeaway: "bg-amber-400", delivery: "bg-emerald-400", unknown: "bg-slate-300", null: "bg-slate-300" };
 
 /* ═══ SVG Icons ═══ */
@@ -221,7 +221,7 @@ function LiveViewers({ viewers = [], count = 0 }) {
           <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center">
             {ViewerIcons.eye("w-2.5 h-2.5 text-slate-300")}
           </div>
-          <span className="text-[11px] font-semibold text-slate-400">Nadie viendo tu menú ahora</span>
+          <span className="text-[11px] font-semibold text-slate-400">Nadie viendo tu página ahora</span>
         </div>
       </div>
     );
@@ -523,7 +523,7 @@ function KPICard({ icon, label, value, subtitle, delta, color, pulse }) {
 }
 
 /* ═══ Mini Bar Chart (CSS-only) ═══ */
-function WeeklyChart({ data, loading }) {
+function WeeklyChart({ data, loading, isService }) {
   if (loading) return <SkeletonChart />;
   if (!data || !data.length) return null;
 
@@ -553,7 +553,7 @@ function WeeklyChart({ data, loading }) {
           </span>
           <span className="flex items-center gap-1 text-slate-400">
             <span className="w-2 h-2 rounded-sm bg-slate-300" />
-            {totalOrd} pedidos
+            {totalOrd} {isService ? 'citas' : 'pedidos'}
           </span>
         </div>
       </div>
@@ -562,7 +562,7 @@ function WeeklyChart({ data, loading }) {
       <div className="relative flex gap-1.5 sm:gap-2">
         {isEmpty && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
-            <p className="text-xs text-slate-400 font-medium bg-white/80 px-3 py-1.5 rounded-lg">Sin ventas esta semana — ¡tu primer pedido aparecerá aquí!</p>
+            <p className="text-xs text-slate-400 font-medium bg-white/80 px-3 py-1.5 rounded-lg">{isService ? 'Sin citas esta semana — ¡tu primera cita aparecerá aquí!' : 'Sin ventas esta semana — ¡tu primer pedido aparecerá aquí!'}</p>
           </div>
         )}
         {data.map((day, i) => {
@@ -675,7 +675,7 @@ function BreakdownBar({ title, data, labels, colors, icon }) {
 }
 
 /* ═══ Top Products List ═══ */
-function TopProducts({ products, loading }) {
+function TopProducts({ products, loading, isService }) {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
@@ -701,11 +701,11 @@ function TopProducts({ products, loading }) {
       >
         <div className="flex items-center gap-2 mb-3">
           {Icons.fire("w-4 h-4 text-orange-500")}
-          <h3 className="text-xs sm:text-sm font-bold text-slate-700">Top productos</h3>
+          <h3 className="text-xs sm:text-sm font-bold text-slate-700">{isService ? 'Top servicios' : 'Top productos'}</h3>
         </div>
         <div className="text-center py-4">
-          <p className="text-xs text-slate-400">Aquí verás tus productos más vendidos</p>
-          <p className="text-[10px] text-slate-300 mt-1">Los datos se acumulan con cada pedido completado</p>
+          <p className="text-xs text-slate-400">{isService ? 'Aquí verás tus servicios más solicitados' : 'Aquí verás tus productos más vendidos'}</p>
+          <p className="text-[10px] text-slate-300 mt-1">{isService ? 'Los datos se acumulan con cada cita completada' : 'Los datos se acumulan con cada pedido completado'}</p>
         </div>
       </motion.div>
     );
@@ -722,7 +722,7 @@ function TopProducts({ products, loading }) {
     >
       <div className="flex items-center gap-1.5 mb-2.5">
         {Icons.fire("w-3.5 h-3.5 text-orange-500")}
-        <h3 className="text-[11px] font-bold text-slate-700">Top productos</h3>
+        <h3 className="text-[11px] font-bold text-slate-700">{isService ? 'Top servicios' : 'Top productos'}</h3>
         <span className="ml-auto text-[9px] text-slate-400 font-semibold">Últimos 30 días</span>
       </div>
 
@@ -806,7 +806,7 @@ function CustomerSummary({ customers, loading }) {
 }
 
 /* ═══ Recent Orders Timeline ═══ */
-function RecentOrders({ orders, loading, onViewOrders }) {
+function RecentOrders({ orders, loading, onViewOrders, isService }) {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
@@ -835,7 +835,7 @@ function RecentOrders({ orders, loading, onViewOrders }) {
           <h3 className="text-xs sm:text-sm font-bold text-slate-700">Actividad reciente</h3>
         </div>
         <div className="text-center py-4">
-          <p className="text-xs text-slate-400">Aún no hay pedidos recientes</p>
+          <p className="text-xs text-slate-400">{isService ? 'Aún no hay citas recientes' : 'Aún no hay pedidos recientes'}</p>
           <p className="text-[10px] text-slate-300 mt-1">Tu actividad del día aparecerá aquí en tiempo real</p>
         </div>
       </motion.div>
@@ -941,7 +941,8 @@ function PendingBanner({ pending, onViewOrders }) {
 }
 
 /* ═══ MAIN COMPONENT ═══ */
-export default function DashboardMetrics({ setActiveTab, businessId }) {
+export default function DashboardMetrics({ setActiveTab, businessId, businessConfig }) {
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1094,7 +1095,7 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-1.5 sm:gap-2">
           <KPICard
             icon={Icons.revenue}
-            label="Ventas"
+            label={isService ? 'Ingresos' : 'Ventas'}
             value={COP(data?.today?.revenue)}
             delta={<DeltaBadge current={data?.today?.revenue} previous={data?.comparison?.revenue} isRevenue />}
             color="bg-emerald-500"
@@ -1102,17 +1103,17 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
           />
           <KPICard
             icon={Icons.orders}
-            label="Pedidos"
+            label={isService ? 'Citas' : 'Pedidos'}
             value={data?.today?.orders || 0}
             delta={<DeltaBadge current={data?.today?.orders} previous={data?.comparison?.orders} />}
             color="bg-blue-500"
           />
           <KPICard
             icon={Icons.ticket}
-            label="Ticket prom."
+            label={isService ? 'Cita prom.' : 'Ticket prom.'}
             value={COP(data?.today?.avgTicket)}
             color="bg-violet-500"
-            subtitle={data?.today?.orders > 0 ? `${data.today.orders} ventas` : ""}
+            subtitle={data?.today?.orders > 0 ? `${data.today.orders} ${isService ? 'citas' : 'ventas'}` : ""}
           />
           <KPICard
             icon={Icons.pending}
@@ -1129,10 +1130,10 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
       {!loading && <PendingBanner pending={data?.pending} onViewOrders={handleViewOrders} />}
 
       {/* ═══ Weekly Chart ═══ */}
-      <WeeklyChart data={data?.weeklyChart} loading={loading} />
+      <WeeklyChart data={data?.weeklyChart} loading={loading} isService={isService} />
 
       {/* ═══ Top Products ═══ */}
-      <TopProducts products={data?.topProducts} loading={loading} />
+      <TopProducts products={data?.topProducts} loading={loading} isService={isService} />
 
       {/* ═══ Breakdowns (grid of 2 or 3) ═══ */}
       {!loading && (
@@ -1152,7 +1153,7 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
             icon={Icons.revenue}
           />
           <BreakdownBar
-            title="Tipo de pedido"
+            title={isService ? 'Tipo de cita' : 'Tipo de pedido'}
             data={data?.orderTypes}
             labels={TYPE_LABELS}
             colors={TYPE_COLORS}
@@ -1165,7 +1166,7 @@ export default function DashboardMetrics({ setActiveTab, businessId }) {
       <CustomerSummary customers={data?.customers} loading={loading} />
 
       {/* ═══ Recent Activity ═══ */}
-      <RecentOrders orders={data?.recentOrders} loading={loading} onViewOrders={handleViewOrders} />
+      <RecentOrders orders={data?.recentOrders} loading={loading} onViewOrders={handleViewOrders} isService={isService} />
     </div>
   );
 }

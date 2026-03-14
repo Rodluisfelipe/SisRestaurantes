@@ -61,13 +61,13 @@ const COLORS = {
 };
 
 /* ═══ Section Data ═══ */
-const SECTIONS = [
+const getSections = (isService) => [
   {
     id: 'ops',
     label: 'Operaciones',
     items: [
-      { tab: 'orders',           svgKey: 'orders',    title: 'Pedidos',       desc: 'Gestión en tiempo real', color: 'blue',    hasBadge: true },
-      { tab: 'completed_orders', svgKey: 'completed', title: 'Completados',   desc: 'Historial de pedidos',  color: 'emerald' },
+      { tab: 'orders',           svgKey: 'orders',    title: isService ? 'Citas' : 'Pedidos',       desc: isService ? 'Gestión de citas' : 'Gestión en tiempo real', color: 'blue',    hasBadge: true },
+      { tab: 'completed_orders', svgKey: 'completed', title: 'Completados',   desc: isService ? 'Historial de citas' : 'Historial de pedidos',  color: 'emerald' },
       { tab: 'payment-config',   svgKey: 'payment',   title: 'Pagos',         desc: 'Métodos de cobro',       color: 'teal' },
       { tab: 'customers',        svgKey: 'customers', title: 'Clientes',      desc: 'Base de datos',         color: 'cyan' },
       { tab: 'reviews',          svgKey: 'reviews',   title: 'Reseñas',       desc: 'Calificaciones',        color: 'amber' },
@@ -76,12 +76,12 @@ const SECTIONS = [
   },
   {
     id: 'menu',
-    label: 'Menú',
+    label: isService ? 'Servicios' : 'Menú',
     items: [
-      { tab: 'products',         svgKey: 'products',   title: 'Productos',    desc: 'Administra tu carta',    color: 'orange' },
-      { tab: 'categories',       svgKey: 'categories', title: 'Categorías',   desc: 'Organiza productos',     color: 'yellow' },
-      { tab: 'toppings',         svgKey: 'toppings',   title: 'Extras',       desc: 'Toppings y opciones',    color: 'amber' },
-      { tab: 'product-order',    svgKey: 'reorder',    title: 'Orden',        desc: 'Reordenar productos',    color: 'purple' },
+      { tab: 'products',         svgKey: 'products',   title: isService ? 'Servicios' : 'Productos',    desc: isService ? 'Administra tus servicios' : 'Administra tu carta',    color: 'orange' },
+      { tab: 'categories',       svgKey: 'categories', title: 'Categorías',   desc: isService ? 'Organiza servicios' : 'Organiza productos',     color: 'yellow' },
+      { tab: 'toppings',         svgKey: 'toppings',   title: isService ? 'Opciones' : 'Extras',       desc: isService ? 'Variantes y opciones' : 'Toppings y opciones',    color: 'amber' },
+      { tab: 'product-order',    svgKey: 'reorder',    title: 'Orden',        desc: isService ? 'Reordenar servicios' : 'Reordenar productos',    color: 'purple' },
     ],
   },
   {
@@ -90,8 +90,8 @@ const SECTIONS = [
     items: [
       { tab: 'coupons',          svgKey: 'coupons',   title: 'Cupones',      desc: 'Descuentos y ofertas',   color: 'pink' },
       { tab: 'catalog',          svgKey: 'catalog',   title: 'Catálogo',     desc: 'Banners y promos',       color: 'violet' },
-      { tab: 'tables',           svgKey: 'tables',    title: 'Mesas',        desc: 'Códigos QR',             color: 'indigo' },
-      { tab: 'delivery-zones',   svgKey: 'zones',     title: 'Zonas',        desc: 'Áreas de entrega',       color: 'green' },
+      ...(!isService ? [{ tab: 'tables',           svgKey: 'tables',    title: 'Mesas',        desc: 'Códigos QR',             color: 'indigo' }] : []),
+      ...(!isService ? [{ tab: 'delivery-zones',   svgKey: 'zones',     title: 'Zonas',        desc: 'Áreas de entrega',       color: 'green' }] : []),
       { tab: 'whatsapp',         svgKey: 'whatsapp',  title: 'WhatsApp',     desc: 'Mensajería automática', color: 'green' },
     ],
   },
@@ -99,7 +99,7 @@ const SECTIONS = [
     id: 'config',
     label: 'Configuración',
     items: [
-      { tab: 'business',         svgKey: 'business',     title: 'Negocio',      desc: 'Info del restaurante',   color: 'slate' },
+      { tab: 'business',         svgKey: 'business',     title: 'Negocio',      desc: isService ? 'Info del negocio' : 'Info del restaurante',   color: 'slate' },
       { tab: 'theme',            svgKey: 'theme',        title: 'Tema',         desc: 'Personalización',        color: 'fuchsia' },
       { tab: 'location',         svgKey: 'location',     title: 'Ubicación',    desc: 'Dirección y mapa',        color: 'red' },
       { tab: 'subscription',     svgKey: 'subscription', title: 'Suscripción',  desc: 'Plan y facturación',      color: 'blue' },
@@ -108,15 +108,13 @@ const SECTIONS = [
   },
 ];
 
-const ALL_ITEMS = SECTIONS.flatMap(s => s.items);
-
 /* ═══ Onboarding Steps ═══ */
-const ONBOARDING = [
+const getOnboarding = (isService) => [
   { level: 1, label: 'Crear tu cuenta',  desc: '¡Listo! Ya tienes acceso', svgKey: 'completed' },
-  { level: 2, label: 'Agrega productos', desc: 'Crea tu primer plato',     svgKey: 'products', tab: 'products' },
+  { level: 2, label: isService ? 'Agrega servicios' : 'Agrega productos', desc: isService ? 'Crea tu primer servicio' : 'Crea tu primer plato',     svgKey: 'products', tab: 'products' },
   { level: 3, label: 'Modo de pedidos',  desc: 'WhatsApp, app o ambos',    svgKey: 'business', tab: 'business' },
-  { level: 4, label: 'Primeros pedidos', desc: 'Comparte y empieza a vender', svgKey: 'orders', tab: 'orders' },
-  { level: 5, label: 'Personaliza tema', desc: 'Dale estilo a tu menú',    svgKey: 'theme',   tab: 'theme' },
+  { level: 4, label: isService ? 'Primeras citas' : 'Primeros pedidos', desc: isService ? 'Comparte y agenda' : 'Comparte y empieza a vender', svgKey: 'orders', tab: 'orders' },
+  { level: 5, label: 'Personaliza tema', desc: isService ? 'Dale estilo a tu página' : 'Dale estilo a tu menú',    svgKey: 'theme',   tab: 'theme' },
   { level: 6, label: 'Herramientas pro', desc: 'Cupones, zonas, QR y más', svgKey: 'coupons' },
 ];
 
@@ -221,6 +219,7 @@ function ShareBar({ businessConfig }) {
   const [copied, setCopied] = useState(false);
   const slug = businessConfig?.slug || businessConfig?.businessName?.toLowerCase().replace(/\s+/g, '-') || '';
   const url = slug ? `menuby.tech/${slug}` : '';
+  const isSvc = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   if (!url) return null;
 
   const copy = async () => {
@@ -237,7 +236,7 @@ function ShareBar({ businessConfig }) {
         </svg>
       </div>
       <div className="flex-1 min-w-0 text-left">
-        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Tu menú digital</p>
+        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{isSvc ? 'Tu página de servicios' : 'Tu menú digital'}</p>
         <p className="text-sm font-bold text-slate-700 truncate">{url}</p>
       </div>
       <span className={`text-[11px] font-bold px-3 py-1.5 rounded-xl flex-shrink-0 transition-all ${
@@ -266,6 +265,7 @@ function StatusBadge({ businessConfig }) {
 export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, onboarding }) {
   const { businessConfig } = useBusinessConfig();
   const [search, setSearch] = useState('');
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   const isNewUser = onboarding && !onboarding.isLegacy && onboarding.level < 6;
   const progressPercent = onboarding ? (onboarding.progress || 0) : 100;
@@ -275,6 +275,8 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
   /* Search logic */
   const q = search.trim().toLowerCase();
   const posBetaOn = businessConfig?.features?.posBetaEnabled;
+  const SECTIONS = useMemo(() => getSections(isService), [isService]);
+  const ALL_ITEMS = useMemo(() => SECTIONS.flatMap(s => s.items), [SECTIONS]);
   const filteredSections = useMemo(() => {
     const filterBeta = (items) => items.filter(i => !i.isBeta || posBetaOn);
     if (!q) return SECTIONS.map(s => ({ ...s, items: filterBeta(s.items) }));
@@ -282,7 +284,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
       (i.title.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q)) && (!i.isBeta || posBetaOn)
     );
     return [{ id: 'search', label: 'Resultados', items: results }];
-  }, [q, posBetaOn]);
+  }, [q, posBetaOn, SECTIONS, ALL_ITEMS]);
 
   const handleNav = useCallback((tab) => setActiveTab(tab), [setActiveTab]);
 
@@ -300,23 +302,23 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
       </div>
 
       {/* ═══ METRICS DASHBOARD ═══ */}
-      {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} />}
+      {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} businessConfig={businessConfig} />}
 
       {/* ═══ HERO CARDS (mobile only — sidebar navigates on desktop) ═══ */}
       {!q && (
         <div className="flex gap-3 lg:hidden">
           <HeroCard
             svgKey="orders"
-            title="Pedidos"
-            subtitle="Gestión en tiempo real"
+            title={isService ? 'Citas' : 'Pedidos'}
+            subtitle={isService ? 'Gestión de citas' : 'Gestión en tiempo real'}
             onClick={() => handleNav('orders')}
             count={pendingOrdersCount}
             colorClass="bg-gradient-to-br from-blue-600 to-blue-700"
           />
           <HeroCard
             svgKey="products"
-            title="Productos"
-            subtitle="Administra tu carta"
+            title={isService ? 'Servicios' : 'Productos'}
+            subtitle={isService ? 'Administra tus servicios' : 'Administra tu carta'}
             onClick={() => handleNav('products')}
             count={0}
             colorClass="bg-gradient-to-br from-orange-500 to-orange-600"
@@ -347,7 +349,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
               <div className="absolute left-[15px] top-4 bottom-4 w-px bg-slate-100" />
 
               <div className="space-y-1">
-                {ONBOARDING.map((step) => {
+                {getOnboarding(isService).map((step) => {
                   const done = (onboarding?.level || 0) >= step.level;
                   const isNext = (onboarding?.level || 0) === step.level - 1;
                   const SvgIcon = I[step.svgKey];

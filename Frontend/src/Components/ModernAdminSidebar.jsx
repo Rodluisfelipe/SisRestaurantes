@@ -14,6 +14,7 @@ import {
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding, userRole }) => {
   const isStaff = userRole === 'staff';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   // Guide overlay state
   const [guideSection, setGuideSection] = useState(null);
   // Grouped menu sections — same items as original sidebar
@@ -22,7 +23,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       id: 'operations',
       label: 'Operaciones',
       items: [
-        { id: 'orders', label: 'Pedidos', Icon: FaClipboardList, badge: pendingOrdersCount },
+        { id: 'orders', label: isService ? 'Citas' : 'Pedidos', Icon: isService ? FaCalendarAlt : FaClipboardList, badge: pendingOrdersCount },
         { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
         ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null }] : []),
         ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda', Icon: FaCalendarAlt, badge: null }] : []),
@@ -30,12 +31,12 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
     },
     {
       id: 'menu',
-      label: 'Menú',
+      label: isService ? 'Servicios' : 'Menú',
       items: [
-        { id: 'products', label: 'Productos', Icon: FaHamburger, badge: null },
+        { id: 'products', label: isService ? 'Servicios' : 'Productos', Icon: isService ? FaTools : FaHamburger, badge: null },
         { id: 'product-order', label: 'Orden', Icon: FaSortAmountDown, badge: null },
         { id: 'categories', label: 'Categorías', Icon: FaFolderOpen, badge: null },
-        { id: 'toppings', label: 'Extras', Icon: FaCheese, badge: null },
+        { id: 'toppings', label: isService ? 'Opciones' : 'Extras', Icon: isService ? FaCog : FaCheese, badge: null },
       ]
     },
     {
@@ -46,9 +47,9 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
         { id: 'coupons', label: 'Cupones', Icon: FaTicketAlt, badge: null },
         { id: 'loyalty', label: 'Fidelidad', Icon: FaGift, badge: null, beta: true },
         { id: 'reviews', label: 'Reseñas', Icon: FaStar, badge: null },
-        { id: 'tables', label: 'Mesas', Icon: FaChair, badge: null },
-        { id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null },
-        { id: 'delivery', label: 'Domiciliarios', Icon: FaMotorcycle, badge: null },
+        ...(!isService ? [{ id: 'tables', label: 'Mesas', Icon: FaChair, badge: null }] : []),
+        ...(!isService ? [{ id: 'delivery-zones', label: 'Zonas', Icon: FaMapMarkedAlt, badge: null }] : []),
+        ...(!isService ? [{ id: 'delivery', label: 'Domiciliarios', Icon: FaMotorcycle, badge: null }] : []),
       ]
     },
     {
@@ -130,7 +131,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
           </div>
           <div className="min-w-0 flex-1">
             <h1 className="text-sm font-bold text-slate-800 truncate leading-tight">
-              {businessConfig?.businessName || 'Mi Restaurante'}
+              {businessConfig?.businessName || 'Mi Negocio'}
             </h1>
             <p className="text-[11px] text-slate-400 font-medium">Sistema de gestión</p>
           </div>
@@ -185,7 +186,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
             pendingOrdersCount > 0 ? 'text-red-500' : 'text-slate-400'
           }`} />
           <span className="text-[11px] font-semibold text-slate-700 flex-1 text-left">
-            Pedidos
+            {isService ? 'Citas' : 'Pedidos'}
           </span>
           {pendingOrdersCount > 0 ? (
             <motion.span
@@ -213,7 +214,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
           >
             <FaExternalLinkAlt className="text-[11px] shrink-0 text-emerald-500" />
             <span className="text-[11px] font-semibold text-emerald-700 flex-1 text-left">
-              Ver Menú
+              {isService ? 'Ver Servicios' : 'Ver Menú'}
             </span>
             <span className="text-[9px] text-emerald-400 font-medium truncate max-w-[80px]">
               /{businessConfig.slug}
