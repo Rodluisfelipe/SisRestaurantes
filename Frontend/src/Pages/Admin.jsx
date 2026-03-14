@@ -43,6 +43,7 @@ import WelcomeWizard from "../Components/Admin/WelcomeWizard";
 import FloatingHelpChat from "../Components/Admin/FloatingHelpChat";
 import AdminReviews from "../Components/Admin/AdminReviews";
 import StaffManager from "../Components/Admin/StaffManager";
+import BookingsManager from "../Components/Admin/BookingsManager";
 import CashClosings from "../Components/Admin/CashClosings";
 
 // Custom hooks
@@ -479,6 +480,7 @@ function Admin() {
                     handleToggleProduct={handleToggleProduct}
                     handleToggleFeatured={handleToggleFeatured}
                     setActiveTab={setActiveTab}
+                    enableBookings={businessConfig?.enableBookings}
                   />
                 )}
                 {activeTab === 'product-order' && (
@@ -516,6 +518,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Equipo" onGoBack={() => setActiveTab('dashboard')}>
                       <StaffManager businessId={businessId} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'bookings' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Agenda" onGoBack={() => setActiveTab('dashboard')}>
+                      <BookingsManager businessId={businessId} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

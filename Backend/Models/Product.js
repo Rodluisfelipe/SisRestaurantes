@@ -38,6 +38,17 @@ const ProductSchema = new mongoose.Schema({
       default: 0
     }
   }],
+  // Item type: product (physical goods) or service (requires booking)
+  itemType: {
+    type: String,
+    enum: ['product', 'service'],
+    default: 'product'
+  },
+  // Duration in minutes (only relevant for services)
+  durationMinutes: {
+    type: Number,
+    default: null
+  },
   active: {
     type: Boolean,
     default: true

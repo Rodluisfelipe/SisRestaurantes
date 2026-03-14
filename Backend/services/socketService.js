@@ -9,6 +9,9 @@ const viewerTracker = require('./viewerTracker');
 const slugCache = new Map(); // businessId -> { slug, cachedAt }
 const SLUG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Cache latest domi location per orderId so new clients get it immediately
+const domiLocationCache = new Map(); // orderId -> { lat, lng, timestamp }
+
 function initSocket(io) {
   ioInstance = io;
 
@@ -225,14 +228,29 @@ function initSocket(io) {
     socket.on('delivery:track', ({ orderId }) => {
       if (!orderId) return;
       socket.join(`order:${orderId}`);
-      logger.debug('Client joined delivery tracking room', { socketId: socket.id, orderId });
+      logger.warn('Client joined delivery tracking room', { socketId: socket.id, orderId });
+      // Send cached domi location immediately if available
+      const cached = domiLocationCache.get(orderId);
+      if (cached) {
+        socket.emit('domi:location', cached);
+        logger.warn('Sent cached domi location to new client', { orderId });
+      }
     });
 
     // Domi sends location update (every ~10 seconds)
     socket.on('domi:location', ({ deliveryPersonId, orderId, lat, lng, timestamp }) => {
-      if (!orderId || lat == null || lng == null) return;
+      if (!orderId || lat == null || lng == null) {
+        logger.warn('domi:location rejected - missing fields', { orderId, lat, lng });
+        return;
+      }
+      logger.warn('domi:location received', { orderId, lat, lng });
+      // Cache latest location for this order
+      domiLocationCache.set(orderId, { lat, lng, timestamp: timestamp || Date.now() });
       // Relay to order room (customer tracking page + dashboard)
-      ioInstance.to(`order:${orderId}`).emit('domi:location', { lat, lng, timestamp });
+      const room = `order:${orderId}`;
+      const roomSockets = ioInstance.sockets.adapter.rooms.get(room);
+      logger.warn('domi:location relaying to room', { room, clientsInRoom: roomSockets ? roomSockets.size : 0 });
+      ioInstance.to(room).emit('domi:location', { lat, lng, timestamp });
       // Also relay to business dashboard
       if (socket._domiBusinessId) {
         emitToBusiness(socket._domiBusinessId, 'domi:location', {

@@ -26,8 +26,19 @@ const businessConfigSchema = new mongoose.Schema({
   },
   businessType: {
     type: String,
-    enum: ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'other'],
+    enum: ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'salon', 'spa', 'clinic', 'services', 'other'],
     default: 'restaurant'
+  },
+  // Booking / appointment system
+  enableBookings: {
+    type: Boolean,
+    default: false
+  },
+  bookingSettings: {
+    slotInterval: { type: Number, default: 30 },
+    maxAdvanceDays: { type: Number, default: 30 },
+    bufferMinutes: { type: Number, default: 0 },
+    autoConfirm: { type: Boolean, default: true }
   },
   // Onboarding tracking
   onboarding: {

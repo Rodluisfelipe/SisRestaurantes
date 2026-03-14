@@ -222,6 +222,25 @@ const orderSchema = new mongoose.Schema({
     default: false
   },
   
+  // Booking / appointment fields
+  isBooking: {
+    type: Boolean,
+    default: false
+  },
+  bookingDate: {
+    type: Date,
+    default: null
+  },
+  bookingEndDate: {
+    type: Date,
+    default: null
+  },
+  bookingStatus: {
+    type: String,
+    enum: ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'],
+    default: null
+  },
+
   // POS payment details (persisted for ticket reprinting)
   posPaymentInfo: {
     cashReceived: { type: Number, default: null },
@@ -287,6 +306,7 @@ orderSchema.index({ businessId: 1, sentToKitchen: 1 });
 orderSchema.index({ deliveryZoneId: 1 });
 // customerToken already has index:true in field definition
 orderSchema.index({ businessId: 1, orderChannel: 1, status: 1 });
+orderSchema.index({ businessId: 1, bookingDate: 1 });
 
 // Hook para actualizar estadísticas de zona cuando se completa un pedido
 orderSchema.post('save', async function(doc, next) {

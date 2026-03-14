@@ -14,7 +14,8 @@ import api from '../services/api';
  */
 export default function useProductHandlers({ businessId, products, setProducts, toppingGroups, loadData }) {
   const [form, setForm] = useState({
-    name: '', description: '', price: '', category: '', image: '', toppingGroups: []
+    name: '', description: '', price: '', category: '', image: '', toppingGroups: [],
+    itemType: 'product', durationMinutes: ''
   });
   const [touchedFields, setTouchedFields] = useState({});
   const [editingId, setEditingId] = useState(null);
@@ -66,7 +67,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
   };
 
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [] });
+    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [], itemType: 'product', durationMinutes: '' });
     setTouchedFields({});
     setEditingId(null);
     setEditingProduct(null);
@@ -90,6 +91,8 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     if (form.image) formData.append('image', form.image);
     formData.append('toppingGroups', JSON.stringify(extractToppingGroupIds(form.toppingGroups)));
     formData.append('businessId', businessId);
+    if (form.itemType) formData.append('itemType', form.itemType);
+    if (form.itemType === 'service' && form.durationMinutes) formData.append('durationMinutes', parseInt(form.durationMinutes, 10));
 
     try {
       if (editingId) {
@@ -119,6 +122,8 @@ export default function useProductHandlers({ businessId, products, setProducts, 
         image: form.image,
         toppingGroups: toppingGroupIds,
         businessId,
+        itemType: form.itemType || 'product',
+        durationMinutes: form.itemType === 'service' ? (parseInt(form.durationMinutes, 10) || null) : null,
       };
 
       const response = await api.put(`/products/${editingId}`, formToSend);
@@ -254,7 +259,9 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       price: product.price.toString(),
       category: product.category,
       image: product.image,
-      toppingGroups: product.toppingGroups || []
+      toppingGroups: product.toppingGroups || [],
+      itemType: product.itemType || 'product',
+      durationMinutes: product.durationMinutes ? product.durationMinutes.toString() : ''
     });
     setTouchedFields({});
     setShowProductModal(true);

@@ -24,7 +24,7 @@ const confirmLimiter = rateLimit({
 
 // Helper: resolve slug to businessId
 async function resolveSlug(slug) {
-  const business = await BusinessConfig.findOne({ slug }).select('_id slug businessName phone').lean();
+  const business = await BusinessConfig.findOne({ slug }).select('_id slug businessName phone logo theme').lean();
   if (!business) throw new Error('Negocio no encontrado');
   return business;
 }
@@ -84,7 +84,7 @@ router.get('/:token', deliveryLimiter, async (req, res) => {
     }
 
     // Get business info for the page
-    const business = await BusinessConfig.findById(order.businessId).select('slug businessName phone').lean();
+    const business = await BusinessConfig.findById(order.businessId).select('slug businessName phone logo theme').lean();
 
     // Return order info for the domi page (NEVER include confirmationCode)
     res.json({
@@ -107,10 +107,14 @@ router.get('/:token', deliveryLimiter, async (req, res) => {
       business: {
         name: business?.businessName,
         phone: business?.phone,
-        slug: business?.slug
+        slug: business?.slug,
+        logo: business?.logo || null,
+        buttonColor: business?.theme?.buttonColor || '#2563eb',
+        buttonTextColor: business?.theme?.buttonTextColor || '#ffffff'
       },
       status: order.status,
-      deliveryAssignedAt: order.deliveryAssignedAt
+      deliveryAssignedAt: order.deliveryAssignedAt,
+      deliveryPickedAt: order.deliveryPickedAt || null
     });
   } catch (error) {
     logger.error('Error fetching delivery by token', error);
@@ -407,7 +411,7 @@ router.get('/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
       if (!completed) return res.status(404).json({ message: 'Pedido no encontrado' });
       return res.json({
         ...completed,
-        business: { name: business.businessName, phone: business.phone, slug: business.slug },
+        business: { name: business.businessName, phone: business.phone, slug: business.slug, logo: business.logo || null, buttonColor: business.theme?.buttonColor || '#2563eb', buttonTextColor: business.theme?.buttonTextColor || '#ffffff' },
         trackingEnabled: false
       });
     }
@@ -433,7 +437,7 @@ router.get('/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
       items: order.items.map(i => ({ name: i.name, quantity: i.quantity })),
       total: order.finalAmount || order.totalAmount,
       deliveryFee: order.deliveryFee || 0,
-      business: { name: business.businessName, phone: business.phone, slug: business.slug }
+      business: { name: business.businessName, phone: business.phone, slug: business.slug, logo: business.logo || null, buttonColor: business.theme?.buttonColor || '#2563eb', buttonTextColor: business.theme?.buttonTextColor || '#ffffff' }
     });
   } catch (error) {
     logger.error('Error fetching tracking info', error);

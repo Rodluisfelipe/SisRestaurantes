@@ -163,6 +163,24 @@ const completedOrderSchema = new mongoose.Schema({
     default: null
   },
   
+  // Booking / appointment fields
+  isBooking: {
+    type: Boolean,
+    default: false
+  },
+  bookingDate: {
+    type: Date,
+    default: null
+  },
+  bookingEndDate: {
+    type: Date,
+    default: null
+  },
+  bookingStatus: {
+    type: String,
+    default: null
+  },
+
   // Timestamps
   createdAt: {
     type: Date,

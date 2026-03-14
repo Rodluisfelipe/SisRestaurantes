@@ -8,7 +8,7 @@ import {
   FaPlus, FaTimes, FaEdit, FaPause, FaPlay, FaTrash, FaStar,
   FaChevronLeft, FaChevronDown, FaChevronRight, FaCheck,
   FaTag, FaAlignLeft, FaFolderOpen, FaDollarSign, FaImage,
-  FaCheese, FaGripVertical, FaExclamationTriangle, FaMagic
+  FaCheese, FaGripVertical, FaExclamationTriangle, FaMagic, FaClock
 } from 'react-icons/fa';
 
 /**
@@ -39,6 +39,7 @@ export default function ProductManager({
   handleToggleProduct,
   handleToggleFeatured,
   setActiveTab,
+  enableBookings,
 }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [showToppingsSection, setShowToppingsSection] = useState(false);
@@ -77,7 +78,7 @@ export default function ProductManager({
   const openCreate = () => {
     setShowProductModal(true);
     setEditingProduct(null);
-    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [] });
+    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [], itemType: 'product', durationMinutes: '' });
     setTouchedFields({});
     setCurrentStep(1);
     setShowToppingsSection(false);
@@ -266,6 +267,48 @@ export default function ProductManager({
                           <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-[10px]" />Selecciona una categoría</p>
                         )}
                       </div>
+
+                      {/* Item Type & Duration (only when bookings enabled) */}
+                      {enableBookings && (
+                        <>
+                          <div className="space-y-1">
+                            <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                              <FaTag className="text-slate-400 text-[10px]" />Tipo de artículo
+                            </label>
+                            <div className="flex gap-2">
+                              <button type="button" onClick={() => setForm(prev => ({ ...prev, itemType: 'product', durationMinutes: '' }))}
+                                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all border ${
+                                  form.itemType !== 'service' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                }`}>
+                                📦 Producto
+                              </button>
+                              <button type="button" onClick={() => setForm(prev => ({ ...prev, itemType: 'service' }))}
+                                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all border ${
+                                  form.itemType === 'service' ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
+                                }`}>
+                                📅 Servicio
+                              </button>
+                            </div>
+                          </div>
+                          {form.itemType === 'service' && (
+                            <div className="space-y-1">
+                              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                                <FaClock className="text-slate-400 text-[10px]" />Duración del servicio *
+                              </label>
+                              <select name="durationMinutes" value={form.durationMinutes} onChange={handleChange}
+                                className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 text-slate-900 px-3 py-2 text-sm transition-all cursor-pointer">
+                                <option value="">Seleccionar duración...</option>
+                                <option value="15">15 minutos</option>
+                                <option value="30">30 minutos</option>
+                                <option value="45">45 minutos</option>
+                                <option value="60">1 hora</option>
+                                <option value="90">1 hora 30 min</option>
+                                <option value="120">2 horas</option>
+                              </select>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
 

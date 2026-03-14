@@ -9,7 +9,7 @@ import {
   FaCog, FaStore, FaImage, FaWhatsapp, FaMapMarkerAlt, FaMap,
   FaInfoCircle, FaShareAlt, FaFacebook, FaInstagram, FaMusic, FaLink,
   FaEye, FaEyeSlash, FaWrench, FaSave, FaSyncAlt, FaCheckCircle,
-  FaExclamationCircle, FaFileAlt, FaBell
+  FaExclamationCircle, FaFileAlt, FaBell, FaCalendarAlt
 } from 'react-icons/fa';
 
 const BusinessSettings = () => {
@@ -166,7 +166,9 @@ const BusinessSettings = () => {
         extraLink: {
           url: settings.extraLink?.url || "",
           isVisible: settings.extraLink?.isVisible || false
-        }
+        },
+        enableBookings: settings.enableBookings || false,
+        bookingSettings: settings.bookingSettings || { slotInterval: 30, maxAdvanceDays: 30, bufferMinutes: 0, autoConfirm: true }
       };
       console.log('Datos a enviar:', dataToSend);
       
@@ -460,6 +462,115 @@ const BusinessSettings = () => {
 
         {/* Horarios y Estado del Negocio */}
         <BusinessHoursSettings />
+
+        {/* Agenda y Reservas */}
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
+                <FaCalendarAlt className="text-[10px] text-indigo-500" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">Agenda y Reservas</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSettings(prev => ({ ...prev, enableBookings: !prev.enableBookings }))}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                settings.enableBookings ? 'bg-indigo-500' : 'bg-slate-300'
+              }`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                settings.enableBookings ? 'translate-x-4' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          {settings.enableBookings && (
+            <div className="p-4 space-y-3">
+              <p className="text-[11px] text-slate-500">Permite que tus clientes agenden citas al pedir un servicio.</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    Intervalo de slots (min)
+                  </label>
+                  <select
+                    value={settings.bookingSettings?.slotInterval || 30}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      bookingSettings: { ...prev.bookingSettings, slotInterval: parseInt(e.target.value) }
+                    }))}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  >
+                    <option value={15}>15 min</option>
+                    <option value={30}>30 min</option>
+                    <option value={45}>45 min</option>
+                    <option value={60}>60 min</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    Días de anticipación
+                  </label>
+                  <select
+                    value={settings.bookingSettings?.maxAdvanceDays || 30}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      bookingSettings: { ...prev.bookingSettings, maxAdvanceDays: parseInt(e.target.value) }
+                    }))}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  >
+                    <option value={7}>7 días</option>
+                    <option value={14}>14 días</option>
+                    <option value={30}>30 días</option>
+                    <option value={60}>60 días</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    Buffer entre citas (min)
+                  </label>
+                  <select
+                    value={settings.bookingSettings?.bufferMinutes || 0}
+                    onChange={(e) => setSettings(prev => ({
+                      ...prev,
+                      bookingSettings: { ...prev.bookingSettings, bufferMinutes: parseInt(e.target.value) }
+                    }))}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                  >
+                    <option value={0}>Sin buffer</option>
+                    <option value={5}>5 min</option>
+                    <option value={10}>10 min</option>
+                    <option value={15}>15 min</option>
+                    <option value={30}>30 min</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    Auto-confirmar
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setSettings(prev => ({
+                      ...prev,
+                      bookingSettings: { ...prev.bookingSettings, autoConfirm: !prev.bookingSettings?.autoConfirm }
+                    }))}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                      settings.bookingSettings?.autoConfirm !== false ? 'bg-indigo-500' : 'bg-slate-300'
+                    }`}
+                  >
+                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                      settings.bookingSettings?.autoConfirm !== false ? 'translate-x-4' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Redes Sociales */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

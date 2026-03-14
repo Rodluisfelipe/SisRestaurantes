@@ -10,6 +10,7 @@ import api from '../services/api';
 import DeliveryZoneSelector from './DeliveryZoneSelector';
 import SuggestedProducts from './SuggestedProducts';
 import LoyaltyWidget from './LoyaltyWidget';
+import TimeSlotPicker from './TimeSlotPicker';
 
 /* ── Checkout SVG Icon System (admin-style, no emojis) ── */
 const CI = {
@@ -73,6 +74,14 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     address: ''
   });
   const deliveryAddressRef = useRef(null);
+
+  // Booking state
+  const [bookingSlot, setBookingSlot] = useState(null);
+  const hasServices = useMemo(() => cart.some(item => item.itemType === 'service'), [cart]);
+  const maxServiceDuration = useMemo(() => {
+    if (!hasServices) return 0;
+    return Math.max(...cart.filter(i => i.itemType === 'service').map(i => i.durationMinutes || 30));
+  }, [cart, hasServices]);
 
   // Auto-scroll to checkout section when order type changes
   const scrollToCheckout = useCallback(() => {
@@ -166,21 +175,27 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     loyaltyRewardRef.current = selection;
   };
 
-  // Wrap onOrder to include loyalty reward info
+  // Wrap onOrder to include loyalty reward info and booking data
   const onOrder = useCallback((info, coupon) => {
+    let enriched = { ...info };
+
+    // Add booking data if cart has services and a slot is selected
+    if (bookingSlot && cart.some(i => i.itemType === 'service')) {
+      enriched.isBooking = true;
+      enriched.bookingDate = bookingSlot.dateTime;
+    }
+
     const selection = loyaltyRewardRef.current;
     if (selection) {
-      const enriched = {
-        ...info,
+      enriched = {
+        ...enriched,
         loyaltyReward: selection.reward,
         loyaltyRewardId: selection.rewardId,
         loyaltyPointsCost: selection.pointsCost
       };
-      onOrderProp(enriched, coupon);
-    } else {
-      onOrderProp(info, coupon);
     }
-  }, [onOrderProp]);
+    onOrderProp(enriched, coupon);
+  }, [onOrderProp, bookingSlot, cart]);
 
   // Sincronizar tableNumber con orderInfo
   useEffect(() => {
@@ -1457,7 +1472,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               )}
 
               {/* ── Tipo de pedido inline ── */}
-              {!initialOrderTypeSelected && (
+              {!initialOrderTypeSelected && !hasServices && (
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Tipo de pedido</p>
                   <div className={`relative p-1 rounded-2xl bg-slate-100 ${isFromTableQR ? 'grid grid-cols-2' : 'grid grid-cols-3'}`}>
@@ -1486,8 +1501,26 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 </div>
               )}
 
+              {/* ── Selector de horario para servicios con agenda ── */}
+              {hasServices && businessConfig?.enableBookings && (
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Selecciona fecha y hora
+                  </p>
+                  <TimeSlotPicker
+                    businessId={businessConfig?.businessId || businessConfig?._id}
+                    businessConfig={businessConfig}
+                    duration={maxServiceDuration}
+                    buttonColor={themeColor}
+                    buttonTextColor={themeTextColor}
+                    onSelect={setBookingSlot}
+                    selected={bookingSlot}
+                  />
+                </div>
+              )}
+
               {/* ── Selector de método de pago (antes de datos de entrega) ── */}
-              {(initialOrderTypeSelected || orderType) && (() => {
+              {(initialOrderTypeSelected || orderType || (hasServices && bookingSlot)) && (() => {
                 const pm = businessConfig?.paymentMethods;
                 const currentMode = isInAppMode ? 'inapp' : 'whatsapp';
                 const isMethodOn = (id, fallback) => {
@@ -1762,7 +1795,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
             {/* Confirm button */}
             {(() => {
-              const hasSelectedType = initialOrderTypeSelected || orderType;
+              const hasSelectedType = initialOrderTypeSelected || orderType || (hasServices && bookingSlot);
               const isDeliveryWithoutCheck = orderType === 'delivery' && !initialOrderTypeSelected && !locationChecked;
               const showButton = hasSelectedType && !isDeliveryWithoutCheck;
               // Revisa si hay métodos de pago disponibles para decidir si es obligatorio
@@ -1775,9 +1808,19 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               const needsPayment = anyPaymentAvailable && !selectedPaymentMethod;
               // Delivery requires zone selection when GPS fails
               const isDeliveryWithoutZone = orderType === 'delivery' && !initialOrderTypeSelected && locationChecked && !deliveryZoneInfo;
-              const isDisabled = isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended' || needsPayment || isDeliveryWithoutZone;
+              // Booking requires slot when cart has services
+              const needsBookingSlot = hasServices && businessConfig?.enableBookings && !bookingSlot;
+              const isDisabled = isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended' || needsPayment || isDeliveryWithoutZone || needsBookingSlot;
 
               if (!showButton) return null;
+
+              // Helper to enrich orderInfo with booking data
+              const withBookingData = (info) => {
+                if (hasServices && bookingSlot) {
+                  return { ...info, isBooking: true, bookingDate: bookingSlot.dateTime };
+                }
+                return info;
+              };
 
               const handleConfirmClick = () => {
                 if (isDisabled) return;
@@ -1791,6 +1834,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   alert('Por favor selecciona tu zona de entrega para continuar');
                   return;
                 }
+
+                if (needsBookingSlot) {
+                  alert('Por favor selecciona fecha y hora para tu cita');
+                  return;
+                }
+
+                // For services without explicit order type, default to inSite
+                if (hasServices && !initialOrderTypeSelected && !orderType) {
+                  setLocalIsSubmitting(true);
+                  const updatedOrderInfo = withBookingData({ ...orderInfo, orderType: 'inSite', tableNumber: '', paymentMethod: selectedPaymentMethod });
+                  updateOrderInfo(updatedOrderInfo);
+                  SessionManager.saveOrderInfo(updatedOrderInfo);
+                  setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
+                  return;
+                }
                 
                 if (initialOrderTypeSelected) {
                   handleSubmitOrder();
@@ -1801,13 +1859,13 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     return;
                   }
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = { ...orderInfo, orderType: 'inSite', tableNumber: trimmedTable || tableNumber, paymentMethod: selectedPaymentMethod };
+                  const updatedOrderInfo = withBookingData({ ...orderInfo, orderType: 'inSite', tableNumber: trimmedTable || tableNumber, paymentMethod: selectedPaymentMethod });
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
                   setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
                 } else if (orderType === 'takeaway') {
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = { ...orderInfo, orderType: 'takeaway', tableNumber: '', paymentMethod: selectedPaymentMethod };
+                  const updatedOrderInfo = withBookingData({ ...orderInfo, orderType: 'takeaway', tableNumber: '', paymentMethod: selectedPaymentMethod });
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
                   setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
@@ -1815,12 +1873,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   const trimmedAddress = (deliveryAddressRef.current?.value || '').trim();
                   if (!trimmedAddress) { alert('Por favor ingresa la dirección de entrega'); return; }
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = {
+                  const updatedOrderInfo = withBookingData({
                     ...orderInfo, orderType: 'delivery', address: trimmedAddress, tableNumber: '',
                     paymentMethod: selectedPaymentMethod,
                     deliveryFee: deliveryFee || null, deliveryZoneName: deliveryZoneInfo?.zoneName || null,
                     deliveryZoneInfo: deliveryZoneInfo || null, deliveryCalculated: true, deliveryNeedsConfirmation: !deliveryFee
-                  };
+                  });
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
                   setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
@@ -1828,7 +1886,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               };
 
               let buttonLabel = 'Confirmar Pedido';
-              if (initialOrderTypeSelected && orderInfo.orderType === 'inSite') buttonLabel = `Confirmar · Mesa ${tableNumber}`;
+              if (hasServices && bookingSlot) buttonLabel = 'Confirmar Cita';
+              else if (initialOrderTypeSelected && orderInfo.orderType === 'inSite') buttonLabel = `Confirmar · Mesa ${tableNumber}`;
               else if (initialOrderTypeSelected && orderInfo.orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
               else if (orderType === 'inSite') buttonLabel = `Confirmar · Mesa${formState.tableNumber ? ` ${formState.tableNumber}` : ''}`;
               else if (orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';

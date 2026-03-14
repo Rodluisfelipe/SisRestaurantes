@@ -167,7 +167,10 @@ router.post("/", (req, res, next) => {
       paymentMethod,
       customerNotes,
       // POS payment details (for ticket reprinting)
-      posPaymentInfo
+      posPaymentInfo,
+      // Booking / appointment fields
+      isBooking,
+      bookingDate
     } = req.body;
     
 
@@ -409,6 +412,44 @@ router.post("/", (req, res, next) => {
     const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
     const customerToken = isInApp ? generateCustomerToken() : null;
 
+    // === BOOKING VALIDATION ===
+    let bookingEndDate = null;
+    let resolvedBookingStatus = null;
+    if (isBooking && bookingDate) {
+      const bDate = new Date(bookingDate);
+      if (isNaN(bDate.getTime()) || bDate <= new Date()) {
+        return res.status(400).json({ message: 'bookingDate must be a valid future date' });
+      }
+      // Calculate end date from the longest service in the cart
+      let maxDuration = 30; // default 30 min
+      const serviceIds = items.filter(i => i.productId).map(i => i.productId);
+      if (serviceIds.length > 0) {
+        const products = await Product.find({ _id: { $in: serviceIds }, itemType: 'service' }).select('durationMinutes').lean();
+        for (const p of products) {
+          if (p.durationMinutes && p.durationMinutes > maxDuration) {
+            maxDuration = p.durationMinutes;
+          }
+        }
+      }
+      bookingEndDate = new Date(bDate.getTime() + maxDuration * 60 * 1000);
+
+      // Double-check slot availability (concurrency protection)
+      const conflicting = await Order.findOne({
+        businessId: businessObjectId,
+        isBooking: true,
+        status: { $nin: ['cancelled'] },
+        bookingDate: { $lt: bookingEndDate },
+        bookingEndDate: { $gt: bDate }
+      });
+      if (conflicting) {
+        return res.status(409).json({ message: 'Este horario ya no está disponible. Por favor selecciona otro.' });
+      }
+
+      // Determine initial booking status
+      const config = await BusinessConfig.findById(businessObjectId).select('bookingSettings').lean();
+      resolvedBookingStatus = config?.bookingSettings?.autoConfirm !== false ? 'confirmed' : 'pending';
+    }
+
     // Create the order
     const newOrder = new Order({
       businessId: businessObjectId,
@@ -440,6 +481,11 @@ router.post("/", (req, res, next) => {
       deliveryZoneId: deliveryZoneId || null,
       // POS: persist payment info for ticket reprinting
       posPaymentInfo: isPOS && posPaymentInfo ? posPaymentInfo : undefined,
+      // Booking / appointment fields
+      isBooking: isBooking || false,
+      bookingDate: isBooking && bookingDate ? new Date(bookingDate) : null,
+      bookingEndDate: bookingEndDate || null,
+      bookingStatus: resolvedBookingStatus,
       // Map delivery zone details to top-level fields
       deliveryCoordinates: deliveryZoneInfo?.coordinates || { lat: null, lon: null },
       deliveryDistance: deliveryZoneInfo?.distance || 0,
@@ -494,6 +540,11 @@ router.post("/", (req, res, next) => {
 
     // Emit socket event
     socketService.emitToBusiness(businessObjectId.toString(), "order_created", savedOrder);
+    
+    // Emit booking-specific event for admin agenda
+    if (savedOrder.isBooking) {
+      socketService.emitToBusiness(businessObjectId.toString(), "new_booking", savedOrder);
+    }
     
     // Enviar notificación push por nuevo pedido
     const { sendPushToBusinessId } = require('../services/pushService');

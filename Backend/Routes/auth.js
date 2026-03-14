@@ -61,6 +61,34 @@ const BUSINESS_TYPE_CONFIG = {
     emoji: '🍴',
     categories: ['Categoría 1', 'Categoría 2', 'Bebidas'],
     orderingMode: 'whatsapp'
+  },
+  salon: {
+    label: 'Salón / Barbería',
+    emoji: '💇',
+    categories: ['Cortes', 'Coloración', 'Tratamientos', 'Productos'],
+    orderingMode: 'inapp',
+    isServiceType: true
+  },
+  spa: {
+    label: 'Spa / Bienestar',
+    emoji: '💆',
+    categories: ['Masajes', 'Faciales', 'Tratamientos Corporales', 'Productos'],
+    orderingMode: 'inapp',
+    isServiceType: true
+  },
+  clinic: {
+    label: 'Clínica / Consultorio',
+    emoji: '🏥',
+    categories: ['Consultas', 'Terapias', 'Procedimientos', 'Productos'],
+    orderingMode: 'inapp',
+    isServiceType: true
+  },
+  services: {
+    label: 'Servicios con Agenda',
+    emoji: '🔧',
+    categories: ['Servicios', 'Paquetes', 'Productos'],
+    orderingMode: 'inapp',
+    isServiceType: true
   }
 };
 
@@ -189,7 +217,7 @@ router.post('/register', registerLimiter, async (req, res) => {
     }
 
     // Determinar tipo de negocio y configuración
-    const validTypes = ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'other'];
+    const validTypes = ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'salon', 'spa', 'clinic', 'services', 'other'];
     const finalBusinessType = validTypes.includes(businessType) ? businessType : 'restaurant';
     const typeConfig = BUSINESS_TYPE_CONFIG[finalBusinessType];
 
@@ -201,7 +229,12 @@ router.post('/register', registerLimiter, async (req, res) => {
       orderingMode: typeConfig.orderingMode,
       onboarding: { level: 1, completedAt: null, guidesShown: [] },
       onboardingFeatureDate: new Date(),
-      isActive: true
+      isActive: true,
+      // Auto-enable bookings for service-type businesses
+      ...(typeConfig.isServiceType ? {
+        enableBookings: true,
+        bookingSettings: { slotInterval: 30, maxAdvanceDays: 30, bufferMinutes: 0, autoConfirm: true }
+      } : {})
     });
 
     // Guardar la configuración del negocio
@@ -751,7 +784,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
     }
 
     // Determinar tipo de negocio
-    const validTypes = ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'other'];
+    const validTypes = ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'salon', 'spa', 'clinic', 'services', 'other'];
     const finalBusinessType = validTypes.includes(businessType) ? businessType : 'restaurant';
     const typeConfig = BUSINESS_TYPE_CONFIG[finalBusinessType];
 
@@ -763,7 +796,12 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       orderingMode: typeConfig.orderingMode,
       onboarding: { level: 1, completedAt: null, guidesShown: [] },
       onboardingFeatureDate: new Date(),
-      isActive: true
+      isActive: true,
+      // Auto-enable bookings for service-type businesses
+      ...(typeConfig.isServiceType ? {
+        enableBookings: true,
+        bookingSettings: { slotInterval: 30, maxAdvanceDays: 30, bufferMinutes: 0, autoConfirm: true }
+      } : {})
     });
     await businessConfig.save();
 

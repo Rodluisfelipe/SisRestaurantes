@@ -191,6 +191,7 @@ app.use("/api/delivery-admin", require("./Routes/deliveryAdmin")); // Gestión d
 app.use("/api/delivery", require("./Routes/deliveryPublic")); // Endpoints públicos de domiciliarios
 app.use("/api/restaurants", require("./Routes/deliveryPublic")); // Rutas públicas /restaurants/:slug/domi y /track
 app.use("/api/reviews", require("./Routes/reviews")); // Reseñas de clientes
+app.use("/api/bookings", require("./Routes/bookings")); // Bookings / appointments for service businesses
 app.use("/api/push", require("./Routes/push")); // Push notifications (PWA)
 app.use("/api/upload", require("./Routes/upload")); // Subida de imágenes a DigitalOcean Spaces
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot

@@ -14,6 +14,10 @@ const BUSINESS_TYPES = [
   { id: 'ice_cream',  emoji: '🍦', label: 'Heladería',      desc: 'Helados, malteadas, postres' },
   { id: 'bar',        emoji: '🍸', label: 'Bar',            desc: 'Cocteles, cervezas, picadas' },
   { id: 'food_truck', emoji: '🚚', label: 'Food Truck',     desc: 'Comida callejera, especiales' },
+  { id: 'salon',      emoji: '💇', label: 'Salón / Barbería', desc: 'Cortes, color, tratamientos' },
+  { id: 'spa',        emoji: '💆', label: 'Spa / Bienestar', desc: 'Masajes, faciales, terapias' },
+  { id: 'clinic',     emoji: '🏥', label: 'Clínica / Consultorio', desc: 'Consultas, terapias, procedimientos' },
+  { id: 'services',   emoji: '🔧', label: 'Servicios con Agenda', desc: 'Cualquier negocio con citas' },
   { id: 'other',      emoji: '🍴', label: 'Otro',           desc: 'Cualquier tipo de negocio' },
 ];
 
@@ -310,7 +314,7 @@ const Register = () => {
                       onChange={(e) => { setBusinessName(e.target.value); setError(''); }}
                       autoFocus required
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
-                      placeholder={businessType === 'cafe' ? 'Ej: Café Aroma' : businessType === 'bakery' ? 'Ej: Dulces Delicias' : 'Ej: La Parrilla de Juan'} />
+                      placeholder={businessType === 'cafe' ? 'Ej: Café Aroma' : businessType === 'bakery' ? 'Ej: Dulces Delicias' : businessType === 'salon' ? 'Ej: Barbería Style' : businessType === 'spa' ? 'Ej: Spa Zen' : businessType === 'clinic' ? 'Ej: Fisio Salud' : businessType === 'services' ? 'Ej: Studio Pro' : 'Ej: La Parrilla de Juan'} />
                   </div>
 
                   <AnimatePresence>
