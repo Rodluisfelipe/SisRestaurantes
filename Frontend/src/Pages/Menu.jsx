@@ -1217,7 +1217,9 @@ export default function Menu() {
       
       // Configurar mensaje específico según tipo de pedido
       let confirmMessage = '¡Gracias por tu pedido!';
-      if (isInAppMode) {
+      if (orderDetails.isBooking) {
+        confirmMessage = '¡Cita agendada! Te notificaremos cuando sea confirmada.';
+      } else if (isInAppMode) {
         confirmMessage = '¡Pedido recibido! Realiza el pago y sube tu comprobante para continuar.';
       } else if (orderDetails.orderType === 'delivery') {
         confirmMessage = '¡Gracias por tu pedido! Te contactaremos pronto para coordinar la entrega.';

@@ -90,6 +90,7 @@ const STATUS_CONFIG = {
 // Get the step sequence for in-app orders
 const INAPP_STEPS = ['pending_payment', 'payment_uploaded', 'payment_confirmed', 'inProgress', 'completed'];
 const WHATSAPP_STEPS = ['pending', 'inProgress', 'completed'];
+const BOOKING_STEPS = ['pending', 'confirmed', 'completed'];
 
 const OrderTracker = ({ 
   orderId, 
@@ -284,11 +285,32 @@ const OrderTracker = ({
 
   // Determine step flow
   const isInApp = order?.orderChannel === 'inapp';
-  const steps = isInApp ? INAPP_STEPS : WHATSAPP_STEPS;
+  const isBooking = order?.isBooking === true;
+  const steps = isBooking ? BOOKING_STEPS : isInApp ? INAPP_STEPS : WHATSAPP_STEPS;
   
   // Find current step index
   const currentStepIndex = steps.indexOf(order?.status);
-  const currentStatus = STATUS_CONFIG[order?.status] || STATUS_CONFIG.pending;
+
+  // Override status labels for bookings
+  const bookingStatusOverrides = isBooking ? {
+    pending: { label: 'Cita Pendiente', shortLabel: 'Pendiente', icon: '📅', color: '#f59e0b', description: 'Tu cita está pendiente de confirmación' },
+    confirmed: { label: 'Cita Confirmada', shortLabel: 'Confirmada', icon: '✅', color: '#10b981', description: 'Tu cita ha sido confirmada' },
+    completed: { label: 'Cita Completada', shortLabel: 'Completada', icon: '✨', color: '#0ea5e9', description: 'Tu cita fue completada' },
+    cancelled: { label: 'Cita Cancelada', shortLabel: 'Cancelada', icon: '❌', color: '#ef4444', description: 'Tu cita fue cancelada' },
+  } : {};
+  const currentStatus = bookingStatusOverrides[order?.status] || STATUS_CONFIG[order?.status] || STATUS_CONFIG.pending;
+
+  // Format booking date
+  const formatBookingDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+  };
+  const formatBookingTime = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  };
 
   // Format price
   const formatPrice = (amount) => {
@@ -360,8 +382,13 @@ const OrderTracker = ({
             <h2 className="text-lg font-bold">{currentStatus.label}</h2>
             <p className="text-sm opacity-90 mt-1">{currentStatus.description}</p>
             <div className="mt-3 inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
-              <span className="text-sm font-semibold">Pedido #{order.orderNumber}</span>
+              <span className="text-sm font-semibold">{isBooking ? 'Cita' : 'Pedido'} #{order.orderNumber}</span>
             </div>
+            {isBooking && order.bookingDate && (
+              <div className="mt-2 inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
+                <span className="text-sm">📅 {formatBookingDate(order.bookingDate)} · {formatBookingTime(order.bookingDate)}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -370,7 +397,7 @@ const OrderTracker = ({
           {/* Step Progress */}
           <div className="flex items-center justify-between px-2">
             {steps.map((step, index) => {
-              const stepConfig = STATUS_CONFIG[step];
+              const stepConfig = (isBooking && bookingStatusOverrides[step]) || STATUS_CONFIG[step];
               const isComplete = currentStepIndex > index;
               const isCurrent = currentStepIndex === index;
               const isPending = currentStepIndex < index;
@@ -461,8 +488,23 @@ const OrderTracker = ({
             </motion.div>
           )}
 
+          {/* Booking info card */}
+          {isBooking && order.bookingDate && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0 text-lg">📅</div>
+                <div>
+                  <h4 className="font-semibold text-indigo-900 text-sm">Tu cita</h4>
+                  <p className="text-indigo-700 text-xs mt-0.5">
+                    {formatBookingDate(order.bookingDate)} a las {formatBookingTime(order.bookingDate)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Payment section - inline payment methods + upload */}
-          {isInApp && order.status === 'pending_payment' && (
+          {isInApp && !isBooking && order.status === 'pending_payment' && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -595,7 +637,7 @@ const OrderTracker = ({
           )}
 
           {/* Payment uploaded - waiting for confirmation */}
-          {isInApp && order.status === 'payment_uploaded' && (
+          {isInApp && !isBooking && order.status === 'payment_uploaded' && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -616,7 +658,7 @@ const OrderTracker = ({
           )}
 
           {/* Payment rejected notice */}
-          {isInApp && order.status === 'pending_payment' && order.statusHistory?.some(h => h.note?.includes('rechazado')) && (
+          {isInApp && !isBooking && order.status === 'pending_payment' && order.statusHistory?.some(h => h.note?.includes('rechazado')) && (
             <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 flex items-center gap-2">
               <span className="text-sm">⚠️</span>
               <p className="text-xs text-red-700 font-medium">
@@ -633,9 +675,10 @@ const OrderTracker = ({
               className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center"
             >
               <div className="text-4xl mb-2">🎉</div>
-              <h4 className="font-bold text-green-900">¡Tu pedido está listo!</h4>
+              <h4 className="font-bold text-green-900">{isBooking ? '¡Tu cita fue completada!' : '¡Tu pedido está listo!'}</h4>
               <p className="text-green-700 text-sm mt-1">
-                {order.orderType === 'delivery' ? 'Tu pedido va en camino' : 
+                {isBooking ? '¡Gracias por tu visita!' :
+                 order.orderType === 'delivery' ? 'Tu pedido va en camino' : 
                  order.orderType === 'takeaway' ? 'Puedes pasar a recogerlo' : 
                  'Será servido en tu mesa'}
               </p>
@@ -644,7 +687,7 @@ const OrderTracker = ({
 
           {/* Order Items */}
           <div className="bg-gray-50 rounded-2xl p-4">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Tu Pedido</h4>
+            <h4 className="text-sm font-semibold text-gray-900 mb-3">{isBooking ? 'Tu Cita' : 'Tu Pedido'}</h4>
             <div className="space-y-2">
               {order.items?.map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-sm">
