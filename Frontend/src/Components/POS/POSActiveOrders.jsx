@@ -13,10 +13,13 @@ const STATUS_CONFIG = {
   ready: { label: 'Lista', bg: 'bg-emerald-100', text: 'text-emerald-800', dot: 'bg-emerald-400', next: 'completed', nextLabel: 'Completar' },
 };
 
-const METHOD_LABELS = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia' };
-const TYPE_LABELS = { inSite: 'Mesa', takeaway: 'Para llevar', delivery: 'Domicilio' };
+const METHOD_LABELS = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia', roomCharge: 'Cargo a hab.' };
+const TYPE_LABELS_DEFAULT = { inSite: 'Mesa', takeaway: 'Para llevar', delivery: 'Domicilio' };
+const TYPE_LABELS_HOTEL = { inSite: 'Hab.', takeaway: 'Para llevar', delivery: 'Domicilio' };
 
 export default function POSActiveOrders({ businessId, themeColor, businessConfig }) {
+  const isHotel = businessConfig?.businessType === 'hotel';
+  const TYPE_LABELS = isHotel ? TYPE_LABELS_HOTEL : TYPE_LABELS_DEFAULT;
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
@@ -92,7 +95,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
     const date = new Date(order.createdAt || Date.now());
     const items = order.items || [];
     const total = order.totalAmount || order.finalAmount || 0;
-    const orderTypeLabels = { inSite: 'En mesa', takeaway: 'Para llevar', delivery: 'Delivery' };
+    const orderTypeLabels = { inSite: isHotel ? 'En habitación' : 'En mesa', takeaway: 'Para llevar', delivery: 'Delivery' };
     const orderTypeLabel = orderTypeLabels[order.orderType] || order.orderType || '';
 
     let itemsHtml = '';
@@ -121,7 +124,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
     if (order.customerName && order.customerName !== 'POS') customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Cliente:</span><span>${order.customerName}</span></div>`;
     if (order.phone) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Tel:</span><span>${order.phone}</span></div>`;
     if (orderTypeLabel) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Tipo:</span><span>${orderTypeLabel}</span></div>`;
-    if (order.tableNumber) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span>Mesa:</span><span>${order.tableNumber}</span></div>`;
+    if (order.tableNumber) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span>${isHotel ? 'Hab.:' : 'Mesa:'}</span><span>${order.tableNumber}</span></div>`;
     if (order.orderType === 'delivery' && order.address) customerHtml += `<div style="padding:2px 0;font-weight:900;font-size:14px;color:#000">Dir: ${order.address}</div>`;
     if (order.orderType === 'delivery' && order.deliveryZoneName) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:14px;color:#000"><span>Zona:</span><span>${order.deliveryZoneName}</span></div>`;
 
@@ -282,7 +285,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                       </span>
                       <div className="flex items-center gap-1.5 text-xs text-slate-400">
                         <span>{TYPE_LABELS[order.orderType] || order.orderType}</span>
-                        {order.tableNumber && <span className="font-bold text-slate-600">M{order.tableNumber}</span>}
+                        {order.tableNumber && <span className="font-bold text-slate-600">{isHotel ? 'H' : 'M'}{order.tableNumber}</span>}
                       </div>
                     </div>
 

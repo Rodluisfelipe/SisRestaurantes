@@ -2,6 +2,8 @@
  * Configuración de tabs — títulos y descripciones para el header.
  * Elimina los 18+ líneas repetidas de {activeTab === 'x' && 'Title'}.
  */
+import { useBusinessConfig } from '../../Context/BusinessContext';
+
 const TAB_CONFIG = {
   'dashboard':        { title: 'Panel Principal',         desc: 'Acceso rápido a todas las funciones' },
   'products':         { title: 'Gestión de Productos',    desc: 'Administra tu menú y productos' },
@@ -25,8 +27,28 @@ const TAB_CONFIG = {
   'reviews':          { title: 'Reseñas y Calificaciones', desc: 'Gestiona las reseñas de tus clientes' },
 };
 
+const HOTEL_OVERRIDES = {
+  'tables':           { title: 'Habitaciones',            desc: 'Administra habitaciones y códigos QR' },
+  'orders':           { title: 'Pedidos Room Service',    desc: 'Gestiona pedidos en tiempo real' },
+  'theme':            { title: 'Personalización de Tema', desc: 'Personaliza la apariencia de tu hotel' },
+  'coupons':          { title: 'Gestión de Cupones',      desc: 'Crea y gestiona cupones de descuento para tu hotel' },
+};
+
+const SERVICE_OVERRIDES = {
+  'orders':           { title: 'Panel de Citas',          desc: 'Gestiona citas en tiempo real' },
+  'products':         { title: 'Gestión de Servicios',    desc: 'Administra tus servicios' },
+  'completed_orders': { title: 'Citas Completadas',       desc: 'Historial y resumen de citas' },
+  'tables':           { title: 'Configuración',           desc: 'Administra configuración' },
+  'toppings':         { title: 'Gestión de Opciones',     desc: 'Configura variantes y opciones' },
+};
+
 export default function AdminHeader({ activeTab }) {
-  const config = TAB_CONFIG[activeTab] || { title: '', desc: '' };
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const isHotel = businessConfig?.businessType === 'hotel';
+
+  const overrides = isHotel ? HOTEL_OVERRIDES : isService ? SERVICE_OVERRIDES : {};
+  const config = overrides[activeTab] || TAB_CONFIG[activeTab] || { title: '', desc: '' };
 
   return (
     <div className="hidden md:block bg-white border-b border-slate-200 sticky top-0 z-40">

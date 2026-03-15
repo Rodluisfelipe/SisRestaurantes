@@ -124,7 +124,7 @@ function ModernKitchen() {
   const getOrderTypeInfo = (orderType) => {
     switch (orderType) {
       case 'inSite':
-        return { icon: Icons.User, color: 'bg-blue-500', label: 'Mesa', bgColor: 'bg-blue-50', textColor: 'text-blue-700' };
+        return { icon: Icons.User, color: 'bg-blue-500', label: businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa', bgColor: 'bg-blue-50', textColor: 'text-blue-700' };
       case 'takeaway':
         return { icon: Icons.ShoppingBag, color: 'bg-orange-500', label: 'Para llevar', bgColor: 'bg-orange-50', textColor: 'text-orange-700' };
       case 'delivery':
@@ -665,7 +665,7 @@ function ModernKitchen() {
                         {order.orderType === 'inSite' && order.tableNumber && (
                           <div className="flex items-center space-x-1">
                             <Icons.MapPin className="w-4 h-4 text-slate-400" />
-                            <span className="text-sm text-slate-400">Mesa {order.tableNumber}</span>
+                            <span className="text-sm text-slate-400">{businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} {order.tableNumber}</span>
                           </div>
                         )}
                         {order.orderType === 'delivery' && order.address && (

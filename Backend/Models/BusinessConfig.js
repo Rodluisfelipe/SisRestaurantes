@@ -26,7 +26,7 @@ const businessConfigSchema = new mongoose.Schema({
   },
   businessType: {
     type: String,
-    enum: ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'salon', 'spa', 'clinic', 'services', 'other'],
+    enum: ['fast_food', 'restaurant', 'cafe', 'bakery', 'ice_cream', 'bar', 'food_truck', 'salon', 'spa', 'clinic', 'services', 'hotel', 'other'],
     default: 'restaurant'
   },
   // Booking / appointment system

@@ -680,7 +680,7 @@ const OrderTracker = ({
                 {isBooking ? '¡Gracias por tu visita!' :
                  order.orderType === 'delivery' ? 'Tu pedido va en camino' : 
                  order.orderType === 'takeaway' ? 'Puedes pasar a recogerlo' : 
-                 'Será servido en tu mesa'}
+                 businessConfig?.businessType === 'hotel' ? 'Será entregado en tu habitación' : 'Será servido en tu mesa'}
               </p>
             </motion.div>
           )}

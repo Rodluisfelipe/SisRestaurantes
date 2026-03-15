@@ -89,6 +89,12 @@ const BUSINESS_TYPE_CONFIG = {
     categories: ['Servicios', 'Paquetes', 'Productos'],
     orderingMode: 'inapp',
     isServiceType: true
+  },
+  hotel: {
+    label: 'Hotel',
+    emoji: '🏨',
+    categories: ['Room Service', 'Desayunos', 'Bebidas', 'Snacks', 'Minibar'],
+    orderingMode: 'inapp'
   }
 };
 

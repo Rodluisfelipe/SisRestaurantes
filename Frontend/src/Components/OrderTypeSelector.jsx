@@ -359,13 +359,13 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
                 className="space-y-3.5"
               >
                 <p className="text-sm text-gray-500 text-center leading-relaxed">
-                  Hola <span className="font-semibold text-gray-700">{orderInfo.customerName}</span>, mesa{' '}
+                  Hola <span className="font-semibold text-gray-700">{orderInfo.customerName}</span>, {businessConfig?.businessType === 'hotel' ? 'habitación' : 'mesa'}{' '}
                   <span className="font-bold" style={{ color: themeColor }}>{initialTableNumber}</span>
                 </p>
 
                 <div className="space-y-2">
                   {[
-                    { type: 'inSite', title: 'En sitio', sub: 'Comer en el local', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
+                    { type: 'inSite', title: businessConfig?.businessType === 'hotel' ? 'En habitación' : 'En sitio', sub: businessConfig?.businessType === 'hotel' ? 'Servicio a la habitación' : 'Comer en el local', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
                     { type: 'takeaway', title: 'Para llevar', sub: 'Recoger y llevar', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg> }
                   ].map(({ type, title, sub, icon }, i) => {
                     const active = orderInfo.orderType === type;

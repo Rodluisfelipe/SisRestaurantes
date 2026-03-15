@@ -55,7 +55,7 @@ function ModernOrdersDashboard() {
     const items = order.items || [];
     const total = order.totalAmount || order.finalAmount || 0;
 
-    const orderTypeLabels = { inSite: 'En mesa', takeaway: 'Para llevar', delivery: 'Delivery' };
+    const orderTypeLabels = { inSite: businessConfig?.businessType === 'hotel' ? 'En habitación' : 'En mesa', takeaway: 'Para llevar', delivery: 'Delivery' };
     const orderTypeLabel = orderTypeLabels[order.orderType] || order.orderType || '';
 
     let itemsHtml = '';
@@ -84,7 +84,7 @@ function ModernOrdersDashboard() {
     if (order.customerName) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Cliente:</span><span>${order.customerName}</span></div>`;
     if (order.phone) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Tel:</span><span>${order.phone}</span></div>`;
     if (orderTypeLabel) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Tipo:</span><span>${orderTypeLabel}</span></div>`;
-    if (order.tableNumber) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span>Mesa:</span><span>${order.tableNumber}</span></div>`;
+    if (order.tableNumber) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span>${businessConfig?.businessType === 'hotel' ? 'Hab.:' : 'Mesa:'}</span><span>${order.tableNumber}</span></div>`;
     if (order.orderType === 'delivery' && order.address) customerHtml += `<div style="padding:2px 0;font-weight:900;font-size:14px;color:#000">Dir: ${order.address}</div>`;
     if (order.orderType === 'delivery' && order.deliveryZoneName) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:14px;color:#000"><span>Zona:</span><span>${order.deliveryZoneName}</span></div>`;
 
@@ -158,7 +158,7 @@ function ModernOrdersDashboard() {
   const getOrderTypeInfo = (orderType) => {
     switch (orderType) {
       case 'inSite':
-        return { Icon: FaChair, color: 'bg-blue-500', label: 'En mesa' };
+        return { Icon: FaChair, color: 'bg-blue-500', label: businessConfig?.businessType === 'hotel' ? 'En habitación' : 'En mesa' };
       case 'takeaway':
         return { Icon: FaShoppingBag, color: 'bg-orange-500', label: 'Para llevar' };
       case 'delivery':
@@ -1009,7 +1009,7 @@ function ModernOrdersDashboard() {
                             {order.tableNumber && (
                               <div className="flex items-center gap-2 text-[13px]">
                                 <FaChair className="text-[10px] text-slate-400 shrink-0" />
-                                <span className="font-medium text-slate-700">Mesa {order.tableNumber}</span>
+                                <span className="font-medium text-slate-700">{businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} {order.tableNumber}</span>
                               </div>
                             )}
                             
@@ -1382,7 +1382,7 @@ function ModernOrdersDashboard() {
                     {orderDetails.tableNumber && (
                       <div className="flex items-center gap-2">
                         <FaChair className="text-xs text-slate-400" />
-                        <span className="text-[13px] text-slate-500">Mesa:</span>
+                        <span className="text-[13px] text-slate-500">{businessConfig?.businessType === 'hotel' ? 'Hab.:' : 'Mesa:'}</span>
                         <span className="text-[13px] font-medium text-slate-800">{orderDetails.tableNumber}</span>
                       </div>
                     )}
@@ -1576,7 +1576,7 @@ function ModernOrdersDashboard() {
                       {orderDetails.paymentMethod && (
                         <div className="px-3 py-2 bg-slate-50 border-t border-slate-200">
                           <span className="text-[11px] text-slate-500">Método: </span>
-                          <span className="text-[11px] font-semibold text-slate-700 capitalize">{orderDetails.paymentMethod}</span>
+                          <span className="text-[11px] font-semibold text-slate-700 capitalize">{orderDetails.paymentMethod === 'roomCharge' ? 'Cargo a habitación' : orderDetails.paymentMethod}</span>
                         </div>
                       )}
                     </div>

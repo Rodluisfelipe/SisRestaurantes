@@ -204,6 +204,7 @@ const FilterableMenu = ({
   const { businessConfig: businessConfigContext } = useBusinessConfig();
   const businessConfig = businessConfigProp || businessConfigContext;
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const isHotel = businessConfig?.businessType === 'hotel';
 
   // ── Scroll-spy + sticky state ──
   const [spyCategory, setSpyCategory] = useState('all');  // category visible by scroll

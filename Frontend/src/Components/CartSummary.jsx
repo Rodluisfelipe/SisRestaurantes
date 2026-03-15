@@ -813,6 +813,30 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     </div>
                     <p className="text-xs text-blue-700">Realiza tu pago y luego sube el comprobante desde el seguimiento del pedido.</p>
                     
+                    {/* Room charge for hotels */}
+                    {businessConfig?.businessType === 'hotel' && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMethod(selectedPaymentMethod === 'roomCharge' ? null : 'roomCharge')}
+                        className={`w-full flex items-center justify-between bg-white rounded-lg px-3 py-2.5 border-2 transition-all ${
+                          selectedPaymentMethod === 'roomCharge'
+                            ? 'border-blue-500 bg-blue-50 shadow-sm'
+                            : 'border-blue-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">🏨</span>
+                          <div className="text-left">
+                            <p className={`text-sm font-semibold ${selectedPaymentMethod === 'roomCharge' ? 'text-blue-700' : 'text-gray-900'}`}>Cargar a la habitación</p>
+                            <p className="text-[11px] text-gray-500">Se suma a tu cuenta del hotel</p>
+                          </div>
+                        </div>
+                        {selectedPaymentMethod === 'roomCharge' && (
+                          <span className="text-blue-600">{CI.check('w-5 h-5')}</span>
+                        )}
+                      </button>
+                    )}
+
                     {/* Nequi - check paymentMethods config with backward compat */}
                     {businessConfig?.paymentInfo?.nequi && (
                       (businessConfig.paymentMethods?.nequi ? (businessConfig.paymentMethods.nequi.enabled && businessConfig.paymentMethods.nequi.modes?.inapp !== false) : true)
@@ -915,6 +939,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                         ...(isMethodEnabled('nequi', !!businessConfig?.paymentInfo?.nequi) ? [{ id: 'nequi', label: 'Nequi', logo: 'https://cdn.prod.website-files.com/6317a229ebf7723658463b4b/663a6b0d43303ddf38035997_logo-nequi.svg' }] : []),
                         ...(isMethodEnabled('daviplata', !!businessConfig?.paymentInfo?.daviplata) ? [{ id: 'daviplata', label: 'Daviplata', logo: 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA' }] : []),
                         ...(isMethodEnabled('transferencia', !!businessConfig?.paymentInfo?.bankAccountNumber) ? [{ id: 'transferencia', label: 'Transferencia', iconKey: 'bank' }] : []),
+                        ...(businessConfig?.businessType === 'hotel' ? [{ id: 'roomCharge', label: 'Cargar a hab.', iconKey: 'table' }] : []),
                       ];
                       return methods.length > 0 ? (
                         <div>

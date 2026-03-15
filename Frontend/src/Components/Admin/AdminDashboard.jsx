@@ -61,7 +61,7 @@ const COLORS = {
 };
 
 /* ═══ Section Data ═══ */
-const getSections = (isService) => [
+const getSections = (isService, isHotel) => [
   {
     id: 'ops',
     label: 'Operaciones',
@@ -69,16 +69,16 @@ const getSections = (isService) => [
       { tab: 'orders',           svgKey: 'orders',    title: isService ? 'Citas' : 'Pedidos',       desc: isService ? 'Gestión de citas' : 'Gestión en tiempo real', color: 'blue',    hasBadge: true },
       { tab: 'completed_orders', svgKey: 'completed', title: 'Completados',   desc: isService ? 'Historial de citas' : 'Historial de pedidos',  color: 'emerald' },
       { tab: 'payment-config',   svgKey: 'payment',   title: 'Pagos',         desc: 'Métodos de cobro',       color: 'teal' },
-      { tab: 'customers',        svgKey: 'customers', title: 'Clientes',      desc: 'Base de datos',         color: 'cyan' },
+      { tab: 'customers',        svgKey: 'customers', title: 'Clientes',      desc: isHotel ? 'Huéspedes' : 'Base de datos',         color: 'cyan' },
       { tab: 'reviews',          svgKey: 'reviews',   title: 'Reseñas',       desc: 'Calificaciones',        color: 'amber' },
       { tab: 'pos',               svgKey: 'reorder',   title: 'Punto de Venta', desc: 'Sistema de caja',       color: 'purple', isRoute: true, isBeta: true },
     ],
   },
   {
     id: 'menu',
-    label: isService ? 'Servicios' : 'Menú',
+    label: isService ? 'Servicios' : isHotel ? 'Room Service' : 'Menú',
     items: [
-      { tab: 'products',         svgKey: 'products',   title: isService ? 'Servicios' : 'Productos',    desc: isService ? 'Administra tus servicios' : 'Administra tu carta',    color: 'orange' },
+      { tab: 'products',         svgKey: 'products',   title: isService ? 'Servicios' : 'Productos',    desc: isService ? 'Administra tus servicios' : isHotel ? 'Menú de habitaciones' : 'Administra tu carta',    color: 'orange' },
       { tab: 'categories',       svgKey: 'categories', title: 'Categorías',   desc: isService ? 'Organiza servicios' : 'Organiza productos',     color: 'yellow' },
       { tab: 'toppings',         svgKey: 'toppings',   title: isService ? 'Opciones' : 'Extras',       desc: isService ? 'Variantes y opciones' : 'Toppings y opciones',    color: 'amber' },
       { tab: 'product-order',    svgKey: 'reorder',    title: 'Orden',        desc: isService ? 'Reordenar servicios' : 'Reordenar productos',    color: 'purple' },
@@ -90,8 +90,8 @@ const getSections = (isService) => [
     items: [
       { tab: 'coupons',          svgKey: 'coupons',   title: 'Cupones',      desc: 'Descuentos y ofertas',   color: 'pink' },
       { tab: 'catalog',          svgKey: 'catalog',   title: 'Catálogo',     desc: 'Banners y promos',       color: 'violet' },
-      ...(!isService ? [{ tab: 'tables',           svgKey: 'tables',    title: 'Mesas',        desc: 'Códigos QR',             color: 'indigo' }] : []),
-      ...(!isService ? [{ tab: 'delivery-zones',   svgKey: 'zones',     title: 'Zonas',        desc: 'Áreas de entrega',       color: 'green' }] : []),
+      ...(!isService ? [{ tab: 'tables',           svgKey: 'tables',    title: isHotel ? 'Habitaciones' : 'Mesas',        desc: isHotel ? 'QR por habitación' : 'Códigos QR',             color: 'indigo' }] : []),
+      ...(!isService && !isHotel ? [{ tab: 'delivery-zones',   svgKey: 'zones',     title: 'Zonas',        desc: 'Áreas de entrega',       color: 'green' }] : []),
       { tab: 'whatsapp',         svgKey: 'whatsapp',  title: 'WhatsApp',     desc: 'Mensajería automática', color: 'green' },
     ],
   },
@@ -99,7 +99,7 @@ const getSections = (isService) => [
     id: 'config',
     label: 'Configuración',
     items: [
-      { tab: 'business',         svgKey: 'business',     title: 'Negocio',      desc: isService ? 'Info del negocio' : 'Info del restaurante',   color: 'slate' },
+      { tab: 'business',         svgKey: 'business',     title: 'Negocio',      desc: isService ? 'Info del negocio' : isHotel ? 'Info del hotel' : 'Info del restaurante',   color: 'slate' },
       { tab: 'theme',            svgKey: 'theme',        title: 'Tema',         desc: 'Personalización',        color: 'fuchsia' },
       { tab: 'location',         svgKey: 'location',     title: 'Ubicación',    desc: 'Dirección y mapa',        color: 'red' },
       { tab: 'subscription',     svgKey: 'subscription', title: 'Suscripción',  desc: 'Plan y facturación',      color: 'blue' },
@@ -109,13 +109,13 @@ const getSections = (isService) => [
 ];
 
 /* ═══ Onboarding Steps ═══ */
-const getOnboarding = (isService) => [
+const getOnboarding = (isService, isHotel) => [
   { level: 1, label: 'Crear tu cuenta',  desc: '¡Listo! Ya tienes acceso', svgKey: 'completed' },
-  { level: 2, label: isService ? 'Agrega servicios' : 'Agrega productos', desc: isService ? 'Crea tu primer servicio' : 'Crea tu primer plato',     svgKey: 'products', tab: 'products' },
+  { level: 2, label: isService ? 'Agrega servicios' : 'Agrega productos', desc: isService ? 'Crea tu primer servicio' : isHotel ? 'Crea tu menú de Room Service' : 'Crea tu primer plato',     svgKey: 'products', tab: 'products' },
   { level: 3, label: 'Modo de pedidos',  desc: 'WhatsApp, app o ambos',    svgKey: 'business', tab: 'business' },
-  { level: 4, label: isService ? 'Primeras citas' : 'Primeros pedidos', desc: isService ? 'Comparte y agenda' : 'Comparte y empieza a vender', svgKey: 'orders', tab: 'orders' },
-  { level: 5, label: 'Personaliza tema', desc: isService ? 'Dale estilo a tu página' : 'Dale estilo a tu menú',    svgKey: 'theme',   tab: 'theme' },
-  { level: 6, label: 'Herramientas pro', desc: 'Cupones, zonas, QR y más', svgKey: 'coupons' },
+  { level: 4, label: isService ? 'Primeras citas' : 'Primeros pedidos', desc: isService ? 'Comparte y agenda' : isHotel ? 'Comparte el QR en habitaciones' : 'Comparte y empieza a vender', svgKey: 'orders', tab: 'orders' },
+  { level: 5, label: 'Personaliza tema', desc: isService ? 'Dale estilo a tu página' : isHotel ? 'Personaliza tu Room Service' : 'Dale estilo a tu menú',    svgKey: 'theme',   tab: 'theme' },
+  { level: 6, label: 'Herramientas pro', desc: isHotel ? 'Cupones, QR por habitación y más' : 'Cupones, zonas, QR y más', svgKey: 'coupons' },
 ];
 
 /* ═══ Helpers ═══ */
@@ -266,6 +266,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
   const { businessConfig } = useBusinessConfig();
   const [search, setSearch] = useState('');
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const isHotel = businessConfig?.businessType === 'hotel';
 
   const isNewUser = onboarding && !onboarding.isLegacy && onboarding.level < 6;
   const progressPercent = onboarding ? (onboarding.progress || 0) : 100;
@@ -275,7 +276,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
   /* Search logic */
   const q = search.trim().toLowerCase();
   const posBetaOn = businessConfig?.features?.posBetaEnabled;
-  const SECTIONS = useMemo(() => getSections(isService), [isService]);
+  const SECTIONS = useMemo(() => getSections(isService, isHotel), [isService, isHotel]);
   const ALL_ITEMS = useMemo(() => SECTIONS.flatMap(s => s.items), [SECTIONS]);
   const filteredSections = useMemo(() => {
     const filterBeta = (items) => items.filter(i => !i.isBeta || posBetaOn);
@@ -349,7 +350,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
               <div className="absolute left-[15px] top-4 bottom-4 w-px bg-slate-100" />
 
               <div className="space-y-1">
-                {getOnboarding(isService).map((step) => {
+                {getOnboarding(isService, isHotel).map((step) => {
                   const done = (onboarding?.level || 0) >= step.level;
                   const isNext = (onboarding?.level || 0) === step.level - 1;
                   const SvgIcon = I[step.svgKey];

@@ -90,6 +90,7 @@ export default function Menu() {
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
   const { businessConfig, businessId, businessStatus, error: businessError } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const isHotel = businessConfig?.businessType === 'hotel';
   const statusLoading = false; // status now derived from businessConfig synchronously
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [showOrderConfirmationModal, setShowOrderConfirmationModal] = useState(false);
@@ -238,13 +239,13 @@ export default function Menu() {
 
   // SEO optimization
   useSEO({
-    title: businessConfig?.businessName ? `${businessConfig.businessName} - ${isService ? 'Servicios' : 'Menú Digital'}` : (isService ? 'Servicios' : 'Menú Digital'),
-    description: businessConfig?.description || (isService ? `Agenda tu cita en ${businessConfig?.businessName || 'nuestro establecimiento'}. Reserva online fácilmente.` : `Descubre el delicioso menú de ${businessConfig?.businessName || 'nuestro restaurante'}. Ordena online y disfruta de la mejor comida.`),
+    title: businessConfig?.businessName ? `${businessConfig.businessName} - ${isHotel ? 'Room Service' : isService ? 'Servicios' : 'Menú Digital'}` : (isHotel ? 'Room Service' : isService ? 'Servicios' : 'Menú Digital'),
+    description: businessConfig?.description || (isHotel ? `Pide Room Service en ${businessConfig?.businessName || 'nuestro hotel'}. Ordena desde tu habitación.` : isService ? `Agenda tu cita en ${businessConfig?.businessName || 'nuestro establecimiento'}. Reserva online fácilmente.` : `Descubre el delicioso menú de ${businessConfig?.businessName || 'nuestro restaurante'}. Ordena online y disfruta de la mejor comida.`),
     logo: businessConfig?.logo,
-    siteName: businessConfig?.businessName || (isService ? 'Servicios' : 'Restaurante'),
+    siteName: businessConfig?.businessName || (isHotel ? 'Hotel' : isService ? 'Servicios' : 'Restaurante'),
     url: window.location.href,
-    type: isService ? 'business.business' : 'restaurant',
-    keywords: isService ? `${businessConfig?.businessName || 'servicios'}, citas online, agendar, reservar, ${businessConfig?.city ? businessConfig.city + ', ' : ''}${businessConfig?.department ? businessConfig.department : ''}` : `${businessConfig?.businessName || 'restaurante'}, menú digital, pedidos online, ${businessConfig?.city ? businessConfig.city + ', ' : ''}${businessConfig?.department ? businessConfig.department + ', ' : ''}comida, delivery`,
+    type: isHotel ? 'hotel' : isService ? 'business.business' : 'restaurant',
+    keywords: isHotel ? `${businessConfig?.businessName || 'hotel'}, room service, pedidos habitación, ${businessConfig?.city ? businessConfig.city + ', ' : ''}${businessConfig?.department ? businessConfig.department : ''}` : isService ? `${businessConfig?.businessName || 'servicios'}, citas online, agendar, reservar, ${businessConfig?.city ? businessConfig.city + ', ' : ''}${businessConfig?.department ? businessConfig.department : ''}` : `${businessConfig?.businessName || 'restaurante'}, menú digital, pedidos online, ${businessConfig?.city ? businessConfig.city + ', ' : ''}${businessConfig?.department ? businessConfig.department + ', ' : ''}comida, delivery`,
     image: businessConfig?.coverImage || businessConfig?.logo,
     businessConfig
   });
@@ -1700,7 +1701,7 @@ export default function Menu() {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 text-slate-600 hover:text-red-600 transition-colors duration-300 text-sm font-medium group"
           >
-            <span>{isService ? 'Agenda tus citas con' : 'Crea tu menú digital con'}</span>
+            <span>{isHotel ? 'Room Service con' : isService ? 'Agenda tus citas con' : 'Crea tu menú digital con'}</span>
             <span className="font-bold text-red-600 group-hover:text-red-700">MenuBy</span>
             <svg 
               className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" 
