@@ -173,7 +173,8 @@ router.post("/", (req, res, next) => {
       posPaymentInfo,
       // Booking / appointment fields
       isBooking,
-      bookingDate
+      bookingDate,
+      customerEmail
     } = req.body;
     
     // Staff assignment for bookings (extracted separately for clarity)
@@ -471,6 +472,7 @@ router.post("/", (req, res, next) => {
       totalAmount: numericTotalAmount,
       tableNumber: tableNumber || "",
       phone: phone || "",
+      customerEmail: customerEmail || "",
       address: address || "",
       customerId: customer ? customer._id : null,
       couponCode: coupon ? coupon.code : null,
@@ -557,6 +559,14 @@ router.post("/", (req, res, next) => {
     // Emit booking-specific event for admin agenda
     if (savedOrder.isBooking) {
       socketService.emitToBusiness(businessObjectId.toString(), "new_booking", savedOrder);
+      
+      // Send booking confirmation email (best-effort)
+      try {
+        const { sendBookingCreatedEmail } = require('../services/emailService');
+        sendBookingCreatedEmail(businessObjectId.toString(), savedOrder);
+      } catch (emailErr) {
+        logger.warn('Failed to send booking email', { error: emailErr.message });
+      }
     }
     
     // Enviar notificación push por nuevo pedido

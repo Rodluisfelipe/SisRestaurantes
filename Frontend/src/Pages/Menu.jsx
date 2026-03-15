@@ -1077,7 +1077,8 @@ export default function Menu() {
           isBooking: true,
           bookingDate: orderDetails.bookingDate,
           ...(orderDetails.staffId && { staffId: orderDetails.staffId }),
-          ...(orderDetails.staffName && { staffName: orderDetails.staffName })
+          ...(orderDetails.staffName && { staffName: orderDetails.staffName }),
+          ...(orderDetails.customerEmail && { customerEmail: orderDetails.customerEmail })
         })
       };
 

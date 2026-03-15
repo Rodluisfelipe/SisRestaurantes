@@ -79,6 +79,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const [bookingSlot, setBookingSlot] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [availableStaff, setAvailableStaff] = useState([]);
+  const [customerEmail, setCustomerEmail] = useState('');
   const hasServices = useMemo(() => cart.some(item => item.itemType === 'service'), [cart]);
   const maxServiceDuration = useMemo(() => {
     if (!hasServices) return 0;
@@ -200,6 +201,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       if (selectedStaff) {
         enriched.staffId = selectedStaff._id;
         enriched.staffName = selectedStaff.name;
+      }
+      if (customerEmail.trim()) {
+        enriched.customerEmail = customerEmail.trim();
       }
     }
 
@@ -1588,6 +1592,23 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Email for booking confirmation */}
+                  {bookingSlot && (
+                    <div className="mt-2">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                        Correo electrónico (opcional)
+                      </p>
+                      <input
+                        type="email"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        placeholder="tu@correo.com"
+                        className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300"
+                      />
+                      <p className="text-[9px] text-slate-400 mt-0.5">Para recibir confirmación y recordatorios</p>
                     </div>
                   )}
                 </div>

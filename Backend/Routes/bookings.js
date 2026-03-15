@@ -243,6 +243,16 @@ router.patch('/:id/status', async (req, res) => {
       });
     } catch (e) { /* socket emit is best-effort */ }
 
+    // Send email notification (best-effort)
+    try {
+      const emailService = require('../services/emailService');
+      if (bookingStatus === 'confirmed') {
+        emailService.sendBookingConfirmedEmail(order.businessId.toString(), order);
+      } else if (bookingStatus === 'cancelled') {
+        emailService.sendBookingCancelledEmail(order.businessId.toString(), order);
+      }
+    } catch (e) { /* email is best-effort */ }
+
     res.json({ message: 'Booking status updated', bookingStatus: order.bookingStatus });
   } catch (error) {
     logger.error('Error updating booking status', error);

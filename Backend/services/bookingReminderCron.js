@@ -91,6 +91,12 @@ async function checkBookingReminders() {
             });
           } catch (e) { logger.error('Error sending business booking reminder', e); }
 
+          // Email reminder to customer (best-effort)
+          try {
+            const { sendBookingReminderEmail } = require('./emailService');
+            await sendBookingReminderEmail(booking.businessId.toString(), booking, hoursUntil);
+          } catch (e) { logger.error('Error sending booking reminder email', e); }
+
           // Mark reminder as sent
           await Order.findByIdAndUpdate(booking._id, {
             $push: { remindersSent: { type: window.key, sentAt: new Date() } }

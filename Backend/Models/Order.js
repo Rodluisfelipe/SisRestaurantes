@@ -33,6 +33,11 @@ const orderSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  customerEmail: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   customerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Customer',

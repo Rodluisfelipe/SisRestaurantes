@@ -48,6 +48,17 @@ const businessConfigSchema = new mongoose.Schema({
     enableReminders: { type: Boolean, default: true },
     reminderHoursBefore: [{ type: Number }] // default set in code: [24, 1]
   },
+  // Email notification settings (Gmail App Password)
+  emailSettings: {
+    enabled: { type: Boolean, default: false },
+    senderEmail: { type: String, trim: true, default: '' },
+    senderName: { type: String, trim: true, default: '' },
+    appPassword: { type: String, default: '' }, // encrypted AES-256
+    sendOnBookingCreated: { type: Boolean, default: true },
+    sendOnBookingConfirmed: { type: Boolean, default: true },
+    sendOnBookingCancelled: { type: Boolean, default: true },
+    sendReminder: { type: Boolean, default: true }
+  },
   // Onboarding tracking
   onboarding: {
     level: { type: Number, default: 0, min: 0, max: 6 },
@@ -361,6 +372,26 @@ businessConfigSchema.methods.getNextOpenTime = function() {
   
   return null;
 };
+
+// Strip sensitive fields from JSON output (public APIs)
+businessConfigSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    if (ret.emailSettings) {
+      // Only show if email is configured, never expose the password
+      ret.emailSettings = {
+        enabled: ret.emailSettings.enabled || false,
+        senderEmail: ret.emailSettings.senderEmail || '',
+        senderName: ret.emailSettings.senderName || '',
+        hasAppPassword: !!(ret.emailSettings.appPassword),
+        sendOnBookingCreated: ret.emailSettings.sendOnBookingCreated !== false,
+        sendOnBookingConfirmed: ret.emailSettings.sendOnBookingConfirmed !== false,
+        sendOnBookingCancelled: ret.emailSettings.sendOnBookingCancelled !== false,
+        sendReminder: ret.emailSettings.sendReminder !== false
+      };
+    }
+    return ret;
+  }
+});
 
 businessConfigSchema.index({ isActive: 1 });
 businessConfigSchema.index({ department: 1, city: 1 });
