@@ -1075,7 +1075,9 @@ export default function Menu() {
         // Información de reserva/cita
         ...(orderDetails.isBooking && {
           isBooking: true,
-          bookingDate: orderDetails.bookingDate
+          bookingDate: orderDetails.bookingDate,
+          ...(orderDetails.staffId && { staffId: orderDetails.staffId }),
+          ...(orderDetails.staffName && { staffName: orderDetails.staffName })
         })
       };
 

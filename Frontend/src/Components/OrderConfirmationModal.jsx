@@ -169,7 +169,6 @@ const OrderConfirmationModal = ({
       setIsCancelling(true);
       setIsCountdownActive(false);
       
-      // Obtener el ID del pedido del localStorage
       const lastOrderId = sessionStorage.getItem('lastOrderId');
       if (!lastOrderId) {
         logger.error('No se encontró el ID del último pedido');
@@ -177,17 +176,33 @@ const OrderConfirmationModal = ({
         return;
       }
 
-      // Llamar al endpoint para eliminar el pedido
-      await api.delete(`/orders/${lastOrderId}`);
+      // For bookings, use the booking cancellation endpoint (enforces policy)
+      if (isBooking) {
+        try {
+          await api.patch(`/bookings/${lastOrderId}/status`, {
+            bookingStatus: 'cancelled',
+            isCustomer: true,
+            reason: 'Cancelado por el cliente'
+          });
+        } catch (err) {
+          if (err.response?.status === 403) {
+            alert(err.response?.data?.message || 'No puedes cancelar esta cita');
+            setIsCancelling(false);
+            setShowCancelConfirmation(false);
+            return;
+          }
+          throw err;
+        }
+      } else {
+        await api.delete(`/orders/${lastOrderId}`);
+      }
       logger.info('Pedido cancelado exitosamente');
 
-      // Cerrar el modal y limpiar estados
       handleModalClose();
       
-      // Mostrar mensaje de éxito en un toast o notificación más sutil
       const notification = document.createElement('div');
       notification.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg transform transition-all duration-500 ease-in-out z-50';
-      notification.textContent = 'Pedido cancelado exitosamente';
+      notification.textContent = isBooking ? 'Cita cancelada exitosamente' : 'Pedido cancelado exitosamente';
       document.body.appendChild(notification);
       
       setTimeout(() => {
@@ -197,7 +212,7 @@ const OrderConfirmationModal = ({
     } catch (error) {
       logger.error('Error al cancelar el pedido:', error);
       setShowCancelConfirmation(false);
-      alert('Error al cancelar el pedido. Por favor, contacta al negocio.');
+      alert(isBooking ? 'Error al cancelar la cita. Por favor, contacta al negocio.' : 'Error al cancelar el pedido. Por favor, contacta al negocio.');
     } finally {
       setIsCancelling(false);
       setShowCancelConfirmation(false);

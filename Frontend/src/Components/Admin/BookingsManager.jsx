@@ -7,7 +7,8 @@ import {
   FaCheck, FaTimes, FaBan, FaUser, FaClock, FaPhone,
   FaChevronDown, FaFilter, FaChartBar, FaWhatsapp,
   FaStar, FaHistory, FaArrowLeft, FaDollarSign,
-  FaUserSlash, FaCalendarCheck, FaCalendarTimes
+  FaUserSlash, FaCalendarCheck, FaCalendarTimes,
+  FaUserMd, FaRedo
 } from 'react-icons/fa';
 
 const STATUS_LABELS = {
@@ -56,9 +57,13 @@ export default function BookingsManager({ businessId }) {
   });
 
   // Customer detail panel
-  const [selectedCustomer, setSelectedCustomer] = useState(null); // { phone, name }
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [customerData, setCustomerData] = useState(null);
   const [customerLoading, setCustomerLoading] = useState(false);
+
+  // Staff state
+  const [staffList, setStaffList] = useState([]);
+  const [staffFilter, setStaffFilter] = useState('all'); // 'all' or staffId
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -100,6 +105,13 @@ export default function BookingsManager({ businessId }) {
     fetchBookings();
   }, [fetchBookings]);
 
+  // Fetch staff list
+  useEffect(() => {
+    api.get(`/bookings/available-staff?businessId=${businessId}`)
+      .then(res => setStaffList(res.data || []))
+      .catch(() => setStaffList([]));
+  }, [businessId]);
+
   useEffect(() => {
     if (view === 'stats') fetchStats();
   }, [view, fetchStats]);
@@ -125,6 +137,15 @@ export default function BookingsManager({ businessId }) {
     }
   };
 
+  const assignStaff = async (bookingId, staffId, staffName) => {
+    try {
+      await api.patch(`/bookings/${bookingId}/assign-staff`, { staffId, staffName });
+      setBookings(prev => prev.map(b => b._id === bookingId ? { ...b, staffId, staffName } : b));
+    } catch (err) {
+      console.error('Error assigning staff', err);
+    }
+  };
+
   const openCustomerPanel = (phone, name) => {
     setSelectedCustomer({ phone, name });
     fetchCustomer(phone);
@@ -135,7 +156,9 @@ export default function BookingsManager({ businessId }) {
     setCustomerData(null);
   };
 
-  const filtered = bookings.filter(b => filter === 'all' || b.bookingStatus === filter);
+  const filtered = bookings
+    .filter(b => filter === 'all' || b.bookingStatus === filter)
+    .filter(b => staffFilter === 'all' || b.staffId === staffFilter);
 
   // Today's bookings count
   const todayStr = getDateStr(new Date());
@@ -212,14 +235,25 @@ export default function BookingsManager({ businessId }) {
         <div className="flex items-center gap-2">
           {/* Filter (not shown in stats view) */}
           {view !== 'stats' && (
-            <select value={filter} onChange={e => setFilter(e.target.value)}
-              className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
-              <option value="all">Todas</option>
-              <option value="pending">Pendientes</option>
-              <option value="confirmed">Confirmadas</option>
-              <option value="completed">Completadas</option>
-              <option value="cancelled">Canceladas</option>
-            </select>
+            <>
+              <select value={filter} onChange={e => setFilter(e.target.value)}
+                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+                <option value="all">Todas</option>
+                <option value="pending">Pendientes</option>
+                <option value="confirmed">Confirmadas</option>
+                <option value="completed">Completadas</option>
+                <option value="cancelled">Canceladas</option>
+              </select>
+              {staffList.length > 0 && (
+                <select value={staffFilter} onChange={e => setStaffFilter(e.target.value)}
+                  className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+                  <option value="all">Todo el equipo</option>
+                  {staffList.map(s => (
+                    <option key={s._id} value={s._id}>{s.name}</option>
+                  ))}
+                </select>
+              )}
+            </>
           )}
 
           {/* View Toggle */}
@@ -319,17 +353,51 @@ export default function BookingsManager({ businessId }) {
                       <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
                         <FaUser className="text-[10px] text-slate-400" />
                         {booking.customerName}
+                        {booking.recurrence?.type && (
+                          <span className="text-[9px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold flex items-center gap-0.5">
+                            <FaRedo className="text-[7px]" />
+                            {booking.recurrence.type === 'weekly' ? 'Semanal' : booking.recurrence.type === 'biweekly' ? 'Quincenal' : 'Mensual'}
+                          </span>
+                        )}
                         {booking.phone && <span className="text-[10px] text-indigo-400 ml-1">ver ficha →</span>}
                       </p>
                       <p className="text-xs text-slate-500 truncate">
                         {booking.items?.map(i => i.name).join(', ')}
                       </p>
-                      {booking.phone && (
-                        <p className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          <FaPhone className="text-[8px]" />{booking.phone}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {booking.phone && (
+                          <p className="text-[11px] text-slate-400 flex items-center gap-1">
+                            <FaPhone className="text-[8px]" />{booking.phone}
+                          </p>
+                        )}
+                        {booking.staffName && (
+                          <p className="text-[11px] text-indigo-500 flex items-center gap-1">
+                            <FaUserMd className="text-[8px]" />{booking.staffName}
+                          </p>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Staff Assignment (for admin) */}
+                    {staffList.length > 0 && booking.bookingStatus !== 'cancelled' && booking.bookingStatus !== 'completed' && (
+                      <div className="flex-shrink-0">
+                        <select
+                          value={booking.staffId || ''}
+                          onChange={(e) => {
+                            const sid = e.target.value;
+                            const sname = staffList.find(s => s._id === sid)?.name || null;
+                            assignStaff(booking._id, sid || null, sname);
+                          }}
+                          className="text-[10px] border border-slate-200 rounded-lg px-1.5 py-1 bg-white text-slate-600"
+                          title="Asignar profesional"
+                        >
+                          <option value="">Sin asignar</option>
+                          {staffList.map(s => (
+                            <option key={s._id} value={s._id}>{s.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
 
                     {/* Status + Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">

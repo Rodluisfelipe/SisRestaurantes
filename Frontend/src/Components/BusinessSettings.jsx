@@ -568,6 +568,102 @@ const BusinessSettings = () => {
                   </button>
                 </div>
               </div>
+
+              {/* Cancellation Policy */}
+              <div className="border-t border-slate-100 pt-3 mt-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Política de Cancelación</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Permitir cancelar
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setSettings(prev => ({
+                        ...prev,
+                        bookingSettings: { ...prev.bookingSettings, allowCancellation: prev.bookingSettings?.allowCancellation === false ? true : false }
+                      }))}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                        settings.bookingSettings?.allowCancellation !== false ? 'bg-indigo-500' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        settings.bookingSettings?.allowCancellation !== false ? 'translate-x-4' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  {settings.bookingSettings?.allowCancellation !== false && (
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                        Anticipación mínima
+                      </label>
+                      <select
+                        value={settings.bookingSettings?.cancellationDeadlineHours || 2}
+                        onChange={(e) => setSettings(prev => ({
+                          ...prev,
+                          bookingSettings: { ...prev.bookingSettings, cancellationDeadlineHours: parseInt(e.target.value) }
+                        }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg"
+                      >
+                        <option value={0}>Sin límite</option>
+                        <option value={1}>1 hora antes</option>
+                        <option value={2}>2 horas antes</option>
+                        <option value={4}>4 horas antes</option>
+                        <option value={12}>12 horas antes</option>
+                        <option value={24}>24 horas antes</option>
+                        <option value={48}>48 horas antes</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Staff Assignment & Reminders */}
+              <div className="border-t border-slate-100 pt-3 mt-3">
+                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Opciones avanzadas</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Asignar profesional
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setSettings(prev => ({
+                        ...prev,
+                        bookingSettings: { ...prev.bookingSettings, enableStaffAssignment: !prev.bookingSettings?.enableStaffAssignment }
+                      }))}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                        settings.bookingSettings?.enableStaffAssignment ? 'bg-indigo-500' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        settings.bookingSettings?.enableStaffAssignment ? 'translate-x-4' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                      Recordatorios push
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setSettings(prev => ({
+                        ...prev,
+                        bookingSettings: { ...prev.bookingSettings, enableReminders: prev.bookingSettings?.enableReminders === false ? true : false }
+                      }))}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                        settings.bookingSettings?.enableReminders !== false ? 'bg-indigo-500' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                        settings.bookingSettings?.enableReminders !== false ? 'translate-x-4' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>

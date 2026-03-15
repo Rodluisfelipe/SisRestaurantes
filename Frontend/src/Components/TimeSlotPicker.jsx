@@ -14,7 +14,7 @@ import { FaChevronLeft, FaChevronRight, FaCalendarAlt, FaClock } from 'react-ico
  *   onSelect       - callback({ date: 'YYYY-MM-DD', time: 'HH:MM', dateTime: ISO })
  *   selected       - currently selected { date, time } or null
  */
-export default function TimeSlotPicker({ businessId, businessConfig, duration, buttonColor, buttonTextColor, onSelect, selected }) {
+export default function TimeSlotPicker({ businessId, businessConfig, duration, buttonColor, buttonTextColor, onSelect, selected, staffId }) {
   const [selectedDate, setSelectedDate] = useState(selected?.date || null);
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -53,7 +53,9 @@ export default function TimeSlotPicker({ businessId, businessConfig, duration, b
     const fetchSlots = async () => {
       setLoadingSlots(true);
       try {
-        const res = await api.get(`/bookings/slots?businessId=${businessId}&date=${selectedDate}&duration=${duration || 30}`);
+        let url = `/bookings/slots?businessId=${businessId}&date=${selectedDate}&duration=${duration || 30}`;
+        if (staffId) url += `&staffId=${staffId}`;
+        const res = await api.get(url);
         setSlots(res.data.slots || []);
       } catch (err) {
         console.error('Error loading slots', err);
@@ -64,7 +66,7 @@ export default function TimeSlotPicker({ businessId, businessConfig, duration, b
     };
 
     fetchSlots();
-  }, [selectedDate, businessId, duration]);
+  }, [selectedDate, businessId, duration, staffId]);
 
   const handleSelectSlot = (time) => {
     const dateTime = `${selectedDate}T${time}:00.000Z`;

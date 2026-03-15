@@ -395,8 +395,15 @@ const OrderTracker = ({
               <span className="text-sm font-semibold">{isBooking ? 'Cita' : 'Pedido'} #{order.orderNumber}</span>
             </div>
             {isBooking && order.bookingDate && (
-              <div className="mt-2 inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
-                <span className="text-sm">📅 {formatBookingDate(order.bookingDate)} · {formatBookingTime(order.bookingDate)}</span>
+              <div className="mt-2 flex flex-col items-center gap-1">
+                <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
+                  <span className="text-sm">📅 {formatBookingDate(order.bookingDate)} · {formatBookingTime(order.bookingDate)}</span>
+                </div>
+                {order.staffName && (
+                  <div className="inline-flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1 backdrop-blur-sm">
+                    <span className="text-xs">👤 {order.staffName}</span>
+                  </div>
+                )}
               </div>
             )}
           </div>

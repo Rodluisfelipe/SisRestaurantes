@@ -240,6 +240,38 @@ const orderSchema = new mongoose.Schema({
     enum: ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'],
     default: null
   },
+  // Staff/professional assigned to this booking
+  staffId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Admin',
+    default: null
+  },
+  staffName: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  // Recurring booking support
+  recurrence: {
+    type: { type: String, enum: ['weekly', 'biweekly', 'monthly'], default: null },
+    parentBookingId: { type: mongoose.Schema.Types.ObjectId, default: null },
+    endDate: { type: Date, default: null }
+  },
+  // Cancellation tracking
+  cancelledAt: {
+    type: Date,
+    default: null
+  },
+  cancellationReason: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  // Reminder tracking (to avoid sending duplicate reminders)
+  remindersSent: [{
+    type: { type: String }, // '24h', '1h'
+    sentAt: { type: Date, default: Date.now }
+  }],
 
   // POS payment details (persisted for ticket reprinting)
   posPaymentInfo: {

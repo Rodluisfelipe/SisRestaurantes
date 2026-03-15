@@ -269,6 +269,14 @@ mongoose.connect(MONGO_URI)
     } catch (error) {
       console.warn('⚠️ Error iniciando cron de limpieza de pedidos:', error.message);
     }
+
+    // Cron de recordatorios de citas/bookings
+    try {
+      const { startBookingReminderCron } = require('./services/bookingReminderCron');
+      startBookingReminderCron();
+    } catch (error) {
+      console.warn('⚠️ Error iniciando cron de recordatorios de citas:', error.message);
+    }
     
     const port = process.env.PORT || 5000;
     server.listen(port, () =>

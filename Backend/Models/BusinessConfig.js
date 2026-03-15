@@ -38,7 +38,15 @@ const businessConfigSchema = new mongoose.Schema({
     slotInterval: { type: Number, default: 30 },
     maxAdvanceDays: { type: Number, default: 30 },
     bufferMinutes: { type: Number, default: 0 },
-    autoConfirm: { type: Boolean, default: true }
+    autoConfirm: { type: Boolean, default: true },
+    // Cancellation policy
+    allowCancellation: { type: Boolean, default: true },
+    cancellationDeadlineHours: { type: Number, default: 2 }, // hours before booking
+    // Staff assignment
+    enableStaffAssignment: { type: Boolean, default: false },
+    // Reminder notifications
+    enableReminders: { type: Boolean, default: true },
+    reminderHoursBefore: [{ type: Number }] // default set in code: [24, 1]
   },
   // Onboarding tracking
   onboarding: {

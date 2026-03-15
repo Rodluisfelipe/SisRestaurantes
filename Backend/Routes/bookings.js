@@ -4,6 +4,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const Order = require('../Models/Order');
 const CompletedOrder = require('../Models/CompletedOrder');
 const Customer = require('../Models/Customer');
+const Admin = require('../Models/Admin');
 const logger = require('../utils/logger');
 
 /**
@@ -17,7 +18,7 @@ const logger = require('../utils/logger');
  */
 router.get('/slots', async (req, res) => {
   try {
-    const { businessId, date, duration } = req.query;
+    const { businessId, date, duration, staffId } = req.query;
 
     if (!businessId || !date) {
       return res.status(400).json({ message: 'businessId and date are required' });
@@ -72,16 +73,22 @@ router.get('/slots', async (req, res) => {
       cursor += interval;
     }
 
-    // Get existing bookings for that day
+    // Get existing bookings for that day — filter by staffId if provided
     const startOfDay = new Date(date + 'T00:00:00.000Z');
     const endOfDay = new Date(date + 'T23:59:59.999Z');
 
-    const existingBookings = await Order.find({
+    const bookingFilter = {
       businessId,
       isBooking: true,
       bookingDate: { $gte: startOfDay, $lte: endOfDay },
       status: { $nin: ['cancelled'] }
-    }).select('bookingDate bookingEndDate').lean();
+    };
+    if (staffId) {
+      bookingFilter.staffId = staffId;
+    }
+
+    const existingBookings = await Order.find(bookingFilter)
+      .select('bookingDate bookingEndDate staffId').lean();
 
     // Convert existing bookings to minute ranges
     const occupied = existingBookings.map(b => {
@@ -166,11 +173,12 @@ router.get('/', async (req, res) => {
 /**
  * PATCH /api/bookings/:id/status
  * Update booking status (confirm, cancel, complete, no-show).
+ * Enforces cancellation policy if customer cancels.
  */
 router.patch('/:id/status', async (req, res) => {
   try {
     const { id } = req.params;
-    const { bookingStatus } = req.body;
+    const { bookingStatus, reason, isCustomer } = req.body;
 
     const validStatuses = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show'];
     if (!validStatuses.includes(bookingStatus)) {
@@ -182,9 +190,35 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    // Cancellation policy check (only for customer-initiated cancellations)
+    if (bookingStatus === 'cancelled' && isCustomer) {
+      const config = await BusinessConfig.findById(order.businessId);
+      const policy = config?.bookingSettings;
+
+      if (policy && policy.allowCancellation === false) {
+        return res.status(403).json({ message: 'Este negocio no permite cancelaciones' });
+      }
+
+      if (policy && policy.cancellationDeadlineHours > 0 && order.bookingDate) {
+        const deadlineMs = policy.cancellationDeadlineHours * 60 * 60 * 1000;
+        const bookingTime = new Date(order.bookingDate).getTime();
+        const now = Date.now();
+        if (bookingTime - now < deadlineMs) {
+          const hours = policy.cancellationDeadlineHours;
+          return res.status(403).json({
+            message: `No puedes cancelar con menos de ${hours}h de anticipación`,
+            tooLate: true,
+            deadlineHours: hours
+          });
+        }
+      }
+    }
+
     order.bookingStatus = bookingStatus;
     if (bookingStatus === 'cancelled') {
       order.status = 'cancelled';
+      order.cancelledAt = new Date();
+      if (reason) order.cancellationReason = reason;
     } else if (bookingStatus === 'completed') {
       order.status = 'completed';
     } else if (bookingStatus === 'confirmed') {
@@ -194,7 +228,7 @@ router.patch('/:id/status', async (req, res) => {
     order.statusHistory.push({
       status: `booking_${bookingStatus}`,
       timestamp: new Date(),
-      note: bookingStatus === 'confirmed' ? 'Cita confirmada' : bookingStatus === 'cancelled' ? 'Cita cancelada' : bookingStatus === 'completed' ? 'Cita completada' : bookingStatus === 'no_show' ? 'No asistió' : `Booking ${bookingStatus}`
+      note: bookingStatus === 'confirmed' ? 'Cita confirmada' : bookingStatus === 'cancelled' ? (reason || 'Cita cancelada') : bookingStatus === 'completed' ? 'Cita completada' : bookingStatus === 'no_show' ? 'No asistió' : `Booking ${bookingStatus}`
     });
 
     await order.save();
@@ -340,6 +374,211 @@ router.get('/customer/:phone', async (req, res) => {
   } catch (error) {
     logger.error('Error fetching customer bookings', error);
     res.status(500).json({ message: 'Error fetching customer bookings' });
+  }
+});
+
+/**
+ * GET /api/bookings/available-staff
+ * Returns staff members available for a specific business.
+ * Used by CartSummary to let customers pick a professional.
+ */
+router.get('/available-staff', async (req, res) => {
+  try {
+    const { businessId } = req.query;
+    if (!businessId) return res.status(400).json({ message: 'businessId is required' });
+
+    const staff = await Admin.find({
+      businessId,
+      role: { $in: ['staff', 'manager', 'admin'] }
+    }).select('_id name username role').lean();
+
+    res.json(staff.map(s => ({
+      _id: s._id,
+      name: s.name || s.username,
+      role: s.role
+    })));
+  } catch (error) {
+    logger.error('Error fetching available staff', error);
+    res.status(500).json({ message: 'Error fetching available staff' });
+  }
+});
+
+/**
+ * PATCH /api/bookings/:id/assign-staff
+ * Assign a staff member to a booking.
+ */
+router.patch('/:id/assign-staff', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { staffId, staffName } = req.body;
+
+    const order = await Order.findById(id);
+    if (!order || !order.isBooking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (staffId) {
+      const staffMember = await Admin.findById(staffId).select('name username').lean();
+      if (!staffMember) return res.status(404).json({ message: 'Staff member not found' });
+      order.staffId = staffId;
+      order.staffName = staffName || staffMember.name || staffMember.username;
+    } else {
+      order.staffId = null;
+      order.staffName = null;
+    }
+
+    order.statusHistory.push({
+      status: 'staff_assigned',
+      timestamp: new Date(),
+      note: order.staffName ? `Asignado a ${order.staffName}` : 'Profesional desasignado'
+    });
+
+    await order.save();
+    res.json({ message: 'Staff assigned', staffId: order.staffId, staffName: order.staffName });
+  } catch (error) {
+    logger.error('Error assigning staff', error);
+    res.status(500).json({ message: 'Error assigning staff' });
+  }
+});
+
+/**
+ * POST /api/bookings/recurring
+ * Create recurring bookings (weekly, biweekly, monthly).
+ * Creates individual booking orders for each occurrence.
+ */
+router.post('/recurring', async (req, res) => {
+  try {
+    const { businessId, recurrenceType, endDate, bookingTemplate } = req.body;
+
+    if (!businessId || !recurrenceType || !endDate || !bookingTemplate) {
+      return res.status(400).json({ message: 'businessId, recurrenceType, endDate, and bookingTemplate are required' });
+    }
+
+    const validTypes = ['weekly', 'biweekly', 'monthly'];
+    if (!validTypes.includes(recurrenceType)) {
+      return res.status(400).json({ message: 'Invalid recurrence type' });
+    }
+
+    const config = await BusinessConfig.findById(businessId);
+    if (!config || !config.enableBookings) {
+      return res.status(400).json({ message: 'Bookings not enabled' });
+    }
+
+    const template = bookingTemplate;
+    const startDate = new Date(template.bookingDate);
+    const end = new Date(endDate);
+
+    if (isNaN(startDate.getTime()) || isNaN(end.getTime()) || end <= startDate) {
+      return res.status(400).json({ message: 'Invalid date range' });
+    }
+
+    // Generate dates based on recurrence
+    const dates = [];
+    let current = new Date(startDate);
+    while (current <= end) {
+      dates.push(new Date(current));
+      if (recurrenceType === 'weekly') current.setDate(current.getDate() + 7);
+      else if (recurrenceType === 'biweekly') current.setDate(current.getDate() + 14);
+      else if (recurrenceType === 'monthly') current.setMonth(current.getMonth() + 1);
+    }
+
+    // Limit to prevent abuse
+    if (dates.length > 52) {
+      return res.status(400).json({ message: 'Too many occurrences (max 52)' });
+    }
+
+    // Generate order numbers
+    const { generateOrderNumber } = require('./orders');
+    const createdBookings = [];
+
+    for (const date of dates) {
+      const bookingEndDate = new Date(date.getTime() + (parseInt(template.duration, 10) || 30) * 60000);
+      const orderNumber = await generateOrderNumber(businessId);
+
+      const order = new Order({
+        businessId,
+        orderNumber,
+        customerName: template.customerName,
+        phone: template.phone || '',
+        customerId: template.customerId || null,
+        orderType: 'inSite',
+        orderChannel: template.orderChannel || 'inapp',
+        status: config.bookingSettings?.autoConfirm !== false ? 'confirmed' : 'pending',
+        isBooking: true,
+        bookingDate: date,
+        bookingEndDate,
+        bookingStatus: config.bookingSettings?.autoConfirm !== false ? 'confirmed' : 'pending',
+        staffId: template.staffId || null,
+        staffName: template.staffName || null,
+        recurrence: {
+          type: recurrenceType,
+          parentBookingId: null, // first one is the parent
+          endDate: end
+        },
+        items: template.items || [],
+        totalAmount: template.totalAmount || 0,
+        finalAmount: template.finalAmount || template.totalAmount || 0,
+        paymentMethod: template.paymentMethod || null,
+        statusHistory: [{
+          status: config.bookingSettings?.autoConfirm !== false ? 'booking_confirmed' : 'booking_pending',
+          timestamp: new Date(),
+          note: `Cita recurrente (${recurrenceType})`
+        }]
+      });
+
+      await order.save();
+
+      // Set parentBookingId on first booking for reference
+      if (createdBookings.length === 0) {
+        // Update all subsequent bookings with this parent ID
+        order.recurrence.parentBookingId = order._id;
+        await order.save();
+      } else {
+        order.recurrence.parentBookingId = createdBookings[0]._id;
+        await order.save();
+      }
+
+      createdBookings.push(order);
+    }
+
+    // Emit socket event
+    try {
+      const socketService = require('../services/socketService');
+      socketService.emitToBusiness(businessId, 'new_booking', { count: createdBookings.length });
+    } catch (e) { /* best-effort */ }
+
+    res.json({
+      message: `${createdBookings.length} citas recurrentes creadas`,
+      count: createdBookings.length,
+      bookings: createdBookings.map(b => ({ _id: b._id, bookingDate: b.bookingDate, bookingStatus: b.bookingStatus }))
+    });
+  } catch (error) {
+    logger.error('Error creating recurring bookings', error);
+    res.status(500).json({ message: 'Error creating recurring bookings' });
+  }
+});
+
+/**
+ * GET /api/bookings/cancellation-policy
+ * Returns the cancellation policy for a business (public endpoint).
+ */
+router.get('/cancellation-policy', async (req, res) => {
+  try {
+    const { businessId } = req.query;
+    if (!businessId) return res.status(400).json({ message: 'businessId is required' });
+
+    const config = await BusinessConfig.findById(businessId)
+      .select('bookingSettings.allowCancellation bookingSettings.cancellationDeadlineHours').lean();
+
+    if (!config) return res.status(404).json({ message: 'Business not found' });
+
+    res.json({
+      allowCancellation: config.bookingSettings?.allowCancellation !== false,
+      cancellationDeadlineHours: config.bookingSettings?.cancellationDeadlineHours || 0
+    });
+  } catch (error) {
+    logger.error('Error fetching cancellation policy', error);
+    res.status(500).json({ message: 'Error fetching cancellation policy' });
   }
 });
 

@@ -176,6 +176,10 @@ router.post("/", (req, res, next) => {
       bookingDate
     } = req.body;
     
+    // Staff assignment for bookings (extracted separately for clarity)
+    const staffId = req.body.staffId || null;
+    const staffName = req.body.staffName || null;
+    
 
 
 
@@ -438,13 +442,16 @@ router.post("/", (req, res, next) => {
       bookingEndDate = new Date(bDate.getTime() + maxDuration * 60 * 1000);
 
       // Double-check slot availability (concurrency protection)
-      const conflicting = await Order.findOne({
+      const conflictFilter = {
         businessId: businessObjectId,
         isBooking: true,
         status: { $nin: ['cancelled'] },
         bookingDate: { $lt: bookingEndDate },
         bookingEndDate: { $gt: bDate }
-      });
+      };
+      // If staff is assigned, only check conflicts for that staff member
+      if (staffId) conflictFilter.staffId = staffId;
+      const conflicting = await Order.findOne(conflictFilter);
       if (conflicting) {
         return res.status(409).json({ message: 'Este horario ya no está disponible. Por favor selecciona otro.' });
       }
@@ -490,6 +497,8 @@ router.post("/", (req, res, next) => {
       bookingDate: isBooking && bookingDate ? new Date(bookingDate) : null,
       bookingEndDate: bookingEndDate || null,
       bookingStatus: resolvedBookingStatus,
+      staffId: isBooking ? staffId : null,
+      staffName: isBooking ? staffName : null,
       // Map delivery zone details to top-level fields
       deliveryCoordinates: deliveryZoneInfo?.coordinates || { lat: null, lon: null },
       deliveryDistance: deliveryZoneInfo?.distance || 0,
@@ -1419,4 +1428,5 @@ router.get('/customer/:phone', tenantAuth, async (req, res) => {
   }
 });
 
-module.exports = router; 
+module.exports = router;
+module.exports.generateOrderNumber = generateOrderNumber;

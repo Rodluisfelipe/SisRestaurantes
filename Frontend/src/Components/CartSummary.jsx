@@ -77,11 +77,24 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
   // Booking state
   const [bookingSlot, setBookingSlot] = useState(null);
+  const [selectedStaff, setSelectedStaff] = useState(null);
+  const [availableStaff, setAvailableStaff] = useState([]);
   const hasServices = useMemo(() => cart.some(item => item.itemType === 'service'), [cart]);
   const maxServiceDuration = useMemo(() => {
     if (!hasServices) return 0;
     return Math.max(...cart.filter(i => i.itemType === 'service').map(i => i.durationMinutes || 30));
   }, [cart, hasServices]);
+
+  // Fetch available staff when booking is enabled with staff assignment
+  useEffect(() => {
+    if (hasServices && businessConfig?.enableBookings && businessConfig?.bookingSettings?.enableStaffAssignment && businessConfig?._id) {
+      import('../services/api').then(({ default: api }) => {
+        api.get(`/bookings/available-staff?businessId=${businessConfig._id}`)
+          .then(res => setAvailableStaff(res.data || []))
+          .catch(() => setAvailableStaff([]));
+      });
+    }
+  }, [hasServices, businessConfig?.enableBookings, businessConfig?.bookingSettings?.enableStaffAssignment, businessConfig?._id]);
 
   // Auto-scroll to checkout section when order type changes
   const scrollToCheckout = useCallback(() => {
@@ -184,6 +197,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     if (bookingSlot && cart.some(i => i.itemType === 'service')) {
       enriched.isBooking = true;
       enriched.bookingDate = bookingSlot.dateTime;
+      if (selectedStaff) {
+        enriched.staffId = selectedStaff._id;
+        enriched.staffName = selectedStaff.name;
+      }
     }
 
     const selection = loyaltyRewardRef.current;
@@ -1541,7 +1558,38 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     buttonTextColor={themeTextColor}
                     onSelect={setBookingSlot}
                     selected={bookingSlot}
+                    staffId={selectedStaff?._id}
                   />
+
+                  {/* Staff/Professional picker */}
+                  {businessConfig?.bookingSettings?.enableStaffAssignment && availableStaff.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
+                        Profesional (opcional)
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          onClick={() => setSelectedStaff(null)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            !selectedStaff ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}
+                        >
+                          Cualquiera
+                        </button>
+                        {availableStaff.map(s => (
+                          <button
+                            key={s._id}
+                            onClick={() => setSelectedStaff(s)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                              selectedStaff?._id === s._id ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                            }`}
+                          >
+                            {s.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1843,7 +1891,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               // Helper to enrich orderInfo with booking data
               const withBookingData = (info) => {
                 if (hasServices && bookingSlot) {
-                  return { ...info, isBooking: true, bookingDate: bookingSlot.dateTime };
+                  const data = { ...info, isBooking: true, bookingDate: bookingSlot.dateTime };
+                  if (selectedStaff) {
+                    data.staffId = selectedStaff._id;
+                    data.staffName = selectedStaff.name;
+                  }
+                  return data;
                 }
                 return info;
               };
