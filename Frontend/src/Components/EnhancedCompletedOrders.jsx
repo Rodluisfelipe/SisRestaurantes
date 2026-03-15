@@ -20,6 +20,7 @@ function EnhancedCompletedOrders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalAmount: 0,
@@ -320,7 +321,7 @@ function EnhancedCompletedOrders() {
                 {selectedOrder.tableNumber && (
                   <div className="flex items-center gap-2 text-slate-700">
                     <FaChair className="text-slate-400 text-xs" />
-                    <span>Mesa #{selectedOrder.tableNumber}</span>
+                    <span>{isHotel ? 'Hab.' : 'Mesa'} #{selectedOrder.tableNumber}</span>
                   </div>
                 )}
                 <div className="flex items-center gap-2">
@@ -675,7 +676,7 @@ function EnhancedCompletedOrders() {
                       {order.orderType === 'delivery'
                         ? order.address
                         : order.orderType === 'inSite'
-                        ? `Mesa ${order.tableNumber}`
+                        ? `${isHotel ? 'Hab.' : 'Mesa'} ${order.tableNumber}`
                         : '—'}
                     </td>
                     <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">

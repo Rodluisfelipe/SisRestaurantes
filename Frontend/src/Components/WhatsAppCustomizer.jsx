@@ -41,7 +41,7 @@ const WhatsAppCustomizer = () => {
   const [error, setError] = useState('');
   const [previewTab, setPreviewTab] = useState('delivery');
 
-  const businessName = businessConfig?.businessName || 'Mi Restaurante';
+  const businessName = businessConfig?.businessName || 'Mi Negocio';
 
   // Cargar configuración del template
   useEffect(() => {
@@ -122,7 +122,7 @@ const WhatsAppCustomizer = () => {
     const isSite = previewTab === 'inSite';
     const map = {
       header: `🧾 *${businessName}*`,
-      orderType: isDel ? '🏍️ Domicilio' : isSite ? '🍽️ Mesa 4' : '🛒 Para llevar',
+      orderType: isDel ? '🏍️ Domicilio' : isSite ? (businessConfig?.businessType === 'hotel' ? '🏨 Hab. 4' : '🍽️ Mesa 4') : '🛒 Para llevar',
       customerName: '👤 Juan Pérez',
       address: isDel ? `📍 Calle 123 #45-67${hasZones ? ' (Centro)' : ''}` : null,
       phone: isDel ? '📞 +573001234567' : null,

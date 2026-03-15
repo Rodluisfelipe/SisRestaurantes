@@ -91,6 +91,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   }, []);
   const [isProcessing, setIsProcessing] = useState(false);
   const { businessConfig, businessId, businessStatus, getStatusDisplay } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
   
@@ -581,7 +582,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         console.log('Validando número de mesa:', trimmedTableNumber);
         
         if (!trimmedTableNumber) {
-          alert('Por favor ingresa el número de mesa');
+          alert(isHotel ? 'Por favor ingresa el número de habitación' : 'Por favor ingresa el número de mesa');
           console.log('Número de mesa vacío, mostrando alert');
           return;
         }
@@ -691,7 +692,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
             {orderType === 'inSite' && (
               <div>
                 <label htmlFor="table-number" className="block text-sm font-medium text-gray-700 mb-1">
-                  Número de Mesa
+                  {isHotel ? 'Número de Habitación' : 'Número de Mesa'}
                 </label>
                 <input
                   id="table-number"
@@ -1004,7 +1005,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     Procesando...
                   </>
                 ) : (
-                  orderType === 'inSite' ? 'Confirmar Mesa' : 'Confirmar Pedido'
+                  orderType === 'inSite' ? (isHotel ? 'Confirmar Habitación' : 'Confirmar Mesa') : 'Confirmar Pedido'
                 )}
               </button>
             )}
@@ -1680,7 +1681,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   onChange={handleInputChange}
                   name="tableNumber"
                   className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                  placeholder="Número de mesa"
+                  placeholder={isHotel ? 'Número de habitación' : 'Número de mesa'}
                   min="1"
                   max="999"
                   inputMode="numeric"
@@ -1693,7 +1694,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               {isFromTableQR && tableNumber && (
                 <div className="flex items-center gap-1.5 p-2 bg-blue-50 border border-blue-200 rounded-xl">
                   <span className="text-blue-500">{CI.table('w-3.5 h-3.5')}</span>
-                  <p className="text-blue-800 font-semibold text-[11px]">Mesa {tableNumber} · En sitio</p>
+                  <p className="text-blue-800 font-semibold text-[11px]">{isHotel ? 'Hab.' : 'Mesa'} {tableNumber} · En sitio</p>
                 </div>
               )}
 

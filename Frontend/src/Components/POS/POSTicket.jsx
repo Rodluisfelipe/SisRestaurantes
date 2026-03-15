@@ -19,7 +19,8 @@ export default function POSTicket({ order, businessConfig, onClose }) {
   const ticketRef = useRef();
 
   const themeColor = businessConfig?.theme?.buttonColor || '#3B82F6';
-  const businessName = businessConfig?.businessName || 'Restaurante';
+  const isHotel = businessConfig?.businessType === 'hotel';
+  const businessName = businessConfig?.businessName || 'Mi Negocio';
   const businessAddress = businessConfig?.address || '';
   const businessPhone = businessConfig?.whatsappNumber || '';
   const nit = businessConfig?.nit || '';
@@ -131,7 +132,7 @@ export default function POSTicket({ order, businessConfig, onClose }) {
               {order.customerName && order.customerName !== 'POS' && (
                 <div style={S.row}><span>Cliente:</span><span>{order.customerName}</span></div>
               )}
-              {order.tableNumber && <div style={S.row}><span>Mesa:</span><span style={{ fontSize: '16px' }}>{order.tableNumber}</span></div>}
+              {order.tableNumber && <div style={S.row}><span>{isHotel ? 'Hab:' : 'Mesa:'}</span><span style={{ fontSize: '16px' }}>{order.tableNumber}</span></div>}
               {order.orderType === 'delivery' && (
                 <>
                   <div style={S.row}><span>Tipo:</span><span style={{ fontWeight: '900' }}>DOMICILIO</span></div>
@@ -140,7 +141,7 @@ export default function POSTicket({ order, businessConfig, onClose }) {
                   {order.phone && <div style={{ fontSize: '12px' }}>Tel: {order.phone}</div>}
                 </>
               )}
-              {order.orderType === 'inSite' && !order.tableNumber && <div style={S.row}><span>Tipo:</span><span>En mesa</span></div>}
+              {order.orderType === 'inSite' && !order.tableNumber && <div style={S.row}><span>Tipo:</span><span>{isHotel ? 'En habitación' : 'En mesa'}</span></div>}
               {order.orderType === 'takeaway' && <div style={S.row}><span>Tipo:</span><span>Para llevar</span></div>}
 
               <div style={S.divider} />

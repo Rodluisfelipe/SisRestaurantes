@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const BusinessConfig = require('../Models/BusinessConfig');
 const Order = require('../Models/Order');
+const CompletedOrder = require('../Models/CompletedOrder');
+const Customer = require('../Models/Customer');
 const logger = require('../utils/logger');
 
 /**
@@ -211,6 +213,133 @@ router.patch('/:id/status', async (req, res) => {
   } catch (error) {
     logger.error('Error updating booking status', error);
     res.status(500).json({ message: 'Error updating booking status' });
+  }
+});
+
+/**
+ * GET /api/bookings/stats
+ * Booking analytics: totals by status, top services, daily distribution.
+ *
+ * Query params:
+ *   businessId - MongoDB _id
+ *   from       - ISO date YYYY-MM-DD
+ *   to         - ISO date YYYY-MM-DD
+ */
+router.get('/stats', async (req, res) => {
+  try {
+    const { businessId, from, to } = req.query;
+    if (!businessId) return res.status(400).json({ message: 'businessId is required' });
+
+    const fromDate = from ? new Date(from + 'T00:00:00.000Z') : new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z');
+    const toDate = to ? new Date(to + 'T23:59:59.999Z') : new Date(fromDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const match = { businessId: new (require('mongoose').Types.ObjectId)(businessId), isBooking: true, bookingDate: { $gte: fromDate, $lte: toDate } };
+
+    // Merge active + completed bookings
+    const [active, completed] = await Promise.all([
+      Order.find(match).lean(),
+      CompletedOrder.find(match).lean()
+    ]);
+    const all = [...active, ...completed];
+
+    // Status counts
+    const byStatus = { pending: 0, confirmed: 0, completed: 0, cancelled: 0, no_show: 0 };
+    all.forEach(b => { if (byStatus[b.bookingStatus] !== undefined) byStatus[b.bookingStatus]++; });
+
+    // Top services
+    const serviceCounts = {};
+    all.forEach(b => {
+      (b.items || []).forEach(item => {
+        serviceCounts[item.name] = (serviceCounts[item.name] || 0) + item.quantity;
+      });
+    });
+    const topServices = Object.entries(serviceCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+
+    // Revenue from completed bookings
+    const revenue = all
+      .filter(b => b.bookingStatus === 'completed')
+      .reduce((sum, b) => sum + (b.finalAmount || b.totalAmount || 0), 0);
+
+    // Daily distribution (bookings per day of week)
+    const dailyDist = [0, 0, 0, 0, 0, 0, 0]; // Sun-Sat
+    all.filter(b => b.bookingStatus !== 'cancelled').forEach(b => {
+      const d = new Date(b.bookingDate);
+      dailyDist[d.getUTCDay()]++;
+    });
+
+    // Hourly distribution
+    const hourlyDist = {};
+    all.filter(b => b.bookingStatus !== 'cancelled').forEach(b => {
+      const h = new Date(b.bookingDate).getUTCHours();
+      hourlyDist[h] = (hourlyDist[h] || 0) + 1;
+    });
+
+    res.json({
+      total: all.length,
+      byStatus,
+      topServices,
+      revenue,
+      dailyDistribution: dailyDist,
+      hourlyDistribution: hourlyDist,
+      cancellationRate: all.length ? Math.round((byStatus.cancelled / all.length) * 100) : 0,
+      noShowRate: all.length ? Math.round((byStatus.no_show / all.length) * 100) : 0
+    });
+  } catch (error) {
+    logger.error('Error fetching booking stats', error);
+    res.status(500).json({ message: 'Error fetching booking stats' });
+  }
+});
+
+/**
+ * GET /api/bookings/customer/:phone
+ * Returns customer profile + their booking history.
+ *
+ * Query params:
+ *   businessId - MongoDB _id
+ */
+router.get('/customer/:phone', async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const { businessId } = req.query;
+    if (!businessId) return res.status(400).json({ message: 'businessId is required' });
+
+    // Get customer profile
+    const customer = await Customer.findOne({ businessId, phone }).lean();
+
+    // Get all their bookings (active + completed)
+    const bookingFilter = { businessId: new (require('mongoose').Types.ObjectId)(businessId), isBooking: true, phone };
+    const [activeBookings, completedBookings] = await Promise.all([
+      Order.find(bookingFilter).sort({ bookingDate: -1 }).lean(),
+      CompletedOrder.find(bookingFilter).sort({ bookingDate: -1 }).lean()
+    ]);
+    const allBookings = [...activeBookings, ...completedBookings].sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
+
+    // Booking stats for this customer
+    const totalBookings = allBookings.length;
+    const completedCount = allBookings.filter(b => b.bookingStatus === 'completed').length;
+    const cancelledCount = allBookings.filter(b => b.bookingStatus === 'cancelled').length;
+    const noShowCount = allBookings.filter(b => b.bookingStatus === 'no_show').length;
+    const bookingRevenue = allBookings
+      .filter(b => b.bookingStatus === 'completed')
+      .reduce((sum, b) => sum + (b.finalAmount || b.totalAmount || 0), 0);
+
+    res.json({
+      customer: customer || { phone, name: allBookings[0]?.customerName || phone },
+      bookings: allBookings.slice(0, 20), // last 20
+      stats: {
+        totalBookings,
+        completed: completedCount,
+        cancelled: cancelledCount,
+        noShow: noShowCount,
+        revenue: bookingRevenue
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching customer bookings', error);
+    res.status(500).json({ message: 'Error fetching customer bookings' });
   }
 });
 

@@ -68,11 +68,11 @@ const getStatusConfig = (status) => {
 };
 
 // Get order type display info
-const getOrderTypeInfo = (orderType, tableNumber = null) => {
+const getOrderTypeInfo = (orderType, tableNumber = null, isHotel = false) => {
   switch (orderType) {
     case 'inSite':
       return {
-        label: tableNumber ? `MESA ${tableNumber}` : 'EN MESA',
+        label: tableNumber ? `${isHotel ? 'HAB' : 'MESA'} ${tableNumber}` : (isHotel ? 'EN HAB.' : 'EN MESA'),
         icon: '🪑',
         color: 'text-blue-600'
       };
@@ -116,6 +116,7 @@ function CustomerOrderDisplay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
   const [currentTime, setCurrentTime] = useState(new Date());
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [products, setProducts] = useState([]);
@@ -467,7 +468,7 @@ function CustomerOrderDisplay() {
                    className="text-xl font-bold drop-shadow-lg"
                    style={{ color: businessConfig?.theme?.buttonTextColor || '#ffffff' }}
                  >
-                   {businessConfig?.businessName || 'Restaurante'}
+                   {businessConfig?.businessName || 'Mi Negocio'}
                  </h1>
                  <p 
                    className="text-xs"
@@ -634,7 +635,7 @@ function CustomerOrderDisplay() {
                 <div className="flex-1 grid grid-cols-1 gap-1 auto-rows-min">
                   <AnimatePresence>
                     {orders.filter(order => order.status === 'pending').map((order) => {
-                      const orderTypeInfo = getOrderTypeInfo(order.orderType, order.tableNumber);
+                      const orderTypeInfo = getOrderTypeInfo(order.orderType, order.tableNumber, isHotel);
 
                       return (
                         <motion.div
@@ -754,7 +755,7 @@ function CustomerOrderDisplay() {
                 <div className="flex-1 grid grid-cols-1 gap-1 auto-rows-min">
                   <AnimatePresence>
                     {orders.filter(order => order.status === 'inProgress').map((order) => {
-                      const orderTypeInfo = getOrderTypeInfo(order.orderType, order.tableNumber);
+                      const orderTypeInfo = getOrderTypeInfo(order.orderType, order.tableNumber, isHotel);
 
                       return (
                         <motion.div
@@ -874,7 +875,7 @@ function CustomerOrderDisplay() {
                 <div className="flex-1 grid grid-cols-1 gap-1 auto-rows-min">
                   <AnimatePresence>
                     {orders.filter(order => order.status === 'completed').map((order) => {
-                      const orderTypeInfo = getOrderTypeInfo(order.orderType, order.tableNumber);
+                      const orderTypeInfo = getOrderTypeInfo(order.orderType, order.tableNumber, isHotel);
 
                       return (
                         <motion.div

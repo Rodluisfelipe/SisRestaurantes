@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 /**
  * Guías explicativas por sección.
@@ -172,7 +173,30 @@ const SECTION_GUIDES = {
 };
 
 export default function GuideOverlay({ sectionId, isOpen, onClose }) {
-  const guide = SECTION_GUIDES[sectionId];
+  const { businessConfig } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  let guide = SECTION_GUIDES[sectionId];
+
+  // Override tips based on business type
+  if (guide && sectionId === 'tables') {
+    if (isHotel) {
+      guide = { ...guide, title: 'Habitaciones', tips: [
+        'Genera códigos QR únicos por habitación',
+        'Los huéspedes escanean y piden room service desde su habitación',
+        'Ideal para pedidos de room service'
+      ]};
+    }
+  }
+  if (guide && sectionId === 'orders') {
+    if (isService) {
+      guide = { ...guide, title: 'Citas', tips: [
+        'Aquí llegan las citas en tiempo real',
+        'Acepta, rechaza o marca como completada',
+        'Recibe notificaciones cuando llega una nueva cita'
+      ]};
+    }
+  }
   if (!guide) return null;
 
   return (

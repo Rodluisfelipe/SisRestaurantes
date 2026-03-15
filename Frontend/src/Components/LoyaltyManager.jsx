@@ -158,7 +158,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)` }}
               >
                 <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full opacity-10 bg-white" />
-                <p className="text-[8px] opacity-70 uppercase tracking-wider">{businessName || 'Tu restaurante'}</p>
+                <p className="text-[8px] opacity-70 uppercase tracking-wider">{businessName || 'Tu negocio'}</p>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-2xl font-black">520</span>
                   <span className="text-[9px] opacity-60">puntos</span>

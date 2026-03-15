@@ -50,7 +50,7 @@ export default function PrinterSettings() {
 
   const slug = businessConfig?.slug || '';
   const menuLink = slug ? `https://menuby.tech/${slug}` : '';
-  const businessName = businessConfig?.businessName || 'Mi Restaurante';
+  const businessName = businessConfig?.businessName || 'Mi Negocio';
   const businessAddress = businessConfig?.address || '';
   const businessPhone = businessConfig?.whatsappNumber || '';
   const nit = businessConfig?.nit || '';

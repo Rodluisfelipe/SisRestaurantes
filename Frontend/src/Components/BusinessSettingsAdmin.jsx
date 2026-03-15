@@ -77,7 +77,7 @@ const BusinessSettingsAdmin = () => {
       // Asegurar que todos los campos estén incluidos en la petición
       const dataToSend = {
         businessId,
-        businessName: settings.businessName || "Mi Restaurante",
+        businessName: settings.businessName || "Mi Negocio",
         logo: settings.logo || "",
         coverImage: settings.coverImage || "",
         isOpen: settings.isOpen !== undefined ? settings.isOpen : true,

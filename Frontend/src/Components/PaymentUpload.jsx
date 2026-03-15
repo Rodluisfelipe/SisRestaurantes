@@ -115,7 +115,7 @@ const PaymentUpload = ({
           </motion.div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">¡Comprobante Enviado!</h3>
           <p className="text-gray-600 text-sm">
-            El restaurante verificará tu pago en breve
+            Tu pago será verificado en breve
           </p>
         </motion.div>
       </div>

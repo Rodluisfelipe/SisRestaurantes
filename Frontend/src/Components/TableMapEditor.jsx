@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useBusinessConfig } from '../Context/BusinessContext';
 
 const SHAPES = {
   square: { label: 'Cuadrada', icon: '◻' },
@@ -13,6 +14,9 @@ const TABLE_COLORS = {
 };
 
 export default function TableMapEditor({ tables, onUpdateTable, onDeleteTable, onAddTable }) {
+  const { businessConfig } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
+  const tableLabel = isHotel ? 'Habitación' : 'Mesa';
   const containerRef = useRef(null);
   const [selectedId, setSelectedId] = useState(null);
   const [dragging, setDragging] = useState(null);
@@ -97,7 +101,7 @@ export default function TableMapEditor({ tables, onUpdateTable, onDeleteTable, o
           className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 flex items-center gap-1"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Agregar Mesa
+          Agregar {tableLabel}
         </button>
 
         {selectedTable && (
@@ -115,7 +119,7 @@ export default function TableMapEditor({ tables, onUpdateTable, onDeleteTable, o
               🗑 Eliminar
             </button>
             <span className="text-sm text-gray-500">
-              Mesa {selectedTable.tableNumber} — {selectedTable.capacity} pers.
+              {tableLabel} {selectedTable.tableNumber} — {selectedTable.capacity} pers.
             </span>
           </>
         )}
@@ -141,8 +145,8 @@ export default function TableMapEditor({ tables, onUpdateTable, onDeleteTable, o
         {tables.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center text-gray-400">
             <div className="text-center">
-              <p className="text-lg">Arrastra las mesas para posicionarlas</p>
-              <p className="text-sm mt-1">Haz clic en "Agregar Mesa" para empezar</p>
+              <p className="text-lg">{isHotel ? 'Arrastra las habitaciones para posicionarlas' : 'Arrastra las mesas para posicionarlas'}</p>
+              <p className="text-sm mt-1">Haz clic en "Agregar {tableLabel}" para empezar</p>
             </div>
           </div>
         )}
@@ -179,13 +183,14 @@ export default function TableMapEditor({ tables, onUpdateTable, onDeleteTable, o
       </div>
 
       <p className="text-xs text-gray-400 text-center">
-        Arrastra las mesas para posicionarlas · Doble clic para editar · Clic para seleccionar
+        {isHotel ? 'Arrastra las habitaciones' : 'Arrastra las mesas'} para posicionarlas · Doble clic para editar · Clic para seleccionar
       </p>
 
       {/* Edit Modal */}
       {editModal && editingTable && (
         <EditTableModal
           table={editingTable}
+          isHotel={isHotel}
           onSave={(updates) => { onUpdateTable(editModal, updates); setEditModal(null); }}
           onClose={() => setEditModal(null)}
         />
@@ -194,7 +199,8 @@ export default function TableMapEditor({ tables, onUpdateTable, onDeleteTable, o
   );
 }
 
-function EditTableModal({ table, onSave, onClose }) {
+function EditTableModal({ table, isHotel, onSave, onClose }) {
+  const tLabel = isHotel ? 'Hab.' : 'Mesa';
   const [form, setForm] = useState({
     tableNumber: table.tableNumber || '',
     tableName: table.tableName || '',
@@ -208,7 +214,7 @@ function EditTableModal({ table, onSave, onClose }) {
     if (!form.tableNumber.trim()) return;
     onSave({
       tableNumber: form.tableNumber.trim(),
-      tableName: form.tableName.trim() || `Mesa ${form.tableNumber.trim()}`,
+      tableName: form.tableName.trim() || `${tLabel} ${form.tableNumber.trim()}`,
       capacity: parseInt(form.capacity) || 4,
       shape: form.shape,
       notes: form.notes.trim()
@@ -218,7 +224,7 @@ function EditTableModal({ table, onSave, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-5" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-bold text-gray-800 mb-4">Editar Mesa</h3>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">Editar {tLabel}</h3>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Número</label>
@@ -237,7 +243,7 @@ function EditTableModal({ table, onSave, onClose }) {
               value={form.tableName}
               onChange={e => setForm(f => ({ ...f, tableName: e.target.value }))}
               className="w-full border rounded-lg px-3 py-2 text-sm"
-              placeholder={`Mesa ${form.tableNumber}`}
+              placeholder={`${tLabel} ${form.tableNumber}`}
             />
           </div>
           <div className="flex gap-3">

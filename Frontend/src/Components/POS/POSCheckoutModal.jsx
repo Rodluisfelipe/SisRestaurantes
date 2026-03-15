@@ -18,6 +18,7 @@ const ORDER_TYPES = [
 const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
 
 export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister, preselectedTable, isOnline = true }) {
+  const isHotel = businessConfig?.businessType === 'hotel';
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [cashReceived, setCashReceived] = useState('');
   const [orderType, setOrderType] = useState(preselectedTable ? 'inSite' : 'takeaway');
@@ -191,7 +192,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
                     style={orderType === t.id ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={t.icon}/></svg>
-                    {t.label}
+                    {t.id === 'inSite' && isHotel ? 'En hab.' : t.label}
                   </button>
                 ))}
               </div>
@@ -205,7 +206,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
                   <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Mesa (opcional)</label>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">{isHotel ? 'Hab.' : 'Mesa'} (opcional)</label>
                   <input type="text" value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ej: 5" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                 </div>
               </div>

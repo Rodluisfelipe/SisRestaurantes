@@ -195,7 +195,7 @@ const BusinessHeader = ({
 
             {/* Name */}
             <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight leading-tight text-center ${hasCover ? 'text-white drop-shadow-md' : 'text-slate-800'}`}>
-              {businessConfig.businessName || 'Mi Restaurante'}
+              {businessConfig.businessName || 'Mi Negocio'}
             </h1>
 
             {/* Meta row: rating + address + socials */}

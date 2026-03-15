@@ -225,7 +225,7 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme }) => {
                       {/* Admin reply */}
                       {review.reply && (
                         <div className="mt-2 ml-6 p-2.5 bg-gray-50 rounded-xl border-l-2" style={{ borderLeftColor: buttonColor }}>
-                          <p className="text-xs font-semibold text-gray-700 mb-0.5">Respuesta del restaurante</p>
+                          <p className="text-xs font-semibold text-gray-700 mb-0.5">Respuesta del negocio</p>
                           <p className="text-xs text-gray-600">{review.reply}</p>
                         </div>
                       )}

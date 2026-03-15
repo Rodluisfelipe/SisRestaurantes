@@ -4,7 +4,11 @@ import api from '../services/api';
 import TableMapEditor from './TableMapEditor';
 
 const TableSettings = () => {
-  const { businessId } = useBusinessConfig();
+  const { businessId, businessConfig } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
+  const tableLabel = isHotel ? 'habitación' : 'mesa';
+  const tableLabelCap = isHotel ? 'Habitación' : 'Mesa';
+  const tableLabelPlural = isHotel ? 'habitaciones' : 'mesas';
 
   // --- Floors ---
   const [floors, setFloors] = useState([]);
@@ -62,7 +66,7 @@ const TableSettings = () => {
   };
 
   const deleteFloor = async (id) => {
-    if (!confirm('¿Eliminar este salón? Las mesas quedarán sin asignar.')) return;
+    if (!confirm(`¿Eliminar este salón? Las ${tableLabelPlural} quedarán sin asignar.`)) return;
     try {
       await api.delete(`/floors/${id}?businessId=${businessId}`);
       setFloors(prev => prev.filter(f => f._id !== id));
@@ -84,7 +88,7 @@ const TableSettings = () => {
       const r = await api.post('/tables', {
         businessId,
         tableNumber: nextNum,
-        tableName: `Mesa ${nextNum}`,
+        tableName: `${tableLabelCap} ${nextNum}`,
         floorId: activeFloor || undefined,
         posX: 10 + (floorTables.length % 8) * 11,
         posY: 10 + Math.floor(floorTables.length / 8) * 14,
@@ -93,7 +97,7 @@ const TableSettings = () => {
       });
       setTables(prev => [...prev, r.data]);
     } catch (err) {
-      alert(err.response?.data?.message || 'Error al crear mesa');
+      alert(err.response?.data?.message || `Error al crear ${tableLabel}`);
     }
   };
 
@@ -119,18 +123,18 @@ const TableSettings = () => {
       setSaving(true);
       api.put(`/tables/${tableId}`, { businessId, ...updates })
         .then(r => setTables(prev => prev.map(t => t._id === tableId ? r.data : t)))
-        .catch(err => alert(err.response?.data?.message || 'Error al actualizar mesa'))
+        .catch(err => alert(err.response?.data?.message || `Error al actualizar ${tableLabel}`))
         .finally(() => setSaving(false));
     }
   }, [businessId, debouncedSavePosition]);
 
   const handleDeleteTable = async (tableId) => {
-    if (!confirm('¿Eliminar esta mesa?')) return;
+    if (!confirm(`¿Eliminar esta ${tableLabel}?`)) return;
     try {
       await api.delete(`/tables/${tableId}?businessId=${businessId}`);
       setTables(prev => prev.filter(t => t._id !== tableId));
     } catch (err) {
-      alert(err.response?.data?.message || 'Error al eliminar mesa');
+      alert(err.response?.data?.message || `Error al eliminar ${tableLabel}`);
     }
   };
 
@@ -211,7 +215,7 @@ const TableSettings = () => {
       <div className="bg-white rounded-xl shadow-sm border p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-bold text-gray-800">
-            {floors.find(f => f._id === activeFloor)?.name || 'Mesas sin salón'}
+            {floors.find(f => f._id === activeFloor)?.name || `${tableLabelCap}s sin salón`}
           </h2>
           {saving && <span className="text-xs text-gray-400 animate-pulse">Guardando...</span>}
         </div>
@@ -226,14 +230,14 @@ const TableSettings = () => {
         {/* Table list below map */}
         {floorTables.length > 0 && (
           <div className="mt-4 border-t pt-4">
-            <h3 className="text-sm font-semibold text-gray-600 mb-2">Lista de mesas</h3>
+            <h3 className="text-sm font-semibold text-gray-600 mb-2">Lista de {tableLabelPlural}</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
               {floorTables.map(table => (
                 <div
                   key={table._id}
                   className="border rounded-lg p-2 text-center transition-colors"
                 >
-                  <div className="font-bold text-sm text-gray-800">Mesa {table.tableNumber}</div>
+                  <div className="font-bold text-sm text-gray-800">{tableLabelCap} {table.tableNumber}</div>
                   <div className="text-xs text-gray-500">{table.capacity} personas</div>
                 </div>
               ))}

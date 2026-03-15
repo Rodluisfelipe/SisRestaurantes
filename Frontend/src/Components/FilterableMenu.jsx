@@ -489,11 +489,12 @@ const FilterableMenu = ({
       <AnimatePresence>
         {hasActiveOrder && (() => {
           const isCompleted = activeOrderStatus === 'completed' || activeOrderStatus === 'ready';
+          const bizLabel = isHotel ? 'El hotel' : 'El negocio';
           const statusMap = {
             pending_payment: { label: 'Pendiente de pago', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Realiza el pago para continuar' },
-            payment_uploaded: { label: 'Verificando pago', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'El restaurante revisa tu comprobante' },
+            payment_uploaded: { label: 'Verificando pago', icon: MI.clipboard('w-5 h-5 text-white'), sub: `${bizLabel} revisa tu comprobante` },
             payment_confirmed: { label: 'Pago confirmado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido será preparado pronto' },
-            pending: { label: 'Pedido recibido', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'El restaurante recibió tu pedido' },
+            pending: { label: 'Pedido recibido', icon: MI.clipboard('w-5 h-5 text-white'), sub: `${bizLabel} recibió tu pedido` },
             inProgress: { label: 'En preparación', icon: MI.package('w-5 h-5 text-white'), sub: 'Están preparando tu pedido' },
             ready: { label: 'Pedido listo', icon: MI.sparkle('w-5 h-5 text-white'), sub: 'Tu pedido está listo para recoger' },
             completed: { label: 'Pedido completado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido ha sido entregado' },

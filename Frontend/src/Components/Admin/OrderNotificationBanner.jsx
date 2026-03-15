@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 /**
  * Banner animado que muestra notificación de nuevo pedido.
@@ -10,7 +11,13 @@ const OrderNotificationBanner = ({
   activeTab,
   setActiveTab,
   setShowOrderBanner,
-}) => (
+}) => {
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const orderLabel = isService ? 'Cita' : 'Pedido';
+  const orderLabelLower = isService ? 'cita' : 'pedido';
+
+  return (
   <AnimatePresence>
     {showOrderBanner && newOrderNotification && activeTab !== 'orders' && (
       <motion.div
@@ -42,7 +49,7 @@ const OrderNotificationBanner = ({
             {/* Contenido */}
             <div className="flex-1 text-left min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-white font-bold text-base sm:text-lg">¡Nuevo Pedido!</h3>
+                <h3 className="text-white font-bold text-base sm:text-lg">¡{isService ? 'Nueva' : 'Nuevo'} {orderLabel}!</h3>
                 <motion.span
                   animate={{ opacity: [1, 0.5, 1] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
@@ -50,11 +57,11 @@ const OrderNotificationBanner = ({
                 />
               </div>
               <p className="text-white/90 text-xs sm:text-sm truncate">
-                Pedido #{newOrderNotification.orderNumber || newOrderNotification._id?.slice(-6)}
+                {orderLabel} #{newOrderNotification.orderNumber || newOrderNotification._id?.slice(-6)}
                 {newOrderNotification.customer?.name && ` - ${newOrderNotification.customer.name}`}
               </p>
               <p className="text-white/80 text-[10px] sm:text-xs mt-0.5">
-                Toca aquí para gestionar el pedido
+                Toca aquí para gestionar {isService ? 'la' : 'el'} {orderLabelLower}
               </p>
             </div>
 
@@ -84,6 +91,7 @@ const OrderNotificationBanner = ({
       </motion.div>
     )}
   </AnimatePresence>
-);
+  );
+};
 
 export default OrderNotificationBanner;

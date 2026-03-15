@@ -67,7 +67,7 @@ const ThemeSettings = () => {
           <span className="text-2xl">🎨</span>
         </div>
         <h2 className="text-3xl font-bold text-slate-900 mb-2">Personalización de Tema</h2>
-        <p className="text-slate-600">Personaliza la apariencia de tu restaurante</p>
+        <p className="text-slate-600">Personaliza la apariencia de tu menú digital</p>
       </motion.div>
 
       {/* Messages */}

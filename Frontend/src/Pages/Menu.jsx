@@ -1226,7 +1226,7 @@ export default function Menu() {
       } else if (orderDetails.orderType === 'delivery') {
         confirmMessage = '¡Gracias por tu pedido! Te contactaremos pronto para coordinar la entrega.';
       } else if (orderDetails.orderType === 'inSite') {
-        confirmMessage = `¡Gracias por tu pedido! Tu orden será servida en la Mesa ${orderDetails.tableNumber}.`;
+        confirmMessage = `¡Gracias por tu pedido! Tu orden será servida en ${isHotel ? 'la Habitación' : 'la Mesa'} ${orderDetails.tableNumber}.`;
       } else if (orderDetails.orderType === 'takeaway') {
         confirmMessage = '¡Gracias por tu pedido! Tu orden estará lista para recoger en breve.';
       }
@@ -1335,8 +1335,8 @@ export default function Menu() {
               />
             </svg>
           </div>
-          <h2 className="text-xl font-bold mb-3">Este restaurante no está disponible</h2>
-          <p className="text-[#6C7A92] mb-6">El restaurante "{businessConfig?.businessName || 'solicitado'}" no está activo en este momento. Por favor, vuelve más tarde.</p>
+          <h2 className="text-xl font-bold mb-3">Este negocio no está disponible</h2>
+          <p className="text-[#6C7A92] mb-6">El negocio "{businessConfig?.businessName || 'solicitado'}" no está activo en este momento. Por favor, vuelve más tarde.</p>
           <button 
             onClick={() => navigate('/')}
             className="px-4 py-2 bg-[#3A7AFF] text-white rounded-lg hover:bg-[#3A7AFF]/90 w-full"
@@ -1397,7 +1397,7 @@ export default function Menu() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
             <p className="text-center text-sm font-semibold text-red-700">
-              ⚠️ Servicio temporalmente no disponible. Por favor, contacta al restaurante.
+              ⚠️ Servicio temporalmente no disponible. Por favor, contacta al negocio.
             </p>
           </div>
         </div>

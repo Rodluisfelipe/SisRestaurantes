@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 const STATUS_COLORS = {
   available: 'bg-emerald-100 border-emerald-400 text-emerald-800',
@@ -9,6 +10,9 @@ const STATUS_COLORS = {
 };
 
 export default function POSTableMap({ businessId, selectedTable, onSelectTable, activeOrders, heldOrders }) {
+  const { businessConfig } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
+  const tableLabel = isHotel ? 'Hab.' : 'Mesa';
   const [floors, setFloors] = useState([]);
   const [tables, setTables] = useState([]);
   const [activeFloor, setActiveFloor] = useState(null);
@@ -56,8 +60,8 @@ export default function POSTableMap({ businessId, selectedTable, onSelectTable, 
         <svg className="w-16 h-16 mb-3 text-slate-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
         </svg>
-        <p className="text-sm font-medium">Sin mesas configuradas</p>
-        <p className="text-xs text-slate-300 mt-1">Configura mesas desde el panel de administración</p>
+        <p className="text-sm font-medium">{isHotel ? 'Sin habitaciones configuradas' : 'Sin mesas configuradas'}</p>
+        <p className="text-xs text-slate-300 mt-1">{isHotel ? 'Configura habitaciones desde el panel de administración' : 'Configura mesas desde el panel de administración'}</p>
       </div>
     );
   }
@@ -130,7 +134,7 @@ export default function POSTableMap({ businessId, selectedTable, onSelectTable, 
                 transform: table.rotation ? `rotate(${table.rotation}deg)` : undefined,
               }}
               onClick={() => onSelectTable(status === 'selected' ? null : table)}
-              title={`Mesa ${table.tableNumber} — ${table.capacity}p — ${status === 'available' ? 'Libre' : status === 'occupied' ? 'Ocupada' : status === 'held' ? 'Congelada' : 'Seleccionada'}`}
+              title={`${tableLabel} ${table.tableNumber} — ${table.capacity}p — ${status === 'available' ? 'Libre' : status === 'occupied' ? 'Ocupada' : status === 'held' ? 'Congelada' : 'Seleccionada'}`}
             >
               <span className="font-bold text-xs sm:text-sm leading-tight">{table.tableNumber}</span>
               <span className="text-[9px] sm:text-[10px] opacity-70">{table.capacity}p</span>
@@ -144,8 +148,8 @@ export default function POSTableMap({ businessId, selectedTable, onSelectTable, 
         <div className="px-3 pb-3 flex-shrink-0">
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-blue-800">Mesa {selectedTable.tableNumber}</p>
-              <p className="text-[11px] text-blue-600">{selectedTable.capacity} personas · {selectedTable.tableName || `Mesa ${selectedTable.tableNumber}`}</p>
+              <p className="text-sm font-bold text-blue-800">{tableLabel} {selectedTable.tableNumber}</p>
+              <p className="text-[11px] text-blue-600">{selectedTable.capacity} personas · {selectedTable.tableName || `${tableLabel} ${selectedTable.tableNumber}`}</p>
             </div>
             <button
               onClick={() => onSelectTable(null)}

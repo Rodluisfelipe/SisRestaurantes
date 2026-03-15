@@ -150,7 +150,7 @@ const LocationSettings = () => {
               <h4 className="text-sm font-medium text-blue-800">Información del Catálogo</h4>
               <p className="text-sm text-blue-700 mt-1">
                 Actualmente el catálogo está disponible solo en <strong>Chía, Cundinamarca</strong>. 
-                Si seleccionas esta ubicación, tu restaurante aparecerá en el catálogo público.
+                Si seleccionas esta ubicación, tu negocio aparecerá en el catálogo público.
               </p>
             </div>
           </div>

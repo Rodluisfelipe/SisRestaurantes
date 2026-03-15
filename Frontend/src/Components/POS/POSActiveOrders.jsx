@@ -83,7 +83,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
 
   const handlePrintOrder = (order) => {
     if (!order) return;
-    const bName = businessConfig?.businessName || 'Restaurante';
+    const bName = businessConfig?.businessName || 'Mi Negocio';
     const bAddr = businessConfig?.address || '';
     const bPhone = businessConfig?.whatsappNumber || '';
     const bNit = businessConfig?.nit || '';

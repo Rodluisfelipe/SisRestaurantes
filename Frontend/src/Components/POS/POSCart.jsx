@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 export default function POSCart({ cart, updateQuantity, removeFromCart, clearCart, onCheckout, onHoldOrder, heldOrders, onRecallHeldOrder, onDeleteHeldOrder, selectedTable, onClearTable, themeColor }) {
+  const { businessConfig } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
+  const tableLabel = isHotel ? 'Hab.' : 'Mesa';
   const total = cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0);
   const [showHeld, setShowHeld] = useState(false);
 
@@ -27,7 +31,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               {selectedTable && (
                 <button onClick={onClearTable} className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                  Mesa {selectedTable.tableNumber} ✕
+                  {tableLabel} {selectedTable.tableNumber} ✕
                 </button>
               )}
             </div>
@@ -68,7 +72,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               <div key={held.id} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 border border-amber-100 shadow-sm">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-slate-700">{itemCount} items · <span style={{ color: themeColor }}>${heldTotal.toLocaleString()}</span></p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{held.tableNumber ? `Mesa ${held.tableNumber} · ` : ''}{mins < 1 ? '<1' : mins} min</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{held.tableNumber ? `${tableLabel} ${held.tableNumber} · ` : ''}{mins < 1 ? '<1' : mins} min</p>
                 </div>
                 <button onClick={() => { onRecallHeldOrder(held.id); setShowHeld(false); }} className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors shadow-sm" style={{ backgroundColor: themeColor }}>
                   Retomar

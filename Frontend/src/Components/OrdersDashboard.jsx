@@ -16,6 +16,7 @@ function OrdersDashboard() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
   const [pendingNotifications, setPendingNotifications] = useState([]);
   const notificationAudioRef = useRef(null);
   const notificationIntervalRef = useRef(null);
@@ -898,7 +899,7 @@ function OrdersDashboard() {
                     </span>
                     {order.tableNumber && (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        Mesa {order.tableNumber}
+                        {isHotel ? 'Hab.' : 'Mesa'} {order.tableNumber}
                       </span>
               )}
             </div>

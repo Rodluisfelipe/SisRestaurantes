@@ -298,7 +298,17 @@ const OrderTracker = ({
     completed: { label: 'Cita Completada', shortLabel: 'Completada', icon: '✨', color: '#0ea5e9', description: 'Tu cita fue completada' },
     cancelled: { label: 'Cita Cancelada', shortLabel: 'Cancelada', icon: '❌', color: '#ef4444', description: 'Tu cita fue cancelada' },
   } : {};
-  const currentStatus = bookingStatusOverrides[order?.status] || STATUS_CONFIG[order?.status] || STATUS_CONFIG.pending;
+  const rawStatus = bookingStatusOverrides[order?.status] || STATUS_CONFIG[order?.status] || STATUS_CONFIG.pending;
+  // Adapt "restaurante" in descriptions based on businessType
+  const businessLabel = (() => {
+    const bt = businessConfig?.businessType;
+    if (bt === 'hotel') return 'el hotel';
+    if (['salon', 'spa', 'clinic', 'services'].includes(bt)) return 'el negocio';
+    return 'el restaurante';
+  })();
+  const currentStatus = rawStatus.description?.includes('restaurante')
+    ? { ...rawStatus, description: rawStatus.description.replace(/[Ee]l restaurante/, businessLabel) }
+    : rawStatus;
 
   // Format booking date
   const formatBookingDate = (dateStr) => {
@@ -631,7 +641,7 @@ const OrderTracker = ({
               </div>
 
               {paymentMethods.length === 0 && (
-                <p className="text-xs text-gray-400 text-center">El restaurante no ha configurado medios de pago</p>
+                <p className="text-xs text-gray-400 text-center">No se han configurado medios de pago</p>
               )}
             </motion.div>
           )}

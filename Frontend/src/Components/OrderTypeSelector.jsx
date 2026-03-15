@@ -214,7 +214,7 @@ function OrderTypeSelector({ onComplete, initialTableNumber }) {
             style={{ display: keyboardOpen ? 'none' : 'block' }}
           >
             <h1 className="text-[22px] font-bold text-gray-800 leading-tight">
-              {businessConfig.businessName || 'Nuestro restaurante'}
+              {businessConfig.businessName || 'Nuestro negocio'}
             </h1>
           </motion.div>
 

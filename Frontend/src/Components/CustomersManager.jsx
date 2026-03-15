@@ -228,7 +228,7 @@ const CustomersManager = () => {
 
   // Generar mensajes de WhatsApp personalizados
   const generateWhatsAppMessage = (customer, type) => {
-    const restaurantName = businessConfig?.businessName || 'nuestro restaurante';
+    const restaurantName = businessConfig?.businessName || 'nuestro negocio';
     const customerName = customer.name.split(' ')[0]; // Primer nombre
     const isVIP = (customer.totalOrders || 0) >= 10;
     

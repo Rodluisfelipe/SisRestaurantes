@@ -197,7 +197,7 @@ const OrderConfirmationModal = ({
     } catch (error) {
       logger.error('Error al cancelar el pedido:', error);
       setShowCancelConfirmation(false);
-      alert('Error al cancelar el pedido. Por favor, contacta al restaurante.');
+      alert('Error al cancelar el pedido. Por favor, contacta al negocio.');
     } finally {
       setIsCancelling(false);
       setShowCancelConfirmation(false);
@@ -243,7 +243,7 @@ const OrderConfirmationModal = ({
                 )}
               </div>
               <h2 className="text-lg sm:text-xl font-bold mb-1">{orderConfirmationDetails?.isBooking ? '¡Cita Agendada!' : '¡Pedido Confirmado!'}</h2>
-              <p className="text-sm sm:text-base opacity-90 mb-1">{businessConfig.businessName || 'Nuestro Restaurante'}</p>
+              <p className="text-sm sm:text-base opacity-90 mb-1">{businessConfig.businessName || 'Nuestro Negocio'}</p>
               {orderNumber && (
                 <div className="inline-flex items-center justify-center px-3 py-1 bg-white/20 rounded-full backdrop-blur-sm">
                   <span className="text-xs sm:text-sm font-semibold">{orderConfirmationDetails?.isBooking ? 'Cita' : 'Orden'} #{orderNumber}</span>
@@ -276,7 +276,7 @@ const OrderConfirmationModal = ({
               {orderConfirmationDetails.type === 'inSite' && orderInfo.tableNumber && !orderConfirmationDetails?.isBooking && (
                 <div className="inline-flex items-center justify-center px-3 py-1 bg-blue-50 rounded-full border border-blue-200">
                   <span className="text-blue-600 text-xs sm:text-sm font-medium">
-                    🪑 Será servido en la <span className="font-bold">Mesa {orderInfo.tableNumber}</span>
+                    🪑 Será servido en {businessConfig?.businessType === 'hotel' ? 'la' : 'la'} <span className="font-bold">{businessConfig?.businessType === 'hotel' ? 'Habitación' : 'Mesa'} {orderInfo.tableNumber}</span>
                   </span>
                 </div>
               )}

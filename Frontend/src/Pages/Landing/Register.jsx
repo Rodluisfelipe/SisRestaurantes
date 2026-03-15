@@ -18,6 +18,7 @@ const BUSINESS_TYPES = [
   { id: 'spa',        emoji: '💆', label: 'Spa / Bienestar', desc: 'Masajes, faciales, terapias' },
   { id: 'clinic',     emoji: '🏥', label: 'Clínica / Consultorio', desc: 'Consultas, terapias, procedimientos' },
   { id: 'services',   emoji: '🔧', label: 'Servicios con Agenda', desc: 'Cualquier negocio con citas' },
+  { id: 'hotel',      emoji: '🏨', label: 'Hotel',          desc: 'Room service, menú de habitaciones' },
   { id: 'other',      emoji: '🍴', label: 'Otro',           desc: 'Cualquier tipo de negocio' },
 ];
 
@@ -184,7 +185,7 @@ const Register = () => {
     e.preventDefault();
     setError('');
     if (!businessName.trim()) {
-      setError('El nombre del restaurante es obligatorio');
+      setError('El nombre del negocio es obligatorio');
       return;
     }
     const finalSlug = isCustomSlug
@@ -375,7 +376,7 @@ const Register = () => {
                                         onChange={(e) => { setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setCustomSlugAvailable(null); setError(''); }}
                                         onClick={(e) => e.stopPropagation()}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] pr-8"
-                                        placeholder="mi-restaurante" autoFocus />
+                                        placeholder="mi-negocio" autoFocus />
                                       <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
                                         {isCheckingSlug ? (
                                           <svg className="animate-spin h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24">
@@ -544,7 +545,7 @@ const Register = () => {
                 <span className="text-white font-bold text-xl">M</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Crea tu menú digital gratis</h1>
-              <p className="text-gray-500 text-sm">Tu restaurante online en 2 minutos</p>
+              <p className="text-gray-500 text-sm">Tu negocio online en 2 minutos</p>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}

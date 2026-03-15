@@ -459,7 +459,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], in
                             {/* Order-type specific info */}
                             {order.orderType === 'inSite' && order.tableNumber && (
                               <div className="text-xs text-blue-600 bg-blue-50 rounded-lg px-3 py-1.5 mb-3">
-                                Mesa #{order.tableNumber}
+                                {businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} #{order.tableNumber}
                               </div>
                             )}
                             {order.orderType === 'delivery' && order.address && (

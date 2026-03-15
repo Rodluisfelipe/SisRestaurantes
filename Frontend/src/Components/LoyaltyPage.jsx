@@ -232,7 +232,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                 <div className="text-center py-20 px-6">
                   <div className="text-5xl mb-4">⭐</div>
                   <h3 className="text-lg font-bold text-slate-700 mb-1">Programa no disponible</h3>
-                  <p className="text-sm text-slate-400">Este restaurante aún no tiene un programa de fidelidad activo.</p>
+                  <p className="text-sm text-slate-400">Este negocio aún no tiene un programa de fidelidad activo.</p>
                 </div>
               ) : (
                 <motion.div

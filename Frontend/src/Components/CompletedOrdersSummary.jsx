@@ -11,6 +11,7 @@ function CompletedOrdersSummary() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalAmount: 0,
@@ -529,7 +530,7 @@ function CompletedOrdersSummary() {
                     {order.orderType === 'delivery' 
                       ? order.address
                       : order.orderType === 'inSite'
-                      ? `Mesa ${order.tableNumber}`
+                      ? `${isHotel ? 'Hab.' : 'Mesa'} ${order.tableNumber}`
                       : 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">

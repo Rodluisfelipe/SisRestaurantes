@@ -52,7 +52,7 @@ export default function Login() {
   // Usar valores por defecto si no hay businessConfig
   // Proteger acceso a businessConfig para evitar errores cuando es undefined
   const logo = businessConfig?.logo || defaultLogo;
-  const businessName = businessConfig?.businessName || "Mi Restaurante";
+  const businessName = businessConfig?.businessName || "Mi Negocio";
   const theme = businessConfig?.theme || { buttonColor: '#2563eb', buttonTextColor: '#ffffff' };
 
   return (
