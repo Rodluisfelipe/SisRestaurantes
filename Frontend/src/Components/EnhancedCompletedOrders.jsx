@@ -4,7 +4,6 @@ import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
 import { logSystem } from '../utils/systemLogger';
-import { generateDailyReportPDF } from './DailyReportPDF';
 import ExcelJS from 'exceljs';
 import {
   FaClipboardList, FaDollarSign, FaChartBar, FaHamburger,
@@ -12,8 +11,9 @@ import {
   FaTrophy, FaLightbulb, FaTruck, FaChair, FaShoppingBag,
   FaUser, FaPhone, FaMapMarkerAlt, FaTimes, FaEye,
   FaFileInvoiceDollar, FaInfoCircle, FaArrowUp, FaArrowDown,
-  FaFilePdf, FaFileExcel, FaFilter, FaDownload, FaChevronLeft, FaChevronRight,
-  FaWhatsapp, FaMobileAlt, FaCashRegister, FaMoneyBillWave
+  FaFileExcel, FaFilter, FaDownload, FaChevronLeft, FaChevronRight,
+  FaWhatsapp, FaMobileAlt, FaCashRegister, FaMoneyBillWave,
+  FaCalendarWeek
 } from 'react-icons/fa';
 
 function EnhancedCompletedOrders() {
@@ -57,7 +57,6 @@ function EnhancedCompletedOrders() {
   const PAGE_SIZE = 50;
 
   // Export states
-  const [exportingPDF, setExportingPDF] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
 
   // Separate loading for data refreshes (filters) vs initial load
@@ -201,13 +200,19 @@ function EnhancedCompletedOrders() {
       titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       ws.getRow(1).height = 32;
 
-      // Subtitle
+      // Subtitle with active filters
       ws.mergeCells('A2:P2');
       const subtitleCell = ws.getCell('A2');
       const dateLabel = viewMode === 'today'
         ? new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })
         : `${dateFrom || '—'} a ${dateTo || '—'}`;
-      subtitleCell.value = `Fecha: ${dateLabel}  |  Total: ${orders.length} pedidos  |  Generado: ${new Date().toLocaleString('es-CO')}`;
+      const activeFilterParts = [];
+      if (filterOrderType) activeFilterParts.push(`Tipo: ${orderTypeLabel(filterOrderType)}`);
+      if (filterChannel) activeFilterParts.push(`Canal: ${channelLabel(filterChannel)}`);
+      if (filterPayment) activeFilterParts.push(`Pago: ${paymentLabel(filterPayment)}`);
+      if (searchTerm.trim()) activeFilterParts.push(`Búsqueda: "${searchTerm.trim()}"`);
+      const filtersText = activeFilterParts.length > 0 ? `  |  Filtros: ${activeFilterParts.join(', ')}` : '';
+      subtitleCell.value = `Fecha: ${dateLabel}  |  Total: ${orders.length} pedidos${filtersText}  |  Generado: ${new Date().toLocaleString('es-CO')}`;
       subtitleCell.font = { size: 10, color: { argb: 'FF6B7280' }, italic: true };
       subtitleCell.alignment = { horizontal: 'center' };
       ws.getRow(2).height = 20;
@@ -308,30 +313,90 @@ function EnhancedCompletedOrders() {
         if (label !== 'Total Pedidos') valCell.numFmt = currencyFormat;
       });
 
+      // Helper: styled breakdown sheet
+      const addBreakdownSheet = (sheetName, groupTitle, entries) => {
+        const s = wb.addWorksheet(sheetName);
+        s.columns = [{ width: 22 }, { width: 14 }, { width: 14 }, { width: 18 }];
+        const h = s.addRow([groupTitle, 'Cantidad', '% Pedidos', 'Total']);
+        h.eachCell((cell) => { cell.fill = headerFill; cell.font = headerFont; cell.border = allBorders; cell.alignment = { horizontal: 'center', vertical: 'middle' }; });
+        h.height = 24;
+        entries.forEach(([label, count, total], idx) => {
+          const pct = orders.length > 0 ? ((count / orders.length) * 100).toFixed(1) + '%' : '0%';
+          const r = s.addRow([label, count, pct, total]);
+          r.eachCell((cell, col) => {
+            cell.border = allBorders;
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx % 2 === 0 ? 'FFF9FAFB' : 'FFFFFFFF' } };
+            if (col === 2 || col === 3) cell.alignment = { horizontal: 'center' };
+            if (col === 4) { cell.numFmt = currencyFormat; cell.alignment = { horizontal: 'right' }; }
+          });
+        });
+        const tr = s.addRow(['TOTAL', orders.length, '100%', totalRevenue]);
+        tr.eachCell((cell, col) => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+          cell.font = { bold: true, size: 11 };
+          cell.border = allBorders;
+          if (col === 2 || col === 3) cell.alignment = { horizontal: 'center' };
+          if (col === 4) { cell.numFmt = currencyFormat; cell.alignment = { horizontal: 'right' }; }
+        });
+      };
+
       // Sheet 2: Por Tipo
-      const ws2 = wb.addWorksheet('Por Tipo');
-      ws2.columns = [{ width: 18 }, { width: 14 }, { width: 18 }];
-      const typeHeader = ws2.addRow(['Tipo de Pedido', 'Cantidad', 'Total']);
-      typeHeader.eachCell((cell) => { cell.fill = headerFill; cell.font = headerFont; cell.border = allBorders; cell.alignment = { horizontal: 'center', vertical: 'middle' }; });
       const typeCounts = { 'En sitio': { count: 0, total: 0 }, 'Para llevar': { count: 0, total: 0 }, 'Domicilio': { count: 0, total: 0 } };
       orders.forEach(o => { const l = orderTypeLabel(o.orderType); if (typeCounts[l]) { typeCounts[l].count++; typeCounts[l].total += (o.finalAmount || o.totalAmount || 0); } });
-      Object.entries(typeCounts).forEach(([label, data], idx) => {
-        const r = ws2.addRow([label, data.count, data.total]);
-        r.eachCell((cell, col) => {
-          cell.border = allBorders;
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx % 2 === 0 ? 'FFF9FAFB' : 'FFFFFFFF' } };
-          if (col === 2) cell.alignment = { horizontal: 'center' };
-          if (col === 3) { cell.numFmt = currencyFormat; cell.alignment = { horizontal: 'right' }; }
+      addBreakdownSheet('Por Tipo', 'Tipo de Pedido', Object.entries(typeCounts).map(([k, v]) => [k, v.count, v.total]));
+
+      // Sheet 3: Por Canal
+      const channelCounts = {};
+      orders.forEach(o => {
+        const ch = channelLabel(o.orderChannel);
+        if (!channelCounts[ch]) channelCounts[ch] = { count: 0, total: 0 };
+        channelCounts[ch].count++;
+        channelCounts[ch].total += (o.finalAmount || o.totalAmount || 0);
+      });
+      addBreakdownSheet('Por Canal', 'Canal', Object.entries(channelCounts).map(([k, v]) => [k, v.count, v.total]));
+
+      // Sheet 4: Por Método de Pago
+      const payCounts = {};
+      orders.forEach(o => {
+        const pm = paymentLabel(o.paymentMethod);
+        if (!payCounts[pm]) payCounts[pm] = { count: 0, total: 0 };
+        payCounts[pm].count++;
+        payCounts[pm].total += (o.finalAmount || o.totalAmount || 0);
+      });
+      addBreakdownSheet('Por Pago', 'Método de Pago', Object.entries(payCounts).map(([k, v]) => [k, v.count, v.total]));
+
+      // Sheet 5: Top Productos
+      const prodCounts = {};
+      orders.forEach(o => {
+        (o.items || []).forEach(item => {
+          if (!prodCounts[item.name]) prodCounts[item.name] = { count: 0, total: 0 };
+          prodCounts[item.name].count += item.quantity;
+          prodCounts[item.name].total += (item.price || 0) * item.quantity;
         });
       });
-      const totalTypeRow = ws2.addRow(['TOTAL', orders.length, totalRevenue]);
-      totalTypeRow.eachCell((cell, col) => {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-        cell.font = { bold: true, size: 11 };
-        cell.border = allBorders;
-        if (col === 2) cell.alignment = { horizontal: 'center' };
-        if (col === 3) { cell.numFmt = currencyFormat; cell.alignment = { horizontal: 'right' }; }
-      });
+      const topProducts = Object.entries(prodCounts).sort((a, b) => b[1].count - a[1].count).slice(0, 30);
+      if (topProducts.length > 0) {
+        const ws5 = wb.addWorksheet('Top Productos');
+        ws5.columns = [{ width: 6 }, { width: 30 }, { width: 12 }, { width: 18 }];
+        const h5 = ws5.addRow(['#', 'Producto', 'Uds Vendidas', 'Ventas']);
+        h5.eachCell((cell) => { cell.fill = headerFill; cell.font = headerFont; cell.border = allBorders; cell.alignment = { horizontal: 'center', vertical: 'middle' }; });
+        h5.height = 24;
+        topProducts.forEach(([name, d], idx) => {
+          const r = ws5.addRow([idx + 1, name, d.count, d.total]);
+          r.eachCell((cell, col) => {
+            cell.border = allBorders;
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx % 2 === 0 ? 'FFF9FAFB' : 'FFFFFFFF' } };
+            if (col === 1 || col === 3) cell.alignment = { horizontal: 'center' };
+            if (col === 4) { cell.numFmt = currencyFormat; cell.alignment = { horizontal: 'right' }; }
+          });
+          // Medal colors for top 3
+          if (idx < 3) {
+            const medalColors = ['FFFEF3C7', 'FFE5E7EB', 'FFFFEDD5'];
+            r.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: medalColors[idx] } };
+            r.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: medalColors[idx] } };
+          }
+        });
+      }
 
       // Download
       const buffer = await wb.xlsx.writeBuffer();
@@ -353,66 +418,42 @@ function EnhancedCompletedOrders() {
     }
   };
 
-  // --- Export: PDF ---
-  const exportPDF = async () => {
-    setExportingPDF(true);
-    try {
-      let data;
-      if (viewMode === 'today') {
-        // Use the already-loaded today data
-        data = { stats, orders: completedOrders, reportDate: new Date().toISOString() };
-      } else {
-        // Fetch filtered data for PDF
-        const params = new URLSearchParams({ businessId });
-        if (dateFrom) params.append('from', dateFrom);
-        if (dateTo) params.append('to', dateTo);
-        if (filterOrderType) params.append('orderType', filterOrderType);
-        if (filterChannel) params.append('orderChannel', filterChannel);
-        if (filterPayment) params.append('paymentMethod', filterPayment);
-        if (searchTerm.trim()) params.append('search', searchTerm.trim());
-
-        const response = await api.get(`/orders/completed?${params.toString()}`);
-        const orders = response.data?.orders || (Array.isArray(response.data) ? response.data : []);
-        if (orders.length === 0) {
-          alert('No hay pedidos para generar el PDF');
-          return;
-        }
-
-        // Build stats from fetched orders
-        const pdfStats = {
-          totalOrders: orders.length,
-          totalSales: orders.reduce((s, o) => s + (o.finalAmount || o.totalAmount || 0), 0),
-          totalAmount: orders.reduce((s, o) => s + (o.totalAmount || 0), 0),
-          ordersByType: { inSite: { count: 0, total: 0 }, takeaway: { count: 0, total: 0 }, delivery: { count: 0, total: 0 } },
-          topSellingItems: [],
-        };
-        const itemCounts = {};
-        orders.forEach(o => {
-          const type = o.orderType || 'inSite';
-          if (pdfStats.ordersByType[type]) {
-            pdfStats.ordersByType[type].count++;
-            pdfStats.ordersByType[type].total += (o.finalAmount || o.totalAmount || 0);
-          }
-          (o.items || []).forEach(item => {
-            if (!itemCounts[item.name]) itemCounts[item.name] = { count: 0, total: 0 };
-            itemCounts[item.name].count += item.quantity;
-            itemCounts[item.name].total += item.price * item.quantity;
-          });
-        });
-        pdfStats.topSellingItems = Object.entries(itemCounts)
-          .map(([name, d]) => ({ name, ...d }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 10);
-
-        data = { stats: pdfStats, orders, reportDate: dateFrom || new Date().toISOString() };
+  // Quick date presets
+  const applyDatePreset = (preset) => {
+    const now = new Date();
+    const toStr = (d) => d.toISOString().split('T')[0];
+    const today = toStr(now);
+    switch (preset) {
+      case 'today': {
+        setDateFrom(today);
+        setDateTo(today);
+        break;
       }
-
-      await generateDailyReportPDF(data, businessConfig);
-    } catch (err) {
-      logSystem('Error exporting PDF: ' + err.message, 'error');
-      alert('Error al generar el PDF');
-    } finally {
-      setExportingPDF(false);
+      case 'yesterday': {
+        const d = new Date(now); d.setDate(d.getDate() - 1);
+        setDateFrom(toStr(d));
+        setDateTo(toStr(d));
+        break;
+      }
+      case 'week': {
+        const d = new Date(now); d.setDate(d.getDate() - 7);
+        setDateFrom(toStr(d));
+        setDateTo(today);
+        break;
+      }
+      case 'month': {
+        const d = new Date(now); d.setMonth(d.getMonth() - 1);
+        setDateFrom(toStr(d));
+        setDateTo(today);
+        break;
+      }
+      case 'year': {
+        const d = new Date(now); d.setFullYear(d.getFullYear() - 1);
+        setDateFrom(toStr(d));
+        setDateTo(today);
+        break;
+      }
+      default: break;
     }
   };
 
@@ -922,27 +963,16 @@ function EnhancedCompletedOrders() {
               {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
             </button>
 
-            {/* Export buttons */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={exportPDF}
-                disabled={exportingPDF}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-50"
-                title="Exportar PDF"
-              >
-                {exportingPDF ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-500" /> : <FaFilePdf className="text-[10px]" />}
-                <span className="hidden sm:inline">PDF</span>
-              </button>
-              <button
-                onClick={exportExcel}
-                disabled={exportingExcel}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
-                title="Exportar Excel"
-              >
-                {exportingExcel ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-500" /> : <FaFileExcel className="text-[10px]" />}
-                <span className="hidden sm:inline">Excel</span>
-              </button>
-            </div>
+            {/* Export button */}
+            <button
+              onClick={exportExcel}
+              disabled={exportingExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
+              title="Exportar Excel"
+            >
+              {exportingExcel ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-500" /> : <FaFileExcel className="text-[10px]" />}
+              <span className="hidden sm:inline">Excel</span>
+            </button>
 
             {/* Refresh */}
             {viewMode === 'today' && (
@@ -964,7 +994,17 @@ function EnhancedCompletedOrders() {
 
         {/* Advanced Filters Panel */}
         {showFilters && (
-          <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
+          <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-3">
+            {/* Quick date presets */}
+            <div className="flex flex-wrap gap-1.5">
+              <span className="text-[11px] font-medium text-slate-500 flex items-center mr-1"><FaCalendarWeek className="text-[9px] mr-1" />Rápido:</span>
+              {[['Hoy', 'today'], ['Ayer', 'yesterday'], ['Última semana', 'week'], ['Último mes', 'month'], ['Último año', 'year']].map(([label, key]) => (
+                <button key={key} onClick={() => applyDatePreset(key)}
+                  className="px-2.5 py-1 text-[11px] font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors">
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* Date From */}
               <div>
