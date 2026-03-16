@@ -5,8 +5,21 @@ Sistema de gestión y pedidos para restaurantes (SaaS multi-tenant). Cada negoci
 
 - **Nombre comercial del frontend:** MenuBy (menuby.tech)
 - **Repositorio:** https://github.com/Rodluisfelipe/SisRestaurantes
-- **Rama principal de desarrollo:** `desarrollo`
+- **Rama de desarrollo:** `desarrollo` (trabajo diario, no se despliega automáticamente)
+- **Rama de producción:** `produccion` (se despliega al servidor al hacer push)
 - **Ramas legacy (no usar):** `main`, `dev`, `developer`
+
+### Flujo de ramas
+```
+desarrollo (trabajo diario)
+    │
+    │  git checkout produccion
+    │  git merge desarrollo
+    │  git push origin produccion
+    ▼
+produccion ──► GitHub Actions despliega backend
+           ──► Cloudflare Pages despliega frontend
+```
 
 ---
 

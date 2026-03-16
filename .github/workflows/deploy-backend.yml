@@ -2,7 +2,7 @@ name: Deploy Backend
 
 on:
   push:
-    branches: [desarrollo]
+    branches: [produccion]
     paths:
       - 'Backend/**'
 
@@ -26,8 +26,8 @@ jobs:
 
             # Pull latest code
             cd /opt/sisrestaurantes
-            git fetch origin desarrollo
-            git reset --hard origin/desarrollo
+            git fetch origin produccion
+            git reset --hard origin/produccion
 
             # Rebuild and restart container
             cd Backend
