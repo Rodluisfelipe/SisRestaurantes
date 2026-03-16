@@ -75,6 +75,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   });
   const deliveryAddressRef = useRef(null);
 
+  const [isProcessing, setIsProcessing] = useState(false);
+  const { businessConfig, businessId, businessStatus, getStatusDisplay } = useBusinessConfig();
+  const isHotel = businessConfig?.businessType === 'hotel';
+  const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
+  const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
+
   // Booking state
   const [bookingSlot, setBookingSlot] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
@@ -103,11 +109,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       checkoutRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, 150);
   }, []);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const { businessConfig, businessId, businessStatus, getStatusDisplay } = useBusinessConfig();
-  const isHotel = businessConfig?.businessType === 'hotel';
-  const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
-  const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
   
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
