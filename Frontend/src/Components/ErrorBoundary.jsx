@@ -16,6 +16,8 @@ class ErrorBoundary extends Component {
     // Reportar el error a Sentry
     Sentry.captureException(error, { extra: { componentStack: errorInfo?.componentStack } });
     console.error("Error capturado por ErrorBoundary:", error, errorInfo);
+    // DEBUG TEMPORAL - mostrar error real como alert
+    window.alert('ERROR: ' + (error?.message || error) + '\n\nStack: ' + (error?.stack || '').split('\n').slice(0,5).join('\n'));
     this.setState({ errorInfo });
   }
 
