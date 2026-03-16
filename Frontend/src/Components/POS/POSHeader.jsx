@@ -10,6 +10,7 @@ export default function POSHeader({ businessConfig, cashRegister, user, pendingO
   }, []);
 
   const themeColor = businessConfig?.theme?.buttonColor || '#3B82F6';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   return (
     <div className="flex-shrink-0 z-20">
@@ -55,7 +56,7 @@ export default function POSHeader({ businessConfig, cashRegister, user, pendingO
           <button
             onClick={onGoToOrders}
             className="relative w-9 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition-colors"
-            title={`${pendingOrdersCount} pedido(s) pendiente(s)`}
+            title={`${pendingOrdersCount} ${isService ? 'cita(s) pendiente(s)' : 'pedido(s) pendiente(s)'}`}
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg>
             {pendingOrdersCount > 0 && (
@@ -143,9 +144,9 @@ export default function POSHeader({ businessConfig, cashRegister, user, pendingO
                 className="text-2xl"
               >🔔</motion.span>
               <div className="flex-1 text-left">
-                <p className="text-white font-bold text-sm">¡Nuevo Pedido Web!</p>
+                <p className="text-white font-bold text-sm">{isService ? '¡Nueva Cita Web!' : '¡Nuevo Pedido Web!'}</p>
                 <p className="text-white/80 text-xs">
-                  Pedido #{newOrderNotification.orderNumber || newOrderNotification._id?.slice(-6)}
+                  {isService ? 'Cita' : 'Pedido'} #{newOrderNotification.orderNumber || newOrderNotification._id?.slice(-6)}
                   {newOrderNotification.customerName && ` - ${newOrderNotification.customerName}`}
                 </p>
               </div>

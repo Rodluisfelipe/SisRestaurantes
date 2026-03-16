@@ -9,16 +9,22 @@ const PAYMENT_METHODS = [
   { id: 'transfer', label: 'Transferencia', icon: null },
 ];
 
-const ORDER_TYPES = [
-  { id: 'inSite', label: 'En mesa', icon: 'M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12v6a2 2 0 002 2h10a2 2 0 002-2v-6' },
-  { id: 'takeaway', label: 'Para llevar', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' },
-  { id: 'delivery', label: 'Domicilio', icon: 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0' },
-];
+const ORDER_TYPE_ICONS = {
+  inSite: 'M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12v6a2 2 0 002 2h10a2 2 0 002-2v-6',
+  takeaway: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z',
+  delivery: 'M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0',
+};
 
 const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
 
 export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister, preselectedTable, isOnline = true }) {
   const isHotel = businessConfig?.businessType === 'hotel';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const ORDER_TYPES = [
+    { id: 'inSite', label: isService ? 'Presencial' : 'En mesa', icon: ORDER_TYPE_ICONS.inSite },
+    { id: 'takeaway', label: isService ? 'A domicilio' : 'Para llevar', icon: ORDER_TYPE_ICONS.takeaway },
+    { id: 'delivery', label: 'Domicilio', icon: ORDER_TYPE_ICONS.delivery },
+  ];
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [cashReceived, setCashReceived] = useState('');
   const [orderType, setOrderType] = useState(preselectedTable ? 'inSite' : 'takeaway');
@@ -163,7 +169,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
             <span className="text-2xl font-black" style={{ color: themeColor }}>${total.toLocaleString()}</span>
             {orderType === 'delivery' && deliveryFee > 0 && (
               <span className="text-xs text-slate-400">
-                (Productos ${subtotal.toLocaleString()} + Domicilio ${deliveryFee.toLocaleString()})
+                ({isService ? 'Servicios' : 'Productos'} ${subtotal.toLocaleString()} + Domicilio ${deliveryFee.toLocaleString()})
               </span>
             )}
           </div>

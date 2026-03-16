@@ -4,6 +4,7 @@ import { useBusinessConfig } from '../../Context/BusinessContext';
 export default function POSCart({ cart, updateQuantity, removeFromCart, clearCart, onCheckout, onHoldOrder, heldOrders, onRecallHeldOrder, onDeleteHeldOrder, selectedTable, onClearTable, themeColor }) {
   const { businessConfig } = useBusinessConfig();
   const isHotel = businessConfig?.businessType === 'hotel';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const tableLabel = isHotel ? 'Hab.' : 'Mesa';
   const total = cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0);
   const [showHeld, setShowHeld] = useState(false);
@@ -96,7 +97,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               </svg>
             </div>
             <p className="text-sm font-semibold text-slate-400">Carrito vacío</p>
-            <p className="text-xs text-slate-300 mt-1 text-center">Selecciona productos para comenzar</p>
+            <p className="text-xs text-slate-300 mt-1 text-center">{isService ? 'Selecciona servicios para comenzar' : 'Selecciona productos para comenzar'}</p>
           </div>
         ) : (
           <div className="p-3 space-y-2">

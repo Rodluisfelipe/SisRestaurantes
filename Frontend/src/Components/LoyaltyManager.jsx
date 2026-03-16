@@ -274,6 +274,7 @@ const SmartWarning = ({ program, rewardForm }) => {
 const LoyaltyManager = () => {
   const { businessConfig, businessId } = useBusinessConfig();
   const bizId = businessId || businessConfig?._id;
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -687,8 +688,8 @@ const LoyaltyManager = () => {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100">
-                    <p className="text-xs font-semibold text-emerald-700 mb-2">🎁 Bonus primer pedido</p>
-                    <p className="text-xs text-slate-500 mb-2">Puntos extra de bienvenida la primera vez que compran</p>
+                    <p className="text-xs font-semibold text-emerald-700 mb-2">🎁 {isService ? 'Bonus primera cita' : 'Bonus primer pedido'}</p>
+                    <p className="text-xs text-slate-500 mb-2">{isService ? 'Puntos extra de bienvenida la primera vez que reservan' : 'Puntos extra de bienvenida la primera vez que compran'}</p>
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
@@ -940,7 +941,7 @@ const LoyaltyManager = () => {
                             </span>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-slate-700 truncate">{c.customerId?.name || c.phone}</p>
-                              <p className="text-[10px] text-slate-400">{c.phone} · {c.totalOrders} pedidos</p>
+                              <p className="text-[10px] text-slate-400">{c.phone} · {c.totalOrders} {isService ? 'citas' : 'pedidos'}</p>
                             </div>
                             <div className="text-right">
                               <p className="text-sm font-bold text-slate-800">{c.points} pts</p>
@@ -1065,13 +1066,13 @@ const LoyaltyManager = () => {
 
                     {rewardForm.type === 'free_product' && (
                       <div>
-                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">Producto a regalar</label>
+                        <label className="block text-xs font-semibold text-slate-600 mb-1.5">{isService ? 'Servicio a regalar' : 'Producto a regalar'}</label>
                         <button type="button" onClick={() => setShowProductDropdown(v => !v)}
                           className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all ${
                             rewardForm.productName ? 'border-green-300 bg-green-50 text-green-700' : 'border-slate-200 text-slate-400 hover:border-slate-300'
                           }`}
                         >
-                          <span className="truncate">{rewardForm.productName || 'Seleccionar producto...'}</span>
+                          <span className="truncate">{rewardForm.productName || (isService ? 'Seleccionar servicio...' : 'Seleccionar producto...')}</span>
                           <FaChevronDown className={`w-3 h-3 shrink-0 transition-transform ${showProductDropdown ? 'rotate-180' : ''}`} />
                         </button>
                         {showProductDropdown && (
@@ -1079,7 +1080,7 @@ const LoyaltyManager = () => {
                             <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2">
                               <FaSearch className="w-3 h-3 text-slate-400" />
                               <input value={productSearch} onChange={e => setProductSearch(e.target.value)}
-                                className="w-full text-sm outline-none" placeholder="Buscar producto..." autoFocus />
+                                className="w-full text-sm outline-none" placeholder={isService ? 'Buscar servicio...' : 'Buscar producto...'} autoFocus />
                             </div>
                             <div className="max-h-36 overflow-y-auto">
                               {products.filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())).map(p => (
@@ -1098,7 +1099,7 @@ const LoyaltyManager = () => {
                                 </button>
                               ))}
                               {products.filter(p => !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase())).length === 0 && (
-                                <p className="px-3 py-2 text-xs text-slate-400">No se encontraron productos</p>
+                                <p className="px-3 py-2 text-xs text-slate-400">{isService ? 'No se encontraron servicios' : 'No se encontraron productos'}</p>
                               )}
                             </div>
                           </div>

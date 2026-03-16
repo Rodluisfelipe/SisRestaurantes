@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 /**
  * WelcomeWizard — Modal de bienvenida que aparece automáticamente
@@ -38,10 +39,45 @@ const STEPS = [
   },
 ];
 
+const SERVICE_STEPS = [
+  {
+    emoji: '🎉',
+    title: '¡Tu catálogo digital está listo!',
+    desc: 'Ya creamos categorías automáticas según tu tipo de negocio. Ahora vamos a configurarlo todo en 3 simples pasos.',
+    gradient: 'from-blue-500 to-purple-600',
+  },
+  {
+    emoji: '💆',
+    title: 'Paso 1: Agrega tus servicios',
+    desc: 'Ve a la sección "Servicios", haz clic en "+ Nuevo Servicio" y agrega nombre, precio, imagen y categoría. ¡Puedes agregar cuantos quieras!',
+    tip: 'Consejo: Empieza con 3-5 servicios principales',
+    tab: 'products',
+    gradient: 'from-orange-500 to-red-500',
+  },
+  {
+    emoji: '⚙️',
+    title: 'Paso 2: Configura tus citas',
+    desc: 'En "Configuración del Negocio" elige cómo quieres recibir citas: por WhatsApp, directamente en la app, o ambos. También agrega tu horario.',
+    tip: 'Consejo: WhatsApp es perfecto para empezar',
+    tab: 'business',
+    gradient: 'from-emerald-500 to-teal-600',
+  },
+  {
+    emoji: '🚀',
+    title: 'Paso 3: ¡Comparte tu catálogo!',
+    desc: 'Tu catálogo ya tiene un link único. Cópialo desde la configuración y compártelo en tus redes sociales, WhatsApp o imprímelo en un QR.',
+    tip: 'Tu link: menuby.tech/tu-negocio',
+    gradient: 'from-violet-500 to-pink-500',
+  },
+];
+
 export default function WelcomeWizard({ onClose, onGoToTab }) {
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const steps = isService ? SERVICE_STEPS : STEPS;
   const [step, setStep] = useState(0);
-  const current = STEPS[step];
-  const isLast = step === STEPS.length - 1;
+  const current = steps[step];
+  const isLast = step === steps.length - 1;
 
   const handleNext = () => {
     if (isLast) {

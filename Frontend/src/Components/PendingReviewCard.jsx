@@ -61,6 +61,7 @@ const PendingReviewCard = ({ businessId, customerPhone, themeColor, onReview }) 
 
   const color = themeColor || '#f97316';
   const product = pendingOrder.topProduct;
+  const isBooking = pendingOrder.isBooking === true;
 
   return (
     <AnimatePresence>
@@ -91,10 +92,10 @@ const PendingReviewCard = ({ businessId, customerPhone, themeColor, onReview }) 
             </div>
             <div className="flex-1 text-left min-w-0">
               <p className="text-sm font-semibold leading-tight text-white">
-                ¡Califica tu pedido!
+                {isBooking ? '¡Califica tu cita!' : '¡Califica tu pedido!'}
               </p>
               <p className="text-xs mt-0.5 text-white/90 truncate">
-                {product?.name ? product.name : `Pedido #${pendingOrder.orderNumber}`} · {pendingOrder.itemCount} {pendingOrder.itemCount === 1 ? 'producto' : 'productos'}
+                {product?.name ? product.name : `${isBooking ? 'Cita' : 'Pedido'} #${pendingOrder.orderNumber}`} · {pendingOrder.itemCount} {pendingOrder.itemCount === 1 ? (isBooking ? 'servicio' : 'producto') : (isBooking ? 'servicios' : 'productos')}
               </p>
             </div>
             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center">

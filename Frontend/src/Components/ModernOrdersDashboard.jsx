@@ -12,7 +12,8 @@ import {
   FaUtensils, FaTv, FaShoppingBag, FaEye, FaPlay, FaCheck,
   FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaClock, FaTimes,
   FaChair, FaHome, FaTag, FaExclamationTriangle, FaWifi,
-  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle
+  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle,
+  FaCalendarAlt, FaUserMd
 } from 'react-icons/fa';
 
 import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
@@ -25,6 +26,7 @@ function ModernOrdersDashboard() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderDetails, setOrderDetails] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const [pendingNotifications, setPendingNotifications] = useState([]);
   const notificationAudioRef = useRef(null);
   const notificationIntervalRef = useRef(null);
@@ -498,6 +500,34 @@ function ModernOrdersDashboard() {
   const [showProofModal, setShowProofModal] = useState(false);
   const [proofImageUrl, setProofImageUrl] = useState('');
 
+  // Confirm a booking via /api/bookings/:id/status
+  const confirmBooking = async (orderId) => {
+    try {
+      await api.patch(`/bookings/${orderId}/status`, { bookingStatus: 'confirmed' });
+      // Remove from dashboard — confirmed bookings go to Agenda
+      setOrders(prev => prev.filter(o => o._id !== orderId));
+      if (selectedOrder === orderId) { setSelectedOrder(null); setOrderDetails(null); }
+      setPendingNotifications(prev => prev.filter(id => id !== orderId));
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      alert('Error al confirmar la cita');
+    }
+  };
+
+  // Cancel a booking via /api/bookings/:id/status
+  const cancelBooking = async (orderId) => {
+    if (!window.confirm('¿Cancelar esta cita?')) return;
+    try {
+      await api.patch(`/bookings/${orderId}/status`, { bookingStatus: 'cancelled' });
+      setOrders(prev => prev.filter(o => o._id !== orderId));
+      if (selectedOrder === orderId) { setSelectedOrder(null); setOrderDetails(null); }
+      setPendingNotifications(prev => prev.filter(id => id !== orderId));
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      alert('Error al cancelar la cita');
+    }
+  };
+
   // Build authenticated proof URL (token via query param for <img> tags)
   const getProofUrl = (proofPath) => {
     const token = localStorage.getItem('accessToken') || localStorage.getItem('superadmin_token');
@@ -638,6 +668,8 @@ function ModernOrdersDashboard() {
   const filteredOrders = orders.filter(order => {
     if (!order) return false;
     if (!VISIBLE_STATUSES.includes(order.status)) return false;
+    // Confirmed/completed bookings belong in Agenda (BookingsManager), not here
+    if (order.isBooking && order.bookingStatus && order.bookingStatus !== 'pending') return false;
     const name = (order.customerName || '').toLowerCase();
     const number = (order.orderNumber || '').toLowerCase();
     const search = searchTerm.toLowerCase();
@@ -700,7 +732,7 @@ function ModernOrdersDashboard() {
             transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
             className="w-10 h-10 border-3 border-blue-500 border-t-transparent rounded-full mx-auto mb-3"
           />
-          <p className="text-slate-500 text-sm font-medium">Cargando pedidos...</p>
+          <p className="text-slate-500 text-sm font-medium">{isService ? 'Cargando citas...' : 'Cargando pedidos...'}</p>
         </div>
       </div>
     );
@@ -713,7 +745,7 @@ function ModernOrdersDashboard() {
           <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3">
             <FaTimes className="text-red-400 text-lg" />
           </div>
-          <h3 className="text-sm font-semibold text-slate-800 mb-1">Error al cargar pedidos</h3>
+          <h3 className="text-sm font-semibold text-slate-800 mb-1">{isService ? 'Error al cargar citas' : 'Error al cargar pedidos'}</h3>
           <p className="text-slate-500 text-xs mb-4">{error}</p>
           <button
             onClick={fetchOrders}
@@ -779,28 +811,32 @@ function ModernOrdersDashboard() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Kitchen */}
-          <button
-            onClick={goToKitchenScreen}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors"
-          >
-            <FaUtensils className="text-[10px]" />
-            <span className="hidden sm:inline">Cocina</span>
-          </button>
+          {/* Kitchen — hide for service businesses */}
+          {!isService && (
+            <button
+              onClick={goToKitchenScreen}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors"
+            >
+              <FaUtensils className="text-[10px]" />
+              <span className="hidden sm:inline">Cocina</span>
+            </button>
+          )}
 
-          {/* Customer Display */}
-          <button
-            onClick={() => {
-              const currentPath = window.location.pathname;
-              const match = currentPath.match(/^\/([^/]+)/);
-              const businessSlug = match ? match[1] : '';
-              window.open(`/${businessSlug}/orders`, '_blank', 'noopener,noreferrer');
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
-          >
-            <FaTv className="text-[10px]" />
-            <span className="hidden sm:inline">Pantalla</span>
-          </button>
+          {/* Customer Display — hide for service businesses */}
+          {!isService && (
+            <button
+              onClick={() => {
+                const currentPath = window.location.pathname;
+                const match = currentPath.match(/^\/([^/]+)/);
+                const businessSlug = match ? match[1] : '';
+                window.open(`/${businessSlug}/orders`, '_blank', 'noopener,noreferrer');
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
+            >
+              <FaTv className="text-[10px]" />
+              <span className="hidden sm:inline">Pantalla</span>
+            </button>
+          )}
 
           {/* Refresh */}
           <motion.button
@@ -839,7 +875,7 @@ function ModernOrdersDashboard() {
           <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm" />
           <input
             type="text"
-            placeholder="Buscar por cliente o # de pedido..."
+            placeholder={isService ? "Buscar por cliente o # de cita..." : "Buscar por cliente o # de pedido..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
@@ -910,11 +946,11 @@ function ModernOrdersDashboard() {
             <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
               <FaShoppingBag className="text-slate-300 text-xl" />
             </div>
-            <h3 className="text-sm font-semibold text-slate-700 mb-1">No hay pedidos</h3>
+            <h3 className="text-sm font-semibold text-slate-700 mb-1">{isService ? 'No hay citas' : 'No hay pedidos'}</h3>
             <p className="text-xs text-slate-400">
               {searchTerm || statusFilter !== 'all' 
-                ? 'No se encontraron pedidos con los filtros aplicados' 
-                : 'Los nuevos pedidos aparecerán aquí en tiempo real'
+                ? (isService ? 'No se encontraron citas con los filtros aplicados' : 'No se encontraron pedidos con los filtros aplicados')
+                : (isService ? 'Las nuevas citas aparecerán aquí en tiempo real' : 'Los nuevos pedidos aparecerán aquí en tiempo real')
               }
             </p>
           </div>
@@ -937,6 +973,7 @@ function ModernOrdersDashboard() {
                 const TypeIcon = orderTypeInfo.Icon;
                 const timeElapsed = calculateTimeElapsed(order.createdAt);
                 const isPending = order.status === ORDER_STATUS.PENDING;
+                const isBookingOrder = order.isBooking === true;
 
                 return (
                   <motion.div
@@ -961,12 +998,12 @@ function ModernOrdersDashboard() {
                         }`}>
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className={`w-8 h-8 ${orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
-                                <TypeIcon className="text-white text-sm" />
+                              <div className={`w-8 h-8 ${isBookingOrder ? 'bg-indigo-500' : orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
+                                {isBookingOrder ? <FaCalendarAlt className="text-white text-sm" /> : <TypeIcon className="text-white text-sm" />}
                               </div>
                               <div className="min-w-0">
                                 <h3 className="font-bold text-slate-800 text-sm leading-tight">#{order.orderNumber}</h3>
-                                <p className="text-[11px] text-slate-500">{orderTypeInfo.label}</p>
+                                <p className="text-[11px] text-slate-500">{isBookingOrder ? 'Cita' : orderTypeInfo.label}</p>
                               </div>
                             </div>
                             
@@ -990,7 +1027,7 @@ function ModernOrdersDashboard() {
                         {/* Card Body */}
                         <div className="p-3">
                           <div className="space-y-1.5 mb-3">
-                            {/* Cliente + Teléfono inline */}
+                            {/* Cliente */}
                             <div className="flex items-center gap-2 text-[13px]">
                               <FaUser className="text-[10px] text-slate-400 shrink-0" />
                               <span className="font-medium text-slate-700 truncate">{order.customerName}</span>
@@ -1004,41 +1041,54 @@ function ModernOrdersDashboard() {
                                 </a>
                               </div>
                             )}
-                            
-                            {/* Mesa */}
-                            {order.tableNumber && (
+
+                            {/* === Booking-specific info === */}
+                            {isBookingOrder && order.bookingDate && (
+                              <div className="flex items-center gap-2 text-[13px]">
+                                <FaCalendarAlt className="text-[10px] text-indigo-400 shrink-0" />
+                                <span className="font-medium text-indigo-700">
+                                  {new Date(order.bookingDate).toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })} · {new Date(order.bookingDate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                            )}
+
+                            {isBookingOrder && order.staffName && (
+                              <div className="flex items-center gap-2 text-[13px]">
+                                <FaUserMd className="text-[10px] text-slate-400 shrink-0" />
+                                <span className="font-medium text-slate-700">{order.staffName}</span>
+                              </div>
+                            )}
+
+                            {/* === Restaurant-specific info (hide for bookings) === */}
+                            {!isBookingOrder && order.tableNumber && (
                               <div className="flex items-center gap-2 text-[13px]">
                                 <FaChair className="text-[10px] text-slate-400 shrink-0" />
                                 <span className="font-medium text-slate-700">{businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} {order.tableNumber}</span>
                               </div>
                             )}
                             
-                            {/* Dirección de delivery */}
-                            {order.orderType === 'delivery' && order.address && (
+                            {!isBookingOrder && order.orderType === 'delivery' && order.address && (
                               <div className="flex items-start gap-2 text-[13px]">
                                 <FaHome className="text-[10px] text-slate-400 shrink-0 mt-0.5" />
                                 <span className="font-medium text-slate-600 leading-snug">{order.address}</span>
                               </div>
                             )}
                             
-                            {/* Zona de delivery */}
-                            {order.orderType === 'delivery' && order.deliveryZoneName && (
+                            {!isBookingOrder && order.orderType === 'delivery' && order.deliveryZoneName && (
                               <div className="flex items-center gap-2 text-[13px]">
                                 <FaMapMarkerAlt className="text-[10px] text-slate-400 shrink-0" />
                                 <span className="font-medium text-slate-600">Zona: {order.deliveryZoneName}</span>
                               </div>
                             )}
                             
-                            {/* Costo de envío */}
-                            {order.orderType === 'delivery' && order.deliveryFee && (
+                            {!isBookingOrder && order.orderType === 'delivery' && order.deliveryFee && (
                               <div className="flex items-center gap-2 text-[13px]">
                                 <FaTruck className="text-[10px] text-slate-400 shrink-0" />
                                 <span className="font-medium text-slate-700">Envío: ${order.deliveryFee.toLocaleString()}</span>
                               </div>
                             )}
                             
-                            {/* Warning de confirmación */}
-                            {order.orderType === 'delivery' && order.deliveryNeedsConfirmation && (
+                            {!isBookingOrder && order.orderType === 'delivery' && order.deliveryNeedsConfirmation && (
                               <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1.5 rounded-lg border border-amber-200">
                                 <FaExclamationTriangle className="text-[10px] text-amber-500 shrink-0" />
                                 <span className="text-[11px] font-semibold text-amber-700">Envío por confirmar</span>
@@ -1050,7 +1100,7 @@ function ModernOrdersDashboard() {
                           <div className={`flex items-center justify-between py-2.5 border-t ${
                             isPending ? 'border-yellow-200' : 'border-slate-100'
                           }`}>
-                            <span className="text-[11px] text-slate-500">{order.items?.length || 0} productos</span>
+                            <span className="text-[11px] text-slate-500">{order.items?.length || 0} {isBookingOrder ? 'servicios' : 'productos'}</span>
                             <div className="text-right">
                               {order.couponCode ? (
                                 <div>
@@ -1083,97 +1133,123 @@ function ModernOrdersDashboard() {
                               <span>Detalles</span>
                             </button>
 
-                            <button
-                              onClick={() => handlePrintOrder(order)}
-                              className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
-                              title="Imprimir comanda"
-                            >
-                              <FaPrint className="text-[10px]" />
-                            </button>
-                            
-                            {/* Payment proof thumbnail for in-app orders */}
-                            {order.paymentProof && (
+                            {!isBookingOrder && (
                               <button
-                                onClick={() => {
-                                  setProofImageUrl(getProofUrl(order.paymentProof));
-                                  setShowProofModal(true);
-                                }}
-                                className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-2 rounded-lg text-xs font-semibold border border-purple-200 transition-colors"
+                                onClick={() => handlePrintOrder(order)}
+                                className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-200 transition-colors"
+                                title="Imprimir comanda"
                               >
-                                <FaImage className="text-[10px]" />
-                                <span>Comprobante</span>
+                                <FaPrint className="text-[10px]" />
                               </button>
                             )}
-
-                            {/* Payment confirm/reject for uploaded proofs */}
-                            {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                            
+                            {/* === Booking actions: Confirm + Cancel === */}
+                            {isBookingOrder && (
                               <>
                                 <button
-                                  onClick={() => confirmPayment(order._id)}
+                                  onClick={() => confirmBooking(order._id)}
                                   className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
                                 >
                                   <FaCheckCircle className="text-[9px]" />
                                   <span>Confirmar</span>
                                 </button>
                                 <button
-                                  onClick={() => rejectPayment(order._id)}
-                                  className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                  onClick={() => cancelBooking(order._id)}
+                                  className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 px-2.5 py-2 rounded-lg text-xs font-semibold border border-red-200 transition-colors"
                                 >
-                                  <FaTimesCircle className="text-[9px]" />
+                                  <FaTimes className="text-[9px]" />
                                 </button>
                               </>
                             )}
-                            
-                            {/* Start preparation after payment confirmed */}
-                            {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                              <button
-                                onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
-                              >
-                                <FaPlay className="text-[9px]" />
-                                <span>Iniciar</span>
-                              </button>
-                            )}
 
-                            {order.status === ORDER_STATUS.PENDING && (
-                              <button
-                                onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
-                              >
-                                <FaPlay className="text-[9px]" />
-                                <span>Iniciar</span>
-                              </button>
-                            )}
-                            
-                            {order.status === ORDER_STATUS.IN_PROGRESS && (
-                              <div className="flex w-full gap-2">
-                                {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
+                            {/* === Regular order actions === */}
+                            {!isBookingOrder && (
+                              <>
+                                {/* Payment proof thumbnail for in-app orders */}
+                                {order.paymentProof && (
                                   <button
-                                    onClick={() => setAssignDomiOrder(order)}
-                                    className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                    onClick={() => {
+                                      setProofImageUrl(getProofUrl(order.paymentProof));
+                                      setShowProofModal(true);
+                                    }}
+                                    className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-2 rounded-lg text-xs font-semibold border border-purple-200 transition-colors"
                                   >
-                                    <FaMotorcycle className="text-[11px]" />
-                                    <span>Asignar Domi</span>
+                                    <FaImage className="text-[10px]" />
+                                    <span>Comprobante</span>
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                  className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
-                                >
-                                  <FaCheck className="text-[9px]" />
-                                  <span>{order.orderType === 'delivery' ? 'Completar (Forzado)' : 'Completar'}</span>
-                                </button>
-                              </div>
-                            )}
 
-                            {/* Cancel button for all active orders */}
-                            {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
-                              <button
-                                onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) updateOrderStatus(order._id, ORDER_STATUS.CANCELLED); }}
-                                className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 px-2.5 py-2 rounded-lg text-xs font-semibold border border-red-200 transition-colors"
-                              >
-                                <FaTimes className="text-[9px]" />
-                              </button>
+                                {/* Payment confirm/reject for uploaded proofs */}
+                                {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                                  <>
+                                    <button
+                                      onClick={() => confirmPayment(order._id)}
+                                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                    >
+                                      <FaCheckCircle className="text-[9px]" />
+                                      <span>Confirmar</span>
+                                    </button>
+                                    <button
+                                      onClick={() => rejectPayment(order._id)}
+                                      className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                    >
+                                      <FaTimesCircle className="text-[9px]" />
+                                    </button>
+                                  </>
+                                )}
+                                
+                                {/* Start preparation after payment confirmed */}
+                                {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
+                                  <button
+                                    onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
+                                    className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                  >
+                                    <FaPlay className="text-[9px]" />
+                                    <span>Iniciar</span>
+                                  </button>
+                                )}
+
+                                {order.status === ORDER_STATUS.PENDING && (
+                                  <button
+                                    onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
+                                    className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                  >
+                                    <FaPlay className="text-[9px]" />
+                                    <span>Iniciar</span>
+                                  </button>
+                                )}
+                                
+                                {order.status === ORDER_STATUS.IN_PROGRESS && (
+                                  <div className="flex w-full gap-2">
+                                    {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
+                                      <button
+                                        onClick={() => setAssignDomiOrder(order)}
+                                        className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                      >
+                                        <FaMotorcycle className="text-[11px]" />
+                                        <span>Asignar Domi</span>
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
+                                      className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors"
+                                    >
+                                      <FaCheck className="text-[9px]" />
+                                      <span>{order.orderType === 'delivery' ? 'Completar (Forzado)' : 'Completar'}</span>
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Cancel button for all active orders */}
+                                {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
+                                  <button
+                                    onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) updateOrderStatus(order._id, ORDER_STATUS.CANCELLED); }}
+                                    className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 px-2.5 py-2 rounded-lg text-xs font-semibold border border-red-200 transition-colors"
+                                  >
+                                    <FaTimes className="text-[9px]" />
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -1182,18 +1258,18 @@ function ModernOrdersDashboard() {
                       // List view
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-8 h-8 ${orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
-                            <TypeIcon className="text-white text-xs" />
+                          <div className={`w-8 h-8 ${isBookingOrder ? 'bg-indigo-500' : orderTypeInfo.color} rounded-lg flex items-center justify-center shrink-0`}>
+                            {isBookingOrder ? <FaCalendarAlt className="text-white text-xs" /> : <TypeIcon className="text-white text-xs" />}
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <h3 className="font-bold text-slate-800 text-sm">#{order.orderNumber}</h3>
                               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${statusInfo.textColor} ${statusInfo.bgColor}`}>
-                                <StatusIcon className="text-[8px]" /> {statusInfo.label}
+                                <StatusIcon className="text-[8px]" /> {isBookingOrder ? 'Cita pendiente' : statusInfo.label}
                               </span>
                             </div>
                             <p className="text-xs text-slate-500 mt-0.5 truncate">
-                              {order.customerName} · {orderTypeInfo.label} · {timeElapsed}
+                              {order.customerName} · {isBookingOrder ? 'Cita' : orderTypeInfo.label} · {isBookingOrder && order.bookingDate ? new Date(order.bookingDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' }) + ' ' + new Date(order.bookingDate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : timeElapsed}
                             </p>
                           </div>
                         </div>
@@ -1201,7 +1277,7 @@ function ModernOrdersDashboard() {
                         <div className="flex items-center gap-3 shrink-0">
                           <div className="text-right">
                             <p className="text-sm font-bold text-slate-800">${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}</p>
-                            <p className="text-[10px] text-slate-400">{order.items?.length || 0} items</p>
+                            <p className="text-[10px] text-slate-400">{order.items?.length || 0} {isBookingOrder ? 'servicios' : 'items'}</p>
                           </div>
                           
                           <div className="flex gap-1.5">
@@ -1212,85 +1288,110 @@ function ModernOrdersDashboard() {
                               <FaEye className="text-xs" />
                             </button>
 
-                            {order.paymentProof && (
-                              <button
-                                onClick={() => {
-                                  setProofImageUrl(getProofUrl(order.paymentProof));
-                                  setShowProofModal(true);
-                                }}
-                                className="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-500 transition-colors"
-                              >
-                                <FaImage className="text-xs" />
-                              </button>
-                            )}
-                            
-                            {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                            {/* === Booking actions in list view === */}
+                            {isBookingOrder && (
                               <>
                                 <button
-                                  onClick={() => confirmPayment(order._id)}
+                                  onClick={() => confirmBooking(order._id)}
                                   className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
-                                  title="Confirmar pago"
+                                  title="Confirmar cita"
                                 >
                                   <FaCheckCircle className="text-xs" />
                                 </button>
                                 <button
-                                  onClick={() => rejectPayment(order._id)}
-                                  className="p-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
-                                  title="Rechazar pago"
+                                  onClick={() => cancelBooking(order._id)}
+                                  className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors border border-red-200"
+                                  title="Cancelar cita"
                                 >
-                                  <FaTimesCircle className="text-xs" />
+                                  <FaTimes className="text-xs" />
                                 </button>
                               </>
                             )}
 
-                            {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                              <button
-                                onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-                              >
-                                <FaPlay className="text-xs" />
-                              </button>
-                            )}
-                            
-                            {order.status === ORDER_STATUS.PENDING && (
-                              <button
-                                onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
-                                className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-                              >
-                                <FaPlay className="text-xs" />
-                              </button>
-                            )}
-                            
-                            {order.status === ORDER_STATUS.IN_PROGRESS && (
-                              <div className="flex gap-1">
-                                {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
+                            {/* === Regular order actions in list view === */}
+                            {!isBookingOrder && (
+                              <>
+                                {order.paymentProof && (
                                   <button
-                                    onClick={() => setAssignDomiOrder(order)}
-                                    className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-                                    title="Asignar Domiciliario"
+                                    onClick={() => {
+                                      setProofImageUrl(getProofUrl(order.paymentProof));
+                                      setShowProofModal(true);
+                                    }}
+                                    className="p-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-500 transition-colors"
                                   >
-                                    <FaMotorcycle className="text-xs" />
+                                    <FaImage className="text-xs" />
                                   </button>
                                 )}
-                                <button
-                                  onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
-                                  className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
-                                  title="Marcar como Completado"
-                                >
-                                  <FaCheck className="text-xs" />
-                                </button>
-                              </div>
-                            )}
+                                
+                                {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                                  <>
+                                    <button
+                                      onClick={() => confirmPayment(order._id)}
+                                      className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+                                      title="Confirmar pago"
+                                    >
+                                      <FaCheckCircle className="text-xs" />
+                                    </button>
+                                    <button
+                                      onClick={() => rejectPayment(order._id)}
+                                      className="p-2 rounded-lg bg-red-500 hover:bg-red-600 text-white transition-colors"
+                                      title="Rechazar pago"
+                                    >
+                                      <FaTimesCircle className="text-xs" />
+                                    </button>
+                                  </>
+                                )}
 
-                            {/* Cancel button */}
-                            {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
-                              <button
-                                onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) updateOrderStatus(order._id, ORDER_STATUS.CANCELLED); }}
-                                className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors border border-red-200"
-                                title="Cancelar pedido"
-                              >
-                                <FaTimes className="text-xs" />
-                              </button>
+                                {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
+                                  <button
+                                    onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
+                                    className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                                  >
+                                    <FaPlay className="text-xs" />
+                                  </button>
+                                )}
+                                
+                                {order.status === ORDER_STATUS.PENDING && (
+                                  <button
+                                    onClick={() => updateOrderStatus(order._id, ORDER_STATUS.IN_PROGRESS)}
+                                    className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                                  >
+                                    <FaPlay className="text-xs" />
+                                  </button>
+                                )}
+                                
+                                {order.status === ORDER_STATUS.IN_PROGRESS && (
+                                  <div className="flex gap-1">
+                                    {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
+                                      <button
+                                        onClick={() => setAssignDomiOrder(order)}
+                                        className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors"
+                                        title="Asignar Domiciliario"
+                                      >
+                                        <FaMotorcycle className="text-xs" />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => updateOrderStatus(order._id, ORDER_STATUS.COMPLETED)}
+                                      className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors"
+                                      title="Marcar como Completado"
+                                    >
+                                      <FaCheck className="text-xs" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Cancel button */}
+                                {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
+                                  <button
+                                    onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) updateOrderStatus(order._id, ORDER_STATUS.CANCELLED); }}
+                                    className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors border border-red-200"
+                                    title="Cancelar pedido"
+                                  >
+                                    <FaTimes className="text-xs" />
+                                  </button>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -1328,25 +1429,31 @@ function ModernOrdersDashboard() {
               <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3 rounded-t-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    {(() => { const ModalTypeIcon = getOrderTypeInfo(orderDetails.orderType).Icon; return (
+                    {orderDetails.isBooking ? (
+                      <div className="w-9 h-9 bg-indigo-500 rounded-lg flex items-center justify-center">
+                        <FaCalendarAlt className="text-white text-sm" />
+                      </div>
+                    ) : (() => { const ModalTypeIcon = getOrderTypeInfo(orderDetails.orderType).Icon; return (
                       <div className={`w-9 h-9 ${getOrderTypeInfo(orderDetails.orderType).color} rounded-lg flex items-center justify-center`}>
                         <ModalTypeIcon className="text-white text-sm" />
                       </div>
                     ); })()}
                     <div>
-                      <h2 className="text-base font-bold text-slate-800">Pedido #{orderDetails.orderNumber}</h2>
-                      <p className="text-xs text-slate-500">{getOrderTypeInfo(orderDetails.orderType).label} · {orderDetails._id?.slice(-6)}</p>
+                      <h2 className="text-base font-bold text-slate-800">{orderDetails.isBooking ? 'Cita' : 'Pedido'} #{orderDetails.orderNumber}</h2>
+                      <p className="text-xs text-slate-500">{orderDetails.isBooking ? 'Cita' : getOrderTypeInfo(orderDetails.orderType).label} · {orderDetails._id?.slice(-6)}</p>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handlePrintOrder(orderDetails)}
-                      className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
-                      title="Imprimir comanda"
-                    >
-                      <FaPrint className="text-slate-500 text-xs" />
-                    </button>
+                    {!orderDetails.isBooking && (
+                      <button
+                        onClick={() => handlePrintOrder(orderDetails)}
+                        className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
+                        title="Imprimir comanda"
+                      >
+                        <FaPrint className="text-slate-500 text-xs" />
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setSelectedOrder(null);
@@ -1378,8 +1485,36 @@ function ModernOrdersDashboard() {
                         <span className="text-[13px] font-medium text-slate-800">{orderDetails.phone}</span>
                       </div>
                     )}
-                    
-                    {orderDetails.tableNumber && (
+
+                    {/* === Booking-specific modal info === */}
+                    {orderDetails.isBooking && orderDetails.bookingDate && (
+                      <div className="flex items-center gap-2">
+                        <FaCalendarAlt className="text-xs text-indigo-400" />
+                        <span className="text-[13px] text-slate-500">Fecha:</span>
+                        <span className="text-[13px] font-medium text-indigo-700">
+                          {new Date(orderDetails.bookingDate).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · {new Date(orderDetails.bookingDate).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )}
+
+                    {orderDetails.isBooking && orderDetails.staffName && (
+                      <div className="flex items-center gap-2">
+                        <FaUserMd className="text-xs text-slate-400" />
+                        <span className="text-[13px] text-slate-500">Profesional:</span>
+                        <span className="text-[13px] font-medium text-slate-800">{orderDetails.staffName}</span>
+                      </div>
+                    )}
+
+                    {orderDetails.isBooking && orderDetails.customerEmail && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">✉</span>
+                        <span className="text-[13px] text-slate-500">Email:</span>
+                        <span className="text-[13px] font-medium text-slate-800">{orderDetails.customerEmail}</span>
+                      </div>
+                    )}
+
+                    {/* === Restaurant-specific modal info === */}
+                    {!orderDetails.isBooking && orderDetails.tableNumber && (
                       <div className="flex items-center gap-2">
                         <FaChair className="text-xs text-slate-400" />
                         <span className="text-[13px] text-slate-500">{businessConfig?.businessType === 'hotel' ? 'Hab.:' : 'Mesa:'}</span>
@@ -1387,7 +1522,7 @@ function ModernOrdersDashboard() {
                       </div>
                     )}
                     
-                    {orderDetails.orderType === 'delivery' && orderDetails.address && (
+                    {!orderDetails.isBooking && orderDetails.orderType === 'delivery' && orderDetails.address && (
                       <div className="flex items-start gap-2">
                         <FaHome className="text-xs text-slate-400 mt-0.5" />
                         <span className="text-[13px] text-slate-500">Dirección:</span>
@@ -1395,7 +1530,7 @@ function ModernOrdersDashboard() {
                       </div>
                     )}
                     
-                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
+                    {!orderDetails.isBooking && orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
                       <div className="flex items-center gap-2">
                         <FaMapMarkerAlt className="text-xs text-slate-400" />
                         <span className="text-[13px] text-slate-500">Zona:</span>
@@ -1403,7 +1538,7 @@ function ModernOrdersDashboard() {
                       </div>
                     )}
                     
-                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryFee && (
+                    {!orderDetails.isBooking && orderDetails.orderType === 'delivery' && orderDetails.deliveryFee && (
                       <div className="flex items-center gap-2">
                         <FaTruck className="text-xs text-slate-400" />
                         <span className="text-[13px] text-slate-500">Costo de envío:</span>
@@ -1411,7 +1546,7 @@ function ModernOrdersDashboard() {
                       </div>
                     )}
                     
-                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryNeedsConfirmation && (
+                    {!orderDetails.isBooking && orderDetails.orderType === 'delivery' && orderDetails.deliveryNeedsConfirmation && (
                       <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
                         <FaExclamationTriangle className="text-xs text-amber-500 shrink-0" />
                         <div className="flex-1">
@@ -1443,7 +1578,7 @@ function ModernOrdersDashboard() {
 
                 {/* Order Items */}
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-2">Productos</h3>
+                  <h3 className="text-sm font-semibold text-slate-800 mb-2">{orderDetails.isBooking ? 'Servicios' : 'Productos'}</h3>
                   <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
                     {orderDetails.items?.map((item, index) => (
                       <div
@@ -1601,76 +1736,101 @@ function ModernOrdersDashboard() {
 
                 {/* Action buttons */}
                 <div className="flex gap-2 flex-wrap">
-                  {/* Payment confirm/reject for uploaded proofs */}
-                  {orderDetails.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                  {/* === Booking modal actions === */}
+                  {orderDetails.isBooking && (
                     <>
                       <button
-                        onClick={() => confirmPayment(orderDetails._id)}
+                        onClick={() => confirmBooking(orderDetails._id)}
                         className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                       >
                         <FaCheckCircle className="text-xs" />
-                        <span>Confirmar pago</span>
+                        <span>Confirmar cita</span>
                       </button>
                       <button
-                        onClick={() => rejectPayment(orderDetails._id)}
+                        onClick={() => cancelBooking(orderDetails._id)}
                         className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                       >
-                        <FaTimesCircle className="text-xs" />
-                        <span>Rechazar</span>
+                        <FaTimes className="text-xs" />
+                        <span>Cancelar</span>
                       </button>
                     </>
                   )}
 
-                  {/* Start preparation after payment confirmed */}
-                  {orderDetails.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                    <button
-                      onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                    >
-                      <FaPlay className="text-xs" />
-                      <span>Iniciar preparación</span>
-                    </button>
-                  )}
-
-                  {orderDetails.status === ORDER_STATUS.PENDING && (
-                    <button
-                      onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                    >
-                      <FaPlay className="text-xs" />
-                      <span>Iniciar preparación</span>
-                    </button>
-                  )}
-                  
-                  {orderDetails.status === ORDER_STATUS.IN_PROGRESS && (
+                  {/* === Regular order modal actions === */}
+                  {!orderDetails.isBooking && (
                     <>
-                      {orderDetails.orderType === 'delivery' && !orderDetails.deliveryToken && !orderDetails.deliveryPersonId && !orderDetails.confirmationCode && (
+                      {/* Payment confirm/reject for uploaded proofs */}
+                      {orderDetails.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                        <>
+                          <button
+                            onClick={() => confirmPayment(orderDetails._id)}
+                            className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                          >
+                            <FaCheckCircle className="text-xs" />
+                            <span>Confirmar pago</span>
+                          </button>
+                          <button
+                            onClick={() => rejectPayment(orderDetails._id)}
+                            className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                          >
+                            <FaTimesCircle className="text-xs" />
+                            <span>Rechazar</span>
+                          </button>
+                        </>
+                      )}
+
+                      {/* Start preparation after payment confirmed */}
+                      {orderDetails.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
                         <button
-                          onClick={() => setAssignDomiOrder(orderDetails)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                          onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
                         >
-                          <FaMotorcycle className="text-xs" />
-                          <span>Asignar Domi</span>
+                          <FaPlay className="text-xs" />
+                          <span>Iniciar preparación</span>
                         </button>
                       )}
-                      <button
-                        onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}
-                        className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                      >
-                        <FaCheck className="text-xs" />
-                        <span>{orderDetails.orderType === 'delivery' ? 'Completar (Forzado)' : 'Marcar como completado'}</span>
-                      </button>
+
+                      {orderDetails.status === ORDER_STATUS.PENDING && (
+                        <button
+                          onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                        >
+                          <FaPlay className="text-xs" />
+                          <span>Iniciar preparación</span>
+                        </button>
+                      )}
+                      
+                      {orderDetails.status === ORDER_STATUS.IN_PROGRESS && (
+                        <>
+                          {orderDetails.orderType === 'delivery' && !orderDetails.deliveryToken && !orderDetails.deliveryPersonId && !orderDetails.confirmationCode && (
+                            <button
+                              onClick={() => setAssignDomiOrder(orderDetails)}
+                              className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                            >
+                              <FaMotorcycle className="text-xs" />
+                              <span>Asignar Domi</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}
+                            className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                          >
+                            <FaCheck className="text-xs" />
+                            <span>{orderDetails.orderType === 'delivery' ? 'Completar (Forzado)' : 'Marcar como completado'}</span>
+                          </button>
+                        </>
+                      )}
+                      
+                      {!orderDetails.sentToKitchen && (
+                        <button
+                          onClick={() => sendToKitchen(orderDetails._id)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                        >
+                          <FaUtensils className="text-xs" />
+                          <span>Enviar a cocina</span>
+                        </button>
+                      )}
                     </>
-                  )}
-                  
-                  {!orderDetails.sentToKitchen && (
-                    <button
-                      onClick={() => sendToKitchen(orderDetails._id)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                    >
-                      <FaUtensils className="text-xs" />
-                      <span>Enviar a cocina</span>
-                    </button>
                   )}
                 </div>
               </div>

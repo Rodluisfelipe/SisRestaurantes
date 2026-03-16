@@ -901,7 +901,7 @@ function RecentOrders({ orders, loading, onViewOrders, isService }) {
 }
 
 /* ═══ Pending Orders Banner ═══ */
-function PendingBanner({ pending, onViewOrders }) {
+function PendingBanner({ pending, onViewOrders, isService }) {
   if (!pending?.total) return null;
   const statuses = Object.entries(pending.byStatus || {}).filter(([, v]) => v > 0);
 
@@ -924,7 +924,7 @@ function PendingBanner({ pending, onViewOrders }) {
 
       <div className="flex-1 min-w-0 text-left">
         <p className="text-xs font-bold text-amber-800">
-          {pending.total} {pending.total === 1 ? "pedido pendiente" : "pedidos pendientes"}
+          {pending.total} {isService ? (pending.total === 1 ? "cita pendiente" : "citas pendientes") : (pending.total === 1 ? "pedido pendiente" : "pedidos pendientes")}
         </p>
         {statuses.length > 0 && (
           <p className="text-[10px] text-amber-600/70 font-medium mt-0.5 truncate">
@@ -1127,7 +1127,7 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
       )}
 
       {/* ═══ Pending orders banner ═══ */}
-      {!loading && <PendingBanner pending={data?.pending} onViewOrders={handleViewOrders} />}
+      {!loading && <PendingBanner pending={data?.pending} onViewOrders={handleViewOrders} isService={isService} />}
 
       {/* ═══ Weekly Chart ═══ */}
       <WeeklyChart data={data?.weeklyChart} loading={loading} isService={isService} />

@@ -8,6 +8,7 @@ import { logSystem } from '../utils/systemLogger';
 
 const CustomersManager = () => {
   const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const [customers, setCustomers] = useState([]);
   
   const [loading, setLoading] = useState(true);
@@ -240,10 +241,12 @@ const CustomersManager = () => {
         : `Hola ${customerName}! 🎁 Tenemos una promoción especial en ${restaurantName} que te puede interesar. ¿Quieres conocerla?`,
       
       followup: customer.lastOrderDate 
-        ? `Hola ${customerName}! Esperamos que hayas disfrutado tu último pedido en ${restaurantName}. ¿Todo estuvo bien? 😊`
+        ? `Hola ${customerName}! Esperamos que hayas disfrutado tu última ${isService ? 'cita' : 'pedido'} en ${restaurantName}. ¿Todo estuvo bien? 😊`
         : `Hola ${customerName}! ¿Cómo estás? Te escribo desde ${restaurantName}`,
       
-      reminder: `Hola ${customerName}! 🍽️ Te extrañamos en ${restaurantName}. Tenemos el menú que tanto te gusta disponible hoy.`,
+      reminder: isService
+        ? `Hola ${customerName}! 💆 Te esperamos en ${restaurantName}. Agenda tu próxima cita y conéctate con tu bienestar.`
+        : `Hola ${customerName}! 🍽️ Te extrañamos en ${restaurantName}. Tenemos el menú que tanto te gusta disponible hoy.`,
       
       feedback: `Hola ${customerName}! Tu opinión es muy importante para nosotros en ${restaurantName}. ¿Podrías compartir tu experiencia? 🌟`,
       
@@ -344,7 +347,7 @@ const CustomersManager = () => {
             </div>
             <span className="text-lg font-bold text-slate-800">{((stats?.totalOrders || 0) / (stats?.totalCustomers || 1)).toFixed(1)}</span>
           </div>
-          <p className="text-[11px] text-slate-500">Promedio Pedidos</p>
+          <p className="text-[11px] text-slate-500">{isService ? 'Promedio Citas' : 'Promedio Pedidos'}</p>
         </div>
       </div>
 
@@ -417,9 +420,9 @@ const CustomersManager = () => {
                 }}
                 className="px-2.5 py-1 border border-slate-200 rounded-lg text-xs text-slate-600 focus:ring-2 focus:ring-blue-500/20 bg-white"
               >
-                <option value="lastOrderDate-desc">Último pedido (reciente)</option>
-                <option value="lastOrderDate-asc">Último pedido (antiguo)</option>
-                <option value="totalOrders-desc">Más pedidos</option>
+                <option value="lastOrderDate-desc">Última {isService ? 'cita' : 'pedido'} (reciente)</option>
+                <option value="lastOrderDate-asc">Última {isService ? 'cita' : 'pedido'} (antiguo)</option>
+                <option value="totalOrders-desc">{isService ? 'Más citas' : 'Más pedidos'}</option>
                 <option value="totalSpent-desc">Mayor gasto</option>
                 <option value="name-asc">Nombre A-Z</option>
               </select>
@@ -456,7 +459,7 @@ const CustomersManager = () => {
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Contacto</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Nivel</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Último Pedido</th>
+                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{isService ? 'Última Cita' : 'Último Pedido'}</th>
                     <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
@@ -583,7 +586,7 @@ const CustomersManager = () => {
 
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <div className="bg-slate-50 rounded-lg px-2 py-1.5">
-                      <p className="text-[10px] text-slate-400">Pedidos</p>
+                      <p className="text-[10px] text-slate-400">{isService ? 'Citas' : 'Pedidos'}</p>
                       <p className="text-sm font-bold text-slate-800">{customer.totalOrders || 0}</p>
                     </div>
                     <div className="bg-slate-50 rounded-lg px-2 py-1.5">
@@ -777,7 +780,7 @@ const CustomersManager = () => {
                     <div className="bg-blue-50 rounded-lg p-2.5 text-center">
                       <FaBoxOpen className="text-[10px] text-blue-500 mx-auto mb-1" />
                       <p className="text-sm font-bold text-slate-800">{selectedCustomer.totalOrders || 0}</p>
-                      <p className="text-[10px] text-slate-400">Pedidos</p>
+                      <p className="text-[10px] text-slate-400">{isService ? 'Citas' : 'Pedidos'}</p>
                     </div>
                     <div className="bg-emerald-50 rounded-lg p-2.5 text-center">
                       <FaDollarSign className="text-[10px] text-emerald-500 mx-auto mb-1" />
@@ -893,8 +896,8 @@ const CustomersManager = () => {
                 {[
                   { type: 'greeting', icon: FaHandPeace, label: 'Saludo General', desc: 'Mensaje de bienvenida amigable', color: 'text-blue-500 bg-blue-50' },
                   { type: 'promotion', icon: FaGift, label: (whatsappMenuCustomer.totalOrders || 0) >= 10 ? 'Promoción VIP' : 'Promoción Especial', desc: 'Enviar oferta exclusiva', color: 'text-purple-500 bg-purple-50' },
-                  { type: 'followup', icon: FaCommentDots, label: 'Seguimiento', desc: 'Preguntar sobre último pedido', color: 'text-emerald-500 bg-emerald-50' },
-                  { type: 'reminder', icon: FaUtensils, label: 'Recordatorio', desc: 'Invitar a hacer un pedido', color: 'text-orange-500 bg-orange-50' },
+                  { type: 'followup', icon: FaCommentDots, label: 'Seguimiento', desc: isService ? 'Preguntar sobre última cita' : 'Preguntar sobre último pedido', color: 'text-emerald-500 bg-emerald-50' },
+                  { type: 'reminder', icon: isService ? FaCalendarAlt : FaUtensils, label: 'Recordatorio', desc: isService ? 'Invitar a agendar cita' : 'Invitar a hacer un pedido', color: 'text-orange-500 bg-orange-50' },
                   { type: 'feedback', icon: FaStar, label: 'Solicitar Feedback', desc: 'Pedir opinión del servicio', color: 'text-amber-500 bg-amber-50' },
                   { type: 'custom', icon: FaPen, label: 'Mensaje Personalizado', desc: 'Escribir tu propio mensaje', color: 'text-slate-500 bg-slate-50' },
                 ].map(({ type, icon: Icon, label, desc, color }) => (

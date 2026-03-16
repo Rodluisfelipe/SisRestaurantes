@@ -239,7 +239,7 @@ const OrderTracker = ({
     } catch (err) {
       logger.error('Error fetching order tracking:', err);
       if (err.response?.status === 404) {
-        setError('Pedido no encontrado');
+        setError('No encontrado');
         setPolling(false);
       }
     } finally {
@@ -333,7 +333,7 @@ const OrderTracker = ({
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-3 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
-          <p className="text-gray-600 text-sm">Cargando pedido...</p>
+          <p className="text-gray-600 text-sm">{isBooking ? 'Cargando cita...' : 'Cargando pedido...'}</p>
         </div>
       </div>
     );
@@ -461,7 +461,7 @@ const OrderTracker = ({
               <span className="text-xl flex-shrink-0">🔔</span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-blue-800">¿Recibir notificaciones?</p>
-                <p className="text-[10px] text-blue-600 mt-0.5">Te avisamos cuando tu pedido cambie de estado</p>
+                <p className="text-[10px] text-blue-600 mt-0.5">Te avisamos cuando {isBooking ? 'tu cita' : 'tu pedido'} cambie de estado</p>
               </div>
               <button
                 onClick={handleEnableNotifications}
@@ -667,7 +667,7 @@ const OrderTracker = ({
                 <div>
                   <h4 className="font-semibold text-purple-900 text-sm">Verificando pago</h4>
                   <p className="text-purple-700 text-xs mt-0.5">
-                    El restaurante está revisando tu comprobante
+                    {businessLabel.charAt(0).toUpperCase() + businessLabel.slice(1)} está revisando tu comprobante
                   </p>
                 </div>
               </div>

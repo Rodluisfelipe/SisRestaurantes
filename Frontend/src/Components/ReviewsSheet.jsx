@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { useBusinessConfig } from '../Context/BusinessContext';
 
 /**
  * Bottom sheet que muestra las reseñas de un restaurante
@@ -13,6 +14,8 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme }) => {
   const [hasMore, setHasMore] = useState(true);
   const [filterRating, setFilterRating] = useState(null);
   const listRef = useRef(null);
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   const buttonColor = theme?.buttonColor || '#f97316';
   const stats = reviewStats || { averageRating: 0, totalReviews: 0, ratingBreakdown: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
@@ -210,7 +213,7 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme }) => {
                             ))}
                             {review.orderType && (
                               <span className="ml-1.5 text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full">
-                                {review.orderType === 'delivery' ? '🛵 Delivery' : review.orderType === 'takeaway' ? '🥡 Para llevar' : '🍽️ En mesa'}
+                                {review.orderType === 'delivery' ? '🛵 Delivery' : review.orderType === 'takeaway' ? '🥡 Para llevar' : isService ? '📅 Cita' : '🍽️ En mesa'}
                               </span>
                             )}
                           </div>

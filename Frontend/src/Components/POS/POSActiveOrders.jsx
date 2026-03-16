@@ -16,10 +16,12 @@ const STATUS_CONFIG = {
 const METHOD_LABELS = { cash: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia', roomCharge: 'Cargo a hab.' };
 const TYPE_LABELS_DEFAULT = { inSite: 'Mesa', takeaway: 'Para llevar', delivery: 'Domicilio' };
 const TYPE_LABELS_HOTEL = { inSite: 'Hab.', takeaway: 'Para llevar', delivery: 'Domicilio' };
+const TYPE_LABELS_SERVICE = { inSite: 'Presencial', takeaway: 'A domicilio', delivery: 'Domicilio' };
 
 export default function POSActiveOrders({ businessId, themeColor, businessConfig }) {
   const isHotel = businessConfig?.businessType === 'hotel';
-  const TYPE_LABELS = isHotel ? TYPE_LABELS_HOTEL : TYPE_LABELS_DEFAULT;
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const TYPE_LABELS = isService ? TYPE_LABELS_SERVICE : isHotel ? TYPE_LABELS_HOTEL : TYPE_LABELS_DEFAULT;
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
@@ -95,7 +97,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
     const date = new Date(order.createdAt || Date.now());
     const items = order.items || [];
     const total = order.totalAmount || order.finalAmount || 0;
-    const orderTypeLabels = { inSite: isHotel ? 'En habitación' : 'En mesa', takeaway: 'Para llevar', delivery: 'Delivery' };
+    const orderTypeLabels = { inSite: isHotel ? 'En habitación' : isService ? 'Presencial' : 'En mesa', takeaway: isService ? 'A domicilio' : 'Para llevar', delivery: 'Delivery' };
     const orderTypeLabel = orderTypeLabels[order.orderType] || order.orderType || '';
 
     let itemsHtml = '';
@@ -327,7 +329,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                         <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                       </button>
                       <button
-                        onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) handleStatusChange(order._id, 'cancelled'); }}
+                        onClick={() => { if (window.confirm((isService ? '¿Cancelar cita #' : '¿Cancelar pedido #') + order.orderNumber + '?')) handleStatusChange(order._id, 'cancelled'); }}
                         disabled={isUpdating}
                         className="px-3 py-2 rounded-lg text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
                       >

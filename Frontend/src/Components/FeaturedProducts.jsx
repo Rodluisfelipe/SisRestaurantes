@@ -5,6 +5,7 @@ import logger from '../utils/logger';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { FeaturedProductsSkeleton } from './MenuSkeletons';
 import { useFlyToCart } from './FlyToCart';
+import { useBusinessConfig } from '../Context/BusinessContext';
 
 /* ── SVG Icons ── */
 const FI = {
@@ -28,6 +29,8 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef(null);
   const flyToCart = useFlyToCart();
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   const buttonColor = theme?.buttonColor || '#f97316';
   const buttonTextColor = theme?.buttonTextColor || '#ffffff';
@@ -123,10 +126,10 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight leading-tight">Destacados</h2>
-              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium -mt-0.5">Selección del chef</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium -mt-0.5">{isService ? 'Los más solicitados' : 'Selección del chef'}</p>
             </div>
           </div>
-          <span className="text-[11px] font-semibold text-slate-400">{featuredProducts.length} productos</span>
+          <span className="text-[11px] font-semibold text-slate-400">{featuredProducts.length} {isService ? 'servicios' : 'productos'}</span>
         </div>
 
         {/* ── Panoramic Carousel ── */}

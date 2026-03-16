@@ -67,6 +67,10 @@ const getSections = (isService, isHotel) => [
     label: 'Operaciones',
     items: [
       { tab: 'orders',           svgKey: 'orders',    title: isService ? 'Citas' : 'Pedidos',       desc: isService ? 'Gestión de citas' : 'Gestión en tiempo real', color: 'blue',    hasBadge: true },
+      ...(isService ? [
+        { tab: 'bookings',       svgKey: 'catalog',   title: 'Agenda',         desc: 'Calendario de citas',   color: 'indigo' },
+        { tab: 'team',           svgKey: 'customers', title: 'Equipo',         desc: 'Profesionales',         color: 'violet' },
+      ] : []),
       { tab: 'completed_orders', svgKey: 'completed', title: 'Completados',   desc: isService ? 'Historial de citas' : 'Historial de pedidos',  color: 'emerald' },
       { tab: 'payment-config',   svgKey: 'payment',   title: 'Pagos',         desc: 'Métodos de cobro',       color: 'teal' },
       { tab: 'customers',        svgKey: 'customers', title: 'Clientes',      desc: isHotel ? 'Huéspedes' : 'Base de datos',         color: 'cyan' },

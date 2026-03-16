@@ -125,7 +125,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
                   className="w-10 h-10 rounded-lg object-cover"
                 />
               ) : (
-                <FaHamburger className="text-white text-lg" />
+                isService ? <FaTools className="text-white text-lg" /> : <FaHamburger className="text-white text-lg" />
               )}
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white" />

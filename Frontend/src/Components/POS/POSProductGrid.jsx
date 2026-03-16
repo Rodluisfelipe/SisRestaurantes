@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 export default function POSProductGrid({ products, categories, onProductClick, themeColor }) {
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('all');
 
@@ -40,7 +43,7 @@ export default function POSProductGrid({ products, categories, onProductClick, t
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar producto..."
+            placeholder={isService ? 'Buscar servicio...' : 'Buscar producto...'}
             className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border-none text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all"
             style={{ '--tw-ring-color': `${themeColor}50` }}
           />
@@ -92,7 +95,7 @@ export default function POSProductGrid({ products, categories, onProductClick, t
             <div className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center mb-4 shadow-sm">
               <svg className="w-10 h-10 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
             </div>
-            <p className="text-base font-semibold text-slate-400">No se encontraron productos</p>
+            <p className="text-base font-semibold text-slate-400">{isService ? 'No se encontraron servicios' : 'No se encontraron productos'}</p>
             <p className="text-sm text-slate-300 mt-1">Intenta con otro término</p>
           </div>
         ) : (

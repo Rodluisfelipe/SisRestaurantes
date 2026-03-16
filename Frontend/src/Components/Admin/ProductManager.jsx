@@ -4,6 +4,7 @@ import ProductFormToppingSelector from '../ProductFormToppingSelector';
 import ProductToppingOrderSelector from '../ProductToppingOrderSelector';
 import ImageUploader from './ImageUploader';
 import api from '../../services/api';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 import {
   FaPlus, FaTimes, FaEdit, FaPause, FaPlay, FaTrash, FaStar,
   FaChevronLeft, FaChevronDown, FaChevronRight, FaCheck,
@@ -48,6 +49,8 @@ export default function ProductManager({
   const [showAiNames, setShowAiNames] = useState(false);
   const nameInputRef = useRef(null);
   const priceInputRef = useRef(null);
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   // Generate AI names
   const generateAiNames = async () => {
@@ -103,7 +106,7 @@ export default function ProductManager({
         className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm"
       >
         <FaPlus className="text-xs" />
-        <span>Nuevo Producto</span>
+        <span>{isService ? 'Nuevo Servicio' : 'Nuevo Producto'}</span>
       </button>
 
       {/* Product Form Modal */}
@@ -124,7 +127,7 @@ export default function ProductManager({
                     {editingProduct ? <FaEdit className="text-blue-500 text-xs" /> : <FaPlus className="text-blue-500 text-xs" />}
                   </div>
                   <h2 className="text-sm font-bold text-slate-900">
-                    {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+                    {editingProduct ? (isService ? 'Editar Servicio' : 'Editar Producto') : (isService ? 'Nuevo Servicio' : 'Nuevo Producto')}
                   </h2>
                 </div>
                 <button
@@ -252,7 +255,7 @@ export default function ProductManager({
                         </label>
                         <textarea name="description" value={form.description} onChange={handleChange} rows="2"
                           className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-400 px-3 py-2 text-sm transition-all resize-none"
-                          placeholder="Describe tu producto..." />
+                          placeholder={isService ? 'Describe tu servicio...' : 'Describe tu producto...'} />
                       </div>
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
@@ -331,7 +334,7 @@ export default function ProductManager({
                       </div>
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
-                          <FaImage className="text-slate-400 text-[10px]" />Imagen del producto
+                          <FaImage className="text-slate-400 text-[10px]" />{isService ? 'Imagen del servicio' : 'Imagen del producto'}
                         </label>
                         <ImageUploader
                           value={form.image}
@@ -437,7 +440,7 @@ export default function ProductManager({
                       }}
                       className="flex-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors text-sm font-medium flex items-center justify-center gap-1.5">
                       <FaCheck className="text-[10px]" />
-                      <span>{editingProduct ? 'Actualizar' : 'Crear Producto'}</span>
+                      <span>{editingProduct ? 'Actualizar' : (isService ? 'Crear Servicio' : 'Crear Producto')}</span>
                     </button>
                   )}
                 </div>

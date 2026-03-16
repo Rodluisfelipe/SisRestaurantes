@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaHistory, FaTimes, FaShoppingCart, FaHeart, FaClock, FaCheckCircle, FaChevronDown, FaRedo, FaMapMarkerAlt, FaChair, FaTruck, FaBoxOpen, FaStar } from 'react-icons/fa';
 import api from '../services/api';
 import logger from '../utils/logger';
+import { useBusinessConfig } from '../Context/BusinessContext';
 
 /**
  * Modal para mostrar historial de pedidos y permitir re-ordenar rápidamente
@@ -18,6 +19,8 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
   // Colores del tema con fallback
   const buttonColor = theme?.buttonColor || '#f97316';
   const buttonTextColor = theme?.buttonTextColor || '#ffffff';
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   useEffect(() => {
     if (show && customerPhone && businessId) {
@@ -171,9 +174,9 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                   <FaHistory className="text-lg" style={{ color: buttonColor }} />
                 </div>
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800">Mis Pedidos</h2>
+                  <h2 className="text-lg font-bold text-slate-800">{isService ? 'Mis Citas' : 'Mis Pedidos'}</h2>
                   <p className="text-xs text-slate-400">
-                    {loading ? 'Cargando...' : `${orders.length} pedido${orders.length !== 1 ? 's' : ''}`}
+                    {loading ? 'Cargando...' : `${orders.length} ${isService ? (orders.length !== 1 ? 'citas' : 'cita') : (orders.length !== 1 ? 'pedidos' : 'pedido')}`}
                   </p>
                 </div>
               </div>
@@ -221,9 +224,9 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                 <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
                   <FaHistory className="text-2xl text-slate-300" />
                 </div>
-                <p className="text-base font-semibold text-slate-600 mb-1">Sin pedidos aún</p>
+                <p className="text-base font-semibold text-slate-600 mb-1">{isService ? 'Sin citas aún' : 'Sin pedidos aún'}</p>
                 <p className="text-sm text-slate-400">
-                  Tu historial aparecerá aquí cuando hagas tu primer pedido
+                  {isService ? 'Tu historial aparecerá aquí cuando agendes tu primera cita' : 'Tu historial aparecerá aquí cuando hagas tu primer pedido'}
                 </p>
               </div>
             ) : (
@@ -366,7 +369,7 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                                 <div className="bg-slate-50 rounded-xl p-3 mb-3 space-y-1.5">
                                   {order.tableNumber && (
                                     <div className="flex justify-between text-xs">
-                                      <span className="text-slate-400">Mesa</span>
+                                      <span className="text-slate-400">{isService ? 'Espacio' : 'Mesa'}</span>
                                       <span className="font-medium text-slate-600">{order.tableNumber}</span>
                                     </div>
                                   )}
@@ -422,7 +425,7 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                                   style={{ backgroundColor: buttonColor, color: buttonTextColor }}
                                 >
                                   <FaRedo className="text-xs" />
-                                  Repetir pedido
+                                  {isService ? 'Repetir cita' : 'Repetir pedido'}
                                 </motion.button>
                               </div>
                             </div>

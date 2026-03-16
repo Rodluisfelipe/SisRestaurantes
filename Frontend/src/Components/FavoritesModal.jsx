@@ -8,7 +8,7 @@ import logger from '../utils/logger';
  * Modal para mostrar y gestionar productos favoritos del cliente
  * Permite visualizar, agregar al carrito y eliminar favoritos
  */
-const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart, theme }) => {
+const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart, theme, businessConfig }) => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,6 +16,7 @@ const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart,
   // Colores del tema con fallback
   const buttonColor = theme?.buttonColor || '#f97316';
   const buttonTextColor = theme?.buttonTextColor || '#ffffff';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   useEffect(() => {
     if (show && customerPhone && businessId) {
@@ -59,7 +60,7 @@ const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart,
     try {
       // Check if product is still available
       if (favorite.productId && !favorite.productId.available) {
-        alert('Este producto ya no está disponible');
+        alert(isService ? 'Este servicio ya no está disponible' : 'Este producto ya no está disponible');
         return;
       }
 
@@ -144,7 +145,7 @@ const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart,
                 <FaHeart className="text-3xl animate-pulse" />
                 <div>
                   <h2 className="text-2xl font-bold">Mis Favoritos</h2>
-                  <p className="text-sm opacity-80">Tus productos preferidos</p>
+                  <p className="text-sm opacity-80">{isService ? 'Tus servicios preferidos' : 'Tus productos preferidos'}</p>
                 </div>
               </div>
               <button
@@ -197,7 +198,7 @@ const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart,
                 <FaHeart className="text-6xl text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 mb-2">Aún no tienes favoritos</p>
                 <p className="text-sm text-gray-400">
-                  Guarda tus productos preferidos para ordenarlos más rápido
+                  {isService ? 'Guarda tus servicios preferidos para reservarlos más rápido' : 'Guarda tus productos preferidos para ordenarlos más rápido'}
                 </p>
               </div>
             ) : (

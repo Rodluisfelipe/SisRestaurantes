@@ -197,6 +197,42 @@ export default function GuideOverlay({ sectionId, isOpen, onClose }) {
       ]};
     }
   }
+  if (guide && sectionId === 'products') {
+    if (isService) {
+      guide = { ...guide, icon: '💆', title: 'Servicios', tips: [
+        'Agrega servicios con foto, precio y descripción',
+        'Asigna cada servicio a una categoría',
+        'Marca servicios como destacados para que aparezcan primero'
+      ]};
+    }
+  }
+  if (guide && sectionId === 'completed_orders') {
+    if (isService) {
+      guide = { ...guide, title: 'Citas Completadas', tips: [
+        'Historial de todas las citas finalizadas',
+        'Filtra por fecha o estado',
+        'Ve el resumen de ingresos del día'
+      ]};
+    }
+  }
+  if (guide && sectionId === 'toppings') {
+    if (isService) {
+      guide = { ...guide, icon: '⚙️', title: 'Opciones / Variantes', tips: [
+        'Crea grupos como "Duración", "Intensidad", "Extras"',
+        'Agrega opciones con precio dentro de cada grupo',
+        'Asocia grupos a servicios para que el cliente los elija'
+      ]};
+    }
+  }
+  if (guide && sectionId === 'customers') {
+    if (isService) {
+      guide = { ...guide, tips: [
+        'Lista de clientes que han reservado',
+        'Ve su historial de citas y total gastado',
+        'Exporta tu base de clientes'
+      ]};
+    }
+  }
   if (!guide) return null;
 
   return (

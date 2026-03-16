@@ -21,6 +21,7 @@ function EnhancedCompletedOrders() {
   const [orderDetails, setOrderDetails] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
   const isHotel = businessConfig?.businessType === 'hotel';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalAmount: 0,
@@ -339,7 +340,7 @@ function EnhancedCompletedOrders() {
 
             {/* Products */}
             <div>
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Productos</h3>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{selectedOrder.isBooking ? 'Servicios' : 'Productos'}</h3>
               <div className="space-y-2">
                 {selectedOrder.items && selectedOrder.items.map((item, index) => (
                   <div key={index} className="flex justify-between items-start py-2 border-b border-slate-100 last:border-0">
@@ -415,7 +416,7 @@ function EnhancedCompletedOrders() {
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
           <FaTrophy className="text-amber-500 text-sm" />
-          <h3 className="text-sm font-semibold text-slate-800">Productos Más Vendidos</h3>
+          <h3 className="text-sm font-semibold text-slate-800">{isService ? 'Servicios Más Solicitados' : 'Productos Más Vendidos'}</h3>
         </div>
         <div className="divide-y divide-slate-100">
           {topSellingItems.slice(0, 5).map((item, index) => (
@@ -570,7 +571,7 @@ function EnhancedCompletedOrders() {
             <FaClipboardList className="text-blue-500 text-sm" />
           </div>
           <div>
-            <p className="text-[11px] text-slate-500 font-medium">Pedidos</p>
+            <p className="text-[11px] text-slate-500 font-medium">{isService ? 'Citas' : 'Pedidos'}</p>
             <p className="text-lg font-bold text-slate-900">{filteredOrders.length}</p>
           </div>
         </div>
@@ -604,7 +605,7 @@ function EnhancedCompletedOrders() {
             <FaHamburger className="text-orange-500 text-sm" />
           </div>
           <div>
-            <p className="text-[11px] text-slate-500 font-medium">Productos</p>
+            <p className="text-[11px] text-slate-500 font-medium">{isService ? 'Servicios' : 'Productos'}</p>
             <p className="text-lg font-bold text-slate-900">
               {filteredOrders.reduce((sum, order) => sum + order.items.reduce((s, item) => s + item.quantity, 0), 0)}
             </p>
@@ -625,16 +626,16 @@ function EnhancedCompletedOrders() {
         {/* Table header */}
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-800">
-            {viewMode === 'today' ? 'Pedidos del Día' : 'Todos los Pedidos'}
+            {viewMode === 'today' ? (isService ? 'Citas del Día' : 'Pedidos del Día') : (isService ? 'Todas las Citas' : 'Todos los Pedidos')}
           </h2>
-          <span className="text-xs text-slate-500">{filteredOrders.length} pedidos</span>
+          <span className="text-xs text-slate-500">{filteredOrders.length} {isService ? 'citas' : 'pedidos'}</span>
         </div>
 
         {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FaShoppingBag className="text-3xl text-slate-300 mb-3" />
-            <p className="text-sm text-slate-500 font-medium">Sin pedidos completados</p>
-            <p className="text-xs text-slate-400 mt-1">Los pedidos completados aparecerán aquí</p>
+            <p className="text-sm text-slate-500 font-medium">{isService ? 'Sin citas completadas' : 'Sin pedidos completados'}</p>
+            <p className="text-xs text-slate-400 mt-1">{isService ? 'Las citas completadas aparecerán aquí' : 'Los pedidos completados aparecerán aquí'}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">

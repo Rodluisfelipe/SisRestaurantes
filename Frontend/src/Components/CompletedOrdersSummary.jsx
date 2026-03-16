@@ -12,6 +12,7 @@ function CompletedOrdersSummary() {
   const [orderDetails, setOrderDetails] = useState(null);
   const { businessConfig, businessId } = useBusinessConfig();
   const isHotel = businessConfig?.businessType === 'hotel';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalAmount: 0,
@@ -364,8 +365,8 @@ function CompletedOrdersSummary() {
         <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
           <span className="text-2xl">✅</span>
         </div>
-        <h2 className="text-3xl font-bold text-slate-900 mb-2">Pedidos Completados</h2>
-        <p className="text-slate-600">Historial y resumen de pedidos del día</p>
+        <h2 className="text-3xl font-bold text-slate-900 mb-2">{isService ? 'Citas Completadas' : 'Pedidos Completados'}</h2>
+        <p className="text-slate-600">{isService ? 'Historial y resumen de citas del día' : 'Historial y resumen de pedidos del día'}</p>
       </motion.div>
 
       {/* Modern Stats Cards */}
@@ -381,7 +382,7 @@ function CompletedOrdersSummary() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold opacity-90">Total de Pedidos</h3>
+              <h3 className="text-sm font-semibold opacity-90">{isService ? 'Total de Citas' : 'Total de Pedidos'}</h3>
               <p className="text-3xl font-bold mt-2">{completedOrders.length}</p>
             </div>
             <span className="text-3xl opacity-80">📋</span>
@@ -423,7 +424,7 @@ function CompletedOrdersSummary() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-sm font-semibold opacity-90">Productos Vendidos</h3>
+              <h3 className="text-sm font-semibold opacity-90">{isService ? 'Servicios Realizados' : 'Productos Vendidos'}</h3>
               <p className="text-3xl font-bold mt-2">
                 {completedOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)}
               </p>
@@ -437,7 +438,7 @@ function CompletedOrdersSummary() {
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 sm:p-6 border-b border-gray-200">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Pedidos Completados del Día</h2>
+            <h2 className="text-xl font-semibold text-gray-900">{isService ? 'Citas Completadas del Día' : 'Pedidos Completados del Día'}</h2>
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               <div className="relative flex-1 sm:flex-none">
                 <input

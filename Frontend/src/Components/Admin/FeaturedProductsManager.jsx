@@ -2,6 +2,7 @@ import ProductOrderSelector from '../ProductOrderSelector';
 import {
   FaStar, FaChevronLeft, FaGripVertical, FaTimes
 } from 'react-icons/fa';
+import { useBusinessConfig } from '../../Context/BusinessContext';
 
 /**
  * Pestaña "product-order": muestra productos destacados con drag-and-drop
@@ -24,6 +25,8 @@ export default function FeaturedProductsManager({
   const featuredProducts = Array.isArray(products)
     ? products.filter(p => p.isFeatured).sort((a, b) => (a.featuredOrder || 0) - (b.featuredOrder || 0))
     : [];
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   return (
     <div className="space-y-4">
@@ -42,7 +45,7 @@ export default function FeaturedProductsManager({
           <div className="flex items-center gap-2">
             <FaStar className="text-amber-500 text-sm" />
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Productos Destacados</h3>
+              <h3 className="text-sm font-semibold text-slate-800">{isService ? 'Servicios Destacados' : 'Productos Destacados'}</h3>
               <p className="text-[11px] text-slate-500">
                 Arrastra para reordenar &bull; {featuredProducts.length}/5
               </p>
@@ -53,8 +56,8 @@ export default function FeaturedProductsManager({
         {featuredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center">
             <FaStar className="text-2xl text-slate-300 mb-2" />
-            <p className="text-sm text-slate-500 font-medium">Sin productos destacados</p>
-            <p className="text-xs text-slate-400 mt-1">Marca hasta 5 productos como destacados desde Gestión de Productos</p>
+            <p className="text-sm text-slate-500 font-medium">{isService ? 'Sin servicios destacados' : 'Sin productos destacados'}</p>
+            <p className="text-xs text-slate-400 mt-1">{isService ? 'Marca hasta 5 servicios como destacados desde Gestión de Servicios' : 'Marca hasta 5 productos como destacados desde Gestión de Productos'}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-50">

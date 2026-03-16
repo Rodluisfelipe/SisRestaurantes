@@ -25,6 +25,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
 
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const textColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   const fetchOrders = useCallback(async () => {
     if (!phone || !businessId) return;
@@ -94,7 +95,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
         {/* Header */}
         <div className="p-5 border-b border-gray-100">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Mis Pedidos</h2>
+            <h2 className="text-lg font-bold text-gray-900">{isService ? 'Mis Citas' : 'Mis Pedidos'}</h2>
             <button 
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
@@ -142,10 +143,10 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
             <div className="flex flex-col items-center justify-center py-12 text-center px-6">
               <div className="text-4xl mb-3">{tab === 'active' ? '📋' : '📦'}</div>
               <h3 className="font-semibold text-gray-900 mb-1">
-                {tab === 'active' ? 'Sin pedidos activos' : 'Sin pedidos anteriores'}
+                {tab === 'active' ? (isService ? 'Sin citas activas' : 'Sin pedidos activos') : (isService ? 'Sin citas anteriores' : 'Sin pedidos anteriores')}
               </h3>
               <p className="text-sm text-gray-500">
-                {tab === 'active' ? 'Tus pedidos activos aparecerán aquí' : 'Tu historial de pedidos aparecerá aquí'}
+                {tab === 'active' ? (isService ? 'Tus citas activas aparecerán aquí' : 'Tus pedidos activos aparecerán aquí') : (isService ? 'Tu historial de citas aparecerá aquí' : 'Tu historial de pedidos aparecerá aquí')}
               </p>
             </div>
           ) : (
@@ -162,7 +163,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-bold text-gray-900 text-sm">
-                            Pedido #{order.orderNumber}
+                            {order.isBooking ? 'Cita' : 'Pedido'} #{order.orderNumber}
                           </span>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.text}`}>
                             <span>{statusInfo.icon}</span>
@@ -173,7 +174,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
                           {formatDate(order.createdAt || order.completedAt)} · {formatTime(order.createdAt || order.completedAt)}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-gray-600">
-                          <span>{order.items?.length || 0} productos</span>
+                          <span>{order.items?.length || 0} {order.isBooking ? 'servicios' : 'productos'}</span>
                           <span className="font-semibold text-gray-900">
                             {formatPrice(order.finalAmount || order.totalAmount)}
                           </span>

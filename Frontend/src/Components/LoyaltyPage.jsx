@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { getBusinessSlug } from '../utils/getBusinessId';
+import { useBusinessConfig } from '../Context/BusinessContext';
 
 /* ═══════════════════════════════════════════════ */
 /*  ANIMATED ODOMETER COUNTER                      */
@@ -81,6 +82,8 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
   const [redeeming, setRedeeming] = useState(null);
 
   const btnColor = theme?.buttonColor || '#f97316';
+  const { businessConfig } = useBusinessConfig();
+  const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   /* ── Data fetching ── */
   const fetchBalance = useCallback(async () => {
@@ -342,7 +345,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                             Te faltan <strong>{smartNudge.ptsNeeded.toLocaleString('es-CO')} puntos</strong> para{' '}
                             <strong className="text-amber-900">{smartNudge.reward.name}</strong>.
                             {smartNudge.moneyNeeded && (
-                              <> Agrega <strong>${smartNudge.moneyNeeded.toLocaleString('es-CO')}</strong> a tu pedido y ¡lo desbloqueas! 🎉</>
+                              <> Agrega <strong>${smartNudge.moneyNeeded.toLocaleString('es-CO')}</strong> a tu {isService ? 'cita' : 'pedido'} y ¡lo desbloqueas! 🎉</>
                             )}
                           </p>
                           {/* Mini progress */}
@@ -450,7 +453,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                     <p className="text-[10px] text-slate-500 mb-2">
                                       {reward.type === 'discount_percent' && `${reward.discountValue}% de descuento`}
                                       {reward.type === 'discount_fixed' && `$${Number(reward.discountValue).toLocaleString('es-CO')} de descuento`}
-                                      {reward.type === 'free_product' && `${reward.productName || 'Producto gratis'}`}
+                                      {reward.type === 'free_product' && `${reward.productName || (isService ? 'Servicio gratis' : 'Producto gratis')}`}
                                       {reward.type === 'free_delivery' && 'Envío gratuito'}
                                     </p>
 
@@ -483,7 +486,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                             Canjeando...
                                           </span>
                                         ) : (
-                                          '🎁 Agregar al pedido gratis'
+                                          isService ? '🎁 Agregar a la cita gratis' : '🎁 Agregar al pedido gratis'
                                         )}
                                       </motion.button>
                                     )}
@@ -506,7 +509,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                       )}
 
                       <p className="text-[9px] text-center text-slate-400 mt-2">
-                        Los descuentos se aplican automáticamente al momento de hacer tu pedido
+                        {isService ? 'Los descuentos se aplican automáticamente al momento de tu cita' : 'Los descuentos se aplican automáticamente al momento de hacer tu pedido'}
                       </p>
                     </motion.div>
                   )}
@@ -642,9 +645,9 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                     <h3 className="text-sm font-black text-slate-800 mb-3">¿Cómo funciona?</h3>
                     <div className="space-y-3">
                       {[
-                        { emoji: '🛒', title: 'Haz tu pedido', desc: `Ganas ${data.pointsPerAmount} punto${data.pointsPerAmount > 1 ? 's' : ''} por cada $${Number(data.amountPerPoints).toLocaleString('es-CO')} en compras` },
-                        { emoji: '⭐', title: 'Acumula puntos', desc: 'Tus puntos se suman automáticamente con cada compra' },
-                        { emoji: '🎁', title: 'Canjea recompensas', desc: 'Usa tus puntos al ordenar para obtener descuentos y productos gratis' }
+                        { emoji: '�', title: isService ? 'Agenda tu cita' : 'Haz tu pedido', desc: `Ganas ${data.pointsPerAmount} punto${data.pointsPerAmount > 1 ? 's' : ''} por cada $${Number(data.amountPerPoints).toLocaleString('es-CO')} en compras` },
+                        { emoji: '⭐', title: 'Acumula puntos', desc: isService ? 'Tus puntos se suman automáticamente con cada cita' : 'Tus puntos se suman automáticamente con cada compra' },
+                        { emoji: '🎁', title: 'Canjea recompensas', desc: isService ? 'Usa tus puntos al reservar para obtener descuentos y servicios gratis' : 'Usa tus puntos al ordenar para obtener descuentos y productos gratis' }
                       ].map((step, i) => (
                         <motion.div key={i} variants={fadeUp} className="flex items-start gap-3">
                           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-100 flex items-center justify-center text-lg flex-shrink-0">
