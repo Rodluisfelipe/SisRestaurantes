@@ -25,7 +25,7 @@ Sistema de gestión y pedidos para restaurantes (SaaS multi-tenant). Cada negoci
                              │  └──────────────────────────────┘   │
                              │                                      │
                              │  ┌─ Docker Container ────────────┐   │
-                             │  │  sisrestaurantes-backend-1    │   │
+                             │  │  backend-backend-1            │   │
                              │  │  Node.js 18 Alpine            │   │
                              │  │  Express + Socket.IO          │   │
                              │  │  Puerto interno: 5000         │   │
@@ -97,81 +97,77 @@ Frontend/
 ## Backend
 
 ### Stack
-- **Runtime:** Node.js 18 (Alpine Docker)
+- **Runtime:** Node.js 20 (Alpine Docker)
 - **Framework:** Express.js
 - **WebSockets:** Socket.IO
 - **Base de datos:** MongoDB Atlas (cloud)
 - **Contenedor:** Docker con docker-compose
 - **Monitoreo:** Sentry
+- **CI/CD:** GitHub Actions (auto-deploy al hacer push)
 
 ### Estructura del Backend en el Servidor
 ```
-/opt/sisrestaurantes/              # Directorio raíz en el servidor
-├── .env                           # Variables de entorno ACTIVAS
-├── server.js                      # Entry point
-├── package.json
-├── Dockerfile
-├── docker-compose.yml
-├── Routes/                        # Rutas Express
-├── Models/                        # Modelos Mongoose
-├── Controllers/                   # Controladores
-├── middleware/                     # Auth middleware, tenant auth
-├── services/                      # socketService, etc.
-├── utils/                         # Helpers, validators, constants
-├── scripts/                       # Scripts de mantenimiento
-├── uploads/                       # Archivos subidos (montado como volumen)
-│   ├── order-proofs/
-│   ├── announcements/
-│   └── banners/
-├── config/                        # JWT config
-├── Backend/                       # Copia alternativa (docker-compose aquí)
-└── Backend-backup/                # Backup viejo
+/opt/sisrestaurantes/              # Git clone del repo (rama desarrollo)
+├── Backend/
+│   ├── .env                       # Variables de entorno (NO en git, solo en servidor)
+│   ├── server.js                  # Entry point
+│   ├── package.json
+│   ├── Dockerfile
+│   ├── docker-compose.yml
+│   ├── Routes/                    # Rutas Express
+│   ├── Models/                    # Modelos Mongoose
+│   ├── Controllers/               # Controladores
+│   ├── middleware/                 # Auth middleware, tenant auth
+│   ├── services/                  # socketService, etc.
+│   ├── utils/                     # Helpers, validators, constants
+│   ├── scripts/                   # Scripts de mantenimiento
+│   ├── uploads/                   # Archivos subidos (montado como volumen Docker)
+│   │   ├── order-proofs/
+│   │   ├── announcements/
+│   │   └── banners/
+│   └── config/                    # JWT config
+├── Frontend/                      # (no se usa en el servidor, Cloudflare Pages lo sirve)
+└── .github/workflows/             # GitHub Actions workflow
 ```
 
-**IMPORTANTE:** El contenedor Docker mapea `/opt/sisrestaurantes/` como `/app/` internamente. Cuando haces `docker cp`, la ruta interna es `/app/Routes/archivo.js`.
+### Deploy del Backend — AUTOMÁTICO (GitHub Actions)
 
-### Deploy del Backend
+Al hacer `git push origin desarrollo` con cambios en `Backend/`, GitHub Actions automáticamente:
+1. Se conecta al servidor por SSH
+2. Ejecuta `git pull` para traer los cambios
+3. Hace `docker compose build` + `docker compose up -d`
+4. Limpia imágenes viejas
+5. Verifica health check
 
-**NO es un git repo en el servidor.** Los archivos se suben manualmente vía SCP + docker cp.
+**No se necesita hacer nada manual.** El workflow está en `.github/workflows/deploy-backend.yml`.
 
-#### Método de deploy (archivo individual):
+#### Deploy manual (emergencia o si GitHub Actions falla):
 ```powershell
-# 1. Subir archivo al servidor vía SCP
-scp -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean Backend/Routes/archivo.js root@157.245.125.216:/tmp/archivo.js
-
-# 2. Copiar dentro del contenedor Docker
-ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker cp /tmp/archivo.js sisrestaurantes-backend-1:/app/Routes/archivo.js && docker restart sisrestaurantes-backend-1"
-
-# 3. Verificar que arrancó bien
-ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker logs sisrestaurantes-backend-1 --tail 5"
+# Conectar al servidor y hacer el deploy manualmente
+ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "cd /opt/sisrestaurantes && git pull origin desarrollo && cd Backend && docker compose build && docker compose up -d && docker image prune -af"
 ```
 
-#### Método de deploy (rebuild completo):
+#### Hot-patch rápido (un solo archivo, sin rebuild):
 ```powershell
-# 1. Subir todos los archivos del Backend
-scp -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean -r Backend/* root@157.245.125.216:/opt/sisrestaurantes/Backend/
-
-# 2. Rebuild de la imagen Docker
-ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "cd /opt/sisrestaurantes/Backend && docker build -t sisrestaurantes-backend . && docker compose up -d"
-```
-
-#### Método rápido (hot-patch sin rebuild):
-```powershell
-# Para cambios en un solo archivo JS que no requieran npm install:
-scp -i ... archivo.js root@157.245.125.216:/tmp/archivo.js
-ssh -i ... root@157.245.125.216 "docker cp /tmp/archivo.js sisrestaurantes-backend-1:/app/ruta/archivo.js && docker restart sisrestaurantes-backend-1"
+# Para cambios urgentes en un solo archivo JS:
+scp -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean "C:\Users\TECNOPHONE\Desktop\SisRestaurantes\Backend\Routes\archivo.js" root@157.245.125.216:/tmp/archivo.js
+ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker cp /tmp/archivo.js backend-backend-1:/app/Routes/archivo.js && docker restart backend-backend-1"
+# IMPORTANTE: Hacer git push después para que el servidor quede sincronizado
 ```
 
 ### Verificación post-deploy
 ```powershell
 # Ver logs
-ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker logs sisrestaurantes-backend-1 --tail 20"
+ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker logs backend-backend-1 --tail 20"
 
 # Verificar health
 ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "curl -s http://localhost:5000/api/health"
 
 # Verificar que el archivo cambió
-ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker exec sisrestaurantes-backend-1 head -5 Routes/archivo.js"
+ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker exec backend-backend-1 head -5 Routes/archivo.js"
+
+# Verificar que solo hay UN contenedor
+ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
 ```
 
 ---
@@ -222,7 +218,7 @@ ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "COMAND
 # 1. Crear script .js local
 # 2. Subir y ejecutar:
 scp -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean script.js root@157.245.125.216:/tmp/script.js
-ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker cp /tmp/script.js sisrestaurantes-backend-1:/app/script.js && docker exec sisrestaurantes-backend-1 node script.js"
+ssh -i C:\Users\TECNOPHONE\.ssh\id_rsa_digitalocean root@157.245.125.216 "docker cp /tmp/script.js backend-backend-1:/app/script.js && docker exec backend-backend-1 node script.js"
 ```
 
 Los modelos Mongoose están en `/app/Models/` dentro del contenedor. **No existe Business.js** — la config de negocio está en `BusinessConfig.js`.
@@ -250,33 +246,57 @@ Los modelos Mongoose están en `/app/Models/` dentro del contenedor. **No existe
 
 ## Docker
 
-### Contenedor activo
-- **Nombre:** `sisrestaurantes-backend-1`
-- **Imagen:** `sisrestaurantes-backend:latest`
+### Contenedor activo (ÚNICO)
+- **Nombre:** `backend-backend-1`
+- **Imagen:** `backend-backend:latest`
 - **Puerto:** `127.0.0.1:5000 → 5000`
 - **Volumen:** `./uploads:/app/uploads`
-- **Health check:** `curl http://localhost:5000/api/health` cada 30s
+- **Health check:** `wget http://localhost:5000/api/health` cada 30s
 - **Restart policy:** `unless-stopped`
+- **docker-compose.yml:** `/opt/sisrestaurantes/Backend/docker-compose.yml`
+
+### ⚠️ REGLAS CRÍTICAS DE DOCKER — NO CREAR CONTENEDORES NUEVOS
+
+> **SOLO debe existir 1 contenedor: `backend-backend-1`.**
+> El servidor tiene solo 960 MB de RAM. Contenedores huérfanos consumen recursos y causan conflictos de puerto.
+
+**NUNCA hacer:**
+- `docker run ...` (crea contenedores sueltos con nombres random)
+- `docker build -t imagen-nueva . && docker run imagen-nueva` 
+- `docker compose up` desde un directorio diferente a `/opt/sisrestaurantes/Backend/`
+- Crear imágenes con nombres diferentes a `backend-backend`
+
+**SIEMPRE hacer:**
+- Para hot-patch: `docker cp` + `docker restart backend-backend-1`
+- Para rebuild: `cd /opt/sisrestaurantes/Backend && docker compose build && docker compose up -d`
+- Después de rebuild: `docker image prune -af` para limpiar imágenes viejas
+- Verificar que solo hay 1 contenedor: `docker ps --format '{{.Names}}'` debe mostrar SOLO `backend-backend-1`
 
 ### Comandos Docker útiles
 ```bash
 # Ver logs
-docker logs sisrestaurantes-backend-1 --tail 50
+docker logs backend-backend-1 --tail 50
 
 # Restart
-docker restart sisrestaurantes-backend-1
+docker restart backend-backend-1
 
 # Entrar al contenedor
-docker exec -it sisrestaurantes-backend-1 sh
+docker exec -it backend-backend-1 sh
 
 # Copiar archivo al contenedor
-docker cp /tmp/archivo.js sisrestaurantes-backend-1:/app/ruta/archivo.js
+docker cp /tmp/archivo.js backend-backend-1:/app/ruta/archivo.js
 
-# Rebuild completo
-cd /opt/sisrestaurantes/Backend && docker build -t sisrestaurantes-backend . && docker compose up -d
+# Rebuild completo (SOLO desde este directorio)
+cd /opt/sisrestaurantes/Backend && docker compose build && docker compose up -d
 
-# Limpiar imágenes viejas
-docker image prune -f && docker builder prune -af
+# Limpiar imágenes viejas (hacer después de cada rebuild)
+docker image prune -af && docker builder prune -af
+
+# Verificar que solo hay 1 contenedor
+docker ps -a --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}'
+
+# Si aparecen contenedores huérfanos, eliminarlos:
+docker ps -a --filter "name!=backend-backend-1" -q | xargs -r docker rm -f
 ```
 
 ---
@@ -324,14 +344,15 @@ docker image prune -f && docker builder prune -af
 ### Cambio en Backend (archivo individual):
 ```
 1. Editar archivo en Backend/
-2. scp -i KEY archivo root@157.245.125.216:/tmp/
-3. ssh -i KEY root@IP "docker cp /tmp/archivo container:/app/ruta/ && docker restart container"
-4. Verificar logs
+2. scp -i KEY "C:\ruta\absoluta\archivo.js" root@157.245.125.216:/tmp/
+3. ssh -i KEY root@IP "docker cp /tmp/archivo.js backend-backend-1:/app/ruta/archivo.js && docker restart backend-backend-1"
+4. ssh -i KEY root@IP "docker logs backend-backend-1 --tail 10"
 ```
 
 ### Cambio en Backend (con nuevas dependencias):
 ```
 1. Editar archivos + package.json
 2. Subir todo el Backend/ vía SCP
-3. ssh -i KEY root@IP "cd /opt/sisrestaurantes/Backend && docker build -t sisrestaurantes-backend . && docker compose up -d"
+3. ssh -i KEY root@IP "cd /opt/sisrestaurantes/Backend && docker compose build && docker compose up -d && docker image prune -af"
+4. Verificar: docker ps debe mostrar SOLO backend-backend-1
 ```

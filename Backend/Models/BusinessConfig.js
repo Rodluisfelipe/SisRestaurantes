@@ -48,16 +48,11 @@ const businessConfigSchema = new mongoose.Schema({
     enableReminders: { type: Boolean, default: true },
     reminderHoursBefore: [{ type: Number }] // default set in code: [24, 1]
   },
-  // Email notification settings (Gmail App Password)
+  // Email notification settings (platform-level multi-provider)
   emailSettings: {
     enabled: { type: Boolean, default: false },
-    senderEmail: { type: String, trim: true, default: '' },
-    senderName: { type: String, trim: true, default: '' },
-    appPassword: { type: String, default: '' }, // encrypted AES-256
-    sendOnBookingCreated: { type: Boolean, default: true },
     sendOnBookingConfirmed: { type: Boolean, default: true },
-    sendOnBookingCancelled: { type: Boolean, default: true },
-    sendReminder: { type: Boolean, default: true }
+    sendOnBookingCancelled: { type: Boolean, default: true }
   },
   // Onboarding tracking
   onboarding: {
@@ -377,16 +372,10 @@ businessConfigSchema.methods.getNextOpenTime = function() {
 businessConfigSchema.set('toJSON', {
   transform: (doc, ret) => {
     if (ret.emailSettings) {
-      // Only show if email is configured, never expose the password
       ret.emailSettings = {
         enabled: ret.emailSettings.enabled || false,
-        senderEmail: ret.emailSettings.senderEmail || '',
-        senderName: ret.emailSettings.senderName || '',
-        hasAppPassword: !!(ret.emailSettings.appPassword),
-        sendOnBookingCreated: ret.emailSettings.sendOnBookingCreated !== false,
         sendOnBookingConfirmed: ret.emailSettings.sendOnBookingConfirmed !== false,
-        sendOnBookingCancelled: ret.emailSettings.sendOnBookingCancelled !== false,
-        sendReminder: ret.emailSettings.sendReminder !== false
+        sendOnBookingCancelled: ret.emailSettings.sendOnBookingCancelled !== false
       };
     }
     return ret;

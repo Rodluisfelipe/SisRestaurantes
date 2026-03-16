@@ -1,287 +1,371 @@
-const nodemailer = require('nodemailer');
-const crypto = require('crypto');
 const BusinessConfig = require('../Models/BusinessConfig');
 const logger = require('../utils/logger');
 
-// AES-256-CBC encryption for app passwords
-const ENCRYPTION_KEY = process.env.EMAIL_ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex').slice(0, 32);
-const IV_LENGTH = 16;
+// ─── MULTI-PROVIDER EMAIL (HTTP APIs) ─────────────────────────
+// Resend (100/day) + Brevo (300/day) + SendGrid (100/day) = 500/day free
+// All use HTTPS port 443, no SMTP needed.
 
-function encrypt(text) {
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
-  let encrypted = cipher.update(text, 'utf8');
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString('hex') + ':' + encrypted.toString('hex');
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const BREVO_API_KEY = process.env.BREVO_API_KEY || '';
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
+const EMAIL_FROM = process.env.EMAIL_FROM || 'noreply@menuby.tech';
+const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || 'MenuBy';
+const API_URL = process.env.API_URL || 'https://157-245-125-216.nip.io';
+const MENUBY_LOGO = 'https://menuby.tech/logo.jpeg';
+const MENUBY_URL = 'https://www.menuby.tech';
+
+// Daily usage tracking (resets at midnight UTC)
+const usage = { resend: 0, brevo: 0, sendgrid: 0, lastReset: new Date().toDateString() };
+const LIMITS = { resend: 95, brevo: 290, sendgrid: 95 };
+
+function resetUsageIfNewDay() {
+  const today = new Date().toDateString();
+  if (usage.lastReset !== today) {
+    usage.resend = 0;
+    usage.brevo = 0;
+    usage.sendgrid = 0;
+    usage.lastReset = today;
+  }
 }
 
-function decrypt(text) {
-  const parts = text.split(':');
-  const iv = Buffer.from(parts.shift(), 'hex');
-  const encrypted = Buffer.from(parts.join(':'), 'hex');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', Buffer.from(ENCRYPTION_KEY, 'utf8'), iv);
-  let decrypted = decipher.update(encrypted);
-  decrypted = Buffer.concat([decrypted, decipher.final()]);
-  return decrypted.toString('utf8');
-}
+// ─── PROVIDER IMPLEMENTATIONS ─────────────────────────────────
 
-/**
- * Create a Nodemailer transporter for a business using their Gmail App Password.
- */
-function createTransporter(senderEmail, appPasswordDecrypted) {
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: senderEmail,
-      pass: appPasswordDecrypted
-    }
+async function sendViaResend(to, subject, html, fromName) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: `${fromName} <${EMAIL_FROM}>`, to: [to], subject, html })
   });
+  if (!res.ok) throw new Error(`Resend ${res.status}: ${await res.text()}`);
+  return (await res.json()).id;
 }
 
-/**
- * Get the email config for a business. Returns null if not configured.
- * Uses raw DB query to get the actual encrypted password (bypassing toJSON).
- */
-async function getEmailConfig(businessId) {
+async function sendViaBrevo(to, subject, html, fromName) {
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sender: { name: fromName, email: EMAIL_FROM }, to: [{ email: to }], subject, htmlContent: html })
+  });
+  if (!res.ok) throw new Error(`Brevo ${res.status}: ${await res.text()}`);
+  return (await res.json()).messageId;
+}
+
+async function sendViaSendGrid(to, subject, html, fromName) {
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: EMAIL_FROM, name: fromName },
+      subject,
+      content: [{ type: 'text/html', value: html }]
+    })
+  });
+  if (!res.ok) throw new Error(`SendGrid ${res.status}: ${await res.text()}`);
+  return `sg-${Date.now()}`;
+}
+
+// ─── SMART ROUTER ─────────────────────────────────────────────
+
+function getAvailableProviders() {
+  resetUsageIfNewDay();
+  const providers = [];
+  if (BREVO_API_KEY && usage.brevo < LIMITS.brevo) providers.push({ name: 'brevo', fn: sendViaBrevo });
+  if (RESEND_API_KEY && usage.resend < LIMITS.resend) providers.push({ name: 'resend', fn: sendViaResend });
+  if (SENDGRID_API_KEY && usage.sendgrid < LIMITS.sendgrid) providers.push({ name: 'sendgrid', fn: sendViaSendGrid });
+  return providers;
+}
+
+async function sendEmail(businessId, { to, subject, html }) {
+  const config = await getEmailSettings(businessId);
+  if (!config) {
+    logger.info('Email not enabled for business, skipping', { businessId });
+    return { sent: false, reason: 'not_enabled' };
+  }
+
+  const fromName = config.businessName || EMAIL_FROM_NAME;
+  const providers = getAvailableProviders();
+
+  if (providers.length === 0) {
+    logger.warn('No email providers available', { businessId });
+    return { sent: false, reason: 'no_providers' };
+  }
+
+  for (const provider of providers) {
+    try {
+      const messageId = await provider.fn(to, subject, html, fromName);
+      usage[provider.name]++;
+      logger.info('Email sent', { provider: provider.name, businessId, to, messageId });
+      return { sent: true, provider: provider.name, messageId };
+    } catch (error) {
+      logger.warn(`Email provider ${provider.name} failed`, { error: error.message });
+    }
+  }
+
+  logger.error('All email providers failed', { businessId, to });
+  return { sent: false, reason: 'all_providers_failed' };
+}
+
+// ─── CONFIG ───────────────────────────────────────────────────
+
+async function getEmailSettings(businessId) {
   const config = await BusinessConfig.findById(businessId)
-    .select('emailSettings businessName')
-    .lean({ virtuals: false });
-
-  if (!config?.emailSettings?.enabled || !config.emailSettings.senderEmail || !config.emailSettings.appPassword) {
-    return null;
-  }
-
-  let decryptedPassword;
-  try {
-    decryptedPassword = decrypt(config.emailSettings.appPassword);
-  } catch (e) {
-    logger.error('Failed to decrypt email app password', { businessId, error: e.message });
-    return null;
-  }
-
+    .select('emailSettings businessName logo theme whatsappNumber address socialMedia slug')
+    .lean();
+  if (!config?.emailSettings?.enabled) return null;
+  const logoPath = config.logo || '';
+  const logoUrl = logoPath.startsWith('http') ? logoPath : logoPath ? `${API_URL}${logoPath.startsWith('/') ? '' : '/'}${logoPath}` : '';
+  const igHandle = config.socialMedia?.instagram?.url || '';
   return {
-    senderEmail: config.emailSettings.senderEmail,
-    senderName: config.emailSettings.senderName || config.businessName || 'Mi Negocio',
-    password: decryptedPassword,
     settings: config.emailSettings,
-    businessName: config.businessName
+    businessName: config.businessName || 'Mi Negocio',
+    logo: logoUrl,
+    brandColor: config.theme?.buttonColor || '#6366f1',
+    whatsapp: config.whatsappNumber || '',
+    address: config.address || '',
+    instagram: igHandle,
+    slug: config.slug || config._id.toString()
   };
 }
 
-/**
- * Send a transactional email for a business.
- */
-async function sendEmail(businessId, { to, subject, html }) {
-  const emailConfig = await getEmailConfig(businessId);
-  if (!emailConfig) {
-    logger.debug('Email not configured for business, skipping', { businessId });
-    return { sent: false, reason: 'not_configured' };
-  }
+async function sendTestEmail(businessId) {
+  const config = await getEmailSettings(businessId);
+  if (!config) return { success: false, error: 'Email no habilitado' };
 
-  try {
-    const transporter = createTransporter(emailConfig.senderEmail, emailConfig.password);
-    const info = await transporter.sendMail({
-      from: `"${emailConfig.senderName}" <${emailConfig.senderEmail}>`,
-      to,
-      subject,
-      html
-    });
-    logger.info('Email sent successfully', { businessId, to, messageId: info.messageId });
-    return { sent: true, messageId: info.messageId };
-  } catch (error) {
-    logger.error('Failed to send email', { businessId, to, error: error.message });
-    return { sent: false, reason: error.message };
-  }
+  const providers = getAvailableProviders();
+  if (providers.length === 0) return { success: false, error: 'No hay proveedores configurados. Contacta al administrador.' };
+
+  const html = baseTemplate(config, `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:20px 0 10px">
+      <div style="width:56px;height:56px;border-radius:50%;background:#ecfdf5;display:inline-block;line-height:56px;text-align:center;font-size:28px">✅</div>
+    </td></tr></table>
+    <h2 style="color:#1e293b;font-size:18px;margin:0 0 8px;text-align:center;font-weight:700">¡Configuración exitosa!</h2>
+    <p style="color:#64748b;font-size:14px;text-align:center;margin:0 0 20px;line-height:1.5">Los correos automáticos están activos para <strong style="color:#1e293b">${config.businessName}</strong>. Tus clientes recibirán confirmaciones de citas.</p>
+  `);
+
+  const result = await sendEmail(businessId, { to: EMAIL_FROM, subject: `✅ Prueba — ${config.businessName}`, html });
+  return result.sent ? { success: true, provider: result.provider } : { success: false, error: result.reason };
 }
 
-/**
- * Send a test email to verify the configuration works.
- */
-async function sendTestEmail(senderEmail, appPassword, senderName) {
-  try {
-    const transporter = createTransporter(senderEmail, appPassword);
-    const info = await transporter.sendMail({
-      from: `"${senderName || 'MenuBy'}" <${senderEmail}>`,
-      to: senderEmail,
-      subject: '✅ Correo de prueba — MenuBy',
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 500px; margin: 0 auto; padding: 20px;">
-          <h2 style="color: #1e293b;">¡Configuración exitosa! ✅</h2>
-          <p style="color: #475569;">Tu correo electrónico está correctamente configurado en MenuBy.</p>
-          <p style="color: #475569;">A partir de ahora, tus clientes recibirán confirmaciones automáticas de citas y pedidos.</p>
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-          <p style="color: #94a3b8; font-size: 12px;">Este es un correo de prueba enviado desde MenuBy.</p>
-        </div>
-      `
-    });
-    return { success: true, messageId: info.messageId };
-  } catch (error) {
-    return { success: false, error: error.message };
+// ─── TEMPLATES ────────────────────────────────────────────────
+
+function baseTemplate(config, content) {
+  const { businessName, logo, brandColor, whatsapp, address, instagram } = config;
+  const color2 = adjustColor(brandColor, -30);
+  const logoBlock = logo
+    ? `<img src="${logo}" alt="${businessName}" style="max-height:56px;max-width:200px;display:block;margin:0 auto 10px;border-radius:8px" />`
+    : '';
+
+  // Contact section — always show at least the business page link
+  const contactItems = [];
+  if (whatsapp) {
+    const cleanNum = whatsapp.replace(/\D/g, '');
+    contactItems.push(`<a href="https://wa.me/${cleanNum}" style="display:inline-block;background:#25d366;color:#ffffff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:8px;text-decoration:none;line-height:1" target="_blank">📱 Escribir por WhatsApp</a>`);
   }
+  if (address) {
+    contactItems.push(`<span style="color:#475569;font-size:13px">📍 ${address}</span>`);
+  }
+  if (instagram) {
+    const igUser = instagram.includes('instagram.com/') ? instagram.split('instagram.com/').pop().replace(/\/.*$/, '') : instagram.replace('@', '');
+    contactItems.push(`<a href="https://instagram.com/${igUser}" style="color:${brandColor};text-decoration:none;font-size:13px;font-weight:500" target="_blank">📸 @${igUser}</a>`);
+  }
+  const menuUrl = `${MENUBY_URL}/${config.slug || ''}`;
+  const contactBlock = `<div style="border-top:1px solid #e2e8f0;padding:16px 24px;background:#ffffff;text-align:center">
+      <p style="color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 10px;font-weight:600">Contacto</p>
+      ${contactItems.length > 0 ? contactItems.map(item => `<p style="margin:0 0 8px;line-height:1.6">${item}</p>`).join('') : ''}
+      <p style="margin:4px 0 0"><a href="${menuUrl}" style="color:${brandColor};text-decoration:none;font-size:12px;font-weight:500" target="_blank">🌐 Ver nuestro menú / servicios</a></p>
+    </div>`;
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:20px 10px;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+      <!-- HEADER -->
+      <tr><td style="background:linear-gradient(135deg,${brandColor},${color2});padding:32px 24px;text-align:center">
+        ${logoBlock}
+        <h1 style="color:#ffffff;font-size:20px;margin:0;font-weight:700;letter-spacing:-0.3px">${businessName}</h1>
+      </td></tr>
+      <!-- CONTENT -->
+      <tr><td style="padding:28px 24px">${content}</td></tr>
+      <!-- CONTACT -->
+      <tr><td>${contactBlock}</td></tr>
+      <!-- FOOTER -->
+      <tr><td style="padding:16px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;text-align:center">
+        <a href="${MENUBY_URL}" style="text-decoration:none;display:inline-block" target="_blank">
+          <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto"><tr>
+            <td style="vertical-align:middle;padding-right:6px"><img src="${MENUBY_LOGO}" alt="MenuBy" style="height:20px;width:20px;border-radius:4px;display:block" /></td>
+            <td style="vertical-align:middle;color:#94a3b8;font-size:10px;font-weight:600;letter-spacing:0.3px">Powered by MenuBy</td>
+          </tr></table>
+        </a>
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>`;
 }
 
-// ─── EMAIL TEMPLATES ─────────────────────────────────────────
-
-function baseTemplate(businessName, content) {
-  return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 560px; margin: 0 auto; background: #ffffff;">
-      <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 24px 20px; border-radius: 12px 12px 0 0;">
-        <h1 style="color: white; font-size: 18px; margin: 0; font-weight: 700;">${businessName}</h1>
-      </div>
-      <div style="padding: 24px 20px;">
-        ${content}
-      </div>
-      <div style="padding: 16px 20px; background: #f8fafc; border-radius: 0 0 12px 12px; border-top: 1px solid #e2e8f0;">
-        <p style="color: #94a3b8; font-size: 11px; margin: 0; text-align: center;">
-          Enviado por ${businessName} a través de MenuBy
-        </p>
-      </div>
-    </div>
-  `;
+function adjustColor(hex, amount) {
+  const h = hex.replace('#', '');
+  const num = parseInt(h, 16);
+  const r = Math.min(255, Math.max(0, ((num >> 16) & 0xFF) + amount));
+  const g = Math.min(255, Math.max(0, ((num >> 8) & 0xFF) + amount));
+  const b = Math.min(255, Math.max(0, (num & 0xFF) + amount));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
 }
 
 function formatDateTime(dateStr) {
   const d = new Date(dateStr);
-  const date = d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  const time = d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
-  return { date, time };
+  return {
+    date: d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    time: d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })
+  };
 }
 
-/**
- * Send booking confirmation email.
- */
-async function sendBookingCreatedEmail(businessId, booking) {
-  const emailConfig = await getEmailConfig(businessId);
-  if (!emailConfig || !emailConfig.settings.sendOnBookingCreated) return;
-  if (!booking.customerEmail) return;
+function detailRow(icon, label, value, valueColor) {
+  return `<tr>
+    <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;width:24px;vertical-align:top;font-size:14px">${icon}</td>
+    <td style="padding:8px 8px;border-bottom:1px solid #f1f5f9;color:#64748b;font-size:13px;vertical-align:top">${label}</td>
+    <td style="padding:8px 0;border-bottom:1px solid #f1f5f9;color:${valueColor || '#1e293b'};font-weight:600;font-size:13px;text-align:right;vertical-align:top">${value}</td>
+  </tr>`;
+}
 
+function contactNote(config) {
+  if (config.whatsapp) {
+    const cleanNum = config.whatsapp.replace(/\D/g, '');
+    return `<div style="text-align:center;margin:20px 0 0">
+      <a href="https://wa.me/${cleanNum}" style="display:inline-block;background:#25d366;color:#ffffff;font-size:13px;font-weight:600;padding:10px 24px;border-radius:8px;text-decoration:none" target="_blank">📱 ¿Necesitas cancelar? Escríbenos</a>
+    </div>`;
+  }
+  const menuUrl = `${MENUBY_URL}/${config.slug || ''}`;
+  return `<p style="color:#64748b;font-size:12px;margin:16px 0 0;text-align:center;line-height:1.5">¿Necesitas cancelar? <a href="${menuUrl}" style="color:${config.brandColor};font-weight:600;text-decoration:none" target="_blank">Contacta al negocio</a></p>`;
+}
+
+async function sendBookingCreatedEmail(businessId, booking) {
+  const config = await getEmailSettings(businessId);
+  if (!config?.settings?.sendOnBookingCreated || !booking.customerEmail) return;
   const { date, time } = formatDateTime(booking.bookingDate);
   const services = (booking.items || []).map(i => i.name).join(', ') || 'Servicio';
   const total = (booking.finalAmount || booking.totalAmount || 0).toLocaleString('es-CO');
+  const html = baseTemplate(config, `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 0 16px">
+      <div style="width:52px;height:52px;border-radius:50%;background:#eef2ff;display:inline-block;line-height:52px;text-align:center;font-size:24px">📅</div>
+    </td></tr></table>
+    <h2 style="color:#1e293b;font-size:18px;margin:0 0 6px;text-align:center;font-weight:700">Cita Agendada</h2>
+    <p style="color:#64748b;font-size:14px;text-align:center;margin:0 0 24px">Hola <strong style="color:#1e293b">${booking.customerName}</strong>, tu cita ha sido registrada.</p>
 
-  const html = baseTemplate(emailConfig.businessName, `
-    <h2 style="color: #1e293b; font-size: 20px; margin: 0 0 16px;">📅 Cita Agendada</h2>
-    <p style="color: #475569; margin: 0 0 20px;">Hola <strong>${booking.customerName}</strong>, tu cita ha sido agendada correctamente.</p>
-    
-    <div style="background: #f1f5f9; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr><td style="color: #64748b; font-size: 12px; padding: 4px 0;">Fecha</td><td style="color: #1e293b; font-weight: 600; text-align: right; padding: 4px 0;">${date}</td></tr>
-        <tr><td style="color: #64748b; font-size: 12px; padding: 4px 0;">Hora</td><td style="color: #1e293b; font-weight: 600; text-align: right; padding: 4px 0;">${time}</td></tr>
-        <tr><td style="color: #64748b; font-size: 12px; padding: 4px 0;">Servicio(s)</td><td style="color: #1e293b; font-weight: 600; text-align: right; padding: 4px 0;">${services}</td></tr>
-        ${booking.staffName ? `<tr><td style="color: #64748b; font-size: 12px; padding: 4px 0;">Profesional</td><td style="color: #1e293b; font-weight: 600; text-align: right; padding: 4px 0;">${booking.staffName}</td></tr>` : ''}
-        <tr><td style="color: #64748b; font-size: 12px; padding: 4px 0;">Total</td><td style="color: #059669; font-weight: 700; text-align: right; padding: 4px 0;">$${total}</td></tr>
+    <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid #e2e8f0">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${detailRow('📆', 'Fecha', date)}
+        ${detailRow('🕐', 'Hora', time)}
+        ${detailRow('💼', 'Servicio', services)}
+        ${booking.staffName ? detailRow('👤', 'Profesional', booking.staffName) : ''}
+        ${detailRow('💰', 'Total', `$${total}`, '#059669')}
       </table>
     </div>
 
-    <p style="color: #475569; font-size: 13px;">Número de cita: <strong>#${booking.orderNumber}</strong></p>
-    <p style="color: #94a3b8; font-size: 12px; margin-top: 16px;">Si necesitas cancelar o reprogramar, por favor contacta al negocio con anticipación.</p>
-  `);
+    <div style="text-align:center;padding:8px 0">
+      <span style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:12px;padding:6px 14px;border-radius:20px;font-weight:500">Cita #${booking.orderNumber}</span>
+    </div>
 
-  return sendEmail(businessId, {
-    to: booking.customerEmail,
-    subject: `📅 Confirmación de cita — ${emailConfig.businessName}`,
-    html
-  });
+    ${contactNote(config)}
+  `);
+  return sendEmail(businessId, { to: booking.customerEmail, subject: `📅 Cita agendada — ${config.businessName}`, html });
 }
 
-/**
- * Send booking confirmed email (when admin confirms a pending booking).
- */
 async function sendBookingConfirmedEmail(businessId, booking) {
-  const emailConfig = await getEmailConfig(businessId);
-  if (!emailConfig || !emailConfig.settings.sendOnBookingConfirmed) return;
-  if (!booking.customerEmail) return;
-
+  const config = await getEmailSettings(businessId);
+  if (!config?.settings?.sendOnBookingConfirmed || !booking.customerEmail) return;
   const { date, time } = formatDateTime(booking.bookingDate);
+  const services = (booking.items || []).map(i => i.name).join(', ') || 'Servicio';
+  const total = (booking.finalAmount || booking.totalAmount || 0).toLocaleString('es-CO');
+  const html = baseTemplate(config, `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 0 16px">
+      <div style="width:52px;height:52px;border-radius:50%;background:#ecfdf5;display:inline-block;line-height:52px;text-align:center;font-size:24px">✅</div>
+    </td></tr></table>
+    <h2 style="color:#059669;font-size:18px;margin:0 0 6px;text-align:center;font-weight:700">Cita Confirmada</h2>
+    <p style="color:#64748b;font-size:14px;text-align:center;margin:0 0 24px">Hola <strong style="color:#1e293b">${booking.customerName}</strong>, tu cita ha sido confirmada.</p>
 
-  const html = baseTemplate(emailConfig.businessName, `
-    <h2 style="color: #059669; font-size: 20px; margin: 0 0 16px;">✅ Cita Confirmada</h2>
-    <p style="color: #475569; margin: 0 0 20px;">Hola <strong>${booking.customerName}</strong>, tu cita ha sido <strong>confirmada</strong>.</p>
-    
-    <div style="background: #ecfdf5; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
-      <p style="color: #065f46; font-size: 14px; margin: 0;"><strong>📅 ${date}</strong></p>
-      <p style="color: #065f46; font-size: 14px; margin: 4px 0 0;"><strong>🕐 ${time}</strong></p>
-      ${booking.staffName ? `<p style="color: #065f46; font-size: 14px; margin: 4px 0 0;"><strong>👤 ${booking.staffName}</strong></p>` : ''}
+    <div style="background:#ecfdf5;border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid #d1fae5">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${detailRow('📆', 'Fecha', date)}
+        ${detailRow('🕐', 'Hora', time)}
+        ${detailRow('💼', 'Servicio', services)}
+        ${booking.staffName ? detailRow('👤', 'Profesional', booking.staffName) : ''}
+        ${detailRow('💰', 'Total', `$${total}`, '#059669')}
+      </table>
     </div>
-    
-    <p style="color: #475569; font-size: 13px;">Cita #${booking.orderNumber}</p>
-    <p style="color: #94a3b8; font-size: 12px;">¡Te esperamos!</p>
-  `);
 
-  return sendEmail(businessId, {
-    to: booking.customerEmail,
-    subject: `✅ Cita confirmada — ${emailConfig.businessName}`,
-    html
-  });
+    <div style="text-align:center;padding:8px 0">
+      <span style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:12px;padding:6px 14px;border-radius:20px;font-weight:500">Cita #${booking.orderNumber}</span>
+    </div>
+
+    ${contactNote(config)}
+  `);
+  return sendEmail(businessId, { to: booking.customerEmail, subject: `✅ Cita confirmada — ${config.businessName}`, html });
 }
 
-/**
- * Send booking cancelled email.
- */
 async function sendBookingCancelledEmail(businessId, booking) {
-  const emailConfig = await getEmailConfig(businessId);
-  if (!emailConfig || !emailConfig.settings.sendOnBookingCancelled) return;
-  if (!booking.customerEmail) return;
-
+  const config = await getEmailSettings(businessId);
+  if (!config?.settings?.sendOnBookingCancelled || !booking.customerEmail) return;
   const { date, time } = formatDateTime(booking.bookingDate);
+  const html = baseTemplate(config, `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 0 16px">
+      <div style="width:52px;height:52px;border-radius:50%;background:#fef2f2;display:inline-block;line-height:52px;text-align:center;font-size:24px">❌</div>
+    </td></tr></table>
+    <h2 style="color:#ef4444;font-size:18px;margin:0 0 6px;text-align:center;font-weight:700">Cita Cancelada</h2>
+    <p style="color:#64748b;font-size:14px;text-align:center;margin:0 0 24px">Hola <strong style="color:#1e293b">${booking.customerName}</strong>, tu cita ha sido cancelada.</p>
 
-  const html = baseTemplate(emailConfig.businessName, `
-    <h2 style="color: #ef4444; font-size: 20px; margin: 0 0 16px;">❌ Cita Cancelada</h2>
-    <p style="color: #475569; margin: 0 0 20px;">Hola <strong>${booking.customerName}</strong>, tu cita ha sido cancelada.</p>
-    
-    <div style="background: #fef2f2; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
-      <p style="color: #991b1b; font-size: 14px; margin: 0;">📅 ${date} — 🕐 ${time}</p>
-      ${booking.cancellationReason ? `<p style="color: #991b1b; font-size: 13px; margin: 8px 0 0;">Motivo: ${booking.cancellationReason}</p>` : ''}
+    <div style="background:#fef2f2;border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid #fecaca">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${detailRow('📆', 'Fecha', date)}
+        ${detailRow('🕐', 'Hora', time)}
+        ${booking.cancellationReason ? detailRow('📝', 'Motivo', booking.cancellationReason, '#991b1b') : ''}
+      </table>
     </div>
-    
-    <p style="color: #475569; font-size: 13px;">Cita #${booking.orderNumber}</p>
-    <p style="color: #94a3b8; font-size: 12px;">Si deseas reagendar, puedes hacerlo desde nuestro menú digital.</p>
-  `);
 
-  return sendEmail(businessId, {
-    to: booking.customerEmail,
-    subject: `❌ Cita cancelada — ${emailConfig.businessName}`,
-    html
-  });
+    <div style="text-align:center;padding:8px 0">
+      <span style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:12px;padding:6px 14px;border-radius:20px;font-weight:500">Cita #${booking.orderNumber}</span>
+    </div>
+
+    <p style="color:#64748b;font-size:13px;text-align:center;margin:16px 0 0;line-height:1.5">Puedes agendar una nueva cita cuando lo desees.</p>
+  `);
+  return sendEmail(businessId, { to: booking.customerEmail, subject: `❌ Cita cancelada — ${config.businessName}`, html });
 }
 
-/**
- * Send booking reminder email.
- */
 async function sendBookingReminderEmail(businessId, booking, hoursUntil) {
-  const emailConfig = await getEmailConfig(businessId);
-  if (!emailConfig || !emailConfig.settings.sendReminder) return;
-  if (!booking.customerEmail) return;
-
+  const config = await getEmailSettings(businessId);
+  if (!config?.settings?.sendReminder || !booking.customerEmail) return;
   const { date, time } = formatDateTime(booking.bookingDate);
   const services = (booking.items || []).map(i => i.name).join(', ') || 'tu cita';
   const timeLabel = hoursUntil <= 2 ? 'en 1 hora' : 'mañana';
+  const urgentBg = hoursUntil <= 2 ? '#fff7ed' : '#eef2ff';
+  const urgentBorder = hoursUntil <= 2 ? '#fed7aa' : '#c7d2fe';
+  const urgentText = hoursUntil <= 2 ? '#9a3412' : '#3730a3';
+  const html = baseTemplate(config, `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 0 16px">
+      <div style="width:52px;height:52px;border-radius:50%;background:${urgentBg};display:inline-block;line-height:52px;text-align:center;font-size:24px">⏰</div>
+    </td></tr></table>
+    <h2 style="color:${urgentText};font-size:18px;margin:0 0 6px;text-align:center;font-weight:700">Recordatorio de Cita</h2>
+    <p style="color:#64748b;font-size:14px;text-align:center;margin:0 0 24px">Hola <strong style="color:#1e293b">${booking.customerName}</strong>, tienes una cita <strong style="color:${urgentText}">${timeLabel}</strong>.</p>
 
-  const html = baseTemplate(emailConfig.businessName, `
-    <h2 style="color: #6366f1; font-size: 20px; margin: 0 0 16px;">⏰ Recordatorio de Cita</h2>
-    <p style="color: #475569; margin: 0 0 20px;">Hola <strong>${booking.customerName}</strong>, te recordamos que tienes una cita programada <strong>${timeLabel}</strong>.</p>
-    
-    <div style="background: #eef2ff; border-radius: 10px; padding: 16px; margin-bottom: 20px;">
-      <p style="color: #3730a3; font-size: 14px; margin: 0;"><strong>📅 ${date}</strong></p>
-      <p style="color: #3730a3; font-size: 14px; margin: 4px 0 0;"><strong>🕐 ${time}</strong></p>
-      <p style="color: #3730a3; font-size: 14px; margin: 4px 0 0;"><strong>💼 ${services}</strong></p>
-      ${booking.staffName ? `<p style="color: #3730a3; font-size: 14px; margin: 4px 0 0;"><strong>👤 ${booking.staffName}</strong></p>` : ''}
+    <div style="background:${urgentBg};border-radius:12px;padding:16px;margin-bottom:16px;border:1px solid ${urgentBorder}">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        ${detailRow('📆', 'Fecha', date)}
+        ${detailRow('🕐', 'Hora', time)}
+        ${detailRow('💼', 'Servicio', services)}
+        ${booking.staffName ? detailRow('👤', 'Profesional', booking.staffName) : ''}
+      </table>
     </div>
-    
-    <p style="color: #475569; font-size: 13px;">Cita #${booking.orderNumber}</p>
-    <p style="color: #94a3b8; font-size: 12px;">¡Te esperamos!</p>
-  `);
 
-  return sendEmail(businessId, {
-    to: booking.customerEmail,
-    subject: `⏰ Recordatorio: ${services} ${timeLabel} — ${emailConfig.businessName}`,
-    html
-  });
+    <div style="text-align:center;padding:8px 0">
+      <span style="display:inline-block;background:#f1f5f9;color:#64748b;font-size:12px;padding:6px 14px;border-radius:20px;font-weight:500">Cita #${booking.orderNumber}</span>
+    </div>
+
+    ${contactNote(config)}
+  `);
+  return sendEmail(businessId, { to: booking.customerEmail, subject: `⏰ Recordatorio: ${services} ${timeLabel} — ${config.businessName}`, html });
 }
 
 module.exports = {
-  encrypt,
-  decrypt,
   sendEmail,
   sendTestEmail,
   sendBookingCreatedEmail,
