@@ -43,8 +43,8 @@ const BusinessSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [emailSettings, setEmailSettings] = useState({
     enabled: false,
-    sendOnBookingCreated: true, sendOnBookingConfirmed: true,
-    sendOnBookingCancelled: true, sendReminder: true
+    sendOnBookingConfirmed: true,
+    sendOnBookingCancelled: true
   });
   const [emailSaving, setEmailSaving] = useState(false);
   const [emailTesting, setEmailTesting] = useState(false);
@@ -84,10 +84,8 @@ const BusinessSettings = () => {
           setEmailSettings(prev => ({
             ...prev,
             enabled: response.data.emailSettings.enabled || false,
-            sendOnBookingCreated: response.data.emailSettings.sendOnBookingCreated !== false,
             sendOnBookingConfirmed: response.data.emailSettings.sendOnBookingConfirmed !== false,
-            sendOnBookingCancelled: response.data.emailSettings.sendOnBookingCancelled !== false,
-            sendReminder: response.data.emailSettings.sendReminder !== false
+            sendOnBookingCancelled: response.data.emailSettings.sendOnBookingCancelled !== false
           }));
         }
       }
@@ -159,10 +157,8 @@ const BusinessSettings = () => {
       await api.put('/email/settings', {
         businessId,
         enabled: emailSettings.enabled,
-        sendOnBookingCreated: emailSettings.sendOnBookingCreated,
         sendOnBookingConfirmed: emailSettings.sendOnBookingConfirmed,
-        sendOnBookingCancelled: emailSettings.sendOnBookingCancelled,
-        sendReminder: emailSettings.sendReminder
+        sendOnBookingCancelled: emailSettings.sendOnBookingCancelled
       });
       setEmailMsg({ type: 'success', text: 'Configuración de correo guardada' });
     } catch (err) {
@@ -743,16 +739,14 @@ const BusinessSettings = () => {
           {emailSettings.enabled && (
             <div className="p-4 space-y-3">
               <p className="text-[10px] text-slate-500">
-                Los correos se envían automáticamente desde <strong>noreply@menuby.tech</strong> cuando tus clientes agendan citas.
+                Los correos se envían automáticamente desde <strong>noreply@menuby.tech</strong> cuando confirmas o cancelas citas.
               </p>
 
               <div className="border-t border-slate-100 pt-3 space-y-2">
                 <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Enviar correo cuando:</p>
                 {[
-                  { key: 'sendOnBookingCreated', label: 'Se crea una reserva/cita' },
                   { key: 'sendOnBookingConfirmed', label: 'Se confirma una reserva/cita' },
-                  { key: 'sendOnBookingCancelled', label: 'Se cancela una reserva/cita' },
-                  { key: 'sendReminder', label: 'Recordatorio antes de la cita' }
+                  { key: 'sendOnBookingCancelled', label: 'Se cancela una reserva/cita' }
                 ].map(({ key, label }) => (
                   <div key={key} className="flex items-center justify-between">
                     <span className="text-xs text-slate-600">{label}</span>
