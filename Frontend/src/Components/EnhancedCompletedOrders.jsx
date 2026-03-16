@@ -150,24 +150,25 @@ function EnhancedCompletedOrders() {
   const exportExcel = async () => {
     setExportingExcel(true);
     try {
-      const params = new URLSearchParams({ businessId });
+      // Use loaded data directly when in 'today' mode
+      let orders;
       if (viewMode === 'today') {
-        const today = new Date().toISOString().split('T')[0];
-        params.append('from', today);
-        params.append('to', today);
+        orders = completedOrders;
       } else {
+        // Fetch ALL matching orders with current filters (high limit, no pagination)
+        const params = new URLSearchParams({ businessId, limit: '10000' });
         if (dateFrom) params.append('from', dateFrom);
         if (dateTo) params.append('to', dateTo);
+        if (filterOrderType) params.append('orderType', filterOrderType);
+        if (filterChannel) params.append('orderChannel', filterChannel);
+        if (filterPayment) params.append('paymentMethod', filterPayment);
+        if (searchTerm.trim()) params.append('search', searchTerm.trim());
+
+        const response = await api.get(`/orders/completed?${params.toString()}`, { timeout: 30000 });
+        orders = response.data?.orders || (Array.isArray(response.data) ? response.data : []);
       }
-      if (filterOrderType) params.append('orderType', filterOrderType);
-      if (filterChannel) params.append('orderChannel', filterChannel);
-      if (filterPayment) params.append('paymentMethod', filterPayment);
-      if (searchTerm.trim()) params.append('search', searchTerm.trim());
 
-      const response = await api.get(`/orders/completed?${params.toString()}`);
-      const orders = response.data?.orders || (Array.isArray(response.data) ? response.data : []);
-
-      if (orders.length === 0) {
+      if (!orders || orders.length === 0) {
         alert('No hay pedidos para exportar');
         return;
       }
