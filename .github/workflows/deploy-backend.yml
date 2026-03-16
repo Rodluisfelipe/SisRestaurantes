@@ -24,10 +24,12 @@ jobs:
 
             echo "=== Starting deploy $(date) ==="
 
-            # Pull latest code
+            # Pull latest code (preserving .env)
             cd /opt/sisrestaurantes
+            cp Backend/.env /tmp/.env.backup 2>/dev/null || true
             git fetch origin produccion
             git reset --hard origin/produccion
+            cp /tmp/.env.backup Backend/.env 2>/dev/null || true
 
             # Rebuild and restart container
             cd Backend
