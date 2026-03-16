@@ -457,9 +457,8 @@ router.post("/", (req, res, next) => {
         return res.status(409).json({ message: 'Este horario ya no está disponible. Por favor selecciona otro.' });
       }
 
-      // Determine initial booking status
-      const config = await BusinessConfig.findById(businessObjectId).select('bookingSettings').lean();
-      resolvedBookingStatus = config?.bookingSettings?.autoConfirm !== false ? 'confirmed' : 'pending';
+      // Bookings always start as pending — admin assigns staff and confirms manually
+      resolvedBookingStatus = 'pending';
     }
 
     // Create the order
@@ -559,14 +558,7 @@ router.post("/", (req, res, next) => {
     // Emit booking-specific event for admin agenda
     if (savedOrder.isBooking) {
       socketService.emitToBusiness(businessObjectId.toString(), "new_booking", savedOrder);
-      
-      // Send booking confirmation email (best-effort)
-      try {
-        const { sendBookingCreatedEmail } = require('../services/emailService');
-        sendBookingCreatedEmail(businessObjectId.toString(), savedOrder);
-      } catch (emailErr) {
-        logger.warn('Failed to send booking email', { error: emailErr.message });
-      }
+      // Email is NOT sent here — it's sent when admin confirms the booking
     }
     
     // Enviar notificación push por nuevo pedido
@@ -603,9 +595,10 @@ router.post("/", (req, res, next) => {
 });
 
 // Get all completed orders for a business (historical view) — ADMIN ONLY
+// Supports: ?businessId=&page=&limit=&from=&to=&orderType=&orderChannel=&paymentMethod=&search=
 router.get("/completed", tenantAuth, async (req, res) => {
   try {
-    const { businessId, page, limit: queryLimit } = req.query;
+    const { businessId, page, limit: queryLimit, from, to, orderType, orderChannel, paymentMethod, search } = req.query;
     
     if (!businessId) {
       return res.status(400).json({ message: "Business ID is required" });
@@ -620,13 +613,48 @@ router.get("/completed", tenantAuth, async (req, res) => {
     
     const businessObjectId = businessResult.businessId;
     
+    // Build filter
+    const filter = { businessId: businessObjectId };
+
+    // Date range filter
+    if (from || to) {
+      filter.completedAt = {};
+      if (from) filter.completedAt.$gte = new Date(from);
+      if (to) {
+        const toDate = new Date(to);
+        toDate.setHours(23, 59, 59, 999);
+        filter.completedAt.$lte = toDate;
+      }
+    }
+
+    // Optional filters
+    const allowedOrderTypes = ['inSite', 'takeaway', 'delivery'];
+    if (orderType && allowedOrderTypes.includes(orderType)) {
+      filter.orderType = orderType;
+    }
+    const allowedChannels = ['whatsapp', 'inapp', 'pos'];
+    if (orderChannel && allowedChannels.includes(orderChannel)) {
+      filter.orderChannel = orderChannel;
+    }
+    const allowedPayments = ['cash', 'efectivo', 'nequi', 'daviplata', 'transfer', 'transferencia', 'other'];
+    if (paymentMethod && allowedPayments.includes(paymentMethod)) {
+      filter.paymentMethod = paymentMethod;
+    }
+
+    // Text search (customer name or order number)
+    if (search && search.trim()) {
+      const s = search.trim();
+      filter.$or = [
+        { customerName: { $regex: s, $options: 'i' } },
+        { orderNumber: { $regex: s, $options: 'i' } },
+      ];
+    }
+
     // Pagination (optional — without params returns all for backward compat)
     const pageNum = parseInt(page) || 0;
-    const limitNum = parseInt(queryLimit) || 0;
+    const limitNum = Math.min(parseInt(queryLimit) || 0, 1000);
     
-    let query = CompletedOrder.find({
-      businessId: businessObjectId
-    }).sort({ completedAt: -1 });
+    let query = CompletedOrder.find(filter).sort({ completedAt: -1 });
     
     if (limitNum > 0) {
       query = query.limit(limitNum).skip(pageNum > 0 ? (pageNum - 1) * limitNum : 0);
@@ -634,11 +662,13 @@ router.get("/completed", tenantAuth, async (req, res) => {
       query = query.limit(500);
     }
     
-    const completedOrders = await query.lean();
+    const [completedOrders, total] = await Promise.all([
+      query.lean(),
+      CompletedOrder.countDocuments(filter),
+    ]);
     
-    // If paginated, include total count
+    // Always return structured response
     if (limitNum > 0) {
-      const total = await CompletedOrder.countDocuments({ businessId: businessObjectId });
       return res.json({
         orders: completedOrders,
         pagination: {

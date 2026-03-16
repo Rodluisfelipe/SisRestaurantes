@@ -1,15 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
 import { logSystem } from '../utils/systemLogger';
+import { generateDailyReportPDF } from './DailyReportPDF';
 import {
   FaClipboardList, FaDollarSign, FaChartBar, FaHamburger,
   FaCalendarDay, FaHistory, FaSync, FaSearch,
   FaTrophy, FaLightbulb, FaTruck, FaChair, FaShoppingBag,
   FaUser, FaPhone, FaMapMarkerAlt, FaTimes, FaEye,
-  FaFileInvoiceDollar, FaInfoCircle, FaArrowUp, FaArrowDown
+  FaFileInvoiceDollar, FaInfoCircle, FaArrowUp, FaArrowDown,
+  FaFilePdf, FaFileCsv, FaFilter, FaDownload, FaChevronLeft, FaChevronRight,
+  FaWhatsapp, FaMobileAlt, FaCashRegister, FaMoneyBillWave
 } from 'react-icons/fa';
 
 function EnhancedCompletedOrders() {
@@ -37,6 +40,24 @@ function EnhancedCompletedOrders() {
   const [viewMode, setViewMode] = useState('today');
   const [topSellingItems, setTopSellingItems] = useState([]);
   const [insights, setInsights] = useState([]);
+
+  // Advanced filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterOrderType, setFilterOrderType] = useState('');
+  const [filterChannel, setFilterChannel] = useState('');
+  const [filterPayment, setFilterPayment] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  // Pagination for history
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const PAGE_SIZE = 50;
+
+  // Export states
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingCSV, setExportingCSV] = useState(false);
 
   // Fetch completed orders for today
   const fetchCompletedOrders = async () => {
@@ -79,17 +100,213 @@ function EnhancedCompletedOrders() {
     }
   };
 
-  // Fetch all completed orders (for historical view)
-  const fetchAllCompletedOrders = async () => {
+  // Fetch all completed orders (for historical view) with filters + pagination
+  const fetchAllCompletedOrders = useCallback(async (page = 1) => {
+    if (viewMode !== 'all') return;
+    setLoading(true);
     try {
-      const response = await api.get(`/orders/completed?businessId=${businessId}`);
-      if (response.data) {
+      const params = new URLSearchParams({
+        businessId,
+        page: page.toString(),
+        limit: PAGE_SIZE.toString(),
+      });
+      if (dateFrom) params.append('from', dateFrom);
+      if (dateTo) params.append('to', dateTo);
+      if (filterOrderType) params.append('orderType', filterOrderType);
+      if (filterChannel) params.append('orderChannel', filterChannel);
+      if (filterPayment) params.append('paymentMethod', filterPayment);
+      if (searchTerm.trim()) params.append('search', searchTerm.trim());
+
+      const response = await api.get(`/orders/completed?${params.toString()}`);
+      if (response.data?.orders) {
+        setAllTimeOrders(response.data.orders);
+        setCurrentPage(response.data.pagination?.current || 1);
+        setTotalPages(response.data.pagination?.total || 1);
+        setTotalOrders(response.data.pagination?.totalOrders || response.data.orders.length);
+      } else if (Array.isArray(response.data)) {
         setAllTimeOrders(response.data);
+        setTotalPages(1);
+        setTotalOrders(response.data.length);
       }
+      setError(null);
     } catch (err) {
       logSystem('Error fetching all completed orders: ' + err.message, 'error');
+      setError('No se pudieron cargar el historial');
+    } finally {
+      setLoading(false);
+    }
+  }, [businessId, dateFrom, dateTo, filterOrderType, filterChannel, filterPayment, searchTerm, viewMode]);
+
+  // --- Export: CSV ---
+  const exportCSV = async () => {
+    setExportingCSV(true);
+    try {
+      // Fetch ALL matching orders for export (no pagination limit)
+      const params = new URLSearchParams({ businessId });
+      if (viewMode === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        params.append('from', today);
+        params.append('to', today);
+      } else {
+        if (dateFrom) params.append('from', dateFrom);
+        if (dateTo) params.append('to', dateTo);
+      }
+      if (filterOrderType) params.append('orderType', filterOrderType);
+      if (filterChannel) params.append('orderChannel', filterChannel);
+      if (filterPayment) params.append('paymentMethod', filterPayment);
+      if (searchTerm.trim()) params.append('search', searchTerm.trim());
+
+      const response = await api.get(`/orders/completed?${params.toString()}`);
+      const orders = response.data?.orders || (Array.isArray(response.data) ? response.data : []);
+
+      if (orders.length === 0) {
+        alert('No hay pedidos para exportar');
+        return;
+      }
+
+      // Build CSV
+      const orderTypeLabel = (t) => t === 'delivery' ? 'Domicilio' : t === 'takeaway' ? 'Para llevar' : 'En sitio';
+      const channelLabel = (c) => c === 'pos' ? 'POS' : c === 'inapp' ? 'In-App' : 'WhatsApp';
+      const paymentLabel = (p) => {
+        const map = { cash: 'Efectivo', efectivo: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia', other: 'Otro' };
+        return map[p] || p || 'N/A';
+      };
+
+      const headers = [
+        '# Pedido', 'Fecha', 'Hora', 'Cliente', 'Teléfono', 'Tipo', 'Canal',
+        'Método de Pago', 'Mesa/Hab', 'Dirección', 'Productos', 'Cant. Items',
+        'Subtotal', 'Descuento', 'Envío', 'Total'
+      ];
+
+      const rows = orders.map(o => {
+        const date = new Date(o.completedAt || o.createdAt);
+        const itemsSummary = (o.items || []).map(i => `${i.quantity}x ${i.name}`).join(' | ');
+        const totalItems = (o.items || []).reduce((s, i) => s + i.quantity, 0);
+        return [
+          o.orderNumber,
+          date.toLocaleDateString('es-CO'),
+          date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+          o.customerName || '',
+          o.phone || '',
+          orderTypeLabel(o.orderType),
+          channelLabel(o.orderChannel),
+          paymentLabel(o.paymentMethod),
+          o.tableNumber || '',
+          o.address || '',
+          `"${itemsSummary}"`,
+          totalItems,
+          o.totalAmount || 0,
+          o.discountAmount || 0,
+          o.deliveryFee || 0,
+          o.finalAmount || o.totalAmount || 0,
+        ];
+      });
+
+      // Summary row
+      const totalRevenue = orders.reduce((s, o) => s + (o.finalAmount || o.totalAmount || 0), 0);
+      const totalDiscount = orders.reduce((s, o) => s + (o.discountAmount || 0), 0);
+      const totalDeliveryFees = orders.reduce((s, o) => s + (o.deliveryFee || 0), 0);
+      rows.push([]);
+      rows.push(['RESUMEN', '', '', '', '', '', '', '', '', '', '', orders.length, '', totalDiscount, totalDeliveryFees, totalRevenue]);
+
+      const csvContent = [headers, ...rows].map(r => r.map(v => {
+        const str = String(v ?? '');
+        return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str.replace(/"/g, '""')}"` : str;
+      }).join(',')).join('\n');
+
+      // BOM for Excel compatibility  
+      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const dateStr = viewMode === 'today' ? new Date().toISOString().split('T')[0] : `${dateFrom || 'inicio'}_${dateTo || 'fin'}`;
+      link.href = url;
+      link.download = `Pedidos_${businessConfig?.businessName || 'reporte'}_${dateStr}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      logSystem('Error exporting CSV: ' + err.message, 'error');
+      alert('Error al exportar CSV');
+    } finally {
+      setExportingCSV(false);
     }
   };
+
+  // --- Export: PDF ---
+  const exportPDF = async () => {
+    setExportingPDF(true);
+    try {
+      let data;
+      if (viewMode === 'today') {
+        // Use the already-loaded today data
+        data = { stats, orders: completedOrders, reportDate: new Date().toISOString() };
+      } else {
+        // Fetch filtered data for PDF
+        const params = new URLSearchParams({ businessId });
+        if (dateFrom) params.append('from', dateFrom);
+        if (dateTo) params.append('to', dateTo);
+        if (filterOrderType) params.append('orderType', filterOrderType);
+        if (filterChannel) params.append('orderChannel', filterChannel);
+        if (filterPayment) params.append('paymentMethod', filterPayment);
+        if (searchTerm.trim()) params.append('search', searchTerm.trim());
+
+        const response = await api.get(`/orders/completed?${params.toString()}`);
+        const orders = response.data?.orders || (Array.isArray(response.data) ? response.data : []);
+        if (orders.length === 0) {
+          alert('No hay pedidos para generar el PDF');
+          return;
+        }
+
+        // Build stats from fetched orders
+        const pdfStats = {
+          totalOrders: orders.length,
+          totalSales: orders.reduce((s, o) => s + (o.finalAmount || o.totalAmount || 0), 0),
+          totalAmount: orders.reduce((s, o) => s + (o.totalAmount || 0), 0),
+          ordersByType: { inSite: { count: 0, total: 0 }, takeaway: { count: 0, total: 0 }, delivery: { count: 0, total: 0 } },
+          topSellingItems: [],
+        };
+        const itemCounts = {};
+        orders.forEach(o => {
+          const type = o.orderType || 'inSite';
+          if (pdfStats.ordersByType[type]) {
+            pdfStats.ordersByType[type].count++;
+            pdfStats.ordersByType[type].total += (o.finalAmount || o.totalAmount || 0);
+          }
+          (o.items || []).forEach(item => {
+            if (!itemCounts[item.name]) itemCounts[item.name] = { count: 0, total: 0 };
+            itemCounts[item.name].count += item.quantity;
+            itemCounts[item.name].total += item.price * item.quantity;
+          });
+        });
+        pdfStats.topSellingItems = Object.entries(itemCounts)
+          .map(([name, d]) => ({ name, ...d }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10);
+
+        data = { stats: pdfStats, orders, reportDate: dateFrom || new Date().toISOString() };
+      }
+
+      await generateDailyReportPDF(data, businessConfig);
+    } catch (err) {
+      logSystem('Error exporting PDF: ' + err.message, 'error');
+      alert('Error al generar el PDF');
+    } finally {
+      setExportingPDF(false);
+    }
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilterOrderType('');
+    setFilterChannel('');
+    setFilterPayment('');
+    setDateFrom('');
+    setDateTo('');
+    setSearchTerm('');
+  };
+
+  const hasActiveFilters = filterOrderType || filterChannel || filterPayment || dateFrom || dateTo;
 
   // Generate insights and recommendations
   const generateInsights = (stats, orders) => {
@@ -199,8 +416,11 @@ function EnhancedCompletedOrders() {
   useEffect(() => {
     if (!businessId) return;
     
-    fetchCompletedOrders();
-    fetchAllCompletedOrders();
+    if (viewMode === 'today') {
+      fetchCompletedOrders();
+    } else {
+      fetchAllCompletedOrders(1);
+    }
     
     // Socket connection for real-time updates
     if (socket && !socket.connected) {
@@ -212,8 +432,8 @@ function EnhancedCompletedOrders() {
       
       socket.on('order_updated', (updatedOrder) => {
         if (updatedOrder.status === 'completed') {
-          fetchCompletedOrders();
-          fetchAllCompletedOrders();
+          if (viewMode === 'today') fetchCompletedOrders();
+          else fetchAllCompletedOrders(currentPage);
         }
       });
     }
@@ -223,7 +443,17 @@ function EnhancedCompletedOrders() {
         socket.off('order_updated');
       }
     };
-  }, [businessId]);
+  }, [businessId, viewMode]);
+
+  // Re-fetch history when filters change (debounced for search)
+  useEffect(() => {
+    if (viewMode !== 'all' || !businessId) return;
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      fetchAllCompletedOrders(1);
+    }, searchTerm ? 400 : 0);
+    return () => clearTimeout(timer);
+  }, [dateFrom, dateTo, filterOrderType, filterChannel, filterPayment, searchTerm]);
 
   // Show order details
   const showOrderDetails = (order) => {
@@ -257,11 +487,12 @@ function EnhancedCompletedOrders() {
   };
 
   // Filter orders based on search term and view mode
+  // For "today" mode: client-side filter. For "all" mode: server-side (already filtered).
   const getFilteredOrders = () => {
-    const ordersToFilter = viewMode === 'today' ? completedOrders : allTimeOrders;
-    return ordersToFilter.filter(order => 
+    if (viewMode === 'all') return allTimeOrders;
+    return completedOrders.filter(order => 
       searchTerm 
-        ? order.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ? (order.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
           order.orderNumber.toString().includes(searchTerm)
         : true
     );
@@ -507,61 +738,171 @@ function EnhancedCompletedOrders() {
 
   return (
     <div className="space-y-4">
-      {/* Action Bar: view toggle + search + refresh */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        {/* View mode pills */}
-        <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
-          <button
-            onClick={() => setViewMode('today')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-              viewMode === 'today'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <FaCalendarDay className="text-[10px]" />
-            <span>Cierre del Día</span>
-          </button>
-          <button
-            onClick={() => setViewMode('all')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-              viewMode === 'all'
-                ? 'bg-white text-slate-900 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            <FaHistory className="text-[10px]" />
-            <span>Historial</span>
-          </button>
+      {/* Action Bar: view toggle + search + filters + export + refresh */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          {/* View mode pills */}
+          <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('today')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                viewMode === 'today'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <FaCalendarDay className="text-[10px]" />
+              <span>Cierre del Día</span>
+            </button>
+            <button
+              onClick={() => setViewMode('all')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                viewMode === 'all'
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <FaHistory className="text-[10px]" />
+              <span>Historial</span>
+            </button>
+          </div>
+
+          {/* Right side: search + filter toggle + export + refresh */}
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            <div className="relative flex-1 sm:flex-none">
+              <FaSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+              <input
+                type="text"
+                placeholder="Buscar cliente o #..."
+                className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {/* Filter toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                hasActiveFilters
+                  ? 'bg-blue-50 border-blue-300 text-blue-700'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <FaFilter className="text-[10px]" />
+              <span>Filtros</span>
+              {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+            </button>
+
+            {/* Export buttons */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={exportPDF}
+                disabled={exportingPDF}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition-colors disabled:opacity-50"
+                title="Exportar PDF"
+              >
+                {exportingPDF ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-500" /> : <FaFilePdf className="text-[10px]" />}
+                <span className="hidden sm:inline">PDF</span>
+              </button>
+              <button
+                onClick={exportCSV}
+                disabled={exportingCSV}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
+                title="Exportar CSV (Excel)"
+              >
+                {exportingCSV ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-500" /> : <FaFileCsv className="text-[10px]" />}
+                <span className="hidden sm:inline">CSV</span>
+              </button>
+            </div>
+
+            {/* Refresh */}
+            {viewMode === 'today' && (
+              <button
+                onClick={generateDailyClosingReport}
+                disabled={generatingReport}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {generatingReport ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
+                ) : (
+                  <FaSync className="text-[10px]" />
+                )}
+                <span>Actualizar</span>
+              </button>
+            )}
+          </div>
         </div>
 
-        {/* Search + refresh */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:flex-none">
-            <FaSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
-            <input
-              type="text"
-              placeholder="Buscar..."
-              className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        {/* Advanced Filters Panel */}
+        {showFilters && (
+          <div className="bg-slate-50 rounded-xl border border-slate-200 p-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {/* Date From */}
+              <div>
+                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Desde</label>
+                <input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              {/* Date To */}
+              <div>
+                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Hasta</label>
+                <input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+              {/* Order Type */}
+              <div>
+                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Tipo</label>
+                <select value={filterOrderType} onChange={(e) => setFilterOrderType(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500">
+                  <option value="">Todos</option>
+                  <option value="inSite">En sitio</option>
+                  <option value="takeaway">Para llevar</option>
+                  <option value="delivery">Domicilio</option>
+                </select>
+              </div>
+              {/* Channel */}
+              <div>
+                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Canal</label>
+                <select value={filterChannel} onChange={(e) => setFilterChannel(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500">
+                  <option value="">Todos</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="inapp">In-App</option>
+                  <option value="pos">POS</option>
+                </select>
+              </div>
+              {/* Payment */}
+              <div>
+                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Pago</label>
+                <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500">
+                  <option value="">Todos</option>
+                  <option value="cash">Efectivo</option>
+                  <option value="nequi">Nequi</option>
+                  <option value="daviplata">Daviplata</option>
+                  <option value="transfer">Transferencia</option>
+                  <option value="other">Otro</option>
+                </select>
+              </div>
+              {/* Clear */}
+              <div className="flex items-end">
+                <button onClick={clearFilters}
+                  className="w-full px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">
+                  Limpiar filtros
+                </button>
+              </div>
+            </div>
           </div>
-          {viewMode === 'today' && (
-            <button
-              onClick={generateDailyClosingReport}
-              disabled={generatingReport}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors disabled:opacity-50"
-            >
-              {generatingReport ? (
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" />
-              ) : (
-                <FaSync className="text-[10px]" />
-              )}
-              <span>Actualizar</span>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Stats Row — compact flat cards */}
@@ -628,14 +969,18 @@ function EnhancedCompletedOrders() {
           <h2 className="text-sm font-semibold text-slate-800">
             {viewMode === 'today' ? (isService ? 'Citas del Día' : 'Pedidos del Día') : (isService ? 'Todas las Citas' : 'Todos los Pedidos')}
           </h2>
-          <span className="text-xs text-slate-500">{filteredOrders.length} {isService ? 'citas' : 'pedidos'}</span>
+          <span className="text-xs text-slate-500">
+            {viewMode === 'all' ? `${totalOrders} total` : `${filteredOrders.length}`} {isService ? 'citas' : 'pedidos'}
+          </span>
         </div>
 
         {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <FaShoppingBag className="text-3xl text-slate-300 mb-3" />
             <p className="text-sm text-slate-500 font-medium">{isService ? 'Sin citas completadas' : 'Sin pedidos completados'}</p>
-            <p className="text-xs text-slate-400 mt-1">{isService ? 'Las citas completadas aparecerán aquí' : 'Los pedidos completados aparecerán aquí'}</p>
+            <p className="text-xs text-slate-400 mt-1">
+              {hasActiveFilters ? 'Intenta ajustar los filtros' : (isService ? 'Las citas completadas aparecerán aquí' : 'Los pedidos completados aparecerán aquí')}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -645,9 +990,11 @@ function EnhancedCompletedOrders() {
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">#</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Tipo</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Canal</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden md:table-cell">Pago</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Detalle</th>
                   <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total</th>
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Hora</th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Fecha</th>
                   <th className="px-4 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
@@ -657,8 +1004,9 @@ function EnhancedCompletedOrders() {
                     <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">
                       #{order.orderNumber}
                     </td>
-                    <td className="px-4 py-2.5 text-sm text-slate-600">
-                      {order.customerName || 'Sin nombre'}
+                    <td className="px-4 py-2.5">
+                      <div className="text-sm text-slate-600">{order.customerName || 'Sin nombre'}</div>
+                      {order.phone && <div className="text-[11px] text-slate-400">{order.phone}</div>}
                     </td>
                     <td className="px-4 py-2.5">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
@@ -673,6 +1021,25 @@ function EnhancedCompletedOrders() {
                          <><FaChair className="text-[9px]" /> En sitio</>}
                       </span>
                     </td>
+                    <td className="px-4 py-2.5 hidden md:table-cell">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${
+                        order.orderChannel === 'pos' ? 'bg-slate-100 text-slate-600' :
+                        order.orderChannel === 'inapp' ? 'bg-cyan-50 text-cyan-700' :
+                        'bg-green-50 text-green-700'
+                      }`}>
+                        {order.orderChannel === 'pos' ? 'POS' :
+                         order.orderChannel === 'inapp' ? 'In-App' : 'WhatsApp'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 hidden md:table-cell">
+                      <span className="text-xs text-slate-600">
+                        {order.paymentMethod === 'cash' || order.paymentMethod === 'efectivo' ? '💵 Efectivo' :
+                         order.paymentMethod === 'nequi' ? '📱 Nequi' :
+                         order.paymentMethod === 'daviplata' ? '📱 Daviplata' :
+                         order.paymentMethod === 'transfer' || order.paymentMethod === 'transferencia' ? '🏦 Transf.' :
+                         order.paymentMethod ? order.paymentMethod : '—'}
+                      </span>
+                    </td>
                     <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell max-w-[150px] truncate">
                       {order.orderType === 'delivery'
                         ? order.address
@@ -681,7 +1048,7 @@ function EnhancedCompletedOrders() {
                         : '—'}
                     </td>
                     <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">
-                      ${order.totalAmount.toLocaleString()}
+                      ${(order.finalAmount || order.totalAmount || 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell">
                       {new Date(order.completedAt || order.createdAt).toLocaleString('es-ES', {
@@ -702,6 +1069,31 @@ function EnhancedCompletedOrders() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination — only for history mode */}
+        {viewMode === 'all' && totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              Página {currentPage} de {totalPages} ({totalOrders} pedidos)
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => { const p = currentPage - 1; setCurrentPage(p); fetchAllCompletedOrders(p); }}
+                disabled={currentPage <= 1}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <FaChevronLeft className="text-xs" />
+              </button>
+              <button
+                onClick={() => { const p = currentPage + 1; setCurrentPage(p); fetchAllCompletedOrders(p); }}
+                disabled={currentPage >= totalPages}
+                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <FaChevronRight className="text-xs" />
+              </button>
+            </div>
           </div>
         )}
       </div>
