@@ -42,7 +42,7 @@ const BusinessSettings = () => {
   const [isEditingLogo, setIsEditingLogo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [emailSettings, setEmailSettings] = useState({
-    enabled: false, senderEmail: '', senderName: '', appPassword: '',
+    enabled: false,
     sendOnBookingCreated: true, sendOnBookingConfirmed: true,
     sendOnBookingCancelled: true, sendReminder: true
   });
@@ -84,14 +84,10 @@ const BusinessSettings = () => {
           setEmailSettings(prev => ({
             ...prev,
             enabled: response.data.emailSettings.enabled || false,
-            senderEmail: response.data.emailSettings.senderEmail || '',
-            senderName: response.data.emailSettings.senderName || '',
-            appPassword: '', // never returned from server
             sendOnBookingCreated: response.data.emailSettings.sendOnBookingCreated !== false,
             sendOnBookingConfirmed: response.data.emailSettings.sendOnBookingConfirmed !== false,
             sendOnBookingCancelled: response.data.emailSettings.sendOnBookingCancelled !== false,
-            sendReminder: response.data.emailSettings.sendReminder !== false,
-            hasAppPassword: response.data.emailSettings.hasAppPassword || false
+            sendReminder: response.data.emailSettings.sendReminder !== false
           }));
         }
       }
@@ -160,22 +156,17 @@ const BusinessSettings = () => {
     setEmailSaving(true);
     setEmailMsg({ type: '', text: '' });
     try {
-      const payload = {
+      await api.put('/email/settings', {
         businessId,
         enabled: emailSettings.enabled,
-        senderEmail: emailSettings.senderEmail,
-        senderName: emailSettings.senderName,
         sendOnBookingCreated: emailSettings.sendOnBookingCreated,
         sendOnBookingConfirmed: emailSettings.sendOnBookingConfirmed,
         sendOnBookingCancelled: emailSettings.sendOnBookingCancelled,
         sendReminder: emailSettings.sendReminder
-      };
-      if (emailSettings.appPassword) payload.appPassword = emailSettings.appPassword;
-      await api.put('/email/settings', payload);
+      });
       setEmailMsg({ type: 'success', text: 'Configuración de correo guardada' });
-      setEmailSettings(prev => ({ ...prev, appPassword: '', hasAppPassword: true }));
     } catch (err) {
-      setEmailMsg({ type: 'error', text: err.response?.data?.error || 'Error al guardar' });
+      setEmailMsg({ type: 'error', text: err.response?.data?.message || 'Error al guardar' });
     }
     setEmailSaving(false);
   };
@@ -184,15 +175,10 @@ const BusinessSettings = () => {
     setEmailTesting(true);
     setEmailMsg({ type: '', text: '' });
     try {
-      const payload = {
-        businessId,
-        senderEmail: emailSettings.senderEmail,
-        appPassword: emailSettings.appPassword
-      };
-      const res = await api.post('/email/test', payload);
+      const res = await api.post('/email/test', { businessId });
       setEmailMsg({ type: 'success', text: res.data.message || 'Correo de prueba enviado' });
     } catch (err) {
-      setEmailMsg({ type: 'error', text: err.response?.data?.error || 'Error al enviar correo de prueba' });
+      setEmailMsg({ type: 'error', text: err.response?.data?.message || 'Error al enviar correo de prueba' });
     }
     setEmailTesting(false);
   };
@@ -757,50 +743,8 @@ const BusinessSettings = () => {
           {emailSettings.enabled && (
             <div className="p-4 space-y-3">
               <p className="text-[10px] text-slate-500">
-                Configura tu cuenta de Gmail con una <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="text-indigo-500 underline">Clave de Aplicación</a> para enviar correos automáticos a tus clientes.
+                Los correos se envían automáticamente desde <strong>noreply@menuby.tech</strong> cuando tus clientes agendan citas.
               </p>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Correo Gmail
-                </label>
-                <input
-                  type="email"
-                  value={emailSettings.senderEmail}
-                  onChange={(e) => setEmailSettings(prev => ({ ...prev, senderEmail: e.target.value }))}
-                  placeholder="tu-negocio@gmail.com"
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Clave de Aplicación
-                </label>
-                <input
-                  type="password"
-                  value={emailSettings.appPassword}
-                  onChange={(e) => setEmailSettings(prev => ({ ...prev, appPassword: e.target.value }))}
-                  placeholder={emailSettings.hasAppPassword ? '••••••••••••••••' : 'xxxx xxxx xxxx xxxx'}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300"
-                />
-                {emailSettings.hasAppPassword && (
-                  <p className="text-[9px] text-emerald-600 mt-0.5">Clave configurada. Deja vacío para mantener la actual.</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Nombre del remitente
-                </label>
-                <input
-                  type="text"
-                  value={emailSettings.senderName}
-                  onChange={(e) => setEmailSettings(prev => ({ ...prev, senderName: e.target.value }))}
-                  placeholder={settings.businessName || 'Mi Negocio'}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-300 focus:border-indigo-300"
-                />
-              </div>
 
               <div className="border-t border-slate-100 pt-3 space-y-2">
                 <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Enviar correo cuando:</p>
@@ -839,7 +783,7 @@ const BusinessSettings = () => {
                 <button
                   type="button"
                   onClick={handleTestEmail}
-                  disabled={emailTesting || !emailSettings.senderEmail || (!emailSettings.appPassword && !emailSettings.hasAppPassword)}
+                  disabled={emailTesting}
                   className="flex-1 px-3 py-2 text-[10px] font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors"
                 >
                   {emailTesting ? 'Enviando...' : 'Enviar Prueba'}
@@ -847,7 +791,7 @@ const BusinessSettings = () => {
                 <button
                   type="button"
                   onClick={handleSaveEmail}
-                  disabled={emailSaving || !emailSettings.senderEmail}
+                  disabled={emailSaving}
                   className="flex-1 px-3 py-2 text-[10px] font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition-colors"
                 >
                   {emailSaving ? 'Guardando...' : 'Guardar Correo'}
