@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
 import { logSystem } from '../utils/systemLogger';
 import { generateDailyReportPDF } from './DailyReportPDF';
+import ExcelJS from 'exceljs';
 import {
   FaClipboardList, FaDollarSign, FaChartBar, FaHamburger,
   FaCalendarDay, FaHistory, FaSync, FaSearch,
   FaTrophy, FaLightbulb, FaTruck, FaChair, FaShoppingBag,
   FaUser, FaPhone, FaMapMarkerAlt, FaTimes, FaEye,
   FaFileInvoiceDollar, FaInfoCircle, FaArrowUp, FaArrowDown,
-  FaFilePdf, FaFileCsv, FaFilter, FaDownload, FaChevronLeft, FaChevronRight,
+  FaFilePdf, FaFileExcel, FaFilter, FaDownload, FaChevronLeft, FaChevronRight,
   FaWhatsapp, FaMobileAlt, FaCashRegister, FaMoneyBillWave
 } from 'react-icons/fa';
 
@@ -57,11 +58,16 @@ function EnhancedCompletedOrders() {
 
   // Export states
   const [exportingPDF, setExportingPDF] = useState(false);
-  const [exportingCSV, setExportingCSV] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  // Separate loading for data refreshes (filters) vs initial load
+  const [refreshing, setRefreshing] = useState(false);
+  const isInitialLoad = useRef(true);
 
   // Fetch completed orders for today
-  const fetchCompletedOrders = async () => {
-    setLoading(true);
+  const fetchCompletedOrders = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
       const response = await api.post('/orders/daily-closing', { 
         businessId: businessId
@@ -97,13 +103,15 @@ function EnhancedCompletedOrders() {
       setCompletedOrders([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   // Fetch all completed orders (for historical view) with filters + pagination
-  const fetchAllCompletedOrders = useCallback(async (page = 1) => {
+  const fetchAllCompletedOrders = useCallback(async (page = 1, isRefresh = false) => {
     if (viewMode !== 'all') return;
-    setLoading(true);
+    if (isRefresh || !isInitialLoad.current) setRefreshing(true);
+    else setLoading(true);
     try {
       const params = new URLSearchParams({
         businessId,
@@ -134,14 +142,15 @@ function EnhancedCompletedOrders() {
       setError('No se pudieron cargar el historial');
     } finally {
       setLoading(false);
+      setRefreshing(false);
+      isInitialLoad.current = false;
     }
   }, [businessId, dateFrom, dateTo, filterOrderType, filterChannel, filterPayment, searchTerm, viewMode]);
 
-  // --- Export: CSV ---
-  const exportCSV = async () => {
-    setExportingCSV(true);
+  // --- Export: Excel (.xlsx) with formatting ---
+  const exportExcel = async () => {
+    setExportingExcel(true);
     try {
-      // Fetch ALL matching orders for export (no pagination limit)
       const params = new URLSearchParams({ businessId });
       if (viewMode === 'today') {
         const today = new Date().toISOString().split('T')[0];
@@ -164,7 +173,6 @@ function EnhancedCompletedOrders() {
         return;
       }
 
-      // Build CSV
       const orderTypeLabel = (t) => t === 'delivery' ? 'Domicilio' : t === 'takeaway' ? 'Para llevar' : 'En sitio';
       const channelLabel = (c) => c === 'pos' ? 'POS' : c === 'inapp' ? 'In-App' : 'WhatsApp';
       const paymentLabel = (p) => {
@@ -172,64 +180,176 @@ function EnhancedCompletedOrders() {
         return map[p] || p || 'N/A';
       };
 
-      const headers = [
-        '# Pedido', 'Fecha', 'Hora', 'Cliente', 'Teléfono', 'Tipo', 'Canal',
-        'Método de Pago', 'Mesa/Hab', 'Dirección', 'Productos', 'Cant. Items',
-        'Subtotal', 'Descuento', 'Envío', 'Total'
+      const wb = new ExcelJS.Workbook();
+      wb.creator = businessConfig?.businessName || 'MenuBy';
+      wb.created = new Date();
+
+      const ws = wb.addWorksheet('Pedidos', { views: [{ state: 'frozen', ySplit: 3 }] });
+
+      const brandColor = 'FF2563EB';
+      const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: brandColor } };
+      const headerFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      const borderStyle = { style: 'thin', color: { argb: 'FFD1D5DB' } };
+      const allBorders = { top: borderStyle, bottom: borderStyle, left: borderStyle, right: borderStyle };
+      const currencyFormat = '"$"#,##0';
+
+      // Title
+      ws.mergeCells('A1:P1');
+      const titleCell = ws.getCell('A1');
+      titleCell.value = `${businessConfig?.businessName || 'Reporte'} — Pedidos Completados`;
+      titleCell.font = { bold: true, size: 16, color: { argb: brandColor } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      ws.getRow(1).height = 32;
+
+      // Subtitle
+      ws.mergeCells('A2:P2');
+      const subtitleCell = ws.getCell('A2');
+      const dateLabel = viewMode === 'today'
+        ? new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })
+        : `${dateFrom || '—'} a ${dateTo || '—'}`;
+      subtitleCell.value = `Fecha: ${dateLabel}  |  Total: ${orders.length} pedidos  |  Generado: ${new Date().toLocaleString('es-CO')}`;
+      subtitleCell.font = { size: 10, color: { argb: 'FF6B7280' }, italic: true };
+      subtitleCell.alignment = { horizontal: 'center' };
+      ws.getRow(2).height = 20;
+
+      // Headers
+      const headers = ['# Pedido', 'Fecha', 'Hora', 'Cliente', 'Teléfono', 'Tipo', 'Canal', 'Método de Pago', 'Mesa/Hab', 'Dirección', 'Productos', 'Cant. Items', 'Subtotal', 'Descuento', 'Envío', 'Total'];
+      const headerRow = ws.addRow(headers);
+      headerRow.eachCell((cell) => {
+        cell.fill = headerFill;
+        cell.font = headerFont;
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cell.border = allBorders;
+      });
+      headerRow.height = 24;
+
+      ws.columns = [
+        { width: 10 }, { width: 13 }, { width: 8 }, { width: 22 }, { width: 15 },
+        { width: 13 }, { width: 11 }, { width: 15 }, { width: 10 }, { width: 25 },
+        { width: 40 }, { width: 10 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 14 },
       ];
 
-      const rows = orders.map(o => {
+      const typeColors = { 'En sitio': 'FFDBEAFE', 'Para llevar': 'FFFEF3C7', 'Domicilio': 'FFF3E8FF' };
+
+      // Data rows
+      orders.forEach((o, idx) => {
         const date = new Date(o.completedAt || o.createdAt);
-        const itemsSummary = (o.items || []).map(i => `${i.quantity}x ${i.name}`).join(' | ');
+        const itemsSummary = (o.items || []).map(i => `${i.quantity}x ${i.name}`).join('\n');
         const totalItems = (o.items || []).reduce((s, i) => s + i.quantity, 0);
-        return [
+        const typeLabel = orderTypeLabel(o.orderType);
+
+        const row = ws.addRow([
           o.orderNumber,
           date.toLocaleDateString('es-CO'),
           date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
-          o.customerName || '',
-          o.phone || '',
-          orderTypeLabel(o.orderType),
-          channelLabel(o.orderChannel),
-          paymentLabel(o.paymentMethod),
-          o.tableNumber || '',
-          o.address || '',
-          `"${itemsSummary}"`,
-          totalItems,
-          o.totalAmount || 0,
-          o.discountAmount || 0,
-          o.deliveryFee || 0,
-          o.finalAmount || o.totalAmount || 0,
-        ];
+          o.customerName || '', o.phone || '', typeLabel, channelLabel(o.orderChannel),
+          paymentLabel(o.paymentMethod), o.tableNumber || '', o.address || '',
+          itemsSummary, totalItems,
+          o.totalAmount || 0, o.discountAmount || 0, o.deliveryFee || 0, o.finalAmount || o.totalAmount || 0,
+        ]);
+
+        const rowFill = idx % 2 === 0
+          ? { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } }
+          : { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+
+        row.eachCell((cell, colNumber) => {
+          cell.border = allBorders;
+          cell.fill = rowFill;
+          cell.alignment = { vertical: 'middle', wrapText: colNumber === 11 };
+          if ([13, 14, 15, 16].includes(colNumber)) {
+            cell.numFmt = currencyFormat;
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          }
+          if ([1, 2, 3, 6, 7, 9, 12].includes(colNumber)) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          }
+        });
+
+        const typeCell = row.getCell(6);
+        if (typeColors[typeLabel]) {
+          typeCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: typeColors[typeLabel] } };
+        }
+        row.height = Math.max(18, (itemsSummary.split('\n').length) * 14);
       });
 
-      // Summary row
+      // Summary
+      ws.addRow([]);
       const totalRevenue = orders.reduce((s, o) => s + (o.finalAmount || o.totalAmount || 0), 0);
       const totalDiscount = orders.reduce((s, o) => s + (o.discountAmount || 0), 0);
       const totalDeliveryFees = orders.reduce((s, o) => s + (o.deliveryFee || 0), 0);
-      rows.push([]);
-      rows.push(['RESUMEN', '', '', '', '', '', '', '', '', '', '', orders.length, '', totalDiscount, totalDeliveryFees, totalRevenue]);
+      const avgTicket = totalRevenue / (orders.length || 1);
 
-      const csvContent = [headers, ...rows].map(r => r.map(v => {
-        const str = String(v ?? '');
-        return str.includes(',') || str.includes('"') || str.includes('\n') ? `"${str.replace(/"/g, '""')}"` : str;
-      }).join(',')).join('\n');
+      const summaryHeaderFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+      const summaryFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      const sRow = ws.lastRow.number + 1;
+      ws.mergeCells(`A${sRow}:D${sRow}`);
+      const shCell = ws.getCell(`A${sRow}`);
+      shCell.value = 'RESUMEN';
+      shCell.fill = summaryHeaderFill;
+      shCell.font = summaryFont;
+      shCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      shCell.border = allBorders;
+      ['B', 'C', 'D'].forEach(c => { ws.getCell(`${c}${sRow}`).border = allBorders; });
+      ws.getRow(sRow).height = 24;
 
-      // BOM for Excel compatibility  
-      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const summaryLabelFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+      [['Total Pedidos', orders.length], ['Ventas Totales', totalRevenue], ['Ticket Promedio', avgTicket], ['Total Descuentos', totalDiscount], ['Total Envíos', totalDeliveryFees]].forEach(([label, value]) => {
+        const r = ws.addRow([label, '', '', value]);
+        ws.mergeCells(`A${r.number}:C${r.number}`);
+        r.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF1E3A5F' } };
+        r.getCell(1).fill = summaryLabelFill;
+        r.getCell(1).border = allBorders;
+        r.getCell(1).alignment = { horizontal: 'left', vertical: 'middle' };
+        ['B', 'C'].forEach(c => { ws.getCell(`${c}${r.number}`).fill = summaryLabelFill; ws.getCell(`${c}${r.number}`).border = allBorders; });
+        const valCell = r.getCell(4);
+        valCell.font = { bold: true, size: 12, color: { argb: 'FF059669' } };
+        valCell.border = allBorders;
+        valCell.alignment = { horizontal: 'right', vertical: 'middle' };
+        if (label !== 'Total Pedidos') valCell.numFmt = currencyFormat;
+      });
+
+      // Sheet 2: Por Tipo
+      const ws2 = wb.addWorksheet('Por Tipo');
+      ws2.columns = [{ width: 18 }, { width: 14 }, { width: 18 }];
+      const typeHeader = ws2.addRow(['Tipo de Pedido', 'Cantidad', 'Total']);
+      typeHeader.eachCell((cell) => { cell.fill = headerFill; cell.font = headerFont; cell.border = allBorders; cell.alignment = { horizontal: 'center', vertical: 'middle' }; });
+      const typeCounts = { 'En sitio': { count: 0, total: 0 }, 'Para llevar': { count: 0, total: 0 }, 'Domicilio': { count: 0, total: 0 } };
+      orders.forEach(o => { const l = orderTypeLabel(o.orderType); if (typeCounts[l]) { typeCounts[l].count++; typeCounts[l].total += (o.finalAmount || o.totalAmount || 0); } });
+      Object.entries(typeCounts).forEach(([label, data], idx) => {
+        const r = ws2.addRow([label, data.count, data.total]);
+        r.eachCell((cell, col) => {
+          cell.border = allBorders;
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: idx % 2 === 0 ? 'FFF9FAFB' : 'FFFFFFFF' } };
+          if (col === 2) cell.alignment = { horizontal: 'center' };
+          if (col === 3) { cell.numFmt = currencyFormat; cell.alignment = { horizontal: 'right' }; }
+        });
+      });
+      const totalTypeRow = ws2.addRow(['TOTAL', orders.length, totalRevenue]);
+      totalTypeRow.eachCell((cell, col) => {
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
+        cell.font = { bold: true, size: 11 };
+        cell.border = allBorders;
+        if (col === 2) cell.alignment = { horizontal: 'center' };
+        if (col === 3) { cell.numFmt = currencyFormat; cell.alignment = { horizontal: 'right' }; }
+      });
+
+      // Download
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       const dateStr = viewMode === 'today' ? new Date().toISOString().split('T')[0] : `${dateFrom || 'inicio'}_${dateTo || 'fin'}`;
       link.href = url;
-      link.download = `Pedidos_${businessConfig?.businessName || 'reporte'}_${dateStr}.csv`;
+      link.download = `Pedidos_${businessConfig?.businessName || 'reporte'}_${dateStr}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (err) {
-      logSystem('Error exporting CSV: ' + err.message, 'error');
-      alert('Error al exportar CSV');
+      logSystem('Error exporting Excel: ' + err.message, 'error');
+      alert('Error al exportar Excel');
     } finally {
-      setExportingCSV(false);
+      setExportingExcel(false);
     }
   };
 
@@ -450,7 +570,7 @@ function EnhancedCompletedOrders() {
     if (viewMode !== 'all' || !businessId) return;
     const timer = setTimeout(() => {
       setCurrentPage(1);
-      fetchAllCompletedOrders(1);
+      fetchAllCompletedOrders(1, true);
     }, searchTerm ? 400 : 0);
     return () => clearTimeout(timer);
   }, [dateFrom, dateTo, filterOrderType, filterChannel, filterPayment, searchTerm]);
@@ -714,8 +834,8 @@ function EnhancedCompletedOrders() {
 
   const filteredOrders = getFilteredOrders();
 
-  // Loading state
-  if (loading) {
+  // Loading state — only show full spinner on initial load
+  if (loading && !refreshing) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -737,7 +857,15 @@ function EnhancedCompletedOrders() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {/* Subtle refreshing indicator */}
+      {refreshing && (
+        <div className="absolute top-0 left-0 right-0 z-10">
+          <div className="h-0.5 bg-blue-200 overflow-hidden rounded-full">
+            <div className="h-full bg-blue-500 animate-pulse w-full" />
+          </div>
+        </div>
+      )}
       {/* Action Bar: view toggle + search + filters + export + refresh */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
@@ -806,13 +934,13 @@ function EnhancedCompletedOrders() {
                 <span className="hidden sm:inline">PDF</span>
               </button>
               <button
-                onClick={exportCSV}
-                disabled={exportingCSV}
+                onClick={exportExcel}
+                disabled={exportingExcel}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors disabled:opacity-50"
-                title="Exportar CSV (Excel)"
+                title="Exportar Excel"
               >
-                {exportingCSV ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-500" /> : <FaFileCsv className="text-[10px]" />}
-                <span className="hidden sm:inline">CSV</span>
+                {exportingExcel ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-emerald-500" /> : <FaFileExcel className="text-[10px]" />}
+                <span className="hidden sm:inline">Excel</span>
               </button>
             </div>
 
