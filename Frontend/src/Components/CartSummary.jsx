@@ -218,7 +218,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       };
     }
     onOrderProp(enriched, coupon);
-  }, [onOrderProp, bookingSlot, cart]);
+  }, [onOrderProp, bookingSlot, cart, selectedStaff, customerEmail]);
 
   // Sincronizar tableNumber con orderInfo
   useEffect(() => {
