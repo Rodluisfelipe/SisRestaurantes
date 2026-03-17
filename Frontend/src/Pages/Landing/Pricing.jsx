@@ -48,7 +48,7 @@ const Pricing = () => {
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
               Precio del Menú Digital — Todo Incluido desde $30.000/mes
             </h1>
-            <p className="text-base sm:text-lg text-gray-500 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
               Un solo plan con todas las funcionalidades para tu restaurante. Sin comisiones, sin límites, sin contratos.
             </p>
           </motion.div>
@@ -69,12 +69,12 @@ const Pricing = () => {
             </div>
 
             <div className="text-center mt-4 mb-6 sm:mb-8">
-              <p className="text-sm text-gray-500 mb-1">Plan Profesional</p>
+              <h2 className="text-sm text-gray-600 mb-1 font-normal">Plan Profesional</h2>
               <div className="flex items-baseline justify-center gap-1">
                 <span className="text-4xl sm:text-5xl font-extrabold text-gray-900">$30.000</span>
-                <span className="text-gray-400 text-sm">/mes</span>
+                <span className="text-gray-500 text-sm">/mes</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">COP · IVA incluido</p>
+              <p className="text-xs text-gray-500 mt-1">COP · IVA incluido</p>
             </div>
 
             <div className="space-y-2.5 sm:space-y-3 mb-6 sm:mb-8">
@@ -93,7 +93,7 @@ const Pricing = () => {
             >
               Empezar Gratis →
             </Link>
-            <p className="text-center text-xs text-gray-400 mt-3 sm:mt-4">Sin compromisos · Cancela cuando quieras</p>
+            <p className="text-center text-xs text-gray-500 mt-3 sm:mt-4">Sin compromisos · Cancela cuando quieras</p>
           </motion.div>
         </div>
       </section>
@@ -125,7 +125,7 @@ const Pricing = () => {
       <section className="py-16 sm:py-20">
         <div className="max-w-2xl mx-auto px-5 sm:px-6 text-center">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-4">¿Tienes dudas?</h2>
-          <p className="text-sm sm:text-base text-gray-500 mb-6 sm:mb-8">Escríbenos por WhatsApp y te ayudamos a empezar.</p>
+          <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8">Escríbenos por WhatsApp y te ayudamos a empezar.</p>
           <a
             href="https://wa.me/573028181520?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20sobre%20Menuby"
             target="_blank"
