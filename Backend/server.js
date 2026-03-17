@@ -43,6 +43,10 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : ['http://menuby.tech', 'https://menuby.tech', 'https://www.menuby.tech', 'http://127.0.0.1:5173', 'http://localhost:5173', 'https://157-245-125-216.nip.io'];
 
+if (isProd && !process.env.ALLOWED_ORIGINS) {
+  logger.warn('ALLOWED_ORIGINS env var not set in production — using fallback origins including dev domains');
+}
+
 // Crear la aplicación Express PRIMERO
 const app = express();
 const server = http.createServer(app);

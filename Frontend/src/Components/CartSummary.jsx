@@ -4,6 +4,7 @@ import { useBusinessConfig } from "../Context/BusinessContext";
 import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
 import { logSystem } from '../utils/systemLogger';
+import useFocusTrap from '../hooks/useFocusTrap';
 
 import BusinessClosedModal from './BusinessClosedModal';
 import api from '../services/api';
@@ -68,6 +69,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     };
   }, []);
   const [locationChecked, setLocationChecked] = useState(false);
+  const focusTrapRef = useFocusTrap(showOrderModal);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [formState, setFormState] = useState({
     tableNumber: '',
@@ -694,7 +696,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     };
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" role="dialog" aria-modal="true" aria-label={orderType === 'inSite' ? 'Pedido en sitio' : 'Pedido a domicilio'} ref={focusTrapRef}>
         <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-5">
             <h3 className="text-lg font-bold text-gray-800">

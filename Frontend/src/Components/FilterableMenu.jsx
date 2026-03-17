@@ -596,7 +596,7 @@ const FilterableMenu = ({
           )}
         </AnimatePresence>
 
-        <div className={`relative z-20 transition-transform duration-300 ${searchFocused && !searchTerm ? 'scale-[1.02]' : ''}`}>
+        <div className={`relative z-20 transition-transform duration-300 ${searchFocused && !searchTerm ? 'scale-[1.02]' : ''}`} role="search" aria-label="Buscar en el menú">
           <span
             className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 pointer-events-none transition-colors z-10"
             style={{ color: searchTerm ? themeColor : '#94a3b8' }}

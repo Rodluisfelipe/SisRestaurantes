@@ -8,6 +8,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const logger = require('../utils/logger');
+const sanitizeUpload = require('../middleware/sanitizeUpload');
 
 // ═══════════════════════════════════════════════════
 // Configuración de multer para imágenes de anuncios
@@ -48,7 +49,7 @@ const upload = multer({
 // ═══════════════════════════════════════════════════
 
 // POST /api/announcements — Crear anuncio (SuperAdmin)
-router.post('/', protectSuperAdmin, upload.single('image'), async (req, res) => {
+router.post('/', protectSuperAdmin, upload.single('image'), sanitizeUpload({ maxWidth: 1200 }), async (req, res) => {
   try {
     const { title, body, priority } = req.body;
     

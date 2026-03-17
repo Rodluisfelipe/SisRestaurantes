@@ -60,8 +60,11 @@ router.get('/overview', async (req, res) => {
       }).length,
       grace: allBusinesses.filter(b => b.isInGracePeriod()).length,
       suspended: allBusinesses.filter(b => b.status === 'cancelled').length,
-      churn30d: 0, // TODO: Calcular basado en fechas de cancelación
-      mrr30d: 0 // TODO: Calcular MRR aprobado (Monthly Recurring Revenue)
+      churn30d: allBusinesses.filter(b => {
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        return b.status === 'cancelled' && b.updatedAt >= thirtyDaysAgo;
+      }).length,
+      mrr30d: 0
     };
     
     // Calcular MRR simple (ingresos mensuales recurrentes)

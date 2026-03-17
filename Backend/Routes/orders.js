@@ -26,6 +26,7 @@ const ToppingGroup = require('../Models/ToppingGroup');
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
+const sanitizeUpload = require('../middleware/sanitizeUpload');
 
 // Multer config for payment proof uploads
 const proofStorage = multer.diskStorage({
@@ -1239,7 +1240,7 @@ router.post('/:id/payment-proof', (req, res, next) => {
     }
     next();
   });
-}, async (req, res) => {
+}, sanitizeUpload({ maxWidth: 1600, quality: 90 }), async (req, res) => {
   try {
     const { id } = req.params;
     const { customerToken } = req.body;

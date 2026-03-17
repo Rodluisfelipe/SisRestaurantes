@@ -17,6 +17,7 @@ const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const socketService = require('../services/socketService');
 const { calculateSubscriptionStatus, GRACE_DAYS } = require('../utils/subscriptionHelper');
+const sanitizeUpload = require('../middleware/sanitizeUpload');
 
 // Configurar multer para subida de comprobantes
 const storage = multer.diskStorage({
@@ -144,7 +145,7 @@ router.get('/subscription/me', authMiddleware, async (req, res) => {
 });
 
 // POST /api/payments/manual/request - Crear solicitud de pago manual
-router.post('/payments/manual/request', authMiddleware, upload.single('proof'), async (req, res) => {
+router.post('/payments/manual/request', authMiddleware, upload.single('proof'), sanitizeUpload({ maxWidth: 1600, quality: 90 }), async (req, res) => {
   try {
     const { monthsPurchased, amount, paymentMethod, businessId: bodyBusinessId } = req.body;
     

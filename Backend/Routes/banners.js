@@ -6,6 +6,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
 const multer = require('multer');
 const path = require('path');
+const sanitizeUpload = require('../middleware/sanitizeUpload');
 const fs = require('fs');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
@@ -101,7 +102,7 @@ const upload = multer({
 });
 
 // POST /api/banners/superadmin-create - SuperAdmin creates banners (authenticated)
-router.post('/superadmin-create', protectSuperAdmin, upload.single('image'), async (req, res) => {
+router.post('/superadmin-create', protectSuperAdmin, upload.single('image'), sanitizeUpload({ maxWidth: 1920 }), async (req, res) => {
   try {
     const { title, description, endDate, priority, businessId } = req.body;
 
@@ -249,7 +250,7 @@ router.get('/business/:businessId/public', async (req, res) => {
 
 
 // POST /api/banners - Crear nuevo banner (restaurante)
-router.post('/', authMiddleware, upload.single('image'), validateBannerInput, async (req, res) => {
+router.post('/', authMiddleware, upload.single('image'), sanitizeUpload({ maxWidth: 1920 }), validateBannerInput, async (req, res) => {
   try {
     // Force businessId from authenticated user, fallback for superadmin
     let businessId = req.user.businessId || req.body.businessId;
