@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 /**
@@ -5,11 +6,21 @@ import { motion } from 'framer-motion';
  * Muestra comparación visual old → new con indicadores de cambio.
  */
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
@@ -21,7 +32,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) =>
               <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
             </svg>
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+          <h2 id="confirm-modal-title" className="text-lg sm:text-xl font-bold text-slate-900">
             Confirmar Cambios
           </h2>
         </div>

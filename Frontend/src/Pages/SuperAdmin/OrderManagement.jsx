@@ -168,6 +168,7 @@ export default function OrderManagement() {
           <input
             type="text"
             placeholder="Buscar por cliente, negocio o #pedido..."
+            aria-label="Buscar pedidos"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none focus:border-blue-400/40 focus:ring-1 focus:ring-blue-400/20 transition-all"

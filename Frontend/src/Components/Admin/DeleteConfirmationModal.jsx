@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 
 /**
@@ -5,11 +6,21 @@ import { motion } from 'framer-motion';
  * Muestra detalles del producto y pide confirmación con tema oscuro.
  */
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, product }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
       <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-modal-title"
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
@@ -19,7 +30,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, product }) => {
           <svg className="w-5 h-5 sm:w-6 sm:h-6 mr-2" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
-          <h2 className="text-lg sm:text-xl font-bold text-white">Eliminar Producto</h2>
+          <h2 id="delete-modal-title" className="text-lg sm:text-xl font-bold text-white">Eliminar Producto</h2>
         </div>
 
         <p className="text-[#D1D9FF] mb-4 sm:mb-6 text-sm sm:text-base">

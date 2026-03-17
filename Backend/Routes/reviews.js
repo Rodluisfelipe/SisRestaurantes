@@ -11,6 +11,14 @@ const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const authMiddleware = require('../middleware/authMiddleware');
 const socketService = require('../services/socketService');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for creating reviews
+const createReviewLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 reviews per 15 min per IP
+  message: { error: 'Demasiadas reseñas enviadas, intenta de nuevo más tarde' }
+});
 
 /**
  * Recalculate review stats for a business and update BusinessConfig
@@ -87,7 +95,7 @@ async function recalculateReviewStats(businessId) {
  * Create a new review
  * Body: { phone, businessId, orderId, customerName, rating, comment, orderType, orderTotal }
  */
-router.post('/', async (req, res) => {
+router.post('/', createReviewLimiter, async (req, res) => {
   try {
     const { phone, businessId, orderId, customerName, rating, comment, orderType, orderTotal, thumbsUp } = req.body;
 

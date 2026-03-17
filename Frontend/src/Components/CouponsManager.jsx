@@ -290,6 +290,7 @@ const CouponsManager = () => {
             <input
               type="text"
               placeholder="Buscar por código, nombre o descripción..."
+              aria-label="Buscar cupones"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300 outline-none"

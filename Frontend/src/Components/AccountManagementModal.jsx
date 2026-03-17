@@ -5,7 +5,9 @@ import api from '../services/api';
 import { logSystem } from '../utils/systemLogger';
 import { useBusinessConfig } from '../Context/BusinessContext';
 
-const AccountManagementModal = ({ isOpen, onClose, customerData, orders = [], initialTab = 'profile' }) => {
+const EMPTY_ARRAY = [];
+
+const AccountManagementModal = ({ isOpen, onClose, customerData, orders = EMPTY_ARRAY, initialTab = 'profile' }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [profileData, setProfileData] = useState({
     name: customerData?.name || '',

@@ -175,6 +175,7 @@ export default function BusinessTable({ refreshTrigger }) {
           <input
             type="text"
             placeholder="Buscar por nombre o slug..."
+            aria-label="Buscar negocio"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none focus:border-blue-400/30 focus:ring-1 focus:ring-blue-400/10 transition-all"

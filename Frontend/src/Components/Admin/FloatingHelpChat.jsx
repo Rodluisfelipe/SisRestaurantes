@@ -279,6 +279,7 @@ export default function FloatingHelpChat() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
+                  aria-label="Escribe tu pregunta"
                   placeholder="Escribe tu pregunta..."
                   className="flex-1 min-w-0 px-3 py-2 bg-gray-50 rounded-full text-[13px] focus:outline-none focus:ring-1 focus:ring-red-300 focus:bg-white border border-transparent focus:border-red-200 transition-all placeholder:text-gray-400"
                   disabled={loading}

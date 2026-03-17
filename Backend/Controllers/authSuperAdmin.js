@@ -2,6 +2,7 @@ const SuperAdmin = require('../Models/SuperAdmin');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const logger = require('../utils/logger');
 require('dotenv').config();
 
 // Configuración de JWT
@@ -38,15 +39,15 @@ const emailTransporter = nodemailer.createTransport({
 // Verificar la configuración del transportador (no bloquea el inicio)
 emailTransporter.verify(function(error, success) {
   if (error) {
-    console.warn('[Nodemailer] SMTP no disponible; el envío de emails fallará:', error.message);
+    logger.warn('[Nodemailer] SMTP no disponible; el envío de emails fallará:', error.message);
   } else {
-    console.log('Servidor SMTP listo para enviar mensajes');
+    logger.info('Servidor SMTP listo para enviar mensajes');
   }
 });
 
 // Función para enviar correo electrónico
 const sendEmail = async (options) => {
-  console.log('Intentando enviar email a:', options.email);
+  logger.info('Intentando enviar email a:', options.email);
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,
@@ -57,7 +58,7 @@ const sendEmail = async (options) => {
 
   try {
     const info = await emailTransporter.sendMail(mailOptions);
-    console.log('Email enviado:', info.response);
+    logger.info('Email enviado:', info.response);
     return info;
   } catch (error) {
     console.error('Error al enviar email:', error);

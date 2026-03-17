@@ -8,6 +8,7 @@ const morgan = require("morgan");
 const mongoSanitize = require("express-mongo-sanitize");
 const compression = require("compression");
 const Sentry = require("@sentry/node");
+const logger = require('./utils/logger');
 
 // Cargar variables de entorno - ESTO DEBE IR PRIMERO
 require('dotenv').config();
@@ -58,7 +59,7 @@ const io = new Server(server, {
       if (ALLOWED_ORIGINS.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        console.log(`Origen no permitido (Socket.io): ${origin}`);
+        logger.warn(`Origen no permitido (Socket.io): ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -236,7 +237,7 @@ app.use((err, req, res, next) => {
 
 mongoose.connect(MONGO_URI)
   .then(() => {
-    console.log("MongoDB connected");
+    logger.info("MongoDB connected");
     
     // Configurar VAPID para push notifications (opcional - no bloquear inicio si falla)
     // Intentar cargar pushService de forma segura
@@ -281,14 +282,14 @@ mongoose.connect(MONGO_URI)
     
     const port = process.env.PORT || 5000;
     server.listen(port, () =>
-      console.log(`Servidor unificado (Backend + BackendSA) corriendo en el puerto ${port}`)
+      logger.info(`Servidor unificado (Backend + BackendSA) corriendo en el puerto ${port}`)
     );
 
     // Manejar cierre graceful del servidor
     process.on('SIGTERM', () => {
-      console.log('SIGTERM recibido. Cerrando servidor...');
+      logger.info('SIGTERM recibido. Cerrando servidor...');
       server.close(() => {
-        console.log('Servidor cerrado.');
+        logger.info('Servidor cerrado.');
         process.exit(0);
       });
     });

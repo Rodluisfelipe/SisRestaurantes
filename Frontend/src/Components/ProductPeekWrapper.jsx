@@ -99,6 +99,7 @@ const ProductPeekWrapper = ({ children, product, buttonColor, buttonTextColor })
               {/* Close button */}
               <button
                 onClick={() => setPeeking(false)}
+                aria-label="Cerrar vista previa"
                 className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/50 transition-colors"
               >
                 <FaTimes className="text-sm" />

@@ -44,6 +44,7 @@ export default function POSProductGrid({ products, categories, onProductClick, t
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={isService ? 'Buscar servicio...' : 'Buscar producto...'}
+            aria-label={isService ? 'Buscar servicio' : 'Buscar producto'}
             className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border-none text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:bg-white transition-all"
             style={{ '--tw-ring-color': `${themeColor}50` }}
           />

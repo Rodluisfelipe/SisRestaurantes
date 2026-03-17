@@ -176,6 +176,7 @@ const DeliveryCoverageChecker = ({ businessId, orderTotal, onCoverageResult }) =
             value={address}
             onChange={(e) => setAddress(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleSearchAddress()}
+            aria-label="Dirección de entrega"
             placeholder="Ej: Calle 100 #10-20, Bogotá"
             className="flex-1 border rounded px-4 py-2"
             disabled={loading}

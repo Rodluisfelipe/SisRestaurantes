@@ -7,6 +7,7 @@ const Category = require('../Models/Category');
 const { generateToken, generateRefreshToken, verifyToken, verifyRefreshToken } = require('../config/jwt');
 const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middleware/authMiddleware');
+const { validateRegister, validateLogin } = require('../middleware/validate');
 const logger = require('../utils/logger');
 const { OAuth2Client } = require('google-auth-library');
 
@@ -159,7 +160,7 @@ const validateEmail = (email) => {
 };
 
 // Ruta de registro de negocio
-router.post('/register', registerLimiter, async (req, res) => {
+router.post('/register', registerLimiter, validateRegister, async (req, res) => {
   try {
     const { name, businessName, email, password, businessType } = req.body;
 
@@ -431,7 +432,7 @@ router.post('/check-email', checkEmailLimiter, async (req, res) => {
 });
 
 // Ruta de login con rate limiting
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', loginLimiter, validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body;
     logger.info('POST /auth/login', { username, password: 'REDACTED' });

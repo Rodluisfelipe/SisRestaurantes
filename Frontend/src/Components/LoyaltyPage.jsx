@@ -4,6 +4,8 @@ import api from '../services/api';
 import { getBusinessSlug } from '../utils/getBusinessId';
 import { useBusinessConfig } from '../Context/BusinessContext';
 
+const EMPTY_ARRAY = [];
+
 /* ═══════════════════════════════════════════════ */
 /*  ANIMATED ODOMETER COUNTER                      */
 /* ═══════════════════════════════════════════════ */
@@ -75,7 +77,7 @@ const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, tra
 /* ═══════════════════════════════════════════════ */
 /*  LOYALTY PAGE (Customer-facing)                 */
 /* ═══════════════════════════════════════════════ */
-const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, products = [], addToCart }) => {
+const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, products = EMPTY_ARRAY, addToCart }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showHistory, setShowHistory] = useState(false);

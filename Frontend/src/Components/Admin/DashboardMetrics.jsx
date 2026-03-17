@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "../../config";
 import { socket } from "../../services/socket";
 
+const EMPTY_ARRAY = [];
+
 /**
  * DashboardMetrics — Real-time business intelligence panel.
  *
@@ -213,7 +215,7 @@ const SOURCE_COLORS = {
   other: 'text-slate-400 bg-slate-50'
 };
 
-function LiveViewers({ viewers = [], count = 0 }) {
+function LiveViewers({ viewers = EMPTY_ARRAY, count = 0 }) {
   if (count === 0) {
     return (
       <div className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3">
@@ -336,7 +338,7 @@ function formatDuration(seconds) {
 }
 
 /* ═══ Abandoned Carts Widget ═══ */
-function AbandonedCarts({ carts = [], totalLost = 0 }) {
+function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0 }) {
   if (carts.length === 0) return null;
 
   const buildWhatsAppUrl = (cart) => {

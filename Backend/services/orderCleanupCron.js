@@ -73,7 +73,7 @@ async function expireStaleOrders() {
     }
 
     if (totalExpired > 0) {
-      console.log(`[OrderCleanup] ${totalExpired} pedido(s) auto-expirado(s)`);
+      logger.info(`[OrderCleanup] ${totalExpired} pedido(s) auto-expirado(s)`);
     }
 
     return totalExpired;
@@ -134,7 +134,7 @@ function startOrderCleanupCron() {
     await runCleanup();
   });
 
-  console.log('🧹 Order cleanup cron iniciado (medianoche Colombia / 05:00 UTC)');
+  logger.info('🧹 Order cleanup cron iniciado (medianoche Colombia / 05:00 UTC)');
 }
 
 module.exports = { startOrderCleanupCron, runCleanup, expireStaleOrders, cleanupCancelledOrders };

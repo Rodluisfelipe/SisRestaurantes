@@ -8,6 +8,14 @@ const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for public product reads
+const publicProductLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 60, // 60 requests per minute per IP
+  message: { error: 'Demasiadas solicitudes, intenta de nuevo en un momento' }
+});
 
 /**
  * API de Productos
@@ -46,7 +54,7 @@ const emitProductsUpdate = async (req) => {
 };
 
 // GET all products
-router.get("/", async (req, res) => {
+router.get("/", publicProductLimiter, async (req, res) => {
   try {
     let { businessId } = req.query;
     
@@ -62,6 +70,7 @@ router.get("/", async (req, res) => {
         select: 'name description isMultipleChoice isRequired options basePrice subGroups'
       })
       .sort({ displayOrder: 1, createdAt: 1 })
+      .limit(500)
       .lean();
     
     logger.info(`Found ${products.length} products for business ${businessId}`);
@@ -73,7 +82,7 @@ router.get("/", async (req, res) => {
 });
 
 // GET featured products (productos destacados) - DEBE estar ANTES de /:id
-router.get("/featured", async (req, res) => {
+router.get("/featured", publicProductLimiter, async (req, res) => {
   try {
     let { businessId } = req.query;
     
@@ -105,7 +114,7 @@ router.get("/featured", async (req, res) => {
 });
 
 // GET /products/:id (si existe)
-router.get("/:id", async (req, res) => {
+router.get("/:id", publicProductLimiter, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
       .populate({

@@ -6,7 +6,9 @@ import {
 } from 'react-icons/fa';
 import api from '../services/api';
 
-const ProductOrderSelector = ({ products = [], categories = [], businessId, onOrderChange }) => {
+const EMPTY_ARRAY = [];
+
+const ProductOrderSelector = ({ products = EMPTY_ARRAY, categories = EMPTY_ARRAY, businessId, onOrderChange }) => {
   const [orderedProducts, setOrderedProducts] = useState(products);
   const [draggedItem, setDraggedItem] = useState(null);
   const [saveLoading, setSaveLoading] = useState(false);

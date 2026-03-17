@@ -431,6 +431,7 @@ const MenuByCatalog = () => {
                   ref={searchInputRef}
                   type="text"
                   placeholder="¿Qué se te antoja hoy?"
+                  aria-label="Buscar restaurante o plato"
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setShowSuggestions(true); }}
                   onFocus={() => setShowSuggestions(true)}
