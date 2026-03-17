@@ -18,6 +18,7 @@ const CustomerLoyalty = require('../Models/CustomerLoyalty');
 const { ORDER_STATUS } = require('../utils/constants');
 const authMiddleware = require('../middleware/authMiddleware');
 const { tenantAuth } = require('../middleware/tenantAuth');
+const { validateCreateOrder } = require('../middleware/validate');
 const rateLimit = require('express-rate-limit');
 const { startOfDayCOL, endOfDayCOL } = require('../utils/timezone');
 const Product = require('../Models/Product');
@@ -127,7 +128,7 @@ router.get("/", tenantAuth, async (req, res) => {
     if (orderType) filter.orderType = orderType;
     
     // Get orders sorted by creation date (newest first)
-    const orders = await Order.find(filter).sort({ createdAt: -1 }).lean();
+    const orders = await Order.find(filter).sort({ createdAt: -1 }).limit(500).lean();
     
     logger.info(`Retrieved ${orders.length} orders for business ${businessId}`);
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -143,7 +144,7 @@ router.get("/", tenantAuth, async (req, res) => {
 router.post("/", (req, res, next) => {
   if (req.body.orderChannel === 'pos') return next();
   return createOrderLimiter(req, res, next);
-}, async (req, res) => {
+}, validateCreateOrder, async (req, res) => {
   try {
 
 
@@ -703,7 +704,7 @@ router.get('/track/:id', publicOrderLimiter, async (req, res) => {
       return res.status(401).json({ message: 'Token requerido' });
     }
 
-    const order = await Order.findById(id);
+    const order = await Order.findById(id).lean();
     if (!order) {
       return res.status(404).json({ message: 'Pedido no encontrado' });
     }
@@ -787,7 +788,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Invalid order ID" });
     }
     
-    const order = await Order.findById(id);
+    const order = await Order.findById(id).lean();
     
     if (!order) {
       return res.status(404).json({ message: "Order not found" });

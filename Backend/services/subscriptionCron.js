@@ -54,7 +54,6 @@ async function checkSubscriptionReminders() {
     }).populate('businessId', 'name slug');
 
     logger.info(`[SubscriptionCron] Verificando ${subscriptions.length} suscripción(es) próximas a vencer`);
-    console.log(`[SubscriptionCron] Verificando ${subscriptions.length} suscripción(es) próximas a vencer`);
 
     let notificationsSent = 0;
 
@@ -117,7 +116,7 @@ async function checkSubscriptionReminders() {
     const suspendedCount = await checkSuspendedNotifications(today);
 
     const total = notificationsSent + graceCount + suspendedCount;
-    console.log(`[SubscriptionCron] Completado: ${notificationsSent} recordatorio(s), ${graceCount} gracia, ${suspendedCount} suspensión`);
+    logger.info(`[SubscriptionCron] Completado: ${notificationsSent} recordatorio(s), ${graceCount} gracia, ${suspendedCount} suspensión`);
     return total;
   } catch (error) {
     logger.error('[SubscriptionCron] Error en checkSubscriptionReminders:', error);
@@ -161,7 +160,7 @@ async function checkGraceNotifications(today) {
         const result = await sendPushToBusinessId(businessId, payload);
         if (result.sent > 0) {
           count++;
-          console.log(`[SubscriptionCron] Notificación de gracia enviada a ${businessName} (${graceHoursLeft}h restantes)`);
+          logger.info(`[SubscriptionCron] Notificación de gracia enviada a ${businessName} (${graceHoursLeft}h restantes)`);
         }
       } catch (err) {
         logger.error(`[SubscriptionCron] Error en notificación de gracia para ${sub._id}:`, err);
@@ -206,7 +205,7 @@ async function checkSuspendedNotifications(today) {
 
         await sendPushToBusinessId(businessId, payload);
         count++;
-        console.log(`[SubscriptionCron] Notificación de suspensión enviada a ${businessName}`);
+        logger.info(`[SubscriptionCron] Notificación de suspensión enviada a ${businessName}`);
       } catch (err) {
         logger.error(`[SubscriptionCron] Error en notificación de suspensión para ${sub._id}:`, err);
       }
@@ -231,13 +230,12 @@ function startSubscriptionCron() {
   });
 
   logger.info('✅ Cron de recordatorios de suscripción iniciado (diario a las 9:00 AM COT)');
-  console.log('✅ Cron de recordatorios de suscripción iniciado (diario a las 9:00 AM COT)');
 
   // Ejecutar una primera vez 30s después de iniciar el servidor (para verificar inmediatamente)
   setTimeout(async () => {
-    console.log('[SubscriptionCron] Ejecución inicial al iniciar servidor...');
+    logger.info('[SubscriptionCron] Ejecución inicial al iniciar servidor...');
     const count = await checkSubscriptionReminders();
-    console.log(`[SubscriptionCron] Ejecución inicial completada: ${count} recordatorio(s) enviado(s)`);
+    logger.info(`[SubscriptionCron] Ejecución inicial completada: ${count} recordatorio(s) enviado(s)`);
   }, 30000);
 
   return task;

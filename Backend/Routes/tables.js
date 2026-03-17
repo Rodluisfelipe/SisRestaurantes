@@ -121,10 +121,7 @@ router.get("/validate", async (req, res) => {
     
     if (!table) {
 
-      // For debugging, log all tables for this business
-      const allTables = await Table.find({ businessId: finalBusinessId });
-      console.log(`Available tables for business ${finalBusinessId}:`, 
-        allTables.map(t => ({ id: t._id, number: t.tableNumber })));
+
       
       return res.status(404).json({ 
         message: "Table not found",

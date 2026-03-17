@@ -610,6 +610,7 @@ const FilterableMenu = ({
             onChange={handleSearchChange}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setTimeout(() => setSearchFocused(false), 250)}
+            aria-label={isService ? 'Buscar servicio' : 'Buscar producto'}
             className={`w-full pl-10 sm:pl-12 pr-10 py-3 sm:py-3.5 border rounded-2xl focus:outline-none focus:ring-2 transition-all duration-200 text-sm sm:text-base text-slate-700 placeholder-slate-400 ${
               searchFocused ? 'bg-white border-transparent shadow-2xl' : 'bg-slate-50 border-slate-200'
             }`}

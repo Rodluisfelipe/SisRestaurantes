@@ -155,6 +155,7 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
                 type="text"
                 value={couponCode}
                 onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setError(''); setPreviewData(null); }}
+                aria-label="Código de cupón"
                 placeholder="Ej: VIP, PROMO2026…"
                 className="flex-1 pl-3 pr-3 py-2.5 rounded-xl text-sm font-semibold tracking-wider focus:outline-none focus:ring-2 transition-all placeholder-white/50"
                 style={{

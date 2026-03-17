@@ -38,6 +38,7 @@ import CatalogLayout from "./Layouts/CatalogLayout";
 import NotFound from "./Pages/NotFound";
 import TableValidator from "./Components/TableValidator";
 import DynamicManifest from "./Components/DynamicManifest";
+import { LazyMotion, domAnimation } from "framer-motion";
 
 // Componente protegido para rutas que requieren autenticación
 const ProtectedRoute = ({ children }) => {
@@ -139,6 +140,7 @@ const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pri
 
 function App() {
   return (
+    <LazyMotion features={domAnimation} strict>
       <Routes>
         {/* Rutas de administración - SuperAdmin */}
         <Route path="/superadmin/*" element={<Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><SuperAdminDashboard /></Suspense>} />
@@ -310,6 +312,7 @@ function App() {
         {/* Ruta para captura de leads - URLs no encontradas se convierten en oportunidades */}
         <Route path="*" element={<Suspense fallback={<div>Loading...</div>}><LeadCapturePage /></Suspense>} />
         </Routes>
+    </LazyMotion>
   );
 }
 

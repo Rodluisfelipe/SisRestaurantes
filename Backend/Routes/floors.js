@@ -3,6 +3,7 @@ const router = express.Router();
 const Floor = require("../Models/Floor");
 const { isValidObjectId } = require("../utils/validators");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const logger = require("../utils/logger");
 
 // Get all floors for a business
 router.get("/", async (req, res) => {
@@ -14,7 +15,7 @@ router.get("/", async (req, res) => {
     const floors = await Floor.find({ businessId }).sort({ order: 1 });
     res.json(floors);
   } catch (error) {
-    console.error("Error fetching floors:", error);
+    logger.error("Error fetching floors:", error);
     res.status(500).json({ message: "Error al obtener salones" });
   }
 });
@@ -34,7 +35,7 @@ router.post("/", tenantAuth, async (req, res) => {
     await floor.save();
     res.status(201).json(floor);
   } catch (error) {
-    console.error("Error creating floor:", error);
+    logger.error("Error creating floor:", error);
     res.status(500).json({ message: "Error al crear salón" });
   }
 });
@@ -56,7 +57,7 @@ router.put("/:id", tenantAuth, async (req, res) => {
     if (!floor) return res.status(404).json({ message: "Salón no encontrado" });
     res.json(floor);
   } catch (error) {
-    console.error("Error updating floor:", error);
+    logger.error("Error updating floor:", error);
     res.status(500).json({ message: "Error al actualizar salón" });
   }
 });
@@ -75,7 +76,7 @@ router.delete("/:id", tenantAuth, async (req, res) => {
     await Table.updateMany({ floorId: id }, { $set: { floorId: null } });
     res.json({ message: "Salón eliminado" });
   } catch (error) {
-    console.error("Error deleting floor:", error);
+    logger.error("Error deleting floor:", error);
     res.status(500).json({ message: "Error al eliminar salón" });
   }
 });

@@ -1,5 +1,7 @@
 import React from 'react';
 
+const EMPTY_ARRAY = [];
+
 /**
  * Componente para seleccionar toppings en el formulario de productos
  * 
@@ -7,7 +9,7 @@ import React from 'react';
  * @param {Array} selectedToppings - Lista de toppings seleccionados actualmente
  * @param {Function} onChange - Función llamada cuando cambia la selección
  */
-function ProductFormToppingSelector({ toppingGroups, selectedToppings = [], onChange }) {
+function ProductFormToppingSelector({ toppingGroups, selectedToppings = EMPTY_ARRAY, onChange }) {
   // Asegurar que toppingGroups sea un array
   const safeToppingGroups = Array.isArray(toppingGroups) ? toppingGroups : [];
   

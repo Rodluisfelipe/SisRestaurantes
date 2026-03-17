@@ -122,7 +122,6 @@ function startBookingReminderCron() {
   }, { timezone: 'America/Bogota' });
 
   logger.info('✅ Booking reminder cron started (every 15 min)');
-  console.log('✅ Booking reminder cron started (every 15 min)');
 
   // Also run once on startup (after brief delay)
   setTimeout(() => checkBookingReminders(), 10000);

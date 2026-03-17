@@ -944,6 +944,7 @@ function EnhancedCompletedOrders() {
               <input
                 type="text"
                 placeholder="Buscar cliente o #..."
+                aria-label="Buscar cliente o número de pedido"
                 className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}

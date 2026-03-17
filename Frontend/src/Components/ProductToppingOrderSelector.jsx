@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
+const EMPTY_ARRAY = [];
+
 /**
  * Componente para reordenar toppings seleccionados en el formulario de productos
  * 
@@ -8,7 +10,7 @@ import { motion } from 'framer-motion';
  * @param {Function} onChange - Función llamada cuando cambia el orden
  * @param {Function} onRemove - Función llamada cuando se elimina un topping
  */
-function ProductToppingOrderSelector({ selectedToppings = [], onChange, onRemove }) {
+function ProductToppingOrderSelector({ selectedToppings = EMPTY_ARRAY, onChange, onRemove }) {
   const [draggedItem, setDraggedItem] = useState(null);
 
   // Si no hay toppings seleccionados
