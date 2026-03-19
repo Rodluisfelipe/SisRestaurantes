@@ -708,11 +708,11 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
           </div>
 
           {product.image ? (
-            <div className="relative h-44 sm:h-52 overflow-hidden rounded-t-3xl sm:rounded-t-2xl">
+            <div className="relative h-44 sm:h-52 overflow-hidden rounded-t-3xl sm:rounded-t-2xl bg-slate-100">
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
               {/* Expand image button */}

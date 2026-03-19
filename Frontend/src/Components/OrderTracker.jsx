@@ -222,30 +222,64 @@ const OrderTracker = ({
     }
   };
 
-  // Fetch order status
+  // Track whether this is a booking (detected on first fetch)
+  const [isBookingMode, setIsBookingMode] = useState(false);
+
+  // Fetch order status (tries orders first, then bookings)
   const fetchOrder = useCallback(async () => {
     if (!orderId || !customerToken) return;
     try {
-      const response = await api.get(`/orders/track/${orderId}`, {
-        headers: { 'X-Customer-Token': customerToken }
-      });
-      setOrder(response.data);
-      setError(null);
-
-      // Stop polling if order is completed/cancelled/delivered
-      if (['completed', 'cancelled', 'delivered'].includes(response.data.status)) {
-        setPolling(false);
+      if (isBookingMode) {
+        // Already known to be a booking
+        const response = await api.get(`/bookings/${orderId}`);
+        const booking = response.data;
+        // Normalize: OrderTracker uses `status` for step tracking
+        booking.status = booking.bookingStatus;
+        booking.isBooking = true;
+        setOrder(booking);
+        setError(null);
+        if (['completed', 'cancelled', 'no_show'].includes(booking.bookingStatus)) {
+          setPolling(false);
+        }
+      } else {
+        const response = await api.get(`/orders/track/${orderId}`, {
+          headers: { 'X-Customer-Token': customerToken }
+        });
+        setOrder(response.data);
+        setError(null);
+        if (['completed', 'cancelled', 'delivered'].includes(response.data.status)) {
+          setPolling(false);
+        }
       }
     } catch (err) {
-      logger.error('Error fetching order tracking:', err);
-      if (err.response?.status === 404) {
-        setError('No encontrado');
-        setPolling(false);
+      // If order not found, try as booking
+      if (err.response?.status === 404 && !isBookingMode) {
+        try {
+          const bookingRes = await api.get(`/bookings/${orderId}`);
+          const booking = bookingRes.data;
+          booking.status = booking.bookingStatus;
+          booking.isBooking = true;
+          setIsBookingMode(true);
+          setOrder(booking);
+          setError(null);
+          if (['completed', 'cancelled', 'no_show'].includes(booking.bookingStatus)) {
+            setPolling(false);
+          }
+        } catch (bookingErr) {
+          setError('No encontrado');
+          setPolling(false);
+        }
+      } else {
+        logger.error('Error fetching order tracking:', err);
+        if (err.response?.status === 404) {
+          setError('No encontrado');
+          setPolling(false);
+        }
       }
     } finally {
       setLoading(false);
     }
-  }, [orderId, customerToken]);
+  }, [orderId, customerToken, isBookingMode]);
 
   // Use socket for real-time updates, with polling as fallback (30s)
   useEffect(() => {
@@ -267,12 +301,31 @@ const OrderTracker = ({
           }
         }
       };
+
+      const handleBookingStatusChange = (data) => {
+        if (data.bookingId === orderId || data.bookingId?.toString() === orderId) {
+          const booking = data.booking;
+          if (booking) {
+            booking.status = booking.bookingStatus;
+            booking.isBooking = true;
+          }
+          setOrder(prev => booking || { ...prev, status: data.bookingStatus, bookingStatus: data.bookingStatus, isBooking: true });
+          setIsBookingMode(true);
+          setError(null);
+          if (['completed', 'cancelled', 'no_show'].includes(data.bookingStatus)) {
+            setPolling(false);
+          }
+        }
+      };
+
       socket.on('order_status_changed', handleStatusChange);
+      socket.on('booking_status_changed', handleBookingStatusChange);
       
       // Fallback polling at 30s (reduced from 5s since socket handles real-time)
       const interval = setInterval(fetchOrder, 30000);
       return () => {
         socket.off('order_status_changed', handleStatusChange);
+        socket.off('booking_status_changed', handleBookingStatusChange);
         socket.emit('untrackOrder', orderId);
         clearInterval(interval);
       };

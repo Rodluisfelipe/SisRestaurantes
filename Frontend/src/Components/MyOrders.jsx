@@ -163,7 +163,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-bold text-gray-900 text-sm">
-                            {order.isBooking ? 'Cita' : 'Pedido'} #{order.orderNumber}
+                            Pedido #{order.orderNumber}
                           </span>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.text}`}>
                             <span>{statusInfo.icon}</span>
@@ -174,7 +174,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
                           {formatDate(order.createdAt || order.completedAt)} · {formatTime(order.createdAt || order.completedAt)}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-gray-600">
-                          <span>{order.items?.length || 0} {order.isBooking ? 'servicios' : 'productos'}</span>
+                          <span>{order.items?.length || 0} productos</span>
                           <span className="font-semibold text-gray-900">
                             {formatPrice(order.finalAmount || order.totalAmount)}
                           </span>

@@ -733,7 +733,7 @@ function EnhancedCompletedOrders() {
 
             {/* Products */}
             <div>
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">{selectedOrder.isBooking ? 'Servicios' : 'Productos'}</h3>
+              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Productos</h3>
               <div className="space-y-2">
                 {selectedOrder.items && selectedOrder.items.map((item, index) => (
                   <div key={index} className="flex justify-between items-start py-2 border-b border-slate-100 last:border-0">

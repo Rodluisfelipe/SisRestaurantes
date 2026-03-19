@@ -714,8 +714,8 @@ const BusinessSettings = () => {
           )}
         </div>
 
-        {/* Correos Automáticos */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        {/* Correos Automáticos — oculto temporalmente del panel admin */}
+        {false && <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-indigo-100 rounded-lg flex items-center justify-center">
               <FaEnvelope className="text-[10px] text-indigo-500" />
@@ -793,7 +793,7 @@ const BusinessSettings = () => {
               </div>
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Redes Sociales */}
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">

@@ -524,7 +524,7 @@ function Admin() {
                 {activeTab === 'bookings' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Agenda" onGoBack={() => setActiveTab('dashboard')}>
-                      <BookingsManager businessId={businessId} />
+                      <BookingsManager businessId={businessId} businessConfig={businessConfig} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

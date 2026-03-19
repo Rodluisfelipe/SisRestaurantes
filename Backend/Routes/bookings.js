@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const BusinessConfig = require('../Models/BusinessConfig');
-const Order = require('../Models/Order');
-const CompletedOrder = require('../Models/CompletedOrder');
+const Booking = require('../Models/Booking');
 const Customer = require('../Models/Customer');
 const Admin = require('../Models/Admin');
+const Product = require('../Models/Product');
 const logger = require('../utils/logger');
+
+// Generate a customer token for booking tracking
+const generateCustomerToken = () => crypto.randomBytes(16).toString('hex');
 
 /**
  * GET /api/bookings/slots
@@ -79,15 +83,14 @@ router.get('/slots', async (req, res) => {
 
     const bookingFilter = {
       businessId,
-      isBooking: true,
       bookingDate: { $gte: startOfDay, $lte: endOfDay },
-      status: { $nin: ['cancelled'] }
+      bookingStatus: { $nin: ['cancelled'] }
     };
     if (staffId) {
       bookingFilter.staffId = staffId;
     }
 
-    const existingBookings = await Order.find(bookingFilter)
+    const existingBookings = await Booking.find(bookingFilter)
       .select('bookingDate bookingEndDate staffId').lean();
 
     // Convert existing bookings to minute ranges
@@ -157,9 +160,8 @@ router.get('/', async (req, res) => {
     const fromDate = from ? new Date(from + 'T00:00:00.000Z') : new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z');
     const toDate = to ? new Date(to + 'T23:59:59.999Z') : new Date(fromDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-    const bookings = await Order.find({
+    const bookings = await Booking.find({
       businessId,
-      isBooking: true,
       bookingDate: { $gte: fromDate, $lte: toDate }
     }).sort({ bookingDate: 1 }).lean();
 
@@ -185,23 +187,23 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(400).json({ message: 'Invalid booking status' });
     }
 
-    const order = await Order.findById(id);
-    if (!order || !order.isBooking) {
+    const booking = await Booking.findById(id);
+    if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
     // Cancellation policy check (only for customer-initiated cancellations)
     if (bookingStatus === 'cancelled' && isCustomer) {
-      const config = await BusinessConfig.findById(order.businessId);
+      const config = await BusinessConfig.findById(booking.businessId);
       const policy = config?.bookingSettings;
 
       if (policy && policy.allowCancellation === false) {
         return res.status(403).json({ message: 'Este negocio no permite cancelaciones' });
       }
 
-      if (policy && policy.cancellationDeadlineHours > 0 && order.bookingDate) {
+      if (policy && policy.cancellationDeadlineHours > 0 && booking.bookingDate) {
         const deadlineMs = policy.cancellationDeadlineHours * 60 * 60 * 1000;
-        const bookingTime = new Date(order.bookingDate).getTime();
+        const bookingTime = new Date(booking.bookingDate).getTime();
         const now = Date.now();
         if (bookingTime - now < deadlineMs) {
           const hours = policy.cancellationDeadlineHours;
@@ -214,46 +216,45 @@ router.patch('/:id/status', async (req, res) => {
       }
     }
 
-    order.bookingStatus = bookingStatus;
+    booking.bookingStatus = bookingStatus;
     if (bookingStatus === 'cancelled') {
-      order.status = 'cancelled';
-      order.cancelledAt = new Date();
-      if (reason) order.cancellationReason = reason;
+      booking.cancelledAt = new Date();
+      if (reason) booking.cancellationReason = reason;
     } else if (bookingStatus === 'completed') {
-      order.status = 'completed';
-    } else if (bookingStatus === 'confirmed') {
-      order.status = 'confirmed';
+      booking.completedAt = new Date();
     }
 
-    order.statusHistory.push({
+    booking.statusHistory.push({
       status: `booking_${bookingStatus}`,
       timestamp: new Date(),
       note: bookingStatus === 'confirmed' ? 'Cita confirmada' : bookingStatus === 'cancelled' ? (reason || 'Cita cancelada') : bookingStatus === 'completed' ? 'Cita completada' : bookingStatus === 'no_show' ? 'No asistió' : `Booking ${bookingStatus}`
     });
 
-    await order.save();
+    await booking.save();
 
     // Emit socket event so customer OrderTracker updates in real-time
     try {
       const socketService = require('../services/socketService');
-      socketService.emitToOrder(order._id.toString(), 'order_status_changed', {
-        orderId: order._id.toString(),
-        status: order.status,
-        order: order.toObject()
+      socketService.emitToOrder(booking._id.toString(), 'booking_status_changed', {
+        bookingId: booking._id.toString(),
+        bookingStatus: booking.bookingStatus,
+        booking: booking.toObject()
       });
+      // Also emit generic event for dashboard refresh
+      socketService.emitToBusiness(booking.businessId.toString(), 'booking_updated', { bookingId: booking._id.toString(), bookingStatus });
     } catch (e) { /* socket emit is best-effort */ }
 
     // Send email notification (best-effort)
     try {
       const emailService = require('../services/emailService');
       if (bookingStatus === 'confirmed') {
-        emailService.sendBookingConfirmedEmail(order.businessId.toString(), order);
+        emailService.sendBookingConfirmedEmail(booking.businessId.toString(), booking);
       } else if (bookingStatus === 'cancelled') {
-        emailService.sendBookingCancelledEmail(order.businessId.toString(), order);
+        emailService.sendBookingCancelledEmail(booking.businessId.toString(), booking);
       }
     } catch (e) { /* email is best-effort */ }
 
-    res.json({ message: 'Booking status updated', bookingStatus: order.bookingStatus });
+    res.json({ message: 'Booking status updated', bookingStatus: booking.bookingStatus });
   } catch (error) {
     logger.error('Error updating booking status', error);
     res.status(500).json({ message: 'Error updating booking status' });
@@ -277,14 +278,9 @@ router.get('/stats', async (req, res) => {
     const fromDate = from ? new Date(from + 'T00:00:00.000Z') : new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z');
     const toDate = to ? new Date(to + 'T23:59:59.999Z') : new Date(fromDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const match = { businessId: new (require('mongoose').Types.ObjectId)(businessId), isBooking: true, bookingDate: { $gte: fromDate, $lte: toDate } };
+    const match = { businessId: new (require('mongoose').Types.ObjectId)(businessId), bookingDate: { $gte: fromDate, $lte: toDate } };
 
-    // Merge active + completed bookings
-    const [active, completed] = await Promise.all([
-      Order.find(match).lean(),
-      CompletedOrder.find(match).lean()
-    ]);
-    const all = [...active, ...completed];
+    const all = await Booking.find(match).lean();
 
     // Status counts
     const byStatus = { pending: 0, confirmed: 0, completed: 0, cancelled: 0, no_show: 0 };
@@ -353,13 +349,9 @@ router.get('/customer/:phone', async (req, res) => {
     // Get customer profile
     const customer = await Customer.findOne({ businessId, phone }).lean();
 
-    // Get all their bookings (active + completed)
-    const bookingFilter = { businessId: new (require('mongoose').Types.ObjectId)(businessId), isBooking: true, phone };
-    const [activeBookings, completedBookings] = await Promise.all([
-      Order.find(bookingFilter).sort({ bookingDate: -1 }).lean(),
-      CompletedOrder.find(bookingFilter).sort({ bookingDate: -1 }).lean()
-    ]);
-    const allBookings = [...activeBookings, ...completedBookings].sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
+    // Get all their bookings
+    const bookingFilter = { businessId: new (require('mongoose').Types.ObjectId)(businessId), phone };
+    const allBookings = await Booking.find(bookingFilter).sort({ bookingDate: -1 }).lean();
 
     // Booking stats for this customer
     const totalBookings = allBookings.length;
@@ -422,29 +414,29 @@ router.patch('/:id/assign-staff', async (req, res) => {
     const { id } = req.params;
     const { staffId, staffName } = req.body;
 
-    const order = await Order.findById(id);
-    if (!order || !order.isBooking) {
+    const booking = await Booking.findById(id);
+    if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
     if (staffId) {
       const staffMember = await Admin.findById(staffId).select('name username').lean();
       if (!staffMember) return res.status(404).json({ message: 'Staff member not found' });
-      order.staffId = staffId;
-      order.staffName = staffName || staffMember.name || staffMember.username;
+      booking.staffId = staffId;
+      booking.staffName = staffName || staffMember.name || staffMember.username;
     } else {
-      order.staffId = null;
-      order.staffName = null;
+      booking.staffId = null;
+      booking.staffName = null;
     }
 
-    order.statusHistory.push({
+    booking.statusHistory.push({
       status: 'staff_assigned',
       timestamp: new Date(),
-      note: order.staffName ? `Asignado a ${order.staffName}` : 'Profesional desasignado'
+      note: booking.staffName ? `Asignado a ${booking.staffName}` : 'Profesional desasignado'
     });
 
-    await order.save();
-    res.json({ message: 'Staff assigned', staffId: order.staffId, staffName: order.staffName });
+    await booking.save();
+    res.json({ message: 'Staff assigned', staffId: booking.staffId, staffName: booking.staffName });
   } catch (error) {
     logger.error('Error assigning staff', error);
     res.status(500).json({ message: 'Error assigning staff' });
@@ -505,24 +497,21 @@ router.post('/recurring', async (req, res) => {
       const bookingEndDate = new Date(date.getTime() + (parseInt(template.duration, 10) || 30) * 60000);
       const orderNumber = await generateOrderNumber(businessId);
 
-      const order = new Order({
+      const booking = new Booking({
         businessId,
         orderNumber,
         customerName: template.customerName,
         phone: template.phone || '',
         customerId: template.customerId || null,
-        orderType: 'inSite',
         orderChannel: template.orderChannel || 'inapp',
-        status: config.bookingSettings?.autoConfirm !== false ? 'confirmed' : 'pending',
-        isBooking: true,
         bookingDate: date,
         bookingEndDate,
-        bookingStatus: config.bookingSettings?.autoConfirm !== false ? 'confirmed' : 'pending',
+        bookingStatus: 'pending',
         staffId: template.staffId || null,
         staffName: template.staffName || null,
         recurrence: {
           type: recurrenceType,
-          parentBookingId: null, // first one is the parent
+          parentBookingId: null,
           endDate: end
         },
         items: template.items || [],
@@ -530,25 +519,23 @@ router.post('/recurring', async (req, res) => {
         finalAmount: template.finalAmount || template.totalAmount || 0,
         paymentMethod: template.paymentMethod || null,
         statusHistory: [{
-          status: config.bookingSettings?.autoConfirm !== false ? 'booking_confirmed' : 'booking_pending',
+          status: 'booking_pending',
           timestamp: new Date(),
           note: `Cita recurrente (${recurrenceType})`
         }]
       });
 
-      await order.save();
+      await booking.save();
 
-      // Set parentBookingId on first booking for reference
       if (createdBookings.length === 0) {
-        // Update all subsequent bookings with this parent ID
-        order.recurrence.parentBookingId = order._id;
-        await order.save();
+        booking.recurrence.parentBookingId = booking._id;
+        await booking.save();
       } else {
-        order.recurrence.parentBookingId = createdBookings[0]._id;
-        await order.save();
+        booking.recurrence.parentBookingId = createdBookings[0]._id;
+        await booking.save();
       }
 
-      createdBookings.push(order);
+      createdBookings.push(booking);
     }
 
     // Emit socket event
@@ -589,6 +576,178 @@ router.get('/cancellation-policy', async (req, res) => {
   } catch (error) {
     logger.error('Error fetching cancellation policy', error);
     res.status(500).json({ message: 'Error fetching cancellation policy' });
+  }
+});
+
+/**
+ * POST /api/bookings
+ * Create a new booking (separate from orders).
+ */
+router.post('/', async (req, res) => {
+  try {
+    const {
+      businessId, customerName, phone, customerEmail,
+      items, totalAmount, bookingDate,
+      staffId, staffName, orderChannel, paymentMethod,
+      customerNotes, couponCode,
+      // Loyalty
+      loyaltyReward, loyaltyRewardId, loyaltyPointsCost
+    } = req.body;
+
+    if (!businessId || !customerName || !items || !bookingDate) {
+      return res.status(400).json({ message: 'businessId, customerName, items, and bookingDate are required' });
+    }
+
+    const config = await BusinessConfig.findById(businessId);
+    if (!config) return res.status(404).json({ message: 'Business not found' });
+    if (!config.enableBookings) return res.status(400).json({ message: 'Bookings not enabled for this business' });
+
+    const bDate = new Date(bookingDate);
+    if (isNaN(bDate.getTime()) || bDate <= new Date()) {
+      return res.status(400).json({ message: 'bookingDate must be a valid future date' });
+    }
+
+    // Calculate end date from longest service duration
+    let maxDuration = 30;
+    const serviceIds = items.filter(i => i.productId).map(i => i.productId);
+    if (serviceIds.length > 0) {
+      const products = await Product.find({ _id: { $in: serviceIds }, itemType: 'service' }).select('durationMinutes').lean();
+      for (const p of products) {
+        if (p.durationMinutes && p.durationMinutes > maxDuration) maxDuration = p.durationMinutes;
+      }
+    }
+    const bookingEndDate = new Date(bDate.getTime() + maxDuration * 60 * 1000);
+
+    // Conflict check
+    const conflictFilter = {
+      businessId,
+      bookingStatus: { $nin: ['cancelled'] },
+      bookingDate: { $lt: bookingEndDate },
+      bookingEndDate: { $gt: bDate }
+    };
+    if (staffId) conflictFilter.staffId = staffId;
+    const conflicting = await Booking.findOne(conflictFilter);
+    if (conflicting) {
+      return res.status(409).json({ message: 'Este horario ya no está disponible. Por favor selecciona otro.' });
+    }
+
+    // Resolve customer
+    let customer = null;
+    if (phone) {
+      customer = await Customer.findOne({ businessId, phone }).lean();
+    }
+
+    // Coupon handling
+    let coupon = null;
+    let discountAmount = 0;
+    const numericTotal = typeof totalAmount === 'string' ? parseFloat(totalAmount) : (totalAmount || 0);
+    let finalAmount = numericTotal;
+
+    if (couponCode) {
+      try {
+        const Coupon = require('../Models/Coupon');
+        coupon = await Coupon.findOne({ businessId, code: couponCode.toUpperCase(), isActive: true });
+        if (coupon) {
+          discountAmount = coupon.discountType === 'percentage'
+            ? Math.round(numericTotal * coupon.discountValue / 100)
+            : coupon.discountValue;
+          finalAmount = Math.max(0, numericTotal - discountAmount);
+        }
+      } catch (e) { /* coupon is optional */ }
+    }
+
+    // Generate order number (shares sequence with orders)
+    const { generateOrderNumber } = require('./orders');
+    const orderNumber = await generateOrderNumber(businessId);
+
+    const isInApp = orderChannel === 'inapp';
+    const customerToken = isInApp ? generateCustomerToken() : null;
+
+    const booking = new Booking({
+      businessId,
+      orderNumber,
+      customerName,
+      phone: phone || '',
+      customerEmail: customerEmail || '',
+      customerId: customer ? customer._id : null,
+      bookingDate: bDate,
+      bookingEndDate,
+      bookingStatus: 'pending',
+      staffId: staffId || null,
+      staffName: staffName || null,
+      items,
+      totalAmount: numericTotal,
+      discountAmount,
+      finalAmount,
+      paymentMethod: paymentMethod || null,
+      couponCode: coupon ? coupon.code : null,
+      couponId: coupon ? coupon._id : null,
+      orderChannel: orderChannel || 'inapp',
+      customerToken,
+      customerNotes: customerNotes || '',
+      statusHistory: [{ status: 'booking_pending', timestamp: new Date(), note: 'Cita creada' }]
+    });
+
+    const saved = await booking.save();
+
+    // Record coupon usage
+    if (coupon) {
+      try { await coupon.recordUsage(customer ? customer._id : null, discountAmount); } catch (e) { /* best-effort */ }
+    }
+
+    // Socket events
+    try {
+      const socketService = require('../services/socketService');
+      socketService.emitToBusiness(businessId, 'new_booking', saved);
+    } catch (e) { /* best-effort */ }
+
+    // Push notification to business
+    try {
+      const { sendPushToBusinessId } = require('../services/pushService');
+      await sendPushToBusinessId(businessId, {
+        title: `📅 Nueva Cita #${orderNumber}`,
+        body: `${customerName} — ${bDate.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric', month: 'short' })}`,
+        clickUrl: '/admin/bookings',
+        data: { type: 'new_booking', bookingId: saved._id.toString() }
+      });
+    } catch (e) { /* best-effort */ }
+
+    // Email (best-effort)
+    try {
+      const emailService = require('../services/emailService');
+      emailService.sendBookingCreatedEmail(businessId, saved);
+    } catch (e) { /* best-effort */ }
+
+    res.status(201).json({
+      _id: saved._id,
+      orderNumber: saved.orderNumber,
+      bookingStatus: saved.bookingStatus,
+      bookingDate: saved.bookingDate,
+      customerToken: saved.customerToken
+    });
+  } catch (error) {
+    logger.error('Error creating booking', error);
+    res.status(500).json({ message: 'Error creating booking' });
+  }
+});
+
+/**
+ * GET /api/bookings/:id
+ * Get a single booking by ID. Used by OrderTracker.
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Validate ObjectId
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: 'Invalid booking ID' });
+    }
+    const booking = await Booking.findById(id).lean();
+    if (!booking) return res.status(404).json({ message: 'Booking not found' });
+    res.json(booking);
+  } catch (error) {
+    logger.error('Error fetching booking', error);
+    res.status(500).json({ message: 'Error fetching booking' });
   }
 });
 
