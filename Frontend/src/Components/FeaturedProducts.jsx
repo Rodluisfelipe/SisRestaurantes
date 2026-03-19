@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import logger from '../utils/logger';
@@ -26,6 +26,8 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showToppings, setShowToppings] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const scrollRef = useRef(null);
   const flyToCart = useFlyToCart();
   const { businessConfig } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
@@ -120,8 +122,11 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
           <span className="text-[11px] font-semibold text-slate-400">{featuredProducts.length} {isService ? 'servicios' : 'productos'}</span>
         </div>
 
-        {/* ── Grid 2 columns like regular products ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+        {/* ── Horizontal scroll — 2 cards visible at a time ── */}
+        <div
+          ref={scrollRef}
+          className="flex overflow-x-auto gap-3 pb-1 snap-x snap-mandatory scrollbar-hide -mx-3 px-3 sm:-mx-4 sm:px-4"
+        >
           {featuredProducts.map((product, index) => {
             const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
             return (
@@ -132,7 +137,8 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
                 transition={{ delay: index * 0.06 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleProductClick(product)}
-                className="relative bg-white rounded-2xl overflow-hidden cursor-pointer group shadow-sm hover:shadow-lg border border-slate-100 transition-shadow duration-300"
+                className="flex-shrink-0 snap-start cursor-pointer group shadow-sm hover:shadow-lg border border-slate-100 rounded-2xl overflow-hidden bg-white transition-shadow duration-300"
+                style={{ width: 'calc(50% - 6px)' }}
               >
                 {/* Image — square like ProductCard */}
                 <div className="relative aspect-square bg-slate-50 overflow-hidden">
@@ -245,8 +251,15 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
         </div>
       )}
 
-      {/* CSS for line-clamp */}
+      {/* CSS for line-clamp + scrollbar hide */}
       <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
         .line-clamp-1 {
           display: -webkit-box;
           -webkit-line-clamp: 1;
