@@ -1,5 +1,5 @@
 const cron = require('node-cron');
-const Order = require('../Models/Order');
+const Booking = require('../Models/Booking');
 const BusinessConfig = require('../Models/BusinessConfig');
 const { sendPushToBusinessId, sendPushToCustomer } = require('./pushService');
 const logger = require('../utils/logger');
@@ -26,11 +26,9 @@ async function checkBookingReminders() {
     // Find bookings in the next 25 hours that are confirmed and not cancelled
     const lookAhead = new Date(now.getTime() + 25 * 60 * 60 * 1000);
 
-    const upcomingBookings = await Order.find({
-      isBooking: true,
+    const upcomingBookings = await Booking.find({
       bookingDate: { $gte: now, $lte: lookAhead },
-      bookingStatus: { $in: ['pending', 'confirmed'] },
-      status: { $nin: ['cancelled', 'completed'] }
+      bookingStatus: { $in: ['pending', 'confirmed'] }
     }).lean();
 
     if (upcomingBookings.length === 0) return;
@@ -98,7 +96,7 @@ async function checkBookingReminders() {
           } catch (e) { logger.error('Error sending booking reminder email', e); }
 
           // Mark reminder as sent
-          await Order.findByIdAndUpdate(booking._id, {
+          await Booking.findByIdAndUpdate(booking._id, {
             $push: { remindersSent: { type: window.key, sentAt: new Date() } }
           });
 

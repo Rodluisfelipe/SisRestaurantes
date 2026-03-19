@@ -165,6 +165,7 @@ const OrderConfirmationModal = ({
   };
 
   const handleCancelOrder = async () => {
+    const isBooking = orderConfirmationDetails?.isBooking;
     try {
       setIsCancelling(true);
       setIsCountdownActive(false);

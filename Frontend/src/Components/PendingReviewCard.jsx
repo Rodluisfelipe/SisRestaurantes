@@ -61,7 +61,7 @@ const PendingReviewCard = ({ businessId, customerPhone, themeColor, onReview }) 
 
   const color = themeColor || '#f97316';
   const product = pendingOrder.topProduct;
-  const isBooking = pendingOrder.isBooking === true;
+  const isBooking = false;
 
   return (
     <AnimatePresence>

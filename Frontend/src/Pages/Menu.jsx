@@ -933,7 +933,7 @@ export default function Menu() {
         }
       }
 
-      // Verificar mesa para pedidos en sitio (no aplica para reservas/citas)
+      // Verificar mesa para pedidos en sitio (no aplica si es reserva/cita)
       if (finalOrderInfo.orderType === 'inSite' && !finalOrderInfo.isBooking) {
         const currentTable = finalOrderInfo.tableNumber ? finalOrderInfo.tableNumber.trim() : '';
         
@@ -969,7 +969,7 @@ export default function Menu() {
       
       // Realizar últimas validaciones
       if (finalOrderInfo.orderType === 'inSite' && !finalOrderInfo.tableNumber && !finalOrderInfo.isBooking) {
-        logger.error('Error: Intento de enviar pedido en sitio sin número de mesa');
+        logger.error('Error: Intento de enviar pedido en sitio sin número de mesa (booking bypass)');
         alert('Error: Falta el número de mesa');
         setIsSubmittingOrder(false);
         return;
@@ -1072,15 +1072,30 @@ export default function Menu() {
           deliveryCalculated: orderDetails.deliveryCalculated || false,
           deliveryNeedsConfirmation: orderDetails.deliveryNeedsConfirmation || false
         }),
-        // Información de reserva/cita
-        ...(orderDetails.isBooking && {
-          isBooking: true,
-          bookingDate: orderDetails.bookingDate,
-          ...(orderDetails.staffId && { staffId: orderDetails.staffId }),
-          ...(orderDetails.staffName && { staffName: orderDetails.staffName }),
-          ...(orderDetails.customerEmail && { customerEmail: orderDetails.customerEmail })
-        })
+        // Booking data (only passed for routing, not sent to /orders)
+        ...(orderDetails.customerEmail && { customerEmail: orderDetails.customerEmail })
       };
+
+      // Separate booking data for the /bookings endpoint
+      const isBookingOrder = !!orderDetails.isBooking;
+      const bookingData = isBookingOrder ? {
+        businessId: businessId,
+        customerName: orderDetails.customerName,
+        phone: orderDetails.phone || '',
+        customerEmail: orderDetails.customerEmail || '',
+        items: orderData.items,
+        totalAmount: totalAmount.toString(),
+        bookingDate: orderDetails.bookingDate,
+        paymentMethod: orderDetails.paymentMethod || null,
+        ...(orderDetails.staffId && { staffId: orderDetails.staffId }),
+        ...(orderDetails.staffName && { staffName: orderDetails.staffName }),
+        ...(isInAppMode && { orderChannel: 'inapp', customerNotes: orderDetails.customerNotes || '' }),
+        ...(appliedCoupon && {
+          couponCode: appliedCoupon.coupon.code,
+          discountAmount: appliedCoupon.discountAmount,
+          finalAmount: appliedCoupon.finalAmount
+        })
+      } : null;
 
       logger.info('Datos finales del pedido a enviar:', orderData);
       console.log('=== DATOS COMPLETOS ENVIADOS AL BACKEND ===');
@@ -1149,10 +1164,12 @@ export default function Menu() {
         }
       }
       
-      // Guardar el pedido en la base de datos
-      logger.info('Enviando datos del pedido a la API:', orderData);
-      const response = await api.post('/orders', orderData);
-      logger.info('Pedido creado exitosamente:', response.data);
+      // Guardar el pedido/cita en la base de datos
+      logger.info('Enviando datos a la API:', isBookingOrder ? 'booking' : 'order');
+      const response = isBookingOrder
+        ? await api.post('/bookings', bookingData)
+        : await api.post('/orders', orderData);
+      logger.info('Creado exitosamente:', response.data);
 
       // Canjear puntos de fidelidad después de confirmar el pedido
       if (orderDetails.loyaltyRewardId && orderDetails.phone) {
@@ -1222,7 +1239,7 @@ export default function Menu() {
       
       // Configurar mensaje específico según tipo de pedido
       let confirmMessage = '¡Gracias por tu pedido!';
-      if (orderDetails.isBooking) {
+      if (isBookingOrder) {
         confirmMessage = '¡Cita agendada! Te notificaremos cuando sea confirmada.';
       } else if (isInAppMode) {
         confirmMessage = '¡Pedido recibido! Realiza el pago y sube tu comprobante para continuar.';
@@ -1242,7 +1259,7 @@ export default function Menu() {
         setOrderConfirmationDetails({
           type: orderDetails.orderType,
           message: confirmMessage,
-          isBooking: !!orderDetails.isBooking
+          isBooking: isBookingOrder
         });
         setShowOrderConfirmationModal(true);
       }

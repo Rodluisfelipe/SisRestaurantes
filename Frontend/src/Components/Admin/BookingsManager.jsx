@@ -33,7 +33,7 @@ function getDateStr(date) {
   return date.toISOString().slice(0, 10);
 }
 
-export default function BookingsManager({ businessId }) {
+export default function BookingsManager({ businessId, businessConfig }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('list'); // 'list' | 'calendar' | 'stats'
@@ -121,10 +121,10 @@ export default function BookingsManager({ businessId }) {
     if (!socket) return;
     const handler = () => fetchBookings();
     socket.on('new_booking', handler);
-    socket.on('order_updated', handler);
+    socket.on('booking_updated', handler);
     return () => {
       socket.off('new_booking', handler);
-      socket.off('order_updated', handler);
+      socket.off('booking_updated', handler);
     };
   }, [fetchBookings]);
 
@@ -135,6 +135,20 @@ export default function BookingsManager({ businessId }) {
     } catch (err) {
       console.error('Error updating booking status', err);
     }
+  };
+
+  const confirmViaWhatsApp = async (booking) => {
+    // 1. Confirm in backend
+    await updateBookingStatus(booking._id, 'confirmed');
+    // 2. Open WhatsApp with confirmation message
+    if (!booking.phone) return;
+    const phone = booking.phone.replace(/\D/g, '');
+    const bName = businessConfig?.businessName || 'nuestro negocio';
+    const dateStr = new Date(booking.bookingDate).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+    const timeStr = formatTime(booking.bookingDate);
+    const services = booking.items?.map(i => i.name).join(', ') || '';
+    const msg = `Hola ${booking.customerName} 👋\n\n✅ Tu cita en *${bName}* ha sido *confirmada*.\n\n📅 ${dateStr}\n🕐 ${timeStr}${services ? `\n💇 ${services}` : ''}${booking.staffName ? `\n👤 ${booking.staffName}` : ''}\n\n¡Te esperamos!`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   const assignStaff = async (bookingId, staffId, staffName) => {
@@ -408,9 +422,9 @@ export default function BookingsManager({ businessId }) {
 
                       {booking.bookingStatus === 'pending' && (
                         <>
-                          <button onClick={() => updateBookingStatus(booking._id, 'confirmed')}
-                            className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors" title="Confirmar">
-                            <FaCheck className="text-xs" />
+                          <button onClick={() => confirmViaWhatsApp(booking)}
+                            className="p-1.5 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-colors" title="Confirmar por WhatsApp">
+                            <FaWhatsapp className="text-sm" />
                           </button>
                           <button onClick={() => updateBookingStatus(booking._id, 'cancelled')}
                             className="p-1.5 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors" title="Cancelar">

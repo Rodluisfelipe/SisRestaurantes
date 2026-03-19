@@ -85,18 +85,21 @@ const generateCustomerToken = () => {
   return crypto.randomBytes(16).toString('hex');
 };
 
-// Helper function to get order number
+// Helper function to get order number (shared with bookings)
 const generateOrderNumber = async (businessId) => {
   try {
-    // Check both active and completed orders to avoid duplicates
-    const [latestOrder, latestCompleted] = await Promise.all([
+    const Booking = require('../Models/Booking');
+    // Check active orders, completed orders, and bookings to avoid duplicates
+    const [latestOrder, latestCompleted, latestBooking] = await Promise.all([
       Order.findOne({ businessId }).sort({ createdAt: -1 }).limit(1),
-      CompletedOrder.findOne({ businessId }).sort({ createdAt: -1 }).limit(1)
+      CompletedOrder.findOne({ businessId }).sort({ createdAt: -1 }).limit(1),
+      Booking.findOne({ businessId }).sort({ createdAt: -1 }).limit(1)
     ]);
     
     const activeNum = latestOrder ? parseInt(latestOrder.orderNumber, 10) || 0 : 0;
     const completedNum = latestCompleted ? parseInt(latestCompleted.orderNumber, 10) || 0 : 0;
-    const highest = Math.max(activeNum, completedNum);
+    const bookingNum = latestBooking ? parseInt(latestBooking.orderNumber, 10) || 0 : 0;
+    const highest = Math.max(activeNum, completedNum, bookingNum);
     
     return (highest + 1).toString();
   } catch (error) {
@@ -117,9 +120,6 @@ router.get("/", tenantAuth, async (req, res) => {
     
     // Use the centralized business validation
     const filter = await createBusinessFilter(businessId);
-    
-    // Exclude bookings from the regular orders list — they go to the Agenda
-    filter.isBooking = { $ne: true };
     
     // Add optional filters
     if (status) {
@@ -173,15 +173,9 @@ router.post("/", (req, res, next) => {
       customerNotes,
       // POS payment details (for ticket reprinting)
       posPaymentInfo,
-      // Booking / appointment fields
-      isBooking,
-      bookingDate,
+      // Customer email
       customerEmail
     } = req.body;
-    
-    // Staff assignment for bookings (extracted separately for clarity)
-    const staffId = req.body.staffId || null;
-    const staffName = req.body.staffName || null;
     
 
 
@@ -419,49 +413,8 @@ router.post("/", (req, res, next) => {
     // Determine initial status based on ordering channel
     const isInApp = orderChannel === 'inapp';
     const isPOS = orderChannel === 'pos';
-    // Bookings skip payment flow — go directly to pending/confirmed
-    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : (isInApp && !isBooking) ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
+    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
     const customerToken = isInApp ? generateCustomerToken() : null;
-
-    // === BOOKING VALIDATION ===
-    let bookingEndDate = null;
-    let resolvedBookingStatus = null;
-    if (isBooking && bookingDate) {
-      const bDate = new Date(bookingDate);
-      if (isNaN(bDate.getTime()) || bDate <= new Date()) {
-        return res.status(400).json({ message: 'bookingDate must be a valid future date' });
-      }
-      // Calculate end date from the longest service in the cart
-      let maxDuration = 30; // default 30 min
-      const serviceIds = items.filter(i => i.productId).map(i => i.productId);
-      if (serviceIds.length > 0) {
-        const products = await Product.find({ _id: { $in: serviceIds }, itemType: 'service' }).select('durationMinutes').lean();
-        for (const p of products) {
-          if (p.durationMinutes && p.durationMinutes > maxDuration) {
-            maxDuration = p.durationMinutes;
-          }
-        }
-      }
-      bookingEndDate = new Date(bDate.getTime() + maxDuration * 60 * 1000);
-
-      // Double-check slot availability (concurrency protection)
-      const conflictFilter = {
-        businessId: businessObjectId,
-        isBooking: true,
-        status: { $nin: ['cancelled'] },
-        bookingDate: { $lt: bookingEndDate },
-        bookingEndDate: { $gt: bDate }
-      };
-      // If staff is assigned, only check conflicts for that staff member
-      if (staffId) conflictFilter.staffId = staffId;
-      const conflicting = await Order.findOne(conflictFilter);
-      if (conflicting) {
-        return res.status(409).json({ message: 'Este horario ya no está disponible. Por favor selecciona otro.' });
-      }
-
-      // Bookings always start as pending — admin assigns staff and confirms manually
-      resolvedBookingStatus = 'pending';
-    }
 
     // Create the order
     const newOrder = new Order({
@@ -495,13 +448,6 @@ router.post("/", (req, res, next) => {
       deliveryZoneId: deliveryZoneId || null,
       // POS: persist payment info for ticket reprinting
       posPaymentInfo: isPOS && posPaymentInfo ? posPaymentInfo : undefined,
-      // Booking / appointment fields
-      isBooking: isBooking || false,
-      bookingDate: isBooking && bookingDate ? new Date(bookingDate) : null,
-      bookingEndDate: bookingEndDate || null,
-      bookingStatus: resolvedBookingStatus,
-      staffId: isBooking ? staffId : null,
-      staffName: isBooking ? staffName : null,
       // Map delivery zone details to top-level fields
       deliveryCoordinates: deliveryZoneInfo?.coordinates || { lat: null, lon: null },
       deliveryDistance: deliveryZoneInfo?.distance || 0,
@@ -556,12 +502,6 @@ router.post("/", (req, res, next) => {
 
     // Emit socket event
     socketService.emitToBusiness(businessObjectId.toString(), "order_created", savedOrder);
-    
-    // Emit booking-specific event for admin agenda
-    if (savedOrder.isBooking) {
-      socketService.emitToBusiness(businessObjectId.toString(), "new_booking", savedOrder);
-      // Email is NOT sent here — it's sent when admin confirms the booking
-    }
     
     // Enviar notificación push por nuevo pedido
     const { sendPushToBusinessId } = require('../services/pushService');
