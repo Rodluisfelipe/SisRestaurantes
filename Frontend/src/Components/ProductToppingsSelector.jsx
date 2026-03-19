@@ -694,7 +694,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
       onTouchEnd={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
         <div
-          className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full shadow-2xl flex flex-col modal-h-full pb-safe"
+          className="bg-white rounded-t-3xl sm:rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[95vh] sm:max-h-[90vh] pb-safe"
           onClick={handleModalClick}
           onTouchStart={(e) => e.stopPropagation()}
           onTouchMove={(e) => e.stopPropagation()}
@@ -708,11 +708,11 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
           </div>
 
           {product.image ? (
-            <div className="relative h-44 sm:h-52 overflow-hidden rounded-t-3xl sm:rounded-t-2xl bg-slate-100">
+            <div className="relative overflow-hidden rounded-t-3xl sm:rounded-t-2xl bg-slate-50">
               <img
                 src={product.image}
                 alt={product.name}
-                className="w-full h-full object-contain"
+                className="w-full max-h-[50vh] object-contain"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/10" />
               {/* Expand image button */}
