@@ -33,6 +33,11 @@ async function validateOrderPrices(items, businessObjectId, clientTotal) {
   const toppingGroupMap = new Map(dbToppingGroups.map(tg => [tg._id.toString(), tg]));
 
   for (const item of items) {
+    // Loyalty reward items are free (points already deducted via /loyalty/redeem)
+    if (item.isLoyaltyReward) {
+      debugItems.push({ name: item.name, dbPrice: 0, clientPrice: 0, serverItemPrice: 0, qty: item.quantity, loyaltyReward: true });
+      continue;
+    }
     if (item.productId) {
       const dbProduct = productMap.get(item.productId.toString());
       if (dbProduct) {
