@@ -10,6 +10,7 @@ import {
   FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle
 } from 'react-icons/fa';
 
+import { socket, socketDiagnostic, forceReconnect } from '../services/socket';
 import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
 import OrderCard from './OrderCard';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';

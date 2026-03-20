@@ -38,11 +38,6 @@ class AdminSectionErrorBoundary extends Component {
           <p className="text-sm text-red-600 mb-4 max-w-md">
             Ocurrió un error inesperado. Puedes intentar de nuevo o volver al inicio.
           </p>
-          {this.state.error && (
-            <p className="text-xs text-red-400 mb-4 max-w-md font-mono break-all bg-red-50 p-2 rounded border border-red-200">
-              {this.state.error.message || String(this.state.error)}
-            </p>
-          )}
           <div className="flex gap-3">
             <button
               onClick={this.handleRetry}
