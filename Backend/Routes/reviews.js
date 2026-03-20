@@ -12,6 +12,12 @@ const { formatHttpError } = require('../utils/errorFormatter');
 const authMiddleware = require('../middleware/authMiddleware');
 const socketService = require('../services/socketService');
 const rateLimit = require('express-rate-limit');
+const { stripHtml } = require('../utils/sanitize');
+const {
+  validateCreateReview,
+  validateReply,
+  validateVisibility,
+} = require('../middleware/validators/reviewValidators');
 
 // Rate limiter for creating reviews
 const createReviewLimiter = rateLimit({
@@ -95,7 +101,7 @@ async function recalculateReviewStats(businessId) {
  * Create a new review
  * Body: { phone, businessId, orderId, customerName, rating, comment, orderType, orderTotal }
  */
-router.post('/', createReviewLimiter, async (req, res) => {
+router.post('/', createReviewLimiter, validateCreateReview, async (req, res) => {
   try {
     const { phone, businessId, orderId, customerName, rating, comment, orderType, orderTotal, thumbsUp } = req.body;
 
@@ -161,10 +167,10 @@ router.post('/', createReviewLimiter, async (req, res) => {
       orderId,
       customerId: customer._id,
       phone,
-      customerName: customerName.trim(),
+      customerName: stripHtml(customerName.trim()),
       rating,
       thumbsUp: typeof thumbsUp === 'boolean' ? thumbsUp : null,
-      comment: comment ? comment.trim() : '',
+      comment: comment ? stripHtml(comment.trim()) : '',
       orderType: orderType || orderDoc.orderType,
       orderTotal: orderTotal || orderDoc.total,
       productIds
@@ -380,7 +386,7 @@ router.get('/check/:orderId', async (req, res) => {
  * Admin reply to a review (admin only)
  * Body: { reply }
  */
-router.put('/:id/reply', authMiddleware, async (req, res) => {
+router.put('/:id/reply', authMiddleware, validateReply, async (req, res) => {
   try {
     const { id } = req.params;
     const { reply } = req.body;
@@ -431,7 +437,7 @@ router.put('/:id/reply', authMiddleware, async (req, res) => {
  * Toggle review visibility (admin only)
  * Body: { isVisible }
  */
-router.put('/:id/visibility', authMiddleware, async (req, res) => {
+router.put('/:id/visibility', authMiddleware, validateVisibility, async (req, res) => {
   try {
     const { id } = req.params;
     const { isVisible } = req.body;

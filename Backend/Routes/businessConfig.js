@@ -7,6 +7,15 @@ const { resolveBusiness, resolveBusinessId } = require("../utils/businessResolve
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const {
+  validateUpdateConfig,
+  validateUpdateStatus,
+  validateFixSchema,
+  validateUpdateActive,
+  validateUpdateHours,
+  validateUpdateMenuStatus,
+  validateUpdateConfigById,
+} = require('../middleware/validators/businessConfigValidators');
 
 // Obtener la configuración
 router.get("/", async (req, res) => {
@@ -35,7 +44,7 @@ router.get("/", async (req, res) => {
 });
 
 // Actualizar la configuración (por businessId en body)
-router.put("/", tenantAuth, async (req, res) => {
+router.put("/", tenantAuth, validateUpdateConfig, async (req, res) => {
     const { businessId, ...updateData } = req.body;
     if (!businessId) {
       return res.status(400).json({ message: "businessId es requerido" });
@@ -46,6 +55,11 @@ router.put("/", tenantAuth, async (req, res) => {
     delete updateData.isActive;       // Only SA can activate/deactivate
     delete updateData.slug;           // Prevent slug squatting
     delete updateData.reviewStats;    // Calculated server-side only
+    delete updateData.subscriptionStatus; // Only payment webhooks can change
+    delete updateData.subscriptionPlan;   // Only payment webhooks can change
+    delete updateData.planType;           // Only payment webhooks can change
+    delete updateData.periodEnd;          // Only payment webhooks can change
+    delete updateData.graceUntil;         // Only payment webhooks can change
     delete updateData.createdAt;
     delete updateData.updatedAt;
     delete updateData.__v;
@@ -87,7 +101,7 @@ router.put("/", tenantAuth, async (req, res) => {
 });
 
 // Ruta específica para actualizar solo el estado del negocio (para actualizaciones rápidas)
-router.put("/status", tenantAuth, async (req, res) => {
+router.put("/status", tenantAuth, validateUpdateStatus, async (req, res) => {
   try {
     const { isOpen, businessId } = req.body;
     
@@ -120,7 +134,7 @@ router.put("/status", tenantAuth, async (req, res) => {
 });
 
 // Ruta específica para actualizar/reparar el esquema
-router.post("/fix-schema", tenantAuth, async (req, res) => {
+router.post("/fix-schema", tenantAuth, validateFixSchema, async (req, res) => {
   try {
     const { businessId } = req.body;
     if (!businessId) {
@@ -188,7 +202,7 @@ router.post("/fix-schema", tenantAuth, async (req, res) => {
 });
 
 // Endpoint para actualizar isActive (activar/desactivar negocio desde superadmin)
-router.put("/active", tenantAuth, async (req, res) => {
+router.put("/active", tenantAuth, validateUpdateActive, async (req, res) => {
     const { businessId, isActive } = req.body;
     if (!businessId || typeof isActive !== 'boolean') {
       return res.status(400).json({ message: "businessId y isActive son requeridos" });
@@ -263,7 +277,7 @@ router.get("/status/:businessId", async (req, res) => {
 });
 
 // Actualizar horarios del negocio
-router.put("/hours", tenantAuth, async (req, res) => {
+router.put("/hours", tenantAuth, validateUpdateHours, async (req, res) => {
   const { businessId, businessHours } = req.body;
   
   if (!businessId || !businessHours) {
@@ -315,7 +329,7 @@ router.put("/hours", tenantAuth, async (req, res) => {
 });
 
 // Actualizar estado del menú (pausar/activar)
-router.put("/menu-status", tenantAuth, async (req, res) => {
+router.put("/menu-status", tenantAuth, validateUpdateMenuStatus, async (req, res) => {
   const { businessId, menuStatus } = req.body;
   
   if (!businessId || !menuStatus) {
@@ -352,7 +366,7 @@ router.put("/menu-status", tenantAuth, async (req, res) => {
 
 // Actualizar la configuración (por businessId en URL)
 // IMPORTANTE: Esta ruta debe estar AL FINAL porque captura cualquier PUT con un parámetro
-router.put("/:businessId", tenantAuth, async (req, res) => {
+router.put("/:businessId", tenantAuth, validateUpdateConfigById, async (req, res) => {
     const { businessId } = req.params;
     const updateData = { ...req.body };
     
@@ -361,6 +375,11 @@ router.put("/:businessId", tenantAuth, async (req, res) => {
     delete updateData.isActive;       // Only SA can activate/deactivate
     delete updateData.slug;           // Prevent slug squatting
     delete updateData.reviewStats;    // Calculated server-side only
+    delete updateData.subscriptionStatus; // Only payment webhooks can change
+    delete updateData.subscriptionPlan;   // Only payment webhooks can change
+    delete updateData.planType;           // Only payment webhooks can change
+    delete updateData.periodEnd;          // Only payment webhooks can change
+    delete updateData.graceUntil;         // Only payment webhooks can change
     delete updateData.createdAt;
     delete updateData.updatedAt;
     delete updateData.__v;

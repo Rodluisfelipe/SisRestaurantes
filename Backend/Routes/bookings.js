@@ -7,6 +7,21 @@ const Customer = require('../Models/Customer');
 const Admin = require('../Models/Admin');
 const Product = require('../Models/Product');
 const logger = require('../utils/logger');
+const { tenantAuth } = require('../middleware/tenantAuth');
+const rateLimit = require('express-rate-limit');
+const {
+  validateCreateBooking,
+  validateUpdateBookingStatus,
+  validateAssignStaff,
+  validateCreateRecurring,
+} = require('../middleware/validators/bookingValidators');
+
+// Rate limiter for public booking creation
+const bookingRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { message: 'Demasiadas solicitudes. Intente nuevamente más tarde.' }
+});
 
 // Generate a customer token for booking tracking
 const generateCustomerToken = () => crypto.randomBytes(16).toString('hex');
@@ -149,7 +164,7 @@ router.get('/slots', async (req, res) => {
  *   from       - ISO date (optional, default: today)
  *   to         - ISO date (optional, default: from + 7 days)
  */
-router.get('/', async (req, res) => {
+router.get('/', tenantAuth, async (req, res) => {
   try {
     const { businessId, from, to } = req.query;
 
@@ -177,7 +192,7 @@ router.get('/', async (req, res) => {
  * Update booking status (confirm, cancel, complete, no-show).
  * Enforces cancellation policy if customer cancels.
  */
-router.patch('/:id/status', async (req, res) => {
+router.patch('/:id/status', tenantAuth, validateUpdateBookingStatus, async (req, res) => {
   try {
     const { id } = req.params;
     const { bookingStatus, reason, isCustomer } = req.body;
@@ -190,6 +205,22 @@ router.patch('/:id/status', async (req, res) => {
     const booking = await Booking.findById(id);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Enforce valid state transitions
+    const BOOKING_TRANSITIONS = {
+      'pending':   ['confirmed', 'cancelled'],
+      'confirmed': ['completed', 'cancelled', 'no_show'],
+      'completed': [],
+      'cancelled': [],
+      'no_show':   []
+    };
+    const allowed = BOOKING_TRANSITIONS[booking.bookingStatus] || [];
+    if (!allowed.includes(bookingStatus)) {
+      return res.status(400).json({
+        message: `No se puede cambiar de '${booking.bookingStatus}' a '${bookingStatus}'`,
+        code: 'INVALID_TRANSITION'
+      });
     }
 
     // Cancellation policy check (only for customer-initiated cancellations)
@@ -270,7 +301,7 @@ router.patch('/:id/status', async (req, res) => {
  *   from       - ISO date YYYY-MM-DD
  *   to         - ISO date YYYY-MM-DD
  */
-router.get('/stats', async (req, res) => {
+router.get('/stats', tenantAuth, async (req, res) => {
   try {
     const { businessId, from, to } = req.query;
     if (!businessId) return res.status(400).json({ message: 'businessId is required' });
@@ -340,7 +371,7 @@ router.get('/stats', async (req, res) => {
  * Query params:
  *   businessId - MongoDB _id
  */
-router.get('/customer/:phone', async (req, res) => {
+router.get('/customer/:phone', tenantAuth, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -409,7 +440,7 @@ router.get('/available-staff', async (req, res) => {
  * PATCH /api/bookings/:id/assign-staff
  * Assign a staff member to a booking.
  */
-router.patch('/:id/assign-staff', async (req, res) => {
+router.patch('/:id/assign-staff', tenantAuth, validateAssignStaff, async (req, res) => {
   try {
     const { id } = req.params;
     const { staffId, staffName } = req.body;
@@ -448,7 +479,7 @@ router.patch('/:id/assign-staff', async (req, res) => {
  * Create recurring bookings (weekly, biweekly, monthly).
  * Creates individual booking orders for each occurrence.
  */
-router.post('/recurring', async (req, res) => {
+router.post('/recurring', tenantAuth, validateCreateRecurring, async (req, res) => {
   try {
     const { businessId, recurrenceType, endDate, bookingTemplate } = req.body;
 
@@ -583,7 +614,7 @@ router.get('/cancellation-policy', async (req, res) => {
  * POST /api/bookings
  * Create a new booking (separate from orders).
  */
-router.post('/', async (req, res) => {
+router.post('/', bookingRateLimiter, validateCreateBooking, async (req, res) => {
   try {
     const {
       businessId, customerName, phone, customerEmail,

@@ -202,12 +202,11 @@ router.post('/confirmation', async (req, res) => {
     // Validar firma
     const isValid = epaycoService.validateConfirmationSignature(data);
     if (!isValid) {
-      logger.warn('ePayco invalid signature', { 
+      logger.warn('ePayco invalid signature — REJECTING', { 
         x_ref_payco: data.x_ref_payco,
         x_signature: data.x_signature 
       });
-      // No retornar error a ePayco, solo loguear
-      // ePayco espera 200 OK siempre
+      return res.status(200).send('OK'); // Return 200 (ePayco expects it) but don't process
     }
     
     const reference = data.x_extra3 || data.x_id_invoice || data.x_id_factura || data.x_invoice;
@@ -264,6 +263,16 @@ router.get('/confirmation', async (req, res) => {
       x_invoice: data.x_invoice,
       x_extra3: data.x_extra3,
     });
+    
+    // Validar firma (misma lógica que POST)
+    const isValid = epaycoService.validateConfirmationSignature(data);
+    if (!isValid) {
+      logger.warn('ePayco invalid signature (GET) — REJECTING', {
+        x_ref_payco: data.x_ref_payco,
+        x_signature: data.x_signature
+      });
+      return res.status(200).send('OK');
+    }
     
     const reference = data.x_extra3 || data.x_id_invoice || data.x_id_factura || data.x_invoice;
     const responseInfo = epaycoService.interpretResponseCode(data.x_cod_response);
@@ -409,8 +418,22 @@ router.get('/status/:ref', authMiddleware, async (req, res) => {
 
 // ============================================
 // Función: Activar/Extender suscripción
+// Per-businessId lock prevents race conditions from concurrent webhooks
 // ============================================
+const _activationLocks = new Map();
+
 async function activateSubscription(payment) {
+  const lockKey = payment.businessId.toString();
+  
+  // Wait for any ongoing activation for this business
+  while (_activationLocks.has(lockKey)) {
+    await _activationLocks.get(lockKey);
+  }
+  
+  let releaseLock;
+  const lockPromise = new Promise(r => { releaseLock = r; });
+  _activationLocks.set(lockKey, lockPromise);
+  
   try {
     const { businessId, months, basePrice, reference } = payment;
     
@@ -522,6 +545,9 @@ async function activateSubscription(payment) {
   } catch (error) {
     logger.error('Error activating subscription from ePayco payment', error);
     throw error;
+  } finally {
+    _activationLocks.delete(lockKey);
+    releaseLock();
   }
 }
 

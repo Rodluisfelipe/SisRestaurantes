@@ -15,9 +15,9 @@ const crypto = require('crypto');
 const logger = require('../utils/logger');
 
 const config = {
-  apiKey: process.env.DLOCAL_API_KEY || 'hdwWMaogDXXYZvEfrIztWlWIAzKkQHLx',
-  secretKey: process.env.DLOCAL_SECRET_KEY || 'QJiOzA6PxeHjJxTGEAypGTqNTdJkAyCzis176IVc',
-  smartFieldsKey: process.env.DLOCAL_SMART_FIELDS_KEY || '3997e61a-4e7c-42ed-b28c-b204f1682e4c',
+  apiKey: process.env.DLOCAL_API_KEY || '',
+  secretKey: process.env.DLOCAL_SECRET_KEY || '',
+  smartFieldsKey: process.env.DLOCAL_SMART_FIELDS_KEY || '',
   isTest: (process.env.DLOCAL_TEST || 'false') === 'true',
   get baseUrl() {
     return this.isTest ? 'https://api-sbx.dlocalgo.com' : 'https://api.dlocalgo.com';
@@ -85,7 +85,12 @@ function verifyWebhookSignature(bodyStr, receivedSignature) {
   const expected = crypto.createHmac('sha256', config.secretKey)
     .update(message)
     .digest('hex');
-  return expected === receivedSignature;
+  // Timing-safe comparison to prevent signature guessing via timing attacks
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expected, 'utf8'), Buffer.from(receivedSignature, 'utf8'));
+  } catch {
+    return false; // Different lengths
+  }
 }
 
 /**

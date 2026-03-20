@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const Subscription = require('../Models/Subscription');
 const { sendPushToBusinessId } = require('./pushService');
 const logger = require('../utils/logger');
+const { startOfDayCOL } = require('../utils/timezone');
 
 /**
  * Servicio de recordatorios automáticos de suscripción.
@@ -16,19 +17,11 @@ const logger = require('../utils/logger');
 const REMINDER_DAYS = [7, 3, 1, 0];
 
 /**
- * Normaliza una fecha a medianoche (00:00:00) para comparar solo por día.
- */
-function normalizeDate(date) {
-  const d = new Date(date);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
-
-/**
- * Calcula la diferencia en días entre dos fechas (solo parte de día).
+ * Calcula la diferencia en días entre dos fechas usando timezone Colombia.
  */
 function daysDiff(dateA, dateB) {
-  const a = normalizeDate(dateA);
-  const b = normalizeDate(dateB);
+  const a = startOfDayCOL(dateA);
+  const b = startOfDayCOL(dateB);
   return Math.round((b - a) / (1000 * 60 * 60 * 24));
 }
 
@@ -38,7 +31,7 @@ function daysDiff(dateA, dateB) {
 async function checkSubscriptionReminders() {
   try {
     const now = new Date();
-    const today = normalizeDate(now);
+    const today = startOfDayCOL(now);
 
     // Buscar suscripciones activas con periodEnd definido
     // Incluir las que tienen periodEnd entre hoy y 8 días en el futuro
@@ -220,11 +213,21 @@ async function checkSuspendedNotifications(today) {
  * Inicia el cron job de recordatorios de suscripción.
  * Se ejecuta todos los días a las 9:00 AM (hora del servidor).
  */
+let _subCronRunning = false;
 function startSubscriptionCron() {
   // Ejecutar todos los días a las 9:00 AM
   const task = cron.schedule('0 9 * * *', async () => {
-    logger.info('[SubscriptionCron] Ejecutando verificación diaria de suscripciones...');
-    await checkSubscriptionReminders();
+    if (_subCronRunning) {
+      logger.warn('[SubscriptionCron] Previous run still in progress — skipping');
+      return;
+    }
+    _subCronRunning = true;
+    try {
+      logger.info('[SubscriptionCron] Ejecutando verificación diaria de suscripciones...');
+      await checkSubscriptionReminders();
+    } finally {
+      _subCronRunning = false;
+    }
   }, {
     timezone: 'America/Bogota' // Zona horaria de Colombia
   });

@@ -583,7 +583,12 @@ router.post('/change-password', authMiddleware, async (req, res) => {
     }
     admin.password = newPassword; // El pre-save del modelo la hashea
     admin.mustChangePassword = false;
+    // Invalidate all existing sessions
+    admin.refreshTokens = [];
     await admin.save();
+    // Clear auth middleware cache for this user
+    const { invalidateUserCache } = require('../middleware/authMiddleware');
+    invalidateUserCache(admin._id.toString(), admin.role || 'admin');
     res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (error) {
     res.status(500).json({ message: 'Error al cambiar la contraseña' });
@@ -602,13 +607,20 @@ router.post('/force-change-password', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'No autorizado. Usa el endpoint de cambio de contraseña normal.' });
     }
     
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 8 caracteres' });
+    // Validate password strength (same rules as registration)
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!newPassword || !passwordRegex.test(newPassword)) {
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número' });
     }
     
     admin.password = newPassword;
     admin.mustChangePassword = false;
+    // Invalidate all existing sessions except current
+    admin.refreshTokens = [];
     await admin.save();
+    // Clear auth middleware cache
+    const { invalidateUserCache } = require('../middleware/authMiddleware');
+    invalidateUserCache(admin._id.toString(), admin.role || 'admin');
     res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (error) {
     res.status(500).json({ message: 'Error al cambiar la contraseña' });

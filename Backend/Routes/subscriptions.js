@@ -1,6 +1,7 @@
 
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const Subscription = require('../Models/Subscription');
 const BusinessConfig = require('../Models/BusinessConfig');
 const Admin = require('../Models/Admin');
@@ -12,6 +13,15 @@ const { SUBSCRIPTION_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { calculateSubscriptionStatus } = require('../utils/subscriptionHelper');
+
+// Rate limiter for public subscription check endpoint
+const subscriptionCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, try again later' }
+});
 
 // Validación de entrada para crear/actualizar suscripción
 const validateSubscriptionInput = (req, res, next) => {
@@ -81,7 +91,7 @@ const validateSubscriptionInput = (req, res, next) => {
 
 // GET /api/subscriptions/check/:businessId - Verificar estado de suscripción
 // Public endpoint but returns limited info. Full details require auth.
-router.get('/check/:businessId', async (req, res) => {
+router.get('/check/:businessId', subscriptionCheckLimiter, async (req, res) => {
   try {
     let { businessId } = req.params;
     

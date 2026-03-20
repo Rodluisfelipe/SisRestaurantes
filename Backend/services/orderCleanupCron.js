@@ -1,4 +1,6 @@
 const cron = require('node-cron');
+const fs = require('fs');
+const path = require('path');
 const Order = require('../Models/Order');
 const socketService = require('../services/socketService');
 const logger = require('../utils/logger');
@@ -118,20 +120,59 @@ async function cleanupCancelledOrders() {
  * Ejecuta ambas tareas de limpieza
  */
 async function runCleanup() {
-  // Auto-expiration disabled — cancellation is now manual from admin/POS
-  // const expired = await expireStaleOrders();
+  const expired = await expireStaleOrders();
   const cleaned = await cleanupCancelledOrders();
-  return { expired: 0, cleaned };
+  cleanupOrphanedProofDirs();
+  return { expired, cleaned };
+}
+
+/**
+ * Elimina carpetas de comprobantes de pago de pedidos archivados (> 7 días)
+ * para evitar que el volumen Docker crezca sin límite.
+ */
+function cleanupOrphanedProofDirs() {
+  try {
+    const proofsDir = path.join(__dirname, '..', 'uploads', 'order-proofs');
+    if (!fs.existsSync(proofsDir)) return;
+    const dirs = fs.readdirSync(proofsDir);
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000; // 7 days
+    let cleaned = 0;
+    for (const dir of dirs) {
+      const fullPath = path.join(proofsDir, dir);
+      try {
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory() && stat.mtimeMs < cutoff) {
+          fs.rmSync(fullPath, { recursive: true, force: true });
+          cleaned++;
+        }
+      } catch (e) { /* skip unreadable dirs */ }
+    }
+    if (cleaned > 0) {
+      logger.info(`[OrderCleanup] ${cleaned} old proof directories cleaned up`);
+    }
+  } catch (error) {
+    logger.error('[OrderCleanup] Error cleaning proof dirs:', error);
+  }
 }
 
 /**
  * Inicia el cron de cierre automático a medianoche Colombia (UTC-5)
  */
+let _cleanupRunning = false;
 function startOrderCleanupCron() {
   // Cron: todos los días a las 00:00 hora Colombia (05:00 UTC)
   cron.schedule('0 5 * * *', async () => {
-    logger.info('[OrderCleanup] Cierre automático de medianoche (Colombia)');
-    await runCleanup();
+    if (_cleanupRunning) {
+      logger.warn('[OrderCleanup] Previous run still in progress — skipping');
+      return;
+    }
+    _cleanupRunning = true;
+    try {
+      logger.info('[OrderCleanup] Cierre automático de medianoche (Colombia)');
+      await runCleanup();
+    } finally {
+      _cleanupRunning = false;
+    }
   });
 
   logger.info('🧹 Order cleanup cron iniciado (medianoche Colombia / 05:00 UTC)');

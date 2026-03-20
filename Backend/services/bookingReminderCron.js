@@ -113,16 +113,34 @@ async function checkBookingReminders() {
   }
 }
 
+let _bookingCronRunning = false;
 function startBookingReminderCron() {
   // Run every 15 minutes
-  cron.schedule('*/15 * * * *', () => {
-    checkBookingReminders();
+  cron.schedule('*/15 * * * *', async () => {
+    if (_bookingCronRunning) {
+      logger.warn('[BookingReminder] Previous run still in progress — skipping');
+      return;
+    }
+    _bookingCronRunning = true;
+    try {
+      await checkBookingReminders();
+    } finally {
+      _bookingCronRunning = false;
+    }
   }, { timezone: 'America/Bogota' });
 
   logger.info('✅ Booking reminder cron started (every 15 min)');
 
-  // Also run once on startup (after brief delay)
-  setTimeout(() => checkBookingReminders(), 10000);
+  // Also run once on startup (after brief delay), respecting overlap guard
+  setTimeout(async () => {
+    if (_bookingCronRunning) return;
+    _bookingCronRunning = true;
+    try {
+      await checkBookingReminders();
+    } finally {
+      _bookingCronRunning = false;
+    }
+  }, 10000);
 }
 
 module.exports = {

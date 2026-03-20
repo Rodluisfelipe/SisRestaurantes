@@ -1,11 +1,11 @@
-/**
- * Ruta de subida de imágenes
+﻿/**
+ * Ruta de subida de imÃ¡genes
  * 
  * POST /api/upload/image - Sube una imagen a DigitalOcean Spaces
  * DELETE /api/upload/image - Elimina una imagen de Spaces
  * 
- * Soporta imágenes de productos, banners, y otros recursos.
- * Requiere autenticación (tenantAuth o authMiddleware).
+ * Soporta imÃ¡genes de productos, banners, y otros recursos.
+ * Requiere autenticaciÃ³n (tenantAuth o authMiddleware).
  */
 
 const express = require('express');
@@ -13,31 +13,32 @@ const router = express.Router();
 const multer = require('multer');
 const { uploadImage, deleteImage, isSpacesConfigured } = require('../services/imageUploadService');
 const { tenantAuth } = require('../middleware/tenantAuth');
+const logger = require('../utils/logger');
 
 // Configurar multer para almacenamiento en memoria (no disco)
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB máximo
+    fileSize: 5 * 1024 * 1024, // 5MB mÃ¡ximo
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Solo se permiten imágenes (JPEG, PNG, WebP)'), false);
+      cb(new Error('Solo se permiten imÃ¡genes (JPEG, PNG, WebP)'), false);
     }
   },
 });
 
 /**
  * POST /api/upload/image
- * Sube una imagen y retorna la URL pública
+ * Sube una imagen y retorna la URL pÃºblica
  * 
  * Body (multipart/form-data):
  * - image: archivo de imagen
  * - folder: carpeta destino ('products', 'banners', 'proofs', 'announcements')
- * - maxWidth: ancho máximo opcional (default: 800)
+ * - maxWidth: ancho mÃ¡ximo opcional (default: 800)
  * - quality: calidad WebP 1-100 (default: 80)
  */
 router.post('/image', tenantAuth, upload.single('image'), async (req, res) => {
@@ -52,7 +53,7 @@ router.post('/image', tenantAuth, upload.single('image'), async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'No se envió ninguna imagen',
+        message: 'No se enviÃ³ ninguna imagen',
       });
     }
 
@@ -78,7 +79,7 @@ router.post('/image', tenantAuth, upload.single('image'), async (req, res) => {
       size: result.size,
     });
   } catch (error) {
-    console.error('Error subiendo imagen:', error);
+    logger.error('Error subiendo imagen:', error);
     
     if (error.message?.includes('Solo se permiten')) {
       return res.status(400).json({ success: false, message: error.message });
@@ -115,7 +116,7 @@ router.delete('/image', tenantAuth, async (req, res) => {
       message: deleted ? 'Imagen eliminada' : 'No se pudo eliminar la imagen',
     });
   } catch (error) {
-    console.error('Error eliminando imagen:', error);
+    logger.error('Error eliminando imagen:', error);
     res.status(500).json({
       success: false,
       message: 'Error al eliminar la imagen',

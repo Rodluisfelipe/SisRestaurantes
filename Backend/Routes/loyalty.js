@@ -7,6 +7,10 @@ const { tenantAuth } = require('../middleware/tenantAuth');
 const { resolveBusinessId } = require('../utils/businessResolver');
 const rateLimit = require('express-rate-limit');
 const logger = require('../utils/logger');
+const {
+  validateUpdateProgram,
+  validateRedeem,
+} = require('../middleware/validators/loyaltyValidators');
 
 // Helper: get the effective businessId for admin routes
 async function getAdminBusinessId(req) {
@@ -53,7 +57,7 @@ router.get('/program', tenantAuth, async (req, res) => {
 });
 
 // ─── ADMIN: Create or update loyalty program ───
-router.put('/program', tenantAuth, async (req, res) => {
+router.put('/program', tenantAuth, validateUpdateProgram, async (req, res) => {
   try {
     const businessId = await getAdminBusinessId(req);
     if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
@@ -223,7 +227,7 @@ router.get('/balance', publicLimiter, async (req, res) => {
 });
 
 // ─── PUBLIC: Redeem a reward ───
-router.post('/redeem', publicLimiter, async (req, res) => {
+router.post('/redeem', publicLimiter, validateRedeem, async (req, res) => {
   try {
     const { businessId: rawBizId, phone, rewardId } = req.body;
     if (!rawBizId || !phone || !rewardId) {

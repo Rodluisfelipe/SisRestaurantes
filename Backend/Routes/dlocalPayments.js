@@ -189,15 +189,22 @@ router.post('/webhook', async (req, res) => {
 
     logger.info('dLocal Go webhook received', { body: JSON.stringify(data).substring(0, 200) });
 
-    // Verificar firma HMAC (Authorization header)
-    if (authHeader) {
-      const signaturePart = authHeader.replace('V2-HMAC-SHA256, Signature: ', '').trim();
-      if (signaturePart && signaturePart !== authHeader) {
-        const bodyStr = JSON.stringify(data);
-        if (!dlocalService.verifyWebhookSignature(bodyStr, signaturePart)) {
-          logger.warn('dLocal Go webhook: firma inválida (continuando en sandbox)');
-        }
-      }
+    // Verificar firma HMAC (Authorization header) — OBLIGATORIA
+    if (!authHeader) {
+      logger.warn('dLocal Go webhook: missing Authorization header — REJECTING');
+      return res.status(200).json({ ok: true });
+    }
+    
+    const signaturePart = authHeader.replace('V2-HMAC-SHA256, Signature: ', '').trim();
+    if (!signaturePart || signaturePart === authHeader) {
+      logger.warn('dLocal Go webhook: malformed Authorization header — REJECTING');
+      return res.status(200).json({ ok: true });
+    }
+    
+    const bodyStr = JSON.stringify(data);
+    if (!dlocalService.verifyWebhookSignature(bodyStr, signaturePart)) {
+      logger.warn('dLocal Go webhook: firma inválida — REJECTING');
+      return res.status(200).json({ ok: true });
     }
 
     const paymentId = data.payment_id;
@@ -368,8 +375,23 @@ router.get('/history', authMiddleware, async (req, res) => {
 
 // ============================================
 // Activar suscripción (misma lógica que ePayco)
+// Per-businessId lock prevents race conditions from concurrent webhooks
 // ============================================
+const _activationLocks = new Map();
+
 async function activateSubscription(payment) {
+  const lockKey = payment.businessId.toString();
+  
+  // Wait for any ongoing activation for this business
+  while (_activationLocks.has(lockKey)) {
+    await _activationLocks.get(lockKey);
+  }
+  
+  let releaseLock;
+  const lockPromise = new Promise(r => { releaseLock = r; });
+  _activationLocks.set(lockKey, lockPromise);
+  
+  try {
   const { businessId, months, reference, totalAmount } = payment;
 
   const now = new Date();
@@ -452,6 +474,10 @@ async function activateSubscription(payment) {
   });
 
   return sub;
+  } finally {
+    _activationLocks.delete(lockKey);
+    releaseLock();
+  }
 }
 
 module.exports = router;

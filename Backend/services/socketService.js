@@ -8,9 +8,26 @@ const viewerTracker = require('./viewerTracker');
 // Slug cache to avoid DB lookups on every emit
 const slugCache = new Map(); // businessId -> { slug, cachedAt }
 const SLUG_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const SLUG_CACHE_MAX = 200; // max entries before forced cleanup
 
 // Cache latest domi location per orderId so new clients get it immediately
 const domiLocationCache = new Map(); // orderId -> { lat, lng, timestamp }
+const DOMI_CACHE_TTL = 2 * 60 * 60 * 1000; // 2 hours — delivery rarely takes longer
+
+// Periodic cleanup of caches to prevent unbounded growth (every 30 min)
+setInterval(() => {
+  const now = Date.now();
+  // Purge expired slug cache entries
+  for (const [key, entry] of slugCache) {
+    if (now - entry.cachedAt > SLUG_CACHE_TTL) slugCache.delete(key);
+  }
+  // Purge expired domi location entries
+  for (const [key, entry] of domiLocationCache) {
+    if (now - (entry.timestamp || 0) > DOMI_CACHE_TTL) domiLocationCache.delete(key);
+  }
+  // Purge stale viewers (no heartbeat in 90s)
+  viewerTracker.cleanupStale();
+}, 30 * 60 * 1000);
 
 function initSocket(io) {
   ioInstance = io;
@@ -264,6 +281,16 @@ function initSocket(io) {
     
     socket.on('viewer:join', async (data) => {
       if (!data || !data.businessId) return;
+      
+      // Throttle: reject rapid re-joins (max 1 per 2 seconds per socket)
+      const now = Date.now();
+      if (socket._lastViewerJoin && now - socket._lastViewerJoin < 2000) return;
+      socket._lastViewerJoin = now;
+      
+      // If already tracking a different business, clean up first
+      if (socket._viewerBusinessId && socket._viewerBusinessId !== data.businessId.toString()) {
+        viewerTracker.removeViewer(socket._viewerBusinessId, socket.id);
+      }
       
       const businessId = data.businessId.toString();
       const viewer = viewerTracker.addViewer(businessId, socket.id, {

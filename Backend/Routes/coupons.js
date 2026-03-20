@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const Coupon = require('../Models/Coupon');
 const Subscription = require('../Models/Subscription');
 const BusinessConfig = require('../Models/BusinessConfig');
@@ -8,6 +9,15 @@ const authMiddleware = require('../middleware/authMiddleware');
 const { resolveBusinessId } = require('../utils/businessResolver');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
+
+// Rate limiter for public coupon validation (prevent brute-force)
+const couponValidateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { valid: false, reason: 'Too many requests, try again later' }
+});
 
 // Todas las rutas de creación/gestión requieren SuperAdmin
 router.use('/admin', protectSuperAdmin);
@@ -237,7 +247,7 @@ router.post('/redeem', authMiddleware, async (req, res) => {
 });
 
 // GET /api/coupons/validate/:code - Validar cupón de suscripción (sin autenticación para compartir)
-router.get('/validate/:code', async (req, res) => {
+router.get('/validate/:code', couponValidateLimiter, async (req, res) => {
   try {
     const { code } = req.params;
     
@@ -478,7 +488,7 @@ router.post('/generate-code', authMiddleware, async (req, res) => {
 });
 
 // POST /api/coupons/validate - Validar cupón para un pedido (público / cliente)
-router.post('/validate', async (req, res) => {
+router.post('/validate', couponValidateLimiter, async (req, res) => {
   try {
     const { businessId, code, orderData, customerId } = req.body;
 

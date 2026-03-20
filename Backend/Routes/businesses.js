@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const BusinessConfig = require('../Models/BusinessConfig');
 const Product = require('../Models/Product');
 const Category = require('../Models/Category');
@@ -10,6 +11,15 @@ const { ORDER_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
+
+// Rate limiter for public business listing/search endpoints (heavy aggregation)
+const businessesLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests, try again later' }
+});
 
 // Palabras clave para categorías genéricas del catálogo (estilo Rappi/DiDi)
 const categoryKeywords = {
@@ -132,7 +142,7 @@ const getBatchBusinessInfo = async (businessIds) => {
  * Obtener todos los negocios activos para el catálogo
  * Query params: lat, lon, limit, offset, open (filtro abierto ahora)
  */
-router.get('/', async (req, res) => {
+router.get('/', businessesLimiter, async (req, res) => {
   try {
     const { lat, lon, limit = 50, offset = 0, open } = req.query;
     const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
@@ -293,7 +303,7 @@ router.get('/', async (req, res) => {
  * GET /api/businesses/featured
  * Secciones curadas: trending, envio gratis, precio bajo, mejor valorados
  */
-router.get('/featured', async (req, res) => {
+router.get('/featured', businessesLimiter, async (req, res) => {
   try {
     const { lat, lon } = req.query;
     const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
@@ -377,7 +387,7 @@ router.get('/featured', async (req, res) => {
  * Buscar restaurantes por nombre de PRODUCTO (ej: "hamburguesa" → restaurantes que la venden)
  * Retorna restaurantes + los productos que matchearon
  */
-router.get('/search/products', async (req, res) => {
+router.get('/search/products', businessesLimiter, async (req, res) => {
   try {
     const { q, limit = 20 } = req.query;
     if (!q || q.trim().length < 2) {
@@ -462,7 +472,7 @@ router.get('/search/products', async (req, res) => {
  * Buscar negocios por nombre o descripción
  * IMPORTANTE: Debe estar ANTES de /:id para que Express no lo capture como parámetro
  */
-router.get('/search', async (req, res) => {
+router.get('/search', businessesLimiter, async (req, res) => {
   try {
     const { q, limit = 20, offset = 0 } = req.query;
     logger.debug('Searching businesses', { query: q }, req);
@@ -556,7 +566,7 @@ if (process.env.NODE_ENV !== 'production') {
  * GET /api/businesses/:id
  * Obtener un negocio específico por ID o slug — con datos completos
  */
-router.get('/:id', async (req, res) => {
+router.get('/:id', businessesLimiter, async (req, res) => {
   try {
     const { id } = req.params;
 
