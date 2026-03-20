@@ -706,7 +706,12 @@ router.delete("/:id", authMiddleware, zoneLimiter, async (req, res) => {
       });
     }
     
-    const zone = await DeliveryZone.findOneAndDelete({ _id: id, businessId });
+    // Soft-delete: deactivate instead of permanently removing
+    const zone = await DeliveryZone.findOneAndUpdate(
+      { _id: id, businessId },
+      { $set: { isActive: false } },
+      { new: true }
+    );
     
     if (!zone) {
       return res.status(404).json(

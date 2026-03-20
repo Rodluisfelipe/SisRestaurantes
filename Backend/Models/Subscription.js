@@ -100,7 +100,7 @@ subscriptionSchema.virtual('gracePeriodEnd').get(function() {
 });
 
 // Índices para optimizar consultas
-subscriptionSchema.index({ businessId: 1, status: 1 });
+subscriptionSchema.index({ businessId: 1 }, { unique: true });
 subscriptionSchema.index({ endDate: 1, status: 1 });
 
   // Constante de gracia (1 día después de vencimiento)

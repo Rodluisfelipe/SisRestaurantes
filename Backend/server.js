@@ -24,6 +24,23 @@ Sentry.init({
   sendDefaultPii: false,
 });
 
+// ── Fail-fast: validate critical env vars before proceeding ──
+const REQUIRED_ENV = [
+  'MONGODB_URI',
+  'JWT_SECRET',
+  'JWT_REFRESH_SECRET',
+  'DO_SPACES_KEY',
+  'DO_SPACES_SECRET',
+  'VAPID_PUBLIC',
+  'VAPID_PRIVATE',
+  'GOOGLE_CLIENT_ID',
+];
+const missingEnv = REQUIRED_ENV.filter(v => !process.env[v]);
+if (missingEnv.length) {
+  logger.error(`Missing required environment variables: ${missingEnv.join(', ')}`);
+  process.exit(1);
+}
+
 /**
  * Servidor principal de la aplicación
  * 
@@ -43,6 +60,7 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
   : ['http://menuby.tech', 'https://menuby.tech', 'https://www.menuby.tech', 'http://127.0.0.1:5173', 'http://localhost:5173', 'https://157-245-125-216.nip.io'];
 
+logger.info(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
 if (isProd && !process.env.ALLOWED_ORIGINS) {
   logger.warn('ALLOWED_ORIGINS env var not set in production — using fallback origins including dev domains');
 }
@@ -144,7 +162,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 app.use(compression());
 
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 // NoSQL injection sanitization
 app.use(mongoSanitize());
@@ -231,7 +249,7 @@ Sentry.setupExpressErrorHandler(app);
 
 // Manejo de errores
 app.use((err, req, res, next) => {
-  console.error('Error:', err.stack);
+  logger.error('Error:', err.stack);
   res.status(500).json({ 
     message: "Error interno del servidor",
     error: process.env.NODE_ENV === 'development' ? err.message : undefined,
@@ -239,9 +257,27 @@ app.use((err, req, res, next) => {
   });
 });
 
-mongoose.connect(MONGO_URI)
+mongoose.connect(MONGO_URI, {
+  // Retry on initial connection failure
+  serverSelectionTimeoutMS: 10000,
+  // Reconnect automatically on disconnect
+  heartbeatFrequencyMS: 10000,
+  // Buffer commands while reconnecting (up to 30s)
+  bufferTimeoutMS: 30000,
+})
   .then(() => {
     logger.info("MongoDB connected");
+    
+    // Monitor connection health
+    mongoose.connection.on('disconnected', () => {
+      logger.error('MongoDB DISCONNECTED — Mongoose will auto-reconnect');
+    });
+    mongoose.connection.on('reconnected', () => {
+      logger.info('MongoDB RECONNECTED');
+    });
+    mongoose.connection.on('error', (err) => {
+      logger.error('MongoDB connection error:', err.message);
+    });
     
     // Configurar VAPID para push notifications (opcional - no bloquear inicio si falla)
     // Intentar cargar pushService de forma segura
@@ -249,14 +285,14 @@ mongoose.connect(MONGO_URI)
     try {
       pushService = require('./services/pushService');
     } catch (error) {
-      console.warn('⚠️ Push notifications no disponibles (web-push no instalado):', error.message);
+      logger.warn('Push notifications no disponibles (web-push no instalado):', error.message);
     }
     
     if (pushService && pushService.configureVapid) {
       try {
         pushService.configureVapid();
       } catch (error) {
-        console.warn('⚠️ Error configurando VAPID:', error.message);
+        logger.warn('Error configurando VAPID:', error.message);
       }
     }
     
@@ -265,7 +301,7 @@ mongoose.connect(MONGO_URI)
       const { startSubscriptionCron } = require('./services/subscriptionCron');
       startSubscriptionCron();
     } catch (error) {
-      console.warn('⚠️ Error iniciando cron de suscripciones:', error.message);
+      logger.warn('Error iniciando cron de suscripciones:', error.message);
     }
     
     // Cron de cierre automático a medianoche Colombia
@@ -273,7 +309,7 @@ mongoose.connect(MONGO_URI)
       const { startOrderCleanupCron } = require('./services/orderCleanupCron');
       startOrderCleanupCron();
     } catch (error) {
-      console.warn('⚠️ Error iniciando cron de limpieza de pedidos:', error.message);
+      logger.warn('Error iniciando cron de limpieza de pedidos:', error.message);
     }
 
     // Cron de recordatorios de citas/bookings
@@ -281,7 +317,15 @@ mongoose.connect(MONGO_URI)
       const { startBookingReminderCron } = require('./services/bookingReminderCron');
       startBookingReminderCron();
     } catch (error) {
-      console.warn('⚠️ Error iniciando cron de recordatorios de citas:', error.message);
+      logger.warn('Error iniciando cron de recordatorios de citas:', error.message);
+    }
+
+    // Cron de expiración de puntos de lealtad
+    try {
+      const { startLoyaltyExpiryCron } = require('./services/loyaltyExpiryCron');
+      startLoyaltyExpiryCron();
+    } catch (error) {
+      logger.warn('Error iniciando cron de expiración de puntos:', error.message);
     }
     
     const port = process.env.PORT || 5000;
@@ -292,10 +336,26 @@ mongoose.connect(MONGO_URI)
     // Manejar cierre graceful del servidor
     process.on('SIGTERM', () => {
       logger.info('SIGTERM recibido. Cerrando servidor...');
+      io.close(() => logger.info('Socket.IO cerrado.'));
       server.close(() => {
-        logger.info('Servidor cerrado.');
-        process.exit(0);
+        mongoose.connection.close(false).then(() => {
+          logger.info('MongoDB desconectado. Servidor cerrado.');
+          process.exit(0);
+        });
       });
+      // Force exit after 10s if graceful shutdown stalls
+      setTimeout(() => process.exit(1), 10000);
+    });
+
+    // Global exception handlers — prevent silent crashes
+    process.on('uncaughtException', (err) => {
+      logger.error('UNCAUGHT EXCEPTION — el proceso se cerrará:', err);
+      server.close(() => process.exit(1));
+      setTimeout(() => process.exit(1), 5000);
+    });
+
+    process.on('unhandledRejection', (reason) => {
+      logger.error('UNHANDLED REJECTION:', reason);
     });
   })
-  .catch((err) => console.error("Error de conexión a MongoDB:", err));
+  .catch((err) => logger.error("Error de conexión a MongoDB:", err));

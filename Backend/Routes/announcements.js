@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const logger = require('../utils/logger');
 const sanitizeUpload = require('../middleware/sanitizeUpload');
+const { stripHtml } = require('../utils/sanitize');
 
 // ═══════════════════════════════════════════════════
 // Configuración de multer para imágenes de anuncios
@@ -58,8 +59,8 @@ router.post('/', protectSuperAdmin, upload.single('image'), sanitizeUpload({ max
     }
     
     const announcementData = {
-      title: title.trim(),
-      body: body.trim(),
+      title: stripHtml(title.trim()),
+      body: stripHtml(body.trim()),
       priority: priority || 'medium',
       createdBy: req.user.id,
       isActive: true
@@ -231,8 +232,8 @@ router.put('/:id', protectSuperAdmin, upload.single('image'), async (req, res) =
       return res.status(404).json({ message: 'Anuncio no encontrado' });
     }
     
-    if (title) announcement.title = title.trim();
-    if (body) announcement.body = body.trim();
+    if (title) announcement.title = stripHtml(title.trim());
+    if (body) announcement.body = stripHtml(body.trim());
     if (priority) announcement.priority = priority;
     if (isActive !== undefined) announcement.isActive = isActive === 'true' || isActive === true;
     

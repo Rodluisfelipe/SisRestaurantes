@@ -84,3 +84,9 @@ module.exports.requireRole = (...allowedRoles) => {
     next();
   };
 };
+
+// Invalidate a specific user from the verified-users cache
+module.exports.invalidateUserCache = (userId, role = 'admin') => {
+  const cacheKey = `${userId}_${role}`;
+  verifiedUsersCache.delete(cacheKey);
+};

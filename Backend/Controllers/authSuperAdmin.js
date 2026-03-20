@@ -123,6 +123,12 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ message: 'Contraseña antigua y nueva son requeridas' });
     }
 
+    // Validate password strength
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número' });
+    }
+
     // Buscar SuperAdmin por ID
     const superAdmin = await SuperAdmin.findById(superAdminId);
     if (!superAdmin) {

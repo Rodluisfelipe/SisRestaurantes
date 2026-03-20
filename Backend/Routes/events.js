@@ -2,9 +2,18 @@ const express = require("express");
 const router = express.Router();
 const eventService = require('../services/eventService');
 const authMiddleware = require('../middleware/authMiddleware');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiter for SSE connections (max 5 connections per 15 min per IP)
+const sseLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { message: 'Too many SSE connections. Try again later.' }
+});
 
 // Proteger SSE con autenticación
 router.use(authMiddleware);
+router.use(sseLimiter);
 
 // Middleware para configurar la respuesta SSE
 const setSSEHeaders = (req, res, next) => {

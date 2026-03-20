@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 const Table = require("../Models/Table");
 const BusinessConfig = require("../Models/BusinessConfig");
@@ -6,6 +6,13 @@ const mongoose = require("mongoose");
 // Import the validators utilities
 const { isValidObjectId, isValidBusinessIdentifier } = require("../utils/validators");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const logger = require("../utils/logger");
+const {
+  validateCreateTable,
+  validateUpdateTable,
+  validateDeleteTable,
+  validateBatchPositions,
+} = require('../middleware/validators/tableValidators');
 
 // Middleware to validate businessId
 router.use(async (req, res, next) => {
@@ -50,11 +57,11 @@ router.use(async (req, res, next) => {
       
       return next();
     } catch (innerError) {
-      console.error("Error during business lookup:", innerError);
+      logger.error("Error during business lookup:", innerError);
       return res.status(500).json({ message: 'Error al buscar negocio' });
     }
   } catch (error) {
-    console.error("Error in businessId middleware:", error);
+    logger.error("Error in businessId middleware:", error);
     return res.status(500).json({ 
       message: "Error processing businessId"
     });
@@ -67,7 +74,7 @@ router.get("/", async (req, res) => {
     const { businessId } = req.query;
 
     
-    // El middleware ya debería haber convertido el slug a ObjectId si es necesario
+    // El middleware ya deberÃ­a haber convertido el slug a ObjectId si es necesario
     if (!isValidObjectId(businessId)) {
 
       return res.status(400).json({ message: "Invalid businessId" });
@@ -78,7 +85,7 @@ router.get("/", async (req, res) => {
 
     res.status(200).json(tables);
   } catch (error) {
-    console.error("Error fetching tables:", error);
+    logger.error("Error fetching tables:", error);
     res.status(500).json({ message: "Error fetching tables" });
   }
 });
@@ -94,7 +101,7 @@ router.get("/validate", async (req, res) => {
     
 
     
-    // Buscar el negocio primero si no es un ObjectId válido
+    // Buscar el negocio primero si no es un ObjectId vÃ¡lido
     let finalBusinessId = businessId;
     if (!isValidObjectId(businessId)) {
 
@@ -112,7 +119,7 @@ router.get("/validate", async (req, res) => {
     }
     
     // Check if table exists - make sure we're comparing strings
-    // El tableNumber no es un ObjectId, es simplemente un número de mesa (string o número)
+    // El tableNumber no es un ObjectId, es simplemente un nÃºmero de mesa (string o nÃºmero)
 
     const table = await Table.findOne({ 
       businessId: finalBusinessId, 
@@ -137,7 +144,7 @@ router.get("/validate", async (req, res) => {
     });
     
   } catch (error) {
-    console.error("Error validating table:", error);
+    logger.error("Error validating table:", error);
     res.status(500).json({ message: "Error validating table" });
   }
 });
@@ -160,13 +167,13 @@ router.get("/:id", async (req, res) => {
     
     res.status(200).json(table);
   } catch (error) {
-    console.error("Error fetching table:", error);
+    logger.error("Error fetching table:", error);
     res.status(500).json({ message: "Error fetching table" });
   }
 });
 
 // Create a new table
-router.post("/", tenantAuth, async (req, res) => {
+router.post("/", tenantAuth, validateCreateTable, async (req, res) => {
   try {
     const { businessId, tableNumber, tableName, notes } = req.body;
     // Use the original slug for the QR code URL but the ObjectId for database operations
@@ -212,13 +219,13 @@ router.post("/", tenantAuth, async (req, res) => {
     await newTable.save();
     res.status(201).json(newTable);
   } catch (error) {
-    console.error("Error creating table:", error);
+    logger.error("Error creating table:", error);
     res.status(500).json({ message: "Error creating table" });
   }
 });
 
 // Update a table
-router.put("/:id", tenantAuth, async (req, res) => {
+router.put("/:id", tenantAuth, validateUpdateTable, async (req, res) => {
   try {
     const { id } = req.params;
     const { businessId, tableNumber, tableName, notes, isActive, floorId, posX, posY, shape, width, height, capacity, rotation } = req.body;
@@ -267,13 +274,13 @@ router.put("/:id", tenantAuth, async (req, res) => {
     
     res.status(200).json(updatedTable);
   } catch (error) {
-    console.error("Error updating table:", error);
+    logger.error("Error updating table:", error);
     res.status(500).json({ message: "Error updating table" });
   }
 });
 
 // Delete a table
-router.delete("/:id", tenantAuth, async (req, res) => {
+router.delete("/:id", tenantAuth, validateDeleteTable, async (req, res) => {
   try {
     const { id } = req.params;
     const { businessId } = req.query;
@@ -284,7 +291,7 @@ router.delete("/:id", tenantAuth, async (req, res) => {
       return res.status(400).json({ message: "Invalid table ID format" });
     }
     
-    // El middleware ya debería haber convertido el slug a ObjectId si es necesario
+    // El middleware ya deberÃ­a haber convertido el slug a ObjectId si es necesario
     if (!isValidObjectId(businessId)) {
 
       return res.status(400).json({ 
@@ -303,17 +310,17 @@ router.delete("/:id", tenantAuth, async (req, res) => {
 
     res.status(200).json({ message: "Table deleted successfully" });
   } catch (error) {
-    console.error("Error deleting table:", error);
+    logger.error("Error deleting table:", error);
     res.status(500).json({ message: "Error deleting table" });
   }
 });
 
 // Batch update positions (drag & drop)
-router.put("/batch/positions", tenantAuth, async (req, res) => {
+router.put("/batch/positions", tenantAuth, validateBatchPositions, async (req, res) => {
   try {
     const { businessId, updates } = req.body;
     if (!businessId || !isValidObjectId(businessId)) {
-      return res.status(400).json({ message: "businessId válido es requerido" });
+      return res.status(400).json({ message: "businessId vÃ¡lido es requerido" });
     }
     if (!Array.isArray(updates) || updates.length === 0) {
       return res.status(400).json({ message: "updates array es requerido" });
@@ -327,7 +334,7 @@ router.put("/batch/positions", tenantAuth, async (req, res) => {
     await Table.bulkWrite(ops);
     res.json({ message: "Posiciones actualizadas" });
   } catch (error) {
-    console.error("Error batch updating positions:", error);
+    logger.error("Error batch updating positions:", error);
     res.status(500).json({ message: "Error al actualizar posiciones" });
   }
 });

@@ -96,7 +96,12 @@ function validateConfirmationSignature(data) {
   const signatureString = `${config.pCustId}^${config.pKey}^${x_ref_payco}^${x_transaction_id}^${x_amount}^${x_currency_code}`;
   const expectedSignature = crypto.createHash('sha256').update(signatureString).digest('hex');
   
-  return expectedSignature === x_signature;
+  // Timing-safe comparison to prevent signature guessing via timing attacks
+  try {
+    return crypto.timingSafeEqual(Buffer.from(expectedSignature, 'utf8'), Buffer.from(x_signature || '', 'utf8'));
+  } catch {
+    return false; // Different lengths
+  }
 }
 
 /**

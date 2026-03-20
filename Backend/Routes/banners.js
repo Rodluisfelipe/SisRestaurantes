@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const Banner = require('../Models/Banner');
 const BusinessConfig = require('../Models/BusinessConfig');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -11,6 +12,15 @@ const fs = require('fs');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { BANNER_STATUS } = require('../utils/constants');
+
+// Rate limiter for public banner click tracking
+const bannerClickLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests' }
+});
 
 // Validación de entrada para crear banner (después de multer)
 const validateBannerInput = (req, res, next) => {
@@ -439,7 +449,7 @@ router.put('/:id/reject', protectSuperAdmin, async (req, res) => {
 });
 
 // PUT /api/banners/:id/click - Incrementar clicks (público)
-router.put('/:id/click', async (req, res) => {
+router.put('/:id/click', bannerClickLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const banner = await Banner.findById(id);

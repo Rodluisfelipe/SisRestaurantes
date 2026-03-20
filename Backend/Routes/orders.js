@@ -4,8 +4,6 @@ const mongoose = require("mongoose");
 const Order = require("../Models/Order");
 const CompletedOrder = require("../Models/CompletedOrder");
 const Customer = require("../Models/Customer");
-const Coupon = require("../Models/Coupon");
-const BusinessCoupon = require("../Models/BusinessCoupon");
 const BusinessConfig = require("../Models/BusinessConfig");
 const { ObjectId } = require("mongoose").Types;
 const socketService = require("../services/socketService");
@@ -19,20 +17,34 @@ const { ORDER_STATUS } = require('../utils/constants');
 const authMiddleware = require('../middleware/authMiddleware');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const { validateCreateOrder } = require('../middleware/validate');
+const {
+  validateUpdateOrderStatus,
+  validateSendToKitchen,
+  validateDeleteOrder,
+  validateDailyClosing,
+  validateCleanupCompleted,
+  validatePaymentProof,
+  validateConfirmPayment,
+  validateRejectPayment,
+} = require('../middleware/validators/orderValidators');
 const rateLimit = require('express-rate-limit');
 const { startOfDayCOL, endOfDayCOL } = require('../utils/timezone');
-const Product = require('../Models/Product');
-const ToppingGroup = require('../Models/ToppingGroup');
+const { validateOrderPrices } = require('../utils/orderPricing');
+const { applyCoupon } = require('../utils/orderCoupon');
+const Counter = require('../Models/Counter');
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
 const sanitizeUpload = require('../middleware/sanitizeUpload');
+const { stripHtml } = require('../utils/sanitize');
 
-// Multer config for payment proof uploads
+// Multer config for payment proof uploads — scoped by order ID for tenant isolation
 const proofStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dir = path.join(__dirname, '..', 'uploads', 'order-proofs');
-    // Ensure directory exists
+    // Use order ID from URL params to scope uploads
+    const orderId = req.params.id || 'unknown';
+    const safeId = orderId.replace(/[^a-zA-Z0-9]/g, '');
+    const dir = path.join(__dirname, '..', 'uploads', 'order-proofs', safeId);
     const fs = require('fs');
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
@@ -40,7 +52,7 @@ const proofStorage = multer.diskStorage({
     cb(null, dir);
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const uniqueSuffix = Date.now() + '-' + crypto.randomBytes(8).toString('hex');
     const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
     cb(null, 'proof-' + uniqueSuffix + ext);
   }
@@ -66,11 +78,24 @@ const uploadProof = multer({
   }
 });
 
-// Rate limiter for public order creation
+// Rate limiter for public order creation (by IP)
 const createOrderLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // 20 orders per IP per 15 minutes
   message: { message: 'Demasiados pedidos. Intente nuevamente en unos minutos.' }
+});
+
+// Rate limiter per phone+businessId — prevents rapid duplicate orders from same customer
+const orderPhoneLimiter = rateLimit({
+  windowMs: 5 * 1000, // 5 seconds
+  max: 1,
+  keyGenerator: (req) => {
+    const phone = req.body?.customerPhone || req.body?.phone || 'no-phone';
+    const businessId = req.body?.businessId || 'no-biz';
+    return `order:${businessId}:${phone}`;
+  },
+  message: { message: 'Pedido duplicado. Espere unos segundos antes de intentar de nuevo.', code: 'ORDER_RATE_LIMITED' },
+  skipFailedRequests: true
 });
 
 // Rate limiter for public order tracking/history
@@ -85,26 +110,44 @@ const generateCustomerToken = () => {
   return crypto.randomBytes(16).toString('hex');
 };
 
-// Helper function to get order number (shared with bookings)
+// Helper function to get order number (shared with bookings) — ATOMIC
 const generateOrderNumber = async (businessId) => {
   try {
-    const Booking = require('../Models/Booking');
-    // Check active orders, completed orders, and bookings to avoid duplicates
-    const [latestOrder, latestCompleted, latestBooking] = await Promise.all([
-      Order.findOne({ businessId }).sort({ createdAt: -1 }).limit(1),
-      CompletedOrder.findOne({ businessId }).sort({ createdAt: -1 }).limit(1),
-      Booking.findOne({ businessId }).sort({ createdAt: -1 }).limit(1)
-    ]);
+    const counterId = `orderNumber:${businessId.toString()}`;
     
-    const activeNum = latestOrder ? parseInt(latestOrder.orderNumber, 10) || 0 : 0;
-    const completedNum = latestCompleted ? parseInt(latestCompleted.orderNumber, 10) || 0 : 0;
-    const bookingNum = latestBooking ? parseInt(latestBooking.orderNumber, 10) || 0 : 0;
-    const highest = Math.max(activeNum, completedNum, bookingNum);
+    // Check if counter exists; if not, seed it from existing data
+    const existing = await Counter.findById(counterId);
+    if (!existing) {
+      const Booking = require('../Models/Booking');
+      const [latestOrder, latestCompleted, latestBooking] = await Promise.all([
+        Order.findOne({ businessId }).sort({ orderNumber: -1 }).limit(1).select('orderNumber').lean(),
+        CompletedOrder.findOne({ businessId }).sort({ orderNumber: -1 }).limit(1).select('orderNumber').lean(),
+        Booking.findOne({ businessId }).sort({ orderNumber: -1 }).limit(1).select('orderNumber').lean()
+      ]);
+      const activeNum = latestOrder ? parseInt(latestOrder.orderNumber, 10) || 0 : 0;
+      const completedNum = latestCompleted ? parseInt(latestCompleted.orderNumber, 10) || 0 : 0;
+      const bookingNum = latestBooking ? parseInt(latestBooking.orderNumber, 10) || 0 : 0;
+      const highest = Math.max(activeNum, completedNum, bookingNum);
+      
+      // Seed counter — use $max to avoid overwriting if another request seeded first
+      await Counter.findOneAndUpdate(
+        { _id: counterId },
+        { $max: { seq: highest } },
+        { upsert: true }
+      );
+    }
     
-    return (highest + 1).toString();
+    // Atomic increment — no race conditions possible
+    const counter = await Counter.findOneAndUpdate(
+      { _id: counterId },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    
+    return counter.seq.toString();
   } catch (error) {
-
     // Fallback to timestamp-based order number
+    logger.error('Error generating atomic order number, using fallback', error);
     return Date.now().toString();
   }
 };
@@ -145,6 +188,9 @@ router.get("/", tenantAuth, async (req, res) => {
 router.post("/", (req, res, next) => {
   if (req.body.orderChannel === 'pos') return next();
   return createOrderLimiter(req, res, next);
+}, (req, res, next) => {
+  if (req.body.orderChannel === 'pos') return next();
+  return orderPhoneLimiter(req, res, next);
 }, validateCreateOrder, async (req, res) => {
   try {
 
@@ -226,69 +272,32 @@ router.post("/", (req, res, next) => {
     
     const businessObjectId = businessResult.businessId;
 
-    // === SERVER-SIDE PRICE VALIDATION ===
-    // Recalculate total from DB prices to prevent price manipulation
-    try {
-      let calculatedTotal = 0;
-      const debugItems = [];
-
-      // Batch-fetch all products in one query instead of N sequential findOne calls
-      const productIds = items.filter(i => i.productId).map(i => i.productId);
-      const dbProducts = productIds.length > 0
-        ? await Product.find({ _id: { $in: productIds }, businessId: businessObjectId }).lean()
-        : [];
-      const productMap = new Map(dbProducts.map(p => [p._id.toString(), p]));
-
-      for (const item of items) {
-        if (item.productId) {
-          const dbProduct = productMap.get(item.productId.toString());
-          if (dbProduct) {
-            let itemPrice = dbProduct.price;
-            const debugToppings = [];
-            // Add topping prices if any
-            if (item.selectedToppings && Array.isArray(item.selectedToppings) && item.selectedToppings.length > 0) {
-              for (const topping of item.selectedToppings) {
-                // basePrice of the topping group
-                if (topping.basePrice && typeof topping.basePrice === 'number') {
-                  itemPrice += topping.basePrice;
-                }
-                // price of the selected option
-                if (topping.price && typeof topping.price === 'number') {
-                  itemPrice += topping.price;
-                }
-                // subGroups (nested topping options)
-                if (topping.subGroups && Array.isArray(topping.subGroups)) {
-                  for (const sub of topping.subGroups) {
-                    if (sub.price && typeof sub.price === 'number') {
-                      itemPrice += sub.price;
-                    }
-                  }
-                }
-                debugToppings.push({ gn: topping.groupName, on: topping.optionName, bp: topping.basePrice, p: topping.price, bpType: typeof topping.basePrice, pType: typeof topping.price });
-              }
-            }
-            debugItems.push({ name: item.name, dbPrice: dbProduct.price, clientPrice: item.price, serverItemPrice: itemPrice, qty: item.quantity, toppings: debugToppings });
-            calculatedTotal += itemPrice * (item.quantity || 1);
-          } else {
-            calculatedTotal += (item.price || 0) * (item.quantity || 1);
-          }
-        } else {
-          // No productId — use client price (legacy orders from WhatsApp)
-          calculatedTotal += (item.price || 0) * (item.quantity || 1);
-        }
-      }
-      // Allow 5% tolerance for rounding differences, delivery fees already excluded from totalAmount
-      if (calculatedTotal > 0 && Math.abs(calculatedTotal - numericTotalAmount) > calculatedTotal * 0.05) {
-        logger.warn('Price mismatch detected (non-blocking)', {
-          clientTotal: numericTotalAmount,
-          serverTotal: calculatedTotal,
-          diff: numericTotalAmount - calculatedTotal,
-          deliveryFee: deliveryFee || 0,
-          businessId: businessObjectId,
-          debugItems
+    // === IDEMPOTENCY CHECK (POS offline sync) ===
+    // If client sends an offlineId, reject if an order with that offlineId already exists
+    if (req.body.offlineId) {
+      const existingOffline = await Order.findOne({ 
+        businessId: businessObjectId, 
+        offlineId: req.body.offlineId 
+      }).select('_id orderNumber').lean();
+      if (existingOffline) {
+        logger.info('Duplicate offline order rejected', { offlineId: req.body.offlineId, existingOrderNumber: existingOffline.orderNumber });
+        return res.status(409).json({ 
+          message: 'Este pedido ya fue sincronizado',
+          code: 'DUPLICATE_OFFLINE_ORDER',
+          existingOrderId: existingOffline._id,
+          existingOrderNumber: existingOffline.orderNumber
         });
-        // NON-BLOCKING: Log the mismatch but allow the order to proceed
-        // This allows debugging the real discrepancy without blocking customers
+      }
+    }
+
+    // === SERVER-SIDE PRICE VALIDATION ===
+    try {
+      const priceResult = await validateOrderPrices(items, businessObjectId, numericTotalAmount);
+      if (!priceResult.valid) {
+        return res.status(priceResult.error.status).json({
+          message: priceResult.error.message,
+          code: priceResult.error.code
+        });
       }
     } catch (priceErr) {
       // Non-blocking: if price check fails, log and continue (don't break orders)
@@ -358,56 +367,13 @@ router.post("/", (req, res, next) => {
     let finalAmount = numericTotalAmount;
     
     if (couponCode) {
-      // Resolve businessId to slug for BusinessCoupon lookup
-      let businessSlug = null;
-      try {
-        const businessConfig = await BusinessConfig.findById(businessObjectId).select('slug').lean();
-        if (businessConfig && businessConfig.slug) {
-          businessSlug = businessConfig.slug; // slug like "felipe", "macdonalds"
-        }
-      } catch (err) {
-        logger.warn('Could not resolve business slug for coupon lookup', { error: err.message });
+      const couponResult = await applyCoupon(couponCode, businessObjectId, numericTotalAmount, orderType, items, customer);
+      if (!couponResult.valid) {
+        return res.status(couponResult.error.status).json({ message: couponResult.error.message });
       }
-
-      // Search in BusinessCoupon (business discount coupons) using slug
-      if (businessSlug) {
-        coupon = await BusinessCoupon.findOne({ 
-          businessId: businessSlug, 
-          code: couponCode.toUpperCase() 
-        });
-      }
-
-      // Fallback: search in subscription Coupon model with ObjectId
-      if (!coupon) {
-        coupon = await Coupon.findOne({ 
-          businessId: businessObjectId, 
-          code: couponCode.toUpperCase() 
-        });
-      }
-      
-      if (coupon) {
-        const orderData = {
-          totalAmount: numericTotalAmount,
-          orderType,
-          items
-        };
-        
-        const validation = coupon.validateForOrder(orderData, customer ? customer._id : null);
-        
-        if (validation.valid) {
-          discountAmount = coupon.calculateDiscount(numericTotalAmount);
-          finalAmount = numericTotalAmount - discountAmount;
-          // Usage will be recorded after successful order save
-        } else {
-          return res.status(400).json({ 
-            message: `Cupón inválido: ${validation.error}` 
-          });
-        }
-      } else {
-        return res.status(404).json({ 
-          message: 'Cupón no encontrado' 
-        });
-      }
+      coupon = couponResult.coupon;
+      discountAmount = couponResult.discountAmount;
+      finalAmount = couponResult.finalAmount;
     }
 
     // Determine initial status based on ordering channel
@@ -420,14 +386,14 @@ router.post("/", (req, res, next) => {
     const newOrder = new Order({
       businessId: businessObjectId,
       orderNumber,
-      customerName,
+      customerName: stripHtml(customerName),
       orderType,
       items,
       totalAmount: numericTotalAmount,
       tableNumber: tableNumber || "",
       phone: phone || "",
       customerEmail: customerEmail || "",
-      address: address || "",
+      address: stripHtml(address || ""),
       customerId: customer ? customer._id : null,
       couponCode: coupon ? coupon.code : null,
       couponId: coupon ? coupon._id : null,
@@ -437,7 +403,7 @@ router.post("/", (req, res, next) => {
       orderChannel: orderChannel || 'whatsapp',
       paymentMethod: paymentMethod || null,
       customerToken,
-      customerNotes: customerNotes || '',
+      customerNotes: stripHtml(customerNotes || ''),
       statusHistory: [{ status: initialStatus, timestamp: new Date(), note: 'Pedido creado' }],
       // Datos de zona de entrega
       deliveryFee: deliveryFee || null,
@@ -448,6 +414,8 @@ router.post("/", (req, res, next) => {
       deliveryZoneId: deliveryZoneId || null,
       // POS: persist payment info for ticket reprinting
       posPaymentInfo: isPOS && posPaymentInfo ? posPaymentInfo : undefined,
+      // POS: offline sync idempotency key
+      offlineId: req.body.offlineId || null,
       // Map delivery zone details to top-level fields
       deliveryCoordinates: deliveryZoneInfo?.coordinates || { lat: null, lon: null },
       deliveryDistance: deliveryZoneInfo?.distance || 0,
@@ -466,13 +434,13 @@ router.post("/", (req, res, next) => {
     
     const savedOrder = await newOrder.save();
 
-    // POS: Auto-register sale in open cash register (only for POS orders)
+    // POS: Auto-register sale in open cash register (only for POS orders) — atomic $push
     if (orderChannel === 'pos') {
       try {
         const CashRegister = require('../Models/CashRegister');
-        const openRegister = await CashRegister.findOne({ businessId: businessObjectId, status: 'open' });
-        if (openRegister) {
-          openRegister.movements.push({
+        await CashRegister.findOneAndUpdate(
+          { businessId: businessObjectId, status: 'open' },
+          { $push: { movements: {
             type: 'sale',
             amount: finalAmount,
             paymentMethod: paymentMethod || 'cash',
@@ -481,20 +449,32 @@ router.post("/", (req, res, next) => {
             orderChannel: 'pos',
             description: `Venta POS #${orderNumber} - ${customerName}`,
             createdAt: new Date()
-          });
-          await openRegister.save();
-        }
+          }}}  
+        );
       } catch (cashErr) {
         logger.warn('Failed to register sale in cash register', { error: cashErr.message, orderId: savedOrder._id });
       }
     }
 
-    // Record coupon usage AFTER successful order save
-    if (coupon) {
+    // Record coupon per-customer usage AFTER successful order save (global usage already recorded atomically)
+    if (coupon && !coupon.__usageAlreadyRecorded) {
       try {
         await coupon.recordUsage(customer ? customer._id : null, discountAmount);
       } catch (couponErr) {
         logger.warn('Failed to record coupon usage (order was created)', { error: couponErr.message, orderId: savedOrder._id });
+      }
+    } else if (coupon && customer) {
+      // Record per-customer usage only (global count already incremented atomically)
+      try {
+        const CouponModel = coupon.constructor;
+        if (coupon.usageByCustomer) {
+          await CouponModel.updateOne(
+            { _id: coupon._id },
+            { $inc: { [`usageByCustomer.${customer._id}`]: 1 } }
+          );
+        }
+      } catch (couponErr) {
+        logger.warn('Failed to record per-customer coupon usage', { error: couponErr.message });
       }
     }
 
@@ -748,7 +728,7 @@ router.get("/:id", authMiddleware, async (req, res) => {
 });
 
 // Update order status (admin only)
-router.patch("/:id/status", tenantAuth, async (req, res) => {
+router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -759,6 +739,41 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
     
     if (!status || !["pending", "pending_payment", "payment_uploaded", "payment_confirmed", "inProgress", "completed", "ready", "preparing", "confirmed", "cancelled", "delivered"].includes(status)) {
       return res.status(400).json({ message: "Invalid status value" });
+    }
+
+    // Valid state transitions — prevents impossible reversals
+    const VALID_TRANSITIONS = {
+      'pending': ['confirmed', 'preparing', 'inProgress', 'cancelled', 'pending_payment'],
+      'pending_payment': ['payment_uploaded', 'cancelled'],
+      'payment_uploaded': ['payment_confirmed', 'confirmed', 'preparing', 'cancelled'],
+      'payment_confirmed': ['confirmed', 'preparing', 'inProgress', 'cancelled'],
+      'confirmed': ['preparing', 'inProgress', 'ready', 'cancelled'],
+      'preparing': ['ready', 'completed', 'delivered', 'cancelled'],
+      'inProgress': ['ready', 'completed', 'delivered', 'cancelled'],
+      'ready': ['completed', 'delivered', 'cancelled'],
+      'completed': ['delivered'], // completed can only go to delivered
+      'delivered': [], // terminal state
+      'cancelled': [] // terminal state
+    };
+    
+    // Fetch order first to check current status
+    const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
+    const currentOrder = await Order.findOne(
+      { _id: id, ...(tenantBizId ? { businessId: tenantBizId } : {}) }
+    ).select('status').lean();
+    
+    if (!currentOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    
+    const allowedNext = VALID_TRANSITIONS[currentOrder.status] || [];
+    if (!allowedNext.includes(status)) {
+      return res.status(400).json({ 
+        message: `No se puede cambiar de "${currentOrder.status}" a "${status}"`,
+        code: 'INVALID_TRANSITION',
+        currentStatus: currentOrder.status,
+        allowedTransitions: allowedNext
+      });
     }
     
     // Create update object
@@ -774,7 +789,6 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
     }
     
     // Update the order — compound query ensures tenant isolation
-    const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
     const updatedOrder = await Order.findOneAndUpdate(
       { _id: id, ...(tenantBizId ? { businessId: tenantBizId } : {}) },
       updateData,
@@ -803,13 +817,13 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
     
     // If order is completed or delivered, move it to CompletedOrders collection
     if (status === "completed" || status === "delivered") {
-      // Register MenuBy orders in cash register if one is open
+      // Register MenuBy orders in cash register if one is open — atomic $push
       if (updatedOrder.orderChannel !== 'pos') {
         try {
           const CashRegister = require('../Models/CashRegister');
-          const openRegister = await CashRegister.findOne({ businessId: updatedOrder.businessId, status: 'open' });
-          if (openRegister) {
-            openRegister.movements.push({
+          await CashRegister.findOneAndUpdate(
+            { businessId: updatedOrder.businessId, status: 'open' },
+            { $push: { movements: {
               type: 'sale',
               amount: updatedOrder.finalAmount || updatedOrder.totalAmount,
               paymentMethod: updatedOrder.paymentMethod || 'cash',
@@ -818,9 +832,8 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
               orderChannel: 'menuby',
               description: `MenuBy #${updatedOrder.orderNumber} - ${updatedOrder.customerName}`,
               createdAt: new Date()
-            });
-            await openRegister.save();
-          }
+            }}}
+          );
         } catch (cashErr) {
           logger.warn('Failed to register MenuBy sale in cash register', { error: cashErr.message, orderId: updatedOrder._id });
         }
@@ -852,8 +865,27 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
           status: "completed"
         });
         
-        // Save completed order
-        await completedOrder.save();
+        // Use transaction to atomically save completed order + delete active order
+        const session = await mongoose.startSession();
+        let moveSucceeded = false;
+        try {
+          await session.withTransaction(async () => {
+            await completedOrder.save({ session });
+            await Order.findByIdAndDelete(id, { session });
+          });
+          moveSucceeded = true;
+        } catch (txErr) {
+          logger.error('Transaction failed for order completion — order preserved in active', { error: txErr.message, orderId: id });
+        } finally {
+          session.endSession();
+        }
+
+        if (moveSucceeded) {
+          // Notify clients that order was removed from active list
+          setTimeout(() => {
+            socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_deleted", { _id: id });
+          }, 3000);
+        }
 
         // ─── Loyalty: award points on completion ───
         if (updatedOrder.customerId) {
@@ -914,15 +946,7 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
         }
 
         // Wait a bit to ensure clients receive the update before removing from active orders
-        setTimeout(async () => {
-          try {
-            // Remove from active orders
-            await Order.findByIdAndDelete(id);
-            socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_deleted", { _id: id });
-          } catch (delErr) {
-            logger.error('Error deleting completed order from active orders', { error: delErr.message, orderId: id });
-          }
-        }, 5000); // 5 seconds delay
+        // (delete already handled inside transaction above)
       } catch (err) {
         logger.error('Error saving completed order', { error: err.message, orderId: id });
         // Continue with response even if saving to CompletedOrder fails
@@ -937,7 +961,7 @@ router.patch("/:id/status", tenantAuth, async (req, res) => {
 });
 
 // Send order to kitchen without changing status (admin only)
-router.patch("/:id/send-to-kitchen", tenantAuth, async (req, res) => {
+router.patch("/:id/send-to-kitchen", tenantAuth, validateSendToKitchen, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -972,7 +996,7 @@ router.patch("/:id/send-to-kitchen", tenantAuth, async (req, res) => {
 });
 
 // Delete an order (admin only)
-router.delete("/:id", tenantAuth, async (req, res) => {
+router.delete("/:id", tenantAuth, validateDeleteOrder, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -999,7 +1023,7 @@ router.delete("/:id", tenantAuth, async (req, res) => {
 });
 
 // Generate daily sales report and close day (admin only)
-router.post("/daily-closing", tenantAuth, async (req, res) => {
+router.post("/daily-closing", tenantAuth, validateDailyClosing, async (req, res) => {
   try {
     const { businessId } = req.body;
     
@@ -1118,7 +1142,7 @@ router.post("/daily-closing", tenantAuth, async (req, res) => {
 });
 
 // Cleanup completed orders after viewing report (admin only)
-router.post("/cleanup-completed", tenantAuth, async (req, res) => {
+router.post("/cleanup-completed", tenantAuth, validateCleanupCompleted, async (req, res) => {
   try {
     const { businessId, orderIds } = req.body;
     
@@ -1180,7 +1204,7 @@ router.post('/:id/payment-proof', (req, res, next) => {
     }
     next();
   });
-}, sanitizeUpload({ maxWidth: 1600, quality: 90 }), async (req, res) => {
+}, sanitizeUpload({ maxWidth: 1600, quality: 90 }), ...validatePaymentProof, async (req, res) => {
   try {
     const { id } = req.params;
     const { customerToken } = req.body;
@@ -1210,8 +1234,9 @@ router.post('/:id/payment-proof', (req, res, next) => {
       return res.status(400).json({ message: 'Este pedido no requiere comprobante de pago en este momento' });
     }
 
-    // Save proof path
-    const proofPath = `/uploads/order-proofs/${req.file.filename}`;
+    // Save proof path — scoped by order ID
+    const safeOrderId = id.replace(/[^a-zA-Z0-9]/g, '');
+    const proofPath = `/uploads/order-proofs/${safeOrderId}/${req.file.filename}`;
     
     const updatedOrder = await Order.findByIdAndUpdate(
       id,
@@ -1255,7 +1280,7 @@ router.post('/:id/payment-proof', (req, res, next) => {
 });
 
 // Confirm payment (admin only)
-router.patch('/:id/confirm-payment', tenantAuth, async (req, res) => {
+router.patch('/:id/confirm-payment', tenantAuth, validateConfirmPayment, async (req, res) => {
   try {
     const { id } = req.params;
     const { note } = req.body;
@@ -1314,7 +1339,7 @@ router.patch('/:id/confirm-payment', tenantAuth, async (req, res) => {
 });
 
 // Reject payment (admin only)
-router.patch('/:id/reject-payment', tenantAuth, async (req, res) => {
+router.patch('/:id/reject-payment', tenantAuth, validateRejectPayment, async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;

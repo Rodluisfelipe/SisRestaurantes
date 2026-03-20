@@ -8,6 +8,11 @@ services:
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/api/health"]
       interval: 30s

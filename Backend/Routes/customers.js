@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const Customer = require('../Models/Customer');
 const Order = require('../Models/Order');
@@ -7,15 +7,24 @@ const { isValidObjectId } = require('../utils/isValidObjectId');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const authMiddleware = require('../middleware/authMiddleware');
 const rateLimit = require('express-rate-limit');
+const logger = require('../utils/logger');
+const {
+  validateCreateCustomer,
+  validateUpdateCustomer,
+  validateUpdateAddress,
+  validateUpdateSettings,
+  validateDeleteCustomer,
+  validateDeleteCustomerById,
+} = require('../middleware/validators/customerValidators');
 
 // Rate limiter for public customer endpoints
 const customerRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 30,
-  message: { error: 'Demasiadas solicitudes. Intente nuevamente más tarde.' }
+  message: { error: 'Demasiadas solicitudes. Intente nuevamente mÃ¡s tarde.' }
 });
 
-// GET /api/customers - Listar clientes con filtros (admin only — tenant isolated)
+// GET /api/customers - Listar clientes con filtros (admin only â€” tenant isolated)
 router.get('/', tenantAuth, async (req, res) => {
   try {
     const { 
@@ -44,7 +53,7 @@ router.get('/', tenantAuth, async (req, res) => {
       filter.status = status;
     }
 
-    // Filtro por búsqueda (escapar regex para prevenir ReDoS)
+    // Filtro por bÃºsqueda (escapar regex para prevenir ReDoS)
     if (search) {
       const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$or = [
@@ -70,7 +79,7 @@ router.get('/', tenantAuth, async (req, res) => {
 
 
 
-    // Obtener clientes con paginación
+    // Obtener clientes con paginaciÃ³n
     const customers = await Customer.find(filter)
       .sort(sort)
       .limit(parseInt(limit))
@@ -81,7 +90,7 @@ router.get('/', tenantAuth, async (req, res) => {
 
 
 
-    // Calcular estadísticas usando MongoDB aggregation (evita cargar todos los docs en memoria)
+    // Calcular estadÃ­sticas usando MongoDB aggregation (evita cargar todos los docs en memoria)
     const [statsResult] = await Customer.aggregate([
       { $match: { businessId: filter.businessId } },
       { $group: {
@@ -113,13 +122,13 @@ router.get('/', tenantAuth, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[Customers] Error al obtener clientes:', error);
+    logger.error('[Customers] Error al obtener clientes:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // PUT /api/customers/:phone - Actualizar datos del cliente
-router.put('/:phone', tenantAuth, async (req, res) => {
+router.put('/:phone', tenantAuth, validateUpdateCustomer, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
@@ -133,7 +142,7 @@ router.put('/:phone', tenantAuth, async (req, res) => {
     delete updateData.lastOrderDate;
 
     if (!phone) {
-      return res.status(400).json({ error: 'Número de teléfono requerido' });
+      return res.status(400).json({ error: 'NÃºmero de telÃ©fono requerido' });
     }
 
     const customer = await Customer.findOneAndUpdate(
@@ -151,20 +160,30 @@ router.put('/:phone', tenantAuth, async (req, res) => {
 
     res.json(customer);
   } catch (error) {
-    console.error('Error al actualizar cliente:', error);
+    logger.error('Error al actualizar cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // POST /api/customers - Crear o encontrar cliente (public, rate limited)
-router.post('/', customerRateLimiter, async (req, res) => {
+router.post('/', customerRateLimiter, validateCreateCustomer, async (req, res) => {
   try {
     const { businessId } = req.query;
-    // Whitelist allowed fields — prevent stat manipulation (totalOrders, totalSpent, status)
+    // Whitelist allowed fields â€” prevent stat manipulation (totalOrders, totalSpent, status)
     const { phone, name, address, email } = req.body;
 
     if (!phone || !name) {
-      return res.status(400).json({ error: 'Teléfono y nombre son requeridos' });
+      return res.status(400).json({ error: 'TelÃ©fono y nombre son requeridos' });
+    }
+
+    // Validate businessId exists
+    if (!businessId || !isValidObjectId(businessId)) {
+      return res.status(400).json({ error: 'businessId vÃ¡lido es requerido' });
+    }
+    const BusinessConfig = require('../Models/BusinessConfig');
+    const businessExists = await BusinessConfig.exists({ _id: businessId });
+    if (!businessExists) {
+      return res.status(404).json({ error: 'Negocio no encontrado' });
     }
 
     // Buscar cliente existente
@@ -193,7 +212,7 @@ router.post('/', customerRateLimiter, async (req, res) => {
 
     res.status(201).json(customer);
   } catch (error) {
-    console.error('Error al crear/actualizar cliente:', error);
+    logger.error('Error al crear/actualizar cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -206,7 +225,7 @@ router.get('/:phone/orders', customerRateLimiter, async (req, res) => {
     const { limit = 10, page = 1, status } = req.query;
 
     if (!phone) {
-      return res.status(400).json({ error: 'Número de teléfono requerido' });
+      return res.status(400).json({ error: 'NÃºmero de telÃ©fono requerido' });
     }
 
     // Verificar que el cliente existe
@@ -259,20 +278,20 @@ router.get('/:phone/orders', customerRateLimiter, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error al obtener pedidos del cliente:', error);
+    logger.error('Error al obtener pedidos del cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// PATCH /api/customers/:phone/address - Actualizar nombre/dirección (rate limited)
-router.patch('/:phone/address', customerRateLimiter, async (req, res) => {
+// PATCH /api/customers/:phone/address - Actualizar nombre/direcciÃ³n (rate limited)
+router.patch('/:phone/address', customerRateLimiter, validateUpdateAddress, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
     const { name, address } = req.body;
 
     if (!phone) {
-      return res.status(400).json({ error: 'Número de teléfono requerido' });
+      return res.status(400).json({ error: 'NÃºmero de telÃ©fono requerido' });
     }
 
     const updateData = {};
@@ -298,20 +317,20 @@ router.patch('/:phone/address', customerRateLimiter, async (req, res) => {
 
     res.json(customer);
   } catch (error) {
-    console.error('Error al actualizar dirección del cliente:', error);
+    logger.error('Error al actualizar direcciÃ³n del cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // PUT /api/customers/:phone/settings - Actualizar configuraciones del cliente (rate limited)
-router.put('/:phone/settings', customerRateLimiter, async (req, res) => {
+router.put('/:phone/settings', customerRateLimiter, validateUpdateSettings, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
     const { notifications, settings } = req.body;
 
     if (!phone) {
-      return res.status(400).json({ error: 'Número de teléfono requerido' });
+      return res.status(400).json({ error: 'NÃºmero de telÃ©fono requerido' });
     }
 
     const updateData = {};
@@ -333,18 +352,18 @@ router.put('/:phone/settings', customerRateLimiter, async (req, res) => {
 
     res.json(customer);
   } catch (error) {
-    console.error('Error al actualizar configuraciones del cliente:', error);
+    logger.error('Error al actualizar configuraciones del cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // DELETE /api/customers/:phone - Eliminar cliente
-router.delete('/:phone', tenantAuth, async (req, res) => {
+router.delete('/:phone', tenantAuth, validateDeleteCustomer, async (req, res) => {
   try {
     const { phone } = req.params;
 
     if (!phone) {
-      return res.status(400).json({ error: 'Número de teléfono requerido' });
+      return res.status(400).json({ error: 'NÃºmero de telÃ©fono requerido' });
     }
 
     // Use businessId from token for tenant isolation, with fallback for superadmin
@@ -359,13 +378,13 @@ router.delete('/:phone', tenantAuth, async (req, res) => {
 
     res.json({ message: 'Cliente eliminado exitosamente' });
   } catch (error) {
-    console.error('Error al eliminar cliente:', error);
+    logger.error('Error al eliminar cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
 // DELETE /api/customers/by-id/:id - Eliminar cliente por ID
-router.delete('/by-id/:id', tenantAuth, async (req, res) => {
+router.delete('/by-id/:id', tenantAuth, validateDeleteCustomerById, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -374,7 +393,7 @@ router.delete('/by-id/:id', tenantAuth, async (req, res) => {
     }
 
     if (!isValidObjectId(id)) {
-      return res.status(400).json({ error: 'ID del cliente inválido' });
+      return res.status(400).json({ error: 'ID del cliente invÃ¡lido' });
     }
 
     // Use businessId from token for tenant isolation, with fallback for superadmin
@@ -391,23 +410,28 @@ router.delete('/by-id/:id', tenantAuth, async (req, res) => {
 
     res.json({ message: 'Cliente eliminado exitosamente' });
   } catch (error) {
-    console.error('[Customers] Error al eliminar cliente por ID:', error);
+    logger.error('[Customers] Error al eliminar cliente por ID:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
-// GET /api/customers/:phone - Obtener datos del cliente por teléfono (rate limited) - MUST BE LAST
+// GET /api/customers/:phone - Obtener datos del cliente por telÃ©fono (rate limited) - MUST BE LAST
 router.get('/:phone', customerRateLimiter, async (req, res) => {
   try {
     const { phone } = req.params;
     const { businessId } = req.query;
 
     if (!phone) {
-      return res.status(400).json({ error: 'Número de teléfono requerido' });
+      return res.status(400).json({ error: 'NÃºmero de telÃ©fono requerido' });
+    }
+
+    // businessId is mandatory â€” prevents enumeration of customers across businesses
+    if (!businessId || !isValidObjectId(businessId)) {
+      return res.status(400).json({ error: 'businessId es requerido' });
     }
 
     const customer = await Customer.findOne({ 
-      businessId: isValidObjectId(businessId) ? businessId : null, 
+      businessId, 
       phone 
     });
 
@@ -417,7 +441,7 @@ router.get('/:phone', customerRateLimiter, async (req, res) => {
 
     res.json(customer);
   } catch (error) {
-    console.error('Error al obtener cliente:', error);
+    logger.error('Error al obtener cliente:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });

@@ -8,6 +8,13 @@ const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const {
+  validateCreateCategory,
+  validateReorderCategories,
+  validateUpdateCategory,
+  validateDeleteCategory,
+  validateUpdateOrder,
+} = require('../middleware/validators/categoryValidators');
 
 // Función auxiliar para obtener todas las categorías
 const getAllCategories = async (businessId = null) => {
@@ -33,7 +40,7 @@ router.get("/", async (req, res) => {
 });
 
 // Crear nueva categoría
-router.post("/", tenantAuth, async (req, res) => {
+router.post("/", tenantAuth, validateCreateCategory, async (req, res) => {
   try {
     // Si se proporciona un _id, actualizar en lugar de crear
     if (req.body._id) {
@@ -93,7 +100,7 @@ router.post("/", tenantAuth, async (req, res) => {
 });
 
 // Reordenar categorías (debe ir antes de /:id para evitar conflictos)
-router.put("/reorder", tenantAuth, async (req, res) => {
+router.put("/reorder", tenantAuth, validateReorderCategories, async (req, res) => {
   try {
     const { businessId, categories } = req.body;
     
@@ -136,7 +143,7 @@ router.put("/reorder", tenantAuth, async (req, res) => {
 });
 
 // Actualizar categoría (mejorado para manejar displayOrder)
-router.put("/:id", tenantAuth, async (req, res) => {
+router.put("/:id", tenantAuth, validateUpdateCategory, async (req, res) => {
   try {
     logger.debug('Updating category', { id: req.params.id }, req);
     
@@ -172,7 +179,7 @@ router.put("/:id", tenantAuth, async (req, res) => {
 });
 
 // Eliminar categoría
-router.delete("/:id", tenantAuth, async (req, res) => {
+router.delete("/:id", tenantAuth, validateDeleteCategory, async (req, res) => {
   try {
     // Use businessId from token for tenant isolation, fallback for superadmin
     const tenantBusinessId = req.user.businessId || req.query.businessId;
@@ -191,7 +198,7 @@ router.delete("/:id", tenantAuth, async (req, res) => {
 });
 
 // Actualizar el orden de múltiples categorías
-router.post("/update-order", tenantAuth, async (req, res) => {
+router.post("/update-order", tenantAuth, validateUpdateOrder, async (req, res) => {
   try {
     const { categories } = req.body;
     

@@ -9,6 +9,14 @@ const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
 const rateLimit = require('express-rate-limit');
+const {
+  validateProductsReorder,
+  validateReorderFeatured,
+  validateToggleFeatured,
+  validateDeleteProduct,
+  validateToggleProduct,
+  validateUpdateProductParam,
+} = require('../middleware/validators/productValidators');
 
 // Rate limiter for public product reads
 const publicProductLimiter = rateLimit({
@@ -224,7 +232,7 @@ router.put("/reorder-simple", tenantAuth, async (req, res) => {
 });
 
 // Reorder products (working endpoint)
-router.put("/products-reorder", tenantAuth, async (req, res) => {
+router.put("/products-reorder", tenantAuth, validateProductsReorder, async (req, res) => {
   logger.debug("PRODUCTS-REORDER ENDPOINT CALLED", { timestamp: new Date().toISOString() }, req);
   
   try {
@@ -280,7 +288,7 @@ router.put("/reorder", tenantAuth, async (req, res) => {
 });
 
 // PUT reorder featured products
-router.put("/reorder-featured", tenantAuth, async (req, res) => {
+router.put("/reorder-featured", tenantAuth, validateReorderFeatured, async (req, res) => {
   try {
     logger.info('Reorder featured products endpoint called', { body: req.body });
     const { orderedIds } = req.body;
@@ -320,7 +328,7 @@ router.put("/reorder-featured", tenantAuth, async (req, res) => {
 });
 
 // PUT toggle featured status (DEBE estar ANTES de /:id genérico)
-router.put("/:id/toggle-featured", tenantAuth, async (req, res) => {
+router.put("/:id/toggle-featured", tenantAuth, validateToggleFeatured, async (req, res) => {
 
 
 
@@ -434,7 +442,7 @@ router.put("/:id/toggle-featured", tenantAuth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌❌❌ ERROR EN TOGGLE FEATURED:', error);
+    logger.error('Error en toggle featured:', error);
     // Stack trace logged internally by Sentry
     logger.error("Error toggling featured status", error, req);
     res.status(500).json(formatHttpError(req, "Error al cambiar estado destacado", 500));
@@ -442,7 +450,7 @@ router.put("/:id/toggle-featured", tenantAuth, async (req, res) => {
 });
 
 // PUT a product
-router.put("/:id", tenantAuth, validateProductInput, async (req, res) => {
+router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput, async (req, res) => {
   try {
     const productId = req.params.id;
     const { name, description, price, category, image, toppingGroups } = req.body;
@@ -497,7 +505,7 @@ router.put("/:id", tenantAuth, validateProductInput, async (req, res) => {
 });
 
 // DELETE a product
-router.delete("/:id", tenantAuth, async (req, res) => {
+router.delete("/:id", tenantAuth, validateDeleteProduct, async (req, res) => {
   try {
     // Use businessId from token for tenant isolation, fallback for superadmin
     const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
@@ -516,7 +524,7 @@ router.delete("/:id", tenantAuth, async (req, res) => {
 });
 
 // Toggle active status of a product
-router.patch("/:id/toggle", tenantAuth, async (req, res) => {
+router.patch("/:id/toggle", tenantAuth, validateToggleProduct, async (req, res) => {
   try {
     const productId = req.params.id;
     

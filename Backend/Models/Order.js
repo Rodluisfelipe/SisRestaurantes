@@ -284,6 +284,13 @@ const orderSchema = new mongoose.Schema({
     change: { type: Number, default: null },
   },
 
+  // POS offline sync — idempotency key to prevent duplicate orders
+  offlineId: {
+    type: String,
+    default: null,
+    sparse: true
+  },
+
   // Order items
   items: [{
     productId: {
@@ -344,6 +351,10 @@ orderSchema.index({ deliveryZoneId: 1 });
 // customerToken already has index:true in field definition
 orderSchema.index({ businessId: 1, orderChannel: 1, status: 1 });
 orderSchema.index({ businessId: 1, bookingDate: 1 });
+orderSchema.index({ businessId: 1, offlineId: 1 }, { sparse: true, unique: true });
+
+// Enable optimistic concurrency — prevents silent overwrites on concurrent updates
+orderSchema.set('optimisticConcurrency', true);
 
 // Hook para actualizar estadísticas de zona cuando se completa un pedido
 orderSchema.post('save', async function(doc, next) {
