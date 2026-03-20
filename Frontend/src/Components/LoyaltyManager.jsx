@@ -158,14 +158,14 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                 style={{ background: `linear-gradient(135deg, ${themeColor}, ${themeColor}cc)` }}
               >
                 <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full opacity-10 bg-white" />
-                <p className="text-[8px] opacity-70 uppercase tracking-wider">{businessName || 'Tu negocio'}</p>
+                <p className="text-xs opacity-70 uppercase tracking-wider">{businessName || 'Tu negocio'}</p>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-2xl font-black">520</span>
                   <span className="text-[9px] opacity-60">puntos</span>
                 </div>
                 <div className="mt-2 flex items-center gap-1 bg-white/15 rounded-md px-2 py-1">
-                  <span className="text-[8px]">🔥</span>
-                  <span className="text-[8px]">
+                  <span className="text-xs">🔥</span>
+                  <span className="text-xs">
                     Ganas {pts} pto{pts > 1 ? 's' : ''} por ${Number(amt).toLocaleString('es-CO')}
                   </span>
                 </div>
@@ -184,7 +184,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                       style={{ borderColor: tier.color + '40', backgroundColor: tier.color + '10' }}
                     >
                       <div className="text-sm">{i === 0 ? '🥉' : i === 1 ? '🥈' : i === 2 ? '🥇' : '💎'}</div>
-                      <p className="text-[7px] font-bold text-slate-700 truncate">{tier.name}</p>
+                      <p className="text-xs font-bold text-slate-700 truncate">{tier.name}</p>
                       <p className="text-[6px] text-slate-400">x{tier.multiplier}</p>
                     </div>
                   ))}
@@ -205,10 +205,10 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                           <span className="text-xs">{rt.emoji}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[8px] font-semibold text-slate-700 truncate">{r.name}</p>
-                          <p className="text-[7px] text-slate-400">{r.pointsCost} pts</p>
+                          <p className="text-xs font-semibold text-slate-700 truncate">{r.name}</p>
+                          <p className="text-xs text-slate-400">{r.pointsCost} pts</p>
                         </div>
-                        <button className="px-2 py-0.5 rounded-md text-[7px] font-bold text-white" style={{ backgroundColor: themeColor }}>Canjear</button>
+                        <button className="px-2 py-0.5 rounded-md text-xs font-bold text-white" style={{ backgroundColor: themeColor }}>Canjear</button>
                       </div>
                     );
                   })}
@@ -655,6 +655,7 @@ const LoyaltyManager = () => {
                     <span>Mis clientes ganarán</span>
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={program.pointsPerAmount}
                       onChange={e => setProgram(p => ({ ...p, pointsPerAmount: Number(e.target.value) || 1 }))}
                       className="inline-block w-20 px-3 py-1.5 rounded-lg border-2 border-orange-200 bg-white text-center font-bold text-orange-600 text-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none"
@@ -665,6 +666,7 @@ const LoyaltyManager = () => {
                     <span className="text-slate-400">$</span>
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={program.amountPerPoints}
                       onChange={e => setProgram(p => ({ ...p, amountPerPoints: Number(e.target.value) || 1 }))}
                       className="inline-block w-28 px-3 py-1.5 rounded-lg border-2 border-orange-200 bg-white text-center font-bold text-orange-600 text-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none"
@@ -693,6 +695,7 @@ const LoyaltyManager = () => {
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
+                        inputMode="numeric"
                         value={program.firstOrderBonus}
                         onChange={e => setProgram(p => ({ ...p, firstOrderBonus: Number(e.target.value) || 0 }))}
                         className="w-full px-3 py-2 rounded-lg border border-emerald-200 text-sm font-semibold text-center focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none"
@@ -707,6 +710,7 @@ const LoyaltyManager = () => {
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
+                        inputMode="numeric"
                         value={program.pointsExpiryDays}
                         onChange={e => setProgram(p => ({ ...p, pointsExpiryDays: Number(e.target.value) || 0 }))}
                         className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-slate-200 outline-none"
@@ -877,12 +881,12 @@ const LoyaltyManager = () => {
                       <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Puntos mínimos</label>
-                          <input type="number" value={tier.minPoints} onChange={e => updateTier(idx, 'minPoints', Number(e.target.value) || 0)}
+                          <input type="number" inputMode="numeric" value={tier.minPoints} onChange={e => updateTier(idx, 'minPoints', Number(e.target.value) || 0)}
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="0" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Multiplicador</label>
-                          <input type="number" value={tier.multiplier} onChange={e => updateTier(idx, 'multiplier', Number(e.target.value) || 1)}
+                          <input type="number" inputMode="decimal" value={tier.multiplier} onChange={e => updateTier(idx, 'multiplier', Number(e.target.value) || 1)}
                             className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="1" step="0.5" />
                         </div>
                         <div>
@@ -1049,14 +1053,14 @@ const LoyaltyManager = () => {
                           <label className="block text-xs font-semibold text-slate-600 mb-1.5">
                             Valor {rewardForm.type === 'discount_percent' ? '(%)' : '($)'}
                           </label>
-                          <input type="number" value={rewardForm.discountValue}
+                          <input type="number" inputMode="numeric" value={rewardForm.discountValue}
                             onChange={e => setRewardForm(f => ({ ...f, discountValue: Number(e.target.value) || 0 }))}
                             className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" min="0" />
                         </div>
                         {rewardForm.type === 'discount_percent' && (
                           <div>
                             <label className="block text-xs font-semibold text-slate-600 mb-1.5">Máx. descuento ($)</label>
-                            <input type="number" value={rewardForm.maxDiscount}
+                            <input type="number" inputMode="numeric" value={rewardForm.maxDiscount}
                               onChange={e => setRewardForm(f => ({ ...f, maxDiscount: Number(e.target.value) || 0 }))}
                               className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-center focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" min="0" placeholder="0 = sin límite" />
                           </div>
@@ -1109,7 +1113,7 @@ const LoyaltyManager = () => {
 
                     <div>
                       <label className="block text-xs font-semibold text-slate-600 mb-1.5">Costo en puntos</label>
-                      <input type="number" value={rewardForm.pointsCost}
+                      <input type="number" inputMode="numeric" value={rewardForm.pointsCost}
                         onChange={e => setRewardForm(f => ({ ...f, pointsCost: Number(e.target.value) || 1 }))}
                         className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-orange-200 focus:border-orange-400 outline-none" min="1" />
                       {program.amountPerPoints > 0 && program.pointsPerAmount > 0 && (

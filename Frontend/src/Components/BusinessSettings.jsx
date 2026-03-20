@@ -366,7 +366,7 @@ const BusinessSettings = () => {
             {/* Left Column */}
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Nombre del Negocio
                 </label>
                 <input
@@ -380,7 +380,7 @@ const BusinessSettings = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Descripción del Negocio
                 </label>
                 <textarea
@@ -399,14 +399,14 @@ const BusinessSettings = () => {
                       style={{ width: `${(settings.description.length / 300) * 100}%` }}
                     />
                   </div>
-                  <span className={`text-[10px] font-medium ${getDescriptionProgress().textColor}`}>
+                  <span className={`text-xs font-medium ${getDescriptionProgress().textColor}`}>
                     {settings.description.length}/300
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Logo del Negocio
                 </label>
                 <ImageUploader
@@ -422,7 +422,7 @@ const BusinessSettings = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Imagen de Portada
                 </label>
                 <ImageUploader
@@ -440,11 +440,12 @@ const BusinessSettings = () => {
             {/* Right Column */}
             <div className="space-y-3">
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Número de WhatsApp
                 </label>
                 <input
                   type="text"
+                  inputMode="tel"
                   name="whatsappNumber"
                   value={settings.whatsappNumber}
                   onChange={handleChange}
@@ -454,7 +455,7 @@ const BusinessSettings = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Dirección
                 </label>
                 <input
@@ -468,7 +469,7 @@ const BusinessSettings = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   NIT
                 </label>
                 <input
@@ -479,14 +480,14 @@ const BusinessSettings = () => {
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="Ej: 900.123.456-7"
                 />
-                <p className="mt-1 text-[10px] text-slate-400 flex items-center gap-1">
+                <p className="mt-1 text-xs text-slate-400 flex items-center gap-1">
                   <FaInfoCircle className="text-[8px]" />
                   Se mostrará en las comandas impresas
                 </p>
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   URL de Google Maps
                 </label>
                 <input
@@ -497,7 +498,7 @@ const BusinessSettings = () => {
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
                   placeholder="https://maps.google.com/?q=..."
                 />
-                <p className="mt-1 text-[10px] text-slate-400 flex items-center gap-1">
+                <p className="mt-1 text-xs text-slate-400 flex items-center gap-1">
                   <FaInfoCircle className="text-[8px]" />
                   Enlace de ubicación en Google Maps
                 </p>
@@ -533,11 +534,11 @@ const BusinessSettings = () => {
 
           {settings.enableBookings && (
             <div className="p-4 space-y-3">
-              <p className="text-[11px] text-slate-500">Permite que tus clientes agenden citas al pedir un servicio.</p>
+              <p className="text-xs text-slate-500">Permite que tus clientes agenden citas al pedir un servicio.</p>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                     Intervalo de slots (min)
                   </label>
                   <select
@@ -556,7 +557,7 @@ const BusinessSettings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                     Días de anticipación
                   </label>
                   <select
@@ -575,7 +576,7 @@ const BusinessSettings = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                     Buffer entre citas (min)
                   </label>
                   <select
@@ -595,7 +596,7 @@ const BusinessSettings = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     Auto-confirmar
                   </label>
                   <button
@@ -617,10 +618,10 @@ const BusinessSettings = () => {
 
               {/* Cancellation Policy */}
               <div className="border-t border-slate-100 pt-3 mt-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Política de Cancelación</p>
+                <p className="text-xs font-bold text-slate-400 uppercase mb-2">Política de Cancelación</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Permitir cancelar
                     </label>
                     <button
@@ -641,7 +642,7 @@ const BusinessSettings = () => {
 
                   {settings.bookingSettings?.allowCancellation !== false && (
                     <div>
-                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                         Anticipación mínima
                       </label>
                       <select
@@ -667,10 +668,10 @@ const BusinessSettings = () => {
 
               {/* Staff Assignment & Reminders */}
               <div className="border-t border-slate-100 pt-3 mt-3">
-                <p className="text-[10px] font-bold text-slate-400 uppercase mb-2">Opciones avanzadas</p>
+                <p className="text-xs font-bold text-slate-400 uppercase mb-2">Opciones avanzadas</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Asignar profesional
                     </label>
                     <button
@@ -690,7 +691,7 @@ const BusinessSettings = () => {
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                       Recordatorios push
                     </label>
                     <button
@@ -738,12 +739,12 @@ const BusinessSettings = () => {
 
           {emailSettings.enabled && (
             <div className="p-4 space-y-3">
-              <p className="text-[10px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 Los correos se envían automáticamente desde <strong>noreply@menuby.tech</strong> cuando confirmas o cancelas citas.
               </p>
 
               <div className="border-t border-slate-100 pt-3 space-y-2">
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Enviar correo cuando:</p>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Enviar correo cuando:</p>
                 {[
                   { key: 'sendOnBookingConfirmed', label: 'Se confirma una reserva/cita' },
                   { key: 'sendOnBookingCancelled', label: 'Se cancela una reserva/cita' }
@@ -778,7 +779,7 @@ const BusinessSettings = () => {
                   type="button"
                   onClick={handleTestEmail}
                   disabled={emailTesting}
-                  className="flex-1 px-3 py-2 text-[10px] font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-3 py-2 text-xs font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors"
                 >
                   {emailTesting ? 'Enviando...' : 'Enviar Prueba'}
                 </button>
@@ -786,7 +787,7 @@ const BusinessSettings = () => {
                   type="button"
                   onClick={handleSaveEmail}
                   disabled={emailSaving}
-                  className="flex-1 px-3 py-2 text-[10px] font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                  className="flex-1 px-3 py-2 text-xs font-medium bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-50 transition-colors"
                 >
                   {emailSaving ? 'Guardando...' : 'Guardar Correo'}
                 </button>
@@ -807,7 +808,7 @@ const BusinessSettings = () => {
           <div className="p-4 space-y-3">
             {/* Facebook */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 Facebook
               </label>
               <div className="flex gap-2">
@@ -821,7 +822,7 @@ const BusinessSettings = () => {
                 <button
                   type="button"
                   onClick={() => handleSocialMediaChange('facebook', 'isVisible', !settings.socialMedia.facebook.isVisible)}
-                  className={`px-3 py-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
                     settings.socialMedia.facebook.isVisible 
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                       : 'bg-slate-50 text-slate-500 border border-slate-200'
@@ -834,7 +835,7 @@ const BusinessSettings = () => {
 
             {/* Instagram */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 Instagram
               </label>
               <div className="flex gap-2">
@@ -848,7 +849,7 @@ const BusinessSettings = () => {
                 <button
                   type="button"
                   onClick={() => handleSocialMediaChange('instagram', 'isVisible', !settings.socialMedia.instagram.isVisible)}
-                  className={`px-3 py-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
                     settings.socialMedia.instagram.isVisible 
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                       : 'bg-slate-50 text-slate-500 border border-slate-200'
@@ -861,7 +862,7 @@ const BusinessSettings = () => {
 
             {/* TikTok */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 TikTok
               </label>
               <div className="flex gap-2">
@@ -875,7 +876,7 @@ const BusinessSettings = () => {
                 <button
                   type="button"
                   onClick={() => handleSocialMediaChange('tiktok', 'isVisible', !settings.socialMedia.tiktok.isVisible)}
-                  className={`px-3 py-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
                     settings.socialMedia.tiktok.isVisible 
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                       : 'bg-slate-50 text-slate-500 border border-slate-200'
@@ -888,7 +889,7 @@ const BusinessSettings = () => {
 
             {/* Enlace Extra */}
             <div>
-              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                 Enlace Extra
               </label>
               <div className="flex gap-2">
@@ -908,7 +909,7 @@ const BusinessSettings = () => {
                     ...settings,
                     extraLink: { ...settings.extraLink, isVisible: !settings.extraLink.isVisible }
                   })}
-                  className={`px-3 py-2 rounded-lg text-[10px] font-medium flex items-center gap-1 transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors ${
                     settings.extraLink.isVisible 
                       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                       : 'bg-slate-50 text-slate-500 border border-slate-200'

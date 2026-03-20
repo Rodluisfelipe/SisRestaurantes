@@ -687,7 +687,7 @@ function EnhancedCompletedOrders() {
             </div>
             <button
               onClick={() => { setSelectedOrder(null); setOrderDetails(null); }}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
+              className="p-2.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
             >
               <FaTimes className="text-sm" />
             </button>
@@ -865,7 +865,7 @@ function EnhancedCompletedOrders() {
               <div className="min-w-0">
                 <h4 className="text-xs font-semibold text-slate-800">{insight.title}</h4>
                 <p className="text-xs text-slate-600 mt-0.5">{insight.message}</p>
-                <p className="text-[11px] text-slate-400 mt-1">{insight.recommendation}</p>
+                <p className="text-xs text-slate-400 mt-1">{insight.recommendation}</p>
               </div>
             </div>
           ))}
@@ -999,10 +999,10 @@ function EnhancedCompletedOrders() {
           <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-3">
             {/* Quick date presets */}
             <div className="flex flex-wrap gap-1.5">
-              <span className="text-[11px] font-medium text-slate-500 flex items-center mr-1"><FaCalendarWeek className="text-[9px] mr-1" />Rápido:</span>
+              <span className="text-xs font-medium text-slate-500 flex items-center mr-1"><FaCalendarWeek className="text-[9px] mr-1" />Rápido:</span>
               {[['Hoy', 'today'], ['Ayer', 'yesterday'], ['Última semana', 'week'], ['Último mes', 'month'], ['Último año', 'year']].map(([label, key]) => (
                 <button key={key} onClick={() => applyDatePreset(key)}
-                  className="px-2.5 py-1 text-[11px] font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors">
+                  className="px-3 py-2.5 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors">
                   {label}
                 </button>
               ))}
@@ -1010,7 +1010,7 @@ function EnhancedCompletedOrders() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {/* Date From */}
               <div>
-                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Desde</label>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">Desde</label>
                 <input
                   type="date"
                   value={dateFrom}
@@ -1020,7 +1020,7 @@ function EnhancedCompletedOrders() {
               </div>
               {/* Date To */}
               <div>
-                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Hasta</label>
+                <label className="text-xs font-medium text-slate-500 mb-1 block">Hasta</label>
                 <input
                   type="date"
                   value={dateTo}

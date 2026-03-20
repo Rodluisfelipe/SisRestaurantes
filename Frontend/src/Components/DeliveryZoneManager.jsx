@@ -1231,6 +1231,7 @@ const DeliveryZoneManager = () => {
                     <label className="block text-sm font-medium mb-1">Precio Base ($)</label>
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={formData.pricing.basePrice}
                       onChange={(e) => setFormData(prev => ({
                         ...prev,
@@ -1248,6 +1249,7 @@ const DeliveryZoneManager = () => {
                         <label className="block text-sm font-medium mb-1">Precio por KM ($)</label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           value={formData.pricing.pricePerKm}
                           onChange={(e) => setFormData(prev => ({
                             ...prev,
@@ -1263,6 +1265,7 @@ const DeliveryZoneManager = () => {
                         <label className="block text-sm font-medium mb-1">Distancia Gratis (KM)</label>
                         <input
                           type="number"
+                          inputMode="decimal"
                           value={formData.pricing.freeDistanceKm}
                           onChange={(e) => setFormData(prev => ({
                             ...prev,
@@ -1280,6 +1283,7 @@ const DeliveryZoneManager = () => {
                     <label className="block text-sm font-medium mb-1">Pedido Mínimo ($)</label>
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={formData.pricing.minimumOrder}
                       onChange={(e) => setFormData(prev => ({
                         ...prev,
@@ -1301,6 +1305,7 @@ const DeliveryZoneManager = () => {
                     <label className="block text-sm font-medium mb-1">Mínimo (minutos)</label>
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={formData.estimatedTime.min}
                       onChange={(e) => setFormData(prev => ({
                         ...prev,
@@ -1315,6 +1320,7 @@ const DeliveryZoneManager = () => {
                     <label className="block text-sm font-medium mb-1">Máximo (minutos)</label>
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={formData.estimatedTime.max}
                       onChange={(e) => setFormData(prev => ({
                         ...prev,

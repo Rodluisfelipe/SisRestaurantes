@@ -294,7 +294,7 @@ function ModernOrdersDashboard() {
           <div className="flex bg-slate-100 rounded-lg p-0.5 shrink-0">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-1.5 rounded-md transition-all ${
+              className={`p-2.5 rounded-md transition-all ${
                 viewMode === 'grid'
                   ? 'bg-white text-slate-700 shadow-sm'
                   : 'text-slate-400 hover:text-slate-600'
@@ -304,7 +304,7 @@ function ModernOrdersDashboard() {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded-md transition-all ${
+              className={`p-2.5 rounded-md transition-all ${
                 viewMode === 'list'
                   ? 'bg-white text-slate-700 shadow-sm'
                   : 'text-slate-400 hover:text-slate-600'
@@ -413,7 +413,7 @@ function ModernOrdersDashboard() {
                   <div className="flex items-center gap-2">
                     <button
                         onClick={() => handlePrintOrder(orderDetails)}
-                        className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
+                        className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
                         title="Imprimir comanda"
                       >
                         <FaPrint className="text-slate-500 text-xs" />
@@ -423,7 +423,7 @@ function ModernOrdersDashboard() {
                         setSelectedOrder(null);
                         setOrderDetails(null);
                       }}
-                      className="w-8 h-8 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
+                      className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
                     >
                       <FaTimes className="text-slate-400 text-xs" />
                     </button>
@@ -769,7 +769,7 @@ function ModernOrdersDashboard() {
             >
               <button
                 onClick={() => setShowProofModal(false)}
-                className="absolute -top-3 -right-3 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg z-10"
+                className="absolute -top-3 -right-3 w-11 h-11 bg-white rounded-full flex items-center justify-center shadow-lg z-10"
               >
                 <FaTimes className="text-slate-500 text-xs" />
               </button>
