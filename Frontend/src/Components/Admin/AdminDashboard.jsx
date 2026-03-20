@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import DashboardMetrics from './DashboardMetrics';
+import ModoOperacion from './ModoOperacion';
 
 /**
  * AdminDashboard v4 — Ultra-professional mobile-first dashboard.
@@ -161,7 +162,7 @@ function DashCard({ item, onClick, pendingOrdersCount }) {
       {/* Text */}
       <div className="flex-1 min-w-0 sm:flex-initial">
         <p className="text-[13px] sm:text-xs font-bold text-slate-800 leading-tight truncate sm:whitespace-normal">{item.title}</p>
-        <p className="text-[11px] sm:text-[10px] text-slate-400 font-medium mt-0.5 leading-tight truncate sm:whitespace-normal">{item.desc}</p>
+        <p className="text-xs text-slate-400 font-medium mt-0.5 leading-tight truncate sm:whitespace-normal">{item.desc}</p>
       </div>
 
       {/* Chevron (mobile only) */}
@@ -170,7 +171,7 @@ function DashCard({ item, onClick, pendingOrdersCount }) {
       {/* Badge */}
       {item.hasBadge && pendingOrdersCount > 0 && (
         <span className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 min-w-[20px] h-5 px-1.5
-                         bg-red-500 text-white text-[10px] font-extrabold
+                         bg-red-500 text-white text-xs font-extrabold
                          rounded-full flex items-center justify-center
                          shadow-lg shadow-red-500/25 ring-2 ring-white">
           {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
@@ -200,12 +201,12 @@ function HeroCard({ svgKey, title, subtitle, onClick, count, colorClass }) {
             {SvgIcon && SvgIcon('w-5 h-5 text-white')}
           </div>
           <h3 className="text-sm sm:text-base font-bold leading-tight">{title}</h3>
-          <p className="text-[11px] sm:text-xs text-white/60 mt-0.5 font-medium">{subtitle}</p>
+          <p className="text-xs text-white/60 mt-0.5 font-medium">{subtitle}</p>
         </div>
         {count > 0 && (
           <div className="flex-shrink-0 ml-2 bg-white/15 backdrop-blur-sm rounded-2xl px-3.5 py-2 text-center">
             <span className="text-xl sm:text-2xl font-extrabold block leading-none">{count > 99 ? '99+' : count}</span>
-            <span className="text-[9px] text-white/50 font-semibold tracking-wide uppercase">Activos</span>
+            <span className="text-xs text-white/50 font-semibold tracking-wide uppercase">Activos</span>
           </div>
         )}
       </div>
@@ -240,10 +241,10 @@ function ShareBar({ businessConfig }) {
         </svg>
       </div>
       <div className="flex-1 min-w-0 text-left">
-        <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{isSvc ? 'Tu página de servicios' : 'Tu menú digital'}</p>
+        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{isSvc ? 'Tu página de servicios' : 'Tu menú digital'}</p>
         <p className="text-sm font-bold text-slate-700 truncate">{url}</p>
       </div>
-      <span className={`text-[11px] font-bold px-3 py-1.5 rounded-xl flex-shrink-0 transition-all ${
+      <span className={`text-xs font-bold px-3 py-1.5 rounded-xl flex-shrink-0 transition-all ${
         copied ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500 group-hover:bg-red-50 group-hover:text-red-600'
       }`}>
         {copied ? '✓ Copiado' : 'Copiar'}
@@ -256,7 +257,7 @@ function ShareBar({ businessConfig }) {
 function StatusBadge({ businessConfig }) {
   const isOpen = businessConfig?.isOpen !== false;
   return (
-    <div className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${
+    <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
       isOpen ? 'bg-emerald-400/15 text-emerald-400' : 'bg-red-400/15 text-red-400'
     }`}>
       <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
@@ -272,6 +273,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
 
+  const [showModoOp, setShowModoOp] = useState(false);
   const isNewUser = onboarding && !onboarding.isLegacy && onboarding.level < 6;
   const progressPercent = onboarding ? (onboarding.progress || 0) : 100;
   const nextStep = onboarding?.nextStep;
@@ -342,7 +344,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                 </div>
                 Primeros pasos
               </h2>
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                 {onboarding?.level || 0}/6
               </span>
             </div>
@@ -390,11 +392,11 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                         }`}>
                           {step.label}
                         </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{step.desc}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{step.desc}</p>
                       </div>
 
                       {isNext && step.tab && (
-                        <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2.5 py-1 rounded-full flex-shrink-0">
+                        <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2.5 py-1 rounded-full flex-shrink-0">
                           Ir →
                         </span>
                       )}
@@ -423,11 +425,11 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
               <motion.div key={section.id} variants={stagger} initial="hidden" animate="show">
                 {/* Section header */}
                 <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
-                  <h2 className="text-[11px] sm:text-xs font-extrabold text-slate-400 uppercase tracking-[0.1em]">
+                  <h2 className="text-xs font-extrabold text-slate-400 uppercase tracking-[0.1em]">
                     {section.label}
                   </h2>
                   <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent" />
-                  <span className="text-[10px] text-slate-300 font-bold bg-slate-50 px-2 py-0.5 rounded-full">
+                  <span className="text-xs text-slate-300 font-bold bg-slate-50 px-2 py-0.5 rounded-full">
                     {section.items.length}
                   </span>
                 </div>
@@ -468,6 +470,27 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
           )}
         </motion.div>
       </AnimatePresence>
-    </div>
+      {/* ═══ FAB — Modo Operación (mobile only) ═══ */}
+      <button
+        onClick={() => setShowModoOp(true)}
+        className={`fixed bottom-20 right-4 z-40 block lg:hidden w-14 h-14 rounded-full shadow-lg
+          bg-gradient-to-br from-indigo-500 to-purple-600 text-white
+          flex items-center justify-center active:scale-95 transition-transform ${
+          pendingOrdersCount > 0 ? 'animate-pulse ring-4 ring-indigo-400/40' : ''
+        }`}
+        aria-label="Modo Operación"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+        {pendingOrdersCount > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] bg-red-500 text-white text-xs font-black rounded-full flex items-center justify-center px-1">
+            {pendingOrdersCount}
+          </span>
+        )}
+      </button>
+
+      {/* Modo Operación full-screen overlay */}
+      <ModoOperacion isOpen={showModoOp} onClose={() => setShowModoOp(false)} />    </div>
   );
 }

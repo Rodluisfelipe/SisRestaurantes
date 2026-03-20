@@ -302,6 +302,7 @@ function ToppingGroupsManager() {
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 text-sm">$</span>
                       <input
                         type="number"
+                        inputMode="decimal"
                         min="0"
                         step="0.01"
                         value={currentGroup.basePrice || 0}
@@ -380,6 +381,7 @@ function ToppingGroupsManager() {
                           <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 text-[10px]">$</span>
                           <input
                             type="number"
+                            inputMode="decimal"
                             value={option.price}
                             onChange={(e) => handleOptionChange(index, 'price', e.target.value)}
                             placeholder="0"
@@ -476,6 +478,7 @@ function ToppingGroupsManager() {
                                 <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-400 text-[10px]">$</span>
                                 <input
                                   type="number"
+                                  inputMode="decimal"
                                   value={option.price}
                                   onChange={(e) => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'price', e.target.value)}
                                   placeholder="0"

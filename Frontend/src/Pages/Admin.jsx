@@ -45,6 +45,7 @@ import AdminReviews from "../Components/Admin/AdminReviews";
 import StaffManager from "../Components/Admin/StaffManager";
 import BookingsManager from "../Components/Admin/BookingsManager";
 import CashClosings from "../Components/Admin/CashClosings";
+import MobileBottomNav from "../Components/Admin/MobileBottomNav";
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -309,7 +310,7 @@ function Admin() {
             <source src="/audio/new-order-notification.mp3" type="audio/mpeg" />
           </audio>
 
-          <div className="p-3 sm:p-4 md:p-6">
+          <div className="p-3 sm:p-4 md:p-6 pb-20 lg:pb-6">
             {/* Banner de nuevo pedido */}
             <OrderNotificationBanner
               showOrderBanner={showOrderBanner}
@@ -559,6 +560,16 @@ function Admin() {
 
       {/* Floating AI Help Chat */}
       <FloatingHelpChat />
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        pendingOrdersCount={pendingOrdersCount}
+        businessConfig={businessConfig}
+        handleLogout={logout}
+        userRole={user?.role}
+      />
     </div>
   );
 }

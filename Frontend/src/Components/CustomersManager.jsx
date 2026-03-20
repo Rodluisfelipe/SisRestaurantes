@@ -519,7 +519,7 @@ const CustomersManager = () => {
                           <div className="flex items-center gap-1">
                             <button
                               onClick={(e) => handleWhatsAppClick(e, customer)}
-                              className="p-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                              className="p-2.5 min-h-[44px] text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                               title="WhatsApp"
                             >
                               <FaWhatsapp className="text-xs" />
@@ -537,14 +537,14 @@ const CustomersManager = () => {
                                 });
                                 setShowCustomerModal(true);
                               }}
-                              className="p-1.5 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2.5 min-h-[44px] text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Ver detalles"
                             >
                               <FaEye className="text-xs" />
                             </button>
                             <button
                               onClick={() => handleDeleteCustomer(customer._id)}
-                              className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-2.5 min-h-[44px] text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Eliminar"
                             >
                               <FaTrash className="text-xs" />

@@ -275,7 +275,7 @@ const CouponsManager = () => {
               <Icon className="text-xs" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] text-slate-400 font-medium">{label}</p>
+              <p className="text-xs text-slate-400 font-medium">{label}</p>
               <p className="text-sm font-bold text-slate-800 truncate">{value}</p>
             </div>
           </div>
@@ -354,12 +354,12 @@ const CouponsManager = () => {
               <table className="min-w-full divide-y divide-slate-100">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Cupón</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Descuento</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Condiciones</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Uso</th>
-                    <th className="px-4 py-2.5 text-left text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Cupón</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Descuento</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Condiciones</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Uso</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -385,23 +385,23 @@ const CouponsManager = () => {
                                   : 'Envío gratis'}
                               </p>
                               {coupon.maxDiscountAmount && (
-                                <p className="text-[10px] text-slate-400">Máx: {formatCurrency(coupon.maxDiscountAmount)}</p>
+                                <p className="text-xs text-slate-400">Máx: {formatCurrency(coupon.maxDiscountAmount)}</p>
                               )}
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-2.5">
                           <p className="text-xs text-slate-700">Mín: {formatCurrency(coupon.minimumOrderAmount)}</p>
-                          <p className="text-[10px] text-slate-400">{coupon.usageLimit ? `Límite: ${coupon.usageLimit}` : 'Sin límite'}</p>
+                          <p className="text-xs text-slate-400">{coupon.usageLimit ? `Límite: ${coupon.usageLimit}` : 'Sin límite'}</p>
                         </td>
                         <td className="px-4 py-2.5">
-                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStatusBadge(coupon)}`}>
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold ${getStatusBadge(coupon)}`}>
                             {getStatusText(coupon)}
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
                           <p className="text-xs font-medium text-slate-700">{coupon.usageCount} usos</p>
-                          <p className="text-[10px] text-emerald-600">{formatCurrency(coupon.totalDiscountGiven)}</p>
+                          <p className="text-xs text-emerald-600">{formatCurrency(coupon.totalDiscountGiven)}</p>
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-1">
@@ -448,10 +448,10 @@ const CouponsManager = () => {
                         </div>
                         <div>
                           <p className="text-xs font-bold text-slate-800 font-mono">{coupon.code}</p>
-                          <p className="text-[10px] text-slate-400">{coupon.name}</p>
+                          <p className="text-xs text-slate-400">{coupon.name}</p>
                         </div>
                       </div>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${getStatusBadge(coupon)}`}>
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-semibold ${getStatusBadge(coupon)}`}>
                         {getStatusText(coupon)}
                       </span>
                     </div>

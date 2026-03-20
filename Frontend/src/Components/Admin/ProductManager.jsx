@@ -324,7 +324,7 @@ export default function ProductManager({
                         </label>
                         <div className="relative">
                           <div className="absolute inset-y-0 left-0 flex items-center pl-3"><span className="text-slate-500 font-semibold text-sm">$</span></div>
-                          <input ref={priceInputRef} name="price" type="text" value={form.price} onChange={handlePriceChange} onBlur={() => handleBlur('price')}
+                          <input ref={priceInputRef} name="price" type="text" inputMode="decimal" value={form.price} onChange={handlePriceChange} onBlur={() => handleBlur('price')}
                             className={`w-full rounded-lg border bg-white focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-slate-900 placeholder-slate-400 pl-8 pr-3 py-2 text-sm font-semibold transition-all ${touchedFields.price && (!form.price || parseFloat(form.price.replace(/\./g, '')) <= 0) ? 'border-red-300 bg-red-50/50' : 'border-slate-200'}`}
                             placeholder="29.000" required />
                         </div>
@@ -502,12 +502,12 @@ export default function ProductManager({
                 {/* Actions */}
                 <div className="flex gap-1.5">
                   <button onClick={() => editProduct(product)}
-                    className="flex-1 flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors"
+                    className="flex-1 flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-2.5 min-h-[44px] rounded-lg text-[11px] font-medium transition-colors"
                     title="Editar">
                     <FaEdit className="text-[10px]" /><span>Editar</span>
                   </button>
                   <button onClick={() => handleToggleProduct(product._id)}
-                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${
+                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-2.5 min-h-[44px] rounded-lg text-[11px] font-medium transition-colors ${
                       isActive
                         ? 'bg-amber-50 hover:bg-amber-100 text-amber-600'
                         : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
@@ -517,12 +517,12 @@ export default function ProductManager({
                     <span>{isActive ? 'Pausar' : 'Activar'}</span>
                   </button>
                   <button onClick={() => deleteProduct(product._id)}
-                    className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 p-1.5 rounded-lg transition-colors"
+                    className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 p-2.5 min-h-[44px] rounded-lg transition-colors"
                     title="Eliminar">
                     <FaTrash className="text-[10px]" />
                   </button>
                   <button onClick={() => handleToggleFeatured(product._id)}
-                    className={`flex items-center justify-center p-1.5 rounded-lg transition-colors ${
+                    className={`flex items-center justify-center p-2.5 min-h-[44px] rounded-lg transition-colors ${
                       product.isFeatured
                         ? 'bg-amber-100 hover:bg-amber-200 text-amber-600'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-400'
