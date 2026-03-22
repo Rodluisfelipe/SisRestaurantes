@@ -58,6 +58,7 @@ const COLORS = {
   slate:   { bg: 'bg-slate-50',   text: 'text-slate-600',   icon: 'bg-slate-100 text-slate-600',  ring: 'ring-slate-500/20' },
   fuchsia: { bg: 'bg-fuchsia-50', text: 'text-fuchsia-600', icon: 'bg-fuchsia-100 text-fuchsia-600', ring: 'ring-fuchsia-500/20' },
   red:     { bg: 'bg-red-50',     text: 'text-red-600',     icon: 'bg-red-100 text-red-600',      ring: 'ring-red-500/20' },
+  rose:    { bg: 'bg-rose-50',    text: 'text-rose-600',    icon: 'bg-rose-100 text-rose-600',    ring: 'ring-rose-500/20' },
   gray:    { bg: 'bg-gray-50',    text: 'text-gray-600',    icon: 'bg-gray-100 text-gray-600',    ring: 'ring-gray-500/20' },
 };
 
@@ -76,7 +77,8 @@ const getSections = (isService, isHotel) => [
       { tab: 'payment-config',   svgKey: 'payment',   title: 'Pagos',         desc: 'Métodos de cobro',       color: 'teal' },
       { tab: 'customers',        svgKey: 'customers', title: 'Clientes',      desc: isHotel ? 'Huéspedes' : 'Base de datos',         color: 'cyan' },
       { tab: 'reviews',          svgKey: 'reviews',   title: 'Reseñas',       desc: 'Calificaciones',        color: 'amber' },
-      { tab: 'pos',               svgKey: 'reorder',   title: 'Punto de Venta', desc: 'Sistema de caja',       color: 'purple', isRoute: true, isBeta: true },
+      { tab: 'pos',               svgKey: 'reorder',   title: 'Punto de Venta', desc: 'Sistema de caja',       color: 'purple', isRoute: true, routePath: 'pos', isBeta: true },
+      { tab: 'waiter',            svgKey: 'orders',    title: 'Comanda',        desc: 'Pedidos desde celular',  color: 'rose',   isRoute: true, routePath: 'waiter' },
     ],
   },
   {
@@ -442,7 +444,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                         item={item}
                         onClick={() => {
                           if (item.isRoute) {
-                            window.location.href = `/${businessConfig?.slug || businessConfig?._id}/pos`;
+                            window.location.href = `/${businessConfig?.slug || businessConfig?._id}/${item.routePath || 'pos'}`;
                           } else {
                             handleNav(item.tab);
                           }

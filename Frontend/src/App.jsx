@@ -9,6 +9,7 @@ const Menu = lazy(() => import("./Pages/Menu"));
 const Admin = lazy(() => import("./Pages/Admin"));
 const Kitchen = lazy(() => import("./Pages/Kitchen"));
 const POS = lazy(() => import("./Pages/POS"));
+const Waiter = lazy(() => import("./Pages/Waiter"));
 const SuperAdminDashboard = lazy(() => import("./Pages/SuperAdmin/SuperAdminDashboard"));
 const DomiPage = lazy(() => import("./Components/Delivery/DomiPage"));
 const DeliveryTracker = lazy(() => import("./Components/Delivery/DeliveryTracker"));
@@ -235,6 +236,17 @@ function App() {
               <BusinessProviderWrapper>
                 <ProtectedRoute>
                   <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><POS /></Suspense>
+                </ProtectedRoute>
+              </BusinessProviderWrapper>
+            } 
+          />
+
+          <Route 
+          path="/:businessId/waiter"
+            element={
+              <BusinessProviderWrapper>
+                <ProtectedRoute>
+                  <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><Waiter /></Suspense>
                 </ProtectedRoute>
               </BusinessProviderWrapper>
             } 
