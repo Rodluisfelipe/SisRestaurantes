@@ -15,6 +15,8 @@ const {
   validateUpdateSettings,
   validateDeleteCustomer,
   validateDeleteCustomerById,
+  validateAddNote,
+  validateUpdateTags,
 } = require('../middleware/validators/customerValidators');
 
 // Rate limiter for public customer endpoints
@@ -412,6 +414,111 @@ router.delete('/by-id/:id', tenantAuth, validateDeleteCustomerById, async (req, 
   } catch (error) {
     logger.error('[Customers] Error al eliminar cliente por ID:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ==================== NOTES & TAGS ====================
+
+// POST /api/customers/:id/notes — add a note to a customer
+router.post('/:id/notes', tenantAuth, validateAddNote, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text, bookingId, orderId } = req.body;
+    const resolvedBusinessId = req.user.businessId || req.query.businessId;
+
+    const customer = await Customer.findOne({ _id: id, businessId: resolvedBusinessId });
+    if (!customer) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+
+    // Limit notes per customer
+    if (customer.notes && customer.notes.length >= 200) {
+      return res.status(400).json({ message: 'Límite de 200 notas alcanzado para este cliente' });
+    }
+
+    // Fetch admin name for the note
+    let createdByName = 'Admin';
+    try {
+      const Admin = require('../Models/Admin');
+      const admin = await Admin.findById(req.user.id).select('name username').lean();
+      if (admin) createdByName = admin.name || admin.username;
+    } catch (e) { /* best-effort */ }
+
+    const note = {
+      text,
+      createdBy: req.user.id,
+      createdByName,
+      bookingId: bookingId || null,
+      orderId: orderId || null,
+      createdAt: new Date()
+    };
+
+    customer.notes.push(note);
+    await customer.save();
+
+    res.status(201).json({ message: 'Nota agregada', note: customer.notes[customer.notes.length - 1] });
+  } catch (error) {
+    logger.error('[Customers] Error adding note:', error);
+    res.status(500).json({ message: 'Error al agregar la nota' });
+  }
+});
+
+// GET /api/customers/:id/notes — list customer notes (paginated)
+router.get('/:id/notes', tenantAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const resolvedBusinessId = req.user.businessId || req.query.businessId;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: 'ID del cliente inválido' });
+    }
+
+    const customer = await Customer.findOne({ _id: id, businessId: resolvedBusinessId })
+      .select('notes').lean();
+    if (!customer) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+
+    // Sort notes by createdAt descending and paginate
+    const allNotes = (customer.notes || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const total = allNotes.length;
+    const start = (page - 1) * limit;
+    const notes = allNotes.slice(start, start + limit);
+
+    res.json({ notes, total, page, limit, totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    logger.error('[Customers] Error fetching notes:', error);
+    res.status(500).json({ message: 'Error al obtener las notas' });
+  }
+});
+
+// PATCH /api/customers/:id/tags — replace customer tags
+router.patch('/:id/tags', tenantAuth, validateUpdateTags, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tags } = req.body;
+    const resolvedBusinessId = req.user.businessId || req.query.businessId;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: 'ID del cliente inválido' });
+    }
+
+    const customer = await Customer.findOneAndUpdate(
+      { _id: id, businessId: resolvedBusinessId },
+      { tags },
+      { new: true, runValidators: true }
+    ).select('tags');
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+
+    res.json({ message: 'Tags actualizados', tags: customer.tags });
+  } catch (error) {
+    logger.error('[Customers] Error updating tags:', error);
+    res.status(500).json({ message: 'Error al actualizar los tags' });
   }
 });
 

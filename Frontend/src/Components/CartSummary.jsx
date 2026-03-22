@@ -99,7 +99,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   useEffect(() => {
     if (hasServices && businessConfig?.enableBookings && businessConfig?.bookingSettings?.enableStaffAssignment && businessConfig?._id) {
       import('../services/api').then(({ default: api }) => {
-        api.get(`/bookings/available-staff?businessId=${businessConfig._id}`)
+        api.get(`/bookings/available-staff?businessId=${businessConfig._id}&forCustomer=true`)
           .then(res => setAvailableStaff(res.data || []))
           .catch(() => setAvailableStaff([]));
       });
@@ -812,10 +812,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                       <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-1">
                         Profesional (opcional)
                       </p>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           onClick={() => setSelectedStaff(null)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all ${
                             !selectedStaff ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                           }`}
                         >
@@ -825,11 +825,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                           <button
                             key={s._id}
                             onClick={() => setSelectedStaff(s)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border transition-all ${
                               selectedStaff?._id === s._id ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                             }`}
                           >
-                            {s.name}
+                            {s.profileImage ? (
+                              <img src={s.profileImage} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400 flex-shrink-0">
+                                {(s.name || '?').charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <div className="text-left">
+                              <span className="block leading-tight">{s.name}</span>
+                              {s.specialty && <span className="block text-[9px] opacity-60 leading-tight">{s.specialty}</span>}
+                            </div>
                           </button>
                         ))}
                       </div>
