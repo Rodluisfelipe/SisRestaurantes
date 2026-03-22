@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const BusinessConfig = require('../Models/BusinessConfig');
 const Booking = require('../Models/Booking');
 const Customer = require('../Models/Customer');
@@ -63,7 +64,15 @@ router.get('/slots', async (req, res) => {
 
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayNames[requestedDate.getUTCDay()];
-    const dayHours = config.businessHours?.[dayName];
+
+    // If staffId is provided and the staff has a custom schedule, use it instead of business hours
+    let dayHours = config.businessHours?.[dayName];
+    if (staffId && mongoose.Types.ObjectId.isValid(staffId)) {
+      const staffMember = await Admin.findById(staffId).select('schedule').lean();
+      if (staffMember?.schedule?.[dayName]) {
+        dayHours = staffMember.schedule[dayName];
+      }
+    }
 
     if (!dayHours || !dayHours.isOpen) {
       return res.json({ slots: [], closed: true });
@@ -413,22 +422,41 @@ router.get('/customer/:phone', tenantAuth, async (req, res) => {
 /**
  * GET /api/bookings/available-staff
  * Returns staff members available for a specific business.
- * Used by CartSummary to let customers pick a professional.
+ * 
+ * Query params:
+ *   businessId  - MongoDB _id of the business
+ *   forCustomer - if 'true', only returns public staff with profile info
+ *   serviceId   - optional product ObjectId to filter staff who offer this service
  */
 router.get('/available-staff', async (req, res) => {
   try {
-    const { businessId } = req.query;
+    const { businessId, forCustomer, serviceId } = req.query;
     if (!businessId) return res.status(400).json({ message: 'businessId is required' });
 
-    const staff = await Admin.find({
+    const filter = {
       businessId,
       role: { $in: ['staff', 'manager', 'admin'] }
-    }).select('_id name username role').lean();
+    };
+
+    // For customer-facing: only show public profiles
+    if (forCustomer === 'true') {
+      filter.isPublic = true;
+    }
+
+    // If filtering by service, only staff who offer it
+    if (serviceId && mongoose.Types.ObjectId.isValid(serviceId)) {
+      filter.servicesOffered = serviceId;
+    }
+
+    const selectFields = forCustomer === 'true'
+      ? '_id name specialty profileImage bio servicesOffered'
+      : '_id name username role specialty profileImage isPublic commissionType commissionValue servicesOffered schedule';
+
+    const staff = await Admin.find(filter).select(selectFields).lean();
 
     res.json(staff.map(s => ({
-      _id: s._id,
-      name: s.name || s.username,
-      role: s.role
+      ...s,
+      name: s.name || s.username || 'Sin nombre'
     })));
   } catch (error) {
     logger.error('Error fetching available staff', error);

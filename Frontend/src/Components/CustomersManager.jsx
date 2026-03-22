@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUsers, FaCrown, FaDollarSign, FaChartBar, FaSearch, FaWhatsapp, FaEye, FaTrash, FaTimes, FaPhone, FaEnvelope, FaMapMarkerAlt, FaCalendarAlt, FaBoxOpen, FaSyncAlt, FaChevronLeft, FaChevronRight, FaStar, FaPaperPlane, FaCommentDots, FaUtensils, FaPen, FaHandPeace, FaGift, FaSortAmountDown } from 'react-icons/fa';
+import { FaUsers, FaCrown, FaDollarSign, FaChartBar, FaSearch, FaWhatsapp, FaEye, FaTrash, FaTimes, FaPhone, FaEnvelope, FaMapMarkerAlt, FaCalendarAlt, FaBoxOpen, FaSyncAlt, FaChevronLeft, FaChevronRight, FaStar, FaPaperPlane, FaCommentDots, FaUtensils, FaPen, FaHandPeace, FaGift, FaSortAmountDown, FaStickyNote, FaTags, FaPlus } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { getBusinessSlug } from '../utils/getBusinessId';
@@ -26,6 +26,13 @@ const CustomersManager = () => {
   const [activeTab, setActiveTab] = useState('resumen');
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
   const [whatsappMenuCustomer, setWhatsappMenuCustomer] = useState(null);
+  const [customerNotes, setCustomerNotes] = useState([]);
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [newNote, setNewNote] = useState('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [customerTags, setCustomerTags] = useState([]);
+  const [newTag, setNewTag] = useState('');
+  const [savingTags, setSavingTags] = useState(false);
 
   // Fetch customers
   const fetchCustomers = async () => {
@@ -164,6 +171,65 @@ const CustomersManager = () => {
     } finally {
       setLoadingOrders(false);
     }
+  };
+
+  // Fetch customer notes (lazy loaded when Notes tab is opened)
+  const fetchCustomerNotes = useCallback(async (customerId) => {
+    const businessId = businessConfig?.businessId || getBusinessSlug();
+    if (!businessId || !customerId) return;
+    try {
+      setLoadingNotes(true);
+      const res = await api.get(`/customers/${customerId}/notes`, { params: { businessId, limit: 50 } });
+      setCustomerNotes(res.data.notes || []);
+    } catch {
+      setCustomerNotes([]);
+    } finally {
+      setLoadingNotes(false);
+    }
+  }, [businessConfig]);
+
+  // Add a note to customer
+  const handleAddNote = async () => {
+    if (!newNote.trim() || !selectedCustomer?._id) return;
+    const businessId = businessConfig?.businessId || getBusinessSlug();
+    setSavingNote(true);
+    try {
+      await api.post(`/customers/${selectedCustomer._id}/notes`, { text: newNote.trim(), businessId });
+      setNewNote('');
+      fetchCustomerNotes(selectedCustomer._id);
+    } catch (err) {
+      console.error('Error adding note:', err);
+    }
+    setSavingNote(false);
+  };
+
+  // Save tags
+  const handleSaveTags = async (tags) => {
+    if (!selectedCustomer?._id) return;
+    const businessId = businessConfig?.businessId || getBusinessSlug();
+    setSavingTags(true);
+    try {
+      const res = await api.patch(`/customers/${selectedCustomer._id}/tags`, { tags, businessId });
+      setCustomerTags(res.data.tags || []);
+    } catch (err) {
+      console.error('Error saving tags:', err);
+    }
+    setSavingTags(false);
+  };
+
+  const handleAddTag = () => {
+    const tag = newTag.trim();
+    if (!tag || customerTags.includes(tag) || customerTags.length >= 20) return;
+    const updated = [...customerTags, tag];
+    setCustomerTags(updated);
+    setNewTag('');
+    handleSaveTags(updated);
+  };
+
+  const handleRemoveTag = (tagToRemove) => {
+    const updated = customerTags.filter(t => t !== tagToRemove);
+    setCustomerTags(updated);
+    handleSaveTags(updated);
   };
 
   // Calcular productos favoritos
@@ -773,8 +839,40 @@ const CustomersManager = () => {
                 </a>
               </div>
 
+              {/* Tab Bar */}
+              <div className="flex border-b border-slate-100 px-5 gap-1">
+                {[
+                  { id: 'resumen', label: 'Resumen', icon: <FaChartBar className="text-[9px]" /> },
+                  { id: 'notas', label: 'Notas', icon: <FaStickyNote className="text-[9px]" /> },
+                  { id: 'tags', label: 'Tags', icon: <FaTags className="text-[9px]" /> },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      if (tab.id === 'notas' && selectedCustomer?._id) {
+                        fetchCustomerNotes(selectedCustomer._id);
+                      }
+                      if (tab.id === 'tags') {
+                        setCustomerTags(selectedCustomer?.tags || []);
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold transition-colors relative ${
+                      activeTab === tab.id ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                    {activeTab === tab.id && (
+                      <motion.div layoutId="customer-tab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500 rounded-full" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
               {/* Modal Content */}
               <div className="flex-1 overflow-y-auto px-5 py-4">
+                {/* ── Summary Tab ── */}
+                {activeTab === 'resumen' && (
                 <div className="space-y-4">
                   {/* Stats Grid */}
                   <div className="grid grid-cols-4 gap-2">
@@ -844,6 +942,115 @@ const CustomersManager = () => {
                     </div>
                   </div>
                 </div>
+                )}
+
+                {/* ── Notes Tab ── */}
+                {activeTab === 'notas' && (
+                  <div className="space-y-3">
+                    {/* Add note input */}
+                    <div className="flex gap-2">
+                      <textarea
+                        value={newNote}
+                        onChange={e => setNewNote(e.target.value)}
+                        placeholder="Agregar nota sobre el cliente..."
+                        maxLength={1000}
+                        rows={2}
+                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 resize-none"
+                      />
+                      <button
+                        onClick={handleAddNote}
+                        disabled={savingNote || !newNote.trim()}
+                        className="self-end px-3 py-2 bg-blue-500 text-white text-xs font-semibold rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                      >
+                        {savingNote ? '...' : <FaPlus size={10} />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-300 text-right">{newNote.length}/1000</p>
+
+                    {/* Notes list */}
+                    {loadingNotes ? (
+                      <div className="flex justify-center py-6">
+                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-200 border-t-blue-500" />
+                      </div>
+                    ) : customerNotes.length === 0 ? (
+                      <div className="text-center py-8">
+                        <FaStickyNote className="text-2xl text-slate-200 mx-auto mb-2" />
+                        <p className="text-sm text-slate-400">No hay notas aún</p>
+                        <p className="text-xs text-slate-300">Agrega notas sobre preferencias, alergias, o historial</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {customerNotes.map((note, idx) => (
+                          <div key={note._id || idx} className="bg-slate-50 rounded-lg p-3 border border-slate-100">
+                            <p className="text-xs text-slate-700 whitespace-pre-wrap">{note.text}</p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="text-[10px] text-slate-400">
+                                {note.createdByName || 'Admin'}
+                              </span>
+                              <span className="text-[10px] text-slate-300">•</span>
+                              <span className="text-[10px] text-slate-400">
+                                {note.createdAt ? new Date(note.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Tags Tab ── */}
+                {activeTab === 'tags' && (
+                  <div className="space-y-3">
+                    {/* Add tag input */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newTag}
+                        onChange={e => setNewTag(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleAddTag()}
+                        placeholder="Nuevo tag (ej: VIP, alergia-gluten, cumpleaños)"
+                        maxLength={50}
+                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                      />
+                      <button
+                        onClick={handleAddTag}
+                        disabled={!newTag.trim() || customerTags.length >= 20}
+                        className="px-3 py-2 bg-blue-500 text-white text-xs font-semibold rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                      >
+                        <FaPlus size={10} />
+                      </button>
+                    </div>
+
+                    {/* Tags display */}
+                    {customerTags.length === 0 ? (
+                      <div className="text-center py-8">
+                        <FaTags className="text-2xl text-slate-200 mx-auto mb-2" />
+                        <p className="text-sm text-slate-400">No hay tags</p>
+                        <p className="text-xs text-slate-300">Agrega etiquetas para organizar y filtrar clientes</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        {customerTags.map(tag => (
+                          <span
+                            key={tag}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium"
+                          >
+                            {tag}
+                            <button
+                              onClick={() => handleRemoveTag(tag)}
+                              className="hover:text-red-500 transition-colors"
+                            >
+                              <FaTimes size={8} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {savingTags && <p className="text-[10px] text-blue-500">Guardando...</p>}
+                    <p className="text-[10px] text-slate-300">{customerTags.length}/20 tags</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

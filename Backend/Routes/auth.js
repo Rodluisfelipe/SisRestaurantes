@@ -1069,6 +1069,7 @@ router.get('/business-types', (req, res) => {
 // ==================== STAFF (SUB-USER) MANAGEMENT ====================
 
 const { requireRole } = require('../middleware/authMiddleware');
+const { validateUpdateStaff } = require('../middleware/validators/staffValidators');
 
 // GET /auth/staff — list staff users for this business
 router.get('/staff', authMiddleware, requireRole('admin', 'superadmin'), async (req, res) => {
@@ -1078,7 +1079,7 @@ router.get('/staff', authMiddleware, requireRole('admin', 'superadmin'), async (
     const staff = await Admin.find({
       businessId: bId,
       role: { $in: ['staff', 'manager'] }
-    }).select('username name role lastLogin createdAt').sort('-createdAt');
+    }).select('username name role lastLogin createdAt phone bio specialty profileImage isPublic commissionType commissionValue schedule servicesOffered').sort('-createdAt');
     res.json({ staff });
   } catch (error) {
     logger.error('Error listing staff', error);
@@ -1131,6 +1132,62 @@ router.post('/staff', authMiddleware, requireRole('admin', 'superadmin'), async 
   } catch (error) {
     logger.error('Error creating staff user', error);
     res.status(500).json({ message: 'Error al crear el usuario' });
+  }
+});
+
+// PATCH /auth/staff/:id — update staff profile
+router.patch('/staff/:id', authMiddleware, requireRole('admin', 'superadmin'), validateUpdateStaff, async (req, res) => {
+  try {
+    const staffId = req.params.id;
+    const bId = req.user.businessId || req.body.businessId;
+    if (!bId) return res.status(400).json({ message: 'businessId requerido' });
+
+    const staff = await Admin.findOne({
+      _id: staffId,
+      businessId: bId,
+      role: { $in: ['staff', 'manager'] }
+    });
+
+    if (!staff) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Whitelist — only allow these fields to be updated
+    const allowedFields = ['name', 'bio', 'specialty', 'phone', 'profileImage', 'isPublic', 'commissionType', 'commissionValue', 'schedule', 'servicesOffered'];
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        staff[field] = req.body[field];
+      }
+    }
+
+    // Validate commission: percentage cannot exceed 100
+    if (staff.commissionType === 'percentage' && staff.commissionValue > 100) {
+      return res.status(400).json({ message: 'El porcentaje de comisión no puede exceder 100%' });
+    }
+
+    // Validate servicesOffered belong to the same business
+    if (req.body.servicesOffered && req.body.servicesOffered.length > 0) {
+      const Product = require('../Models/Product');
+      const validProducts = await Product.countDocuments({
+        _id: { $in: req.body.servicesOffered },
+        businessId: bId
+      });
+      if (validProducts !== req.body.servicesOffered.length) {
+        return res.status(400).json({ message: 'Algunos servicios no pertenecen a este negocio' });
+      }
+    }
+
+    await staff.save();
+
+    // Return updated staff without sensitive fields
+    const updated = staff.toObject();
+    delete updated.password;
+    delete updated.refreshTokens;
+
+    res.json({ staff: updated });
+  } catch (error) {
+    logger.error('Error updating staff profile', error);
+    res.status(500).json({ message: 'Error al actualizar el perfil' });
   }
 });
 

@@ -8,7 +8,7 @@ import {
   FaChevronDown, FaFilter, FaChartBar, FaWhatsapp,
   FaStar, FaHistory, FaArrowLeft, FaDollarSign,
   FaUserSlash, FaCalendarCheck, FaCalendarTimes,
-  FaUserMd, FaRedo
+  FaUserMd, FaRedo, FaStickyNote
 } from 'react-icons/fa';
 
 const STATUS_LABELS = {
@@ -64,6 +64,11 @@ export default function BookingsManager({ businessId, businessConfig }) {
   // Staff state
   const [staffList, setStaffList] = useState([]);
   const [staffFilter, setStaffFilter] = useState('all'); // 'all' or staffId
+
+  // Complete-with-note modal
+  const [completeModal, setCompleteModal] = useState(null); // booking object or null
+  const [completeNote, setCompleteNote] = useState('');
+  const [completing, setCompleting] = useState(false);
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
@@ -434,7 +439,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                       )}
                       {booking.bookingStatus === 'confirmed' && (
                         <>
-                          <button onClick={() => updateBookingStatus(booking._id, 'completed')}
+                          <button onClick={() => { setCompleteModal(booking); setCompleteNote(''); }}
                             className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors" title="Completar">
                             <FaCheck className="text-xs" />
                           </button>
@@ -774,6 +779,81 @@ export default function BookingsManager({ businessId, businessConfig }) {
                   </div>
                 </div>
               ) : null}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* COMPLETE WITH NOTE MODAL */}
+      <AnimatePresence>
+        {completeModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-50"
+              onClick={() => !completing && setCompleteModal(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            >
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <FaCheck className="text-emerald-500" /> Completar Cita
+                </h3>
+                <p className="text-xs text-slate-500">
+                  {completeModal.customerName} &mdash; {formatDate(completeModal.bookingDate)} {formatTime(completeModal.bookingDate)}
+                </p>
+                <div>
+                  <label className="text-xs font-medium text-slate-600 flex items-center gap-1 mb-1">
+                    <FaStickyNote className="text-amber-500" /> Nota del servicio (opcional)
+                  </label>
+                  <textarea
+                    value={completeNote}
+                    onChange={e => setCompleteNote(e.target.value)}
+                    maxLength={1000}
+                    rows={3}
+                    placeholder="Ej: Corte + tintura castaño, preferencia para próxima vez..."
+                    className="w-full border border-slate-200 rounded-lg p-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                  <p className="text-[10px] text-slate-400 text-right mt-0.5">{completeNote.length}/1000</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    disabled={completing}
+                    onClick={() => setCompleteModal(null)}
+                    className="flex-1 py-2 rounded-lg border border-slate-200 text-sm text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    disabled={completing}
+                    onClick={async () => {
+                      setCompleting(true);
+                      try {
+                        // Save note if provided and customer exists
+                        if (completeNote.trim() && completeModal.customerId) {
+                          try {
+                            await api.post(`/customers/${completeModal.customerId}/notes`, {
+                              text: completeNote.trim(),
+                              bookingId: completeModal._id
+                            });
+                          } catch (noteErr) {
+                            console.error('Could not save note', noteErr);
+                          }
+                        }
+                        await updateBookingStatus(completeModal._id, 'completed');
+                        setCompleteModal(null);
+                      } finally {
+                        setCompleting(false);
+                      }
+                    }}
+                    className="flex-1 py-2 rounded-lg bg-emerald-500 text-white text-sm font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  >
+                    {completing ? 'Guardando...' : <><FaCheck className="text-xs" /> Completar</>}
+                  </button>
+                </div>
+              </div>
             </motion.div>
           </>
         )}

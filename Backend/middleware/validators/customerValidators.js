@@ -56,6 +56,27 @@ const validateDeleteCustomerById = [
   handleValidationErrors,
 ];
 
+// POST /:id/notes — add a note to customer
+const validateAddNote = [
+  param('id').custom(isObjectId).withMessage('ID del cliente inválido'),
+  body('text').trim().notEmpty().withMessage('El texto de la nota es requerido')
+    .isLength({ max: 1000 }).withMessage('La nota excede 1000 caracteres'),
+  body('bookingId').optional({ values: 'falsy' })
+    .custom(isObjectId).withMessage('bookingId inválido'),
+  body('orderId').optional({ values: 'falsy' })
+    .custom(isObjectId).withMessage('orderId inválido'),
+  handleValidationErrors,
+];
+
+// PATCH /:id/tags — replace customer tags
+const validateUpdateTags = [
+  param('id').custom(isObjectId).withMessage('ID del cliente inválido'),
+  body('tags').isArray({ max: 20 }).withMessage('tags debe ser un array (máximo 20)'),
+  body('tags.*').isString().trim().isLength({ min: 1, max: 50 })
+    .withMessage('Cada tag debe tener entre 1 y 50 caracteres'),
+  handleValidationErrors,
+];
+
 module.exports = {
   validateCreateCustomer,
   validateUpdateCustomer,
@@ -63,4 +84,6 @@ module.exports = {
   validateUpdateSettings,
   validateDeleteCustomer,
   validateDeleteCustomerById,
+  validateAddNote,
+  validateUpdateTags,
 };

@@ -50,6 +50,52 @@ const adminSchema = new mongoose.Schema({
     type: String,
     enum: ['admin', 'manager', 'staff'],
     default: 'admin'
+  },
+  // ── Professional profile fields ──
+  phone: {
+    type: String,
+    trim: true,
+    maxlength: 30,
+    default: null
+  },
+  bio: {
+    type: String,
+    maxlength: 500,
+    default: null
+  },
+  specialty: {
+    type: String,
+    trim: true,
+    maxlength: 100,
+    default: null
+  },
+  profileImage: {
+    type: String,
+    default: null
+  },
+  isPublic: {
+    type: Boolean,
+    default: false
+  },
+  servicesOffered: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  }],
+  schedule: {
+    type: mongoose.Schema.Types.Mixed,
+    default: null
+    // Expected format: { monday: { isOpen: true, openTime: '09:00', closeTime: '18:00' }, ... }
+  },
+  // ── Commission settings ──
+  commissionType: {
+    type: String,
+    enum: ['none', 'percentage', 'fixed'],
+    default: 'none'
+  },
+  commissionValue: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, { timestamps: true });
 

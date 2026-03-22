@@ -37,7 +37,32 @@ const customerSchema = new mongoose.Schema({
     type: String,
     enum: ['active', 'inactive', 'vip'],
     default: 'active'
-  }
+  },
+  // ── Extended profile fields ──
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    maxlength: 254,
+    default: null
+  },
+  birthdate: {
+    type: Date,
+    default: null
+  },
+  tags: [{
+    type: String,
+    trim: true,
+    maxlength: 50
+  }],
+  notes: [{
+    text: { type: String, required: true, maxlength: 1000 },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },
+    createdByName: { type: String, maxlength: 100 },
+    bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', default: null },
+    orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', default: null },
+    createdAt: { type: Date, default: Date.now }
+  }]
 }, {
   timestamps: true
 });
