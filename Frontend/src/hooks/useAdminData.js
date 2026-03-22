@@ -165,6 +165,26 @@ export default function useAdminData(businessId) {
       }
     });
 
+    // 📅 New booking notification sound
+    socket.on('new_booking', (booking) => {
+      console.log('📅 New booking received in Admin:', booking);
+      const audio = globalAudioRef.current;
+      if (audio) {
+        audio.currentTime = 0;
+        audio.muted = false;
+        const playPromise = audio.play();
+        if (playPromise) {
+          playPromise.catch(e => {
+            console.warn('⚠️ No se pudo reproducir sonido de cita:', e.message);
+            try {
+              const fallback = new Audio('/audio/new-order-notification.mp3');
+              fallback.play().catch(() => {});
+            } catch (_) {}
+          });
+        }
+      }
+    });
+
     socket.on('products_update', (data) => {
       if (data.type === 'created' && data.product) {
         setProducts(prev => [...prev, data.product]);
@@ -189,6 +209,7 @@ export default function useAdminData(businessId) {
     return () => {
       socket.off(SOCKET_EVENTS.ORDER_CREATED);
       socket.off(SOCKET_EVENTS.ORDER_UPDATED);
+      socket.off('new_booking');
       socket.off('products_update');
       socket.off('categories_update');
       socket.off('topping_groups_update');
