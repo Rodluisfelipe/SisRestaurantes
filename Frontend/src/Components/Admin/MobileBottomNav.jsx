@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaChartBar, FaClipboardList, FaCheckCircle, FaHamburger,
-  FaEllipsisH, FaCalendarAlt, FaTools
+  FaEllipsisH, FaCalendarAlt, FaTools, FaConciergeBell
 } from 'react-icons/fa';
 import MobileNavDrawer from './MobileNavDrawer';
 
@@ -12,6 +13,8 @@ import MobileNavDrawer from './MobileNavDrawer';
  */
 export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrdersCount, businessConfig, handleLogout, userRole }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const navigate = useNavigate();
+  const { businessId } = useParams();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isStaff = userRole === 'staff';
 
@@ -25,7 +28,10 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
 
   // Staff sees fewer tabs
   const visibleTabs = isStaff
-    ? pinnedTabs.filter(t => ['orders', 'completed_orders'].includes(t.id))
+    ? [
+        ...pinnedTabs.filter(t => ['orders', 'completed_orders'].includes(t.id)),
+        { id: '_waiter', label: 'Comanda', Icon: FaConciergeBell },
+      ]
     : pinnedTabs;
 
   // IDs that live in the bottom bar (not in drawer)
@@ -34,6 +40,10 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
   const isMoreActive = !pinnedIds.has(activeTab);
 
   const handleTabPress = (tabId) => {
+    if (tabId === '_waiter') {
+      navigate(`/${businessId}/waiter`);
+      return;
+    }
     setActiveTab(tabId);
     setDrawerOpen(false);
   };
