@@ -45,6 +45,7 @@ function AnnouncementPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const fetchPendingAnnouncements = useCallback(async () => {
     try {
@@ -90,6 +91,9 @@ function AnnouncementPopup() {
   };
 
   const handleClose = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
+
     const current = announcements[currentIndex];
     if (current) {
       await markAsSeen(current._id);
@@ -106,6 +110,7 @@ function AnnouncementPopup() {
       } else {
         setIsVisible(false);
       }
+      setIsProcessing(false);
     }, 300);
   };
 
@@ -199,7 +204,8 @@ function AnnouncementPopup() {
             <div className="px-5 sm:px-6 pb-5 sm:pb-6">
               <button
                 onClick={handleClose}
-                className={`w-full ${priority.color} hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98] text-sm sm:text-base`}
+                disabled={isProcessing}
+                className={`w-full ${priority.color} hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98] text-sm sm:text-base disabled:opacity-50`}
               >
                 {currentIndex < announcements.length - 1 
                   ? `Entendido — Siguiente (${announcements.length - currentIndex - 1} más)`
@@ -211,7 +217,8 @@ function AnnouncementPopup() {
             {/* Close X Button */}
             <button
               onClick={handleClose}
-              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors"
+              disabled={isProcessing}
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors disabled:opacity-50"
               aria-label="Cerrar"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
