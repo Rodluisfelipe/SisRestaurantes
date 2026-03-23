@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
 import { registerUser, googleAuth, suggestSlugs, checkSlug } from '../../services/authService';
@@ -25,6 +25,8 @@ const BUSINESS_TYPES = [
 const Register = () => {
   const navigate = useNavigate();
   const { loginWithGoogle } = useAuth();
+  const [searchParams] = useSearchParams();
+  const referralCode = searchParams.get('ref') || '';
 
   // ===== STEP MANAGEMENT =====
   // 1 = identity, 2 = business type, 3 = business name + slug
@@ -212,7 +214,7 @@ const Register = () => {
           setIsLoading(false);
           return;
         }
-        const result = await googleAuth(googleCredential, businessName.trim(), finalSlug, businessType, googlePhone.trim());
+        const result = await googleAuth(googleCredential, businessName.trim(), finalSlug, businessType, googlePhone.trim(), referralCode);
         if (result.token) {
           loginWithGoogle(result);
         }
@@ -224,7 +226,8 @@ const Register = () => {
           password: emailData.password,
           phone: emailData.phone,
           slug: finalSlug,
-          businessType
+          businessType,
+          referralCode
         });
         if (result.token) {
           loginWithGoogle(result);
