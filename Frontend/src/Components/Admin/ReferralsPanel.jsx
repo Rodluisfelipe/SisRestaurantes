@@ -27,7 +27,7 @@ function formatDate(date) {
   return new Date(date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export default function ReferralsPanel() {
+export default function ReferralsPanel({ businessId }) {
   const [tab, setTab] = useState('share'); // 'share' | 'referrals' | 'credits'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -42,7 +42,7 @@ export default function ReferralsPanel() {
 
   const fetchCode = useCallback(async () => {
     try {
-      const { data } = await api.get('/referrals/my-code');
+      const { data } = await api.get(`/referrals/my-code?businessId=${businessId}`);
       if (data.success) setCodeData(data);
     } catch (err) {
       if (err.response?.status === 400 && err.response?.data?.message?.includes('no está activo')) {
@@ -51,24 +51,24 @@ export default function ReferralsPanel() {
         setError(err.response?.data?.message || 'Error al cargar datos');
       }
     }
-  }, []);
+  }, [businessId]);
 
   const fetchReferrals = useCallback(async () => {
     try {
-      const { data } = await api.get('/referrals/my-referrals');
+      const { data } = await api.get(`/referrals/my-referrals?businessId=${businessId}`);
       if (data.success) {
         setReferrals(data.referrals);
         setStats(data.stats);
       }
     } catch { /* silent */ }
-  }, []);
+  }, [businessId]);
 
   const fetchCredits = useCallback(async () => {
     try {
-      const { data } = await api.get('/referrals/my-credits');
+      const { data } = await api.get(`/referrals/my-credits?businessId=${businessId}`);
       if (data.success) setCredits(data);
     } catch { /* silent */ }
-  }, []);
+  }, [businessId]);
 
   useEffect(() => {
     const load = async () => {
