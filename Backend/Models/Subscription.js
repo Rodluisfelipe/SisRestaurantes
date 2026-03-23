@@ -89,6 +89,16 @@ const subscriptionSchema = new mongoose.Schema({
   lastMonthsPurchased: {
     type: Number,
     default: null
+  },
+  // Referral discount applied to this subscription payment
+  referralDiscountApplied: {
+    type: Number,
+    default: 0
+  },
+  // Source of the discount: 'referral_credit' (referrer using credits) or 'referred_discount' (new business discount)
+  referralDiscountSource: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

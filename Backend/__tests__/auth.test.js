@@ -31,6 +31,7 @@ describe('Auth — Registration Flow', () => {
     businessName: 'Café de María',
     email: 'maria@test.com',
     password: 'MyPass123',
+    phone: '+57 300 123 4567',
   };
 
   test('accepts valid registration', async () => {
@@ -99,6 +100,20 @@ describe('Auth — Registration Flow', () => {
   test('rejects missing password', async () => {
     const res = await request(app).post('/register').send({
       ...validRegister, password: '',
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test('rejects missing phone', async () => {
+    const res = await request(app).post('/register').send({
+      ...validRegister, phone: '',
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test('rejects phone shorter than 7 chars', async () => {
+    const res = await request(app).post('/register').send({
+      ...validRegister, phone: '123',
     });
     expect(res.status).toBe(400);
   });

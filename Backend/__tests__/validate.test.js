@@ -36,6 +36,7 @@ describe('POST /register validation', () => {
     businessName: 'Mi Restaurante',
     email: 'juan@test.com',
     password: 'MiPass123',
+    phone: '+57 300 123 4567',
   };
 
   test('accepts valid payload', async () => {

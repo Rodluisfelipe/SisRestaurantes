@@ -540,6 +540,21 @@ async function activateSubscription(payment) {
       startDate,
       endDate,
     });
+
+    // Process referral: credit the referrer if this referred business just paid
+    try {
+      const { processReferralOnPayment, applyReferralCredits } = require('../utils/referralHelper');
+      await processReferralOnPayment(businessId, basePrice, months);
+      // Apply referrer's own credits to this payment
+      const creditResult = await applyReferralCredits(businessId, basePrice);
+      if (creditResult.discountApplied > 0) {
+        subscription.referralDiscountApplied = creditResult.discountApplied;
+        subscription.referralDiscountSource = 'referral_credit';
+        await subscription.save();
+      }
+    } catch (refErr) {
+      logger.warn('Non-blocking referral processing error (ePayco)', { error: refErr.message });
+    }
     
     return subscription;
   } catch (error) {

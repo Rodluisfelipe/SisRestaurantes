@@ -60,6 +60,8 @@ router.put("/", tenantAuth, validateUpdateConfig, async (req, res) => {
     delete updateData.planType;           // Only payment webhooks can change
     delete updateData.periodEnd;          // Only payment webhooks can change
     delete updateData.graceUntil;         // Only payment webhooks can change
+    delete updateData.referralCode;       // Only referral system can set
+    delete updateData.referralCredits;    // Only referral system can set
     delete updateData.createdAt;
     delete updateData.updatedAt;
     delete updateData.__v;
@@ -380,6 +382,8 @@ router.put("/:businessId", tenantAuth, validateUpdateConfigById, async (req, res
     delete updateData.planType;           // Only payment webhooks can change
     delete updateData.periodEnd;          // Only payment webhooks can change
     delete updateData.graceUntil;         // Only payment webhooks can change
+    delete updateData.referralCode;       // Only referral system can set
+    delete updateData.referralCredits;    // Only referral system can set
     delete updateData.createdAt;
     delete updateData.updatedAt;
     delete updateData.__v;
