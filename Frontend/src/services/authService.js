@@ -77,13 +77,14 @@ export const checkEmailAvailability = async (email) => {
  * @param {string} [slug] - Slug elegido por el usuario
  * @returns {Promise<Object>} - Respuesta con tokens o needsBusinessName flag
  */
-export const googleAuth = async (credential, businessName = null, slug = null, businessType = null, phone = null) => {
+export const googleAuth = async (credential, businessName = null, slug = null, businessType = null, phone = null, referralCode = null) => {
   try {
     const payload = { credential };
     if (businessName) payload.businessName = businessName;
     if (slug) payload.slug = slug;
     if (businessType) payload.businessType = businessType;
     if (phone) payload.phone = phone;
+    if (referralCode) payload.referralCode = referralCode;
     const response = await api.post('/auth/google', payload);
     return response.data;
   } catch (error) {
