@@ -21,6 +21,8 @@ const validateRegister = [
     .normalizeEmail(),
   body('password').notEmpty().withMessage('La contraseña es obligatoria')
     .isLength({ min: 8 }).withMessage('La contraseña debe tener al menos 8 caracteres'),
+  body('phone').trim().notEmpty().withMessage('El número de teléfono/WhatsApp es obligatorio')
+    .isLength({ min: 7, max: 30 }).withMessage('Número de teléfono inválido'),
   handleValidationErrors,
 ];
 

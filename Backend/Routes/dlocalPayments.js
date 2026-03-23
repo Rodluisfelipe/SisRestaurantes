@@ -473,6 +473,21 @@ async function activateSubscription(payment) {
     endDate,
   });
 
+  // Process referral: credit the referrer if this referred business just paid
+  try {
+    const { processReferralOnPayment, applyReferralCredits } = require('../utils/referralHelper');
+    await processReferralOnPayment(businessId, totalAmount, months);
+    // Apply referrer's own credits to this payment
+    const creditResult = await applyReferralCredits(businessId, totalAmount);
+    if (creditResult.discountApplied > 0) {
+      sub.referralDiscountApplied = creditResult.discountApplied;
+      sub.referralDiscountSource = 'referral_credit';
+      await sub.save();
+    }
+  } catch (refErr) {
+    logger.warn('Non-blocking referral processing error (dLocal)', { error: refErr.message });
+  }
+
   return sub;
   } finally {
     _activationLocks.delete(lockKey);

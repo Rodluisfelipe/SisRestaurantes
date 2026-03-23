@@ -59,6 +59,7 @@ const Register = () => {
   const [customSlugAvailable, setCustomSlugAvailable] = useState(null);
   const [isLoadingSlugs, setIsLoadingSlugs] = useState(false);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
+  const [googlePhone, setGooglePhone] = useState('');
 
   // ===== SHARED STATE =====
   const [isLoading, setIsLoading] = useState(false);
@@ -154,9 +155,13 @@ const Register = () => {
   const handleEmailStep1 = (e) => {
     e.preventDefault();
     setError('');
-    const { firstName, lastName, email, password, confirmPassword } = emailData;
+    const { firstName, lastName, email, password, confirmPassword, phone } = emailData;
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !password) {
       setError('Todos los campos son obligatorios');
+      return;
+    }
+    if (!phone.trim() || phone.trim().length < 7) {
+      setError('El número de WhatsApp es obligatorio');
       return;
     }
     if (password !== confirmPassword) {
@@ -202,7 +207,12 @@ const Register = () => {
     setIsLoading(true);
     try {
       if (authMethod === 'google') {
-        const result = await googleAuth(googleCredential, businessName.trim(), finalSlug, businessType);
+        if (!googlePhone.trim() || googlePhone.trim().length < 7) {
+          setError('El número de WhatsApp es obligatorio');
+          setIsLoading(false);
+          return;
+        }
+        const result = await googleAuth(googleCredential, businessName.trim(), finalSlug, businessType, googlePhone.trim());
         if (result.token) {
           loginWithGoogle(result);
         }
@@ -317,6 +327,17 @@ const Register = () => {
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
                       placeholder={businessType === 'cafe' ? 'Ej: Café Aroma' : businessType === 'bakery' ? 'Ej: Dulces Delicias' : businessType === 'salon' ? 'Ej: Barbería Style' : businessType === 'spa' ? 'Ej: Spa Zen' : businessType === 'clinic' ? 'Ej: Fisio Salud' : businessType === 'services' ? 'Ej: Studio Pro' : 'Ej: La Parrilla de Juan'} />
                   </div>
+
+                  {authMethod === 'google' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">WhatsApp</label>
+                      <input type="tel" value={googlePhone}
+                        onChange={(e) => { setGooglePhone(e.target.value); setError(''); }}
+                        required
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                        placeholder="+57 300 123 4567" />
+                    </div>
+                  )}
 
                   <AnimatePresence>
                     {(slugSuggestions.length > 0 || isLoadingSlugs) && (
@@ -669,9 +690,9 @@ const Register = () => {
 
                       <div>
                         <label htmlFor="phone" className="block text-xs font-medium text-gray-600 mb-1">
-                          Teléfono <span className="text-gray-400">(opcional)</span>
+                          WhatsApp
                         </label>
-                        <input type="tel" id="phone" name="phone" value={emailData.phone} onChange={handleEmailChange}
+                        <input type="tel" id="phone" name="phone" value={emailData.phone} onChange={handleEmailChange} required
                           className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
                           placeholder="+57 300 123 4567" />
                       </div>

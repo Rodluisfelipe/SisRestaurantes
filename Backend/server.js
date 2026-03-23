@@ -235,6 +235,8 @@ app.use("/api/superadmin", require("./Routes/superadmin"));
 app.use("/api", require("./Routes/paymentRequests"));
 app.use("/api/subscriptions", require("./Routes/subscriptions"));
 app.use("/api/admin/subscriptions", require("./Routes/adminSubscriptions"));
+app.use("/api/referrals", require("./Routes/referrals"));
+app.use("/api/admin/referrals", require("./Routes/adminReferrals"));
 app.use("/api/whatsapp-templates", require("./Routes/whatsappTemplates"));
 app.use("/api/announcements", require("./Routes/announcements")); // Sistema de anuncios/novedades
 app.use("/api/loyalty", require("./Routes/loyalty")); // Programa de fidelidad

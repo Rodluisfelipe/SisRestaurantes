@@ -162,12 +162,15 @@ const validateEmail = (email) => {
 // Ruta de registro de negocio
 router.post('/register', registerLimiter, validateRegister, async (req, res) => {
   try {
-    const { name, businessName, email, password, businessType } = req.body;
+    const { name, businessName, email, password, businessType, referralCode, phone } = req.body;
 
     // Validaciones básicas
-    if (!name || !businessName || !email || !password) {
+    if (!name || !businessName || !email || !password || !phone) {
       return res.status(400).json({ message: 'Todos los campos son obligatorios' });
     }
+
+    // Sanitizar teléfono
+    const sanitizedPhone = phone.trim().substring(0, 30);
 
     // Validar formato de email
     if (!validateEmail(email)) {
@@ -234,6 +237,7 @@ router.post('/register', registerLimiter, validateRegister, async (req, res) => 
       businessName,
       businessType: finalBusinessType,
       orderingMode: typeConfig.orderingMode,
+      whatsappNumber: sanitizedPhone,
       onboarding: { level: 1, completedAt: null, guidesShown: [] },
       onboardingFeatureDate: new Date(),
       isActive: true,
@@ -254,6 +258,7 @@ router.post('/register', registerLimiter, validateRegister, async (req, res) => 
     const admin = new Admin({
       username: email,
       password,
+      phone: sanitizedPhone,
       businessId: businessConfig._id,
       mustChangePassword: false,
       role: 'admin'
@@ -290,6 +295,36 @@ router.post('/register', registerLimiter, validateRegister, async (req, res) => 
     });
     
     await initialSubscription.save();
+
+    // Process referral code if provided
+    if (referralCode && typeof referralCode === 'string' && referralCode.trim()) {
+      try {
+        const ReferralConfig = require('../Models/ReferralConfig');
+        const Referral = require('../Models/Referral');
+        const refConfig = await ReferralConfig.getConfig();
+        if (refConfig.isActive) {
+          const code = referralCode.toUpperCase().trim();
+          const referrer = await BusinessConfig.findOne({ referralCode: code });
+          if (referrer && referrer._id.toString() !== businessConfig._id.toString()) {
+            const existingRef = await Referral.findOne({ referredBusinessId: businessConfig._id });
+            if (!existingRef) {
+              const refCount = await Referral.countDocuments({ referrerBusinessId: referrer._id });
+              if (refCount < refConfig.maxReferralsPerBusiness) {
+                await Referral.create({
+                  referrerBusinessId: referrer._id,
+                  referredBusinessId: businessConfig._id,
+                  referralCode: code,
+                  status: 'pending'
+                });
+                logger.info('Referral created at registration', { referrer: referrer._id, referred: businessConfig._id, code });
+              }
+            }
+          }
+        }
+      } catch (refErr) {
+        logger.warn('Non-blocking error processing referral at registration', { error: refErr.message });
+      }
+    }
 
     // Generar tokens para el inicio de sesión automático
     const token = generateToken(admin._id, businessConfig._id);
@@ -687,7 +722,7 @@ const googleAuthLimiter = rateLimit({
 // POST /auth/google - Login o Registro con Google
 router.post('/google', googleAuthLimiter, async (req, res) => {
   try {
-    const { credential, businessName, slug: chosenSlug, businessType } = req.body;
+    const { credential, businessName, slug: chosenSlug, businessType, referralCode, phone } = req.body;
 
     if (!credential) {
       return res.status(400).json({ message: 'Token de Google es requerido' });
@@ -768,6 +803,12 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       });
     }
 
+    // Validar teléfono para registro nuevo
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ message: 'El número de teléfono/WhatsApp es obligatorio' });
+    }
+    const sanitizedPhone = phone.trim().substring(0, 30);
+
     // Sanitizar
     const sanitizedBusinessName = businessName.trim().substring(0, 100);
 
@@ -813,6 +854,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       businessName: sanitizedBusinessName,
       businessType: finalBusinessType,
       orderingMode: typeConfig.orderingMode,
+      whatsappNumber: sanitizedPhone,
       onboarding: { level: 1, completedAt: null, guidesShown: [] },
       onboardingFeatureDate: new Date(),
       isActive: true,
@@ -832,6 +874,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       username: email,
       password: require('crypto').randomBytes(32).toString('hex'), // password random que nunca se usará
       name: name || email.split('@')[0],
+      phone: sanitizedPhone,
       avatar: picture || null,
       googleId,
       authProvider: 'google',
@@ -868,6 +911,36 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       notes: `Período de prueba de ${TRIAL_DAYS} días con ${GRACE_DAYS} día(s) de gracia (Google OAuth)`
     }).save();
 
+    // Process referral code if provided
+    if (referralCode && typeof referralCode === 'string' && referralCode.trim()) {
+      try {
+        const ReferralConfigModel = require('../Models/ReferralConfig');
+        const ReferralModel = require('../Models/Referral');
+        const refConfig = await ReferralConfigModel.getConfig();
+        if (refConfig.isActive) {
+          const code = referralCode.toUpperCase().trim();
+          const referrer = await BusinessConfig.findOne({ referralCode: code });
+          if (referrer && referrer._id.toString() !== businessConfig._id.toString()) {
+            const existingRef = await ReferralModel.findOne({ referredBusinessId: businessConfig._id });
+            if (!existingRef) {
+              const refCount = await ReferralModel.countDocuments({ referrerBusinessId: referrer._id });
+              if (refCount < refConfig.maxReferralsPerBusiness) {
+                await ReferralModel.create({
+                  referrerBusinessId: referrer._id,
+                  referredBusinessId: businessConfig._id,
+                  referralCode: code,
+                  status: 'pending'
+                });
+                logger.info('Referral created at Google registration', { referrer: referrer._id, referred: businessConfig._id, code });
+              }
+            }
+          }
+        }
+      } catch (refErr) {
+        logger.warn('Non-blocking error processing referral at Google registration', { error: refErr.message });
+      }
+    }
+
     // Generar tokens
     const token = generateToken(admin._id, businessConfig._id);
     const refreshToken = generateRefreshToken(admin._id);
@@ -875,6 +948,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
     await admin.save();
 
     logger.info(`Nuevo negocio registrado via Google: ${sanitizedBusinessName} (${email})`);
+
 
     res.status(201).json({
       isNewUser: true,

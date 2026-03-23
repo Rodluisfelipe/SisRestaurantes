@@ -260,6 +260,20 @@ const businessConfigSchema = new mongoose.Schema({
       total: { type: Number, default: 0 }
     },
     favoriteProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
+  },
+  // Referral program
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    uppercase: true,
+    trim: true,
+    default: null
+  },
+  referralCredits: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, { timestamps: true }); // Agregar timestamps para debugging
 
@@ -384,6 +398,7 @@ businessConfigSchema.set('toJSON', {
 
 businessConfigSchema.index({ isActive: 1 });
 businessConfigSchema.index({ department: 1, city: 1 });
+businessConfigSchema.index({ referralCode: 1 }, { unique: true, sparse: true });
 
 // Importante: esto es para asegurarnos de que usamos el mismo modelo si ya existe
 const BusinessConfig = mongoose.models.BusinessConfig || mongoose.model("BusinessConfig", businessConfigSchema);
