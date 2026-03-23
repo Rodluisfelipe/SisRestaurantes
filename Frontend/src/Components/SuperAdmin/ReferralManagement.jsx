@@ -23,7 +23,7 @@ function formatCurrency(amount) {
 }
 
 function formatDate(date) {
-  if (!date) return 'â€”';
+  if (!date) return '\u2014';
   return new Date(date).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -98,7 +98,7 @@ export default function ReferralManagement() {
       if (data.success) {
         setConfig(data.config);
         setConfigDraft(data.config);
-        setConfigMsg('ConfiguraciÃ³n guardada');
+        setConfigMsg('Configuraci\u00f3n guardada');
         setTimeout(() => setConfigMsg(''), 3000);
       }
     } catch (err) {
@@ -152,7 +152,7 @@ export default function ReferralManagement() {
           { label: 'Calificados', value: kpis.qualified || 0, color: 'text-blue-400' },
           { label: 'Acreditados', value: kpis.credited || 0, color: 'text-emerald-400' },
           { label: 'Rechazados', value: kpis.rejected || 0, color: 'text-red-400' },
-          { label: 'ConversiÃ³n', value: `${kpis.conversionRate || 0}%`, color: 'text-indigo-400' },
+          { label: 'Conversi\u00f3n', value: `${kpis.conversionRate || 0}%`, color: 'text-indigo-400' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
             <p className={`text-xl font-bold ${kpi.color}`}>{kpi.value}</p>
@@ -165,7 +165,7 @@ export default function ReferralManagement() {
       <div className="flex gap-2">
         {[
           { id: 'overview', label: 'Referidos' },
-          { id: 'config', label: 'ConfiguraciÃ³n' },
+          { id: 'config', label: 'Configuraci\u00f3n' },
           { id: 'top', label: 'Top Referentes' },
         ].map(t => (
           <button
@@ -217,7 +217,7 @@ export default function ReferralManagement() {
                         <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Referente</th>
                         <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Referido</th>
                         <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Estado</th>
-                        <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">CrÃ©ditos</th>
+                        <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Cr\u00e9ditos</th>
                         <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Fecha</th>
                         <th className="text-right px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Acciones</th>
                       </tr>
@@ -226,10 +226,10 @@ export default function ReferralManagement() {
                       {referrals.map(r => (
                         <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
                           <td className="px-4 py-3">
-                            <p className="text-white/80 font-medium truncate max-w-[140px]">{r.referrer?.name || 'â€”'}</p>
+                            <p className="text-white/80 font-medium truncate max-w-[140px]">{r.referrer?.name || '\u2014'}</p>
                           </td>
                           <td className="px-4 py-3">
-                            <p className="text-white/80 font-medium truncate max-w-[140px]">{r.referred?.name || 'â€”'}</p>
+                            <p className="text-white/80 font-medium truncate max-w-[140px]">{r.referred?.name || '\u2014'}</p>
                           </td>
                           <td className="px-4 py-3">
                             <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${STATUS_COLORS[r.status] || 'text-white/40'}`}>
@@ -237,7 +237,7 @@ export default function ReferralManagement() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-white/60">
-                            {r.referrerCreditsAwarded > 0 ? formatCurrency(r.referrerCreditsAwarded) : 'â€”'}
+                            {r.referrerCreditsAwarded > 0 ? formatCurrency(r.referrerCreditsAwarded) : '\u2014'}
                           </td>
                           <td className="px-4 py-3 text-white/40 text-xs">{formatDate(r.createdAt)}</td>
                           <td className="px-4 py-3 text-right">
@@ -270,7 +270,7 @@ export default function ReferralManagement() {
               {/* Pagination */}
               {pagination.totalPages > 1 && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.06]">
-                  <p className="text-xs text-white/30">PÃ¡gina {pagination.page} de {pagination.totalPages}</p>
+                  <p className="text-xs text-white/30">P\u00e1gina {pagination.page} de {pagination.totalPages}</p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => fetchOverview(pagination.page - 1, statusFilter)}
@@ -314,8 +314,8 @@ export default function ReferralManagement() {
               {/* Require approval */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-white/80">Requerir aprobaciÃ³n</p>
-                  <p className="text-xs text-white/30">Los crÃ©ditos se otorgan solo tras aprobaciÃ³n manual</p>
+                  <p className="text-sm font-medium text-white/80">Requerir aprobaci\u00f3n</p>
+                  <p className="text-xs text-white/30">Los cr\u00e9ditos se otorgan solo tras aprobaci\u00f3n manual</p>
                 </div>
                 <button
                   onClick={() => setConfigDraft(d => ({ ...d, requireApproval: !d.requireApproval }))}
@@ -329,9 +329,9 @@ export default function ReferralManagement() {
               {[
                 { key: 'referrerDiscountPercent', label: '% descuento referente', min: 1, max: 50 },
                 { key: 'referredDiscountPercent', label: '% descuento referido', min: 1, max: 50 },
-                { key: 'maxCreditsPerBusiness', label: 'MÃ¡x crÃ©ditos por negocio', min: 0, max: 10000000, step: 10000 },
-                { key: 'maxReferralsPerBusiness', label: 'MÃ¡x referidos por negocio', min: 1, max: 1000 },
-                { key: 'minSubscriptionMonths', label: 'MÃ­n meses suscripciÃ³n', min: 1, max: 24 },
+                { key: 'maxCreditsPerBusiness', label: 'M\u00e1x cr\u00e9ditos por negocio', min: 0, max: 10000000, step: 10000 },
+                { key: 'maxReferralsPerBusiness', label: 'M\u00e1x referidos por negocio', min: 1, max: 1000 },
+                { key: 'minSubscriptionMonths', label: 'M\u00edn meses suscripci\u00f3n', min: 1, max: 24 },
               ].map(field => (
                 <div key={field.key}>
                   <label className="text-sm font-medium text-white/80 block mb-1">{field.label}</label>
@@ -354,7 +354,7 @@ export default function ReferralManagement() {
                   disabled={configSaving}
                   className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50"
                 >
-                  {configSaving ? 'Guardando...' : 'Guardar configuraciÃ³n'}
+                  {configSaving ? 'Guardando...' : 'Guardar configuraci\u00f3n'}
                 </button>
                 {configMsg && (
                   <motion.p
@@ -376,7 +376,7 @@ export default function ReferralManagement() {
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
               {topReferrers.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-sm text-white/30">No hay referentes acreditados aÃºn</p>
+                  <p className="text-sm text-white/30">No hay referentes acreditados a\u00fan</p>
                 </div>
               ) : (
                 <table className="w-full text-sm">
@@ -385,7 +385,7 @@ export default function ReferralManagement() {
                       <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">#</th>
                       <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Negocio</th>
                       <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Referidos</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">CrÃ©ditos ganados</th>
+                      <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Cr\u00e9ditos ganados</th>
                       <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Saldo actual</th>
                     </tr>
                   </thead>
@@ -400,7 +400,7 @@ export default function ReferralManagement() {
                             'bg-white/5 text-white/30'
                           }`}>{i + 1}</span>
                         </td>
-                        <td className="px-4 py-3 text-white/80 font-medium">{r.businessName || 'â€”'}</td>
+                        <td className="px-4 py-3 text-white/80 font-medium">{r.businessName || '\u2014'}</td>
                         <td className="px-4 py-3 text-white/60">{r.totalReferrals}</td>
                         <td className="px-4 py-3 text-emerald-400 font-medium">{formatCurrency(r.totalCredits)}</td>
                         <td className="px-4 py-3 text-blue-400">{formatCurrency(r.currentCredits)}</td>
@@ -433,7 +433,7 @@ export default function ReferralManagement() {
             >
               <h3 className="text-lg font-bold text-white">Rechazar referido</h3>
               <div>
-                <label className="text-sm text-white/60 block mb-1">RazÃ³n (opcional)</label>
+                <label className="text-sm text-white/60 block mb-1">Raz\u00f3n (opcional)</label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
