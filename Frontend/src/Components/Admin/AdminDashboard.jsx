@@ -100,6 +100,7 @@ const getSections = (isService, isHotel) => [
       ...(!isService ? [{ tab: 'tables',           svgKey: 'tables',    title: isHotel ? 'Habitaciones' : 'Mesas',        desc: isHotel ? 'QR por habitación' : 'Códigos QR',             color: 'indigo' }] : []),
       ...(!isService && !isHotel ? [{ tab: 'delivery-zones',   svgKey: 'zones',     title: 'Zonas',        desc: 'Áreas de entrega',       color: 'green' }] : []),
       { tab: 'whatsapp',         svgKey: 'whatsapp',  title: 'WhatsApp',     desc: 'Mensajería automática', color: 'green' },
+      { tab: 'referrals',        svgKey: 'customers', title: 'Referidos',    desc: 'Invita y gana créditos', color: 'rose' },
     ],
   },
   {

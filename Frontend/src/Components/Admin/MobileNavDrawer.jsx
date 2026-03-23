@@ -38,6 +38,7 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
     { id: 'catalog', label: 'Catálogo', Icon: FaBullhorn },
     { id: 'whatsapp', label: 'WhatsApp', Icon: FaWhatsapp },
     { id: 'payment-config', label: 'Pagos', Icon: FaMoneyBillWave },
+    { id: 'referrals', label: 'Referidos', Icon: FaBullhorn },
     // Settings
     { id: 'subscription', label: 'Suscripción', Icon: FaCreditCard },
     { id: 'team', label: 'Equipo', Icon: FaUsers },

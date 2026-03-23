@@ -44,8 +44,7 @@ import WelcomeWizard from "../Components/Admin/WelcomeWizard";
 import AdminReviews from "../Components/Admin/AdminReviews";
 import StaffManager from "../Components/Admin/StaffManager";
 import BookingsManager from "../Components/Admin/BookingsManager";
-import CashClosings from "../Components/Admin/CashClosings";
-import MobileBottomNav from "../Components/Admin/MobileBottomNav";
+import CashClosings from "../Components/Admin/CashClosings";import ReferralsPanel from '../Components/Admin/ReferralsPanel';import MobileBottomNav from "../Components/Admin/MobileBottomNav";
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -526,6 +525,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Agenda" onGoBack={() => setActiveTab('dashboard')}>
                       <BookingsManager businessId={businessId} businessConfig={businessConfig} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'referrals' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Referidos" onGoBack={() => setActiveTab('dashboard')}>
+                      <ReferralsPanel />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
