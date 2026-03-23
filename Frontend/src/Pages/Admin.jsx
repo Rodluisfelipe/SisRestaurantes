@@ -531,7 +531,7 @@ function Admin() {
                 {activeTab === 'referrals' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Referidos" onGoBack={() => setActiveTab('dashboard')}>
-                      <ReferralsPanel />
+                      <ReferralsPanel businessId={businessId} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
