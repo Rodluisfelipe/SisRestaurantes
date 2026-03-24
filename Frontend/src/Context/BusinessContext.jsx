@@ -4,6 +4,23 @@ import { socket } from '../services/socket';
 import { getBusinessIdFromSlug } from '../utils/getBusinessId';
 import { isValidBusinessIdentifier } from '../utils/isValidObjectId';
 
+const BIZ_CACHE_KEY = 'menuby_biz_';
+const BIZ_CACHE_TTL = 30 * 60 * 1000; // 30 min
+
+function getCachedBiz(id) {
+  try {
+    const raw = localStorage.getItem(`${BIZ_CACHE_KEY}${id}`);
+    if (!raw) return null;
+    const c = JSON.parse(raw);
+    if (Date.now() - c.ts > BIZ_CACHE_TTL) { localStorage.removeItem(`${BIZ_CACHE_KEY}${id}`); return null; }
+    return c.data;
+  } catch { return null; }
+}
+function setCachedBiz(id, data) {
+  try { localStorage.setItem(`${BIZ_CACHE_KEY}${id}`, JSON.stringify({ data, ts: Date.now() })); }
+  catch { /* ignore */ }
+}
+
 // ── Business hours helpers (moved from useBusinessStatus) ──
 function isCurrentlyOpen(businessHours) {
   if (!businessHours) return true;
@@ -83,6 +100,7 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [networkError, setNetworkError] = useState(false);
 
   // Refs to avoid re-triggering useEffect when callbacks change
   const onErrorRef = useRef(onError);
@@ -90,10 +108,10 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
   useEffect(() => { onErrorRef.current = onError; }, [onError]);
   useEffect(() => { onLoadedRef.current = onLoaded; }, [onLoaded]);
 
-  useEffect(() => {
-    async function fetchBusiness() {
+  const fetchBusiness = useCallback(async () => {
       setLoading(true);
       setError(null);
+      setNetworkError(false);
       try {
         // First prioritize the businessId passed as prop
         let id = propBusinessId;
@@ -131,8 +149,6 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
           }
           
           if (response.data) {
-            // Establecer el businessId con el _id real del negocio SOLO si aún no está seteado
-            // Esto evita el loop infinito entre slug y ObjectId
             if (!businessId || businessId !== response.data._id) {
               setBusinessId(response.data._id);
             }
@@ -141,39 +157,48 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
               buttonColor: '#2563eb', 
               buttonTextColor: '#ffffff'
             };
-            setBusinessConfig({
-              ...response.data,
-              theme
-            });
+            const fullConfig = { ...response.data, theme };
+            setBusinessConfig(fullConfig);
+            setCachedBiz(id, fullConfig);
           }
-        } catch (error) {
-          // Error silencioso - solo mostrar en desarrollo crítico
-          setError(error.message || 'Error desconocido al cargar la configuración');
+        } catch (fetchErr) {
+          // Check if network error (no response = offline/timeout)
+          const isNetwork = !fetchErr.response;
+          if (isNetwork) setNetworkError(true);
+
+          // Try cached data as fallback
+          const cached = getCachedBiz(id) || getCachedBiz(propBusinessId);
+          if (cached) {
+            setBusinessConfig(cached);
+            if (cached._id) setBusinessId(cached._id);
+          }
+
+          setError(fetchErr.message || 'Error desconocido al cargar la configuración');
           
-          // Si hay una función onError, notificar del error
           if (onErrorRef.current && typeof onErrorRef.current === 'function') {
-            onErrorRef.current(error);
+            onErrorRef.current(fetchErr);
           }
         }
-      } catch (error) {
-        // Error silencioso
-        setError(error.message || 'Error desconocido al obtener el business ID');
+      } catch (outerErr) {
+        const isNetwork = !outerErr.response;
+        if (isNetwork) setNetworkError(true);
+        setError(outerErr.message || 'Error desconocido al obtener el business ID');
         
-        // Si hay una función onError, notificar del error
         if (onErrorRef.current && typeof onErrorRef.current === 'function') {
-          onErrorRef.current(error);
+          onErrorRef.current(outerErr);
         }
       } finally {
         setLoading(false);
         
-        // Notificar que la carga ha terminado
         if (onLoadedRef.current && typeof onLoadedRef.current === 'function') {
           onLoadedRef.current();
         }
       }
-    }
-    fetchBusiness();
   }, [propBusinessId]);
+
+  useEffect(() => {
+    fetchBusiness();
+  }, [fetchBusiness]);
 
   // Update businessId if prop changes - SOLO cuando la prop cambia, NO cuando cambia el state
   useEffect(() => {
@@ -252,8 +277,10 @@ export function BusinessProvider({ children, businessId: propBusinessId, onError
     getStatusDisplay,
     loading,
     error,
+    networkError,
+    retryFetch: fetchBusiness,
     updateConfig
-  }), [businessId, businessConfig, businessStatus, getStatusDisplay, loading, error, updateConfig]);
+  }), [businessId, businessConfig, businessStatus, getStatusDisplay, loading, error, networkError, fetchBusiness, updateConfig]);
 
   return (
     <BusinessContext.Provider value={value}>

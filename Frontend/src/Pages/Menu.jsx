@@ -88,11 +88,12 @@ export default function Menu() {
   const [showSplash, setShowSplash] = useState(true);
   const [showCartSummary, setShowCartSummary] = useState(false);
   const [isSelectingToppings, setIsSelectingToppings] = useState(false);
-  const { businessConfig, businessId, businessStatus, error: businessError } = useBusinessConfig();
+  const { businessConfig, businessId, businessStatus, error: businessError, networkError: bizNetworkError, retryFetch: retryBizFetch } = useBusinessConfig();
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
   const statusLoading = false; // status now derived from businessConfig synchronously
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [menuNetworkError, setMenuNetworkError] = useState(false);
   const [showOrderConfirmationModal, setShowOrderConfirmationModal] = useState(false);
   const [orderConfirmationDetails, setOrderConfirmationDetails] = useState({
     type: '',
@@ -617,6 +618,7 @@ export default function Menu() {
     }
     
     setLoading(true);
+    setMenuNetworkError(false);
     const fetchData = async () => {
       try {
         logger.info('Menu - Cargando datos para businessId:', businessId);
@@ -630,8 +632,25 @@ export default function Menu() {
         });
         setProducts(productsRes.data);
         setCategories(categoriesRes.data);
+        // Cache for offline fallback
+        try {
+          localStorage.setItem(`menuby_menu_${businessId}`, JSON.stringify({
+            products: productsRes.data, categories: categoriesRes.data, ts: Date.now()
+          }));
+        } catch { /* storage full */ }
       } catch (err) {
         logger.error("Error al obtener datos:", err);
+        const isNetwork = !err.response;
+        if (isNetwork) setMenuNetworkError(true);
+        // Try loading from cache
+        try {
+          const raw = localStorage.getItem(`menuby_menu_${businessId}`);
+          if (raw) {
+            const cached = JSON.parse(raw);
+            setProducts(cached.products || []);
+            setCategories(cached.categories || []);
+          }
+        } catch { /* no cache */ }
       } finally {
         setLoading(false);
         // Keep splash visible a moment for branding, then dismiss
@@ -1331,6 +1350,38 @@ export default function Menu() {
     return <LeadCapturePage />;
   }
 
+  // Network error — no data loaded at all (no cache either)
+  const hasNoData = !loading && products.length === 0 && categories.length === 0;
+  const showNetworkError = (bizNetworkError || menuNetworkError) && hasNoData;
+
+  if (showNetworkError) {
+    const handleRetry = () => {
+      if (retryBizFetch) retryBizFetch();
+      else window.location.reload();
+    };
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-sm w-full">
+          <div className="mx-auto w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-5">
+            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-bold text-gray-800 mb-2">Sin conexi&oacute;n</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            No pudimos cargar el men&uacute;. Revisa tu conexi&oacute;n a internet e int&eacute;ntalo de nuevo.
+          </p>
+          <button
+            onClick={handleRetry}
+            className="w-full py-3 px-4 bg-gray-900 text-white font-semibold rounded-xl hover:bg-gray-800 active:scale-[0.97] transition-all"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Verificar si el negocio está activo
   const isBusinessActive = businessConfig?.isActive !== false;
   
@@ -1409,6 +1460,26 @@ export default function Menu() {
         reviewStats={businessConfig?.reviewStats}
       />
       
+      {/* Aviso de datos en cache — sin conexión pero con datos guardados */}
+      {(bizNetworkError || menuNetworkError) && products.length > 0 && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5">
+          <div className="max-w-7xl mx-auto flex items-center justify-center gap-2">
+            <svg className="w-4 h-4 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636a9 9 0 010 12.728M5.636 18.364a9 9 0 010-12.728" />
+            </svg>
+            <p className="text-xs text-amber-700 font-medium">
+              Sin conexi&oacute;n — mostrando la &uacute;ltima versi&oacute;n guardada del men&uacute;
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="ml-2 text-xs font-bold text-amber-800 underline"
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Aviso discreto de servicio temporalmente no disponible */}
       {subscriptionStatus === 'suspended' && (
         <div className="bg-gradient-to-r from-red-50 to-pink-50 border-b border-red-200 px-4 py-3">
