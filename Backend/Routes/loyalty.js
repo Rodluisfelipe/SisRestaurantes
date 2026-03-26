@@ -160,13 +160,35 @@ router.get('/top-customers', tenantAuth, async (req, res) => {
   try {
     const businessId = await getAdminBusinessId(req);
     if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
-    const limit = Math.min(Number(req.query.limit) || 20, 100);
-    const customers = await CustomerLoyalty.find({ businessId })
-      .sort({ totalEarned: -1 })
-      .limit(limit)
-      .populate('customerId', 'name phone')
-      .lean();
-    res.json(customers);
+    const limit = Math.min(Number(req.query.limit) || 50, 500);
+    const skip = Math.max(Number(req.query.skip) || 0, 0);
+    const search = req.query.search ? String(req.query.search).trim() : '';
+
+    let query = { businessId };
+    if (search) {
+      query.phone = { $regex: search, $options: 'i' };
+    }
+
+    const [customers, total] = await Promise.all([
+      CustomerLoyalty.find(query)
+        .sort({ totalEarned: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate('customerId', 'name phone')
+        .lean(),
+      CustomerLoyalty.countDocuments(query)
+    ]);
+
+    // Get program rewards to calculate claimable rewards per customer
+    const program = await LoyaltyProgram.findOne({ businessId }).lean();
+    const activeRewards = (program?.rewards || []).filter(r => r.isActive);
+
+    const enriched = customers.map(c => ({
+      ...c,
+      claimableRewards: activeRewards.filter(r => c.points >= r.pointsCost)
+    }));
+
+    res.json({ customers: enriched, total, hasMore: skip + limit < total });
   } catch (error) {
     logger.error('Error fetching top customers:', error);
     res.status(500).json({ message: 'Error al obtener clientes top' });
