@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../Context/AuthContext';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -6,24 +6,47 @@ import { useBusinessSocket } from '../hooks/useBusinessSocket';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// Planes de pago directo (sin comisión de pasarela, con descuento por duración)
+const DIRECT_PLANS = [
+  { months: 1, label: '1 Mes', basePrice: 30000, total: 30000, commission: 0, pricePerMonth: 30000, discount: 0 },
+  { months: 3, label: '3 Meses', basePrice: 90000, total: 85500, commission: 0, pricePerMonth: 28500, discount: 5 },
+  { months: 6, label: '6 Meses', basePrice: 180000, total: 162000, commission: 0, pricePerMonth: 27000, discount: 10 },
+  { months: 12, label: '12 Meses', basePrice: 360000, total: 306000, commission: 0, pricePerMonth: 25500, discount: 15 },
+];
+
+// Métodos de pago directo
+const DIRECT_METHODS = [
+  { id: 'Nequi', label: 'Nequi', value: '302 818 1520', icon: '\uD83D\uDCF1' },
+  { id: 'Daviplata', label: 'Daviplata', value: '302 818 1520', icon: '\uD83D\uDCB3' },
+  { id: 'Transferencia', label: 'Llave Breve', value: '@LRQ430', icon: '\uD83D\uDD11' },
+];
+
 const SubscriptionPayment = () => {
   const { user } = useAuth();
   const { businessId } = useBusinessConfig();
   const [searchParams] = useSearchParams();
   const socket = useBusinessSocket(businessId);
+  const fileInputRef = useRef(null);
   
   const [subscription, setSubscription] = useState(null);
   const [epaycoPlans, setEpaycoPlans] = useState([]);
   const [dlocalPlans, setDlocalPlans] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [selectedMonths, setSelectedMonths] = useState(1);
-  const [selectedGateway, setSelectedGateway] = useState('dlocal'); // 'epayco' | 'dlocal'
+  const [selectedGateway, setSelectedGateway] = useState('direct'); // 'direct' | 'epayco' | 'dlocal'
   const [epaycoConfig, setEpaycoConfig] = useState({ publicKey: '', isTest: false });
   const [dlocalConfig, setDlocalConfig] = useState({ isTest: false });
   const [paymentResult, setPaymentResult] = useState(null);
   const [activeTab, setActiveTab] = useState('plan'); // 'plan' | 'history'
+  
+  // Direct payment state
+  const [selectedMethod, setSelectedMethod] = useState('Nequi');
+  const [proofFile, setProofFile] = useState(null);
+  const [proofPreview, setProofPreview] = useState(null);
+  const [copiedMethod, setCopiedMethod] = useState(null);
   
   // Verificar resultado de pago (redirect de ePayco)
   useEffect(() => {
@@ -41,10 +64,11 @@ const SubscriptionPayment = () => {
     const handleActivated = (data) => {
       setPaymentResult({
         status: 'approved',
-        message: data.message || '¡Tu suscripción ha sido activada!',
+        message: data.message || '\u00A1Tu suscripci\u00F3n ha sido activada!',
       });
       loadSubscription();
       loadPaymentHistory();
+      loadMyRequests();
     };
     socket.on('subscription_activated', handleActivated);
     return () => socket.off('subscription_activated', handleActivated);
@@ -53,7 +77,7 @@ const SubscriptionPayment = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      await Promise.all([loadSubscription(), loadEpaycoPlans(), loadDlocalPlans(), loadPaymentHistory()]);
+      await Promise.all([loadSubscription(), loadMyRequests(), loadEpaycoPlans(), loadDlocalPlans(), loadPaymentHistory()]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -84,6 +108,17 @@ const SubscriptionPayment = () => {
     }
   };
 
+  const loadMyRequests = async () => {
+    try {
+      const res = await api.get('/payments/manual/my-requests');
+      if (res.data.success) {
+        setMyRequests(res.data.requests || []);
+      }
+    } catch (error) {
+      console.error('Error loading my requests:', error);
+    }
+  };
+
   const loadEpaycoPlans = async () => {
     try {
       const res = await api.get('/epayco/plans');
@@ -92,7 +127,7 @@ const SubscriptionPayment = () => {
         setEpaycoConfig({ publicKey: res.data.publicKey, isTest: res.data.isTest });
       }
     } catch (error) {
-      console.error('Error loading ePayco plans:', error);
+      // Silently fail — gateway not configured
     }
   };
 
@@ -104,7 +139,7 @@ const SubscriptionPayment = () => {
         setDlocalConfig({ isTest: res.data.isTest });
       }
     } catch (error) {
-      console.error('Error loading dLocal plans:', error);
+      // Silently fail — gateway not configured
     }
   };
 
@@ -125,7 +160,6 @@ const SubscriptionPayment = () => {
   };
 
   const checkPaymentStatus = async (ref, statusCode) => {
-    // Intentar con ambas pasarelas
     const gw = searchParams.get('gw');
     const endpoints = gw === 'dlocal' ? ['/dlocal/status/', '/epayco/status/'] : ['/epayco/status/', '/dlocal/status/'];
     
@@ -135,10 +169,10 @@ const SubscriptionPayment = () => {
         if (res.data.success) {
           const { payment } = res.data;
           if (payment.status === 'approved') {
-            setPaymentResult({ status: 'approved', message: `¡Pago aprobado! Tu suscripción de ${payment.months} mes(es) está activa.`, reference: payment.reference });
+            setPaymentResult({ status: 'approved', message: `\u00A1Pago aprobado! Tu suscripci\u00F3n de ${payment.months} mes(es) est\u00E1 activa.`, reference: payment.reference });
             await loadSubscription();
           } else if (payment.status === 'pending') {
-            setPaymentResult({ status: 'pending', message: 'Tu pago está siendo procesado. Te notificaremos cuando se confirme.', reference: payment.reference });
+            setPaymentResult({ status: 'pending', message: 'Tu pago est\u00E1 siendo procesado. Te notificaremos cuando se confirme.', reference: payment.reference });
           } else {
             setPaymentResult({ status: 'failed', message: payment.responseMessage || 'El pago no fue aprobado. Intenta de nuevo.', reference: payment.reference });
           }
@@ -146,18 +180,76 @@ const SubscriptionPayment = () => {
         }
       } catch (e) { /* try next */ }
     }
-    // Fallback por código
     const code = parseInt(statusCode);
     if (code === 1) {
-      setPaymentResult({ status: 'approved', message: '¡Pago procesado! Verificando activación...' });
+      setPaymentResult({ status: 'approved', message: '\u00A1Pago procesado! Verificando activaci\u00F3n...' });
       await loadSubscription();
     } else if (code === 3) {
-      setPaymentResult({ status: 'pending', message: 'Pago pendiente de confirmación.' });
+      setPaymentResult({ status: 'pending', message: 'Pago pendiente de confirmaci\u00F3n.' });
     } else {
       setPaymentResult({ status: 'failed', message: 'El pago no fue completado.' });
     }
   };
 
+  // ========== DIRECT PAYMENT ==========
+  const handleProofChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert('La imagen es muy grande. M\u00E1ximo 10MB.');
+      return;
+    }
+    setProofFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setProofPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDirectPayment = async () => {
+    if (processing) return;
+    if (!proofFile) {
+      alert('Sube el comprobante de pago');
+      return;
+    }
+    setProcessing(true);
+    try {
+      const plan = DIRECT_PLANS.find(p => p.months === selectedMonths);
+      const formData = new FormData();
+      formData.append('proof', proofFile);
+      formData.append('monthsPurchased', selectedMonths);
+      formData.append('amount', plan.total);
+      formData.append('paymentMethod', selectedMethod);
+      if (businessId) formData.append('businessId', businessId);
+
+      const res = await api.post('/payments/manual/request', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (res.data.success) {
+        setPaymentResult({
+          status: 'pending',
+          message: 'Comprobante enviado. Tu pago ser\u00E1 verificado y la suscripci\u00F3n se activar\u00E1 autom\u00E1ticamente.',
+        });
+        setProofFile(null);
+        setProofPreview(null);
+        loadMyRequests();
+      } else {
+        alert(res.data.message || 'Error al enviar comprobante');
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Error al enviar el comprobante');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const copyToClipboard = (text, methodId) => {
+    navigator.clipboard.writeText(text.replace(/\s/g, '')).then(() => {
+      setCopiedMethod(methodId);
+      setTimeout(() => setCopiedMethod(null), 2000);
+    });
+  };
+
+  // ========== EPAYCO / DLOCAL ==========
   const handlePayWithEpayco = async () => {
     if (processing) return;
     setProcessing(true);
@@ -181,7 +273,6 @@ const SubscriptionPayment = () => {
       
       if (!window.ePayco) throw new Error('ePayco SDK no disponible');
 
-      // Guardar sesión antes del redirect
       const t = sessionStorage.getItem('accessToken');
       const r = sessionStorage.getItem('refreshToken');
       const u = sessionStorage.getItem('user');
@@ -212,7 +303,6 @@ const SubscriptionPayment = () => {
     if (processing) return;
     setProcessing(true);
     try {
-      // Guardar sesión antes del redirect
       const t = sessionStorage.getItem('accessToken');
       const r = sessionStorage.getItem('refreshToken');
       const u = sessionStorage.getItem('user');
@@ -226,7 +316,7 @@ const SubscriptionPayment = () => {
       if (res.data.redirectUrl) {
         window.location.href = res.data.redirectUrl;
       } else {
-        alert('No se recibió URL de pago de dLocal');
+        alert('No se recibi\u00F3 URL de pago de dLocal');
       }
     } catch (error) {
       console.error('Error initiating dLocal payment:', error);
@@ -237,7 +327,9 @@ const SubscriptionPayment = () => {
   };
 
   const handlePay = () => {
-    if (selectedGateway === 'dlocal') {
+    if (selectedGateway === 'direct') {
+      handleDirectPayment();
+    } else if (selectedGateway === 'dlocal') {
       handlePayWithDlocal();
     } else {
       handlePayWithEpayco();
@@ -250,19 +342,34 @@ const SubscriptionPayment = () => {
     const periodEnd = subscription.periodEnd ? new Date(subscription.periodEnd) : null;
     const graceUntil = subscription.graceUntil ? new Date(subscription.graceUntil) : null;
     if (periodEnd && graceUntil) {
-      if (now > graceUntil) return { status: 'suspended', text: 'Menú Desactivado', color: 'red' };
-      if (now > periodEnd) return { status: 'grace', text: 'Período de Gracia', color: 'yellow' };
+      if (now > graceUntil) return { status: 'suspended', text: 'Men\u00FA Desactivado', color: 'red' };
+      if (now > periodEnd) return { status: 'grace', text: 'Per\u00EDodo de Gracia', color: 'yellow' };
     }
     return { status: 'active', text: 'Activa', color: 'green' };
   };
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '—';
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '\u2014';
   const formatCurrency = (n) => `$${(n || 0).toLocaleString('es-CO')}`;
 
-  const plans = selectedGateway === 'dlocal' ? dlocalPlans : epaycoPlans;
+  const plans = selectedGateway === 'direct' ? DIRECT_PLANS : selectedGateway === 'dlocal' ? dlocalPlans : epaycoPlans;
   const selectedPlan = plans.find(p => p.months === selectedMonths);
-  const isTestMode = selectedGateway === 'dlocal' ? dlocalConfig.isTest : epaycoConfig.isTest;
+  const isTestMode = selectedGateway === 'dlocal' ? dlocalConfig.isTest : selectedGateway === 'epayco' ? epaycoConfig.isTest : false;
   const subStatus = getSubscriptionStatus();
+  const hasPendingRequest = myRequests.some(r => r.status === 'pending');
+
+  // Combine all history for display
+  const allHistory = [
+    ...paymentHistory,
+    ...myRequests.map(r => ({
+      _id: r._id || r.id,
+      months: r.monthsPurchased,
+      totalAmount: r.amount,
+      status: r.status,
+      createdAt: r.createdAt,
+      gateway: 'Directo',
+      paymentMethod: r.paymentMethod,
+    })),
+  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   if (loading) {
     return (
@@ -299,7 +406,7 @@ const SubscriptionPayment = () => {
               )}
             </motion.div>
             <h2 className={`text-xl font-bold ${isApproved ? 'text-emerald-800' : isPending ? 'text-amber-800' : 'text-red-800'}`}>
-              {isApproved ? '¡Pago Exitoso!' : isPending ? 'Pago en Proceso' : 'Pago No Completado'}
+              {isApproved ? '\u00A1Pago Exitoso!' : isPending ? 'Pago en Proceso' : 'Pago No Completado'}
             </h2>
             <p className="text-sm text-[#6C7A92] mt-2 max-w-xs mx-auto">{paymentResult.message}</p>
           </div>
@@ -314,7 +421,7 @@ const SubscriptionPayment = () => {
             {isPending && (
               <div className="bg-amber-50 rounded-xl border border-amber-200 p-4 flex items-start gap-3">
                 <div className="w-4 h-4 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin mt-0.5 flex-shrink-0" />
-                <div><p className="text-xs font-bold text-amber-700">Esperando confirmación</p><p className="text-[11px] text-[#6C7A92] mt-1">Se actualizará automáticamente cuando se confirme.</p></div>
+                <div><p className="text-xs font-bold text-amber-700">Esperando confirmación</p><p className="text-[11px] text-[#6C7A92] mt-1">Se activará automáticamente cuando se confirme tu pago.</p></div>
               </div>
             )}
             {paymentResult.reference && (
@@ -326,7 +433,7 @@ const SubscriptionPayment = () => {
           </div>
 
           <div className="px-6 pb-6">
-            <button onClick={() => { setPaymentResult(null); window.history.replaceState({}, '', window.location.pathname); loadPaymentHistory(); }}
+            <button onClick={() => { setPaymentResult(null); window.history.replaceState({}, '', window.location.pathname); loadPaymentHistory(); loadMyRequests(); }}
               className="w-full py-3 px-4 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 text-white text-sm font-semibold rounded-xl transition-all shadow-md shadow-[#3A7AFF]/20">
               {isApproved ? 'Continuar' : isPending ? 'Volver' : 'Intentar de Nuevo'}
             </button>
@@ -346,7 +453,7 @@ const SubscriptionPayment = () => {
       {isTestMode && (
         <div className="flex justify-center">
           <span className="text-[9px] bg-amber-50 text-amber-600 border border-amber-200 px-2.5 py-0.5 rounded-full font-semibold tracking-wide">
-            MODO PRUEBAS — {selectedGateway === 'dlocal' ? 'dLocal' : 'ePayco'}
+            MODO PRUEBAS &mdash; {selectedGateway === 'dlocal' ? 'dLocal' : 'ePayco'}
           </span>
         </div>
       )}
@@ -371,7 +478,6 @@ const SubscriptionPayment = () => {
 
           {subscription ? (
             <>
-              {/* Compact progress bar */}
               {subscription.periodStart && subscription.periodEnd && (
                 <div className="mt-2">
                   <div className="h-1.5 bg-[#F4F6FB] rounded-full overflow-hidden">
@@ -388,7 +494,6 @@ const SubscriptionPayment = () => {
                 </div>
               )}
               
-              {/* Single row of key info */}
               <div className="mt-2 flex items-center gap-3 text-[10px] text-[#6C7A92]">
                 <span>
                   <span className="font-semibold text-[#1F2937]">
@@ -399,7 +504,7 @@ const SubscriptionPayment = () => {
                 </span>
                 <span className="text-[#DCE4F5]">|</span>
                 <span>Vence <span className="font-semibold text-[#1F2937]">{formatDate(subscription.periodEnd)}</span></span>
-                {subscription.price && (
+                {subscription.price > 0 && (
                   <>
                     <span className="text-[#DCE4F5]">|</span>
                     <span className="font-semibold text-[#1F2937]">{formatCurrency(subscription.price)}</span>
@@ -407,13 +512,12 @@ const SubscriptionPayment = () => {
                 )}
               </div>
 
-              {/* Grace/Suspended compact warnings */}
               {subStatus?.status === 'grace' && (
                 <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-200">
                   <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
                   </svg>
-                  <span>Período de gracia — {subscription.graceDaysRemaining > 0 ? `${subscription.graceDaysRemaining} día(s)` : 'Renueva ahora'}</span>
+                  <span>Período de gracia &mdash; {subscription.graceDaysRemaining > 0 ? `${subscription.graceDaysRemaining} día(s)` : 'Renueva ahora'}</span>
                 </div>
               )}
               {subStatus?.status === 'suspended' && (
@@ -421,7 +525,7 @@ const SubscriptionPayment = () => {
                   <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                   </svg>
-                  <span>Menú desactivado — Renueva para reactivar</span>
+                  <span>Menú desactivado &mdash; Renueva para reactivar</span>
                 </div>
               )}
             </>
@@ -431,11 +535,18 @@ const SubscriptionPayment = () => {
         </div>
       </div>
 
+      {/* Pending request banner */}
+      {hasPendingRequest && (
+        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5">
+          <div className="w-4 h-4 border-2 border-amber-500/30 border-t-amber-500 rounded-full animate-spin flex-shrink-0" />
+          <p className="text-[11px] text-amber-700 font-medium">Tienes un pago pendiente de verificación. Se activará pronto.</p>
+        </div>
+      )}
+
       {/* ==========================================
           TABS: RENOVAR / HISTORIAL
           ========================================== */}
       <div className="bg-white rounded-xl border border-[#DCE4F5] overflow-hidden shadow-sm">
-        {/* Tab headers */}
         <div className="flex border-b border-[#DCE4F5]">
           <button onClick={() => setActiveTab('plan')}
             className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'plan' ? 'text-[#3A7AFF]' : 'text-[#6C7A92]'}`}>
@@ -444,115 +555,228 @@ const SubscriptionPayment = () => {
           </button>
           <button onClick={() => setActiveTab('history')}
             className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'history' ? 'text-[#3A7AFF]' : 'text-[#6C7A92]'}`}>
-            Historial {paymentHistory.length > 0 && <span className="ml-0.5 text-[8px] bg-[#F4F6FB] text-[#6C7A92] px-1 py-0.5 rounded-full">{paymentHistory.length}</span>}
+            Historial {allHistory.length > 0 && <span className="ml-0.5 text-[8px] bg-[#F4F6FB] text-[#6C7A92] px-1 py-0.5 rounded-full">{allHistory.length}</span>}
             {activeTab === 'history' && <motion.div layoutId="tabIndicator" className="absolute bottom-0 left-3 right-3 h-0.5 bg-[#3A7AFF] rounded-full" />}
           </button>
         </div>
 
         <AnimatePresence mode="wait">
-          {/* ==========================================
-              TAB: PLAN + PASARELA + PAGAR (all compact)
-              ========================================== */}
           {activeTab === 'plan' && (
             <motion.div key="plan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="p-3.5 space-y-3">
               
               {/* Plan selector — horizontal row */}
-              {plans.length > 0 ? (
-                <div className="flex gap-1.5">
-                  {plans.map(plan => {
-                    const isSelected = selectedMonths === plan.months;
-                    const savingsVsMonthly = plan.months > 1 ? (plans[0]?.total * plan.months) - plan.total : 0;
-                    const isBestValue = plan.months === 12;
-                    
-                    return (
-                      <button key={plan.months} type="button" onClick={() => setSelectedMonths(plan.months)}
-                        className={`relative flex-1 py-2 px-1 rounded-lg border transition-all text-center ${
-                          isSelected
-                            ? 'border-[#3A7AFF] bg-[#3A7AFF]/5 shadow-sm'
+              <div className="flex gap-1.5">
+                {DIRECT_PLANS.map(plan => {
+                  const isSelected = selectedMonths === plan.months;
+                  const savingsVsMonthly = plan.months > 1 ? (DIRECT_PLANS[0].total * plan.months) - plan.total : 0;
+                  const isBestValue = plan.months === 12;
+                  const displayTotal = selectedGateway === 'direct' ? plan.total 
+                    : selectedGateway === 'dlocal' ? (dlocalPlans.find(p => p.months === plan.months)?.total || plan.total) 
+                    : (epaycoPlans.find(p => p.months === plan.months)?.total || plan.total);
+                  
+                  return (
+                    <button key={plan.months} type="button" onClick={() => setSelectedMonths(plan.months)}
+                      className={`relative flex-1 py-2 px-1 rounded-lg border transition-all text-center ${
+                        isSelected
+                          ? 'border-[#3A7AFF] bg-[#3A7AFF]/5 shadow-sm'
+                          : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
+                      }`}>
+                      {isBestValue && (
+                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[7px] font-bold bg-[#3A7AFF] text-white px-1.5 py-px rounded-full whitespace-nowrap leading-tight">
+                          MEJOR
+                        </div>
+                      )}
+                      <div className={`text-sm font-bold leading-none ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>{plan.months}</div>
+                      <div className="text-[8px] text-[#6C7A92] leading-tight">{plan.months === 1 ? 'mes' : 'meses'}</div>
+                      <div className={`text-[10px] font-bold mt-0.5 leading-none ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
+                        {formatCurrency(displayTotal)}
+                      </div>
+                      {savingsVsMonthly > 0 && selectedGateway === 'direct' && (
+                        <div className="text-[7px] text-emerald-600 font-semibold mt-0.5 leading-tight">
+                          -{formatCurrency(savingsVsMonthly)}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Gateway selector — direct + pasarelas */}
+              <div className="flex items-center gap-1 bg-[#F4F6FB] rounded-lg p-1">
+                <button type="button" onClick={() => setSelectedGateway('direct')}
+                  className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1 ${
+                    selectedGateway === 'direct' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                  }`}>
+                  <span>Pago Directo</span>
+                  {selectedGateway !== 'direct' && <span className="text-[7px] text-emerald-600 font-semibold">Sin comisión</span>}
+                </button>
+                {(epaycoPlans.length > 0 || dlocalPlans.length > 0) && (
+                  <>
+                    {dlocalPlans.length > 0 && (
+                      <button type="button" onClick={() => setSelectedGateway('dlocal')}
+                        className={`flex-1 py-1.5 px-1.5 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1 ${
+                          selectedGateway === 'dlocal' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                        }`}>
+                        <span>dLocal</span>
+                      </button>
+                    )}
+                    {epaycoPlans.length > 0 && (
+                      <button type="button" onClick={() => setSelectedGateway('epayco')}
+                        className={`flex-1 py-1.5 px-1.5 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1 ${
+                          selectedGateway === 'epayco' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                        }`}>
+                        <span>ePayco</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* ========== DIRECT PAYMENT FLOW ========== */}
+              {selectedGateway === 'direct' && selectedPlan && (
+                <>
+                  {/* Price summary */}
+                  <div className="bg-[#F4F6FB] rounded-lg p-3">
+                    <div className="flex items-center justify-between text-[10px] text-[#6C7A92]">
+                      <span>{selectedPlan.label} &mdash; Sin comisión</span>
+                      <div className="text-right">
+                        {selectedPlan.discount > 0 && (
+                          <span className="text-[9px] line-through text-[#6C7A92]/60 mr-1.5">{formatCurrency(selectedPlan.basePrice)}</span>
+                        )}
+                        <span className="text-sm font-bold text-[#1F2937]">{formatCurrency(selectedPlan.total)}</span>
+                      </div>
+                    </div>
+                    {selectedPlan.discount > 0 && (
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[9px] text-emerald-600 font-semibold">{selectedPlan.discount}% de descuento</span>
+                        <span className="text-[9px] text-emerald-600 font-semibold">Ahorras {formatCurrency(selectedPlan.basePrice - selectedPlan.total)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment info cards */}
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-[#1F2937]">Transfiere a:</p>
+                    {DIRECT_METHODS.map(method => (
+                      <button key={method.id} type="button"
+                        onClick={() => { setSelectedMethod(method.id); copyToClipboard(method.value, method.id); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all text-left ${
+                          selectedMethod === method.id
+                            ? 'border-[#3A7AFF] bg-[#3A7AFF]/5'
                             : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
                         }`}>
-                        {isBestValue && (
-                          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[7px] font-bold bg-[#3A7AFF] text-white px-1.5 py-px rounded-full whitespace-nowrap leading-tight">
-                            MEJOR
+                        <span className="text-lg">{method.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-[#1F2937]">{method.label}</span>
+                            {method.sublabel && <span className="text-[9px] text-[#6C7A92]">({method.sublabel})</span>}
                           </div>
-                        )}
-                        <div className={`text-sm font-bold leading-none ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>{plan.months}</div>
-                        <div className="text-[8px] text-[#6C7A92] leading-tight">{plan.months === 1 ? 'mes' : 'meses'}</div>
-                        <div className={`text-[10px] font-bold mt-0.5 leading-none ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
-                          {formatCurrency(plan.total)}
+                          <span className="text-sm font-bold text-[#3A7AFF] font-mono tracking-wide">{method.value}</span>
                         </div>
-                        {savingsVsMonthly > 0 && (
-                          <div className="text-[7px] text-emerald-600 font-semibold mt-0.5 leading-tight">
-                            -{formatCurrency(savingsVsMonthly)}
-                          </div>
+                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all ${
+                          copiedMethod === method.id 
+                            ? 'bg-emerald-100 text-emerald-700' 
+                            : 'bg-[#F4F6FB] text-[#6C7A92]'
+                        }`}>
+                          {copiedMethod === method.id ? '\u2713 Copiado' : 'Copiar'}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Upload proof */}
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold text-[#1F2937]">Sube el comprobante:</p>
+                    <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/jpg,application/pdf" onChange={handleProofChange} className="hidden" />
+                    
+                    {proofPreview ? (
+                      <div className="relative">
+                        <img src={proofPreview} alt="Comprobante" className="w-full h-32 object-cover rounded-lg border border-[#DCE4F5]" />
+                        <button type="button" onClick={() => { setProofFile(null); setProofPreview(null); }}
+                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs shadow-md">
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button type="button" onClick={() => fileInputRef.current?.click()}
+                        className="w-full py-5 border-2 border-dashed border-[#DCE4F5] rounded-lg hover:border-[#3A7AFF]/40 transition-all flex flex-col items-center gap-1.5 bg-[#F4F6FB]/50">
+                        <svg className="w-6 h-6 text-[#6C7A92]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span className="text-[11px] text-[#6C7A92] font-medium">Toca para subir foto del comprobante</span>
+                        <span className="text-[9px] text-[#6C7A92]/60">JPG, PNG o PDF &bull; Máx 10MB</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Submit button */}
+                  <button type="button" onClick={handlePay} disabled={processing || !proofFile || hasPendingRequest}
+                    className="w-full py-2.5 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 disabled:bg-[#DCE4F5] disabled:text-[#6C7A92] text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-[#3A7AFF]/20 disabled:shadow-none flex items-center justify-center gap-1.5">
+                    {processing ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Enviando...</span>
+                      </>
+                    ) : hasPendingRequest ? (
+                      <span>Ya tienes un pago en revisión</span>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Enviar comprobante &mdash; {formatCurrency(selectedPlan.total)} COP</span>
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-center text-[9px] text-[#6C7A92]/60">
+                    Nequi &middot; Daviplata &middot; Llave Breve &middot; Verificación en minutos
+                  </p>
+                </>
+              )}
+
+              {/* ========== GATEWAY PAYMENT FLOW (ePayco/dLocal) ========== */}
+              {selectedGateway !== 'direct' && (
+                <>
+                  {selectedPlan ? (
+                    <>
+                      <div className="bg-[#F4F6FB] rounded-lg p-3">
+                        <div className="flex items-center justify-between text-[10px] text-[#6C7A92]">
+                          <span>{selectedPlan.label} ({formatCurrency(selectedPlan.basePrice)}) + comisión {formatCurrency(selectedPlan.commission)}</span>
+                          <span className="text-sm font-bold text-[#1F2937]">{formatCurrency(selectedPlan.total)}</span>
+                        </div>
+                      </div>
+
+                      <button type="button" onClick={handlePay} disabled={processing}
+                        className="w-full py-2.5 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 disabled:bg-[#DCE4F5] disabled:text-[#6C7A92] text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-[#3A7AFF]/20 disabled:shadow-none flex items-center justify-center gap-1.5">
+                        {processing ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Procesando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <span>Pagar {formatCurrency(selectedPlan.total)} COP</span>
+                          </>
                         )}
                       </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-[11px] text-[#6C7A92]">No se pudieron cargar los planes</p>
-                  <button onClick={loadData} className="text-[#3A7AFF] text-[10px] font-medium mt-1">Reintentar</button>
-                </div>
-              )}
 
-              {/* Gateway selector — compact toggle */}
-              {plans.length > 0 && (
-                <div className="flex items-center gap-1.5 bg-[#F4F6FB] rounded-lg p-1">
-                  <button type="button" onClick={() => setSelectedGateway('dlocal')}
-                    className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                      selectedGateway === 'dlocal' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
-                    }`}>
-                    <span>dLocal</span>
-                    <span className="font-bold">{formatCurrency(dlocalPlans.find(p => p.months === selectedMonths)?.total || 0)}</span>
-                    {selectedGateway !== 'dlocal' && <span className="text-[8px] text-emerald-600 font-semibold">Menor costo</span>}
-                  </button>
-                  <button type="button" onClick={() => setSelectedGateway('epayco')}
-                    className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-semibold transition-all flex items-center justify-center gap-1.5 ${
-                      selectedGateway === 'epayco' ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
-                    }`}>
-                    <span>ePayco</span>
-                    <span className="font-bold">{formatCurrency(epaycoPlans.find(p => p.months === selectedMonths)?.total || 0)}</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Desglose + Botón pagar — merged compact */}
-              {selectedPlan && (
-                <div className="bg-[#F4F6FB] rounded-lg p-3">
-                  <div className="flex items-center justify-between text-[10px] text-[#6C7A92]">
-                    <span>{selectedPlan.label} ({formatCurrency(selectedPlan.basePrice)}) + comisión {formatCurrency(selectedPlan.commission)}</span>
-                    <span className="text-sm font-bold text-[#1F2937]">{formatCurrency(selectedPlan.total)}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Botón pagar — compact */}
-              {selectedPlan && (
-                <button type="button" onClick={handlePay} disabled={processing}
-                  className="w-full py-2.5 bg-[#3A7AFF] hover:bg-[#3A7AFF]/90 disabled:bg-[#DCE4F5] disabled:text-[#6C7A92] text-white text-xs font-bold rounded-lg transition-all shadow-md shadow-[#3A7AFF]/20 disabled:shadow-none flex items-center justify-center gap-1.5">
-                  {processing ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Procesando...</span>
+                      <p className="text-center text-[9px] text-[#6C7A92]/60">
+                        Tarjeta &middot; PSE &middot; Nequi &middot; Daviplata &middot; Pago seguro
+                      </p>
                     </>
                   ) : (
-                    <>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                      </svg>
-                      <span>Pagar {formatCurrency(selectedPlan.total)} COP</span>
-                    </>
+                    <div className="text-center py-4">
+                      <p className="text-[11px] text-[#6C7A92]">No se pudieron cargar los planes de esta pasarela</p>
+                      <button onClick={loadData} className="text-[#3A7AFF] text-[10px] font-medium mt-1">Reintentar</button>
+                    </div>
                   )}
-                </button>
+                </>
               )}
-
-              {/* Métodos — single compact line */}
-              <p className="text-center text-[9px] text-[#6C7A92]/60">
-                Tarjeta · PSE · Nequi · Daviplata · Pago seguro
-              </p>
             </motion.div>
           )}
 
@@ -563,7 +787,7 @@ const SubscriptionPayment = () => {
             <motion.div key="history" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="p-3.5">
               
-              {paymentHistory.length === 0 ? (
+              {allHistory.length === 0 ? (
                 <div className="text-center py-6">
                   <svg className="w-8 h-8 mx-auto text-[#DCE4F5] mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -572,17 +796,22 @@ const SubscriptionPayment = () => {
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  {paymentHistory.map((payment, i) => {
+                  {allHistory.map((payment, i) => {
                     const statusColors = {
                       approved: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', label: 'OK' },
                       pending: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', label: 'Pend.' },
                       rejected: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Rech.' },
-                      failed: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Falló' },
+                      failed: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', label: 'Fall\u00F3' },
                       reversed: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', label: 'Rev.' },
                       cancelled: { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200', label: 'Canc.' },
                       created: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', label: 'Nuevo' },
                     };
                     const s = statusColors[payment.status] || statusColors.created;
+                    const gwColors = {
+                      'Directo': 'bg-emerald-50 text-emerald-600',
+                      'dLocal': 'bg-purple-50 text-purple-600',
+                      'ePayco': 'bg-blue-50 text-blue-600',
+                    };
                     
                     return (
                       <div key={payment._id || i}
@@ -596,9 +825,9 @@ const SubscriptionPayment = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           {payment.gateway && (
-                            <span className={`text-[8px] font-medium px-1 py-0.5 rounded ${
-                              payment.gateway === 'dLocal' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
-                            }`}>{payment.gateway}</span>
+                            <span className={`text-[8px] font-medium px-1 py-0.5 rounded ${gwColors[payment.gateway] || 'bg-gray-50 text-gray-600'}`}>
+                              {payment.gateway === 'Directo' ? (payment.paymentMethod || 'Directo') : payment.gateway}
+                            </span>
                           )}
                           <span className="text-[11px] font-bold text-[#1F2937]">{formatCurrency(payment.totalAmount)}</span>
                         </div>
