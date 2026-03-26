@@ -7,7 +7,7 @@ import {
   FaToggleOn, FaToggleOff, FaSave, FaUsers, FaCoins, FaMedal,
   FaPercent, FaTruck, FaHamburger, FaChevronDown, FaTimes, FaSearch,
   FaRocket, FaLightbulb, FaCheck, FaArrowRight, FaInfoCircle,
-  FaExclamationTriangle, FaPlay, FaMagic
+  FaExclamationTriangle, FaPlay, FaMagic, FaWhatsapp
 } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -283,6 +283,13 @@ const LoyaltyManager = () => {
   const [topCustomers, setTopCustomers] = useState([]);
   const [activeTab, setActiveTab] = useState('rules');
 
+  // Clientes tab state
+  const [allCustomers, setAllCustomers] = useState([]);
+  const [customersTotal, setCustomersTotal] = useState(0);
+  const [customersHasMore, setCustomersHasMore] = useState(false);
+  const [customersSearch, setCustomersSearch] = useState('');
+  const [customersLoading, setCustomersLoading] = useState(false);
+
   const [program, setProgram] = useState({
     isActive: false,
     pointsPerAmount: 1,
@@ -340,11 +347,32 @@ const LoyaltyManager = () => {
         api.get(`/loyalty/top-customers?limit=10&businessId=${bizId}`)
       ]);
       setStats(statsRes.data);
-      setTopCustomers(topRes.data);
+      // Handle both old array format and new {customers, total} format
+      const topData = topRes.data;
+      setTopCustomers(Array.isArray(topData) ? topData : topData.customers || []);
     } catch (err) {
       console.error('Error loading loyalty stats:', err);
     }
   }, [bizId]);
+
+  const fetchAllCustomers = useCallback(async (reset = false, search = '') => {
+    if (!bizId) return;
+    try {
+      setCustomersLoading(true);
+      const skip = reset ? 0 : allCustomers.length;
+      const params = new URLSearchParams({ businessId: bizId, limit: '50', skip: String(skip) });
+      if (search) params.set('search', search);
+      const { data } = await api.get(`/loyalty/top-customers?${params}`);
+      const list = data.customers || (Array.isArray(data) ? data : []);
+      setAllCustomers(prev => reset ? list : [...prev, ...list]);
+      setCustomersTotal(data.total || list.length);
+      setCustomersHasMore(data.hasMore || false);
+    } catch (err) {
+      console.error('Error loading all customers:', err);
+    } finally {
+      setCustomersLoading(false);
+    }
+  }, [bizId, allCustomers.length]);
 
   const fetchProducts = useCallback(async () => {
     if (!bizId) return;
@@ -358,6 +386,7 @@ const LoyaltyManager = () => {
 
   useEffect(() => { fetchProgram(); }, [fetchProgram]);
   useEffect(() => { if (activeTab === 'stats') fetchStats(); }, [activeTab, fetchStats]);
+  useEffect(() => { if (activeTab === 'customers') fetchAllCustomers(true, ''); }, [activeTab, bizId]);
 
   useEffect(() => {
     if (!loading && !tourCompleted && program) {
@@ -506,7 +535,17 @@ const LoyaltyManager = () => {
     { id: 'rewards', label: 'Premios', emoji: '🎁', desc: '¿Qué se llevan?', tourId: 'rewards-tab' },
     { id: 'tiers', label: 'Niveles', emoji: '🏆', desc: 'Bronce → Oro → VIP' },
     { id: 'stats', label: 'Stats', emoji: '📊', desc: 'Rendimiento' },
+    { id: 'customers', label: 'Clientes', emoji: '👥', desc: 'Todos los puntos' },
   ];
+
+  const buildRewardWhatsApp = (customer, reward) => {
+    const phone = (customer.phone || customer.customerId?.phone || '').replace(/\D/g, '');
+    const countryPhone = phone.startsWith('57') ? phone : `57${phone}`;
+    const name = customer.customerId?.name || 'Cliente';
+    const biz = businessConfig?.businessName || 'Nuestro negocio';
+    const msg = `¡Hola ${name}! 🎉 Tienes ${customer.points} puntos en ${biz} y puedes reclamar: *${reward.name}* (${reward.pointsCost} pts). ¿Quieres canjearlo?`;
+    return `https://wa.me/${countryPhone}?text=${encodeURIComponent(msg)}`;
+  };
 
   /* ═══ RENDER ═══ */
 
@@ -928,9 +967,14 @@ const LoyaltyManager = () => {
                   </div>
 
                   <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-lg">🏆</span>
-                      <h3 className="text-base font-bold text-slate-800">Clientes más leales</h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🏆</span>
+                        <h3 className="text-base font-bold text-slate-800">Top 10 Clientes</h3>
+                      </div>
+                      <button onClick={() => setActiveTab('customers')} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                        Ver todos ({stats?.totalMembers || 0})
+                      </button>
                     </div>
                     {topCustomers.length === 0 ? (
                       <p className="text-sm text-slate-400 text-center py-4">Aún no hay datos</p>
@@ -957,6 +1001,105 @@ const LoyaltyManager = () => {
                     )}
                   </div>
                 </>
+              )}
+            </div>
+          )}
+
+          {/* TAB: Clientes */}
+          {activeTab === 'customers' && (
+            <div className="space-y-4">
+              {/* Search bar */}
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por teléfono..."
+                  value={customersSearch}
+                  onChange={e => {
+                    setCustomersSearch(e.target.value);
+                    clearTimeout(window._loyaltySearchTimer);
+                    const val = e.target.value;
+                    window._loyaltySearchTimer = setTimeout(() => fetchAllCustomers(true, val), 400);
+                  }}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
+                  {customersTotal} clientes
+                </span>
+              </div>
+
+              {/* Customers list */}
+              {allCustomers.length === 0 && !customersLoading ? (
+                <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
+                  <div className="text-4xl mb-3">👥</div>
+                  <p className="text-sm text-slate-500">No se encontraron clientes con puntos</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {allCustomers.map((c, i) => {
+                    const claimable = c.claimableRewards || [];
+                    return (
+                      <div key={c._id} className="bg-white rounded-2xl border border-slate-200 p-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                            i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-slate-100 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-500'
+                          }`}>
+                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-700 truncate">{c.customerId?.name || c.phone}</p>
+                            <p className="text-[10px] text-slate-400">
+                              {c.phone} &middot; {c.totalOrders} {isService ? 'citas' : 'pedidos'}
+                              {c.currentTier && <span className="ml-1 px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 font-semibold">{c.currentTier}</span>}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-base font-black text-slate-800">{c.points.toLocaleString('es-CO')}</p>
+                            <p className="text-[10px] text-slate-400">puntos</p>
+                          </div>
+                        </div>
+
+                        {/* Claimable rewards */}
+                        {claimable.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-slate-100">
+                            <p className="text-[10px] font-semibold text-emerald-600 mb-2">🎁 Puede reclamar:</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {claimable.map(reward => (
+                                <a
+                                  key={reward._id || reward.name}
+                                  href={buildRewardWhatsApp(c, reward)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors text-[11px] font-medium"
+                                >
+                                  <FaWhatsapp className="w-3 h-3" />
+                                  {reward.name} ({reward.pointsCost} pts)
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Load more */}
+              {customersHasMore && (
+                <button
+                  onClick={() => fetchAllCustomers(false, customersSearch)}
+                  disabled={customersLoading}
+                  className="w-full py-3 rounded-xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-colors disabled:opacity-50"
+                >
+                  {customersLoading ? 'Cargando...' : `Cargar más (${allCustomers.length} de ${customersTotal})`}
+                </button>
+              )}
+
+              {customersLoading && allCustomers.length === 0 && (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-400 mx-auto" />
+                </div>
               )}
             </div>
           )}
