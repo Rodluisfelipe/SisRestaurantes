@@ -7,8 +7,16 @@ import {
   FaUtensils, FaTv, FaShoppingBag, FaEye, FaPlay, FaCheck,
   FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaClock, FaTimes,
   FaChair, FaHome, FaTag, FaExclamationTriangle, FaWifi,
-  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle
+  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle,
+  FaCreditCard
 } from 'react-icons/fa';
+
+const PAYMENT_LABELS = {
+  cash: 'Efectivo', efectivo: 'Efectivo',
+  nequi: 'Nequi', daviplata: 'Daviplata',
+  transfer: 'Transferencia', transferencia: 'Transferencia',
+  roomCharge: 'Cargo a habitación', other: 'Otro'
+};
 
 import { socket, socketDiagnostic, forceReconnect } from '../services/socket';
 import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
@@ -509,6 +517,14 @@ function ModernOrdersDashboard() {
                         </span>
                       </div>
                     ); })()}
+
+                    {orderDetails.paymentMethod && (
+                      <div className="flex items-center gap-2">
+                        <FaCreditCard className="text-xs text-slate-400" />
+                        <span className="text-[13px] text-slate-500">Pago:</span>
+                        <span className="text-[13px] font-medium text-slate-800">{PAYMENT_LABELS[orderDetails.paymentMethod] || orderDetails.paymentMethod}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
