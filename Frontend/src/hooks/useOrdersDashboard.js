@@ -75,6 +75,8 @@ export default function useOrdersDashboard() {
     if (order.tableNumber) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:16px;color:#000"><span>${businessConfig?.businessType === 'hotel' ? 'Hab.:' : 'Mesa:'}</span><span>${order.tableNumber}</span></div>`;
     if (order.orderType === 'delivery' && order.address) customerHtml += `<div style="padding:2px 0;font-weight:900;font-size:14px;color:#000">Dir: ${order.address}</div>`;
     if (order.orderType === 'delivery' && order.deliveryZoneName) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:14px;color:#000"><span>Zona:</span><span>${order.deliveryZoneName}</span></div>`;
+    const pmLabels = { cash: 'Efectivo', efectivo: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia', roomCharge: 'Cargo a hab.', other: 'Otro' };
+    if (order.paymentMethod) customerHtml += `<div style="display:flex;justify-content:space-between;padding:2px 0;font-weight:900;font-size:15px;color:#000"><span>Pago:</span><span>${pmLabels[order.paymentMethod] || order.paymentMethod}</span></div>`;
 
     let deliveryFeeHtml = '';
     if (order.deliveryFee) {
