@@ -184,7 +184,7 @@ export default function POSTicket({ order, businessConfig, onClose }) {
               {extra.paymentMethod && (
                 <>
                   <div style={S.divider} />
-                  <div style={S.row}><span>Pago:</span><span>{extra.paymentMethod === 'cash' ? 'Efectivo' : extra.paymentMethod === 'nequi' ? 'Nequi' : extra.paymentMethod === 'daviplata' ? 'Daviplata' : 'Transferencia'}</span></div>
+                  <div style={S.row}><span>Pago:</span><span>{({'cash':'Efectivo','efectivo':'Efectivo','nequi':'Nequi','daviplata':'Daviplata','transfer':'Transferencia','transferencia':'Transferencia','other':'Otro'})[extra.paymentMethod] || extra.paymentMethod}</span></div>
                   {extra.cashReceived != null && <div style={S.row}><span>Recibido:</span><span>${extra.cashReceived.toLocaleString()}</span></div>}
                   {extra.change != null && extra.change > 0 && <div style={S.row}><span>Cambio:</span><span>${extra.change.toLocaleString()}</span></div>}
                 </>
