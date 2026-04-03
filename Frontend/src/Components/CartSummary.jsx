@@ -763,11 +763,15 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               {!initialOrderTypeSelected && !hasServices && (
                 <div className="space-y-1.5">
                   <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">Tipo de pedido</p>
-                  <div className={`relative p-1 rounded-2xl bg-slate-100 ${isFromTableQR ? 'grid grid-cols-2' : 'grid grid-cols-3'}`}>
+                  <div className={`relative p-1 rounded-2xl bg-slate-100`} style={{ display: 'grid', gridTemplateColumns: `repeat(${[
+                    businessConfig?.orderTypes?.inSite !== false ? 1 : 0,
+                    businessConfig?.orderTypes?.takeaway !== false ? 1 : 0,
+                    !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? 1 : 0
+                  ].reduce((a, b) => a + b, 0) || 1}, 1fr)` }}>
                     {[
-                      { id: 'inSite', label: 'En Sitio', icon: CI.dineIn },
-                      { id: 'takeaway', label: 'Llevar', icon: CI.takeaway },
-                      ...(!isFromTableQR ? [{ id: 'delivery', label: 'Domicilio', icon: CI.delivery }] : [])
+                      ...(businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: 'En Sitio', icon: CI.dineIn }] : []),
+                      ...(businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: 'Llevar', icon: CI.takeaway }] : []),
+                      ...(!isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: 'Domicilio', icon: CI.delivery }] : [])
                     ].map(opt => {
                       const isActive = orderType === opt.id;
                       return (
