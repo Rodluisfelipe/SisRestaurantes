@@ -184,6 +184,12 @@ const businessConfigSchema = new mongoose.Schema({
     enum: ['whatsapp', 'inapp', 'both'],
     default: 'whatsapp'
   },
+  // Tipos de pedido habilitados
+  orderTypes: {
+    inSite: { type: Boolean, default: true },
+    takeaway: { type: Boolean, default: true },
+    delivery: { type: Boolean, default: true }
+  },
   paymentInfo: {
     nequi: { type: String, default: '' },
     daviplata: { type: String, default: '' },

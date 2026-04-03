@@ -31,6 +31,7 @@ const PaymentConfig = () => {
     accountHolder: '',
     instructions: ''
   });
+  const [orderTypes, setOrderTypes] = useState({ inSite: true, takeaway: true, delivery: true });
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -40,6 +41,11 @@ const PaymentConfig = () => {
   useEffect(() => {
     if (businessConfig) {
       setOrderingMode(businessConfig.orderingMode || 'whatsapp');
+      setOrderTypes({
+        inSite: businessConfig.orderTypes?.inSite ?? true,
+        takeaway: businessConfig.orderTypes?.takeaway ?? true,
+        delivery: businessConfig.orderTypes?.delivery ?? true,
+      });
       setPaymentInfo({
         nequi: businessConfig.paymentInfo?.nequi || '',
         daviplata: businessConfig.paymentInfo?.daviplata || '',
@@ -134,6 +140,7 @@ const PaymentConfig = () => {
       await api.put('/business-config', {
         businessId,
         orderingMode,
+        orderTypes,
         paymentInfo,
         paymentMethods
       });
@@ -270,6 +277,51 @@ const PaymentConfig = () => {
                 </div>
               </button>
             ))}
+          </div>
+
+          {/* Order Types Toggles */}
+          <div className="mt-6">
+            <h4 className="text-sm font-bold text-gray-900 mb-1">Tipos de pedido disponibles</h4>
+            <p className="text-xs text-gray-500 mb-3">Activa o desactiva los tipos de pedido que ofreces</p>
+            <div className="space-y-2">
+              {[
+                { id: 'inSite', label: 'En Sitio / Mesa', icon: '🪑', desc: 'Clientes piden desde el local' },
+                { id: 'takeaway', label: 'Para Llevar', icon: '🛍️', desc: 'Clientes recogen su pedido' },
+                { id: 'delivery', label: 'Domicilio', icon: '🚚', desc: 'Envío a la dirección del cliente' },
+              ].map(ot => {
+                const isOn = orderTypes[ot.id];
+                return (
+                  <button
+                    key={ot.id}
+                    onClick={() => {
+                      const next = { ...orderTypes, [ot.id]: !isOn };
+                      if (!next.inSite && !next.takeaway && !next.delivery) return;
+                      setOrderTypes(next);
+                      setHasChanges(true);
+                    }}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                      isOn ? 'border-green-300 bg-green-50/30' : 'border-gray-200 bg-gray-50/50'
+                    }`}
+                  >
+                    <span className="text-xl">{ot.icon}</span>
+                    <div className="flex-1 text-left">
+                      <span className="font-semibold text-gray-900 text-sm">{ot.label}</span>
+                      <p className="text-xs text-gray-500">{ot.desc}</p>
+                    </div>
+                    <div className={`relative w-11 h-6 rounded-full transition-colors ${isOn ? 'bg-green-500' : 'bg-gray-300'}`}>
+                      <motion.div
+                        layout
+                        className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm"
+                        style={{ left: isOn ? '22px' : '2px' }}
+                      />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {!orderTypes.inSite && !orderTypes.takeaway && !orderTypes.delivery && (
+              <p className="text-xs text-red-500 mt-2">⚠️ Debes tener al menos un tipo de pedido activo</p>
+            )}
           </div>
 
           {/* Info about in-app flow */}
