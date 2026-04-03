@@ -146,61 +146,67 @@ function OrderCard({
             </div>
 
             {/* Action buttons */}
-            <div className="flex gap-3 pt-1">
-              <button onClick={() => onShowDetails(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors">
-                <FaEye className="text-[10px]" /> <span>Detalles</span>
-              </button>
-              <button onClick={() => onPrint(order)} className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors" title="Imprimir comanda">
-                <FaPrint className="text-[10px]" />
-              </button>
-
-              {order.paymentProof && (
-                <button onClick={() => onShowProof(order.paymentProof)} className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-purple-200 transition-colors">
-                  <FaImage className="text-[10px]" /> <span>Comprobante</span>
+            <div className="space-y-2 pt-1">
+              {/* Row 1: utility buttons */}
+              <div className="flex gap-2">
+                <button onClick={() => onShowDetails(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors">
+                  <FaEye className="text-[10px]" /> <span>Detalles</span>
                 </button>
-              )}
+                <button onClick={() => onPrint(order)} className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors" title="Imprimir comanda">
+                  <FaPrint className="text-[10px]" />
+                </button>
 
-              {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
-                <>
-                  <button onClick={() => onConfirmPayment(order._id)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
-                    <FaCheckCircle className="text-[9px]" /> <span>Confirmar</span>
+                {order.paymentProof && (
+                  <button onClick={() => onShowProof(order.paymentProof)} className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-purple-200 transition-colors">
+                    <FaImage className="text-[10px]" /> <span>Comprobante</span>
                   </button>
-                  <button onClick={() => onRejectPayment(order._id)} className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
-                    <FaTimesCircle className="text-[9px]" />
-                  </button>
-                </>
-              )}
+                )}
+              </div>
 
-              {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
-                  <FaPlay className="text-[9px]" /> <span>Iniciar</span>
-                </button>
-              )}
-
-              {order.status === ORDER_STATUS.PENDING && (
-                <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
-                  <FaPlay className="text-[9px]" /> <span>Iniciar</span>
-                </button>
-              )}
-
-              {order.status === ORDER_STATUS.IN_PROGRESS && (
-                <div className="flex w-full gap-2">
-                  {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
-                    <button onClick={() => onAssignDelivery(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
-                      <FaMotorcycle className="text-[11px]" /> <span>Asignar Domi</span>
+              {/* Row 2: status action + cancel */}
+              <div className="flex gap-2">
+                {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                  <>
+                    <button onClick={() => onConfirmPayment(order._id)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                      <FaCheckCircle className="text-[9px]" /> <span>Confirmar</span>
                     </button>
-                  )}
-                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.COMPLETED)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
-                    <FaCheck className="text-[9px]" /> <span>{order.orderType === 'delivery' ? 'Completar (Forzado)' : 'Completar'}</span>
-                  </button>
-                </div>
-              )}
+                    <button onClick={() => onRejectPayment(order._id)} className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                      <FaTimesCircle className="text-[9px]" />
+                    </button>
+                  </>
+                )}
 
-              {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
-                <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); }} className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 px-2.5 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-red-200 transition-colors">
-                  <FaTimes className="text-[9px]" />
-                </button>
-              )}
+                {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
+                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                    <FaPlay className="text-[9px]" /> <span>Iniciar</span>
+                  </button>
+                )}
+
+                {order.status === ORDER_STATUS.PENDING && (
+                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                    <FaPlay className="text-[9px]" /> <span>Iniciar</span>
+                  </button>
+                )}
+
+                {order.status === ORDER_STATUS.IN_PROGRESS && (
+                  <>
+                    {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
+                      <button onClick={() => onAssignDelivery(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                        <FaMotorcycle className="text-[11px]" /> <span>Asignar Domi</span>
+                      </button>
+                    )}
+                    <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.COMPLETED)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                      <FaCheck className="text-[9px]" /> <span>{order.orderType === 'delivery' ? 'Completar' : 'Completar'}</span>
+                    </button>
+                  </>
+                )}
+
+                {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
+                  <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); }} className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-red-200 transition-colors">
+                    <FaTimes className="text-[9px]" /> <span>Cancelar</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </>

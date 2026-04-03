@@ -743,6 +743,16 @@ function ModernOrdersDashboard() {
                           <span>Enviar a cocina</span>
                         </button>
                       )}
+
+                      {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
+                        <button
+                          onClick={() => { if (window.confirm('¿Cancelar pedido #' + orderDetails.orderNumber + '?')) { updateOrderStatus(orderDetails._id, ORDER_STATUS.CANCELLED); setOrderDetails(null); } }}
+                          className="flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-500 px-4 py-2.5 rounded-lg text-sm font-semibold border border-red-200 transition-colors"
+                        >
+                          <FaTimes className="text-xs" />
+                          <span>Cancelar pedido</span>
+                        </button>
+                      )}
                 </div>
               </div>
             </motion.div>
