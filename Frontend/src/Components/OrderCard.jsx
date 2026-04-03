@@ -3,9 +3,17 @@ import { motion } from 'framer-motion';
 import {
   FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaEye, FaPlay, FaCheck,
   FaChair, FaHome, FaExclamationTriangle, FaTimes,
-  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle
+  FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle,
+  FaCreditCard
 } from 'react-icons/fa';
 import { ORDER_STATUS } from '../utils/constants';
+
+const PAYMENT_LABELS = {
+  cash: 'Efectivo', efectivo: 'Efectivo',
+  nequi: 'Nequi', daviplata: 'Daviplata',
+  transfer: 'Transferencia', transferencia: 'Transferencia',
+  roomCharge: 'Cargo a habitación', other: 'Otro'
+};
 
 function OrderCard({
   order, viewMode, cardVariants, isService, businessType,
@@ -114,6 +122,13 @@ function OrderCard({
                 <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1.5 rounded-lg border border-amber-200">
                   <FaExclamationTriangle className="text-[10px] text-amber-500 shrink-0" />
                   <span className="text-xs font-semibold text-amber-700">Envío por confirmar</span>
+                </div>
+              )}
+
+              {order.paymentMethod && (
+                <div className="flex items-center gap-2 text-[13px]">
+                  <FaCreditCard className="text-[10px] text-slate-400 shrink-0" />
+                  <span className="font-medium text-slate-700">{PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}</span>
                 </div>
               )}
             </div>
@@ -225,7 +240,7 @@ function OrderCard({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5 truncate">
-                {order.customerName} · {orderTypeInfo.label} · {timeElapsed}
+                {order.customerName} · {orderTypeInfo.label} · {timeElapsed}{order.paymentMethod ? ` · ${PAYMENT_LABELS[order.paymentMethod] || order.paymentMethod}` : ''}
               </p>
             </div>
           </div>
