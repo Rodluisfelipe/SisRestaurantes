@@ -22,7 +22,7 @@ export default function PrintAgentConfig() {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.post('/print-agent/generate-key');
+      const res = await api.post('/print-agent/generate-key', { businessId });
       setPrintKey(res.data.key);
       setSuccess('Clave generada. Cópiala y pégala en el Print Agent.');
       setTimeout(() => setSuccess(''), 5000);
@@ -39,7 +39,7 @@ export default function PrintAgentConfig() {
     setLoading(true);
     setError(null);
     try {
-      await api.delete('/print-agent/revoke-key');
+      await api.delete(`/print-agent/revoke-key?businessId=${businessId}`);
       setPrintKey('');
       setSuccess('Clave revocada');
       setTimeout(() => setSuccess(''), 3000);
@@ -60,7 +60,7 @@ export default function PrintAgentConfig() {
   const handleTestPrint = async () => {
     setLoading(true);
     try {
-      await api.post('/print-agent/test-print');
+      await api.post('/print-agent/test-print', { businessId });
       setSuccess('Prueba enviada. Si el agente está conectado, se imprimirá un ticket.');
       setTimeout(() => setSuccess(''), 5000);
     } catch (err) {
