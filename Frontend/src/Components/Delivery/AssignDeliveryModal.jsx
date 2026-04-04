@@ -44,12 +44,12 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
     }
   };
 
-  const handleAssignDomi = async (mode) => {
+  const handleAssignDomi = async (mode, domi) => {
     setLoading(true);
     try {
       const body = { mode };
-      if (mode === 'profile' && selectedDomi) {
-        body.deliveryPersonId = selectedDomi._id;
+      if (mode === 'profile' && domi) {
+        body.deliveryPersonId = domi._id;
       }
       const res = await api.post(`/delivery-admin/restaurants/${businessConfig.slug}/orders/${order._id}/assign-delivery-person`, body);
       setResult(res.data);
@@ -168,7 +168,7 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
                           key={d._id}
                           onClick={() => {
                             setSelectedDomi(d);
-                            handleAssignDomi('profile');
+                            handleAssignDomi('profile', d);
                           }}
                           disabled={loading}
                           className={`w-full p-3 rounded-lg border text-left transition-all flex items-center justify-between ${
