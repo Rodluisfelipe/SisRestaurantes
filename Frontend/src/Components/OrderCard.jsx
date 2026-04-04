@@ -7,6 +7,7 @@ import {
   FaCreditCard
 } from 'react-icons/fa';
 import { ORDER_STATUS } from '../utils/constants';
+import api from '../services/api';
 
 const PAYMENT_LABELS = {
   cash: 'Efectivo', efectivo: 'Efectivo',
@@ -170,6 +171,22 @@ function OrderCard({
                 <button onClick={() => onPrint(order)} className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors" title="Imprimir comanda">
                   <FaPrint className="text-[10px]" />
                 </button>
+
+                {order.status !== ORDER_STATUS.PENDING && order.status !== 'pending_payment' && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await api.post(`/print-agent/print-receipt/${order._id}`);
+                      } catch {
+                        onPrint(order);
+                      }
+                    }}
+                    className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-emerald-200 transition-colors"
+                    title="Imprimir recibo"
+                  >
+                    <FaMoneyBillWave className="text-[10px]" />
+                  </button>
+                )}
 
                 {order.paymentProof && (
                   <button onClick={() => onShowProof(order.paymentProof)} className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-purple-200 transition-colors">

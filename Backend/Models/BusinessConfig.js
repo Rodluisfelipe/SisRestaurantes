@@ -195,6 +195,11 @@ const businessConfigSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // API key para Print Agent (auto-print de tiquetes)
+  printAgentKey: {
+    type: String,
+    default: null
+  },
   paymentInfo: {
     nequi: { type: String, default: '' },
     daviplata: { type: String, default: '' },

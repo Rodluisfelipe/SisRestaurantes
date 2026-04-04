@@ -23,6 +23,7 @@ import DeliveryZoneManager from "../Components/DeliveryZoneManager";
 import PushNotificationToggle from "../Components/PushNotificationToggle";
 import PaymentConfig from "../Components/Admin/PaymentConfig";
 import PrinterSettings from "../Components/PrinterSettings";
+import PrintAgentConfig from "../Components/Admin/PrintAgentConfig";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Componentes extraidos del monolito
@@ -351,6 +352,7 @@ function Admin() {
                 {activeTab === 'printer' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <PrinterSettings />
+                    <PrintAgentConfig />
                   </AdminTabWrapper>
                 )}
                 {activeTab === 'categories' && (
