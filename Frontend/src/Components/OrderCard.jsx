@@ -168,7 +168,13 @@ function OrderCard({
                 <button onClick={() => onShowDetails(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors">
                   <FaEye className="text-[10px]" /> <span>Detalles</span>
                 </button>
-                <button onClick={() => onPrint(order)} className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors" title="Imprimir comanda">
+                <button onClick={async () => {
+                  try {
+                    await api.post(`/print-agent/print-comanda/${order._id}`);
+                  } catch {
+                    onPrint(order);
+                  }
+                }} className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors" title="Imprimir comanda">
                   <FaPrint className="text-[10px]" />
                 </button>
 

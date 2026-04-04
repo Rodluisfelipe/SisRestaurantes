@@ -421,7 +421,13 @@ function ModernOrdersDashboard() {
                   
                   <div className="flex items-center gap-2">
                     <button
-                        onClick={() => handlePrintOrder(orderDetails)}
+                        onClick={async () => {
+                          try {
+                            await api.post(`/print-agent/print-comanda/${orderDetails._id}`);
+                          } catch {
+                            handlePrintOrder(orderDetails);
+                          }
+                        }}
                         className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
                         title="Imprimir comanda"
                       >
