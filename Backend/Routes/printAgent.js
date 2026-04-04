@@ -9,7 +9,7 @@ const logger = require('../utils/logger');
 // POST /api/print-agent/generate-key — Generate a new print agent key (authed admin)
 router.post('/generate-key', authenticateToken, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = req.user.businessId || req.body.businessId;
     if (!businessId) return res.status(400).json({ error: 'No business associated' });
 
     const key = crypto.randomBytes(32).toString('hex');
@@ -25,7 +25,7 @@ router.post('/generate-key', authenticateToken, async (req, res) => {
 // DELETE /api/print-agent/revoke-key — Revoke the print agent key
 router.delete('/revoke-key', authenticateToken, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = req.user.businessId || req.query.businessId;
     if (!businessId) return res.status(400).json({ error: 'No business associated' });
 
     await BusinessConfig.findByIdAndUpdate(businessId, { printAgentKey: null });
@@ -117,7 +117,7 @@ router.get('/stream', async (req, res) => {
 // GET /api/print-agent/test-print — Send a test order to the print agent (authed admin)
 router.post('/test-print', authenticateToken, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = req.user.businessId || req.body.businessId;
     if (!businessId) return res.status(400).json({ error: 'No business associated' });
 
     const testOrder = {
@@ -153,7 +153,7 @@ router.post('/test-print', authenticateToken, async (req, res) => {
 // POST /api/print-agent/print-receipt/:orderId — Print receipt for a specific order (authed admin)
 router.post('/print-receipt/:orderId', authenticateToken, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = req.user.businessId || req.body.businessId || req.query.businessId;
     if (!businessId) return res.status(400).json({ error: 'No business associated' });
 
     const { orderId } = req.params;
