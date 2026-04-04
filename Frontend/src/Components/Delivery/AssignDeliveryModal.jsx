@@ -206,6 +206,8 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
                 </div>
                 <p className="text-xs text-slate-500">Muéstrale o imprímele este QR al domiciliario</p>
 
+                {businessConfig?.requireDeliveryCode !== false && (
+                <>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <p className="text-xs text-slate-500 mb-1">Código de confirmación del cliente</p>
                   <div className="flex items-center justify-center gap-2">
@@ -225,6 +227,8 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
                   <FaWhatsapp className="text-lg" />
                   Enviar código al cliente por WhatsApp
                 </a>
+                </>
+                )}
 
                 <button onClick={onClose} className="w-full py-2 text-sm text-slate-500 hover:text-slate-700">
                   Cerrar
@@ -240,6 +244,8 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
                 </div>
                 <p className="font-bold text-slate-800">Domiciliario asignado</p>
 
+                {businessConfig?.requireDeliveryCode !== false && (
+                <>
                 <div className="bg-slate-50 rounded-xl p-4">
                   <p className="text-xs text-slate-500 mb-1">Código de confirmación del cliente</p>
                   <div className="flex items-center justify-center gap-2">
@@ -259,6 +265,8 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
                   <FaWhatsapp className="text-lg" />
                   Enviar código al cliente por WhatsApp
                 </a>
+                </>
+                )}
 
                 <button onClick={onClose} className="w-full py-2 text-sm text-slate-500 hover:text-slate-700">
                   Cerrar

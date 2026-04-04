@@ -150,7 +150,9 @@ const DomiPage = () => {
 
   // Confirm delivery
   const handleConfirm = async (orderId) => {
-    if (confirmCode.length !== 4) {
+    const order = orders.find(o => o._id === orderId);
+    const requireCode = order?.requireConfirmationCode !== false;
+    if (requireCode && confirmCode.length !== 4) {
       setConfirmError('Ingresa los 4 dígitos');
       return;
     }
@@ -160,7 +162,7 @@ const DomiPage = () => {
       const res = await fetch(`${API_BASE}/restaurants/${slug}/domi/orders/${orderId}/confirm`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: confirmCode })
+        body: JSON.stringify(requireCode ? { code: confirmCode } : {})
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -325,6 +327,7 @@ const DomiPage = () => {
                 )}
 
                 {confirmingOrderId === order._id ? (
+                  order.requireConfirmationCode !== false ? (
                   <div className="space-y-2">
                     <p className="text-sm text-slate-600 text-center">Pídele el código al cliente</p>
                     <input
@@ -354,6 +357,27 @@ const DomiPage = () => {
                       </button>
                     </div>
                   </div>
+                  ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm text-slate-600 text-center">¿Confirmar que entregaste el pedido?</p>
+                    {confirmError && <p className="text-red-500 text-xs text-center">{confirmError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setConfirmingOrderId(null); setConfirmError(''); }}
+                        className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-500 font-medium"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={() => handleConfirm(order._id)}
+                        disabled={loading}
+                        className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold py-3 rounded-xl transition-colors"
+                      >
+                        Sí, entregado
+                      </button>
+                    </div>
+                  </div>
+                  )
                 ) : (
                   <button
                     onClick={() => setConfirmingOrderId(order._id)}

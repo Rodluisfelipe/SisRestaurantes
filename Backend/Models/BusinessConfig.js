@@ -190,6 +190,11 @@ const businessConfigSchema = new mongoose.Schema({
     takeaway: { type: Boolean, default: true },
     delivery: { type: Boolean, default: true }
   },
+  // Código de confirmación obligatorio para domiciliarios
+  requireDeliveryCode: {
+    type: Boolean,
+    default: true
+  },
   paymentInfo: {
     nequi: { type: String, default: '' },
     daviplata: { type: String, default: '' },
