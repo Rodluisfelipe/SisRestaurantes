@@ -55,7 +55,14 @@ export default function PrinterSettings() {
   const businessPhone = businessConfig?.whatsappNumber || '';
   const nit = businessConfig?.nit || '';
   const S = previewStyles(paperSize);
-  const widthPx = paperSize === '58' ? '210px' : '200px';
+  const paperOptions = [
+    { value: '80', label: '80mm', desc: 'Estándar POS', chars: 48 },
+    { value: '76', label: '76mm', desc: 'Cocina', chars: 42 },
+    { value: '58', label: '58mm', desc: 'Compacto', chars: 32 },
+    { value: '44', label: '44mm', desc: 'Mini/BT', chars: 22 },
+  ];
+  const widthPxMap = { '80': '260px', '76': '240px', '58': '210px', '44': '170px' };
+  const widthPx = widthPxMap[paperSize] || '200px';
 
   return (
     <div className="space-y-4">
@@ -75,22 +82,21 @@ export default function PrinterSettings() {
               <FaRuler className="inline text-[9px] mr-1" />
               Tamaño del papel
             </label>
-            <div className="flex gap-3">
-              {['55', '58'].map(size => (
+            <div className="grid grid-cols-4 gap-2">
+              {paperOptions.map(opt => (
                 <button
-                  key={size}
+                  key={opt.value}
                   type="button"
-                  onClick={() => setPaperSize(size)}
-                  className={`flex-1 px-4 py-3 rounded-xl border-2 text-center transition-all ${
-                    paperSize === size
+                  onClick={() => setPaperSize(opt.value)}
+                  className={`px-2 py-3 rounded-xl border-2 text-center transition-all ${
+                    paperSize === opt.value
                       ? 'border-slate-800 bg-slate-800 text-white'
                       : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                   }`}
                 >
-                  <span className="text-lg font-black">{size}mm</span>
-                  <span className="block text-[10px] mt-0.5 opacity-70">
-                    {size === '55' ? 'Compacto' : 'Estándar'}
-                  </span>
+                  <span className="text-base font-black block">{opt.label}</span>
+                  <span className="block text-[9px] mt-0.5 opacity-70">{opt.desc}</span>
+                  <span className="block text-[8px] mt-0.5 opacity-50">{opt.chars} chars</span>
                 </button>
               ))}
             </div>

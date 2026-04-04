@@ -22,6 +22,7 @@ import { socket, socketDiagnostic, forceReconnect } from '../services/socket';
 import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
 import OrderCard from './OrderCard';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';
+import api from '../services/api';
 
 function ModernOrdersDashboard() {
   const {
@@ -426,6 +427,22 @@ function ModernOrdersDashboard() {
                       >
                         <FaPrint className="text-slate-500 text-xs" />
                       </button>
+                    {orderDetails.status !== 'pending' && orderDetails.status !== 'pending_payment' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api.post(`/print-agent/print-receipt/${orderDetails._id}`);
+                          } catch (e) {
+                            console.log('Print agent not connected, using browser print');
+                            handlePrintOrder(orderDetails);
+                          }
+                        }}
+                        className="w-11 h-11 bg-emerald-50 hover:bg-emerald-100 rounded-lg flex items-center justify-center transition-colors"
+                        title="Imprimir recibo (para cliente)"
+                      >
+                        <FaMoneyBillWave className="text-emerald-600 text-xs" />
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setSelectedOrder(null);

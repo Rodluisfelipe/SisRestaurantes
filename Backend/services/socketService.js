@@ -1,9 +1,14 @@
 // Servicio para manejar sockets y rooms por negocio
+const EventEmitter = require('events');
 let ioInstance = null;
 const connectedClients = new Map(); // Track connected clients
 const { verifyToken } = require('../config/jwt');
 const logger = require('../utils/logger');
 const viewerTracker = require('./viewerTracker');
+
+// EventEmitter for Print Agent SSE bridge
+const printEmitter = new EventEmitter();
+printEmitter.setMaxListeners(50); // Allow up to 50 concurrent print agents
 
 // Slug cache to avoid DB lookups on every emit
 const slugCache = new Map(); // businessId -> { slug, cachedAt }
@@ -477,6 +482,11 @@ async function emitToBusiness(businessId, event, data) {
     // Log successful emission
     logger.debug(`Successfully emitted ${event} to business`, { roomId });
     
+    // Bridge to Print Agent SSE — forward order_created events
+    if (event === 'order_created') {
+      printEmitter.emit(`print:${roomId}`, data);
+    }
+    
   } catch (error) {
     logger.error('Error in emitToBusiness', error);
   }
@@ -527,5 +537,6 @@ module.exports = {
   emitToOrder,
   emitBusinessesUpdate,
   getConnectedClientsInfo,
-  testEmitToBusiness
+  testEmitToBusiness,
+  printEmitter
 }; 
