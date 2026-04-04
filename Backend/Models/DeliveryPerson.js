@@ -28,6 +28,10 @@ const deliveryPersonSchema = new mongoose.Schema({
     type: String,
     enum: ['available', 'on_delivery'],
     default: 'available'
+  },
+  totalDeliveries: {
+    type: Number,
+    default: 0
   }
 }, { timestamps: true });
 

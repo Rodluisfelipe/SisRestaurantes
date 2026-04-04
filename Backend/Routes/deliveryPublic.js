@@ -178,6 +178,18 @@ router.post('/:token/confirm', confirmLimiter, async (req, res) => {
     order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: requireCode ? 'Entregado (código confirmado)' : 'Entregado (sin código)' });
     await order.save();
 
+    // Update delivery person: increment totalDeliveries and set status back to available
+    if (order.deliveryPersonId) {
+      try {
+        await DeliveryPerson.findByIdAndUpdate(order.deliveryPersonId, {
+          $inc: { totalDeliveries: 1 },
+          $set: { status: 'available' }
+        });
+      } catch (dpErr) {
+        logger.warn('Failed to update delivery person after confirm', { error: dpErr.message, dpId: order.deliveryPersonId });
+      }
+    }
+
     // Notify dashboard and tracking page
     socketService.emitToBusiness(order.businessId, 'orderUpdated', order.toObject());
     socketService.emitToBusiness(order.businessId, 'delivery:confirmed', {

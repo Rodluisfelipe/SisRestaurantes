@@ -531,10 +531,22 @@ function emitToOrder(orderId, event, data) {
   ioInstance.to(room).emit(event, data);
 }
 
+/**
+ * Emit to the delivery room for a business (domi portal).
+ * Domis join `restaurant:${slug}:delivery` rooms.
+ */
+function emitToDeliveryRoom(slug, event, data) {
+  if (!ioInstance || !slug) return;
+  const room = `restaurant:${slug}:delivery`;
+  ioInstance.to(room).emit(event, data);
+  logger.debug(`Emitted ${event} to delivery room`, { room });
+}
+
 module.exports = {
   initSocket,
   emitToBusiness,
   emitToOrder,
+  emitToDeliveryRoom,
   emitBusinessesUpdate,
   getConnectedClientsInfo,
   testEmitToBusiness,
