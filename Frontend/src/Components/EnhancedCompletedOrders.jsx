@@ -194,7 +194,7 @@ function EnhancedCompletedOrders() {
       const currencyFormat = '"$"#,##0';
 
       // Title
-      ws.mergeCells('A1:P1');
+      ws.mergeCells('A1:Q1');
       const titleCell = ws.getCell('A1');
       titleCell.value = `${businessConfig?.businessName || 'Reporte'} — Pedidos Completados`;
       titleCell.font = { bold: true, size: 16, color: { argb: brandColor } };
@@ -202,7 +202,7 @@ function EnhancedCompletedOrders() {
       ws.getRow(1).height = 32;
 
       // Subtitle with active filters
-      ws.mergeCells('A2:P2');
+      ws.mergeCells('A2:Q2');
       const subtitleCell = ws.getCell('A2');
       const dateLabel = viewMode === 'today'
         ? new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' })
@@ -219,7 +219,7 @@ function EnhancedCompletedOrders() {
       ws.getRow(2).height = 20;
 
       // Headers
-      const headers = ['# Pedido', 'Fecha', 'Hora', 'Cliente', 'Teléfono', 'Tipo', 'Canal', 'Método de Pago', 'Mesa/Hab', 'Dirección', 'Productos', 'Cant. Items', 'Subtotal', 'Descuento', 'Envío', 'Total'];
+      const headers = ['# Pedido', 'Fecha', 'Hora', 'Cliente', 'Teléfono', 'Tipo', 'Canal', 'Método de Pago', 'Mesa/Hab', 'Dirección', 'Domiciliario', 'Productos', 'Cant. Items', 'Subtotal', 'Descuento', 'Envío', 'Total'];
       const headerRow = ws.addRow(headers);
       headerRow.eachCell((cell) => {
         cell.fill = headerFill;
@@ -232,7 +232,7 @@ function EnhancedCompletedOrders() {
       ws.columns = [
         { width: 10 }, { width: 13 }, { width: 8 }, { width: 22 }, { width: 15 },
         { width: 13 }, { width: 11 }, { width: 15 }, { width: 10 }, { width: 25 },
-        { width: 40 }, { width: 10 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 14 },
+        { width: 18 }, { width: 40 }, { width: 10 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 14 },
       ];
 
       const typeColors = { 'En sitio': 'FFDBEAFE', 'Para llevar': 'FFFEF3C7', 'Domicilio': 'FFF3E8FF' };
@@ -243,6 +243,7 @@ function EnhancedCompletedOrders() {
         const itemsSummary = (o.items || []).map(i => `${i.quantity}x ${i.name}`).join('\n');
         const totalItems = (o.items || []).reduce((s, i) => s + i.quantity, 0);
         const typeLabel = orderTypeLabel(o.orderType);
+        const domiName = o.deliveryPersonId?.name || '';
 
         const row = ws.addRow([
           o.orderNumber,
@@ -250,6 +251,7 @@ function EnhancedCompletedOrders() {
           date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
           o.customerName || '', o.phone || '', typeLabel, channelLabel(o.orderChannel),
           paymentLabel(o.paymentMethod), o.tableNumber || '', o.address || '',
+          domiName,
           itemsSummary, totalItems,
           o.totalAmount || 0, o.discountAmount || 0, o.deliveryFee || 0, o.finalAmount || o.totalAmount || 0,
         ]);
@@ -261,12 +263,12 @@ function EnhancedCompletedOrders() {
         row.eachCell((cell, colNumber) => {
           cell.border = allBorders;
           cell.fill = rowFill;
-          cell.alignment = { vertical: 'middle', wrapText: colNumber === 11 };
-          if ([13, 14, 15, 16].includes(colNumber)) {
+          cell.alignment = { vertical: 'middle', wrapText: colNumber === 12 };
+          if ([14, 15, 16, 17].includes(colNumber)) {
             cell.numFmt = currencyFormat;
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
           }
-          if ([1, 2, 3, 6, 7, 9, 12].includes(colNumber)) {
+          if ([1, 2, 3, 6, 7, 9, 11, 13].includes(colNumber)) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           }
         });
@@ -710,6 +712,12 @@ function EnhancedCompletedOrders() {
                   <div className="col-span-2 flex items-center gap-2 text-slate-700">
                     <FaMapMarkerAlt className="text-slate-400 text-xs" />
                     <span>{selectedOrder.address}</span>
+                  </div>
+                )}
+                {selectedOrder.orderType === 'delivery' && selectedOrder.deliveryPersonId?.name && (
+                  <div className="col-span-2 flex items-center gap-2 text-slate-700">
+                    <FaTruck className="text-slate-400 text-xs" />
+                    <span>Domiciliario: <strong>{selectedOrder.deliveryPersonId.name}</strong></span>
                   </div>
                 )}
                 {selectedOrder.tableNumber && (
@@ -1212,7 +1220,9 @@ function EnhancedCompletedOrders() {
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell max-w-[150px] truncate">
                       {order.orderType === 'delivery'
-                        ? order.address
+                        ? (order.deliveryPersonId?.name
+                            ? `🛵 ${order.deliveryPersonId.name}`
+                            : order.address)
                         : order.orderType === 'inSite'
                         ? `${isHotel ? 'Hab.' : 'Mesa'} ${order.tableNumber}`
                         : '—'}

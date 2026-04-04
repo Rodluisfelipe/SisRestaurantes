@@ -167,6 +167,15 @@ router.post('/restaurants/:slug/orders/:id/assign-qr', tenantAuth, async (req, r
     // Notify dashboard
     socketService.emitToBusiness(businessId, 'orderUpdated', order.toObject());
 
+    // Notify domi delivery room
+    socketService.emitToDeliveryRoom(req.params.slug, 'delivery:assigned', {
+      orderId: order._id,
+      address: order.address,
+      customer: { name: order.customerName, phone: order.phone },
+      items: order.items,
+      total: order.finalAmount || order.totalAmount
+    });
+
     // Build QR URL
     const business = await BusinessConfig.findById(businessId).select('slug').lean();
     const qrUrl = `https://menuby.tech/${business.slug}/delivery/${token}`;
@@ -220,31 +229,16 @@ router.post('/restaurants/:slug/orders/:id/assign-delivery-person', tenantAuth, 
     // Emit to dashboard
     socketService.emitToBusiness(businessId, 'orderUpdated', order.toObject());
 
-    // Emit to specific delivery person
-    if (deliveryPersonId) {
-      const io = require('../services/socketService');
-      const ioInstance = require('../services/socketService');
-      // Will be handled by socketService events
-      socketService.emitToBusiness(businessId, 'delivery:assigned', {
-        orderId: order._id,
-        deliveryPersonId,
-        address: order.address,
-        customer: { name: order.customerName, phone: order.phone },
-        items: order.items,
-        total: order.finalAmount || order.totalAmount
-      });
-    }
-
-    // Emit to fixed domi room
-    if (mode === 'fixed') {
-      socketService.emitToBusiness(businessId, 'delivery:assigned', {
-        orderId: order._id,
-        address: order.address,
-        customer: { name: order.customerName, phone: order.phone },
-        items: order.items,
-        total: order.finalAmount || order.totalAmount
-      });
-    }
+    // Emit to domi delivery room (domis join restaurant:${slug}:delivery)
+    const assignedData = {
+      orderId: order._id,
+      deliveryPersonId: deliveryPersonId || null,
+      address: order.address,
+      customer: { name: order.customerName, phone: order.phone },
+      items: order.items,
+      total: order.finalAmount || order.totalAmount
+    };
+    socketService.emitToDeliveryRoom(business.slug, 'delivery:assigned', assignedData);
 
     res.json({
       confirmationCode: code,
@@ -266,8 +260,9 @@ router.post('/restaurants/:slug/orders/:id/assign-delivery-person', tenantAuth, 
 router.get('/restaurants/:slug/delivery-stats', tenantAuth, async (req, res) => {
   try {
     const businessId = await resolveSlug(req.params.slug);
+    const bId = typeof businessId === 'string' ? new (require('mongoose').Types.ObjectId)(businessId) : businessId;
 
-    // Active delivery orders
+    // Active delivery orders (inProgress in Order collection)
     const activeOrders = await Order.countDocuments({
       businessId,
       orderType: 'delivery',
@@ -275,52 +270,45 @@ router.get('/restaurants/:slug/delivery-stats', tenantAuth, async (req, res) => 
       status: { $in: ['inProgress'] }
     });
 
-    // Today's deliveries (completed)
+    // Today's deliveries — count from BOTH collections (delivered in Order + completed in CompletedOrder)
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayEnd = new Date();
     todayEnd.setHours(23, 59, 59, 999);
 
-    const todayCompleted = await CompletedOrder.countDocuments({
-      businessId,
-      orderType: 'delivery',
-      deliveredAt: { $gte: todayStart, $lte: todayEnd }
-    });
+    const todayFilter = { businessId, orderType: 'delivery', deliveredAt: { $gte: todayStart, $lte: todayEnd } };
+    const [todayActive, todayCompleted] = await Promise.all([
+      Order.countDocuments({ ...todayFilter, status: 'delivered' }),
+      CompletedOrder.countDocuments(todayFilter)
+    ]);
+    const todayTotal = todayActive + todayCompleted;
 
-    // Total deliveries all time
-    const totalDeliveries = await CompletedOrder.countDocuments({
-      businessId,
-      orderType: 'delivery',
-      deliveredAt: { $ne: null }
-    });
+    // Total deliveries all time — both collections
+    const allTimeFilter = { businessId, orderType: 'delivery', deliveredAt: { $ne: null } };
+    const [totalActive, totalCompleted] = await Promise.all([
+      Order.countDocuments({ ...allTimeFilter, status: 'delivered' }),
+      CompletedOrder.countDocuments(allTimeFilter)
+    ]);
+    const totalDeliveries = totalActive + totalCompleted;
 
-    // Average delivery time (from assigned to delivered)
-    const avgPipeline = await CompletedOrder.aggregate([
-      {
-        $match: {
-          businessId: typeof businessId === 'string' ? new (require('mongoose').Types.ObjectId)(businessId) : businessId,
-          deliveryAssignedAt: { $ne: null },
-          deliveredAt: { $ne: null }
-        }
-      },
-      {
-        $project: {
-          deliveryMinutes: {
-            $divide: [{ $subtract: ['$deliveredAt', '$deliveryAssignedAt'] }, 60000]
-          }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          avgMinutes: { $avg: '$deliveryMinutes' }
-        }
-      }
+    // Average delivery time (from assigned to delivered) — both collections
+    const avgMatch = { businessId: bId, deliveryAssignedAt: { $ne: null }, deliveredAt: { $ne: null } };
+    const avgProject = { deliveryMinutes: { $divide: [{ $subtract: ['$deliveredAt', '$deliveryAssignedAt'] }, 60000] } };
+    const avgGroup = { _id: null, avgMinutes: { $avg: '$deliveryMinutes' }, count: { $sum: 1 } };
+
+    const [avgActive, avgCompleted2] = await Promise.all([
+      Order.aggregate([{ $match: { ...avgMatch, status: 'delivered' } }, { $project: avgProject }, { $group: avgGroup }]),
+      CompletedOrder.aggregate([{ $match: avgMatch }, { $project: avgProject }, { $group: avgGroup }])
     ]);
 
-    const avgMinutes = avgPipeline.length > 0 ? Math.round(avgPipeline[0].avgMinutes) : 0;
+    const a1 = avgActive[0] || { avgMinutes: 0, count: 0 };
+    const a2 = avgCompleted2[0] || { avgMinutes: 0, count: 0 };
+    const combinedCount = a1.count + a2.count;
+    const avgMinutes = combinedCount > 0
+      ? Math.round(((a1.avgMinutes || 0) * a1.count + (a2.avgMinutes || 0) * a2.count) / combinedCount)
+      : 0;
 
-    // Chart data: deliveries per day (last 7 days)
+    // Chart data: deliveries per day (last 7 days) — both collections
     const chartData = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
@@ -330,19 +318,19 @@ router.get('/restaurants/:slug/delivery-stats', tenantAuth, async (req, res) => 
       const dayEnd = new Date(d);
       dayEnd.setHours(23, 59, 59, 999);
 
-      const count = await CompletedOrder.countDocuments({
-        businessId,
-        orderType: 'delivery',
-        deliveredAt: { $gte: dayStart, $lte: dayEnd }
-      });
+      const dayFilter = { businessId, orderType: 'delivery', deliveredAt: { $gte: dayStart, $lte: dayEnd } };
+      const [cActive, cCompleted] = await Promise.all([
+        Order.countDocuments({ ...dayFilter, status: 'delivered' }),
+        CompletedOrder.countDocuments(dayFilter)
+      ]);
 
       chartData.push({
         date: d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' }),
-        count
+        count: cActive + cCompleted
       });
     }
 
-    res.json({ activeOrders, todayDeliveries: todayCompleted, totalDeliveries, avgMinutes, chartData });
+    res.json({ activeOrders, todayDeliveries: todayTotal, totalDeliveries, avgMinutes, chartData });
   } catch (error) {
     logger.error('Error fetching delivery stats', error);
     res.status(500).json({ message: 'Error al obtener estadísticas' });
@@ -368,53 +356,70 @@ router.get('/restaurants/:slug/delivery-persons/:dpId/stats', tenantAuth, async 
       if (to) match.deliveredAt.$lte = new Date(to + 'T23:59:59.999Z');
     }
 
-    const pipeline = await CompletedOrder.aggregate([
-      { $match: match },
-      {
-        $group: {
-          _id: null,
-          totalDeliveries: { $sum: 1 },
-          avgMinutes: {
-            $avg: {
-              $cond: [
-                { $and: [{ $ne: ['$deliveryAssignedAt', null] }, { $ne: ['$deliveredAt', null] }] },
-                { $divide: [{ $subtract: ['$deliveredAt', '$deliveryAssignedAt'] }, 60000] },
-                null
-              ]
-            }
-          },
-          avgAttempts: { $avg: '$confirmationAttempts' }
-        }
-      }
-    ]);
-
-    // Deliveries by day
-    const byDay = await CompletedOrder.aggregate([
-      { $match: match },
-      {
-        $group: {
-          _id: { $dateToString: { format: '%Y-%m-%d', date: '$deliveredAt' } },
-          count: { $sum: 1 }
+    // Query both Order (delivered) and CompletedOrder
+    const activeMatch = { ...match, status: 'delivered' };
+    const groupStage = {
+      _id: null,
+      totalDeliveries: { $sum: 1 },
+      avgMinutes: {
+        $avg: {
+          $cond: [
+            { $and: [{ $ne: ['$deliveryAssignedAt', null] }, { $ne: ['$deliveredAt', null] }] },
+            { $divide: [{ $subtract: ['$deliveredAt', '$deliveryAssignedAt'] }, 60000] },
+            null
+          ]
         }
       },
-      { $sort: { _id: 1 } }
+      avgAttempts: { $avg: '$confirmationAttempts' }
+    };
+
+    const [pipeActive, pipeCompleted] = await Promise.all([
+      Order.aggregate([{ $match: activeMatch }, { $group: groupStage }]),
+      CompletedOrder.aggregate([{ $match: match }, { $group: groupStage }])
     ]);
 
-    const stats = pipeline[0] || { totalDeliveries: 0, avgMinutes: 0, avgAttempts: 0 };
+    const s1 = pipeActive[0] || { totalDeliveries: 0, avgMinutes: 0, avgAttempts: 0 };
+    const s2 = pipeCompleted[0] || { totalDeliveries: 0, avgMinutes: 0, avgAttempts: 0 };
+    const totalDels = s1.totalDeliveries + s2.totalDeliveries;
+    const combinedAvg = totalDels > 0
+      ? ((s1.avgMinutes || 0) * s1.totalDeliveries + (s2.avgMinutes || 0) * s2.totalDeliveries) / totalDels
+      : 0;
+    const combinedAttempts = totalDels > 0
+      ? ((s1.avgAttempts || 0) * s1.totalDeliveries + (s2.avgAttempts || 0) * s2.totalDeliveries) / totalDels
+      : 0;
 
-    // Total assigned (for success rate)
-    const totalAssigned = await CompletedOrder.countDocuments({
-      ...match,
-      deliveredAt: undefined, // Remove deliveredAt filter for assigned count
-      deliveryAssignedAt: { $ne: null }
-    });
+    // Deliveries by day — both collections
+    const dayGroup = [
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$deliveredAt' } }, count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ];
+    const [byDayActive, byDayCompleted] = await Promise.all([
+      Order.aggregate([{ $match: activeMatch }, ...dayGroup]),
+      CompletedOrder.aggregate([{ $match: match }, ...dayGroup])
+    ]);
+
+    // Merge by-day results
+    const dayMap = {};
+    for (const d of [...byDayActive, ...byDayCompleted]) {
+      dayMap[d._id] = (dayMap[d._id] || 0) + d.count;
+    }
+    const byDay = Object.entries(dayMap).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => ({ date, count }));
+
+    // Total assigned (for success rate) — both collections
+    const assignedMatch = { ...match, deliveredAt: undefined, deliveryAssignedAt: { $ne: null } };
+    const activeAssignedMatch = { ...assignedMatch, status: 'delivered' };
+    const [assignedActive, assignedCompleted] = await Promise.all([
+      Order.countDocuments(activeAssignedMatch),
+      CompletedOrder.countDocuments(assignedMatch)
+    ]);
+    const totalAssigned = assignedActive + assignedCompleted;
 
     res.json({
-      totalDeliveries: stats.totalDeliveries,
-      avgDeliveryMinutes: Math.round(stats.avgMinutes || 0),
-      successRate: totalAssigned > 0 ? Math.round((stats.totalDeliveries / totalAssigned) * 100) : 100,
-      avgConfirmationAttempts: Math.round((stats.avgAttempts || 1) * 10) / 10,
-      deliveriesByDay: byDay.map(d => ({ date: d._id, count: d.count }))
+      totalDeliveries: totalDels,
+      avgDeliveryMinutes: Math.round(combinedAvg || 0),
+      successRate: totalAssigned > 0 ? Math.round((totalDels / totalAssigned) * 100) : 100,
+      avgConfirmationAttempts: Math.round((combinedAttempts || 1) * 10) / 10,
+      deliveriesByDay: byDay
     });
   } catch (error) {
     logger.error('Error fetching delivery person stats', error);
