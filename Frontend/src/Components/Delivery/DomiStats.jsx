@@ -31,9 +31,10 @@ const DomiStats = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
+      const slug = businessConfig?.slug;
       const [personsRes, statsRes] = await Promise.all([
-        api.get(`/delivery-admin/restaurants/${businessId}/delivery-persons`),
-        api.get(`/delivery-admin/restaurants/${businessId}/delivery-stats`)
+        api.get(`/delivery-admin/restaurants/${slug}/delivery-persons`),
+        api.get(`/delivery-admin/restaurants/${slug}/delivery-stats`)
       ]);
       setDomis(personsRes.data);
       setStats(statsRes.data);
@@ -46,7 +47,7 @@ const DomiStats = () => {
 
   const fetchDailySession = async () => {
     try {
-      const res = await api.get(`/delivery-admin/restaurants/${businessId}/delivery-session/today`);
+      const res = await api.get(`/delivery-admin/restaurants/${businessConfig?.slug}/delivery-session/today`);
       setDailySession(res.data);
       if(res.data) setDailyCode(res.data.dailyCode);
     } catch (err) {
@@ -57,7 +58,7 @@ const DomiStats = () => {
   const handleGenerateDaily = async () => {
     try {
       const CodeValue = dailyCode || Math.random().toString(36).substr(2, 6).toUpperCase();
-      const res = await api.post(`/delivery-admin/restaurants/${businessId}/delivery-session/generate`, { code: CodeValue });
+      const res = await api.post(`/delivery-admin/restaurants/${businessConfig?.slug}/delivery-session/generate`, { code: CodeValue });
       setDailySession(res.data);
       toast.success('Pase diario activado con éxito');
     } catch (err) {
@@ -69,7 +70,7 @@ const DomiStats = () => {
     e.preventDefault();
     if(newCode.length !== 4) return toast.error('El código debe ser exactamente de 4 dígitos');
     try {
-      await api.post(`/delivery-admin/restaurants/${businessId}/delivery-persons`, {
+      await api.post(`/delivery-admin/restaurants/${businessConfig?.slug}/delivery-persons`, {
         name: newName,
         code: newCode
       });
