@@ -174,10 +174,18 @@ export default function POSTicket({ order, businessConfig, onClose }) {
                 </div>
               )}
 
+              {/* Discount */}
+              {order.discountAmount > 0 && (
+                <div style={S.row}>
+                  <span>Descuento{order.couponCode ? ` (${order.couponCode})` : ''}:</span>
+                  <span>-${parseFloat(order.discountAmount).toLocaleString()}</span>
+                </div>
+              )}
+
               {/* Total — huge and unmissable */}
               <div style={S.totalRow}>
                 <span>TOTAL</span>
-                <span style={S.big}>${parseFloat(total).toLocaleString()}</span>
+                <span style={S.big}>${(parseFloat(total) + (order.deliveryFee || 0) - (order.discountAmount || 0)).toLocaleString()}</span>
               </div>
 
               {/* Payment info */}

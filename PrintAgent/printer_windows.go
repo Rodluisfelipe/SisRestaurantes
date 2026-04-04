@@ -3,8 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 	"unsafe"
 
 	winprinter "github.com/alexbrainman/printer"
@@ -16,13 +19,15 @@ func ListPrinters() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("listing printers: %w", err)
 	}
+	// Add test/file option at the end
+	printers = append(printers, "Archivo (prueba)")
 	return printers, nil
 }
 
 // GetDefaultPrinter returns the OS default printer name
 func GetDefaultPrinter() string {
-	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	proc := kernel32.NewProc("GetDefaultPrinterW")
+	winspool := syscall.NewLazyDLL("winspool.drv")
+	proc := winspool.NewProc("GetDefaultPrinterW")
 
 	var bufSize uint32 = 256
 	buf := make([]uint16, bufSize)
@@ -37,7 +42,85 @@ func GetDefaultPrinter() string {
 }
 
 // PrintRaw sends raw ESC/POS bytes to a named printer
+// isTestPrinter checks if the printer name is the test/file mode
+func isTestPrinter(name string) bool {
+	lower := strings.ToLower(name)
+	return lower == "archivo (prueba)" || lower == "file (test)"
+}
+
+// stripESCPOS removes ESC/POS control codes and returns readable text
+func stripESCPOS(data []byte) string {
+	var result []byte
+	i := 0
+	for i < len(data) {
+		b := data[i]
+		if b == 0x1B { // ESC sequence
+			i++ // skip ESC
+			if i < len(data) {
+				cmd := data[i]
+				i++
+				switch cmd {
+				case '@', 'E', 'a', 'd', 'i', 'p': // 1-byte commands
+				case '!', 'J', 'V': // 2-byte commands (ESC + cmd + param)
+					if i < len(data) {
+						i++
+					}
+				case 'G': // ESC G n
+					if i < len(data) {
+						i++
+					}
+				default:
+				}
+			}
+			continue
+		}
+		if b == 0x1D { // GS sequence
+			i++
+			if i < len(data) {
+				i++ // skip cmd
+				if i < len(data) {
+					i++ // skip param
+				}
+			}
+			continue
+		}
+		if b == 0x07 || b == 0x00 { // BEL, NUL
+			i++
+			continue
+		}
+		if b == '\n' || b == '\r' || (b >= 0x20 && b <= 0x7E) || b >= 0xC0 {
+			result = append(result, b)
+		}
+		i++
+	}
+	return string(result)
+}
+
+// saveToFile saves ticket as readable text file
+func saveToFile(data []byte, docType string) error {
+	exe, _ := os.Executable()
+	dir := filepath.Dir(exe)
+	ticketsDir := filepath.Join(dir, "tickets")
+	os.MkdirAll(ticketsDir, 0755)
+
+	timestamp := time.Now().Format("2006-01-02_15-04-05")
+	filename := filepath.Join(ticketsDir, fmt.Sprintf("%s_%s.txt", docType, timestamp))
+
+	text := stripESCPOS(data)
+	err := os.WriteFile(filename, []byte(text), 0644)
+	if err != nil {
+		return err
+	}
+	log.Printf("[Print] Saved to file: %s", filename)
+	return nil
+}
+
 func PrintRaw(printerName string, data []byte) error {
+	// Test mode: save to file instead of printing
+	if isTestPrinter(printerName) {
+		return saveToFile(data, "ticket")
+	}
+
 	p, err := winprinter.Open(printerName)
 	if err != nil {
 		return fmt.Errorf("opening printer %q: %w", printerName, err)
@@ -74,6 +157,10 @@ func PrintRaw(printerName string, data []byte) error {
 
 // FindPrinter checks if a printer name exists (case-insensitive partial match)
 func FindPrinter(name string) (string, error) {
+	if isTestPrinter(name) {
+		return "Archivo (prueba)", nil
+	}
+
 	printers, err := ListPrinters()
 	if err != nil {
 		return "", err
