@@ -84,7 +84,7 @@ router.get('/:token', deliveryLimiter, async (req, res) => {
     }
 
     // Get business info for the page
-    const business = await BusinessConfig.findById(order.businessId).select('slug businessName phone logo theme').lean();
+    const business = await BusinessConfig.findById(order.businessId).select('slug businessName phone logo theme requireDeliveryCode').lean();
 
     // Return order info for the domi page (NEVER include confirmationCode)
     res.json({
@@ -104,6 +104,7 @@ router.get('/:token', deliveryLimiter, async (req, res) => {
       })),
       total: order.finalAmount || order.totalAmount,
       deliveryFee: order.deliveryFee || 0,
+      requireConfirmationCode: business?.requireDeliveryCode !== false,
       business: {
         name: business?.businessName,
         phone: business?.phone,
@@ -126,11 +127,7 @@ router.get('/:token', deliveryLimiter, async (req, res) => {
 router.post('/:token/confirm', confirmLimiter, async (req, res) => {
   try {
     const { token } = req.params;
-    const { code } = req.body;
-
-    if (!code || code.length !== 4) {
-      return res.status(400).json({ message: 'Código de 4 dígitos requerido' });
-    }
+    const { code, skipCode } = req.body;
 
     const order = await Order.findOne({ deliveryToken: token });
     if (!order) {
@@ -141,34 +138,44 @@ router.post('/:token/confirm', confirmLimiter, async (req, res) => {
       return res.status(410).json({ message: 'Este enlace ha expirado' });
     }
 
-    if (order.confirmationAttempts >= 3) {
-      return res.status(423).json({ message: 'Código bloqueado por demasiados intentos. Contacte al restaurante.' });
-    }
+    // Check if business requires confirmation code
+    const business = await BusinessConfig.findById(order.businessId).select('requireDeliveryCode').lean();
+    const requireCode = business?.requireDeliveryCode !== false;
 
-    if (order.confirmationCode !== code) {
-      order.confirmationAttempts += 1;
-      await order.save();
-
-      if (order.confirmationAttempts >= 3) {
-        // Emit blocked alert to dashboard
-        socketService.emitToBusiness(order.businessId, 'delivery:blocked', {
-          orderId: order._id,
-          reason: 'max_attempts'
-        });
-        return res.status(423).json({ message: 'Código bloqueado. Se ha notificado al restaurante.' });
+    if (requireCode) {
+      // Code validation required
+      if (!code || code.length !== 4) {
+        return res.status(400).json({ message: 'Código de 4 dígitos requerido' });
       }
 
-      return res.status(400).json({
-        message: 'Código incorrecto',
-        attemptsRemaining: 3 - order.confirmationAttempts
-      });
+      if (order.confirmationAttempts >= 3) {
+        return res.status(423).json({ message: 'Código bloqueado por demasiados intentos. Contacte al restaurante.' });
+      }
+
+      if (order.confirmationCode !== code) {
+        order.confirmationAttempts += 1;
+        await order.save();
+
+        if (order.confirmationAttempts >= 3) {
+          socketService.emitToBusiness(order.businessId, 'delivery:blocked', {
+            orderId: order._id,
+            reason: 'max_attempts'
+          });
+          return res.status(423).json({ message: 'Código bloqueado. Se ha notificado al restaurante.' });
+        }
+
+        return res.status(400).json({
+          message: 'Código incorrecto',
+          attemptsRemaining: 3 - order.confirmationAttempts
+        });
+      }
     }
 
-    // Code correct — mark as delivered
+    // Code correct or not required — mark as delivered
     order.status = 'delivered';
     order.deliveredAt = new Date();
     order.trackingEnabled = false;
-    order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: 'Entregado (código confirmado)' });
+    order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: requireCode ? 'Entregado (código confirmado)' : 'Entregado (sin código)' });
     await order.save();
 
     // Notify dashboard and tracking page
@@ -285,9 +292,12 @@ router.get('/:slug/domi/orders', domiAuth, async (req, res) => {
     const orders = await Order.find(filter).sort({ deliveryAssignedAt: -1 }).lean();
 
     // Never expose confirmation code to domi
+    const business = await BusinessConfig.findById(businessId).select('requireDeliveryCode').lean();
+    const requireCode = business?.requireDeliveryCode !== false;
     const safe = orders.map(o => ({
       ...o,
-      confirmationCode: undefined
+      confirmationCode: undefined,
+      requireConfirmationCode: requireCode
     }));
 
     res.json(safe);
@@ -303,40 +313,46 @@ router.post('/:slug/domi/orders/:id/confirm', confirmLimiter, domiAuth, async (r
     const { businessId } = req.domi;
     const { code } = req.body;
 
-    if (!code || code.length !== 4) {
-      return res.status(400).json({ message: 'Código de 4 dígitos requerido' });
-    }
-
     const order = await Order.findOne({ _id: req.params.id, businessId });
     if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
 
-    if (order.confirmationAttempts >= 3) {
-      return res.status(423).json({ message: 'Código bloqueado. Contacte al restaurante.' });
-    }
+    // Check if business requires confirmation code
+    const business = await BusinessConfig.findById(businessId).select('requireDeliveryCode').lean();
+    const requireCode = business?.requireDeliveryCode !== false;
 
-    if (order.confirmationCode !== code) {
-      order.confirmationAttempts += 1;
-      await order.save();
-
-      if (order.confirmationAttempts >= 3) {
-        socketService.emitToBusiness(order.businessId, 'delivery:blocked', {
-          orderId: order._id,
-          reason: 'max_attempts'
-        });
-        return res.status(423).json({ message: 'Código bloqueado. Se ha notificado al restaurante.' });
+    if (requireCode) {
+      if (!code || code.length !== 4) {
+        return res.status(400).json({ message: 'Código de 4 dígitos requerido' });
       }
 
-      return res.status(400).json({
-        message: 'Código incorrecto',
-        attemptsRemaining: 3 - order.confirmationAttempts
-      });
+      if (order.confirmationAttempts >= 3) {
+        return res.status(423).json({ message: 'Código bloqueado. Contacte al restaurante.' });
+      }
+
+      if (order.confirmationCode !== code) {
+        order.confirmationAttempts += 1;
+        await order.save();
+
+        if (order.confirmationAttempts >= 3) {
+          socketService.emitToBusiness(order.businessId, 'delivery:blocked', {
+            orderId: order._id,
+            reason: 'max_attempts'
+          });
+          return res.status(423).json({ message: 'Código bloqueado. Se ha notificado al restaurante.' });
+        }
+
+        return res.status(400).json({
+          message: 'Código incorrecto',
+          attemptsRemaining: 3 - order.confirmationAttempts
+        });
+      }
     }
 
-    // Correct — mark delivered
+    // Correct or not required — mark delivered
     order.status = 'delivered';
     order.deliveredAt = new Date();
     order.trackingEnabled = false;
-    order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: 'Entregado (código confirmado)' });
+    order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: requireCode ? 'Entregado (código confirmado)' : 'Entregado (sin código)' });
     await order.save();
 
     // Update delivery person status back to available

@@ -159,14 +159,15 @@ const DeliveryQRPage = () => {
   const confirmCode = digits.join('');
 
   const handleConfirm = async () => {
-    if (confirmCode.length !== 4) { setConfirmError('Ingresa los 4 dígitos'); return; }
+    const requireCode = order?.requireConfirmationCode !== false;
+    if (requireCode && confirmCode.length !== 4) { setConfirmError('Ingresa los 4 dígitos'); return; }
     setConfirming(true);
     setConfirmError('');
     try {
       const res = await fetch(`${API_BASE}/delivery/${token}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: confirmCode })
+        body: JSON.stringify(requireCode ? { code: confirmCode } : { skipCode: true })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
@@ -408,10 +409,15 @@ const DeliveryQRPage = () => {
                   <FaMotorcycle className="text-xl" style={{ color: brandColor }} />
                 </div>
                 <p className="font-bold text-slate-800 text-sm">Confirmar entrega</p>
-                <p className="text-xs text-slate-400 mt-0.5">Pídele el código de 4 dígitos al cliente</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {order?.requireConfirmationCode !== false
+                    ? 'Pídele el código de 4 dígitos al cliente'
+                    : 'Confirma que entregaste el pedido'}
+                </p>
               </div>
 
-              {/* 4-digit input boxes */}
+              {/* 4-digit input boxes (only when code required) */}
+              {order?.requireConfirmationCode !== false && (
               <div className="flex justify-center gap-3 mb-4">
                 {digits.map((d, i) => (
                   <input
@@ -432,6 +438,7 @@ const DeliveryQRPage = () => {
                   />
                 ))}
               </div>
+              )}
 
               {confirmError && (
                 <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }}
@@ -441,9 +448,9 @@ const DeliveryQRPage = () => {
               <motion.button
                 whileTap={{ scale: 0.97 }}
                 onClick={handleConfirm}
-                disabled={confirming || confirmCode.length !== 4}
+                disabled={confirming || (order?.requireConfirmationCode !== false && confirmCode.length !== 4)}
                 className="w-full font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 text-sm shadow-sm"
-                style={{ background: confirmCode.length === 4 ? brandColor : '#94a3b8', color: brandText }}
+                style={{ background: (order?.requireConfirmationCode === false || confirmCode.length === 4) ? brandColor : '#94a3b8', color: brandText }}
               >
                 {confirming ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/30" style={{ borderTopColor: brandText }} />

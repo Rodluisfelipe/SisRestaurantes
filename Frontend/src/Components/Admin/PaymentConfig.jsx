@@ -32,6 +32,7 @@ const PaymentConfig = () => {
     instructions: ''
   });
   const [orderTypes, setOrderTypes] = useState({ inSite: true, takeaway: true, delivery: true });
+  const [requireDeliveryCode, setRequireDeliveryCode] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -46,6 +47,7 @@ const PaymentConfig = () => {
         takeaway: businessConfig.orderTypes?.takeaway ?? true,
         delivery: businessConfig.orderTypes?.delivery ?? true,
       });
+      setRequireDeliveryCode(businessConfig.requireDeliveryCode ?? true);
       setPaymentInfo({
         nequi: businessConfig.paymentInfo?.nequi || '',
         daviplata: businessConfig.paymentInfo?.daviplata || '',
@@ -141,6 +143,7 @@ const PaymentConfig = () => {
         businessId,
         orderingMode,
         orderTypes,
+        requireDeliveryCode,
         paymentInfo,
         paymentMethods
       });
@@ -323,6 +326,37 @@ const PaymentConfig = () => {
               <p className="text-xs text-red-500 mt-2">⚠️ Debes tener al menos un tipo de pedido activo</p>
             )}
           </div>
+
+          {/* Delivery confirmation code toggle */}
+          {orderTypes.delivery && (
+            <div className="mt-6">
+              <h4 className="text-sm font-bold text-gray-900 mb-1">Código de confirmación</h4>
+              <p className="text-xs text-gray-500 mb-3">El domiciliario debe pedir un código al cliente para confirmar la entrega</p>
+              <button
+                onClick={() => { setRequireDeliveryCode(!requireDeliveryCode); setHasChanges(true); }}
+                className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                  requireDeliveryCode ? 'border-green-300 bg-green-50/30' : 'border-gray-200 bg-gray-50/50'
+                }`}
+              >
+                <span className="text-xl">🔐</span>
+                <div className="flex-1 text-left">
+                  <span className="font-semibold text-gray-900 text-sm">Código de entrega</span>
+                  <p className="text-xs text-gray-500">
+                    {requireDeliveryCode
+                      ? 'El domi pide un código de 4 dígitos al cliente para confirmar'
+                      : 'El domi puede confirmar la entrega sin código'}
+                  </p>
+                </div>
+                <div className={`relative w-11 h-6 rounded-full transition-colors ${requireDeliveryCode ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <motion.div
+                    layout
+                    className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm"
+                    style={{ left: requireDeliveryCode ? '22px' : '2px' }}
+                  />
+                </div>
+              </button>
+            </div>
+          )}
 
           {/* Info about in-app flow */}
           {(orderingMode === 'inapp' || orderingMode === 'both') && (
