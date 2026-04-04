@@ -576,7 +576,7 @@ router.get("/completed", tenantAuth, async (req, res) => {
     const pageNum = parseInt(page) || 0;
     const limitNum = Math.min(parseInt(queryLimit) || 0, 1000);
     
-    let query = CompletedOrder.find(filter).sort({ completedAt: -1 });
+    let query = CompletedOrder.find(filter).populate('deliveryPersonId', 'name').sort({ completedAt: -1 });
     
     if (limitNum > 0) {
       query = query.limit(limitNum).skip(pageNum > 0 ? (pageNum - 1) * limitNum : 0);
@@ -1057,7 +1057,7 @@ router.post("/daily-closing", tenantAuth, validateDailyClosing, async (req, res)
     const completedOrders = await CompletedOrder.find({
       businessId: businessObjectId,
       completedAt: { $gte: today, $lt: tomorrow }
-    });
+    }).populate('deliveryPersonId', 'name');
     
     if (completedOrders.length === 0) {
       return res.status(200).json({ 

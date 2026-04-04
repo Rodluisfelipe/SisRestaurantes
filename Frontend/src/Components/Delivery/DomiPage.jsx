@@ -5,7 +5,7 @@ import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
 import {
   FaMotorcycle, FaMapMarkerAlt, FaPhone, FaCheck, FaBoxOpen,
-  FaSignOutAlt, FaBell, FaWhatsapp, FaRoute, FaCopy, FaClock,
+  FaSignOutAlt, FaBell, FaWhatsapp, FaCopy, FaClock,
   FaChevronDown, FaChevronUp, FaMoneyBillWave, FaStickyNote,
   FaExclamationTriangle, FaWifi, FaSpinner
 } from 'react-icons/fa';
@@ -227,13 +227,6 @@ const DomiPage = () => {
     window.open(`https://wa.me/${fullPhone}?text=${text}`, '_blank');
   };
 
-  // Open Google Maps navigation to address
-  const openNavigation = (address) => {
-    if (!address) return;
-    const encoded = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`, '_blank');
-  };
-
   // Copy address to clipboard
   const copyAddress = async (orderId, address) => {
     if (!address) return;
@@ -444,16 +437,6 @@ const DomiPage = () => {
 
                   {/* Quick action bar — Address tools + Contact */}
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
-                    {/* Navigate with Google Maps */}
-                    {order.address && (
-                      <button
-                        onClick={() => openNavigation(order.address)}
-                        className="flex items-center gap-1.5 text-xs font-semibold bg-blue-50 text-blue-600 px-3 py-2 rounded-xl active:scale-95 transition-transform"
-                      >
-                        <FaRoute className="text-[11px]" /> Ir con GPS
-                      </button>
-                    )}
-
                     {/* Copy address */}
                     {order.address && (
                       <button

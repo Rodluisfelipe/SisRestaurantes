@@ -188,6 +188,12 @@ function CompletedOrdersSummary() {
                       <p className="mt-1">{selectedOrder.address}</p>
                     </div>
                   )}
+                  {selectedOrder.orderType === 'delivery' && selectedOrder.deliveryPersonId?.name && (
+                    <div className="sm:col-span-2">
+                      <p className="text-sm font-medium text-gray-500">Domiciliario</p>
+                      <p className="mt-1 font-medium">{selectedOrder.deliveryPersonId.name}</p>
+                    </div>
+                  )}
                   {selectedOrder.tableNumber && (
                     <div>
                       <p className="text-sm font-medium text-gray-500">Mesa</p>
