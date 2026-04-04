@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -198,12 +197,13 @@ func selectPrinterWizard(cfg *Config) {
 func validateKey(apiURL, key string) (string, error) {
 	url := fmt.Sprintf("%s/api/print-agent/stream?key=%s", apiURL, key)
 
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: 15 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -218,26 +218,35 @@ func validateKey(apiURL, key string) (string, error) {
 		return "", fmt.Errorf("error del servidor (%d)", resp.StatusCode)
 	}
 
-	// Read the first SSE event (should be "connected" with business info)
-	buf := make([]byte, 4096)
-	n, err := resp.Body.Read(buf)
-	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("error leyendo respuesta")
-	}
+	// Read SSE lines until we find the "connected" event with business info
+	scanner := bufio.NewScanner(resp.Body)
+	deadline := time.After(12 * time.Second)
+	dataCh := make(chan string, 1)
 
-	data := string(buf[:n])
-	// Parse the SSE event: "event: connected\ndata: {...}\n\n"
-	for _, line := range strings.Split(data, "\n") {
-		if strings.HasPrefix(line, "data: ") {
-			jsonData := strings.TrimPrefix(line, "data: ")
-			var info struct {
-				BusinessName string `json:"businessName"`
-			}
-			if err := json.Unmarshal([]byte(jsonData), &info); err == nil && info.BusinessName != "" {
-				return info.BusinessName, nil
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "data: ") {
+				dataCh <- strings.TrimPrefix(line, "data: ")
+				return
 			}
 		}
-	}
+		dataCh <- ""
+	}()
 
-	return "Negocio", nil // Connected but couldn't parse name
+	select {
+	case jsonData := <-dataCh:
+		if jsonData == "" {
+			return "Negocio", nil
+		}
+		var info struct {
+			BusinessName string `json:"businessName"`
+		}
+		if err := json.Unmarshal([]byte(jsonData), &info); err == nil && info.BusinessName != "" {
+			return info.BusinessName, nil
+		}
+		return "Negocio", nil
+	case <-deadline:
+		return "", fmt.Errorf("timeout esperando respuesta del servidor")
+	}
 }

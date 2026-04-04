@@ -5,9 +5,10 @@ import (
 	"log"
 	"os"
 	"sync"
+	"syscall"
 	"time"
 
-	"github.com/getlantern/systray"
+	"fyne.io/systray"
 )
 
 var (
@@ -21,6 +22,42 @@ var (
 	counterItem   *systray.MenuItem
 	reconnectItem *systray.MenuItem
 )
+
+// hideConsole hides the console window (used after wizard completes)
+func hideConsole() {
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	user32 := syscall.NewLazyDLL("user32.dll")
+	getConsoleWindow := kernel32.NewProc("GetConsoleWindow")
+	showWindow := user32.NewProc("ShowWindow")
+	hwnd, _, _ := getConsoleWindow.Call()
+	if hwnd != 0 {
+		showWindow.Call(hwnd, 0) // SW_HIDE = 0
+	}
+}
+
+// showConsole shows the console window (used for wizard)
+func showConsole() {
+	kernel32 := syscall.NewLazyDLL("kernel32.dll")
+	user32 := syscall.NewLazyDLL("user32.dll")
+	getConsoleWindow := kernel32.NewProc("GetConsoleWindow")
+	showWindow := user32.NewProc("ShowWindow")
+	allocConsole := kernel32.NewProc("AllocConsole")
+	hwnd, _, _ := getConsoleWindow.Call()
+	if hwnd == 0 {
+		// No console exists (compiled with -H windowsgui), create one
+		allocConsole.Call()
+		hwnd, _, _ = getConsoleWindow.Call()
+	}
+	if hwnd != 0 {
+		showWindow.Call(hwnd, 5) // SW_SHOW = 5
+	}
+	// Reattach stdout/stderr/stdin to the new console
+	conout, _ := syscall.Open("CONOUT$", syscall.O_RDWR, 0)
+	os.Stdout = os.NewFile(uintptr(conout), "/dev/stdout")
+	os.Stderr = os.NewFile(uintptr(conout), "/dev/stderr")
+	conin, _ := syscall.Open("CONIN$", syscall.O_RDWR, 0)
+	os.Stdin = os.NewFile(uintptr(conin), "/dev/stdin")
+}
 
 func main() {
 	// Setup logging to file
@@ -37,8 +74,14 @@ func main() {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
+	// Hide console immediately if already configured (no wizard needed)
+	if cfg.IsConfigured() {
+		hideConsole()
+	}
+
 	// If not configured, run interactive setup wizard
 	if !cfg.IsConfigured() {
+		showConsole()
 		runSetupWizard(cfg)
 	}
 
@@ -47,11 +90,15 @@ func main() {
 	if err != nil {
 		log.Printf("WARNING: %v", err)
 		// If no printer configured, run printer selection
+		showConsole()
 		selectPrinterWizard(cfg)
 	} else {
 		log.Printf("Using printer: %s", printerName)
 		cfg.PrinterName = printerName
 	}
+
+	// Hide console once wizard is done, systray takes over
+	hideConsole()
 
 	// Start system tray
 	systray.Run(onReady, onExit)

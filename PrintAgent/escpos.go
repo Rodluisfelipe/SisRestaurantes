@@ -57,7 +57,7 @@ func GetProfile(paperWidth int) PaperProfile {
 func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paperWidth int, autoCut bool) []byte {
 	profile := GetProfile(paperWidth)
 	cols := profile.ColsNormal
-	colsD := profile.ColsDouble
+	_ = profile.ColsDouble
 	isCompact := paperWidth <= 44
 	var buf []byte
 
@@ -534,11 +534,8 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 	totalAmount := getFloat(order, "totalAmount")
 	deliveryFee := getFloat(order, "deliveryFee")
 	discountAmount := getFloat(order, "discountAmount")
-	finalAmount := getFloat(order, "finalAmount")
-
-	if finalAmount == 0 {
-		finalAmount = totalAmount + deliveryFee - discountAmount
-	}
+	// Always recalculate: finalAmount in DB excludes deliveryFee
+	finalAmount := totalAmount + deliveryFee - discountAmount
 
 	if deliveryFee > 0 || discountAmount > 0 {
 		if isCompact {

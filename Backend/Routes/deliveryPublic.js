@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const Order = require('../Models/Order');
 const CompletedOrder = require('../Models/CompletedOrder');
@@ -199,6 +200,76 @@ router.post('/:token/confirm', confirmLimiter, async (req, res) => {
     socketService.emitToOrder(order._id, 'order:status', { status: 'delivered', updatedAt: order.deliveredAt });
     socketService.emitToOrder(order._id, 'delivery:confirmed', { deliveredAt: order.deliveredAt });
 
+    // Move order to CompletedOrder collection
+    try {
+      const orderData = order.toObject();
+
+      // Delete payment proof file if exists
+      if (orderData.paymentProof) {
+        try {
+          const path = require('path');
+          const fs = require('fs');
+          const proofFilePath = path.join(__dirname, '..', orderData.paymentProof);
+          if (fs.existsSync(proofFilePath)) {
+            fs.unlinkSync(proofFilePath);
+          }
+        } catch (fileErr) {
+          logger.warn('Could not delete payment proof file', { error: fileErr.message });
+        }
+      }
+
+      const completedOrder = new CompletedOrder({
+        ...orderData,
+        paymentProof: null,
+        completedAt: new Date(),
+        status: 'completed'
+      });
+
+      const session = await mongoose.startSession();
+      let moveSucceeded = false;
+      try {
+        await session.withTransaction(async () => {
+          await completedOrder.save({ session });
+          await Order.findByIdAndDelete(order._id, { session });
+        });
+        moveSucceeded = true;
+      } catch (txErr) {
+        logger.error('Transaction failed for delivery completion — order preserved in active', { error: txErr.message, orderId: order._id });
+      } finally {
+        session.endSession();
+      }
+
+      if (moveSucceeded) {
+        setTimeout(() => {
+          socketService.emitToBusiness(order.businessId.toString(), 'order_deleted', { _id: order._id });
+        }, 3000);
+      }
+    } catch (moveErr) {
+      logger.error('Error moving delivered order to completed', { error: moveErr.message, orderId: order._id });
+    }
+
+    // Register in cash register if one is open
+    if (order.orderChannel !== 'pos') {
+      try {
+        const CashRegister = require('../Models/CashRegister');
+        await CashRegister.findOneAndUpdate(
+          { businessId: order.businessId, status: 'open' },
+          { $push: { movements: {
+            type: 'sale',
+            amount: order.finalAmount || order.totalAmount,
+            paymentMethod: order.paymentMethod || 'cash',
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            orderChannel: 'menuby',
+            description: `MenuBy #${order.orderNumber} - ${order.customerName}`,
+            createdAt: new Date()
+          }}}
+        );
+      } catch (cashErr) {
+        logger.warn('Failed to register delivery sale in cash register', { error: cashErr.message });
+      }
+    }
+
     res.json({ message: 'Entrega confirmada exitosamente', deliveredAt: order.deliveredAt });
   } catch (error) {
     logger.error('Error confirming delivery', error);
@@ -367,18 +438,19 @@ router.post('/:slug/domi/orders/:id/confirm', confirmLimiter, domiAuth, async (r
     order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: requireCode ? 'Entregado (código confirmado)' : 'Entregado (sin código)' });
     await order.save();
 
-    // Update delivery person status back to available
+    // Update delivery person: increment totalDeliveries and set status back to available
     if (order.deliveryPersonId) {
-      const remainingOrders = await Order.countDocuments({
-        deliveryPersonId: order.deliveryPersonId,
-        status: 'inProgress'
-      });
-      if (remainingOrders === 0) {
-        await DeliveryPerson.findByIdAndUpdate(order.deliveryPersonId, { status: 'available' });
+      try {
+        await DeliveryPerson.findByIdAndUpdate(order.deliveryPersonId, {
+          $inc: { totalDeliveries: 1 },
+          $set: { status: 'available' }
+        });
         socketService.emitToBusiness(order.businessId, 'domi:status', {
           deliveryPersonId: order.deliveryPersonId,
           status: 'available'
         });
+      } catch (dpErr) {
+        logger.warn('Failed to update delivery person after confirm', { error: dpErr.message, dpId: order.deliveryPersonId });
       }
     }
 
@@ -390,6 +462,75 @@ router.post('/:slug/domi/orders/:id/confirm', confirmLimiter, domiAuth, async (r
     });
     socketService.emitToOrder(order._id, 'order:status', { status: 'delivered', updatedAt: order.deliveredAt });
     socketService.emitToOrder(order._id, 'delivery:confirmed', { deliveredAt: order.deliveredAt });
+
+    // Move order to CompletedOrder collection
+    try {
+      const orderData = order.toObject();
+
+      if (orderData.paymentProof) {
+        try {
+          const path = require('path');
+          const fs = require('fs');
+          const proofFilePath = path.join(__dirname, '..', orderData.paymentProof);
+          if (fs.existsSync(proofFilePath)) {
+            fs.unlinkSync(proofFilePath);
+          }
+        } catch (fileErr) {
+          logger.warn('Could not delete payment proof file', { error: fileErr.message });
+        }
+      }
+
+      const completedOrder = new CompletedOrder({
+        ...orderData,
+        paymentProof: null,
+        completedAt: new Date(),
+        status: 'completed'
+      });
+
+      const session = await mongoose.startSession();
+      let moveSucceeded = false;
+      try {
+        await session.withTransaction(async () => {
+          await completedOrder.save({ session });
+          await Order.findByIdAndDelete(order._id, { session });
+        });
+        moveSucceeded = true;
+      } catch (txErr) {
+        logger.error('Transaction failed for domi delivery completion', { error: txErr.message, orderId: order._id });
+      } finally {
+        session.endSession();
+      }
+
+      if (moveSucceeded) {
+        setTimeout(() => {
+          socketService.emitToBusiness(order.businessId.toString(), 'order_deleted', { _id: order._id });
+        }, 3000);
+      }
+    } catch (moveErr) {
+      logger.error('Error moving domi delivered order to completed', { error: moveErr.message, orderId: order._id });
+    }
+
+    // Register in cash register if one is open
+    if (order.orderChannel !== 'pos') {
+      try {
+        const CashRegister = require('../Models/CashRegister');
+        await CashRegister.findOneAndUpdate(
+          { businessId: order.businessId, status: 'open' },
+          { $push: { movements: {
+            type: 'sale',
+            amount: order.finalAmount || order.totalAmount,
+            paymentMethod: order.paymentMethod || 'cash',
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            orderChannel: 'menuby',
+            description: `MenuBy #${order.orderNumber} - ${order.customerName}`,
+            createdAt: new Date()
+          }}}
+        );
+      } catch (cashErr) {
+        logger.warn('Failed to register delivery sale in cash register', { error: cashErr.message });
+      }
+    }
 
     res.json({ message: 'Entrega confirmada exitosamente', deliveredAt: order.deliveredAt });
   } catch (error) {
