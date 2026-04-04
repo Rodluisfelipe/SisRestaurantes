@@ -24,9 +24,10 @@ const DomiStats = () => {
   const [dailySession, setDailySession] = useState(null);
 
   useEffect(() => {
+    if (!businessConfig?.slug) return;
     fetchData();
     fetchDailySession();
-  }, [businessId]);
+  }, [businessConfig?.slug]);
 
   const fetchData = async () => {
     try {
