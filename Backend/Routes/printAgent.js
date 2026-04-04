@@ -74,16 +74,19 @@ router.get('/stream', async (req, res) => {
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no' // Disable nginx buffering for SSE
     });
+    res.flushHeaders();
 
     // Send initial connection event with business info
-    res.write(`event: connected\ndata: ${JSON.stringify({
+    const connData = JSON.stringify({
       businessId,
       businessName: business.businessName,
       address: business.address,
       phone: business.phone,
       nit: business.nit,
       slug: business.slug
-    })}\n\n`);
+    });
+    res.write(`event: connected\ndata: ${connData}\n\n`);
+    if (res.flush) res.flush();
 
     logger.info('Print agent connected via SSE', { businessId, slug: business.slug });
 
@@ -96,6 +99,7 @@ router.get('/stream', async (req, res) => {
     const orderHandler = (order) => {
       try {
         res.write(`event: order_created\ndata: ${JSON.stringify(order)}\n\n`);
+        if (res.flush) res.flush();
       } catch (e) {
         logger.error('Error writing SSE order event', { error: e.message });
       }
@@ -105,6 +109,7 @@ router.get('/stream', async (req, res) => {
     const receiptHandler = (order) => {
       try {
         res.write(`event: print_receipt\ndata: ${JSON.stringify(order)}\n\n`);
+        if (res.flush) res.flush();
       } catch (e) {
         logger.error('Error writing SSE receipt event', { error: e.message });
       }
@@ -186,6 +191,32 @@ router.post('/print-receipt/:orderId', authenticateToken, async (req, res) => {
     res.json({ message: 'Receipt sent to printer' });
   } catch (error) {
     logger.error('Error printing receipt', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/print-agent/print-comanda/:orderId — Print comanda for a specific order (authed admin)
+router.post('/print-comanda/:orderId', authenticateToken, async (req, res) => {
+  try {
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) return res.status(400).json({ error: 'No business associated' });
+
+    const { orderId } = req.params;
+    const Order = require('../Models/Order');
+    const CompletedOrder = require('../Models/CompletedOrder');
+
+    let order = await Order.findOne({ _id: orderId, businessId }).lean();
+    if (!order) {
+      order = await CompletedOrder.findOne({ _id: orderId, businessId }).lean();
+    }
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    printEmitter.emit(`print:${businessId.toString()}`, order);
+    res.json({ message: 'Comanda sent to printer' });
+  } catch (error) {
+    logger.error('Error printing comanda', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
