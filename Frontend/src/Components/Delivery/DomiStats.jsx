@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   LineChart, Line
 } from 'recharts';
-import { FaMotorcycle, FaUserPlus, FaTrash, FaCheck, FaBan, FaKey } from 'react-icons/fa';
+import { FaMotorcycle, FaUserPlus, FaTrash, FaCheck, FaBan, FaKey, FaTimes } from 'react-icons/fa';
 
 const DomiStats = () => {
   const { businessId, businessConfig } = useBusinessConfig();
@@ -127,7 +127,7 @@ const DomiStats = () => {
            </div>
            
            <div className="mt-4 pt-4 border-t border-slate-700 flex items-center justify-between text-slate-400 italic text-xs">
-              <p>Tu link para domiciliarios: <span className="text-white select-all">https://menuby.tech/{businessConfig.slug}/domi</span></p>
+              <p>Tu link para domiciliarios: <span className="text-white select-all">https://menuby.tech/{businessConfig?.slug}/domi</span></p>
               {dailySession && <p>Expira a media noche</p>}
            </div>
        </div>
