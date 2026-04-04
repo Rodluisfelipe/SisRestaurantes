@@ -171,23 +171,22 @@ router.post('/test-print', authenticateToken, async (req, res) => {
 // POST /api/print-agent/print-receipt/:orderId — Print receipt for a specific order (authed admin)
 router.post('/print-receipt/:orderId', authenticateToken, async (req, res) => {
   try {
-    const businessId = await resolveBusinessId(req);
-    if (!businessId) return res.status(400).json({ error: 'No business associated' });
-
     const { orderId } = req.params;
     const Order = require('../Models/Order');
     const CompletedOrder = require('../Models/CompletedOrder');
 
-    // Search in active orders first, then completed
-    let order = await Order.findOne({ _id: orderId, businessId }).lean();
+    let order = await Order.findById(orderId).lean();
     if (!order) {
-      order = await CompletedOrder.findOne({ _id: orderId, businessId }).lean();
+      order = await CompletedOrder.findById(orderId).lean();
     }
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    printEmitter.emit(`receipt:${businessId.toString()}`, order);
+    const businessId = order.businessId?.toString();
+    if (!businessId) return res.status(400).json({ error: 'Order has no business' });
+
+    printEmitter.emit(`receipt:${businessId}`, order);
     res.json({ message: 'Receipt sent to printer' });
   } catch (error) {
     logger.error('Error printing receipt', error);
@@ -198,22 +197,22 @@ router.post('/print-receipt/:orderId', authenticateToken, async (req, res) => {
 // POST /api/print-agent/print-comanda/:orderId — Print comanda for a specific order (authed admin)
 router.post('/print-comanda/:orderId', authenticateToken, async (req, res) => {
   try {
-    const businessId = await resolveBusinessId(req);
-    if (!businessId) return res.status(400).json({ error: 'No business associated' });
-
     const { orderId } = req.params;
     const Order = require('../Models/Order');
     const CompletedOrder = require('../Models/CompletedOrder');
 
-    let order = await Order.findOne({ _id: orderId, businessId }).lean();
+    let order = await Order.findById(orderId).lean();
     if (!order) {
-      order = await CompletedOrder.findOne({ _id: orderId, businessId }).lean();
+      order = await CompletedOrder.findById(orderId).lean();
     }
     if (!order) {
       return res.status(404).json({ error: 'Order not found' });
     }
 
-    printEmitter.emit(`print:${businessId.toString()}`, order);
+    const businessId = order.businessId?.toString();
+    if (!businessId) return res.status(400).json({ error: 'Order has no business' });
+
+    printEmitter.emit(`print:${businessId}`, order);
     res.json({ message: 'Comanda sent to printer' });
   } catch (error) {
     logger.error('Error printing comanda', error);
