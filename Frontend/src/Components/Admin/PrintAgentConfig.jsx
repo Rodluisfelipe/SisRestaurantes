@@ -150,16 +150,26 @@ export default function PrintAgentConfig() {
                   <strong>Copia la clave</strong> con el botón de arriba
                 </li>
                 <li>
-                  Abre <strong>menuby-print.exe</strong> en el PC del restaurante
+                  <strong>Descarga</strong> el programa e instálalo en el PC del restaurante
                 </li>
                 <li>
-                  Pega la clave cuando el programa la pida
+                  Abre <strong>menuby-print.exe</strong> y pega la clave cuando la pida
                 </li>
                 <li>
                   Selecciona tu impresora y ¡listo!
                 </li>
               </ol>
             </div>
+
+            {/* Download button */}
+            <a
+              href={`${import.meta.env.VITE_API_URL}/downloads/menuby-print.exe`}
+              download="menuby-print.exe"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-500 transition-colors"
+            >
+              <FaDownload className="text-xs" />
+              Descargar Print Agent
+            </a>
 
             {/* Actions */}
             <div className="flex gap-2">
