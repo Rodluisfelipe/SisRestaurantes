@@ -2,14 +2,27 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const BusinessConfig = require('../Models/BusinessConfig');
+const Admin = require('../Models/Admin');
 const { printEmitter } = require('../services/socketService');
 const { authenticateToken } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
+// Helper: resolve businessId from JWT, body, query, or DB lookup
+async function resolveBusinessId(req) {
+  const bizId = req.user.businessId || req.body?.businessId || req.query?.businessId;
+  if (bizId) return bizId;
+  // Fallback: look up Admin record to get businessId (not for superadmin)
+  if (req.user.id && req.user.role !== 'superadmin') {
+    const admin = await Admin.findById(req.user.id).select('businessId').lean();
+    if (admin?.businessId) return admin.businessId.toString();
+  }
+  return null;
+}
+
 // POST /api/print-agent/generate-key — Generate a new print agent key (authed admin)
 router.post('/generate-key', authenticateToken, async (req, res) => {
   try {
-    const businessId = req.user.businessId || req.body.businessId;
+    const businessId = await resolveBusinessId(req);
     if (!businessId) return res.status(400).json({ error: 'No business associated' });
 
     const key = crypto.randomBytes(32).toString('hex');
@@ -25,7 +38,7 @@ router.post('/generate-key', authenticateToken, async (req, res) => {
 // DELETE /api/print-agent/revoke-key — Revoke the print agent key
 router.delete('/revoke-key', authenticateToken, async (req, res) => {
   try {
-    const businessId = req.user.businessId || req.query.businessId;
+    const businessId = await resolveBusinessId(req);
     if (!businessId) return res.status(400).json({ error: 'No business associated' });
 
     await BusinessConfig.findByIdAndUpdate(businessId, { printAgentKey: null });
@@ -117,7 +130,7 @@ router.get('/stream', async (req, res) => {
 // GET /api/print-agent/test-print — Send a test order to the print agent (authed admin)
 router.post('/test-print', authenticateToken, async (req, res) => {
   try {
-    const businessId = req.user.businessId || req.body.businessId;
+    const businessId = await resolveBusinessId(req);
     if (!businessId) return res.status(400).json({ error: 'No business associated' });
 
     const testOrder = {
@@ -153,7 +166,7 @@ router.post('/test-print', authenticateToken, async (req, res) => {
 // POST /api/print-agent/print-receipt/:orderId — Print receipt for a specific order (authed admin)
 router.post('/print-receipt/:orderId', authenticateToken, async (req, res) => {
   try {
-    const businessId = req.user.businessId || req.body.businessId || req.query.businessId;
+    const businessId = await resolveBusinessId(req);
     if (!businessId) return res.status(400).json({ error: 'No business associated' });
 
     const { orderId } = req.params;
