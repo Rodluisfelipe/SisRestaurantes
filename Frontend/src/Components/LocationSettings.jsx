@@ -81,12 +81,12 @@ const LocationSettings = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl shadow-lg p-6"
+      className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-lg p-4 lg:p-6 border border-slate-100 lg:border-transparent"
     >
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Configuración de Ubicación</h2>
-          <p className="text-slate-600 mt-1">
+          <h2 className="text-lg lg:text-2xl font-bold text-slate-800">Ubicación</h2>
+          <p className="hidden lg:block text-slate-600 mt-1">
             Configura tu departamento y ciudad para aparecer en el catálogo
           </p>
         </div>
@@ -102,7 +102,7 @@ const LocationSettings = () => {
             name="department"
             value={location.department}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-slate-200 rounded-xl lg:rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 lg:focus:ring-blue-500 focus:border-transparent bg-slate-50/50 lg:bg-white"
             required
           >
             <option value="">Selecciona un departamento</option>
@@ -123,7 +123,7 @@ const LocationSettings = () => {
             name="city"
             value={location.city}
             onChange={handleInputChange}
-            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-slate-200 rounded-xl lg:rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 lg:focus:ring-blue-500 focus:border-transparent bg-slate-50/50 lg:bg-white"
             required
             disabled={!location.department}
           >
@@ -139,7 +139,7 @@ const LocationSettings = () => {
         </div>
 
         {/* Información sobre el catálogo */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl lg:rounded-lg p-4">
           <div className="flex items-start space-x-3">
             <div className="flex-shrink-0">
               <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="currentColor" viewBox="0 0 20 20">

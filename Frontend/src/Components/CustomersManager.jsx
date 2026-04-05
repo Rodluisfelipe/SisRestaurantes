@@ -377,69 +377,69 @@ const CustomersManager = () => {
 
   return (
     <div className="space-y-4">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 bg-blue-50 rounded-lg flex items-center justify-center">
-              <FaUsers className="text-blue-500 text-xs" />
+      {/* Stats Cards — iOS glass on mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-9 h-9 lg:w-7 lg:h-7 bg-gradient-to-br from-blue-500 to-blue-600 lg:bg-blue-50 lg:from-transparent lg:to-transparent rounded-xl lg:rounded-lg flex items-center justify-center shadow-sm lg:shadow-none">
+              <FaUsers className="text-white lg:text-blue-500 text-xs" />
             </div>
-            <span className="text-lg font-bold text-slate-800">{stats?.totalCustomers || 0}</span>
+            <span className="text-[20px] lg:text-lg font-bold text-slate-800 leading-tight">{stats?.totalCustomers || 0}</span>
           </div>
-          <p className="text-[11px] text-slate-500">Total Clientes</p>
+          <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Total Clientes</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 bg-purple-50 rounded-lg flex items-center justify-center">
-              <FaCrown className="text-purple-500 text-xs" />
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-9 h-9 lg:w-7 lg:h-7 bg-gradient-to-br from-purple-500 to-purple-600 lg:bg-purple-50 lg:from-transparent lg:to-transparent rounded-xl lg:rounded-lg flex items-center justify-center shadow-sm lg:shadow-none">
+              <FaCrown className="text-white lg:text-purple-500 text-xs" />
             </div>
-            <span className="text-lg font-bold text-slate-800">{stats?.vipCustomers || 0}</span>
+            <span className="text-[20px] lg:text-lg font-bold text-slate-800 leading-tight">{stats?.vipCustomers || 0}</span>
           </div>
-          <p className="text-[11px] text-slate-500">Clientes VIP</p>
+          <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Clientes VIP</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 bg-emerald-50 rounded-lg flex items-center justify-center">
-              <FaDollarSign className="text-emerald-500 text-xs" />
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-9 h-9 lg:w-7 lg:h-7 bg-gradient-to-br from-emerald-500 to-emerald-600 lg:bg-emerald-50 lg:from-transparent lg:to-transparent rounded-xl lg:rounded-lg flex items-center justify-center shadow-sm lg:shadow-none">
+              <FaDollarSign className="text-white lg:text-emerald-500 text-xs" />
             </div>
-            <span className="text-lg font-bold text-slate-800">{formatCurrencyCompact(stats?.totalRevenue || 0)}</span>
+            <span className="text-[20px] lg:text-lg font-bold text-slate-800 leading-tight">{formatCurrencyCompact(stats?.totalRevenue || 0)}</span>
           </div>
-          <p className="text-[11px] text-slate-500">Ingresos Totales</p>
+          <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Ingresos Totales</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 bg-amber-50 rounded-lg flex items-center justify-center">
-              <FaChartBar className="text-amber-500 text-xs" />
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+          <div className="flex items-center gap-2.5 mb-1">
+            <div className="w-9 h-9 lg:w-7 lg:h-7 bg-gradient-to-br from-amber-500 to-amber-600 lg:bg-amber-50 lg:from-transparent lg:to-transparent rounded-xl lg:rounded-lg flex items-center justify-center shadow-sm lg:shadow-none">
+              <FaChartBar className="text-white lg:text-amber-500 text-xs" />
             </div>
-            <span className="text-lg font-bold text-slate-800">{((stats?.totalOrders || 0) / (stats?.totalCustomers || 1)).toFixed(1)}</span>
+            <span className="text-[20px] lg:text-lg font-bold text-slate-800 leading-tight">{((stats?.totalOrders || 0) / (stats?.totalCustomers || 1)).toFixed(1)}</span>
           </div>
-          <p className="text-[11px] text-slate-500">{isService ? 'Promedio Citas' : 'Promedio Pedidos'}</p>
+          <p className="text-xs lg:text-[11px] text-slate-400 font-medium">{isService ? 'Promedio Citas' : 'Promedio Pedidos'}</p>
         </div>
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3">
+      <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
         <div className="flex flex-col gap-3">
-          {/* Search Bar */}
+          {/* Search Bar — iOS pill on mobile */}
           <div className="relative">
-            <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+            <FaSearch className="absolute left-3.5 lg:left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
             <input
               type="text"
               placeholder="Buscar por nombre, teléfono o email..."
               aria-label="Buscar clientes"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+              className="w-full pl-9 lg:pl-8 pr-3 py-2.5 lg:py-2 bg-slate-100/80 lg:bg-transparent border-0 lg:border lg:border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500/20 focus:bg-white transition-colors"
             />
           </div>
 
           {/* Filters Row */}
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 lg:gap-1.5">
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+              className={`px-3 lg:px-2.5 py-1.5 lg:py-1 rounded-xl lg:rounded-lg text-[13px] lg:text-xs font-semibold lg:font-medium transition-colors ${
                 statusFilter === 'all'
-                  ? 'bg-blue-500 text-white'
+                  ? 'bg-red-500 lg:bg-blue-500 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -447,7 +447,7 @@ const CustomersManager = () => {
             </button>
             <button
               onClick={() => setStatusFilter('active')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+              className={`px-3 lg:px-2.5 py-1.5 lg:py-1 rounded-xl lg:rounded-lg text-[13px] lg:text-xs font-semibold lg:font-medium transition-colors flex items-center gap-1 ${
                 statusFilter === 'active'
                   ? 'bg-emerald-500 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -457,7 +457,7 @@ const CustomersManager = () => {
             </button>
             <button
               onClick={() => setStatusFilter('vip')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+              className={`px-3 lg:px-2.5 py-1.5 lg:py-1 rounded-xl lg:rounded-lg text-[13px] lg:text-xs font-semibold lg:font-medium transition-colors flex items-center gap-1 ${
                 statusFilter === 'vip'
                   ? 'bg-purple-500 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -467,7 +467,7 @@ const CustomersManager = () => {
             </button>
             <button
               onClick={() => setStatusFilter('inactive')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1 ${
+              className={`px-3 lg:px-2.5 py-1.5 lg:py-1 rounded-xl lg:rounded-lg text-[13px] lg:text-xs font-semibold lg:font-medium transition-colors flex items-center gap-1 ${
                 statusFilter === 'inactive'
                   ? 'bg-slate-500 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -510,7 +510,7 @@ const CustomersManager = () => {
           <FaSyncAlt className="animate-spin mr-2 text-xs" /> Cargando clientes...
         </div>
       ) : customers.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 flex flex-col items-center justify-center py-10 text-center">
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none flex flex-col items-center justify-center py-10 text-center">
           <FaBoxOpen className="text-2xl text-slate-300 mb-2" />
           <p className="text-sm text-slate-500 font-medium">No se encontraron clientes</p>
           <p className="text-xs text-slate-400 mt-1">Intenta con otros filtros o búsqueda</p>
@@ -632,37 +632,37 @@ const CustomersManager = () => {
               const isVIP = (customer.totalOrders || 0) >= 10;
 
               return (
-                <div key={customer._id} className="bg-white rounded-xl border border-slate-200 p-3">
+                <div key={customer._id} className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-3">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2.5">
                       <div className="relative">
-                        <div className={`w-9 h-9 rounded-lg ${level.color} flex items-center justify-center text-xs font-bold`}>
+                        <div className={`w-9 h-9 rounded-xl ${level.color} flex items-center justify-center text-xs font-bold`}>
                           {customer.name.charAt(0).toUpperCase()}
                         </div>
                         {isVIP && <FaCrown className="absolute -top-1 -right-1 text-[7px] text-purple-500" />}
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-slate-800">{customer.name}</p>
+                        <p className="text-[13px] font-semibold text-slate-800">{customer.name}</p>
                         <p className="text-[10px] text-slate-400">#{customer._id.slice(-6)}</p>
                       </div>
                     </div>
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${level.color}`}>
+                    <span className={`px-1.5 py-0.5 rounded-lg text-[10px] font-semibold ${level.color}`}>
                       {level.name}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div className="bg-slate-50 rounded-lg px-2 py-1.5">
+                  <div className="grid grid-cols-2 gap-1.5 mb-2">
+                    <div className="bg-slate-50/80 rounded-xl px-2.5 py-1.5">
                       <p className="text-[10px] text-slate-400">{isService ? 'Citas' : 'Pedidos'}</p>
                       <p className="text-sm font-bold text-slate-800">{customer.totalOrders || 0}</p>
                     </div>
-                    <div className="bg-slate-50 rounded-lg px-2 py-1.5">
+                    <div className="bg-slate-50/80 rounded-xl px-2.5 py-1.5">
                       <p className="text-[10px] text-slate-400">Total</p>
                       <p className="text-xs font-bold text-emerald-600">${(customer.totalSpent || 0).toLocaleString('es-CO', { minimumFractionDigits: 0 })}</p>
                     </div>
                   </div>
 
-                  <div className="mb-2 space-y-0.5">
+                  <div className="mb-2.5 space-y-0.5">
                     <div className="flex items-center gap-1.5 text-xs text-slate-700">
                       <FaPhone className="text-[9px] text-slate-400" /> {customer.phone}
                     </div>
@@ -674,7 +674,7 @@ const CustomersManager = () => {
                   <div className="flex gap-1.5">
                     <button
                       onClick={(e) => handleWhatsAppClick(e, customer)}
-                      className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-medium hover:bg-emerald-100 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-emerald-50 text-emerald-600 rounded-xl text-[11px] font-semibold hover:bg-emerald-100 transition-colors active:scale-[0.97]"
                     >
                       <FaWhatsapp className="text-xs" /> WhatsApp
                     </button>
@@ -691,7 +691,7 @@ const CustomersManager = () => {
                         });
                         setShowCustomerModal(true);
                       }}
-                      className="flex-1 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium hover:bg-blue-100 transition-colors"
+                      className="flex-1 py-2 bg-blue-50 text-blue-600 rounded-xl text-[11px] font-semibold hover:bg-blue-100 transition-colors active:scale-[0.97]"
                     >
                       Ver Detalles
                     </button>
@@ -777,23 +777,28 @@ const CustomersManager = () => {
         </>
       )}
 
-      {/* Customer Detail Modal */}
+      {/* Customer Detail Modal — bottom sheet on mobile */}
       <AnimatePresence>
         {showCustomerModal && selectedCustomer && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50 overflow-y-auto"
+            className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-50 overflow-y-auto"
             onClick={() => setShowCustomerModal(false)}
           >
             <motion.div
-              initial={{ scale: 0.97, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.97, opacity: 0 }}
-              className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col my-4 border border-slate-200"
+              initial={{ opacity: 0, y: 100 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="bg-white rounded-t-2xl lg:rounded-xl w-full lg:max-w-lg max-h-[92vh] lg:max-h-[85vh] overflow-hidden flex flex-col lg:my-4 border-0 lg:border lg:border-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Drag handle — mobile only */}
+              <div className="lg:hidden flex justify-center pt-2 pb-1">
+                <div className="w-9 h-1 rounded-full bg-slate-300" />
+              </div>
               {/* Modal Header */}
               <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between">
                 <div className="flex items-center gap-3">

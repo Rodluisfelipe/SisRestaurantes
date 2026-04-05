@@ -256,7 +256,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
           {view !== 'stats' && (
             <>
               <select value={filter} onChange={e => setFilter(e.target.value)}
-                className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+                className="text-[13px] lg:text-xs border border-slate-200 rounded-xl lg:rounded-lg px-3 lg:px-2 py-2 lg:py-1.5 bg-slate-50 lg:bg-white">
                 <option value="all">Todas</option>
                 <option value="pending">Pendientes</option>
                 <option value="confirmed">Confirmadas</option>
@@ -265,7 +265,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
               </select>
               {staffList.length > 0 && (
                 <select value={staffFilter} onChange={e => setStaffFilter(e.target.value)}
-                  className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 bg-white">
+                  className="text-[13px] lg:text-xs border border-slate-200 rounded-xl lg:rounded-lg px-3 lg:px-2 py-2 lg:py-1.5 bg-slate-50 lg:bg-white">
                   <option value="all">Todo el equipo</option>
                   {staffList.map(s => (
                     <option key={s._id} value={s._id}>{s.name}</option>
@@ -307,7 +307,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                 <kpi.icon className="text-sm opacity-60" />
                 <span className="text-lg font-bold">{kpi.value}</span>
               </div>
-              <p className="text-[10px] font-medium opacity-70 mt-0.5">{kpi.label}</p>
+              <p className="text-xs font-medium opacity-70 mt-0.5">{kpi.label}</p>
             </div>
           ))}
         </div>
@@ -343,7 +343,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
               {filtered.map(booking => {
                 const st = STATUS_LABELS[booking.bookingStatus] || STATUS_LABELS.pending;
                 return (
-                  <div key={booking._id} className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div key={booking._id} className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 flex flex-col sm:flex-row sm:items-center gap-3">
                     {/* Date/Time */}
                     <div className="flex items-center gap-3 sm:w-48 flex-shrink-0">
                       <div className="w-10 h-10 rounded-lg bg-indigo-50 flex flex-col items-center justify-center">
@@ -566,14 +566,14 @@ export default function BookingsManager({ businessId, businessConfig }) {
                   <div key={kpi.label} className={`rounded-xl p-3 ${kpi.color}`}>
                     <kpi.icon className="text-sm opacity-60 mb-1" />
                     <p className="text-xl font-bold">{kpi.value}</p>
-                    <p className="text-[10px] font-medium opacity-70">{kpi.label}</p>
+                    <p className="text-xs font-medium opacity-70">{kpi.label}</p>
                   </div>
                 ))}
               </div>
 
               {/* Rates */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
                   <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Tasa de Cancelación</h3>
                   <div className="flex items-end gap-3">
                     <span className="text-3xl font-bold text-red-600">{stats.cancellationRate}%</span>
@@ -582,7 +582,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
                     </div>
                   </div>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
                   <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Tasa de No Asistencia</h3>
                   <div className="flex items-end gap-3">
                     <span className="text-3xl font-bold text-orange-600">{stats.noShowRate}%</span>
@@ -595,7 +595,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
 
               {/* Top Services */}
               {stats.topServices?.length > 0 && (
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
                   <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Servicios Más Populares</h3>
                   <div className="space-y-2">
                     {stats.topServices.map((s, i) => {
@@ -621,7 +621,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
 
               {/* Daily Distribution */}
               {stats.dailyDistribution && (
-                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
                   <h3 className="text-xs font-bold text-slate-500 uppercase mb-3">Citas por Día de la Semana</h3>
                   <div className="flex items-end gap-2 h-32">
                     {stats.dailyDistribution.map((count, i) => {
@@ -703,19 +703,19 @@ export default function BookingsManager({ businessId, businessConfig }) {
                   <div className="grid grid-cols-2 gap-2">
                     <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
                       <p className="text-lg font-bold text-indigo-600">{customerData.stats.totalBookings}</p>
-                      <p className="text-[10px] text-slate-500">Total Citas</p>
+                      <p className="text-xs text-slate-500">Total Citas</p>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
                       <p className="text-lg font-bold text-emerald-600">{customerData.stats.completed}</p>
-                      <p className="text-[10px] text-slate-500">Completadas</p>
+                      <p className="text-xs text-slate-500">Completadas</p>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
                       <p className="text-lg font-bold text-red-600">{customerData.stats.cancelled}</p>
-                      <p className="text-[10px] text-slate-500">Canceladas</p>
+                      <p className="text-xs text-slate-500">Canceladas</p>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-xl p-3 text-center">
                       <p className="text-lg font-bold text-green-600">${(customerData.stats.revenue || 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-slate-500">Ingresos</p>
+                      <p className="text-xs text-slate-500">Ingresos</p>
                     </div>
                   </div>
 
@@ -797,7 +797,7 @@ export default function BookingsManager({ businessId, businessConfig }) {
               initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
               className="fixed inset-0 z-50 flex items-center justify-center p-4"
             >
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
+              <div className="bg-white rounded-t-2xl lg:rounded-2xl shadow-xl w-full max-w-sm p-5 space-y-4">
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <FaCheck className="text-emerald-500" /> Completar Cita
                 </h3>

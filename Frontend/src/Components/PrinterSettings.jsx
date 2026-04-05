@@ -67,7 +67,7 @@ export default function PrinterSettings() {
   return (
     <div className="space-y-4">
       {/* Settings Card */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
           <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
             <FaPrint className="text-[10px] text-slate-500" />
@@ -141,7 +141,7 @@ export default function PrinterSettings() {
       </div>
 
       {/* Live Preview */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
           <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
             <FaEye className="text-[10px] text-slate-500" />

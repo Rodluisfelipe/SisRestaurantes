@@ -200,7 +200,7 @@ function ModernOrdersDashboard() {
           {!isService && (
             <button
               onClick={goToKitchenScreen}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 transition-colors"
             >
               <FaUtensils className="text-[10px]" />
               <span className="hidden sm:inline">Cocina</span>
@@ -216,7 +216,7 @@ function ModernOrdersDashboard() {
                 const businessSlug = match ? match[1] : '';
                 window.open(`/${businessSlug}/orders`, '_blank', 'noopener,noreferrer');
               }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition-colors"
             >
               <FaTv className="text-[10px]" />
               <span className="hidden sm:inline">Pantalla</span>
@@ -255,22 +255,51 @@ function ModernOrdersDashboard() {
 
       {/* Search + Filters */}
       <div className="space-y-3">
-        {/* Search */}
+        {/* Search — iOS pill style on mobile */}
         <div className="relative">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm" />
+          <FaSearch className="absolute left-3 lg:left-3 top-1/2 -translate-y-1/2 text-slate-300 text-sm" />
           <input
             type="text"
             placeholder={isService ? "Buscar por cliente o # de cita..." : "Buscar por cliente o # de pedido..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             aria-label={isService ? "Buscar por cliente o número de cita" : "Buscar por cliente o número de pedido"}
-            className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+            className="w-full pl-9 pr-4 py-2.5 bg-slate-100/80 lg:bg-white border-0 lg:border lg:border-slate-200 rounded-xl lg:rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500/20 focus:bg-white transition-all"
           />
         </div>
 
-        {/* Status filter pills + View toggle */}
+        {/* Status filter — iOS segmented control on mobile, pills on desktop */}
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+          {/* Mobile: segmented control */}
+          <div className="flex lg:hidden items-center bg-slate-100/80 rounded-xl p-[3px] w-full overflow-x-auto" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {statusFilters.map(f => {
+              const isActive = statusFilter === f.value;
+              const count = orderCounts[f.value] || 0;
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => setStatusFilter(f.value)}
+                  className={`relative flex-1 min-w-0 flex items-center justify-center gap-1 px-2 py-[7px] rounded-[10px] text-[11px] font-semibold whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
+                      : 'text-slate-500'
+                  }`}
+                >
+                  <span>{f.label}</span>
+                  {count > 0 && (
+                    <span className={`min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-bold flex items-center justify-center leading-none ${
+                      isActive ? 'bg-red-500 text-white' : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Desktop: pills */}
+          <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto pb-0.5">
             {statusFilters.map(f => {
               const isActive = statusFilter === f.value;
               const FilterIcon = f.icon;
@@ -299,8 +328,8 @@ function ModernOrdersDashboard() {
             })}
           </div>
 
-          {/* View toggle */}
-          <div className="flex bg-slate-100 rounded-lg p-0.5 shrink-0">
+          {/* View toggle — desktop only */}
+          <div className="hidden lg:flex bg-slate-100 rounded-lg p-0.5 shrink-0">
             <button
               onClick={() => setViewMode('grid')}
               className={`p-2.5 rounded-md transition-all ${
@@ -328,7 +357,7 @@ function ModernOrdersDashboard() {
       {/* Orders grid/list */}
       <div>
         {filteredOrders.length === 0 ? (
-          <div className="bg-white rounded-xl border border-slate-200 py-16 text-center">
+          <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none py-16 text-center">
             <div className="w-14 h-14 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
               <FaShoppingBag className="text-slate-300 text-xl" />
             </div>
@@ -347,7 +376,7 @@ function ModernOrdersDashboard() {
             animate="visible"
             className={
               viewMode === 'grid'
-                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3'
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2.5 lg:gap-3'
                 : 'space-y-2'
             }
           >
@@ -384,26 +413,31 @@ function ModernOrdersDashboard() {
         )}
       </div>
 
-      {/* Order Details Modal */}
+      {/* Order Details Modal — bottom sheet on mobile, centered modal on desktop */}
       <AnimatePresence>
         {selectedOrder && orderDetails && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-50"
             onClick={() => {
               setSelectedOrder(null);
               setOrderDetails(null);
             }}
           >
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 100 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
+              exit={{ opacity: 0, y: 100 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-xl border border-slate-200 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-t-2xl lg:rounded-xl border-0 lg:border lg:border-slate-200 w-full lg:max-w-2xl max-h-[92vh] lg:max-h-[90vh] overflow-y-auto"
             >
+              {/* Drag handle — mobile only */}
+              <div className="lg:hidden flex justify-center pt-2 pb-1">
+                <div className="w-9 h-1 rounded-full bg-slate-300" />
+              </div>
               {/* Modal Header */}
               <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3 rounded-t-xl">
                 <div className="flex items-center justify-between">

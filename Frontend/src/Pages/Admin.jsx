@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from 'react-router-dom';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import BusinessSettings from "../Components/BusinessSettings";
@@ -46,6 +46,7 @@ import AdminReviews from "../Components/Admin/AdminReviews";
 import StaffManager from "../Components/Admin/StaffManager";
 import BookingsManager from "../Components/Admin/BookingsManager";
 import CashClosings from "../Components/Admin/CashClosings";import ReferralsPanel from '../Components/Admin/ReferralsPanel';import MobileBottomNav from "../Components/Admin/MobileBottomNav";
+import MobileHeader from "../Components/Admin/MobileHeader";
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -113,11 +114,18 @@ function Admin() {
 
   // --- UI local ---
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(() => {
+  const [activeTab, setActiveTabRaw] = useState(() => {
     // Si viene de ePayco redirect con ?tab=subscription
     const tabParam = searchParams.get('tab');
     return tabParam || 'dashboard';
   });
+  // iOS push/pop direction: 1=forward (right), -1=back (left)
+  const directionRef = useRef(1);
+  const setActiveTab = useCallback((newTab) => {
+    directionRef.current = newTab === 'dashboard' ? -1 : 1;
+    setActiveTabRaw(newTab);
+    if (window.innerWidth < 1024) window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   const [showWelcome, setShowWelcome] = useState(false);
 
@@ -240,7 +248,7 @@ function Admin() {
 
   // --- Main render ---
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 pt-safe">
+    <div className="min-h-screen bg-[#f5f5f7] lg:bg-gradient-to-br lg:from-slate-50 lg:to-slate-100 pt-safe">
       {/* SuperAdmin Badge */}
       {isSuperAdminMode && (
         <motion.div
@@ -297,10 +305,13 @@ function Admin() {
 
         {/* Main Content */}
         <div className="flex-1 w-full lg:ml-0">
+          {/* Mobile Header — iOS nav bar style */}
+          <MobileHeader activeTab={activeTab} setActiveTab={setActiveTab} />
+
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="hidden md:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
+            className="hidden lg:block bg-white shadow-sm border-b border-slate-200 sticky top-0 z-40"
           >
             <AdminHeader activeTab={activeTab} />
           </motion.div>
@@ -310,7 +321,7 @@ function Admin() {
             <source src="/audio/new-order-notification.mp3" type="audio/mpeg" />
           </audio>
 
-          <div className="p-3 sm:p-4 md:p-6 pb-20 lg:pb-6">
+          <div className="p-4 sm:p-4 md:p-6 pb-28 lg:pb-6">
             {/* Banner de nuevo pedido */}
             <OrderNotificationBanner
               showOrderBanner={showOrderBanner}
@@ -320,9 +331,9 @@ function Admin() {
               setShowOrderBanner={setShowOrderBanner}
             />
 
-            {/* Subscription Status */}
+            {/* Subscription Status — only on dashboard in mobile, all tabs on desktop */}
             {businessConfig && businessConfig._id && (
-              <div className="mb-6">
+              <div className={`mb-6 ${activeTab !== 'dashboard' ? 'hidden lg:block' : ''}`}>
                 <SubscriptionStatus
                   {...subscriptionData}
                   onNavigateToSubscription={() => setActiveTab('subscription')}
@@ -331,13 +342,19 @@ function Admin() {
               </div>
             )}
 
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" custom={directionRef.current}>
               <motion.div
                 key={activeTab}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
+                custom={directionRef.current}
+                variants={{
+                  enter: (d) => ({ x: d > 0 ? 50 : -50, opacity: 0 }),
+                  center: { x: 0, opacity: 1 },
+                  exit: (d) => ({ x: d > 0 ? -50 : 50, opacity: 0 }),
+                }}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
                 className="w-full"
               >
                 {activeTab === 'dashboard' && (

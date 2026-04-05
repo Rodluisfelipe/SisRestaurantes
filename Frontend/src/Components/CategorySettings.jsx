@@ -11,9 +11,9 @@ const LOCAL_STORAGE_KEY = 'categoryOrderSettings';
 const DeleteCategoryModal = ({ isOpen, onClose, onConfirm, category }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center z-50" onClick={onClose}>
       <div
-        className="bg-white rounded-xl p-5 max-w-sm w-full mx-4 shadow-lg border border-slate-200"
+        className="bg-white rounded-t-2xl lg:rounded-xl p-5 max-w-sm w-full mx-0 lg:mx-4 shadow-lg border border-slate-100 lg:border-slate-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-3">
@@ -341,7 +341,7 @@ const CategorySettings = () => {
 
       {sortMode ? (
         /* Reorder mode */
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <FaGripVertical className="text-blue-500 text-sm" />
             <div>
@@ -376,7 +376,7 @@ const CategorySettings = () => {
       ) : (
         <>
           {/* Create category form */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
               <FaPlus className="text-blue-500 text-sm" />
               <div>
@@ -417,7 +417,7 @@ const CategorySettings = () => {
 
               <button
                 type="submit"
-                className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-xs font-semibold flex items-center justify-center gap-1.5"
+                className="w-full bg-red-500 lg:bg-blue-500 text-white py-2.5 lg:py-2 rounded-xl lg:rounded-lg hover:opacity-90 transition-colors text-[13px] lg:text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.97] lg:active:scale-100"
               >
                 <FaPlus className="text-[10px]" />
                 Crear Categoría
@@ -426,7 +426,7 @@ const CategorySettings = () => {
           </div>
 
           {/* Existing categories list */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
               <FaFolderOpen className="text-blue-500 text-sm" />
               <div>

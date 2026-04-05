@@ -250,7 +250,7 @@ function ToppingGroupsManager() {
       ) : (
         <>
           {/* Create / Edit Form */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
               {isEditing ? <FaEdit className="text-amber-500 text-sm" /> : <FaPlus className="text-blue-500 text-sm" />}
               <div>
@@ -275,7 +275,7 @@ function ToppingGroupsManager() {
                       type="text"
                       value={currentGroup.name}
                       onChange={(e) => setCurrentGroup({ ...currentGroup, name: e.target.value })}
-                      className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-400 px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                      className="w-full rounded-xl lg:rounded-lg border border-slate-200 bg-white text-[14px] lg:text-sm text-slate-800 placeholder-slate-400 px-3 py-2.5 lg:py-2 focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500/20 focus:border-transparent lg:focus:border-blue-400 transition-colors"
                       placeholder="Ej: Quesos, Salsas, Vegetales..."
                       required
                     />
@@ -289,7 +289,7 @@ function ToppingGroupsManager() {
                       type="text"
                       value={currentGroup.description}
                       onChange={(e) => setCurrentGroup({ ...currentGroup, description: e.target.value })}
-                      className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 placeholder-slate-400 px-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                      className="w-full rounded-xl lg:rounded-lg border border-slate-200 bg-white text-[14px] lg:text-sm text-slate-800 placeholder-slate-400 px-3 py-2.5 lg:py-2 focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500/20 focus:border-transparent lg:focus:border-blue-400 transition-colors"
                       placeholder="Descripción opcional del grupo..."
                     />
                   </div>
@@ -310,7 +310,7 @@ function ToppingGroupsManager() {
                           ...currentGroup,
                           basePrice: e.target.value === '' ? 0 : parseFloat(e.target.value)
                         })}
-                        className="w-full rounded-lg border border-slate-200 bg-white text-sm text-slate-800 font-semibold pl-8 pr-3 py-2 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-colors"
+                        className="w-full rounded-xl lg:rounded-lg border border-slate-200 bg-white text-[14px] lg:text-sm text-slate-800 font-semibold pl-8 pr-3 py-2.5 lg:py-2 focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500/20 focus:border-transparent lg:focus:border-blue-400 transition-colors"
                         placeholder="0.00"
                       />
                     </div>
@@ -528,7 +528,7 @@ function ToppingGroupsManager() {
                 )}
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors text-xs font-semibold flex items-center justify-center gap-1.5"
+                  className="flex-1 bg-red-500 lg:bg-blue-500 text-white py-2.5 lg:py-2 rounded-xl lg:rounded-lg hover:opacity-90 transition-colors text-[13px] lg:text-xs font-semibold flex items-center justify-center gap-1.5 active:scale-[0.97] lg:active:scale-100"
                 >
                   {isEditing ? <FaEdit className="text-[10px]" /> : <FaPlus className="text-[10px]" />}
                   {isEditing ? 'Actualizar Grupo' : 'Crear Grupo'}
@@ -538,7 +538,7 @@ function ToppingGroupsManager() {
           </div>
 
           {/* Existing Groups List */}
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
               <FaCheese className="text-amber-500 text-sm" />
               <div>

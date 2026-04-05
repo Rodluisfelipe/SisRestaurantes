@@ -272,7 +272,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${config.bg} ${config.text}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs lg:text-[10px] font-bold ${config.bg} ${config.text}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
                         {config.label}
                       </span>
@@ -301,7 +301,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                         </div>
                       ))}
                       {(order.items || []).length > 3 && (
-                        <span className="text-[10px] text-slate-300">+{order.items.length - 3} más</span>
+                        <span className="text-xs lg:text-[10px] text-slate-300">+{order.items.length - 3} más</span>
                       )}
                     </div>
 
@@ -310,10 +310,10 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-black text-slate-800">${(order.finalAmount || order.totalAmount || 0).toLocaleString()}</span>
                         {order.paymentMethod && (
-                          <span className="text-[10px] text-slate-400">{METHOD_LABELS[order.paymentMethod] || order.paymentMethod}</span>
+                          <span className="text-xs lg:text-[10px] text-slate-400">{METHOD_LABELS[order.paymentMethod] || order.paymentMethod}</span>
                         )}
                       </div>
-                      <span className={`text-[10px] font-bold ${elapsed > 15 ? 'text-red-500' : elapsed > 8 ? 'text-amber-500' : 'text-slate-400'}`}>
+                      <span className={`text-xs lg:text-[10px] font-bold ${elapsed > 15 ? 'text-red-500' : elapsed > 8 ? 'text-amber-500' : 'text-slate-400'}`}>
                         {elapsed < 1 ? 'Ahora' : `${elapsed} min`}
                       </span>
                     </div>

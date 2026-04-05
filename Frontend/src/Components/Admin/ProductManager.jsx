@@ -103,7 +103,7 @@ export default function ProductManager({
       {/* Create Product Button */}
       <button
         onClick={openCreate}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium shadow-sm"
+        className="flex items-center gap-2 bg-red-500 lg:bg-blue-600 hover:opacity-90 text-white px-4 py-2.5 lg:py-2 rounded-xl lg:rounded-lg transition-colors text-[13px] lg:text-sm font-semibold lg:font-medium shadow-sm active:scale-[0.97] lg:active:scale-100 w-full lg:w-auto justify-center lg:justify-start"
       >
         <FaPlus className="text-xs" />
         <span>{isService ? 'Nuevo Servicio' : 'Nuevo Producto'}</span>
@@ -113,12 +113,12 @@ export default function ProductManager({
       <AnimatePresence>
         {showProductModal && (
           <div
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex lg:items-center items-end justify-center lg:p-4"
             onClick={() => { setShowProductModal(false); setEditingProduct(null); }}
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-xl shadow-xl border border-slate-200 max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+              className="bg-white rounded-t-2xl lg:rounded-xl shadow-xl border border-slate-100 lg:border-slate-200 max-w-2xl w-full max-h-[92vh] lg:max-h-[90vh] overflow-hidden flex flex-col"
             >
               {/* Modal Header */}
               <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100 flex-shrink-0">
@@ -459,8 +459,8 @@ export default function ProductManager({
           return (
             <div
               key={product._id}
-              className={`group rounded-xl border overflow-hidden transition-all hover:shadow-md flex flex-col ${
-                isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-red-200 opacity-70'
+              className={`group rounded-2xl lg:rounded-xl border overflow-hidden transition-all hover:shadow-md flex flex-col active:scale-[0.98] lg:active:scale-100 ${
+                isActive ? 'bg-white border-slate-100 lg:border-slate-200' : 'bg-slate-50 border-red-200 opacity-70'
               }`}
             >
               {/* Image */}

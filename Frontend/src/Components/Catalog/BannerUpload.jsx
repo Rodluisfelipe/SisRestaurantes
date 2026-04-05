@@ -310,12 +310,12 @@ const BannerUpload = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl shadow-lg p-6"
+      className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-lg p-4 lg:p-6 border border-slate-100 lg:border-transparent"
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4 lg:mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Banners Promocionales</h2>
-          <p className="text-slate-600 mt-1">
+          <h2 className="text-lg lg:text-2xl font-bold text-slate-800">Banners</h2>
+          <p className="hidden lg:block text-slate-600 mt-1">
             Crea banners para promocionar tu restaurante en el catálogo
           </p>
         </div>
@@ -324,7 +324,7 @@ const BannerUpload = () => {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowForm(!showForm)}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+            className="bg-red-500 lg:bg-blue-500 text-white px-4 py-2.5 lg:py-2 rounded-xl lg:rounded-lg hover:opacity-90 transition-colors text-[13px] lg:text-sm font-semibold active:scale-[0.97] lg:active:scale-100"
           >
             {showForm ? 'Cancelar' : 'Nuevo Banner'}
           </motion.button>
@@ -353,7 +353,7 @@ const BannerUpload = () => {
                     name="title"
                     value={formData.title}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 lg:py-2 border border-slate-300 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500"
                     placeholder="Ej: ¡Oferta especial!"
                     required
                     maxLength={100}
@@ -369,7 +369,7 @@ const BannerUpload = () => {
                     name="endDate"
                     value={formData.endDate}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 lg:py-2 border border-slate-300 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500"
                     min={new Date().toISOString().split('T')[0]}
                     required
                   />
@@ -384,7 +384,7 @@ const BannerUpload = () => {
                   name="description"
                   value={formData.description}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2.5 lg:py-2 border border-slate-300 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500"
                   placeholder="Describe tu promoción..."
                   rows={3}
                   maxLength={200}
@@ -400,7 +400,7 @@ const BannerUpload = () => {
                     name="priority"
                     value={formData.priority}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 lg:py-2 border border-slate-300 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500"
                   >
                     {[1,2,3,4,5,6,7,8,9,10].map(num => (
                       <option key={num} value={num}>{num}</option>
@@ -416,7 +416,7 @@ const BannerUpload = () => {
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp"
                     onChange={handleImageChange}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2.5 lg:py-2 border border-slate-300 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-500"
                     required
                   />
                 </div>

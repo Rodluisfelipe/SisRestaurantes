@@ -256,51 +256,52 @@ const CouponsManager = () => {
             setEditingCoupon(null);
             setShowCreateModal(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-medium hover:bg-slate-700 transition-colors"
+          className="flex items-center gap-2 px-4 lg:px-3 py-2.5 lg:py-1.5 bg-red-500 lg:bg-slate-800 text-white rounded-xl lg:rounded-lg text-[13px] lg:text-xs font-semibold lg:font-medium hover:bg-red-600 lg:hover:bg-slate-700 transition-colors shadow-sm lg:shadow-none active:scale-[0.97]"
         >
-          <FaPlus className="text-[9px]" /> Crear Cupón
+          <FaPlus className="text-[10px] lg:text-[9px]" /> Crear Cupón
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-2">
         {[
-          { icon: FaTicketAlt, label: 'Total Cupones', value: stats.totalCoupons || 0, color: 'text-blue-500 bg-blue-50' },
-          { icon: FaCheckCircle, label: 'Activos', value: stats.activeCoupons || 0, color: 'text-emerald-500 bg-emerald-50' },
-          { icon: FaChartBar, label: 'Total Usos', value: stats.totalUsage || 0, color: 'text-purple-500 bg-purple-50' },
-          { icon: FaDollarSign, label: 'Descuento Total', value: formatCurrency(stats.totalDiscountGiven || 0), color: 'text-amber-500 bg-amber-50' },
-        ].map(({ icon: Icon, label, value, color }) => (
-          <div key={label} className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-lg ${color} flex items-center justify-center flex-shrink-0`}>
-              <Icon className="text-xs" />
+          { icon: FaTicketAlt, label: 'Total Cupones', value: stats.totalCoupons || 0, gradient: 'from-blue-500 to-blue-600', light: 'text-blue-500 bg-blue-50' },
+          { icon: FaCheckCircle, label: 'Activos', value: stats.activeCoupons || 0, gradient: 'from-emerald-500 to-emerald-600', light: 'text-emerald-500 bg-emerald-50' },
+          { icon: FaChartBar, label: 'Total Usos', value: stats.totalUsage || 0, gradient: 'from-purple-500 to-purple-600', light: 'text-purple-500 bg-purple-50' },
+          { icon: FaDollarSign, label: 'Descuento Total', value: formatCurrency(stats.totalDiscountGiven || 0), gradient: 'from-amber-500 to-amber-600', light: 'text-amber-500 bg-amber-50' },
+        ].map(({ icon: Icon, label, value, gradient, light }) => (
+          <div key={label} className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+            <div className={`w-9 h-9 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg bg-gradient-to-br ${gradient} lg:bg-none flex items-center justify-center flex-shrink-0 shadow-sm lg:shadow-none`}>
+              <Icon className="text-white lg:hidden text-xs" />
+              <div className={`hidden lg:flex w-full h-full rounded-lg ${light} items-center justify-center`}><Icon className="text-xs" /></div>
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-slate-400 font-medium">{label}</p>
-              <p className="text-sm font-bold text-slate-800 truncate">{value}</p>
+              <p className="text-xs lg:text-[11px] text-slate-400 font-medium">{label}</p>
+              <p className="text-[16px] lg:text-sm font-bold text-slate-800 truncate leading-tight">{value}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3">
-        <div className="flex flex-col md:flex-row gap-2">
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+        <div className="flex flex-col md:flex-row gap-2.5 lg:gap-2">
           <div className="flex-1 relative">
-            <FaSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400" />
+            <FaSearch className="absolute left-3.5 lg:left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400" />
             <input
               type="text"
               placeholder="Buscar por código, nombre o descripción..."
               aria-label="Buscar cupones"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-7 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300 outline-none"
+              className="w-full pl-9 lg:pl-7 pr-3 py-2.5 lg:py-1.5 text-[14px] lg:text-xs bg-slate-100/80 lg:bg-white border-0 lg:border lg:border-slate-200 rounded-xl lg:rounded-lg focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-slate-300 focus:bg-white lg:focus:border-slate-300 outline-none transition-all"
             />
           </div>
           <div className="flex gap-1.5">
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600"
+              className="px-3 lg:px-2 py-2.5 lg:py-1.5 text-[13px] lg:text-xs border border-slate-200 rounded-xl lg:rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600 bg-white"
             >
               <option value="all">Todos los estados</option>
               <option value="active">Activos</option>
@@ -310,7 +311,7 @@ const CouponsManager = () => {
             <select
               value={discountTypeFilter}
               onChange={(e) => setDiscountTypeFilter(e.target.value)}
-              className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600"
+              className="px-3 lg:px-2 py-2.5 lg:py-1.5 text-[13px] lg:text-xs border border-slate-200 rounded-xl lg:rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600 bg-white"
             >
               <option value="all">Todos los tipos</option>
               <option value="percentage">Porcentaje</option>
@@ -324,7 +325,7 @@ const CouponsManager = () => {
                 setSortBy(field);
                 setSortOrder(order);
               }}
-              className="px-2 py-1.5 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600"
+              className="px-3 lg:px-2 py-2.5 lg:py-1.5 text-[13px] lg:text-xs border border-slate-200 rounded-xl lg:rounded-lg focus:ring-1 focus:ring-slate-300 outline-none text-slate-600 bg-white"
             >
               <option value="createdAt-desc">Más recientes</option>
               <option value="createdAt-asc">Más antiguos</option>
@@ -336,7 +337,7 @@ const CouponsManager = () => {
       </div>
 
       {/* Coupons Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-10 text-sm text-slate-400">
             <FaSyncAlt className="animate-spin mr-2 text-xs" /> Cargando cupones...
@@ -533,14 +534,14 @@ const CouponsManager = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-50"
             onClick={() => setShowCreateModal(false)}
           >
             <motion.div
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.97, opacity: 0 }}
-              className="bg-white rounded-xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col border border-slate-200"
+              className="bg-white rounded-t-2xl lg:rounded-xl w-full max-w-lg max-h-[92vh] lg:max-h-[85vh] overflow-hidden flex flex-col border border-slate-100 lg:border-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -744,14 +745,14 @@ const CouponsManager = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/40 flex lg:items-center items-end justify-center lg:p-4 z-50"
             onClick={() => setShowCouponModal(false)}
           >
             <motion.div
               initial={{ scale: 0.97, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.97, opacity: 0 }}
-              className="bg-white rounded-xl w-full max-w-md max-h-[85vh] overflow-hidden flex flex-col border border-slate-200"
+              className="bg-white rounded-t-2xl lg:rounded-xl w-full max-w-md max-h-[92vh] lg:max-h-[85vh] overflow-hidden flex flex-col border border-slate-100 lg:border-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}

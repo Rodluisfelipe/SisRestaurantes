@@ -24,13 +24,13 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-bold text-slate-800">Venta actual</h2>
                 {cart.length > 0 && (
-                  <span className="text-[10px] text-white font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center" style={{ backgroundColor: themeColor }}>
+                  <span className="text-xs lg:text-[10px] text-white font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center" style={{ backgroundColor: themeColor }}>
                     {cart.reduce((s, i) => s + i.quantity, 0)}
                   </span>
                 )}
               </div>
               {selectedTable && (
-                <button onClick={onClearTable} className="flex items-center gap-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors mt-0.5">
+                <button onClick={onClearTable} className="flex items-center gap-1 text-xs lg:text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                   {tableLabel} {selectedTable.tableNumber} ✕
                 </button>
@@ -46,7 +46,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
             {heldOrders.length > 0 && (
               <button onClick={() => setShowHeld(!showHeld)} className={`relative w-8 h-8 rounded-lg flex items-center justify-center transition-all ${showHeld ? 'text-amber-600 bg-amber-50' : 'text-slate-400 hover:text-amber-500 hover:bg-amber-50'}`} title="Ventas congeladas">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a5 5 0 015 5v3H7V7a5 5 0 015-5z"/><rect x="3" y="10" width="18" height="12" rx="2"/></svg>
-                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-amber-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{heldOrders.length}</span>
+                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">{heldOrders.length}</span>
               </button>
             )}
             {cart.length > 0 && (
@@ -61,7 +61,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
       {/* Held orders panel */}
       {showHeld && heldOrders.length > 0 && (
         <div className="border-b border-amber-100 bg-gradient-to-b from-amber-50 to-white px-3 py-2.5 space-y-2 max-h-44 overflow-y-auto">
-          <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest flex items-center gap-1.5">
+          <p className="text-xs lg:text-[10px] font-bold text-amber-600 uppercase tracking-widest flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
             Ventas congeladas
           </p>
@@ -73,9 +73,9 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               <div key={held.id} className="flex items-center gap-2 bg-white rounded-xl px-3 py-2.5 border border-amber-100 shadow-sm">
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-slate-700">{itemCount} items · <span style={{ color: themeColor }}>${heldTotal.toLocaleString()}</span></p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{held.tableNumber ? `${tableLabel} ${held.tableNumber} · ` : ''}{mins < 1 ? '<1' : mins} min</p>
+                  <p className="text-xs lg:text-[10px] text-slate-400 mt-0.5">{held.tableNumber ? `${tableLabel} ${held.tableNumber} · ` : ''}{mins < 1 ? '<1' : mins} min</p>
                 </div>
-                <button onClick={() => { onRecallHeldOrder(held.id); setShowHeld(false); }} className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white transition-colors shadow-sm" style={{ backgroundColor: themeColor }}>
+                <button onClick={() => { onRecallHeldOrder(held.id); setShowHeld(false); }} className="px-3 py-2 lg:py-1.5 rounded-xl lg:rounded-lg text-xs lg:text-[10px] font-bold text-white transition-colors shadow-sm" style={{ backgroundColor: themeColor }}>
                   Retomar
                 </button>
                 <button onClick={() => onDeleteHeldOrder(held.id)} className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all">
@@ -116,12 +116,12 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
                       {item.selectedToppings.map((t, idx) => (
                         <div key={idx}>
                           {t.optionName && (
-                            <p className="text-[10px] text-slate-500 leading-tight">
+                            <p className="text-xs lg:text-[10px] text-slate-500 leading-tight">
                               + {t.optionName}{t.price > 0 && <span className="text-slate-400 ml-0.5">(${t.price.toLocaleString()})</span>}
                             </p>
                           )}
                           {t.subGroups && t.subGroups.map((sg, si) => (
-                            <p key={si} className="text-[10px] text-slate-500 leading-tight pl-2">
+                            <p key={si} className="text-xs lg:text-[10px] text-slate-500 leading-tight pl-2">
                               + {sg.optionName}{sg.price > 0 && <span className="text-slate-400 ml-0.5">(${sg.price.toLocaleString()})</span>}
                             </p>
                           ))}
@@ -148,7 +148,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
                       </button>
                     </div>
                     <div className="text-right">
-                      {item.quantity > 1 && <p className="text-[10px] text-slate-400">${unitPrice.toLocaleString()} c/u</p>}
+                      {item.quantity > 1 && <p className="text-xs lg:text-[10px] text-slate-400">${unitPrice.toLocaleString()} c/u</p>}
                       <p className="text-sm font-black text-slate-900">${lineTotal.toLocaleString()}</p>
                     </div>
                   </div>
@@ -165,7 +165,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
           <div className="flex items-baseline justify-between">
             <span className="text-xs font-medium text-slate-400">{cart.reduce((s, i) => s + i.quantity, 0)} artículo(s)</span>
             <div className="text-right">
-              <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Total</p>
+              <p className="text-xs lg:text-[10px] text-slate-400 font-medium uppercase tracking-wider">Total</p>
               <p className="text-2xl font-black text-slate-900 leading-none">${total.toLocaleString()}</p>
             </div>
           </div>
