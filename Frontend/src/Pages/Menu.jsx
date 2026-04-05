@@ -981,10 +981,6 @@ export default function Menu() {
       
       // Calcular total del pedido
       const totalAmount = calculateTotalAmount();
-      console.log('=== CÁLCULO DE TOTAL ===');
-      console.log('totalAmount calculado:', totalAmount);
-      console.log('cart items:', cart);
-      console.log('=== FIN CÁLCULO ===');
       
       // Realizar últimas validaciones
       if (finalOrderInfo.orderType === 'inSite' && !finalOrderInfo.tableNumber && !finalOrderInfo.isBooking) {
@@ -1016,11 +1012,6 @@ export default function Menu() {
       logger.error('Error general en handleOrder:', error);
       alert('Error al procesar el pedido. Por favor intenta nuevamente.');
       setIsSubmittingOrder(false);
-    } finally {
-      // Asegurar que el estado siempre se resetee al finalizar
-      setTimeout(() => {
-      setIsSubmittingOrder(false);
-      }, 500);
     }
   };
 
@@ -1071,10 +1062,11 @@ export default function Menu() {
         totalAmount: totalAmount.toString(), // Convertir a string para evitar problemas con 0
         // Payment method (available in both WhatsApp and in-app modes)
         paymentMethod: orderDetails.paymentMethod || null,
+        // Customer notes (available in all modes)
+        customerNotes: orderDetails.customerNotes || '',
         // In-app ordering channel
         ...(isInAppMode && {
           orderChannel: 'inapp',
-          customerNotes: orderDetails.customerNotes || ''
         }),
         // Información del cupón si está aplicado
         ...(appliedCoupon && {
@@ -1117,23 +1109,6 @@ export default function Menu() {
       } : null;
 
       logger.info('Datos finales del pedido a enviar:', orderData);
-      console.log('=== DATOS COMPLETOS ENVIADOS AL BACKEND ===');
-      console.log('businessId:', orderData.businessId);
-      console.log('customerName:', orderData.customerName);
-      console.log('orderType:', orderData.orderType);
-      console.log('items:', orderData.items);
-      console.log('totalAmount:', orderData.totalAmount);
-      console.log('tableNumber:', orderData.tableNumber);
-      console.log('phone:', orderData.phone);
-      console.log('address:', orderData.address);
-      if (orderData.orderType === 'delivery') {
-        console.log('--- Datos de zona de entrega ---');
-        console.log('deliveryFee:', orderData.deliveryFee);
-        console.log('deliveryZoneName:', orderData.deliveryZoneName);
-        console.log('deliveryCalculated:', orderData.deliveryCalculated);
-        console.log('deliveryNeedsConfirmation:', orderData.deliveryNeedsConfirmation);
-      }
-      console.log('=== FIN DATOS ===');
 
       // Para pedidos a domicilio enviar WhatsApp solo si NO es modo in-app
       if (orderDetails.orderType === 'delivery' && !isInAppMode) {
@@ -1700,20 +1675,10 @@ export default function Menu() {
           setShowReviewModal(true);
         }}
         onReorder={(orderItems) => {
-          console.log('[Menu] Reordering items:', orderItems);
-          console.log('[Menu] Current products:', products);
-          
           // Enriquecer items con datos actuales de productos
           const cartItems = orderItems.map((item, index) => {
             // Buscar el producto actual en el catálogo
             const currentProduct = products.find(p => p._id === item.productId);
-            
-            console.log('[Menu] Enriching item:', { 
-              itemName: item.name, 
-              productId: item.productId,
-              foundProduct: !!currentProduct,
-              currentProductImage: currentProduct?.image 
-            });
             
             // Si encontramos el producto actual, usar su imagen y datos actualizados
             if (currentProduct) {
@@ -1738,7 +1703,6 @@ export default function Menu() {
             };
           });
           
-          console.log('[Menu] Enriched cart items:', cartItems);
           setCart(cartItems);
           SessionManager.saveToSession('cart', cartItems);
           setShowHistory(false);

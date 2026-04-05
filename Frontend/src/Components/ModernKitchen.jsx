@@ -677,6 +677,14 @@ function ModernKitchen() {
                       </div>
                     </div>
 
+                    {/* Customer Notes */}
+                    {order.customerNotes && (
+                      <div className="mx-6 mb-2 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+                        <p className="text-[11px] font-semibold text-amber-400 mb-0.5">Nota:</p>
+                        <p className="text-sm text-amber-200">{order.customerNotes}</p>
+                      </div>
+                    )}
+
                     {/* Order Items */}
                     <div className="px-6 py-4 max-h-48 overflow-y-auto custom-scrollbar">
                       <div className="space-y-3">

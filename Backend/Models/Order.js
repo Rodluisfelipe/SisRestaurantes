@@ -291,6 +291,13 @@ const orderSchema = new mongoose.Schema({
     sparse: true
   },
 
+  // Chat messages between customer and business
+  messages: [{
+    sender: { type: String, enum: ['customer', 'business'], required: true },
+    text: { type: String, required: true, maxlength: 500 },
+    timestamp: { type: Date, default: Date.now }
+  }],
+
   // Order items
   items: [{
     productId: {
