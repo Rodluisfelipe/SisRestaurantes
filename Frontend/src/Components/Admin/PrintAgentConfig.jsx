@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import { FaPrint, FaKey, FaCopy, FaCheck, FaTrash, FaDownload, FaCircle } from 'react-icons/fa';
+import AI from './AdminIcons';
 
 export default function PrintAgentConfig() {
   const { businessConfig, businessId } = useBusinessConfig();
@@ -211,7 +212,7 @@ export default function PrintAgentConfig() {
               exit={{ opacity: 0 }}
               className="bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-2 rounded-lg"
             >
-              ✅ {success}
+              <span className="flex items-center gap-1">{AI.checkCircle('w-3.5 h-3.5')} {success}</span>
             </motion.div>
           )}
           {error && (
@@ -221,7 +222,7 @@ export default function PrintAgentConfig() {
               exit={{ opacity: 0 }}
               className="bg-red-50 text-red-600 text-xs font-semibold px-3 py-2 rounded-lg"
             >
-              ❌ {error}
+              <span className="flex items-center gap-1">{AI.xCircle('w-3.5 h-3.5')} {error}</span>
             </motion.div>
           )}
         </AnimatePresence>

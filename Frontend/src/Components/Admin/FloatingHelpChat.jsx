@@ -1,17 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
+import AI from './AdminIcons';
 
 const WHATSAPP_NUMBER = '3138178003';
 const WHATSAPP_URL = `https://wa.me/57${WHATSAPP_NUMBER}?text=Hola%2C%20necesito%20ayuda%20con%20MenuBy`;
 
 const SUGGESTIONS = [
-  { icon: '📦', text: '¿Cómo agrego un producto?' },
-  { icon: '🛒', text: '¿Cómo configuro los pedidos?' },
-  { icon: '🎨', text: '¿Cómo personalizo mi menú?' },
-  { icon: '🏷️', text: '¿Cómo creo un cupón?' },
-  { icon: '📍', text: '¿Cómo configuro zonas de entrega?' },
-  { icon: '📱', text: '¿Cómo comparto mi menú?' },
+  { icon: AI.cube('w-4 h-4'), text: '¿Cómo agrego un producto?' },
+  { icon: AI.shoppingCart('w-4 h-4'), text: '¿Cómo configuro los pedidos?' },
+  { icon: AI.palette('w-4 h-4'), text: '¿Cómo personalizo mi menú?' },
+  { icon: AI.tag('w-4 h-4'), text: '¿Cómo creo un cupón?' },
+  { icon: AI.mapPin('w-4 h-4'), text: '¿Cómo configuro zonas de entrega?' },
+  { icon: AI.deviceMobile('w-4 h-4'), text: '¿Cómo comparto mi menú?' },
 ];
 
 // MenuBy logo "M" icon

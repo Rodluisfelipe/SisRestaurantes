@@ -488,7 +488,7 @@ const FilterableMenu = ({
       {/* Active Order Banner — Rappi style, above search */}
       <AnimatePresence>
         {hasActiveOrder && (() => {
-          const isCompleted = activeOrderStatus === 'completed' || activeOrderStatus === 'ready';
+          const isCompleted = activeOrderStatus === 'completed' || activeOrderStatus === 'ready' || activeOrderStatus === 'delivered';
           const bizLabel = isHotel ? 'El hotel' : 'El negocio';
           const statusMap = {
             pending_payment: { label: 'Pendiente de pago', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Realiza el pago para continuar' },
@@ -496,8 +496,10 @@ const FilterableMenu = ({
             payment_confirmed: { label: 'Pago confirmado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido será preparado pronto' },
             pending: { label: 'Pedido recibido', icon: MI.clipboard('w-5 h-5 text-white'), sub: `${bizLabel} recibió tu pedido` },
             inProgress: { label: 'En preparación', icon: MI.package('w-5 h-5 text-white'), sub: 'Están preparando tu pedido' },
+            preparing: { label: 'En preparación', icon: MI.package('w-5 h-5 text-white'), sub: 'Están preparando tu pedido' },
             ready: { label: 'Pedido listo', icon: MI.sparkle('w-5 h-5 text-white'), sub: 'Tu pedido está listo para recoger' },
             completed: { label: 'Pedido completado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido ha sido entregado' },
+            delivered: { label: 'Pedido entregado', icon: MI.check('w-5 h-5 text-white'), sub: 'Tu pedido ha sido entregado' },
           };
           const info = statusMap[activeOrderStatus] || { label: 'Pedido en curso', icon: MI.clipboard('w-5 h-5 text-white'), sub: 'Toca para ver el estado' };
 

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { socket } from '../services/socket';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import AI from './Admin/AdminIcons';
 
 // Modern Icons
 const Icons = {
@@ -483,7 +484,7 @@ function ModernKitchen() {
                       color: `${businessConfig?.theme?.buttonTextColor || '#ffffff'}cc` 
                     }}
                   >
-                    🍳 Cocina • Pedidos en Tiempo Real
+                    <span className="inline-flex items-center gap-1.5">{AI.fire('w-4 h-4')} Cocina • Pedidos en Tiempo Real</span>
                   </p>
                 </div>
               </motion.div>
@@ -591,7 +592,7 @@ function ModernKitchen() {
               }}
               className="text-6xl mb-6"
             >
-              👨‍🍳
+              {AI.utensils('w-14 h-14 text-slate-400')}
             </motion.div>
             <h3 className="text-xl font-semibold text-slate-200 mb-2">Todo tranquilo por aquí</h3>
             <p className="text-slate-400 max-w-md mx-auto">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../services/api";
+import AI from './Admin/AdminIcons';
 
 export default function ChangePassword({ forceNoOldPassword = false }) {
   const [oldPassword, setOldPassword] = useState("");
@@ -59,7 +60,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
           className="text-center"
         >
           <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-r from-red-500 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-3 lg:mb-4 shadow-2xl">
-            <span className="text-xl lg:text-2xl">🔐</span>
+            {AI.lockClosed('w-6 h-6 lg:w-8 lg:h-8 text-white')}
           </div>
           <h2 className="text-xl lg:text-3xl font-bold text-slate-900 mb-2">Cambiar Contraseña</h2>
           <p className="text-slate-600">Actualiza tu contraseña de acceso</p>
@@ -75,7 +76,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             className="p-4 rounded-2xl border-2 bg-red-50 border-red-200 text-red-800 flex items-center space-x-3"
           >
-            <span className="text-xl">❌</span>
+            {AI.xCircle('w-5 h-5 text-red-500')}
             <span className="font-medium">{error}</span>
           </motion.div>
         )}
@@ -87,7 +88,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
             className="p-4 rounded-2xl border-2 bg-green-50 border-green-200 text-green-800 flex items-center space-x-3"
           >
-            <span className="text-xl">✅</span>
+            {AI.checkCircle('w-5 h-5 text-green-500')}
             <span className="font-medium">{message}</span>
           </motion.div>
         )}
@@ -109,7 +110,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
         >
           <div className="text-center mb-8">
             <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-2 lg:mb-3 shadow-lg">
-              <span className="text-lg lg:text-xl">🔑</span>
+              {AI.key('w-5 h-5 lg:w-6 lg:h-6 text-blue-500')}
             </div>
             <h3 className="text-base lg:text-2xl font-bold text-slate-900 mb-1 lg:mb-2">Cambiar contraseña</h3>
             <p className="hidden lg:block text-slate-600">Introduce tu contraseña actual y la nueva contraseña</p>
@@ -125,7 +126,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
                 className="space-y-2"
               >
                 <div className="flex items-center space-x-2 mb-3">
-                  <span className="text-xl">🔒</span>
+                  {AI.lockClosed('w-5 h-5 text-slate-500')}
                   <label htmlFor="oldPassword" className="text-lg font-semibold text-slate-900">
                     Contraseña actual
                   </label>
@@ -141,7 +142,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
                     placeholder="••••••••"
                     className="w-full px-4 py-3 pl-12 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white text-slate-700"
                   />
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔐</span>
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2">{AI.lockClosed('w-5 h-5 text-slate-400')}</span>
                 </div>
               </motion.div>
             )}
@@ -154,7 +155,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
               className="space-y-2"
             >
               <div className="flex items-center space-x-2 mb-3">
-                <span className="text-xl">🔑</span>
+                {AI.key('w-5 h-5 text-slate-500')}
                 <label htmlFor="newPassword" className="text-lg font-semibold text-slate-900">
                   Nueva contraseña
                 </label>
@@ -170,7 +171,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
                   placeholder="••••••••"
                   className="w-full px-4 py-3 pl-12 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white text-slate-700"
                 />
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">✨</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2">{AI.sparkle('w-5 h-5 text-slate-400')}</span>
               </div>
             </motion.div>
 
@@ -182,7 +183,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
               className="space-y-2"
             >
               <div className="flex items-center space-x-2 mb-3">
-                <span className="text-xl">🔄</span>
+                {AI.arrowPath('w-5 h-5 text-slate-500')}
                 <label htmlFor="confirmPassword" className="text-lg font-semibold text-slate-900">
                   Confirmar nueva contraseña
                 </label>
@@ -198,7 +199,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
                   placeholder="••••••••"
                   className="w-full px-4 py-3 pl-12 border-2 border-slate-200 rounded-2xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 transition-all duration-200 bg-white text-slate-700"
                 />
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">✅</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2">{AI.checkCircle('w-5 h-5 text-slate-400')}</span>
               </div>
             </motion.div>
           </div>
@@ -216,7 +217,7 @@ export default function ChangePassword({ forceNoOldPassword = false }) {
             }`}
           >
             <span className="text-xl">
-              {loading ? '⏳' : '🔐'}
+              {loading ? AI.arrowPath('w-5 h-5 text-white animate-spin') : AI.lockClosed('w-5 h-5 text-white')}
             </span>
             <span>
               {loading ? 'Actualizando...' : 'Cambiar contraseña'}

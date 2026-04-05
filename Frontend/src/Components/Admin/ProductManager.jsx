@@ -5,6 +5,7 @@ import ProductToppingOrderSelector from '../ProductToppingOrderSelector';
 import ImageUploader from './ImageUploader';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import AI from './AdminIcons';
 import {
   FaPlus, FaTimes, FaEdit, FaPause, FaPlay, FaTrash, FaStar,
   FaChevronLeft, FaChevronDown, FaChevronRight, FaCheck,
@@ -188,7 +189,7 @@ export default function ProductManager({
                             ) : (
                               <FaMagic className="text-[10px]" />
                             )}
-                            {aiNamesLoading ? 'Generando...' : '✨ Sugerir nombres'}
+                            {aiNamesLoading ? 'Generando...' : <><span className="inline-flex items-center gap-0.5">{AI.sparkle('w-3 h-3')} Sugerir nombres</span></>}
                           </button>
                         </div>
                         <input ref={nameInputRef} name="name" value={form.name} onChange={handleChange} onBlur={() => handleBlur('name')}
@@ -241,7 +242,7 @@ export default function ProductManager({
                                     onClick={generateAiNames}
                                     className="w-full text-center text-[11px] text-violet-500 hover:text-violet-700 font-medium pt-1 transition-colors"
                                   >
-                                    🔄 Generar más nombres
+                                    <span className="inline-flex items-center gap-0.5">{AI.arrowPath('w-3 h-3')} Generar más nombres</span>
                                   </button>
                                 )}
                               </div>
@@ -283,13 +284,13 @@ export default function ProductManager({
                                 className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all border ${
                                   form.itemType !== 'service' ? 'bg-blue-50 border-blue-300 text-blue-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
                                 }`}>
-                                📦 Producto
+                                <span className="inline-flex items-center gap-1">{AI.cube('w-3.5 h-3.5')} Producto</span>
                               </button>
                               <button type="button" onClick={() => setForm(prev => ({ ...prev, itemType: 'service' }))}
                                 className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all border ${
                                   form.itemType === 'service' ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'
                                 }`}>
-                                📅 Servicio
+                                <span className="inline-flex items-center gap-1">{AI.calendar('w-3.5 h-3.5')} Servicio</span>
                               </button>
                             </div>
                           </div>

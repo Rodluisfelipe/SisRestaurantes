@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import AI from './AdminIcons';
 
 /**
  * WelcomeWizard — Modal de bienvenida que aparece automáticamente
@@ -9,13 +10,13 @@ import { useBusinessConfig } from '../../Context/BusinessContext';
 
 const STEPS = [
   {
-    emoji: '🎉',
+    emoji: AI.sparkle('w-16 h-16 text-white'),
     title: '¡Tu menú digital está listo!',
     desc: 'Ya creamos categorías automáticas según tu tipo de negocio. Ahora vamos a configurarlo todo en 3 simples pasos.',
     gradient: 'from-blue-500 to-purple-600',
   },
   {
-    emoji: '🍔',
+    emoji: AI.utensils('w-16 h-16 text-white'),
     title: 'Paso 1: Agrega tus productos',
     desc: 'Ve a la sección "Productos", haz clic en "+ Nuevo Producto" y agrega nombre, precio, imagen y categoría. ¡Puedes agregar cuantos quieras!',
     tip: 'Consejo: Empieza con 3-5 productos estrella',
@@ -23,7 +24,7 @@ const STEPS = [
     gradient: 'from-orange-500 to-red-500',
   },
   {
-    emoji: '⚙️',
+    emoji: AI.cog('w-16 h-16 text-white'),
     title: 'Paso 2: Configura tus pedidos',
     desc: 'En "Configuración del Negocio" elige cómo quieres recibir pedidos: por WhatsApp, directamente en la app, o ambos. También agrega tu horario.',
     tip: 'Consejo: WhatsApp es perfecto para empezar',
@@ -31,7 +32,7 @@ const STEPS = [
     gradient: 'from-emerald-500 to-teal-600',
   },
   {
-    emoji: '🚀',
+    emoji: AI.rocket('w-16 h-16 text-white'),
     title: 'Paso 3: ¡Comparte tu menú!',
     desc: 'Tu menú ya tiene un link único. Cópialo desde la configuración y compártelo en tus redes sociales, WhatsApp o imprímelo en un QR.',
     tip: 'Tu link: menuby.tech/tu-negocio',
@@ -41,13 +42,13 @@ const STEPS = [
 
 const SERVICE_STEPS = [
   {
-    emoji: '🎉',
+    emoji: AI.sparkle('w-16 h-16 text-white'),
     title: '¡Tu catálogo digital está listo!',
     desc: 'Ya creamos categorías automáticas según tu tipo de negocio. Ahora vamos a configurarlo todo en 3 simples pasos.',
     gradient: 'from-blue-500 to-purple-600',
   },
   {
-    emoji: '💆',
+    emoji: AI.sparkle('w-16 h-16 text-white'),
     title: 'Paso 1: Agrega tus servicios',
     desc: 'Ve a la sección "Servicios", haz clic en "+ Nuevo Servicio" y agrega nombre, precio, imagen y categoría. ¡Puedes agregar cuantos quieras!',
     tip: 'Consejo: Empieza con 3-5 servicios principales',
@@ -55,7 +56,7 @@ const SERVICE_STEPS = [
     gradient: 'from-orange-500 to-red-500',
   },
   {
-    emoji: '⚙️',
+    emoji: AI.cog('w-16 h-16 text-white'),
     title: 'Paso 2: Configura tus citas',
     desc: 'En "Configuración del Negocio" elige cómo quieres recibir citas: por WhatsApp, directamente en la app, o ambos. También agrega tu horario.',
     tip: 'Consejo: WhatsApp es perfecto para empezar',
@@ -63,7 +64,7 @@ const SERVICE_STEPS = [
     gradient: 'from-emerald-500 to-teal-600',
   },
   {
-    emoji: '🚀',
+    emoji: AI.rocket('w-16 h-16 text-white'),
     title: 'Paso 3: ¡Comparte tu catálogo!',
     desc: 'Tu catálogo ya tiene un link único. Cópialo desde la configuración y compártelo en tus redes sociales, WhatsApp o imprímelo en un QR.',
     tip: 'Tu link: menuby.tech/tu-negocio',
@@ -132,7 +133,7 @@ export default function WelcomeWizard({ onClose, onGoToTab }) {
 
             {current.tip && (
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
-                <p className="text-sm text-amber-700 font-medium">💡 {current.tip}</p>
+                <p className="text-sm text-amber-700 font-medium flex items-center gap-1">{AI.lightbulb('w-4 h-4')} {current.tip}</p>
               </div>
             )}
 

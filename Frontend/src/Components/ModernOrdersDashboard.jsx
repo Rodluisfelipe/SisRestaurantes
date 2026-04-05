@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateDailyReportPDF } from './DailyReportPDF';
 import { ORDER_STATUS } from '../utils/constants';
+import AI from './Admin/AdminIcons';
 import {
   FaClipboardList, FaSync, FaCircle, FaSearch, FaTh, FaList,
   FaUtensils, FaTv, FaShoppingBag, FaEye, FaPlay, FaCheck,
@@ -709,7 +710,7 @@ function ModernOrdersDashboard() {
                             <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
                             <span className="text-[11px] text-slate-400">x{item.quantity}</span>
                             {item.isLoyaltyReward && (
-                              <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold">🎁 Loyalty</span>
+                              <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold inline-flex items-center gap-0.5">{AI.gift('w-3 h-3')} Loyalty</span>
                             )}
                           </div>
                           

@@ -3,18 +3,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Save, RotateCcw, ChevronUp, ChevronDown, Copy, Check, Lock } from 'lucide-react';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import AI from './Admin/AdminIcons';
 
 // Metadata de cada módulo (solo UI — el backend guarda id, enabled, order)
 const MODULE_META = {
-  header:        { icon: '🧾', label: 'Encabezado',            desc: 'Nombre del negocio',                required: true },
-  orderType:     { icon: '🏍️', label: 'Tipo de pedido',        desc: 'Domicilio / Para llevar / En sitio' },
-  customerName:  { icon: '👤', label: 'Nombre del cliente',     desc: 'Nombre de quien ordena' },
-  address:       { icon: '📍', label: 'Dirección y zona',       desc: 'Dirección con zona de entrega' },
-  phone:         { icon: '📞', label: 'Teléfono',               desc: 'Número de contacto del cliente' },
-  paymentMethod: { icon: '💳', label: 'Método de pago',         desc: 'Forma de pago seleccionada' },
-  products:      { icon: '🛒', label: 'Productos',              desc: 'Items con extras detallados',        required: true },
-  totals:        { icon: '💰', label: 'Totales',                desc: 'Subtotal, envío, cupón y total',     required: true },
-  customMessage: { icon: '✍️', label: 'Mensaje personalizado',  desc: 'Agrega tu mensaje al final',         hasText: true },
+  header:        { icon: AI.receipt('w-5 h-5 text-slate-600'), label: 'Encabezado',            desc: 'Nombre del negocio',                required: true },
+  orderType:     { icon: AI.truck('w-5 h-5 text-slate-600'), label: 'Tipo de pedido',        desc: 'Domicilio / Para llevar / En sitio' },
+  customerName:  { icon: AI.user('w-5 h-5 text-slate-600'), label: 'Nombre del cliente',     desc: 'Nombre de quien ordena' },
+  address:       { icon: AI.mapPin('w-5 h-5 text-slate-600'), label: 'Dirección y zona',       desc: 'Dirección con zona de entrega' },
+  phone:         { icon: AI.phone('w-5 h-5 text-slate-600'), label: 'Teléfono',               desc: 'Número de contacto del cliente' },
+  paymentMethod: { icon: AI.creditCard('w-5 h-5 text-slate-600'), label: 'Método de pago',         desc: 'Forma de pago seleccionada' },
+  products:      { icon: AI.shoppingCart('w-5 h-5 text-slate-600'), label: 'Productos',              desc: 'Items con extras detallados',        required: true },
+  totals:        { icon: AI.banknotes('w-5 h-5 text-slate-600'), label: 'Totales',                desc: 'Subtotal, envío, cupón y total',     required: true },
+  customMessage: { icon: AI.pencil('w-5 h-5 text-slate-600'), label: 'Mensaje personalizado',  desc: 'Agrega tu mensaje al final',         hasText: true },
 };
 
 const DEFAULT_MODULES = [
@@ -193,13 +194,13 @@ const WhatsAppCustomizer = () => {
         {success && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="mx-6 mt-4 p-3 bg-green-50 text-green-800 rounded-lg border border-green-200 text-sm">
-            ✅ {success}
+            <span className="flex items-center gap-1.5">{AI.checkCircle('w-4 h-4 text-green-600')} {success}</span>
           </motion.div>
         )}
         {error && (
           <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
             className="mx-6 mt-4 p-3 bg-red-50 text-red-800 rounded-lg border border-red-200 text-sm">
-            ❌ {error}
+            <span className="flex items-center gap-1.5">{AI.xCircle('w-4 h-4 text-red-500')} {error}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -207,7 +208,7 @@ const WhatsAppCustomizer = () => {
       <div className="p-6 grid lg:grid-cols-2 gap-6">
         {/* Editor de módulos */}
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-gray-700">📦 Módulos del mensaje</h4>
+          <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">{AI.cube('w-4 h-4')} Módulos del mensaje</h4>
           <p className="text-xs text-gray-500">Activa, desactiva y reordena las secciones</p>
 
           <div className="space-y-2">
@@ -262,7 +263,7 @@ const WhatsAppCustomizer = () => {
           {/* Textarea de mensaje personalizado */}
           {modules.find(m => m.id === 'customMessage')?.enabled && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">✍️ Tu mensaje personalizado</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">{AI.pencil('w-4 h-4')} Tu mensaje personalizado</label>
               <textarea
                 value={customMessage}
                 onChange={e => setCustomMessage(e.target.value)}
@@ -289,7 +290,7 @@ const WhatsAppCustomizer = () => {
 
           {hasChanges && (
             <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs text-amber-700">⚠️ Tienes cambios sin guardar</p>
+              <p className="text-xs text-amber-700 flex items-center gap-1">{AI.exclamation('w-3.5 h-3.5')} Tienes cambios sin guardar</p>
             </div>
           )}
         </div>
@@ -297,7 +298,7 @@ const WhatsAppCustomizer = () => {
         {/* Vista previa */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-semibold text-gray-700">👁️ Vista previa</h4>
+            <h4 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">{AI.eye('w-4 h-4')} Vista previa</h4>
             <motion.button whileTap={{ scale: 0.95 }} onClick={copyPreview}
               className="flex items-center gap-1 px-2 py-1 text-xs text-gray-500 bg-gray-100 rounded hover:bg-gray-200 transition-colors">
               {copied ? <Check size={12} /> : <Copy size={12} />}
@@ -342,10 +343,10 @@ const WhatsAppCustomizer = () => {
           {/* Features */}
           <div className="grid grid-cols-2 gap-2">
             {[
-              { icon: '🧾', text: 'Formato recibo compacto' },
-              { icon: '🔀', text: 'Orden personalizable' },
-              { icon: '🛒', text: 'Extras detallados' },
-              { icon: '🏍️', text: 'Adapta al tipo de pedido' },
+              { icon: AI.receipt('w-3.5 h-3.5'), text: 'Formato recibo compacto' },
+              { icon: AI.arrowPath('w-3.5 h-3.5'), text: 'Orden personalizable' },
+              { icon: AI.shoppingCart('w-3.5 h-3.5'), text: 'Extras detallados' },
+              { icon: AI.truck('w-3.5 h-3.5'), text: 'Adapta al tipo de pedido' },
             ].map((f, i) => (
               <div key={i} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
                 <span className="text-sm">{f.icon}</span>

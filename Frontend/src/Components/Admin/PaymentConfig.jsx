@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import AI from './AdminIcons';
 
 /**
  * Admin panel for configuring ordering mode, payment methods, and payment accounts.
@@ -165,7 +166,7 @@ const PaymentConfig = () => {
       id: 'whatsapp',
       label: 'Solo WhatsApp',
       desc: 'Los clientes hacen pedidos por WhatsApp',
-      icon: '💬',
+      icon: AI.chat('w-6 h-6 text-green-600'),
       color: 'bg-green-50 border-green-200',
       activeColor: 'bg-green-100 border-green-500 ring-2 ring-green-200'
     },
@@ -173,7 +174,7 @@ const PaymentConfig = () => {
       id: 'inapp',
       label: 'Pedido en App',
       desc: 'Los clientes pagan y hacen seguimiento en el menú',
-      icon: '📱',
+      icon: AI.deviceMobile('w-6 h-6 text-blue-600'),
       color: 'bg-blue-50 border-blue-200',
       activeColor: 'bg-blue-100 border-blue-500 ring-2 ring-blue-200'
     },
@@ -181,7 +182,7 @@ const PaymentConfig = () => {
       id: 'both',
       label: 'Ambos',
       desc: 'Los clientes eligen entre WhatsApp o pago en app',
-      icon: '🔄',
+      icon: AI.arrowPath('w-6 h-6 text-purple-600'),
       color: 'bg-purple-50 border-purple-200',
       activeColor: 'bg-purple-100 border-purple-500 ring-2 ring-purple-200'
     }
@@ -191,24 +192,24 @@ const PaymentConfig = () => {
   const DAVIPLATA_LOGO = 'https://play-lh.googleusercontent.com/bNPDiFqg28L6ckatfuP-WgrxDRDk0JEOkC6nUIQp7Q61RW78i1bw-ffMmEjyxl-qP6dv3ANDOQqmIbBtgJI3EA';
 
   const PAYMENT_METHODS_META = [
-    { id: 'efectivo', label: 'Efectivo', icon: '💵', desc: 'Pago en efectivo al recibir el pedido' },
+    { id: 'efectivo', label: 'Efectivo', icon: AI.banknotes('w-6 h-6 text-green-600'), desc: 'Pago en efectivo al recibir el pedido' },
     { id: 'nequi', label: 'Nequi', logo: NEQUI_LOGO, desc: 'Transferencia por Nequi', needsAccount: true },
     { id: 'daviplata', label: 'Daviplata', logo: DAVIPLATA_LOGO, desc: 'Transferencia por Daviplata', needsAccount: true },
-    { id: 'transferencia', label: 'Transferencia Bancaria', icon: '🏦', desc: 'Transferencia directa a cuenta bancaria', needsAccount: true },
+    { id: 'transferencia', label: 'Transferencia Bancaria', icon: AI.bank('w-6 h-6 text-slate-600'), desc: 'Transferencia directa a cuenta bancaria', needsAccount: true },
   ];
 
   const MODE_LABELS = {
-    whatsapp: { icon: '💬', label: 'WhatsApp' },
-    inapp: { icon: '📱', label: 'En App' },
+    whatsapp: { icon: AI.chat('w-4 h-4'), label: 'WhatsApp' },
+    inapp: { icon: AI.deviceMobile('w-4 h-4'), label: 'En App' },
   };
 
   // Which modes are relevant based on orderingMode
   const activeModes = orderingMode === 'whatsapp' ? ['whatsapp'] : orderingMode === 'inapp' ? ['inapp'] : ['whatsapp', 'inapp'];
 
   const TABS = [
-    { id: 'mode', label: 'Modo de Pedidos', icon: '📦' },
-    { id: 'methods', label: 'Métodos de Pago', icon: '💳' },
-    { id: 'accounts', label: 'Datos de Cuenta', icon: '🏦' },
+    { id: 'mode', label: 'Modo de Pedidos', icon: AI.cube('w-4 h-4') },
+    { id: 'methods', label: 'Métodos de Pago', icon: AI.creditCard('w-4 h-4') },
+    { id: 'accounts', label: 'Datos de Cuenta', icon: AI.bank('w-4 h-4') },
   ];
 
   // Check if any method that needs account data is enabled
@@ -259,7 +260,7 @@ const PaymentConfig = () => {
                 }`}
               >
                 <div className="flex items-start gap-3">
-                  <span className="text-2xl">{mode.icon}</span>
+                  {mode.icon}
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold text-gray-900">{mode.label}</span>
@@ -288,9 +289,9 @@ const PaymentConfig = () => {
             <p className="text-xs text-gray-500 mb-3">Activa o desactiva los tipos de pedido que ofreces</p>
             <div className="space-y-2">
               {[
-                { id: 'inSite', label: 'En Sitio / Mesa', icon: '🪑', desc: 'Clientes piden desde el local' },
-                { id: 'takeaway', label: 'Para Llevar', icon: '🛍️', desc: 'Clientes recogen su pedido' },
-                { id: 'delivery', label: 'Domicilio', icon: '🚚', desc: 'Envío a la dirección del cliente' },
+                { id: 'inSite', label: 'En Sitio / Mesa', icon: AI.building('w-5 h-5 text-slate-600'), desc: 'Clientes piden desde el local' },
+                { id: 'takeaway', label: 'Para Llevar', icon: AI.cube('w-5 h-5 text-slate-600'), desc: 'Clientes recogen su pedido' },
+                { id: 'delivery', label: 'Domicilio', icon: AI.truck('w-5 h-5 text-slate-600'), desc: 'Envío a la dirección del cliente' },
               ].map(ot => {
                 const isOn = orderTypes[ot.id];
                 return (
@@ -306,7 +307,7 @@ const PaymentConfig = () => {
                       isOn ? 'border-green-300 bg-green-50/30' : 'border-gray-200 bg-gray-50/50'
                     }`}
                   >
-                    <span className="text-xl">{ot.icon}</span>
+                    {ot.icon}
                     <div className="flex-1 text-left">
                       <span className="font-semibold text-gray-900 text-sm">{ot.label}</span>
                       <p className="text-xs text-gray-500">{ot.desc}</p>
@@ -323,7 +324,7 @@ const PaymentConfig = () => {
               })}
             </div>
             {!orderTypes.inSite && !orderTypes.takeaway && !orderTypes.delivery && (
-              <p className="text-xs text-red-500 mt-2">⚠️ Debes tener al menos un tipo de pedido activo</p>
+              <p className="text-xs text-red-500 mt-2 flex items-center gap-1">{AI.exclamation('w-4 h-4')} Debes tener al menos un tipo de pedido activo</p>
             )}
           </div>
 
@@ -338,7 +339,7 @@ const PaymentConfig = () => {
                   requireDeliveryCode ? 'border-green-300 bg-green-50/30' : 'border-gray-200 bg-gray-50/50'
                 }`}
               >
-                <span className="text-xl">🔐</span>
+                {AI.lockClosed('w-5 h-5 text-slate-600')}
                 <div className="flex-1 text-left">
                   <span className="font-semibold text-gray-900 text-sm">Código de entrega</span>
                   <p className="text-xs text-gray-500">
@@ -365,7 +366,7 @@ const PaymentConfig = () => {
               animate={{ opacity: 1, y: 0 }}
               className="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4"
             >
-              <h4 className="font-semibold text-blue-900 text-sm mb-2">💡 ¿Cómo funciona el modo en App?</h4>
+              <h4 className="font-semibold text-blue-900 text-sm mb-2 flex items-center gap-1.5">{AI.lightbulb('w-4 h-4')} ¿Cómo funciona el modo en App?</h4>
               <ol className="text-sm text-blue-800 space-y-1.5 list-decimal list-inside">
                 <li>El cliente hace su pedido desde el menú</li>
                 <li>Ve tu información de pago y transfiere</li>
@@ -410,7 +411,7 @@ const PaymentConfig = () => {
                       {method.logo ? (
                         <img src={method.logo} alt={method.label} className="w-8 h-8 object-contain rounded" />
                       ) : (
-                        <span className="text-2xl">{method.icon}</span>
+                        method.icon
                       )}
                       <div className="flex-1 text-left">
                         <span className="font-semibold text-gray-900">{method.label}</span>
@@ -471,7 +472,7 @@ const PaymentConfig = () => {
                         return missing ? (
                           <div className="px-4 pb-3">
                             <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-                              <span className="text-sm">⚠️</span>
+                              {AI.exclamation('w-4 h-4 text-amber-500')}
                               <p className="text-xs text-amber-700">
                                 Completa los datos de cuenta en la pestaña <strong>"Datos de Cuenta"</strong> para que los clientes puedan usar este método.
                               </p>
@@ -526,7 +527,7 @@ const PaymentConfig = () => {
             {paymentMethods.nequi.enabled && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  📱 Número de Nequi
+                  <span className="inline-flex items-center gap-1">{AI.deviceMobile('w-4 h-4')} Número de Nequi</span>
                 </label>
                 <input
                   type="text"
@@ -542,7 +543,7 @@ const PaymentConfig = () => {
             {paymentMethods.daviplata.enabled && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  💜 Número de Daviplata
+                  <span className="inline-flex items-center gap-1">{AI.deviceMobile('w-4 h-4')} Número de Daviplata</span>
                 </label>
                 <input
                   type="text"
@@ -558,7 +559,7 @@ const PaymentConfig = () => {
             {paymentMethods.transferencia.enabled && (
               <div className="bg-gray-50 rounded-xl p-4 space-y-3">
                 <label className="block text-sm font-medium text-gray-700">
-                  🏦 Transferencia Bancaria
+                  <span className="inline-flex items-center gap-1">{AI.bank('w-4 h-4')} Transferencia Bancaria</span>
                 </label>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -613,7 +614,7 @@ const PaymentConfig = () => {
             {/* Instructions */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                📝 Instrucciones para el Cliente
+                  <span className="inline-flex items-center gap-1">{AI.document('w-4 h-4')} Instrucciones para el Cliente</span>
               </label>
               <textarea
                 value={paymentInfo.instructions}
@@ -657,7 +658,7 @@ const PaymentConfig = () => {
             exit={{ opacity: 0 }}
             className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 font-medium"
           >
-            ✅ Configuración guardada exitosamente
+            <span className="flex items-center gap-1.5">{AI.checkCircle('w-4 h-4 text-green-600')} Configuración guardada exitosamente</span>
           </motion.div>
         )}
         {error && (
@@ -667,7 +668,7 @@ const PaymentConfig = () => {
             exit={{ opacity: 0 }}
             className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700"
           >
-            ⚠️ {error}
+            <span className="flex items-center gap-1.5">{AI.exclamation('w-4 h-4 text-red-500')} {error}</span>
           </motion.div>
         )}
       </AnimatePresence>

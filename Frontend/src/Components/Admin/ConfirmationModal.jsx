@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import AI from './AdminIcons';
 
 /**
  * Modal de confirmación para edición de producto.
@@ -93,7 +94,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) =>
             onClick={onClose}
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold transition-all duration-200 text-sm shadow-sm border border-slate-200"
           >
-            ❌ Cancelar
+            <span className="inline-flex items-center gap-1">{AI.xMark('w-4 h-4')} Cancelar</span>
           </motion.button>
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -101,7 +102,7 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, product, formData }) =>
             onClick={onConfirm}
             className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold transition-all duration-200 text-sm shadow-lg"
           >
-            ✅ Confirmar Cambios
+            <span className="inline-flex items-center gap-1">{AI.check('w-4 h-4')} Confirmar Cambios</span>
           </motion.button>
         </div>
       </motion.div>

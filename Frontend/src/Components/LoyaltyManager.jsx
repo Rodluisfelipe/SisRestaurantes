@@ -11,22 +11,23 @@ import {
 } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import AI from './Admin/AdminIcons';
 
 /* ═══════════════════════════════════════════ */
 /*              CONSTANTS                      */
 /* ═══════════════════════════════════════════ */
 
 const REWARD_TYPES = [
-  { value: 'discount_percent', label: 'Descuento %', icon: FaPercent, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', emoji: '📉', desc: 'Ideal para premiar lealtad' },
-  { value: 'discount_fixed', label: 'Descuento $', icon: FaCoins, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', emoji: '💵', desc: 'Un monto fijo de descuento' },
-  { value: 'free_product', label: 'Producto gratis', icon: FaHamburger, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', emoji: '🎁', desc: 'Perfecto para enganchar' },
-  { value: 'free_delivery', label: 'Envío gratis', icon: FaTruck, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', emoji: '🛵', desc: 'Sube el ticket en días lentos' },
+  { value: 'discount_percent', label: 'Descuento %', icon: FaPercent, color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-200', emoji: AI.tag('w-4 h-4 text-blue-600'), desc: 'Ideal para premiar lealtad' },
+  { value: 'discount_fixed', label: 'Descuento $', icon: FaCoins, color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200', emoji: AI.banknotes('w-4 h-4 text-green-600'), desc: 'Un monto fijo de descuento' },
+  { value: 'free_product', label: 'Producto gratis', icon: FaHamburger, color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200', emoji: AI.gift('w-4 h-4 text-orange-600'), desc: 'Perfecto para enganchar' },
+  { value: 'free_delivery', label: 'Envío gratis', icon: FaTruck, color: 'text-purple-600', bg: 'bg-purple-50', border: 'border-purple-200', emoji: AI.truck('w-4 h-4 text-purple-600'), desc: 'Sube el ticket en días lentos' },
 ];
 
 const ORDER_MODE_OPTIONS = [
-  { value: 'inSite', label: 'En mesa', emoji: '🪑' },
-  { value: 'takeaway', label: 'Para llevar', emoji: '🥡' },
-  { value: 'delivery', label: 'Domicilio', emoji: '🛵' },
+  { value: 'inSite', label: 'En mesa', emoji: AI.building('w-4 h-4') },
+  { value: 'takeaway', label: 'Para llevar', emoji: AI.cube('w-4 h-4') },
+  { value: 'delivery', label: 'Domicilio', emoji: AI.truck('w-4 h-4') },
 ];
 
 const DEFAULT_TIERS = [
@@ -38,17 +39,17 @@ const DEFAULT_TIERS = [
 
 const REWARD_TEMPLATES = [
   {
-    emoji: '🎁', title: 'Regalar un producto', subtitle: 'Ideal para enganchar clientes',
+    emoji: AI.gift('w-6 h-6 text-white'), title: 'Regalar un producto', subtitle: 'Ideal para enganchar clientes',
     color: 'from-orange-400 to-red-400',
     form: { name: 'Producto gratis', description: 'Disfruta un producto por cuenta de la casa', type: 'free_product', discountValue: 0, maxDiscount: 0, pointsCost: 200, productName: '', productId: '', isActive: true, applicableOrderModes: [] }
   },
   {
-    emoji: '📉', title: 'Dar un descuento', subtitle: 'Para premiar la lealtad',
+    emoji: AI.tag('w-6 h-6 text-white'), title: 'Dar un descuento', subtitle: 'Para premiar la lealtad',
     color: 'from-blue-400 to-indigo-400',
     form: { name: '10% de descuento', description: '10% de descuento en tu próximo pedido', type: 'discount_percent', discountValue: 10, maxDiscount: 0, pointsCost: 150, productName: '', productId: '', isActive: true, applicableOrderModes: [] }
   },
   {
-    emoji: '🛵', title: 'Domicilio gratis', subtitle: 'Sube el ticket en días lentos',
+    emoji: AI.truck('w-6 h-6 text-white'), title: 'Domicilio gratis', subtitle: 'Sube el ticket en días lentos',
     color: 'from-purple-400 to-pink-400',
     form: { name: 'Envío gratis', description: 'Tu próximo domicilio va por nuestra cuenta', type: 'free_delivery', discountValue: 0, maxDiscount: 0, pointsCost: 100, productName: '', productId: '', isActive: true, applicableOrderModes: ['delivery'] }
   },
@@ -63,7 +64,7 @@ const TOUR_STEPS = [
     target: '[data-tour="welcome"]',
     content: (
       <div className="text-center py-2">
-        <div className="text-4xl mb-3">🎉</div>
+        <div className="text-4xl mb-3">{AI.sparkle('w-10 h-10 text-amber-500')}</div>
         <h3 className="text-lg font-bold text-slate-800 mb-2">¡Bienvenido al motor de ventas!</h3>
         <p className="text-sm text-slate-500">Crea clientes recurrentes en 3 simples pasos. Te guiaremos en todo el proceso.</p>
       </div>
@@ -164,7 +165,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                   <span className="text-xs opacity-60">puntos</span>
                 </div>
                 <div className="mt-2 flex items-center gap-1 bg-white/15 rounded-md px-2 py-1">
-                  <span className="text-xs">🔥</span>
+                  {AI.fire('w-4 h-4 text-orange-400')}
                   <span className="text-xs">
                     Ganas {pts} pto{pts > 1 ? 's' : ''} por ${Number(amt).toLocaleString('es-CO')}
                   </span>
@@ -175,7 +176,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
             {/* Tiers preview */}
             {activeTiers.length > 0 && (
               <div className="px-3 pb-2">
-                <p className="text-xs font-semibold text-slate-600 mb-1.5">🏆 Niveles</p>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">{AI.trophy('w-4 h-4 text-amber-500')} Niveles</p>
                 <div className="flex gap-1.5">
                   {activeTiers.slice(0, 4).map((tier, i) => (
                     <div
@@ -183,7 +184,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                       className="flex-1 rounded-lg p-1.5 text-center border"
                       style={{ borderColor: tier.color + '40', backgroundColor: tier.color + '10' }}
                     >
-                      <div className="text-sm">{i === 0 ? '🥉' : i === 1 ? '🥈' : i === 2 ? '🥇' : '💎'}</div>
+                      <div className="text-sm">{AI.medal('w-4 h-4', i === 0 ? 'bronze' : i === 1 ? 'silver' : i === 2 ? 'gold' : undefined)}</div>
                       <p className="text-xs font-bold text-slate-700 truncate">{tier.name}</p>
                       <p className="text-[10px] text-slate-400">x{tier.multiplier}</p>
                     </div>
@@ -195,7 +196,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
             {/* Rewards preview */}
             {activeRewards.length > 0 ? (
               <div className="px-3 pb-3">
-                <p className="text-xs font-semibold text-slate-600 mb-1.5">🎁 Premios</p>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5 flex items-center gap-1">{AI.gift('w-4 h-4 text-emerald-500')} Premios</p>
                 <div className="space-y-1.5">
                   {activeRewards.slice(0, 3).map((r, i) => {
                     const rt = REWARD_TYPES.find(t => t.value === r.type) || REWARD_TYPES[0];
@@ -216,7 +217,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
               </div>
             ) : (
               <div className="px-3 py-6 text-center">
-                <p className="text-2xl mb-1">🎁</p>
+                <p className="text-2xl mb-1">{AI.gift('w-6 h-6 text-slate-400')}</p>
                 <p className="text-xs text-slate-400">Agrega premios para verlos aquí</p>
               </div>
             )}
@@ -243,7 +244,7 @@ const SmartWarning = ({ program, rewardForm }) => {
 
   if (rewardForm.type === 'free_product' && rewardForm.pointsCost < 30) {
     severity = 'danger';
-    message = `⚠️ Con solo ${rewardForm.pointsCost} puntos (≈ $${Math.round(costInMoney).toLocaleString('es-CO')} en compras), estás regalando un producto. ¿No es muy bajo?`;
+    message = `Con solo ${rewardForm.pointsCost} puntos (≈ $${Math.round(costInMoney).toLocaleString('es-CO')} en compras), estás regalando un producto. ¿No es muy bajo?`;
   } else if (rewardForm.type === 'discount_percent' && rewardForm.discountValue > 30) {
     severity = 'warning';
     message = `Un ${rewardForm.discountValue}% de descuento es bastante generoso. Asegúrate de que tu margen lo soporte.`;
@@ -531,11 +532,11 @@ const LoyaltyManager = () => {
   }, [completionSteps]);
 
   const TABS = [
-    { id: 'rules', label: 'Reglas', emoji: '⚙️', desc: '¿Cómo ganan puntos?' },
-    { id: 'rewards', label: 'Premios', emoji: '🎁', desc: '¿Qué se llevan?', tourId: 'rewards-tab' },
-    { id: 'tiers', label: 'Niveles', emoji: '🏆', desc: 'Bronce → Oro → VIP' },
-    { id: 'stats', label: 'Stats', emoji: '📊', desc: 'Rendimiento' },
-    { id: 'customers', label: 'Clientes', emoji: '👥', desc: 'Todos los puntos' },
+    { id: 'rules', label: 'Reglas', emoji: AI.cog('w-4 h-4'), desc: '¿Cómo ganan puntos?' },
+    { id: 'rewards', label: 'Premios', emoji: AI.gift('w-4 h-4'), desc: '¿Qué se llevan?', tourId: 'rewards-tab' },
+    { id: 'tiers', label: 'Niveles', emoji: AI.trophy('w-4 h-4'), desc: 'Bronce → Oro → VIP' },
+    { id: 'stats', label: 'Stats', emoji: AI.chartBar('w-4 h-4'), desc: 'Rendimiento' },
+    { id: 'customers', label: 'Clientes', emoji: AI.users('w-4 h-4'), desc: 'Todos los puntos' },
   ];
 
   const buildRewardWhatsApp = (customer, reward) => {
@@ -724,12 +725,12 @@ const LoyaltyManager = () => {
 
               <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 lg:p-6">
                 <div className="flex items-center gap-2 mb-5">
-                  <span className="text-xl">🎉</span>
+                  {AI.sparkle('w-5 h-5 text-amber-500')}
                   <h3 className="text-base font-bold text-slate-800">Bonificaciones</h3>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100">
-                    <p className="text-xs font-semibold text-emerald-700 mb-2">🎁 {isService ? 'Bonus primera cita' : 'Bonus primer pedido'}</p>
+                    <p className="text-xs font-semibold text-emerald-700 mb-2 flex items-center gap-1">{AI.gift('w-3.5 h-3.5')} {isService ? 'Bonus primera cita' : 'Bonus primer pedido'}</p>
                     <p className="text-xs text-slate-500 mb-2">{isService ? 'Puntos extra de bienvenida la primera vez que reservan' : 'Puntos extra de bienvenida la primera vez que compran'}</p>
                     <div className="flex items-center gap-2">
                       <input
@@ -744,7 +745,7 @@ const LoyaltyManager = () => {
                     </div>
                   </div>
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
-                    <p className="text-xs font-semibold text-slate-700 mb-2">⏰ Expiración de puntos</p>
+                    <p className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-1">{AI.clock('w-3.5 h-3.5')} Expiración de puntos</p>
                     <p className="text-xs text-slate-500 mb-2">Días antes de que los puntos venzan. 0 = nunca</p>
                     <div className="flex items-center gap-2">
                       <input
@@ -781,7 +782,7 @@ const LoyaltyManager = () => {
                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center"
                 >
-                  <div className="text-5xl mb-4">🎁</div>
+                  <div className="text-5xl mb-4">{AI.gift('w-12 h-12 text-slate-300')}</div>
                   <h3 className="text-lg font-bold text-slate-700 mb-2">Crea tu primer premio</h3>
                   <p className="text-sm text-slate-400 mb-5 max-w-xs mx-auto">
                     Tus clientes acumularán puntos con cada compra. ¿Qué querrías que se pudieran llevar?
@@ -819,8 +820,8 @@ const LoyaltyManager = () => {
                         <p className="text-xs text-slate-500 mt-0.5">
                           {reward.type === 'discount_percent' && `${reward.discountValue}% de descuento`}
                           {reward.type === 'discount_fixed' && `$${Number(reward.discountValue).toLocaleString('es-CO')} de descuento`}
-                          {reward.type === 'free_product' && `🍽️ ${reward.productName || 'Por definir'}`}
-                          {reward.type === 'free_delivery' && '🛵 Envío gratuito'}
+                          {reward.type === 'free_product' && <span className="inline-flex items-center gap-1">{AI.utensils('w-3 h-3')} {reward.productName || 'Por definir'}</span>}
+                          {reward.type === 'free_delivery' && <span className="inline-flex items-center gap-1">{AI.truck('w-3 h-3')} Envío gratuito</span>}
                         </p>
                         <div className="flex items-center gap-3 mt-1">
                           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
@@ -830,8 +831,11 @@ const LoyaltyManager = () => {
                             <span className="text-[10px] text-slate-400">≈ ${moneyEquiv.toLocaleString('es-CO')} en compras</span>
                           )}
                           {reward.applicableOrderModes?.length > 0 && (
-                            <span className="text-[10px] text-slate-400">
-                              {reward.applicableOrderModes.map(v => ORDER_MODE_OPTIONS.find(o => o.value === v)?.emoji).join(' ')}
+                            <span className="text-[10px] text-slate-400 inline-flex items-center gap-0.5">
+                              {reward.applicableOrderModes.map(v => {
+                                const opt = ORDER_MODE_OPTIONS.find(o => o.value === v);
+                                return opt ? <span key={v}>{opt.emoji}</span> : null;
+                              })}
                             </span>
                           )}
                         </div>
@@ -873,7 +877,7 @@ const LoyaltyManager = () => {
 
               {!program.tiersEnabled && (
                 <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-10 text-center">
-                  <div className="text-5xl mb-4">🏆</div>
+                  <div className="text-5xl mb-4">{AI.trophy('w-12 h-12 text-amber-400')}</div>
                   <h3 className="text-lg font-bold text-slate-700 mb-2">Niveles de lealtad</h3>
                   <p className="text-sm text-slate-400 max-w-sm mx-auto">
                     Activa niveles (Bronce → Plata → Oro → VIP) para que los clientes ganen multiplicadores de puntos.
@@ -946,17 +950,17 @@ const LoyaltyManager = () => {
             <div className="space-y-4">
               {!stats ? (
                 <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-                  <div className="text-4xl mb-3">📊</div>
+                  <div className="text-4xl mb-3">{AI.chartBar('w-10 h-10 text-slate-300')}</div>
                   <p className="text-sm text-slate-500">Cargando estadísticas...</p>
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
-                      { label: 'Miembros', value: stats.totalMembers || 0, icon: '👥', bg: 'bg-blue-50', border: 'border-blue-100' },
-                      { label: 'Pts emitidos', value: stats.totalPointsIssued || 0, icon: '🪙', bg: 'bg-amber-50', border: 'border-amber-100' },
-                      { label: 'Pts canjeados', value: stats.totalPointsRedeemed || 0, icon: '🎁', bg: 'bg-emerald-50', border: 'border-emerald-100' },
-                      { label: 'Pts activos', value: stats.totalPointsActive || 0, icon: '⭐', bg: 'bg-purple-50', border: 'border-purple-100' },
+                      { label: 'Miembros', value: stats.totalMembers || 0, icon: AI.users('w-5 h-5 text-blue-500'), bg: 'bg-blue-50', border: 'border-blue-100' },
+                      { label: 'Pts emitidos', value: stats.totalPointsIssued || 0, icon: AI.circleStack('w-5 h-5 text-amber-500'), bg: 'bg-amber-50', border: 'border-amber-100' },
+                      { label: 'Pts canjeados', value: stats.totalPointsRedeemed || 0, icon: AI.gift('w-5 h-5 text-emerald-500'), bg: 'bg-emerald-50', border: 'border-emerald-100' },
+                      { label: 'Pts activos', value: stats.totalPointsActive || 0, icon: AI.star('w-5 h-5 text-purple-500'), bg: 'bg-purple-50', border: 'border-purple-100' },
                     ].map((stat, i) => (
                       <div key={i} className={`${stat.bg} rounded-2xl border ${stat.border} p-4`}>
                         <span className="text-lg">{stat.icon}</span>
@@ -969,7 +973,7 @@ const LoyaltyManager = () => {
                   <div className="bg-white rounded-2xl border border-slate-200 p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">🏆</span>
+                        {AI.trophy('w-5 h-5 text-amber-500')}
                         <h3 className="text-base font-bold text-slate-800">Top 10 Clientes</h3>
                       </div>
                       <button onClick={() => setActiveTab('customers')} className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
@@ -1062,7 +1066,7 @@ const LoyaltyManager = () => {
                         {/* Claimable rewards */}
                         {claimable.length > 0 && (
                           <div className="mt-3 pt-3 border-t border-slate-100">
-                            <p className="text-[10px] font-semibold text-emerald-600 mb-2">🎁 Puede reclamar:</p>
+                            <p className="text-[10px] font-semibold text-emerald-600 mb-2 flex items-center gap-0.5">{AI.gift('w-3 h-3')} Puede reclamar:</p>
                             <div className="flex flex-wrap gap-1.5">
                               {claimable.map(reward => (
                                 <a
@@ -1157,7 +1161,7 @@ const LoyaltyManager = () => {
                       className="w-full text-left rounded-2xl p-4 border-2 border-dashed border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700 transition-all"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-2xl">✏️</span>
+                        {AI.pencil('w-6 h-6 text-slate-400')}
                         <div>
                           <p className="font-bold text-sm">Crear desde cero</p>
                           <p className="text-xs opacity-70">Configura cada detalle manualmente</p>
@@ -1301,7 +1305,7 @@ const LoyaltyManager = () => {
                       </div>
                       <p className="mt-1.5 text-[10px] text-slate-400">
                         {rewardForm.applicableOrderModes.length === 0
-                          ? '✅ Aplica para todos los modos'
+                          ? <span className="flex items-center gap-1">{AI.checkCircle('w-3 h-3 text-green-500')} Aplica para todos los modos</span>
                           : `Solo para: ${rewardForm.applicableOrderModes.map(v => ORDER_MODE_OPTIONS.find(o => o.value === v)?.label).join(', ')}`}
                       </p>
                     </div>
@@ -1320,7 +1324,7 @@ const LoyaltyManager = () => {
                     className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold transition-all disabled:opacity-40 shadow-sm"
                     style={{ backgroundColor: themeColor }}
                   >
-                    {editingReward ? '✅ Actualizar' : '🎁 Crear premio'}
+                    {editingReward ? <><span className="inline-flex items-center gap-1">{AI.check('w-4 h-4')} Actualizar</span></> : <><span className="inline-flex items-center gap-1">{AI.gift('w-4 h-4')} Crear premio</span></>}
                   </button>
                 </div>
               )}

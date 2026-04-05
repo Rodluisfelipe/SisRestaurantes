@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
+import AI from './Admin/AdminIcons';
 
 function CompletedOrdersSummary() {
   const [completedOrders, setCompletedOrders] = useState([]);
@@ -369,7 +370,7 @@ function CompletedOrdersSummary() {
         className="text-center"
       >
         <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-          <span className="text-2xl">✅</span>
+          {AI.checkCircle('w-8 h-8 text-white')}
         </div>
         <h2 className="text-3xl font-bold text-slate-900 mb-2">{isService ? 'Citas Completadas' : 'Pedidos Completados'}</h2>
         <p className="text-slate-600">{isService ? 'Historial y resumen de citas del día' : 'Historial y resumen de pedidos del día'}</p>
@@ -391,7 +392,7 @@ function CompletedOrdersSummary() {
               <h3 className="text-sm font-semibold opacity-90">{isService ? 'Total de Citas' : 'Total de Pedidos'}</h3>
               <p className="text-3xl font-bold mt-2">{completedOrders.length}</p>
             </div>
-            <span className="text-3xl opacity-80">📋</span>
+            {AI.clipboard('w-8 h-8 text-white/80')}
           </div>
         </motion.div>
         
@@ -405,7 +406,7 @@ function CompletedOrdersSummary() {
                 ${completedOrders.reduce((sum, order) => sum + order.totalAmount, 0).toFixed(2)}
               </p>
             </div>
-            <span className="text-3xl opacity-80">💰</span>
+            {AI.banknotes('w-8 h-8 text-white/80')}
           </div>
         </motion.div>
         
@@ -420,7 +421,7 @@ function CompletedOrdersSummary() {
                 ${(completedOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (completedOrders.length || 1)).toFixed(2)}
               </p>
             </div>
-            <span className="text-3xl opacity-80">📊</span>
+            {AI.chartBar('w-8 h-8 text-white/80')}
           </div>
         </motion.div>
         
@@ -435,7 +436,7 @@ function CompletedOrdersSummary() {
                 {completedOrders.reduce((sum, order) => sum + order.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0)}
               </p>
             </div>
-            <span className="text-3xl opacity-80">🍔</span>
+            {AI.utensils('w-8 h-8 text-white/80')}
           </div>
         </motion.div>
       </motion.div>
