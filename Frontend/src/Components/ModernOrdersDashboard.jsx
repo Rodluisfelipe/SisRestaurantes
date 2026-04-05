@@ -29,7 +29,7 @@ const AdminOrderChat = ({ orderId, messages: initialMessages }) => {
   const [messages, setMessages] = useState(initialMessages || []);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const scrollRef = useRef(null);
 
   // Sync when orderDetails changes
@@ -86,7 +86,7 @@ const AdminOrderChat = ({ orderId, messages: initialMessages }) => {
 
       {isOpen && (
         <div className="mt-1 border border-slate-200 rounded-lg overflow-hidden bg-white">
-          <div ref={scrollRef} className="h-40 overflow-y-auto p-2 space-y-1.5 bg-slate-50/50">
+          <div ref={scrollRef} className="h-52 overflow-y-auto p-2 space-y-1.5 bg-slate-50/50">
             {messages.length === 0 && (
               <p className="text-[11px] text-slate-400 text-center py-6">Sin mensajes</p>
             )}
@@ -690,6 +690,11 @@ function ModernOrdersDashboard() {
                   </div>
                 </div>
 
+                {/* Order Chat - prominent position */}
+                {orderDetails.orderChannel === 'inapp' && !['completed', 'delivered', 'cancelled'].includes(orderDetails.status) && (
+                  <AdminOrderChat orderId={orderDetails._id} messages={orderDetails.messages || []} />
+                )}
+
                 {/* Order Items */}
                 <div>
                   <h3 className="text-sm font-semibold text-slate-800 mb-2">Productos</h3>
@@ -846,11 +851,6 @@ function ModernOrdersDashboard() {
                     <FaMoneyBillWave className="text-indigo-500 text-xs" />
                     <span className="text-[12px] font-medium text-indigo-700">Pedido in-app (pago por transferencia)</span>
                   </div>
-                )}
-
-                {/* Order Chat */}
-                {orderDetails.orderChannel === 'inapp' && !['completed', 'delivered', 'cancelled'].includes(orderDetails.status) && (
-                  <AdminOrderChat orderId={orderDetails._id} messages={orderDetails.messages || []} />
                 )}
 
                 {/* Action buttons */}
