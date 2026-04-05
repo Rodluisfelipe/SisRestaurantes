@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateDailyReportPDF } from './DailyReportPDF';
 import { ORDER_STATUS } from '../utils/constants';
@@ -23,6 +23,109 @@ import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
 import OrderCard from './OrderCard';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';
 import api from '../services/api';
+
+// Inline admin chat for order details
+const AdminOrderChat = ({ orderId, messages: initialMessages }) => {
+  const [messages, setMessages] = useState(initialMessages || []);
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const scrollRef = useRef(null);
+
+  // Sync when orderDetails changes
+  useEffect(() => { setMessages(initialMessages || []); }, [initialMessages]);
+
+  // Listen for new messages via socket
+  useEffect(() => {
+    if (!socket || !orderId) return;
+    const handler = (data) => {
+      if (data.orderId?.toString() === orderId?.toString()) {
+        setMessages(prev => {
+          if (prev.some(m => m._id === data.message._id)) return prev;
+          return [...prev, data.message];
+        });
+      }
+    };
+    socket.on('order_message', handler);
+    return () => socket.off('order_message', handler);
+  }, [orderId]);
+
+  useEffect(() => {
+    if (isOpen && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, isOpen]);
+
+  const handleSend = async () => {
+    if (!text.trim() || sending) return;
+    setSending(true);
+    try {
+      const res = await api.post(`/orders/${orderId}/messages/business`, { text: text.trim() });
+      setMessages(prev => [...prev, res.data]);
+      setText('');
+    } catch (err) { /* silent */ }
+    finally { setSending(false); }
+  };
+
+  const formatTime = (ts) => new Date(ts).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+  const unreadCount = messages.filter(m => m.sender === 'customer').length;
+
+  return (
+    <div>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between bg-slate-50 hover:bg-slate-100 rounded-lg px-3 py-2 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+          <span className="text-[12px] font-semibold text-slate-600">Chat con cliente</span>
+          {!isOpen && unreadCount > 0 && (
+            <span className="w-4 h-4 rounded-full bg-blue-500 text-[9px] font-bold text-white flex items-center justify-center">{unreadCount}</span>
+          )}
+        </div>
+        <svg className={`w-3 h-3 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+      </button>
+
+      {isOpen && (
+        <div className="mt-1 border border-slate-200 rounded-lg overflow-hidden bg-white">
+          <div ref={scrollRef} className="h-40 overflow-y-auto p-2 space-y-1.5 bg-slate-50/50">
+            {messages.length === 0 && (
+              <p className="text-[11px] text-slate-400 text-center py-6">Sin mensajes</p>
+            )}
+            {messages.map((m, i) => (
+              <div key={m._id || i} className={`flex ${m.sender === 'business' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] px-2.5 py-1.5 rounded-lg text-[12px] ${
+                  m.sender === 'business'
+                    ? 'bg-slate-800 text-white rounded-br-sm'
+                    : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm'
+                }`}>
+                  <p className="break-words">{m.text}</p>
+                  <p className={`text-[9px] mt-0.5 ${m.sender === 'business' ? 'text-slate-400' : 'text-slate-400'}`}>{formatTime(m.timestamp)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 p-1.5 border-t border-slate-100">
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, 500))}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder="Responder..."
+              className="flex-1 px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[12px] focus:outline-none focus:ring-1 focus:ring-slate-300"
+              maxLength={500}
+            />
+            <button
+              onClick={handleSend}
+              disabled={!text.trim() || sending}
+              className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center text-xs font-bold transition-all active:scale-90 disabled:opacity-40"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 function ModernOrdersDashboard() {
   const {
@@ -62,7 +165,9 @@ function ModernOrdersDashboard() {
     
     let matchesStatus = statusFilter === 'all' || order.status === statusFilter;
     // Group related statuses under the same filter tab
-    if (statusFilter === ORDER_STATUS.PAYMENT_UPLOADED) {
+    if (statusFilter === ORDER_STATUS.PENDING) {
+      matchesStatus = order.status === ORDER_STATUS.PENDING || order.status === ORDER_STATUS.PENDING_PAYMENT;
+    } else if (statusFilter === ORDER_STATUS.PAYMENT_UPLOADED) {
       matchesStatus = order.status === ORDER_STATUS.PAYMENT_UPLOADED || order.status === ORDER_STATUS.PAYMENT_CONFIRMED;
     } else if (statusFilter === ORDER_STATUS.IN_PROGRESS) {
       matchesStatus = order.status === ORDER_STATUS.IN_PROGRESS || order.status === ORDER_STATUS.PREPARING || order.status === ORDER_STATUS.CONFIRMED;
@@ -153,7 +258,7 @@ function ModernOrdersDashboard() {
 
   const orderCounts = {
     all: filteredOrders.length,
-    [ORDER_STATUS.PENDING]: orders.filter(o => o?.status === ORDER_STATUS.PENDING).length,
+    [ORDER_STATUS.PENDING]: orders.filter(o => o?.status === ORDER_STATUS.PENDING || o?.status === ORDER_STATUS.PENDING_PAYMENT).length,
     [ORDER_STATUS.PAYMENT_UPLOADED]: orders.filter(o => o?.status === ORDER_STATUS.PAYMENT_UPLOADED || o?.status === ORDER_STATUS.PAYMENT_CONFIRMED).length,
     [ORDER_STATUS.IN_PROGRESS]: orders.filter(o => o?.status === ORDER_STATUS.IN_PROGRESS || o?.status === ORDER_STATUS.PREPARING).length,
     [ORDER_STATUS.COMPLETED]: orders.filter(o => o?.status === ORDER_STATUS.COMPLETED || o?.status === ORDER_STATUS.READY).length,
@@ -743,6 +848,11 @@ function ModernOrdersDashboard() {
                   </div>
                 )}
 
+                {/* Order Chat */}
+                {orderDetails.orderChannel === 'inapp' && !['completed', 'delivered', 'cancelled'].includes(orderDetails.status) && (
+                  <AdminOrderChat orderId={orderDetails._id} messages={orderDetails.messages || []} />
+                )}
+
                 {/* Action buttons */}
                 <div className="flex gap-2 flex-wrap">
                   {/* Payment confirm/reject for uploaded proofs */}
@@ -773,6 +883,16 @@ function ModernOrdersDashboard() {
                         >
                           <FaPlay className="text-xs" />
                           <span>Iniciar preparación</span>
+                        </button>
+                      )}
+
+                      {orderDetails.status === ORDER_STATUS.PENDING_PAYMENT && (
+                        <button
+                          onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.PAYMENT_CONFIRMED)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                        >
+                          <FaCheckCircle className="text-xs" />
+                          <span>Confirmar pago</span>
                         </button>
                       )}
 

@@ -61,10 +61,11 @@ const DEFAULT_MODULES = [
   { id: 'paymentMethod', enabled: true, order: 5 },
   { id: 'products', enabled: true, order: 6 },
   { id: 'totals', enabled: true, order: 7 },
-  { id: 'customMessage', enabled: false, order: 8 },
+  { id: 'notes', enabled: true, order: 8 },
+  { id: 'customMessage', enabled: false, order: 9 },
 ];
 
-const SEPARATOR_BEFORE = new Set(['products', 'totals', 'customMessage']);
+const SEPARATOR_BEFORE = new Set(['products', 'totals', 'notes', 'customMessage']);
 
 // Crear mensaje de WhatsApp basado en módulos configurables
 export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalItems, businessConfig, appliedCoupon) => {
@@ -183,6 +184,8 @@ export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalI
     },
 
     customMessage: () => customText || null,
+
+    notes: () => orderInfo.customerNotes?.trim() ? `📝 *Nota:* ${orderInfo.customerNotes.trim()}` : null,
   };
 
   // Construir mensaje según módulos habilitados y su orden

@@ -4,7 +4,6 @@ import { useBusinessConfig } from "../Context/BusinessContext";
 import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
 import { logSystem } from '../utils/systemLogger';
-import useFocusTrap from '../hooks/useFocusTrap';
 import useCartPricing, { calculateItemTotal } from '../hooks/useCartPricing';
 
 import BusinessClosedModal from './BusinessClosedModal';
@@ -35,7 +34,6 @@ const CI = {
 // (Sin componente separado - el textarea estará directamente en el JSX)
 
 function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: onOrderProp, orderInfo, updateOrderInfo, businessConfig: propBusinessConfig, isSubmittingOrder: parentIsSubmittingOrder, subscriptionStatus, isInAppMode = false, allProducts, addToCart }) {
-  const [showOrderModal, setShowOrderModal] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
   const [orderType, setOrderType] = useState('');
   const [tableNumber, setTableNumber] = useState(orderInfo?.tableNumber || '');
@@ -70,8 +68,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     };
   }, []);
   const [locationChecked, setLocationChecked] = useState(false);
-  const focusTrapRef = useFocusTrap(showOrderModal);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [customerNotes, setCustomerNotes] = useState('');
   const [formState, setFormState] = useState({
     tableNumber: '',
     address: ''
@@ -181,7 +179,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   useEffect(() => {
     if (deliveryAddressRef.current && orderInfo?.address) {
       deliveryAddressRef.current.value = orderInfo.address;
-      console.log('📝 Dirección sincronizada desde orderInfo:', orderInfo.address);
     }
   }, [orderInfo?.address]);
 
@@ -189,7 +186,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   useEffect(() => {
     if (orderType === 'delivery' && deliveryAddressRef.current && orderInfo?.address) {
       deliveryAddressRef.current.value = orderInfo.address;
-      console.log('📝 Dirección cargada al seleccionar delivery:', orderInfo.address);
     }
   }, [orderType, orderInfo?.address]);
 
@@ -204,7 +200,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const detectLocationAndCalculateFee = async () => {
     // CRÍTICO: Capturar el valor de la dirección ANTES de cualquier setState
     const savedAddress = deliveryAddressRef.current?.value || '';
-    console.log('🔒 Guardando dirección antes de verificar:', savedAddress);
     
     // Función auxiliar para restaurar dirección de forma más robusta
     const restoreAddress = () => {
@@ -213,7 +208,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         setTimeout(() => {
           if (deliveryAddressRef.current && savedAddress) {
             deliveryAddressRef.current.value = savedAddress;
-            console.log('✅ Dirección restaurada:', savedAddress);
           }
         }, 0);
       });
@@ -224,7 +218,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        console.log('ℹ️ Navegador no soporta geolocalización.');
         setCheckingLocation(false);
         setLocationChecked(true);
         setDeliveryFee(null);
@@ -238,7 +231,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
-            console.log('📍 Ubicación detectada:', { lat: latitude, lon: longitude });
 
             // Calcular total del carrito
             const orderTotal = cart.reduce((sum, item) => {
@@ -254,8 +246,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               lon: longitude,
               orderTotal
             });
-
-            console.log('✅ Respuesta de cobertura:', response.data);
 
             // La respuesta tiene: { success, valid, coverage: { covered, delivery, zone } }
             const isValid = response.data.valid && response.data.coverage?.covered;
@@ -275,7 +265,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               setLocationChecked(true);
               setCheckingLocation(false);
               restoreAddress();
-              console.log('✅ Costo de envío calculado:', fee, '- Zona:', zone.name);
               resolve({ fee, zoneInfo });
             } else {
               // Cliente FUERA de zonas
@@ -284,11 +273,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               setLocationChecked(true);
               setCheckingLocation(false);
               restoreAddress();
-              console.log('ℹ️ Cliente fuera de zonas delimitadas.');
               resolve({ fee: null, zoneInfo: null });
             }
           } catch (error) {
-            console.error('❌ Error al verificar cobertura:', error);
             setDeliveryFee(null);
             setDeliveryZoneInfo(null);
             setLocationChecked(true);
@@ -298,8 +285,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
           }
         },
         (error) => {
-          console.error('❌ Error de geolocalización:', error);
-          console.log('ℹ️ No se pudo obtener ubicación. Costo será confirmado manualmente.');
           setDeliveryFee(null);
           setDeliveryZoneInfo(null);
           setLocationChecked(true);
@@ -314,107 +299,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         }
       );
     });
-  };
-
-  const handleDeliverySubmit = (e) => {
-    // Prevent default form submission if called from a form
-    if (e && e.preventDefault) {
-      e.preventDefault();
-    }
-    
-    // Prevent multiple submissions
-    if (isSubmitting) return;
-    setLocalIsSubmitting(true);
-    
-    // Trim input values to check if they're empty after whitespace removal
-    const trimmedPhone = deliveryInfo.phone.trim();
-    const trimmedAddress = deliveryInfo.address.trim();
-    
-    if (!trimmedPhone || !trimmedAddress) {
-      alert('Por favor completa todos los campos');
-      setLocalIsSubmitting(false);
-      return;
-    }
-    
-    const updatedOrderInfo = {
-      ...orderInfo,
-      orderType: 'delivery',
-      phone: trimmedPhone,
-      address: trimmedAddress,
-      customerName: orderInfo.customerName,
-      paymentMethod: selectedPaymentMethod,
-      // Eliminar explícitamente el número de mesa para pedidos a domicilio
-      tableNumber: ''
-    };
-    
-    // Update order info using the new function
-    updateOrderInfo(updatedOrderInfo);
-    SessionManager.saveOrderInfo(updatedOrderInfo);
-    
-    // Verificar si la suscripción está suspendida
-    if (subscriptionStatus === 'suspended') {
-      setLocalIsSubmitting(false);
-      return;
-    }
-    
-    closeOrderModal();
-    
-    // Small delay to ensure state is fully updated before order submission
-    setTimeout(() => {
-      onOrder(updatedOrderInfo, appliedCoupon);
-      setLocalIsSubmitting(false);
-    }, 300);
-  };
-
-  const openOrderModal = (type) => {
-    console.log(`*** ABRIENDO MODAL DE TIPO ${type.toUpperCase()} ***`);
-    console.log('showOrderModal antes:', showOrderModal);
-    setOrderType(type);
-    
-    // Verificar si hay un número de mesa existente para inicializar
-    let updatedTableNumber = '';
-    if (type === 'inSite') {
-      // Buscar en todas las fuentes posibles
-      if (isFromTableQR && tableNumber) {
-        updatedTableNumber = tableNumber;
-        console.log('Usando mesa de QR para inicializar modal:', updatedTableNumber);
-      } else if (orderInfo?.tableNumber && orderInfo.tableNumber.trim() !== '') {
-        updatedTableNumber = orderInfo.tableNumber;
-        console.log('Usando mesa de orderInfo para inicializar modal:', updatedTableNumber);
-      } else if (tableNumber && tableNumber.trim() !== '') {
-        updatedTableNumber = tableNumber;
-        console.log('Usando mesa de estado local para inicializar modal:', updatedTableNumber);
-      }
-    }
-    
-    // Actualizar el tipo de pedido en orderInfo inmediatamente
-    const updatedOrderInfo = {
-      ...orderInfo,
-      orderType: type,
-      // Si el tipo es takeaway o delivery, eliminar el número de mesa
-      // Si es inSite y tenemos un número, usarlo
-      ...(type === 'inSite' && updatedTableNumber ? { tableNumber: updatedTableNumber } : {}),
-      ...(type !== 'inSite' && { tableNumber: '' })
-    };
-    
-    // Actualizar la información del pedido
-    console.log('Actualizando orderInfo con tipo:', type, 'y mesa:', updatedOrderInfo.tableNumber || 'ninguna');
-    updateOrderInfo(updatedOrderInfo);
-    
-    // Activar el modal
-    setShowOrderModal(true);
-    console.log('showOrderModal después:', true);
-    document.body.classList.add('modal-open'); // Prevenir scroll en el body
-  };
-
-  const closeOrderModal = () => {
-    setShowOrderModal(false);
-    document.body.classList.remove('modal-open');
-    // Resetear estados de verificación
-    setLocationChecked(false);
-    setCheckingLocation(false);
-    setDeliveryFee(null);
-    setDeliveryZoneInfo(null);
   };
 
   // Memoizar handleInputChange para evitar recreaciones
@@ -432,18 +316,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     }
   }, []);
 
-  // Función para verificar el estado actual antes de enviar
-  const debugInputState = () => {
-    console.log("Estado actual del tableNumber:", tableNumber);
-    console.log("Estado actual de orderInfo.tableNumber:", orderInfo?.tableNumber);
-    console.log("Estado actual de orderInfo.orderType:", orderInfo?.orderType);
-    console.log("Estado de orderInfo completo:", orderInfo);
-  };
-
   const handleSubmitOrder = () => {
     // Verificar si la suscripción está suspendida
     if (subscriptionStatus === 'suspended') {
-      setLocalIsSubmitting(false);
       return;
     }
     
@@ -453,103 +328,86 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       return;
     }
     
-    // Debug para verificar estado actual
-    debugInputState();
-    
     // Si ya hay un pedido en proceso, no permitir otro
     if (isSubmitting) {
-      console.log("Ya hay un pedido en proceso, ignorando solicitud en handleSubmitOrder");
       return;
     }
     
     try {
       logSystem(`Procesando pedido tipo: ${orderInfo.orderType}`);
       
-      // En función del tipo de pedido, llamamos a la función correspondiente
       if (orderInfo.orderType === 'delivery') {
         setLocalIsSubmitting(true);
-        handleDeliverySubmit();
+        
+        const updatedOrderInfo = {
+          ...orderInfo,
+          orderType: 'delivery',
+          paymentMethod: selectedPaymentMethod,
+          customerNotes: customerNotes.trim(),
+          tableNumber: ''
+        };
+        
+        updateOrderInfo(updatedOrderInfo);
+        SessionManager.saveOrderInfo(updatedOrderInfo);
+        
+        setTimeout(() => {
+          onOrder(updatedOrderInfo, appliedCoupon);
+          setLocalIsSubmitting(false);
+        }, 300);
       } else if (orderInfo.orderType === 'inSite') {
         // Verificar todas las posibles fuentes del número de mesa
         const tableFromQR = isFromTableQR && tableNumber ? tableNumber.trim() : '';
         const tableFromOrderInfo = orderInfo?.tableNumber ? orderInfo.tableNumber.trim() : '';
         const tableFromState = tableNumber ? tableNumber.trim() : '';
-        
-        // Usar cualquier número de mesa disponible, en orden de prioridad
         const existingTable = tableFromQR || tableFromOrderInfo || tableFromState;
         
-        if (existingTable) {
-          // Ya tiene un número de mesa, enviar directamente
-          console.log("*** MESA ENCONTRADA EN SUBMIT:", existingTable, "- ENVIANDO PEDIDO ***");
-          
-          setLocalIsSubmitting(true);
-          
-          // Crear información completa del pedido con mesa existente
-          const updatedOrderInfo = {
-            ...orderInfo,
-            orderType: 'inSite',
-            tableNumber: existingTable,
-            paymentMethod: selectedPaymentMethod
-          };
-          
-          // Guardar en todas partes para asegurar consistencia
-          console.log('Actualizando información final con mesa:', existingTable);
-          updateOrderInfo(updatedOrderInfo);
-          SessionManager.saveOrderInfo(updatedOrderInfo);
-          setTableNumber(existingTable);
-          
-          // Cerrar modal si está abierto
-          closeOrderModal();
-          
-          // Dar un pequeño tiempo para asegurar la sincronización
-          setTimeout(() => {
-            // Enviar pedido directamente
-            console.log("*** EJECUTANDO ENVÍO FINAL CON MESA:", existingTable, "***");
-            onOrder(orderInfo, appliedCoupon);
-            
-            // Resetear estado de envío
-            setTimeout(() => {
-              setLocalIsSubmitting(false);
-            }, 500);
-          }, 100);
-        } else {
-          // No hay mesa, mostrar modal para ingresarla
-          console.log("*** NO HAY MESA EN SUBMIT - ABRIENDO MODAL ***");
-          openOrderModal('inSite');
-          setLocalIsSubmitting(false);
+        if (!existingTable) {
+          return;
         }
+        
+        setLocalIsSubmitting(true);
+        
+        const updatedOrderInfo = {
+          ...orderInfo,
+          orderType: 'inSite',
+          tableNumber: existingTable,
+          paymentMethod: selectedPaymentMethod,
+          customerNotes: customerNotes.trim()
+        };
+        
+        updateOrderInfo(updatedOrderInfo);
+        SessionManager.saveOrderInfo(updatedOrderInfo);
+        setTableNumber(existingTable);
+        
+        setTimeout(() => {
+          onOrder(updatedOrderInfo, appliedCoupon);
+          setTimeout(() => {
+            setLocalIsSubmitting(false);
+          }, 500);
+        }, 100);
       } else if (orderInfo.orderType === 'takeaway') {
-        // Para llevar - no necesita validación adicional
         setLocalIsSubmitting(true);
         
         const updatedOrderInfo = {
           ...orderInfo,
           orderType: 'takeaway',
           paymentMethod: selectedPaymentMethod,
-          // Asegurarnos de eliminar explícitamente el número de mesa para pedidos para llevar
+          customerNotes: customerNotes.trim(),
           tableNumber: ''
         };
         
         updateOrderInfo(updatedOrderInfo);
-        // Usar SessionManager directamente para asegurar que se guarde correctamente
         SessionManager.saveOrderInfo(updatedOrderInfo);
         
-        closeOrderModal();
-        
-        // Pequeño retraso para asegurar actualización de estado
         setTimeout(() => {
-          onOrder(orderInfo, appliedCoupon);
+          onOrder(updatedOrderInfo, appliedCoupon);
           setLocalIsSubmitting(false);
         }, 300);
       } else {
-        // Error - tipo de pedido no reconocido
-        console.error("Tipo de pedido no válido:", orderInfo.orderType);
-        alert("Error: Tipo de pedido no válido");
-        setLocalIsSubmitting(false);
+        logSystem(`Tipo de pedido no válido: ${orderInfo.orderType}`);
       }
     } catch (error) {
-      console.error("Error al procesar el pedido:", error);
-      alert("Error al procesar el pedido. Inténtalo de nuevo.");
+      logSystem(`Error al procesar el pedido: ${error.message}`);
       setLocalIsSubmitting(false);
     }
   };
@@ -996,6 +854,23 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 );
               })()}
 
+              {/* ── Notas adicionales ── */}
+              {(initialOrderTypeSelected || orderType) && (
+                <div className="mb-3">
+                  <textarea
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value.slice(0, 200))}
+                    placeholder="¿Algún comentario? Ej: sin cebolla, alergias..."
+                    maxLength={200}
+                    rows={2}
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent resize-none transition-all"
+                  />
+                  {customerNotes.length > 0 && (
+                    <p className="text-[10px] text-slate-400 text-right mt-0.5">{customerNotes.length}/200</p>
+                  )}
+                </div>
+              )}
+
               {/* ── Campo condicional: Número de mesa ── */}
               {(orderType === 'inSite' && !initialOrderTypeSelected && !(isFromTableQR && tableNumber)) && (
                 <input
@@ -1195,13 +1070,17 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   return;
                 }
 
-                // For services without explicit order type, default to inSite
-                if (hasServices && !initialOrderTypeSelected && !orderType) {
+                const submitWith = (extraFields) => {
                   setLocalIsSubmitting(true);
-                  const updatedOrderInfo = withBookingData({ ...orderInfo, orderType: 'inSite', tableNumber: '', paymentMethod: selectedPaymentMethod });
+                  const updatedOrderInfo = withBookingData({ ...orderInfo, paymentMethod: selectedPaymentMethod, customerNotes: customerNotes.trim(), ...extraFields });
                   updateOrderInfo(updatedOrderInfo);
                   SessionManager.saveOrderInfo(updatedOrderInfo);
                   setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
+                };
+
+                // For services without explicit order type, default to inSite
+                if (hasServices && !initialOrderTypeSelected && !orderType) {
+                  submitWith({ orderType: 'inSite', tableNumber: '' });
                   return;
                 }
                 
@@ -1213,30 +1092,17 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     alert('Por favor ingresa el número de mesa');
                     return;
                   }
-                  setLocalIsSubmitting(true);
-                  const updatedOrderInfo = withBookingData({ ...orderInfo, orderType: 'inSite', tableNumber: trimmedTable || tableNumber, paymentMethod: selectedPaymentMethod });
-                  updateOrderInfo(updatedOrderInfo);
-                  SessionManager.saveOrderInfo(updatedOrderInfo);
-                  setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
+                  submitWith({ orderType: 'inSite', tableNumber: trimmedTable || tableNumber });
                 } else if (orderType === 'takeaway') {
-                  setLocalIsSubmitting(true);
-                  const updatedOrderInfo = withBookingData({ ...orderInfo, orderType: 'takeaway', tableNumber: '', paymentMethod: selectedPaymentMethod });
-                  updateOrderInfo(updatedOrderInfo);
-                  SessionManager.saveOrderInfo(updatedOrderInfo);
-                  setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
+                  submitWith({ orderType: 'takeaway', tableNumber: '' });
                 } else if (orderType === 'delivery') {
                   const trimmedAddress = (deliveryAddressRef.current?.value || '').trim();
                   if (!trimmedAddress) { alert('Por favor ingresa la dirección de entrega'); return; }
-                  setLocalIsSubmitting(true);
-                  const updatedOrderInfo = withBookingData({
-                    ...orderInfo, orderType: 'delivery', address: trimmedAddress, tableNumber: '',
-                    paymentMethod: selectedPaymentMethod,
+                  submitWith({
+                    orderType: 'delivery', address: trimmedAddress, tableNumber: '',
                     deliveryFee: deliveryFee || null, deliveryZoneName: deliveryZoneInfo?.zoneName || null,
                     deliveryZoneInfo: deliveryZoneInfo || null, deliveryCalculated: true, deliveryNeedsConfirmation: !deliveryFee
                   });
-                  updateOrderInfo(updatedOrderInfo);
-                  SessionManager.saveOrderInfo(updatedOrderInfo);
-                  setTimeout(() => { onOrder(updatedOrderInfo, appliedCoupon); setTimeout(() => setLocalIsSubmitting(false), 500); }, 150);
                 }
               };
 
