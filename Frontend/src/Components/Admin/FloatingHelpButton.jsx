@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaQuestionCircle, FaTimes, FaWhatsapp, FaBookOpen, FaRocket } from 'react-icons/fa';
+import AI from './AdminIcons';
 
 const WHATSAPP_NUMBER = '573138178003';
 const WHATSAPP_MESSAGE = encodeURIComponent('Hola, necesito ayuda con mi menú digital en Menuby 🍔');
@@ -66,7 +67,7 @@ export default function FloatingHelpButton({ onShowWizard }) {
               className="bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden w-64 mb-2"
             >
               <div className="p-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white">
-                <h3 className="font-bold text-sm">¿Necesitas ayuda? 💬</h3>
+                <h3 className="font-bold text-sm flex items-center gap-1.5">¿Necesitas ayuda? {AI.chat('w-4 h-4')}</h3>
                 <p className="text-xs text-blue-100 mt-0.5">Estamos para apoyarte</p>
               </div>
               <div className="p-2">
@@ -152,24 +153,24 @@ export default function FloatingHelpButton({ onShowWizard }) {
               className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[85vh] overflow-auto"
             >
               <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-t-2xl text-white">
-                <h2 className="text-xl font-bold">📖 Guía rápida del panel</h2>
+                <h2 className="text-xl font-bold flex items-center gap-2">{AI.document('w-6 h-6')} Guía rápida del panel</h2>
                 <p className="text-blue-100 text-sm mt-1">Todo lo que necesitas saber</p>
               </div>
 
               <div className="p-5 space-y-4">
                 {[
-                  { emoji: '🍔', title: 'Productos', text: 'Agrega tus platos con foto, precio y categoría. Marca como destacados los más vendidos.' },
-                  { emoji: '📂', title: 'Categorías', text: 'Organiza tu menú (Hamburguesas, Bebidas, etc). Se crean automáticas según tu tipo de negocio.' },
-                  { emoji: '🧀', title: 'Extras / Toppings', text: 'Crea opciones extra como salsas, acompañamientos o tamaños con precio adicional.' },
-                  { emoji: '📋', title: 'Pedidos', text: 'Recibe y gestiona pedidos en tiempo real. Cambia el estado de cada uno.' },
-                  { emoji: '⚙️', title: 'Configuración', text: 'Horarios, modo de pedidos (WhatsApp/App), logo, datos del negocio.' },
-                  { emoji: '🎨', title: 'Tema', text: 'Personaliza colores y estilo de tu menú digital.' },
-                  { emoji: '📍', title: 'Ubicación', text: 'Agrega tu dirección para que los clientes te encuentren.' },
-                  { emoji: '🎫', title: 'Cupones', text: 'Crea descuentos por porcentaje o monto fijo para tus clientes.' },
-                  { emoji: '💰', title: 'Pagos', text: 'Configura si aceptas efectivo, transferencia o Nequi.' },
+                  { icon: AI.utensils('w-6 h-6'), title: 'Productos', text: 'Agrega tus platos con foto, precio y categoría. Marca como destacados los más vendidos.' },
+                  { icon: AI.folder('w-6 h-6'), title: 'Categorías', text: 'Organiza tu menú (Hamburguesas, Bebidas, etc). Se crean automáticas según tu tipo de negocio.' },
+                  { icon: AI.tag('w-6 h-6'), title: 'Extras / Toppings', text: 'Crea opciones extra como salsas, acompañamientos o tamaños con precio adicional.' },
+                  { icon: AI.clipboard('w-6 h-6'), title: 'Pedidos', text: 'Recibe y gestiona pedidos en tiempo real. Cambia el estado de cada uno.' },
+                  { icon: AI.cog('w-6 h-6'), title: 'Configuración', text: 'Horarios, modo de pedidos (WhatsApp/App), logo, datos del negocio.' },
+                  { icon: AI.palette('w-6 h-6'), title: 'Tema', text: 'Personaliza colores y estilo de tu menú digital.' },
+                  { icon: AI.mapPin('w-6 h-6'), title: 'Ubicación', text: 'Agrega tu dirección para que los clientes te encuentren.' },
+                  { icon: AI.ticket('w-6 h-6'), title: 'Cupones', text: 'Crea descuentos por porcentaje o monto fijo para tus clientes.' },
+                  { icon: AI.banknotes('w-6 h-6'), title: 'Pagos', text: 'Configura si aceptas efectivo, transferencia o Nequi.' },
                 ].map((item, i) => (
                   <div key={i} className="flex gap-3 items-start">
-                    <span className="text-2xl shrink-0">{item.emoji}</span>
+                    <span className="shrink-0 text-slate-600">{item.icon}</span>
                     <div>
                       <h4 className="font-semibold text-slate-800 text-sm">{item.title}</h4>
                       <p className="text-xs text-slate-500 leading-relaxed">{item.text}</p>

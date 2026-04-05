@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import AI from '../Admin/AdminIcons';
 
 export default function POSHeader({ businessConfig, cashRegister, user, pendingOrdersCount, showOrderBanner, newOrderNotification, onDismissBanner, onGoToOrders, onOpenMovements, onCloseCash, onNewOrder, onExit, offline }) {
   const [time, setTime] = useState(new Date());
@@ -188,7 +189,7 @@ export default function POSHeader({ businessConfig, cashRegister, user, pendingO
                 animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
                 transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
                 className="text-2xl"
-              >🔔</motion.span>
+              >{AI.bell('w-6 h-6 text-white')}</motion.span>
               <div className="flex-1 text-left">
                 <p className="text-white font-bold text-sm">{isService ? '¡Nueva Cita Web!' : '¡Nuevo Pedido Web!'}</p>
                 <p className="text-white/80 text-xs">

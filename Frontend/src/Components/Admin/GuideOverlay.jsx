@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import AI from './AdminIcons';
 
 /**
  * Guías explicativas por sección.
@@ -9,7 +10,7 @@ import { useBusinessConfig } from '../../Context/BusinessContext';
  */
 const SECTION_GUIDES = {
   categories: {
-    icon: '📂',
+    icon: 'folder',
     title: 'Categorías',
     tips: [
       'Organiza tu menú en secciones: Hamburguesas, Bebidas, Postres...',
@@ -18,7 +19,7 @@ const SECTION_GUIDES = {
     ]
   },
   products: {
-    icon: '🍔',
+    icon: 'utensils',
     title: 'Productos',
     tips: [
       'Agrega productos con foto, precio y descripción',
@@ -27,7 +28,7 @@ const SECTION_GUIDES = {
     ]
   },
   'product-order': {
-    icon: '🔄',
+    icon: 'arrowPath',
     title: 'Orden de Productos',
     tips: [
       'Arrastra para ordenar tus categorías como quieres que aparezcan',
@@ -36,7 +37,7 @@ const SECTION_GUIDES = {
     ]
   },
   toppings: {
-    icon: '🧀',
+    icon: 'tag',
     title: 'Extras / Toppings',
     tips: [
       'Crea grupos como "Salsas", "Extras", "Bebidas"',
@@ -45,7 +46,7 @@ const SECTION_GUIDES = {
     ]
   },
   orders: {
-    icon: '📋',
+    icon: 'clipboard',
     title: 'Pedidos',
     tips: [
       'Aquí llegan los pedidos en tiempo real',
@@ -54,7 +55,7 @@ const SECTION_GUIDES = {
     ]
   },
   completed_orders: {
-    icon: '✅',
+    icon: 'checkCircle',
     title: 'Pedidos Completados',
     tips: [
       'Historial de todos los pedidos finalizados',
@@ -63,7 +64,7 @@ const SECTION_GUIDES = {
     ]
   },
   customers: {
-    icon: '👥',
+    icon: 'users',
     title: 'Clientes',
     tips: [
       'Lista de clientes que han ordenado',
@@ -72,7 +73,7 @@ const SECTION_GUIDES = {
     ]
   },
   coupons: {
-    icon: '🎫',
+    icon: 'ticket',
     title: 'Cupones',
     tips: [
       'Crea códigos de descuento (% o monto fijo)',
@@ -81,7 +82,7 @@ const SECTION_GUIDES = {
     ]
   },
   reviews: {
-    icon: '⭐',
+    icon: 'star',
     title: 'Reseñas',
     tips: [
       'Ve las reseñas que dejan tus clientes',
@@ -90,7 +91,7 @@ const SECTION_GUIDES = {
     ]
   },
   tables: {
-    icon: '🪑',
+    icon: 'chair',
     title: 'Mesas',
     tips: [
       'Genera códigos QR únicos por mesa',
@@ -99,7 +100,7 @@ const SECTION_GUIDES = {
     ]
   },
   'delivery-zones': {
-    icon: '🗺️',
+    icon: 'map',
     title: 'Zonas de Entrega',
     tips: [
       'Define zonas con costos de envío diferentes',
@@ -108,7 +109,7 @@ const SECTION_GUIDES = {
     ]
   },
   catalog: {
-    icon: '📢',
+    icon: 'megaphone',
     title: 'Catálogo',
     tips: [
       'Sube banners promocionales para tu menú',
@@ -117,7 +118,7 @@ const SECTION_GUIDES = {
     ]
   },
   whatsapp: {
-    icon: '💬',
+    icon: 'chat',
     title: 'WhatsApp',
     tips: [
       'Personaliza el formato de mensajes de pedido',
@@ -126,7 +127,7 @@ const SECTION_GUIDES = {
     ]
   },
   'payment-config': {
-    icon: '💰',
+    icon: 'banknotes',
     title: 'Pagos',
     tips: [
       'Elige el modo de pedidos: WhatsApp, en la app o ambos',
@@ -135,7 +136,7 @@ const SECTION_GUIDES = {
     ]
   },
   subscription: {
-    icon: '💳',
+    icon: 'creditCard',
     title: 'Suscripción',
     tips: [
       'Administra tu plan mensual',
@@ -144,7 +145,7 @@ const SECTION_GUIDES = {
     ]
   },
   business: {
-    icon: '⚙️',
+    icon: 'cog',
     title: 'Configuración del Negocio',
     tips: [
       'Edita nombre, logo y datos de contacto',
@@ -153,7 +154,7 @@ const SECTION_GUIDES = {
     ]
   },
   theme: {
-    icon: '🎨',
+    icon: 'palette',
     title: 'Tema',
     tips: [
       'Personaliza los colores de tu menú digital',
@@ -162,7 +163,7 @@ const SECTION_GUIDES = {
     ]
   },
   location: {
-    icon: '📍',
+    icon: 'mapPin',
     title: 'Ubicación',
     tips: [
       'Configura la dirección de tu negocio',
@@ -199,7 +200,7 @@ export default function GuideOverlay({ sectionId, isOpen, onClose }) {
   }
   if (guide && sectionId === 'products') {
     if (isService) {
-      guide = { ...guide, icon: '💆', title: 'Servicios', tips: [
+      guide = { ...guide, icon: 'sparkle', title: 'Servicios', tips: [
         'Agrega servicios con foto, precio y descripción',
         'Asigna cada servicio a una categoría',
         'Marca servicios como destacados para que aparezcan primero'
@@ -217,7 +218,7 @@ export default function GuideOverlay({ sectionId, isOpen, onClose }) {
   }
   if (guide && sectionId === 'toppings') {
     if (isService) {
-      guide = { ...guide, icon: '⚙️', title: 'Opciones / Variantes', tips: [
+      guide = { ...guide, icon: 'cog', title: 'Opciones / Variantes', tips: [
         'Crea grupos como "Duración", "Intensidad", "Extras"',
         'Agrega opciones con precio dentro de cada grupo',
         'Asocia grupos a servicios para que el cliente los elija'
@@ -256,7 +257,7 @@ export default function GuideOverlay({ sectionId, isOpen, onClose }) {
             {/* Header */}
             <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 text-white">
               <div className="flex items-center gap-3">
-                <span className="text-3xl">{guide.icon}</span>
+                {AI[guide.icon]?.('w-8 h-8 text-white') || guide.icon}
                 <div>
                   <h3 className="text-lg font-bold">{guide.title}</h3>
                   <p className="text-blue-100 text-xs">¿Cómo funciona?</p>

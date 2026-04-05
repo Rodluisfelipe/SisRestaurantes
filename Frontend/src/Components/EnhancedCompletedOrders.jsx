@@ -3,6 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
+import AI from './Admin/AdminIcons';
 import { logSystem } from '../utils/systemLogger';
 import ExcelJS from 'exceljs';
 import {
@@ -1212,18 +1213,18 @@ function EnhancedCompletedOrders() {
                       </span>
                     </td>
                     <td className="px-4 py-2.5 hidden md:table-cell">
-                      <span className="text-xs text-slate-600">
-                        {order.paymentMethod === 'cash' || order.paymentMethod === 'efectivo' ? '💵 Efectivo' :
-                         order.paymentMethod === 'nequi' ? '📱 Nequi' :
-                         order.paymentMethod === 'daviplata' ? '📱 Daviplata' :
-                         order.paymentMethod === 'transfer' || order.paymentMethod === 'transferencia' ? '🏦 Transf.' :
+                      <span className="text-xs text-slate-600 inline-flex items-center gap-1">
+                        {order.paymentMethod === 'cash' || order.paymentMethod === 'efectivo' ? <>{AI.banknotes('w-3.5 h-3.5')} Efectivo</> :
+                         order.paymentMethod === 'nequi' ? <>{AI.deviceMobile('w-3.5 h-3.5')} Nequi</> :
+                         order.paymentMethod === 'daviplata' ? <>{AI.deviceMobile('w-3.5 h-3.5')} Daviplata</> :
+                         order.paymentMethod === 'transfer' || order.paymentMethod === 'transferencia' ? <>{AI.bank('w-3.5 h-3.5')} Transf.</> :
                          order.paymentMethod ? order.paymentMethod : '—'}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell max-w-[150px] truncate">
                       {order.orderType === 'delivery'
                         ? (order.deliveryPersonId?.name
-                            ? `🛵 ${order.deliveryPersonId.name}`
+                            ? <span className="inline-flex items-center gap-1">{AI.truck('w-3 h-3')} {order.deliveryPersonId.name}</span>
                             : order.address)
                         : order.orderType === 'inSite'
                         ? `${isHotel ? 'Hab.' : 'Mesa'} ${order.tableNumber}`

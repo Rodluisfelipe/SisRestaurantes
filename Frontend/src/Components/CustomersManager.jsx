@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaUsers, FaCrown, FaDollarSign, FaChartBar, FaSearch, FaWhatsapp, FaEye, FaTrash, FaTimes, FaPhone, FaEnvelope, FaMapMarkerAlt, FaCalendarAlt, FaBoxOpen, FaSyncAlt, FaChevronLeft, FaChevronRight, FaStar, FaPaperPlane, FaCommentDots, FaUtensils, FaPen, FaHandPeace, FaGift, FaSortAmountDown, FaStickyNote, FaTags, FaPlus } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import AI from './Admin/AdminIcons';
 import { getBusinessSlug } from '../utils/getBusinessId';
 import { logSystem } from '../utils/systemLogger';
 
@@ -256,9 +257,9 @@ const CustomersManager = () => {
     });
     
     const types = {
-      delivery: '🚚 Domicilio',
-      takeaway: '🥡 Para llevar',
-      inSite: '🍽️ Mesa'
+      delivery: 'Domicilio',
+      takeaway: 'Para llevar',
+      inSite: 'Mesa'
     };
     
     const preferred = Object.entries(typeCount).sort((a, b) => b[1] - a[1])[0];

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaStar, FaReply, FaEye, FaEyeSlash, FaSearch, FaChevronLeft, FaChevronRight, FaSyncAlt, FaBoxOpen, FaStarHalfAlt, FaMagic } from 'react-icons/fa';
 import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import AI from './AdminIcons';
 import { getBusinessSlug } from '../../utils/getBusinessId';
 
 // Star rating display component
@@ -516,7 +517,7 @@ export default function AdminReviews() {
                               ) : (
                                 <FaMagic className="text-[10px]" />
                               )}
-                              {aiReplyLoading === review._id ? 'Generando...' : '✨ IA'}
+                              {aiReplyLoading === review._id ? 'Generando...' : <><span className="inline-flex items-center gap-0.5">{AI.sparkle('w-3 h-3')} IA</span></>}
                             </button>
                           </div>
                           <div className="flex gap-2">

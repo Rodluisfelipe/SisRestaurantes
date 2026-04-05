@@ -36,7 +36,7 @@ import LeadCapturePage from './LeadCapturePage';
 import useSEO from '../hooks/useSEO';
 import useCart from '../hooks/useCart';
 import useMenuData from '../hooks/useMenuData';
-import useOrderTracking from '../hooks/useOrderTracking';
+// useOrderTracking hook removed — logic is inline
 
 /**
  * Página principal del Menú para clientes
@@ -172,9 +172,20 @@ export default function Menu() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [activeOrderId, activeCustomerToken, isInAppMode]);
 
+  // Auto-clear cancelled orders from the banner
+  useEffect(() => {
+    if (activeOrderStatus === 'cancelled' && activeOrderId) {
+      localStorage.setItem(`dismissed_review_${activeOrderId}`, '1');
+      setActiveOrderId(null);
+      setActiveCustomerToken(null);
+      setActiveOrderStatus(null);
+      sessionStorage.removeItem('activeOrderId');
+      sessionStorage.removeItem('activeCustomerToken');
+    }
+  }, [activeOrderStatus, activeOrderId]);
+
   // Clear active order (user confirmed completed order)
   const clearActiveOrder = useCallback(() => {
-    // Trigger review modal before clearing
     const orderId = activeOrderId;
     setActiveOrderId(null);
     setActiveCustomerToken(null);
@@ -182,6 +193,8 @@ export default function Menu() {
     sessionStorage.removeItem('activeOrderId');
     sessionStorage.removeItem('activeCustomerToken');
     if (orderId && businessId) {
+      // Mark as dismissed immediately so PendingReviewCard won't re-show on refresh
+      localStorage.setItem(`dismissed_review_${orderId}`, '1');
       setPendingReviewOrder(orderId);
       setShowReviewModal(true);
     }
@@ -412,7 +425,10 @@ export default function Menu() {
         if (cancelled) return;
         const activeOrders = res.data?.active || [];
         if (activeOrders.length > 0) {
-          const recoverableOrder = activeOrders.find(o => o.customerToken);
+          // Skip orders that were already dismissed/reviewed
+          const recoverableOrder = activeOrders.find(o => 
+            o.customerToken && !localStorage.getItem(`dismissed_review_${o._id}`)
+          );
           if (recoverableOrder) {
             sessionStorage.setItem('activeOrderId', recoverableOrder._id);
             sessionStorage.setItem('activeCustomerToken', recoverableOrder.customerToken);
@@ -1715,7 +1731,15 @@ export default function Menu() {
         {showReviewModal && (
           <ReviewModal
             show={showReviewModal}
-            onClose={() => { setShowReviewModal(false); setPendingReviewOrder(null); setPendingReviewTopProduct(null); }}
+            onClose={(submitted) => {
+              // Always mark as dismissed so PendingReviewCard won't re-show
+              if (pendingReviewOrder) {
+                localStorage.setItem(`dismissed_review_${pendingReviewOrder}`, '1');
+              }
+              setShowReviewModal(false);
+              setPendingReviewOrder(null);
+              setPendingReviewTopProduct(null);
+            }}
             businessId={businessId}
             orderId={pendingReviewOrder}
             customerName={orderInfo.customerName}
