@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { useAuth } from '../Context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import api from '../services/api';
 import { socket, joinBusiness } from '../services/socket';
 import { SOCKET_EVENTS, ORDER_STATUS } from '../utils/constants';
@@ -40,6 +41,7 @@ export default function POS() {
   const [showTables, setShowTables] = useState(false);
   const [activeTab, setActiveTab] = useState('products'); // products, tables, orders
   const [activeOrders, setActiveOrders] = useState([]);
+  const [showMobileCart, setShowMobileCart] = useState(false);
 
   // Order notifications (web orders arriving)
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
@@ -315,6 +317,9 @@ export default function POS() {
     );
   }
 
+  const cartItemCount = cart.reduce((s, i) => s + i.quantity, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0);
+
   return (
     <div className="h-screen flex flex-col bg-slate-100 overflow-hidden select-none">
       <POSHeader
@@ -337,37 +342,37 @@ export default function POS() {
         {/* Left panel: product grid or table map */}
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Tab bar — segmented control */}
-          <div className="px-4 pt-3 pb-2 bg-white border-b border-slate-100 flex-shrink-0">
+          <div className="px-3 lg:px-4 pt-2 lg:pt-3 pb-2 bg-white border-b border-slate-100 flex-shrink-0">
             <div className="inline-flex bg-slate-100 rounded-xl p-1 gap-0.5">
               <button
                 onClick={() => { setActiveTab('products'); setShowTables(false); }}
-                className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                className={`px-3 lg:px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 lg:gap-2 ${
                   activeTab === 'products' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                Productos
+                <span className="hidden sm:inline">Productos</span>
               </button>
               <button
                 onClick={() => { setActiveTab('orders'); setShowTables(false); }}
-                className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                className={`px-3 lg:px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 lg:gap-2 ${
                   activeTab === 'orders' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-                Órdenes
+                <span className="hidden sm:inline">Órdenes</span>
                 {activeOrders.length > 0 && (
                   <span className="bg-red-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-black min-w-[18px] text-center animate-pulse">{activeOrders.length}</span>
                 )}
               </button>
               <button
                 onClick={() => { setActiveTab('tables'); setShowTables(true); }}
-                className={`px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                className={`px-3 lg:px-5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 lg:gap-2 ${
                   activeTab === 'tables' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                Mesas
+                <span className="hidden sm:inline">Mesas</span>
                 {selectedTable && (
                   <span className="bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded text-[10px] font-bold">M{selectedTable.tableNumber}</span>
                 )}
@@ -402,8 +407,8 @@ export default function POS() {
           </div>
         </div>
 
-        {/* Cart — right ~35% */}
-        <div className="w-[340px] lg:w-[380px] flex-shrink-0 border-l border-slate-200 bg-white flex flex-col">
+        {/* Cart — desktop: fixed sidebar */}
+        <div className="hidden lg:flex w-[380px] flex-shrink-0 border-l border-slate-200 bg-white flex-col">
           <POSCart
             cart={cart}
             updateQuantity={updateQuantity}
@@ -420,6 +425,67 @@ export default function POS() {
           />
         </div>
       </div>
+
+      {/* Mobile: floating cart button */}
+      {cartItemCount > 0 && !showMobileCart && (
+        <div className="lg:hidden fixed bottom-5 left-4 right-4 z-40">
+          <button
+            onClick={() => setShowMobileCart(true)}
+            className="w-full py-4 rounded-2xl text-white font-bold text-[15px] shadow-xl flex items-center justify-between px-5 active:scale-[0.98] transition-transform"
+            style={{ backgroundColor: themeColor }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+              </div>
+              <span>{cartItemCount} artículo{cartItemCount !== 1 ? 's' : ''}</span>
+            </div>
+            <span className="text-lg font-black">${cartTotal.toLocaleString()}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile: cart overlay (slide-up bottom sheet) */}
+      <AnimatePresence>
+        {showMobileCart && (
+          <div className="lg:hidden fixed inset-0 z-50">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/50"
+              onClick={() => setShowMobileCart(false)}
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl flex flex-col"
+              style={{ maxHeight: '85vh' }}
+            >
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+                <div className="w-10 h-1 rounded-full bg-slate-200" />
+              </div>
+              <POSCart
+                cart={cart}
+                updateQuantity={updateQuantity}
+                removeFromCart={removeFromCart}
+                clearCart={clearCart}
+                onCheckout={() => { setShowMobileCart(false); setShowCheckout(true); }}
+                onHoldOrder={() => { holdOrder(); setShowMobileCart(false); }}
+                heldOrders={heldOrders}
+                onRecallHeldOrder={(id) => { recallHeldOrder(id); setShowMobileCart(false); }}
+                onDeleteHeldOrder={deleteHeldOrder}
+                selectedTable={selectedTable}
+                onClearTable={() => setSelectedTable(null)}
+                themeColor={themeColor}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Modals */}
       {showCheckout && (

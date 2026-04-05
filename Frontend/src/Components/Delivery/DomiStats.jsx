@@ -6,7 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   LineChart, Line
 } from 'recharts';
-import { FaMotorcycle, FaUserPlus, FaTrash, FaCheck, FaBan, FaKey, FaTimes } from 'react-icons/fa';
+import { FaMotorcycle, FaUserPlus, FaTrash, FaCheck, FaBan, FaKey, FaTimes, FaCalendarDay, FaClock } from 'react-icons/fa';
 
 const DomiStats = () => {
   const { businessId, businessConfig } = useBusinessConfig();
@@ -88,19 +88,19 @@ const DomiStats = () => {
   if (loading) return <div className="p-8 text-center text-gray-500">Cargando datos de entrega...</div>;
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 sm:p-6 pb-20">
-       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+    <div className="space-y-4 lg:space-y-6 max-w-6xl mx-auto px-0 lg:p-6 pb-20">
+       <div className="flex justify-between items-center bg-white p-4 lg:p-6 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-slate-100">
            <div>
-              <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+              <h1 className="text-lg lg:text-2xl font-bold text-slate-800 flex items-center gap-3">
                   <FaMotorcycle className="text-red-500" />
                   Módulo de Domicilios
               </h1>
-              <p className="text-slate-500 text-sm mt-1">Gestiona tu equipo de entregas y analiza su rendimiento.</p>
+              <p className="hidden lg:block text-slate-500 text-sm mt-1">Gestiona tu equipo de entregas y analiza su rendimiento.</p>
            </div>
        </div>
 
        {/* Daily Mode Widget */}
-       <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl shadow-lg p-6 text-white text-sm sm:text-base">
+       <div className="bg-gradient-to-r from-slate-800 to-slate-900 rounded-2xl shadow-lg p-4 lg:p-6 text-white text-sm sm:text-base">
            <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
               <div>
                  <h2 className="font-bold text-lg text-white mb-1">Modo Diario (Domi Fijo Único)</h2>
@@ -136,27 +136,55 @@ const DomiStats = () => {
           {/* STATS */}
           <div className="col-span-1 lg:col-span-2 space-y-6">
              {/* Kpis */}
-             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-                     <p className="text-slate-500 text-xs font-medium mb-1">Entregas Activas</p>
-                     <p className="text-3xl font-bold text-slate-800">{stats?.activeOrders || 0}</p>
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 lg:gap-4">
+                 <div className="bg-white rounded-2xl lg:rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-slate-100 p-4 lg:p-5">
+                     <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-red-500 to-red-600 lg:bg-red-50 lg:from-transparent lg:to-transparent shadow-sm lg:shadow-none flex items-center justify-center">
+                         <FaMotorcycle className="text-white lg:text-red-500 text-base lg:text-sm" />
+                       </div>
+                       <div>
+                         <p className="text-slate-500 text-[11px] lg:text-xs font-medium">Activas</p>
+                         <p className="text-[20px] lg:text-xl font-bold text-slate-800 leading-tight">{stats?.activeOrders || 0}</p>
+                       </div>
+                     </div>
                  </div>
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-                     <p className="text-slate-500 text-xs font-medium mb-1">Entregas Hoy</p>
-                     <p className="text-3xl font-bold text-blue-600">{stats?.todayDeliveries || 0}</p>
+                 <div className="bg-white rounded-2xl lg:rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-slate-100 p-4 lg:p-5">
+                     <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 lg:bg-blue-50 lg:from-transparent lg:to-transparent shadow-sm lg:shadow-none flex items-center justify-center">
+                         <FaCalendarDay className="text-white lg:text-blue-500 text-base lg:text-sm" />
+                       </div>
+                       <div>
+                         <p className="text-slate-500 text-[11px] lg:text-xs font-medium">Hoy</p>
+                         <p className="text-[20px] lg:text-xl font-bold text-blue-600 leading-tight">{stats?.todayDeliveries || 0}</p>
+                       </div>
+                     </div>
                  </div>
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-                     <p className="text-slate-500 text-xs font-medium mb-1">Entregados Totales</p>
-                     <p className="text-3xl font-bold text-slate-800">{stats?.totalDeliveries || 0}</p>
+                 <div className="bg-white rounded-2xl lg:rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-slate-100 p-4 lg:p-5">
+                     <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 lg:bg-emerald-50 lg:from-transparent lg:to-transparent shadow-sm lg:shadow-none flex items-center justify-center">
+                         <FaCheck className="text-white lg:text-emerald-500 text-base lg:text-sm" />
+                       </div>
+                       <div>
+                         <p className="text-slate-500 text-[11px] lg:text-xs font-medium">Total</p>
+                         <p className="text-[20px] lg:text-xl font-bold text-slate-800 leading-tight">{stats?.totalDeliveries || 0}</p>
+                       </div>
+                     </div>
                  </div>
-                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 p-5">
-                     <p className="text-slate-500 text-xs font-medium mb-1">Tiempo Promedio</p>
-                     <p className="text-3xl font-bold text-emerald-600">{stats?.avgMinutes || 0} <span className="text-sm font-normal text-slate-500">min</span></p>
+                 <div className="bg-white rounded-2xl lg:rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-slate-100 p-4 lg:p-5">
+                     <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 lg:bg-violet-50 lg:from-transparent lg:to-transparent shadow-sm lg:shadow-none flex items-center justify-center">
+                         <FaClock className="text-white lg:text-violet-500 text-base lg:text-sm" />
+                       </div>
+                       <div>
+                         <p className="text-slate-500 text-[11px] lg:text-xs font-medium">Prom.</p>
+                         <p className="text-[20px] lg:text-xl font-bold text-emerald-600 leading-tight">{stats?.avgMinutes || 0} <span className="text-[11px] font-normal text-slate-500">min</span></p>
+                       </div>
+                     </div>
                  </div>
              </div>
              
              {/* Chart */}
-             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+             <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-slate-100 p-4 lg:p-6">
                  <h3 className="font-bold text-slate-800 mb-6">Tendencia de Entregas (7 días)</h3>
                  <div className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
@@ -173,7 +201,7 @@ const DomiStats = () => {
           </div>
           
           {/* PERFILES */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 flex flex-col max-h-[600px]">
+          <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-slate-100 p-4 lg:p-6 flex flex-col max-h-[600px]">
              <div className="flex justify-between items-center mb-6">
                  <h3 className="font-bold text-slate-800">Perfiles de Domiciliarios</h3>
                  <button onClick={() => setShowCreate(!showCreate)} className="text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors">

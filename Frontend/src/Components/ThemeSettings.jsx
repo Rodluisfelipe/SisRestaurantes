@@ -63,10 +63,10 @@ const ThemeSettings = () => {
         animate={{ opacity: 1, y: 0 }}
         className="text-center"
       >
-        <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
-          <span className="text-2xl">🎨</span>
+        <div className="w-12 h-12 lg:w-16 lg:h-16 bg-gradient-to-r from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center mx-auto mb-3 lg:mb-4 shadow-2xl">
+          <span className="text-xl lg:text-2xl">🎨</span>
         </div>
-        <h2 className="text-3xl font-bold text-slate-900 mb-2">Personalización de Tema</h2>
+        <h2 className="text-xl lg:text-3xl font-bold text-slate-900 mb-2">Personalización de Tema</h2>
         <p className="text-slate-600">Personaliza la apariencia de tu menú digital</p>
       </motion.div>
 
@@ -103,14 +103,14 @@ const ThemeSettings = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
+          className="bg-white lg:bg-gradient-to-br lg:from-white lg:to-slate-50 rounded-2xl lg:rounded-3xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-xl p-5 lg:p-8 border border-slate-100 lg:border-slate-200/50"
         >
-          <div className="text-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-              <span className="text-xl">🎨</span>
+          <div className="text-center mb-5 lg:mb-8">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-2 lg:mb-3 shadow-lg">
+              <span className="text-lg lg:text-xl">🎨</span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">Personalización de Botones</h3>
-            <p className="text-slate-600">Configura los colores de los botones de tu sistema</p>
+            <h3 className="text-base lg:text-2xl font-bold text-slate-900 mb-1 lg:mb-2">Personalizar Botones</h3>
+            <p className="hidden lg:block text-slate-600">Configura los colores de los botones de tu sistema</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -190,14 +190,14 @@ const ThemeSettings = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-gradient-to-br from-white to-slate-50 rounded-3xl shadow-xl p-8 border border-slate-200/50"
+          className="bg-white lg:bg-gradient-to-br lg:from-white lg:to-slate-50 rounded-2xl lg:rounded-3xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-xl p-5 lg:p-8 border border-slate-100 lg:border-slate-200/50"
         >
-          <div className="text-center mb-6">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-              <span className="text-xl">👁️</span>
+          <div className="text-center mb-4 lg:mb-6">
+            <div className="w-10 h-10 lg:w-12 lg:h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-2 lg:mb-3 shadow-lg">
+              <span className="text-lg lg:text-xl">👁️</span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">Vista Previa</h3>
-            <p className="text-slate-600">Así se verán tus botones personalizados</p>
+            <h3 className="text-base lg:text-2xl font-bold text-slate-900 mb-1 lg:mb-2">Vista Previa</h3>
+            <p className="hidden lg:block text-slate-600">Así se verán tus botones personalizados</p>
           </div>
 
           <div className="flex justify-center space-x-4">

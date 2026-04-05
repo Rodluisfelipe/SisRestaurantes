@@ -1,15 +1,71 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  FaChartBar, FaClipboardList, FaCheckCircle, FaHamburger,
-  FaEllipsisH, FaCalendarAlt, FaTools, FaConciergeBell
-} from 'react-icons/fa';
 import MobileNavDrawer from './MobileNavDrawer';
 
+/* ═══ SVG Icons — iOS SF Symbols style ═══ */
+const NavIcons = {
+  home: (active) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+      {active
+        ? <path d="M3 10.5L12 3l9 7.5V21a1 1 0 01-1 1H4a1 1 0 01-1-1V10.5z"/>
+        : <><path d="M3 10.5L12 3l9 7.5V20a2 2 0 01-2 2H5a2 2 0 01-2-2V10.5z"/><path d="M9 22V12h6v10"/></>
+      }
+    </svg>
+  ),
+  orders: (active) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+      {active
+        ? <><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4" stroke="white" strokeWidth="2" fill="none"/></>
+        : <><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></>
+      }
+    </svg>
+  ),
+  menu: (active) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+      {active
+        ? <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0" stroke="currentColor" strokeWidth="1.5" fill="currentColor" fillOpacity="0.15"/>
+        : <><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></>
+      }
+    </svg>
+  ),
+  customers: (active) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+      {active
+        ? <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.5" fill="none"/></>
+        : <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></>
+      }
+    </svg>
+  ),
+  more: (active) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+    </svg>
+  ),
+  calendar: (active) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 0 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+      {active
+        ? <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.5" fill="none"/></>
+        : <><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></>
+      }
+    </svg>
+  ),
+  waiter: (active) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><path d="M6 1v3M10 1v3M14 1v3"/>
+    </svg>
+  ),
+  tools: (active) => (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+  ),
+};
+
 /**
- * MobileBottomNav — Fixed bottom navigation for mobile (<1024px).
- * 5 tabs: Dashboard, Pedidos (with badge), Completados, Menú, Más (drawer).
+ * MobileBottomNav v3 — Native iOS tab bar with pill-style active state.
+ * Active tab gets a colored pill background behind icon.
+ * Only visible on mobile (<1024px / lg breakpoint).
  */
 export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrdersCount, businessConfig, handleLogout, userRole }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -18,25 +74,22 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isStaff = userRole === 'staff';
 
-  // The 4 pinned tabs + "Más"
   const pinnedTabs = [
-    { id: 'dashboard', label: 'Inicio', Icon: FaChartBar },
-    { id: 'orders', label: isService ? 'Citas' : 'Pedidos', Icon: isService ? FaCalendarAlt : FaClipboardList, badge: pendingOrdersCount },
-    { id: 'completed_orders', label: 'Listos', Icon: FaCheckCircle },
-    { id: 'products', label: isService ? 'Servicios' : 'Menú', Icon: isService ? FaTools : FaHamburger },
+    { id: 'dashboard', label: 'Inicio', icon: NavIcons.home },
+    { id: 'orders', label: isService ? 'Citas' : 'Pedidos', icon: isService ? NavIcons.calendar : NavIcons.orders, badge: pendingOrdersCount },
+    { id: 'products', label: isService ? 'Servicios' : 'Menú', icon: isService ? NavIcons.tools : NavIcons.menu },
+    { id: 'customers', label: 'Clientes', icon: NavIcons.customers },
   ];
 
-  // Staff sees fewer tabs
   const visibleTabs = isStaff
     ? [
-        ...pinnedTabs.filter(t => ['orders', 'completed_orders'].includes(t.id)),
-        { id: '_waiter', label: 'Comanda', Icon: FaConciergeBell },
+        ...pinnedTabs.filter(t => ['orders'].includes(t.id)),
+        { id: 'completed_orders', label: 'Listos', icon: NavIcons.orders },
+        { id: '_waiter', label: 'Comanda', icon: NavIcons.waiter },
       ]
     : pinnedTabs;
 
-  // IDs that live in the bottom bar (not in drawer)
   const pinnedIds = new Set(visibleTabs.map(t => t.id));
-  // "Más" is active when the current tab isn't one of the pinned ones
   const isMoreActive = !pinnedIds.has(activeTab);
 
   const handleTabPress = (tabId) => {
@@ -50,78 +103,94 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
 
   return (
     <>
-      {/* Bottom Nav Bar */}
       <nav
-        className="fixed bottom-0 inset-x-0 z-50 block lg:hidden bg-white border-t border-slate-200 shadow-[0_-1px_6px_rgba(0,0,0,0.06)]"
+        className="fixed bottom-0 inset-x-0 z-50 block lg:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex items-stretch justify-around h-16 max-w-lg mx-auto">
+        {/* Solid background with top shadow */}
+        <div className="absolute inset-0 bg-white border-t border-slate-200/60 shadow-[0_-1px_20px_rgba(0,0,0,0.06)]" />
+
+        <div className="relative flex items-center justify-around h-[58px] max-w-lg mx-auto px-1">
           {visibleTabs.map((tab) => {
             const isActive = activeTab === tab.id;
-            const TabIcon = tab.Icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => handleTabPress(tab.id)}
-                className="relative flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition-colors"
+                className="relative flex flex-col items-center justify-center flex-1 h-full active:scale-95 transition-transform duration-100"
                 aria-label={tab.label}
                 aria-current={isActive ? 'page' : undefined}
               >
-                {/* Active indicator pill */}
-                {isActive && (
-                  <motion.div
-                    layoutId="mobileNavIndicator"
-                    className="absolute top-1 w-8 h-1 rounded-full bg-blue-500"
-                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  />
-                )}
-
-                <div className="relative">
-                  <TabIcon className={`text-lg transition-colors ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
-                  {/* Badge */}
-                  {tab.badge > 0 && (
-                    <motion.span
-                      key={tab.badge}
-                      initial={{ scale: 0.5 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-1.5 -right-2.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold bg-red-500 text-white leading-none"
-                    >
-                      {tab.badge > 99 ? '99+' : tab.badge}
-                    </motion.span>
+                {/* Active pill background */}
+                <AnimatePresence>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTabPill"
+                      className="absolute inset-x-2 top-1.5 bottom-1.5 bg-red-50 rounded-2xl"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                    />
                   )}
-                </div>
+                </AnimatePresence>
 
-                <span className={`text-[10px] font-medium leading-tight transition-colors ${isActive ? 'text-blue-600' : 'text-slate-400'}`}>
-                  {tab.label}
-                </span>
+                <div className="relative z-10 flex flex-col items-center gap-[3px]">
+                  <div className="relative">
+                    <div className={`transition-colors duration-200 ${isActive ? 'text-red-500' : 'text-slate-400'}`}>
+                      {tab.icon(isActive)}
+                    </div>
+                    {tab.badge > 0 && (
+                      <motion.span
+                        key={tab.badge}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                        className="absolute -top-1.5 -right-2.5 flex items-center justify-center min-w-[18px] h-[18px] px-[4px] rounded-full text-[10px] font-bold bg-red-500 text-white leading-none shadow-md shadow-red-500/30 ring-2 ring-white"
+                      >
+                        {tab.badge > 99 ? '99+' : tab.badge}
+                      </motion.span>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-semibold leading-none transition-colors duration-200 ${isActive ? 'text-red-500' : 'text-slate-400'}`}>
+                    {tab.label}
+                  </span>
+                </div>
               </button>
             );
           })}
 
-          {/* "Más" tab — opens drawer */}
           {!isStaff && (
             <button
               onClick={() => setDrawerOpen(true)}
-              className="relative flex-1 flex flex-col items-center justify-center gap-0.5 min-h-[48px] transition-colors"
+              className="relative flex flex-col items-center justify-center flex-1 h-full active:scale-95 transition-transform duration-100"
               aria-label="Más opciones"
             >
-              {isMoreActive && (
-                <motion.div
-                  layoutId="mobileNavIndicator"
-                  className="absolute top-1 w-8 h-1 rounded-full bg-blue-500"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-              <FaEllipsisH className={`text-lg transition-colors ${isMoreActive ? 'text-blue-600' : 'text-slate-400'}`} />
-              <span className={`text-[10px] font-medium leading-tight transition-colors ${isMoreActive ? 'text-blue-600' : 'text-slate-400'}`}>
-                Más
-              </span>
+              <AnimatePresence>
+                {isMoreActive && (
+                  <motion.div
+                    layoutId="activeTabPill"
+                    className="absolute inset-x-2 top-1.5 bottom-1.5 bg-red-50 rounded-2xl"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                  />
+                )}
+              </AnimatePresence>
+              <div className="relative z-10 flex flex-col items-center gap-[3px]">
+                <div className={`transition-colors duration-200 ${isMoreActive ? 'text-red-500' : 'text-slate-400'}`}>
+                  {NavIcons.more(isMoreActive)}
+                </div>
+                <span className={`text-[10px] font-semibold leading-none transition-colors duration-200 ${isMoreActive ? 'text-red-500' : 'text-slate-400'}`}>
+                  Más
+                </span>
+              </div>
             </button>
           )}
         </div>
       </nav>
 
-      {/* Drawer with all sections */}
       <MobileNavDrawer
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}

@@ -75,7 +75,7 @@ export default function PrintAgentConfig() {
   const maskedKey = hasKey ? printKey.slice(0, 8) + '••••••••' + printKey.slice(-8) : '';
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden mt-4">
+    <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden mt-4">
       {/* Header */}
       <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
         <div className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center">

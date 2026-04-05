@@ -634,9 +634,9 @@ const DeliveryZoneManager = () => {
 
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-        <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto relative z-[10000]">
+        <div className="bg-white rounded-t-2xl lg:rounded-lg p-6 max-w-2xl w-full mx-0 lg:mx-4 max-h-[92vh] lg:max-h-[90vh] overflow-y-auto relative z-[10000]">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-xl font-bold">📍 Configurar Ubicación de la Tienda</h3>
+            <h3 className="text-lg lg:text-xl font-bold">📍 Configurar Ubicación</h3>
             <button
               onClick={() => setShowLocationModal(false)}
               className="text-gray-500 hover:text-gray-700"
@@ -655,7 +655,7 @@ const DeliveryZoneManager = () => {
               <button
                 onClick={handleUseCurrentLocation}
                 disabled={gettingLocation}
-                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center justify-center gap-2 font-medium"
+                className="w-full bg-red-500 lg:bg-blue-600 text-white px-6 py-3 rounded-xl lg:rounded-lg hover:opacity-90 active:scale-[0.97] lg:active:scale-100 disabled:bg-gray-400 flex items-center justify-center gap-2 font-medium"
               >
                 {gettingLocation ? (
                   <>
@@ -723,7 +723,7 @@ const DeliveryZoneManager = () => {
             <button
               onClick={handleSaveLocation}
               disabled={!tempLocation}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              className="px-4 py-2.5 lg:py-2 bg-red-500 lg:bg-blue-600 text-white rounded-xl lg:rounded-lg hover:opacity-90 text-[13px] lg:text-sm font-semibold active:scale-[0.97] lg:active:scale-100 disabled:bg-gray-400"
             >
               Guardar Ubicación
             </button>
@@ -757,14 +757,14 @@ const DeliveryZoneManager = () => {
             </button>
             <button
               onClick={openCreateModal}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="bg-red-500 lg:bg-blue-600 text-white px-4 py-2.5 lg:py-2 rounded-xl lg:rounded-lg hover:opacity-90 text-[13px] lg:text-sm font-semibold active:scale-[0.97] lg:active:scale-100"
             >
               + Nueva Zona
             </button>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4 mb-4">
+        <div className="bg-white rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow p-3 lg:p-4 mb-4">
           <p className="text-gray-600">
             Gestiona las zonas de entrega de tu negocio. Define áreas, precios y tiempos estimados para cada zona.
           </p>
@@ -772,7 +772,7 @@ const DeliveryZoneManager = () => {
       </div>
 
       {/* Mapa con todas las zonas */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6 relative z-0">
+      <div className="bg-white rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow p-3 lg:p-4 mb-6 relative z-0">
         <h2 className="text-xl font-semibold mb-4">Mapa de Cobertura</h2>
         <div className="relative z-0" style={{ height: '500px', width: '100%' }}>
           <MapContainer
@@ -882,7 +882,7 @@ const DeliveryZoneManager = () => {
       </div>
 
       {/* Lista de zonas */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-2xl lg:rounded-lg shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow">
         <div className="p-4 border-b">
           <h2 className="text-xl font-semibold">Lista de Zonas ({zones.length})</h2>
         </div>
@@ -982,7 +982,7 @@ const DeliveryZoneManager = () => {
       {/* Modal de creación/edición */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto relative z-[10000]">
+          <div className="bg-white rounded-t-2xl lg:rounded-lg max-w-4xl w-full max-h-[92vh] lg:max-h-[90vh] overflow-y-auto relative z-[10000]">
             <div className="p-6 border-b">
               <h2 className="text-2xl font-bold">
                 {selectedZone ? 'Editar Zona' : 'Nueva Zona'}
@@ -1346,7 +1346,7 @@ const DeliveryZoneManager = () => {
               </button>
               <button
                 onClick={handleSaveZone}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className="px-4 py-2.5 lg:py-2 bg-red-500 lg:bg-blue-600 text-white rounded-xl lg:rounded hover:opacity-90 text-[13px] lg:text-sm font-semibold active:scale-[0.97] lg:active:scale-100"
               >
                 {selectedZone ? 'Actualizar' : 'Crear'} Zona
               </button>

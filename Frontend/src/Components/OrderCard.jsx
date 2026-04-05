@@ -32,19 +32,19 @@ function OrderCard({
       initial="hidden"
       animate="visible"
       exit="exit"
-      className={`bg-white rounded-xl overflow-hidden transition-all duration-150 ${
+      className={`bg-white rounded-2xl lg:rounded-xl overflow-hidden transition-all duration-150 ${
         isPending
-          ? 'border border-yellow-300 ring-1 ring-yellow-100'
-          : 'border border-slate-200 hover:border-slate-300'
+          ? 'border border-yellow-300/60 lg:border-yellow-300 ring-1 ring-yellow-100'
+          : 'border border-slate-100 lg:border-slate-200 hover:border-slate-300'
       } ${viewMode === 'list' ? 'p-3' : 'p-0'}`}
     >
       {viewMode === 'grid' ? (
         <>
           {/* Card Header */}
-          <div className={`px-3 py-2.5 ${
+          <div className={`px-3 py-2 lg:py-2.5 ${
             isPending
-              ? 'bg-yellow-50/80 border-b border-yellow-200'
-              : 'bg-slate-50/80 border-b border-slate-100'
+              ? 'bg-yellow-50/80 border-b border-yellow-200/60 lg:border-yellow-200'
+              : 'bg-slate-50/50 lg:bg-slate-50/80 border-b border-slate-100/60 lg:border-slate-100'
           }`}>
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -162,10 +162,10 @@ function OrderCard({
             </div>
 
             {/* Action buttons */}
-            <div className="space-y-2 pt-1">
+            <div className="space-y-1.5 lg:space-y-2 pt-1">
               {/* Row 1: utility buttons */}
-              <div className="flex gap-2">
-                <button onClick={() => onShowDetails(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors">
+              <div className="flex gap-1.5 lg:gap-2">
+                <button onClick={() => onShowDetails(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold border border-slate-200/60 lg:border-slate-200 transition-colors active:scale-[0.97]">
                   <FaEye className="text-[10px]" /> <span>Detalles</span>
                 </button>
                 <button onClick={async () => {
@@ -174,7 +174,7 @@ function OrderCard({
                   } catch {
                     onPrint(order);
                   }
-                }} className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-slate-200 transition-colors" title="Imprimir comanda">
+                }} className="flex items-center justify-center gap-1.5 bg-white hover:bg-slate-50 text-slate-600 px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold border border-slate-200/60 lg:border-slate-200 transition-colors active:scale-[0.97]" title="Imprimir comanda">
                   <FaPrint className="text-[10px]" />
                 </button>
 
@@ -187,7 +187,7 @@ function OrderCard({
                         onPrint(order);
                       }
                     }}
-                    className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-emerald-200 transition-colors"
+                    className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold border border-emerald-200/60 lg:border-emerald-200 transition-colors active:scale-[0.97]"
                     title="Imprimir recibo"
                   >
                     <FaMoneyBillWave className="text-[10px]" />
@@ -195,33 +195,33 @@ function OrderCard({
                 )}
 
                 {order.paymentProof && (
-                  <button onClick={() => onShowProof(order.paymentProof)} className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-purple-200 transition-colors">
+                  <button onClick={() => onShowProof(order.paymentProof)} className="flex items-center justify-center gap-1.5 bg-purple-50 hover:bg-purple-100 text-purple-600 px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold border border-purple-200/60 lg:border-purple-200 transition-colors active:scale-[0.97]">
                     <FaImage className="text-[10px]" /> <span>Comprobante</span>
                   </button>
                 )}
               </div>
 
               {/* Row 2: status action + cancel */}
-              <div className="flex gap-2">
+              <div className="flex gap-1.5 lg:gap-2">
                 {order.status === ORDER_STATUS.PAYMENT_UPLOADED && (
                   <>
-                    <button onClick={() => onConfirmPayment(order._id)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                    <button onClick={() => onConfirmPayment(order._id)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold transition-colors active:scale-[0.97]">
                       <FaCheckCircle className="text-[9px]" /> <span>Confirmar</span>
                     </button>
-                    <button onClick={() => onRejectPayment(order._id)} className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                    <button onClick={() => onRejectPayment(order._id)} className="flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold transition-colors active:scale-[0.97]">
                       <FaTimesCircle className="text-[9px]" />
                     </button>
                   </>
                 )}
 
                 {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold transition-colors active:scale-[0.97]">
                     <FaPlay className="text-[9px]" /> <span>Iniciar</span>
                   </button>
                 )}
 
                 {order.status === ORDER_STATUS.PENDING && (
-                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-900 text-white px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold transition-colors active:scale-[0.97]">
                     <FaPlay className="text-[9px]" /> <span>Iniciar</span>
                   </button>
                 )}
@@ -229,18 +229,18 @@ function OrderCard({
                 {order.status === ORDER_STATUS.IN_PROGRESS && (
                   <>
                     {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
-                      <button onClick={() => onAssignDelivery(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
+                      <button onClick={() => onAssignDelivery(order)} className="flex-1 flex items-center justify-center gap-1.5 bg-blue-500 hover:bg-blue-600 text-white px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold transition-colors active:scale-[0.97]">
                         <FaMotorcycle className="text-[11px]" /> <span>Asignar Domi</span>
                       </button>
                     )}
-                    <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.COMPLETED)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold transition-colors">
-                      <FaCheck className="text-[9px]" /> <span>{order.orderType === 'delivery' ? 'Completar' : 'Completar'}</span>
+                    <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.COMPLETED)} className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold transition-colors active:scale-[0.97]">
+                      <FaCheck className="text-[9px]" /> <span>Completar</span>
                     </button>
                   </>
                 )}
 
                 {order.status !== ORDER_STATUS.COMPLETED && order.status !== ORDER_STATUS.CANCELLED && order.status !== ORDER_STATUS.DELIVERED && (
-                  <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); }} className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 px-3 py-3 min-h-[44px] rounded-lg text-xs font-semibold border border-red-200 transition-colors">
+                  <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); }} className="flex items-center justify-center gap-1 bg-red-50 hover:bg-red-100 text-red-500 px-2.5 lg:px-3 py-2.5 lg:py-3 min-h-[40px] lg:min-h-[44px] rounded-xl lg:rounded-lg text-[11px] lg:text-xs font-semibold border border-red-200/60 lg:border-red-200 transition-colors active:scale-[0.97]">
                     <FaTimes className="text-[9px]" /> <span>Cancelar</span>
                   </button>
                 )}

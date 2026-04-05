@@ -151,7 +151,7 @@ export default function CashClosings() {
             <h2 className="text-lg font-bold text-slate-800">Cierre de Caja</h2>
             <p className="text-xs text-slate-500">{formatDate(detail.closedAt)} — {formatTime(detail.openedAt)} a {formatTime(detail.closedAt)} ({duration(detail.openedAt, detail.closedAt)})</p>
           </div>
-          <button onClick={() => handlePrint(detail)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-white text-xs font-bold" style={{ backgroundColor: themeColor }}>
+          <button onClick={() => handlePrint(detail)} className="flex items-center gap-2 px-4 py-2.5 lg:py-2 rounded-xl lg:rounded-lg text-white text-[13px] lg:text-xs font-semibold lg:font-bold active:scale-[0.97] lg:active:scale-100" style={{ backgroundColor: themeColor }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             Imprimir
           </button>
@@ -165,22 +165,22 @@ export default function CashClosings() {
           <>
             {/* Summary cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-              <div className="bg-white rounded-xl border border-slate-200 p-4">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Apertura</p>
-                <p className="text-lg font-black text-slate-800">{formatMoney(detail.openingAmount)}</p>
+              <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
+                <p className="text-xs lg:text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Apertura</p>
+                <p className="text-[20px] lg:text-lg font-black text-slate-800 leading-tight">{formatMoney(detail.openingAmount)}</p>
               </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-4">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Ventas</p>
-                <p className="text-lg font-black text-slate-800">{formatMoney(summary.totalSales)}</p>
-                <p className="text-[10px] text-slate-400">{summary.totalOrders || 0} órdenes</p>
+              <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
+                <p className="text-xs lg:text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Ventas</p>
+                <p className="text-[20px] lg:text-lg font-black text-slate-800 leading-tight">{formatMoney(summary.totalSales)}</p>
+                <p className="text-xs lg:text-xs text-slate-400">{summary.totalOrders || 0} órdenes</p>
               </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-4">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">En Caja</p>
-                <p className="text-lg font-black text-slate-800">{formatMoney(detail.closingAmount)}</p>
+              <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
+                <p className="text-xs lg:text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">En Caja</p>
+                <p className="text-[20px] lg:text-lg font-black text-slate-800 leading-tight">{formatMoney(detail.closingAmount)}</p>
               </div>
-              <div className={`rounded-xl border p-4 ${diff > 0 ? 'bg-emerald-50 border-emerald-200' : diff < 0 ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Diferencia</p>
-                <p className={`text-lg font-black ${diff > 0 ? 'text-emerald-600' : diff < 0 ? 'text-red-600' : 'text-slate-800'}`}>
+              <div className={`rounded-2xl lg:rounded-xl border p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none ${diff > 0 ? 'bg-emerald-50 border-emerald-200' : diff < 0 ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
+                <p className="text-xs lg:text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Diferencia</p>
+                <p className={`text-[20px] lg:text-lg font-black leading-tight ${diff > 0 ? 'text-emerald-600' : diff < 0 ? 'text-red-600' : 'text-slate-800'}`}>
                   {diff >= 0 ? '+' : ''}{formatMoney(diff)}
                 </p>
               </div>
@@ -196,7 +196,7 @@ export default function CashClosings() {
                       <p className="text-xs font-bold text-indigo-700">Ventas POS</p>
                     </div>
                     <p className="text-xl font-black text-indigo-800">{formatMoney(posSales.total)}</p>
-                    <p className="text-[10px] text-indigo-500">{posSales.count} órdenes</p>
+                    <p className="text-xs text-indigo-500">{posSales.count} órdenes</p>
                   </div>
                 )}
                 {menubySales.count > 0 && (
@@ -206,7 +206,7 @@ export default function CashClosings() {
                       <p className="text-xs font-bold text-violet-700">Ventas MenuBy</p>
                     </div>
                     <p className="text-xl font-black text-violet-800">{formatMoney(menubySales.total)}</p>
-                    <p className="text-[10px] text-violet-500">{menubySales.count} órdenes</p>
+                    <p className="text-xs text-violet-500">{menubySales.count} órdenes</p>
                   </div>
                 )}
               </div>
@@ -214,7 +214,7 @@ export default function CashClosings() {
 
             {/* Payment methods */}
             {Object.keys(methods).length > 0 && (
-              <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+              <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 mb-6">
                 <h3 className="text-xs font-bold text-slate-700 mb-3">Métodos de pago</h3>
                 <div className="space-y-2">
                   {Object.entries(methods).map(([m, v]) => (
@@ -222,7 +222,7 @@ export default function CashClosings() {
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-blue-400" />
                         <span className="text-sm text-slate-700">{METHOD_LABELS[m] || m}</span>
-                        <span className="text-[10px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{v.count || 0}</span>
+                        <span className="text-xs text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">{v.count || 0}</span>
                       </div>
                       <span className="text-sm font-bold text-slate-800">{formatMoney(v.total || 0)}</span>
                     </div>
@@ -232,7 +232,7 @@ export default function CashClosings() {
             )}
 
             {/* Operator info */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+            <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 mb-6">
               <h3 className="text-xs font-bold text-slate-700 mb-3">Información</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-slate-400 text-xs">Abierta por:</span><p className="font-semibold text-slate-700">{detail.openedBy?.name || detail.openedBy?.username || '—'}</p></div>
@@ -243,7 +243,7 @@ export default function CashClosings() {
             </div>
 
             {/* Movements */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+            <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 mb-6">
               <h3 className="text-xs font-bold text-slate-700 mb-3">Movimientos ({movements.length})</h3>
               {movements.length === 0 ? (
                 <p className="text-sm text-slate-400 text-center py-4">Sin movimientos</p>
@@ -256,7 +256,7 @@ export default function CashClosings() {
                     { label: 'Reembolsos', items: refunds, color: 'amber' },
                   ].filter(g => g.items.length > 0).map(group => (
                     <div key={group.label} className="mb-3">
-                      <p className={`text-[10px] font-bold uppercase tracking-wider text-${group.color}-600 mb-1.5`}>{group.label} ({group.items.length})</p>
+                      <p className={`text-xs font-bold uppercase tracking-wider text-${group.color}-600 mb-1.5`}>{group.label} ({group.items.length})</p>
                       {group.items.map((m, i) => (
                         <div key={i} className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 text-sm">
                           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -299,7 +299,7 @@ export default function CashClosings() {
           <div className="w-8 h-8 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin" />
         </div>
       ) : registers.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+        <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-12 text-center">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 flex items-center justify-center">
             <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/></svg>
           </div>
@@ -316,7 +316,7 @@ export default function CashClosings() {
                 <button
                   key={reg._id}
                   onClick={() => openDetail(reg)}
-                  className="w-full bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition-all p-4 text-left group"
+                  className="w-full bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none hover:border-slate-300 hover:shadow-sm transition-all p-4 text-left group active:scale-[0.98] lg:active:scale-100"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -325,21 +325,21 @@ export default function CashClosings() {
                       </div>
                       <div>
                         <p className="text-sm font-bold text-slate-800">{formatDate(reg.closedAt)}</p>
-                        <p className="text-[10px] text-slate-400">{formatTime(reg.openedAt)} — {formatTime(reg.closedAt)} · {duration(reg.openedAt, reg.closedAt)}</p>
+                        <p className="text-xs text-slate-400">{formatTime(reg.openedAt)} — {formatTime(reg.closedAt)} · {duration(reg.openedAt, reg.closedAt)}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-black text-slate-800">{formatMoney(summary.totalSales)}</p>
-                      <p className="text-[10px] text-slate-400">{summary.totalOrders || 0} órdenes</p>
+                      <p className="text-xs text-slate-400">{summary.totalOrders || 0} órdenes</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <div className="flex items-center gap-3 text-[10px] text-slate-400">
+                    <div className="flex items-center gap-3 text-xs text-slate-400">
                       <span>Apertura: {formatMoney(reg.openingAmount)}</span>
                       <span>Cierre: {formatMoney(reg.closingAmount)}</span>
                       {reg.closedBy && <span>Por: {reg.closedBy.name || reg.closedBy.username}</span>}
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                       diff > 0 ? 'bg-emerald-100 text-emerald-700' : diff < 0 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
                     }`}>
                       {diff >= 0 ? '+' : ''}{formatMoney(diff)}

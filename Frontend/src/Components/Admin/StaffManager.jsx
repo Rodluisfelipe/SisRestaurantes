@@ -126,14 +126,14 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex lg:items-center items-end justify-center lg:p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden flex flex-col"
+        className="bg-white rounded-t-2xl lg:rounded-2xl shadow-xl w-full max-w-lg max-h-[92vh] lg:max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
@@ -194,7 +194,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
                   <input
                     type="text" value={form.name} maxLength={100}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400"
                   />
                 </div>
                 <div>
@@ -203,7 +203,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
                     type="text" value={form.specialty} maxLength={100}
                     placeholder="Ej: Estilista, Chef, Terapeuta"
                     onChange={e => setForm(f => ({ ...f, specialty: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400"
                   />
                 </div>
               </div>
@@ -213,7 +213,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
                 <input
                   type="tel" value={form.phone || ''} maxLength={30}
                   onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400"
                   inputMode="tel"
                 />
               </div>
@@ -225,7 +225,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
                   placeholder="Breve descripción del profesional..."
                   onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
                   rows={3}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 resize-none"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400 resize-none"
                 />
                 <p className="text-[10px] text-slate-300 text-right mt-0.5">{(form.bio || '').length}/500</p>
               </div>
@@ -331,7 +331,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
                     min={0}
                     max={form.commissionType === 'percentage' ? 100 : undefined}
                     step={form.commissionType === 'percentage' ? 0.5 : 100}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400"
                     inputMode="decimal"
                   />
                   {form.commissionType === 'percentage' && (
@@ -466,14 +466,14 @@ const StaffManager = ({ businessId }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <h2 className="text-lg lg:text-xl font-bold text-slate-800 flex items-center gap-2">
             <FaUsers className="text-blue-500" /> Equipo
           </h2>
-          <p className="text-sm text-slate-400 mt-0.5">Crea cuentas para cajeros y personal</p>
+          <p className="hidden lg:block text-sm text-slate-400 mt-0.5">Crea cuentas para cajeros y personal</p>
         </div>
         <button
           onClick={() => { setShowForm(!showForm); setError(''); }}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-sm font-semibold rounded-xl hover:bg-blue-600 transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 lg:py-2 bg-red-500 lg:bg-blue-500 text-white text-[13px] lg:text-sm font-semibold rounded-xl lg:rounded-lg hover:opacity-90 transition-colors active:scale-[0.97] lg:active:scale-100"
         >
           <FaUserPlus /> Nuevo
         </button>
@@ -487,7 +487,7 @@ const StaffManager = ({ businessId }) => {
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             onSubmit={handleCreate}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 mb-6 space-y-4 overflow-hidden"
+            className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm p-4 lg:p-5 mb-6 space-y-4 overflow-hidden"
           >
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -497,7 +497,7 @@ const StaffManager = ({ businessId }) => {
                   placeholder="Ej: María Cajera"
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  className="w-full px-3 py-2.5 lg:py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400"
                 />
               </div>
               <div>
@@ -505,7 +505,7 @@ const StaffManager = ({ businessId }) => {
                 <select
                   value={form.role}
                   onChange={e => setForm(f => ({ ...f, role: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  className="w-full px-3 py-2.5 lg:py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400"
                 >
                   <option value="staff">Cajero</option>
                   <option value="manager">Gerente</option>
@@ -521,7 +521,7 @@ const StaffManager = ({ businessId }) => {
                   placeholder="cajera@restaurante.com"
                   value={form.username}
                   onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400"
                   required
                 />
               </div>
@@ -533,7 +533,7 @@ const StaffManager = ({ businessId }) => {
                     placeholder="Mínimo 6 caracteres"
                     value={form.password}
                     onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
-                    className="w-full px-3 py-2 pr-10 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400"
+                    className="w-full px-3 py-2 pr-10 border border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-blue-200 focus:border-transparent lg:focus:border-blue-400"
                     required
                     minLength={6}
                   />
@@ -572,7 +572,7 @@ const StaffManager = ({ businessId }) => {
 
       {/* Staff list */}
       {staff.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+        <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-8 text-center">
           <FaUsers className="text-3xl text-slate-200 mx-auto mb-3" />
           <p className="text-slate-500 text-sm font-medium">Aún no tienes miembros en tu equipo</p>
           <p className="text-slate-400 text-xs mt-1">Crea un usuario para que tus cajeros puedan acceder al sistema</p>
@@ -583,7 +583,7 @@ const StaffManager = ({ businessId }) => {
             <motion.div
               key={member._id}
               layout
-              className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between group hover:shadow-sm transition-shadow cursor-pointer"
+              className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 flex items-center justify-between group hover:shadow-sm transition-shadow cursor-pointer active:scale-[0.98] lg:active:scale-100"
               onClick={() => setEditMember(member)}
             >
               <div className="flex items-center gap-3">

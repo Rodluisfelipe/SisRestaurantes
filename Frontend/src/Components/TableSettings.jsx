@@ -141,8 +141,8 @@ const TableSettings = () => {
   return (
     <div className="space-y-6">
       {/* ═══ Section 1: Floors (Salones) ═══ */}
-      <div className="bg-white rounded-xl shadow-sm border p-5">
-        <h2 className="text-lg font-bold text-gray-800 mb-3">Salones</h2>
+      <div className="bg-white rounded-2xl lg:rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border p-4 lg:p-5">
+        <h2 className="text-base lg:text-lg font-bold text-gray-800 mb-3">Salones</h2>
 
         {/* Floor tabs */}
         <div className="flex flex-wrap gap-2 mb-3">
@@ -155,7 +155,7 @@ const TableSettings = () => {
                     value={editFloorName}
                     onChange={e => setEditFloorName(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && updateFloor(floor._id)}
-                    className="border rounded px-2 py-1 text-sm w-28"
+                    className="border rounded-xl lg:rounded-lg px-3 py-2 lg:py-1 text-[14px] lg:text-sm w-32 lg:w-28"
                     autoFocus
                   />
                   <button onClick={() => updateFloor(floor._id)} className="text-green-600 text-sm font-bold">✓</button>
@@ -164,9 +164,9 @@ const TableSettings = () => {
               ) : (
                 <button
                   onClick={() => setActiveFloor(floor._id)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 lg:py-1.5 rounded-xl lg:rounded-lg text-[13px] lg:text-sm font-semibold lg:font-medium transition-colors active:scale-[0.97] lg:active:scale-100 ${
                     activeFloor === floor._id
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-red-500 lg:bg-blue-600 text-white shadow-sm lg:shadow-none'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -199,12 +199,12 @@ const TableSettings = () => {
             onChange={e => setNewFloorName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && addFloor()}
             placeholder="Nombre del nuevo salón..."
-            className="border rounded-lg px-3 py-1.5 text-sm flex-1 max-w-xs"
+            className="border rounded-xl lg:rounded-lg px-3 py-2.5 lg:py-1.5 text-[14px] lg:text-sm flex-1 max-w-xs"
           />
           <button
             onClick={addFloor}
             disabled={!newFloorName.trim()}
-            className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+            className="px-3 py-2.5 lg:py-1.5 bg-emerald-600 text-white rounded-xl lg:rounded-lg text-[13px] lg:text-sm font-semibold lg:font-medium hover:bg-emerald-700 disabled:opacity-50 active:scale-[0.97] lg:active:scale-100"
           >
             + Salón
           </button>
@@ -212,9 +212,9 @@ const TableSettings = () => {
       </div>
 
       {/* ═══ Section 2: Table Map ═══ */}
-      <div className="bg-white rounded-xl shadow-sm border p-5">
+      <div className="bg-white rounded-2xl lg:rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border p-4 lg:p-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-bold text-gray-800">
+          <h2 className="text-base lg:text-lg font-bold text-gray-800">
             {floors.find(f => f._id === activeFloor)?.name || `${tableLabelCap}s sin salón`}
           </h2>
           {saving && <span className="text-xs text-gray-400 animate-pulse">Guardando...</span>}

@@ -160,28 +160,28 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl mx-4 max-h-[95vh] flex flex-col" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-t-2xl lg:rounded-2xl shadow-2xl w-full lg:max-w-5xl lg:mx-4 max-h-[95vh] flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-100 shrink-0">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-bold text-slate-800">Cobrar venta</h2>
-            <span className="text-2xl font-black" style={{ color: themeColor }}>${total.toLocaleString()}</span>
+        <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-slate-100 shrink-0">
+          <div className="flex items-center gap-2 lg:gap-3">
+            <h2 className="text-base lg:text-lg font-bold text-slate-800">Cobrar</h2>
+            <span className="text-xl lg:text-2xl font-black" style={{ color: themeColor }}>${total.toLocaleString()}</span>
             {orderType === 'delivery' && deliveryFee > 0 && (
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-slate-400 hidden sm:inline">
                 ({isService ? 'Servicios' : 'Productos'} ${subtotal.toLocaleString()} + Domicilio ${deliveryFee.toLocaleString()})
               </span>
             )}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="p-2 -mr-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors">
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         </div>
 
-        {/* Two-column body */}
-        <div className="flex-1 grid grid-cols-2 min-h-0 overflow-hidden">
+        {/* Two-column body — stacks on mobile */}
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 min-h-0 overflow-hidden">
           {/* LEFT COLUMN — Order details */}
-          <div className="p-5 space-y-4 overflow-y-auto border-r border-slate-100">
+          <div className="p-4 lg:p-5 space-y-4 overflow-y-auto border-b lg:border-b-0 lg:border-r border-slate-100">
             {/* Order type */}
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tipo de orden</p>
@@ -190,7 +190,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
                   <button
                     key={t.id}
                     onClick={() => { setOrderType(t.id); if (t.id !== 'delivery') setSelectedZone(null); }}
-                    className={`py-2 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center gap-1 ${
+                    className={`py-2.5 lg:py-2 rounded-xl text-xs font-bold border-2 transition-all flex flex-col items-center gap-1 ${
                       orderType === t.id
                         ? 'text-white border-transparent shadow-md'
                         : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
@@ -206,14 +206,14 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
 
             {/* Order-type specific fields */}
             {orderType === 'inSite' && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
-                  <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                  <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 block mb-1">{isHotel ? 'Hab.' : 'Mesa'} (opcional)</label>
-                  <input type="text" value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ej: 5" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                  <input type="text" value={tableNumber} onChange={e => setTableNumber(e.target.value)} placeholder="Ej: 5" className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                 </div>
               </div>
             )}
@@ -221,26 +221,26 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
             {orderType === 'takeaway' && (
               <div>
                 <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
-                <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
               </div>
             )}
 
             {orderType === 'delivery' && (
               <div className="space-y-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Datos de entrega</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">Nombre *</label>
-                    <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre del cliente" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                    <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre del cliente" className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-slate-500 block mb-1">Teléfono</label>
-                    <input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="300 123 4567" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                    <input type="tel" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="300 123 4567" className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                   </div>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 block mb-1">Dirección *</label>
-                  <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Calle, barrio, referencia..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                  <input type="text" value={deliveryAddress} onChange={e => setDeliveryAddress(e.target.value)} placeholder="Calle, barrio, referencia..." className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
                 </div>
                 {deliveryZones.length > 0 && (
                   <div>
@@ -281,7 +281,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
             {/* Notes */}
             <div>
               <label className="text-xs font-semibold text-slate-500 block mb-1">Notas (opcional)</label>
-              <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Instrucciones especiales..." className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+              <input type="text" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Instrucciones especiales..." className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
             </div>
 
             {/* Cart summary */}
@@ -302,11 +302,11 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
           </div>
 
           {/* RIGHT COLUMN — Payment */}
-          <div className="p-5 flex flex-col gap-4 overflow-y-auto">
+          <div className="p-4 lg:p-5 flex flex-col gap-4 overflow-y-auto">
             {/* Payment method */}
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Método de pago</p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-4 lg:grid-cols-2 gap-2">
                 {PAYMENT_METHODS.map(m => (
                   <button
                     key={m.id}

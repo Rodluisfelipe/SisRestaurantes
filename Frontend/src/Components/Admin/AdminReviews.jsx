@@ -208,7 +208,7 @@ export default function AdminReviews() {
       {/* Stats Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Average Rating Card */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex flex-col items-center justify-center">
+        <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 lg:p-6 flex flex-col items-center justify-center">
           {statsLoading ? (
             <div className="animate-pulse space-y-3 w-full flex flex-col items-center">
               <div className="h-12 w-20 bg-slate-200 rounded" />
@@ -261,7 +261,7 @@ export default function AdminReviews() {
         </div>
 
         {/* Rating Breakdown Card */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 lg:col-span-2">
+        <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 lg:p-6 lg:col-span-2">
           <h3 className="text-sm font-semibold text-slate-700 mb-4">Distribución de calificaciones</h3>
           {statsLoading ? (
             <div className="animate-pulse space-y-3">
@@ -282,7 +282,7 @@ export default function AdminReviews() {
       </div>
 
       {/* Filters & Search */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4">
+      <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-3 lg:p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           {/* Search */}
           <div className="relative flex-1">
@@ -293,7 +293,7 @@ export default function AdminReviews() {
               aria-label="Buscar reseñas"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full pl-9 pr-4 py-2.5 lg:py-2 bg-slate-100/80 lg:bg-white border-0 lg:border lg:border-slate-200 rounded-xl lg:rounded-lg text-[14px] lg:text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 lg:focus:ring-2 lg:focus:ring-blue-500/20 focus:bg-white transition-all"
             />
           </div>
 
@@ -301,9 +301,9 @@ export default function AdminReviews() {
           <div className="flex gap-1.5 flex-wrap">
             <button
               onClick={() => setRatingFilter('all')}
-              className={`px-3 py-2 text-xs font-medium rounded-lg transition-all ${
+              className={`px-3 lg:px-2.5 py-1.5 lg:py-1 text-[13px] lg:text-xs font-semibold lg:font-medium rounded-xl lg:rounded-lg transition-all active:scale-[0.96] lg:active:scale-100 ${
                 ratingFilter === 'all'
-                  ? 'bg-blue-500 text-white shadow-sm'
+                  ? 'bg-red-500 lg:bg-blue-500 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -313,9 +313,9 @@ export default function AdminReviews() {
               <button
                 key={r}
                 onClick={() => setRatingFilter(String(r))}
-                className={`px-3 py-2 text-xs font-medium rounded-lg transition-all flex items-center gap-1 ${
+                className={`px-3 lg:px-2.5 py-1.5 lg:py-1 text-[13px] lg:text-xs font-semibold lg:font-medium rounded-xl lg:rounded-lg transition-all flex items-center gap-1 active:scale-[0.96] lg:active:scale-100 ${
                   ratingFilter === String(r)
-                    ? 'bg-blue-500 text-white shadow-sm'
+                    ? 'bg-red-500 lg:bg-blue-500 text-white shadow-sm'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
@@ -340,7 +340,7 @@ export default function AdminReviews() {
         {loading ? (
           // Skeleton
           [...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 animate-pulse">
+            <div key={i} className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-5 animate-pulse">
               <div className="flex items-start gap-3">
                 <div className="w-10 h-10 bg-slate-200 rounded-full" />
                 <div className="flex-1 space-y-2">
@@ -353,7 +353,7 @@ export default function AdminReviews() {
           ))
         ) : reviews.length === 0 ? (
           // Empty state
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+          <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-12 text-center">
             <FaBoxOpen className="text-4xl text-slate-300 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-slate-600 mb-1">No hay reseñas</h3>
             <p className="text-sm text-slate-400">
@@ -372,7 +372,7 @@ export default function AdminReviews() {
               className={`bg-white rounded-2xl border transition-all ${
                 review.isVisible === false
                   ? 'border-red-200 bg-red-50/30 opacity-70'
-                  : 'border-slate-200'
+                  : 'border-slate-100 lg:border-slate-200'
               }`}
             >
               <div className="p-4 sm:p-5">

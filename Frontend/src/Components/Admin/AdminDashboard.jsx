@@ -236,21 +236,21 @@ function ShareBar({ businessConfig }) {
 
   return (
     <button onClick={copy}
-      className="w-full flex items-center gap-3 px-4 py-3 bg-white hover:bg-slate-50 rounded-2xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all group">
-      <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
-        <svg className="w-4.5 h-4.5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      className="w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-all active:scale-[0.98] group">
+      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-red-500/20">
+        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
           <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
           <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
         </svg>
       </div>
       <div className="flex-1 min-w-0 text-left">
-        <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">{isSvc ? 'Tu página de servicios' : 'Tu menú digital'}</p>
-        <p className="text-sm font-bold text-slate-700 truncate">{url}</p>
+        <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{isSvc ? 'Tu página de servicios' : 'Tu menú digital'}</p>
+        <p className="text-[14px] font-bold text-slate-800 truncate">{url}</p>
       </div>
-      <span className={`text-xs font-bold px-3 py-1.5 rounded-xl flex-shrink-0 transition-all ${
-        copied ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500 group-hover:bg-red-50 group-hover:text-red-600'
+      <span className={`text-[12px] font-bold px-3 py-1.5 rounded-xl flex-shrink-0 transition-all ${
+        copied ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white shadow-sm shadow-red-500/20'
       }`}>
-        {copied ? '✓ Copiado' : 'Copiar'}
+        {copied ? '✓' : 'Copiar'}
       </span>
     </button>
   );
@@ -303,20 +303,114 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
   const fadeUp = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] } } };
 
   return (
-    <div className="space-y-3 pb-6">
+    <div className="space-y-5 pb-6">
 
-      {/* ═══ GREETING ═══ */}
-      <div className="flex items-center justify-between px-1">
+      {/* ═══ GREETING — iOS large title style (mobile) ═══ */}
+      <div className="lg:hidden">
+        <p className="text-[28px] font-extrabold text-slate-900 leading-tight tracking-tight">{greeting}</p>
+        <p className="text-[15px] text-slate-400 font-medium mt-1">
+          Aquí está el resumen de {businessConfig?.businessName || 'tu negocio'}
+        </p>
+      </div>
+      {/* Desktop greeting */}
+      <div className="hidden lg:flex items-center justify-between px-1">
         <p className="text-sm font-bold text-slate-700">{greeting}</p>
         <StatusBadge businessConfig={businessConfig} />
       </div>
 
+      {/* ═══ LIVE ORDERS BANNER — Prominent (mobile only) ═══ */}
+      {!q && pendingOrdersCount > 0 && (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          whileTap={{ scale: 0.97 }}
+          onClick={() => handleNav('orders')}
+          className="w-full lg:hidden relative overflow-hidden flex items-center gap-4 px-5 py-4 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl shadow-lg shadow-red-500/20"
+        >
+          {/* Decorative circles */}
+          <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
+          <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/[0.06] rounded-full" />
+          
+          <div className="relative flex items-center gap-4 flex-1">
+            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+              <motion.div
+                animate={{ rotate: [0, -10, 10, -10, 0] }}
+                transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
+              >
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                </svg>
+              </motion.div>
+            </div>
+            <div className="text-left">
+              <p className="text-white text-[18px] font-bold leading-tight">
+                {pendingOrdersCount} {pendingOrdersCount === 1 ? (isService ? 'cita pendiente' : 'pedido pendiente') : (isService ? 'citas pendientes' : 'pedidos pendientes')}
+              </p>
+              <p className="text-white/70 text-[13px] font-medium mt-0.5">Toca para ver</p>
+            </div>
+          </div>
+          <svg className="w-5 h-5 text-white/60 flex-shrink-0 relative" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </motion.button>
+      )}
+
+      {/* ═══ SHARE BAR — Glass card (mobile) ═══ */}
+      {!q && (
+        <div className="lg:hidden">
+          <ShareBar businessConfig={businessConfig} />
+        </div>
+      )}
+
+      {/* ═══ QUICK ACCESS — Grid layout (mobile) ═══ */}
+      {!q && (
+        <div className="lg:hidden">
+          <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3 ml-1">Acceso rápido</p>
+          <div className="grid grid-cols-4 gap-2.5">
+            {[
+              { tab: 'orders', icon: I.orders, label: isService ? 'Citas' : 'Pedidos', bg: 'from-blue-500 to-blue-600', count: pendingOrdersCount },
+              { tab: 'products', icon: I.products, label: isService ? 'Servicios' : 'Menú', bg: 'from-orange-500 to-orange-600' },
+              { tab: 'completed_orders', icon: I.completed, label: 'Listos', bg: 'from-emerald-500 to-emerald-600' },
+              { tab: 'customers', icon: I.customers, label: 'Clientes', bg: 'from-cyan-500 to-cyan-600' },
+              ...(posBetaOn ? [{ tab: null, label: 'POS', bg: 'from-purple-500 to-purple-600', icon: I.reorder, isRoute: true, routePath: 'pos' }] : []),
+              { tab: null, label: 'Cocina', bg: 'from-rose-500 to-rose-600', icon: I.orders, isRoute: true, routePath: 'kitchen' },
+              { tab: null, label: 'Comanda', bg: 'from-amber-500 to-amber-600', icon: I.orders, isRoute: true, routePath: 'waiter' },
+            ].map((item, idx) => (
+              <motion.button
+                key={idx}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => {
+                  if (item.isRoute) {
+                    window.location.href = `/${businessConfig?.slug || businessConfig?._id}/${item.routePath}`;
+                  } else if (item.tab) {
+                    handleNav(item.tab);
+                  }
+                }}
+                className="flex flex-col items-center gap-2 py-3 bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100"
+              >
+                <div className={`relative w-[44px] h-[44px] bg-gradient-to-br ${item.bg} rounded-[14px] flex items-center justify-center shadow-sm`}>
+                  {item.icon('w-[20px] h-[20px] text-white')}
+                  {item.count > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
+                      {item.count > 99 ? '99+' : item.count}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[11px] font-semibold text-slate-600 leading-tight text-center">
+                  {item.label}
+                </span>
+              </motion.button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ═══ METRICS DASHBOARD ═══ */}
       {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} businessConfig={businessConfig} />}
 
-      {/* ═══ HERO CARDS (mobile only — sidebar navigates on desktop) ═══ */}
+      {/* ═══ HERO CARDS (desktop only — mobile uses quick access) ═══ */}
       {!q && (
-        <div className="flex gap-3 lg:hidden">
+        <div className="hidden lg:flex gap-3">
           <HeroCard
             svgKey="orders"
             title={isService ? 'Citas' : 'Pedidos'}
@@ -336,28 +430,32 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
         </div>
       )}
 
-      {/* ═══ ONBOARDING (new users, mobile only) ═══ */}
+      {/* ═══ ONBOARDING (new users, mobile — iOS widget style) ═══ */}
       {isNewUser && !q && (
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden lg:hidden">
-          <div className="px-4 pt-4 pb-2 sm:px-5 sm:pt-5">
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden lg:hidden">
+          <div className="px-4 pt-4 pb-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
-                  {I.orders('w-3.5 h-3.5 text-white')}
-                </div>
+              <h2 className="text-[15px] font-semibold text-slate-900 flex items-center gap-2">
                 Primeros pasos
               </h2>
-              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+              <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                 {onboarding?.level || 0}/6
               </span>
             </div>
+            {/* Progress bar */}
+            <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${((onboarding?.level || 0) / 6) * 100}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+              />
+            </div>
           </div>
 
-          <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+          <div className="px-4 pb-4">
             <div className="relative">
-              {/* Vertical connecting line */}
               <div className="absolute left-[15px] top-4 bottom-4 w-px bg-slate-100" />
-
               <div className="space-y-1">
                 {getOnboarding(isService, isHotel).map((step) => {
                   const done = (onboarding?.level || 0) >= step.level;
@@ -368,38 +466,31 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                       key={step.level}
                       whileTap={step.tab ? { scale: 0.98 } : {}}
                       onClick={() => step.tab && handleNav(step.tab)}
-                      className={`w-full flex items-center gap-3 px-2 py-2.5 sm:py-3 rounded-xl transition-all text-left ${
-                        done ? '' : isNext ? 'bg-blue-50/60' : ''
+                      className={`w-full flex items-center gap-3 px-2 py-2.5 rounded-xl transition-all text-left ${
+                        done ? '' : isNext ? 'bg-red-50/60' : ''
                       }`}
                     >
-                      {/* Step dot */}
-                      <div className={`relative z-10 w-[30px] h-[30px] rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-                        done
-                          ? 'bg-emerald-500 shadow-sm shadow-emerald-500/25'
-                          : isNext
-                            ? 'bg-blue-600 shadow-sm shadow-blue-600/25'
-                            : 'bg-slate-200'
+                      <div className={`relative z-10 w-[28px] h-[28px] rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
+                        done ? 'bg-emerald-500' : isNext ? 'bg-red-500' : 'bg-slate-200'
                       }`}>
                         {done ? (
-                          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
                         ) : SvgIcon ? (
-                          SvgIcon(`w-3.5 h-3.5 ${isNext ? 'text-white' : 'text-slate-400'}`)
+                          SvgIcon(`w-3 h-3 ${isNext ? 'text-white' : 'text-slate-400'}`)
                         ) : (
-                          <span className={`text-xs font-bold ${isNext ? 'text-white' : 'text-slate-400'}`}>{step.level}</span>
+                          <span className={`text-[10px] font-bold ${isNext ? 'text-white' : 'text-slate-400'}`}>{step.level}</span>
                         )}
                       </div>
-
                       <div className="flex-1 min-w-0">
-                        <p className={`text-xs sm:text-sm font-semibold leading-tight ${
-                          done ? 'text-emerald-700 line-through' : isNext ? 'text-blue-800' : 'text-slate-500'
+                        <p className={`text-[13px] font-semibold leading-tight ${
+                          done ? 'text-emerald-600 line-through' : isNext ? 'text-slate-900' : 'text-slate-400'
                         }`}>
                           {step.label}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5">{step.desc}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{step.desc}</p>
                       </div>
-
                       {isNext && step.tab && (
-                        <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2.5 py-1 rounded-full flex-shrink-0">
+                        <span className="text-[11px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full flex-shrink-0">
                           Ir →
                         </span>
                       )}
@@ -412,7 +503,35 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
         </div>
       )}
 
-      {/* ═══ SECTION GRIDS (mobile only — sidebar navigates on desktop) ═══ */}
+      {/* ═══ MODO OPERACIÓN — Prominent card (mobile) ═══ */}
+      {!q && (
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => setShowModoOp(true)}
+          className="w-full lg:hidden relative overflow-hidden flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl shadow-lg shadow-indigo-500/15"
+        >
+          <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
+          <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div className="flex-1 text-left relative">
+            <p className="text-[15px] font-bold text-white">Modo Operación</p>
+            <p className="text-[12px] text-white/60 font-medium">Vista rápida para el servicio</p>
+          </div>
+          {pendingOrdersCount > 0 && (
+            <span className="min-w-[26px] h-[26px] px-1.5 bg-white text-indigo-600 text-[12px] font-bold rounded-full flex items-center justify-center shadow-sm">
+              {pendingOrdersCount}
+            </span>
+          )}
+          <svg className="w-4 h-4 text-white/50 flex-shrink-0 relative" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+          </svg>
+        </motion.button>
+      )}
+
+      {/* ═══ SECTION GRIDS (desktop only — mobile uses bottom nav + quick access) ═══ */}
       <AnimatePresence mode="wait">
         <motion.div
           key={q || 'all'}
@@ -420,13 +539,12 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="space-y-5 sm:space-y-6 lg:hidden"
+          className="space-y-5 sm:space-y-6 hidden lg:block"
         >
           {filteredSections.map((section) => {
             if (!section.items.length) return null;
             return (
               <motion.div key={section.id} variants={stagger} initial="hidden" animate="show">
-                {/* Section header */}
                 <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
                   <h2 className="text-xs font-extrabold text-slate-400 uppercase tracking-[0.1em]">
                     {section.label}
@@ -437,8 +555,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                   </span>
                 </div>
 
-                {/* Mobile: list layout, SM+: grid */}
-                <motion.div className="flex flex-col gap-1.5 sm:grid sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 sm:gap-2.5">
+                <motion.div className="grid grid-cols-4 xl:grid-cols-5 gap-2.5">
                   {section.items.map((item) => (
                     <motion.div key={item.tab} variants={fadeUp}>
                       <DashCard
@@ -459,7 +576,6 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
             );
           })}
 
-          {/* No results */}
           {q && filteredSections[0]?.items.length === 0 && (
             <div className="text-center py-16">
               <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center">
@@ -473,27 +589,9 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
           )}
         </motion.div>
       </AnimatePresence>
-      {/* ═══ FAB — Modo Operación (mobile only) ═══ */}
-      <button
-        onClick={() => setShowModoOp(true)}
-        className={`fixed bottom-20 right-4 z-40 block lg:hidden w-14 h-14 rounded-full shadow-lg
-          bg-gradient-to-br from-indigo-500 to-purple-600 text-white
-          flex items-center justify-center active:scale-95 transition-transform ${
-          pendingOrdersCount > 0 ? 'animate-pulse ring-4 ring-indigo-400/40' : ''
-        }`}
-        aria-label="Modo Operación"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-        </svg>
-        {pendingOrdersCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] bg-red-500 text-white text-xs font-black rounded-full flex items-center justify-center px-1">
-            {pendingOrdersCount}
-          </span>
-        )}
-      </button>
 
       {/* Modo Operación full-screen overlay */}
-      <ModoOperacion isOpen={showModoOp} onClose={() => setShowModoOp(false)} />    </div>
+      <ModoOperacion isOpen={showModoOp} onClose={() => setShowModoOp(false)} />
+    </div>
   );
 }

@@ -919,13 +919,13 @@ function EnhancedCompletedOrders() {
       {/* Action Bar: view toggle + search + filters + export + refresh */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          {/* View mode pills */}
-          <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
+          {/* View mode pills — iOS segmented on mobile */}
+          <div className="flex items-center bg-slate-100/80 lg:bg-slate-100 rounded-xl lg:rounded-lg p-[3px] lg:p-0.5">
             <button
               onClick={() => setViewMode('today')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 lg:py-1.5 rounded-xl lg:rounded-md text-[13px] lg:text-xs font-semibold lg:font-medium transition-all ${
                 viewMode === 'today'
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.08)] lg:shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -934,9 +934,9 @@ function EnhancedCompletedOrders() {
             </button>
             <button
               onClick={() => setViewMode('all')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 lg:py-1.5 rounded-xl lg:rounded-md text-[13px] lg:text-xs font-semibold lg:font-medium transition-all ${
                 viewMode === 'all'
-                  ? 'bg-white text-slate-900 shadow-sm'
+                  ? 'bg-white text-slate-900 shadow-[0_1px_3px_rgba(0,0,0,0.08)] lg:shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -948,12 +948,12 @@ function EnhancedCompletedOrders() {
           {/* Right side: search + filter toggle + export + refresh */}
           <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
             <div className="relative flex-1 sm:flex-none">
-              <FaSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
+              <FaSearch className="absolute left-3 lg:left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs" />
               <input
                 type="text"
                 placeholder="Buscar cliente o #..."
                 aria-label="Buscar cliente o número de pedido"
-                className="w-full sm:w-48 pl-8 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                className="w-full sm:w-48 pl-9 lg:pl-8 pr-3 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border-0 lg:border lg:border-slate-200 rounded-xl lg:rounded-lg bg-slate-100/80 lg:bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500 focus:bg-white lg:focus:border-blue-500 transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -962,15 +962,15 @@ function EnhancedCompletedOrders() {
             {/* Filter toggle */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+              className={`flex items-center gap-1.5 px-3.5 lg:px-3 py-2.5 lg:py-1.5 text-[13px] lg:text-xs font-semibold lg:font-medium rounded-xl lg:rounded-lg border transition-colors ${
                 hasActiveFilters
-                  ? 'bg-blue-50 border-blue-300 text-blue-700'
+                  ? 'bg-red-50 lg:bg-blue-50 border-red-200 lg:border-blue-300 text-red-600 lg:text-blue-700'
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
             >
               <FaFilter className="text-[10px]" />
               <span>Filtros</span>
-              {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />}
+              {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-red-500 lg:bg-blue-500" />}
             </button>
 
             {/* Export button */}
@@ -1010,7 +1010,7 @@ function EnhancedCompletedOrders() {
               <span className="text-xs font-medium text-slate-500 flex items-center mr-1"><FaCalendarWeek className="text-[9px] mr-1" />Rápido:</span>
               {[['Hoy', 'today'], ['Ayer', 'yesterday'], ['Última semana', 'week'], ['Último mes', 'month'], ['Último año', 'year']].map(([label, key]) => (
                 <button key={key} onClick={() => applyDatePreset(key)}
-                  className="px-3 py-2.5 text-xs font-medium rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors">
+                  className="px-3 py-2 lg:py-1.5 text-[13px] lg:text-xs font-semibold lg:font-medium rounded-xl lg:rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-red-50 lg:hover:bg-blue-50 hover:border-red-300 lg:hover:border-blue-300 hover:text-red-700 lg:hover:text-blue-700 transition-colors active:scale-[0.97] lg:active:scale-100">
                   {label}
                 </button>
               ))}
@@ -1023,7 +1023,7 @@ function EnhancedCompletedOrders() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500"
                 />
               </div>
               {/* Date To */}
@@ -1033,14 +1033,14 @@ function EnhancedCompletedOrders() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500"
+                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500"
                 />
               </div>
               {/* Order Type */}
               <div>
-                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Tipo</label>
+                <label className="text-xs lg:text-[11px] font-medium text-slate-500 mb-1 block">Tipo</label>
                 <select value={filterOrderType} onChange={(e) => setFilterOrderType(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500">
+                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500">
                   <option value="">Todos</option>
                   <option value="inSite">En sitio</option>
                   <option value="takeaway">Para llevar</option>
@@ -1049,9 +1049,9 @@ function EnhancedCompletedOrders() {
               </div>
               {/* Channel */}
               <div>
-                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Canal</label>
+                <label className="text-xs lg:text-[11px] font-medium text-slate-500 mb-1 block">Canal</label>
                 <select value={filterChannel} onChange={(e) => setFilterChannel(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500">
+                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500">
                   <option value="">Todos</option>
                   <option value="whatsapp">WhatsApp</option>
                   <option value="inapp">In-App</option>
@@ -1060,9 +1060,9 @@ function EnhancedCompletedOrders() {
               </div>
               {/* Payment */}
               <div>
-                <label className="text-[11px] font-medium text-slate-500 mb-1 block">Pago</label>
+                <label className="text-xs lg:text-[11px] font-medium text-slate-500 mb-1 block">Pago</label>
                 <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-sm border border-slate-200 rounded-lg bg-white focus:ring-1 focus:ring-blue-500">
+                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500">
                   <option value="">Todos</option>
                   <option value="cash">Efectivo</option>
                   <option value="nequi">Nequi</option>
@@ -1083,49 +1083,49 @@ function EnhancedCompletedOrders() {
         )}
       </div>
 
-      {/* Stats Row — compact flat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-            <FaClipboardList className="text-blue-500 text-sm" />
+      {/* Stats Row — iOS glass cards on mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
+        <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+          <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 lg:bg-blue-50 lg:from-transparent lg:to-transparent flex items-center justify-center shadow-sm lg:shadow-none">
+            <FaClipboardList className="text-white lg:text-blue-500 text-sm" />
           </div>
           <div>
-            <p className="text-[11px] text-slate-500 font-medium">{isService ? 'Citas' : 'Pedidos'}</p>
-            <p className="text-lg font-bold text-slate-900">{filteredOrders.length}</p>
+            <p className="text-xs lg:text-[11px] text-slate-400 font-medium">{isService ? 'Citas' : 'Pedidos'}</p>
+            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">{filteredOrders.length}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center">
-            <FaDollarSign className="text-emerald-500 text-sm" />
+        <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+          <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 lg:bg-emerald-50 lg:from-transparent lg:to-transparent flex items-center justify-center shadow-sm lg:shadow-none">
+            <FaDollarSign className="text-white lg:text-emerald-500 text-sm" />
           </div>
           <div>
-            <p className="text-[11px] text-slate-500 font-medium">Ventas</p>
-            <p className="text-lg font-bold text-slate-900">
+            <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Ventas</p>
+            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
               ${filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}
             </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-violet-50 flex items-center justify-center">
-            <FaChartBar className="text-violet-500 text-sm" />
+        <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+          <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 lg:bg-violet-50 lg:from-transparent lg:to-transparent flex items-center justify-center shadow-sm lg:shadow-none">
+            <FaChartBar className="text-white lg:text-violet-500 text-sm" />
           </div>
           <div>
-            <p className="text-[11px] text-slate-500 font-medium">Promedio</p>
-            <p className="text-lg font-bold text-slate-900">
+            <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Promedio</p>
+            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
               ${(filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (filteredOrders.length || 1)).toLocaleString()}
             </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center">
-            <FaHamburger className="text-orange-500 text-sm" />
+        <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+          <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 lg:bg-orange-50 lg:from-transparent lg:to-transparent flex items-center justify-center shadow-sm lg:shadow-none">
+            <FaHamburger className="text-white lg:text-orange-500 text-sm" />
           </div>
           <div>
-            <p className="text-[11px] text-slate-500 font-medium">{isService ? 'Servicios' : 'Productos'}</p>
-            <p className="text-lg font-bold text-slate-900">
+            <p className="text-xs lg:text-[11px] text-slate-400 font-medium">{isService ? 'Servicios' : 'Productos'}</p>
+            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
               {filteredOrders.reduce((sum, order) => sum + order.items.reduce((s, item) => s + item.quantity, 0), 0)}
             </p>
           </div>
@@ -1140,8 +1140,8 @@ function EnhancedCompletedOrders() {
         </div>
       )}
 
-      {/* Orders Table */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Orders Table (desktop) + Card List (mobile) */}
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         {/* Table header */}
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-800">
@@ -1161,7 +1161,9 @@ function EnhancedCompletedOrders() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Desktop table */}
+          <div className="overflow-x-auto hidden lg:block">
             <table className="min-w-full">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
@@ -1250,6 +1252,46 @@ function EnhancedCompletedOrders() {
               </tbody>
             </table>
           </div>
+
+          {/* Mobile card list */}
+          <div className="lg:hidden divide-y divide-slate-100/60">
+            {filteredOrders.map((order) => (
+              <button
+                key={order._id}
+                onClick={() => showOrderDetails(order)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-slate-50/50 transition-colors"
+              >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                  order.orderType === 'delivery' ? 'bg-purple-50' :
+                  order.orderType === 'takeaway' ? 'bg-amber-50' : 'bg-blue-50'
+                }`}>
+                  {order.orderType === 'delivery' ? <FaTruck className="text-purple-500 text-xs" /> :
+                   order.orderType === 'takeaway' ? <FaShoppingBag className="text-amber-500 text-xs" /> :
+                   <FaChair className="text-blue-500 text-xs" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] font-semibold text-slate-900">#{order.orderNumber}</span>
+                    <span className="text-[11px] text-slate-400">{order.customerName || 'Sin nombre'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[11px] text-slate-400">
+                      {new Date(order.completedAt || order.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {order.deliveryPersonId?.name && (
+                      <span className="text-[11px] text-purple-500">{order.deliveryPersonId.name}</span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-[13px] font-bold text-slate-900">${(order.finalAmount || order.totalAmount || 0).toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400">{order.items?.length || 0} items</p>
+                </div>
+                <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            ))}
+          </div>
+          </>
         )}
 
         {/* Pagination — only for history mode */}

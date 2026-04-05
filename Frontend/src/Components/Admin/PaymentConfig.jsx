@@ -217,7 +217,7 @@ const PaymentConfig = () => {
   return (
     <div className="space-y-5 max-w-2xl mx-auto">
       {/* Tab Navigation */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-1.5 flex gap-1">
+      <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-gray-200 p-[3px] lg:p-1.5 flex gap-1">
         {TABS.map(tab => {
           // Hide accounts tab if no method needs it
           if (tab.id === 'accounts' && !needsAccountsTab) return null;
@@ -225,9 +225,9 @@ const PaymentConfig = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all ${
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] lg:active:scale-100 ${
                 activeTab === tab.id
-                  ? 'bg-gray-900 text-white shadow-sm'
+                  ? 'bg-gray-900 lg:bg-gray-900 text-white shadow-[0_1px_3px_rgba(0,0,0,0.08)]'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -244,7 +244,7 @@ const PaymentConfig = () => {
           key="mode"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
+          className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-gray-200 p-4 lg:p-6"
         >
           <h3 className="text-lg font-bold text-gray-900 mb-1">Modo de Pedidos</h3>
           <p className="text-sm text-gray-500 mb-4">¿Cómo quieres que tus clientes hagan pedidos?</p>
@@ -386,7 +386,7 @@ const PaymentConfig = () => {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-4"
         >
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-gray-200 p-4 lg:p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Métodos de Pago</h3>
             <p className="text-sm text-gray-500 mb-5">Activa los métodos de pago y configura en qué modos estarán disponibles</p>
 
@@ -514,7 +514,7 @@ const PaymentConfig = () => {
           key="accounts"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
+          className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-gray-200 p-4 lg:p-6"
         >
           <h3 className="text-lg font-bold text-gray-900 mb-1">Datos de Cuenta</h3>
           <p className="text-sm text-gray-500 mb-4">
@@ -569,7 +569,7 @@ const PaymentConfig = () => {
                       value={paymentInfo.bankName}
                       onChange={(e) => handlePaymentInfoChange('bankName', e.target.value)}
                       placeholder="Ej: Bancolombia"
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                      className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-gray-300 text-[14px] lg:text-sm"
                     />
                   </div>
                   <div>
@@ -577,7 +577,7 @@ const PaymentConfig = () => {
                     <select
                       value={paymentInfo.bankAccountType}
                       onChange={(e) => handlePaymentInfoChange('bankAccountType', e.target.value)}
-                      className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white"
+                      className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-gray-300 text-[14px] lg:text-sm bg-white"
                     >
                       <option value="">Seleccionar...</option>
                       <option value="Ahorros">Ahorros</option>
@@ -593,7 +593,7 @@ const PaymentConfig = () => {
                     value={paymentInfo.bankAccountNumber}
                     onChange={(e) => handlePaymentInfoChange('bankAccountNumber', e.target.value)}
                     placeholder="Número de cuenta bancaria"
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                    className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-gray-300 text-[14px] lg:text-sm"
                   />
                 </div>
 
@@ -604,7 +604,7 @@ const PaymentConfig = () => {
                     value={paymentInfo.accountHolder}
                     onChange={(e) => handlePaymentInfoChange('accountHolder', e.target.value)}
                     placeholder="Nombre del titular"
-                    className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm"
+                    className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-gray-300 text-[14px] lg:text-sm"
                   />
                 </div>
               </div>

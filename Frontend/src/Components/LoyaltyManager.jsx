@@ -161,7 +161,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                 <p className="text-xs opacity-70 uppercase tracking-wider">{businessName || 'Tu negocio'}</p>
                 <div className="flex items-baseline gap-1 mt-1">
                   <span className="text-2xl font-black">520</span>
-                  <span className="text-[9px] opacity-60">puntos</span>
+                  <span className="text-xs opacity-60">puntos</span>
                 </div>
                 <div className="mt-2 flex items-center gap-1 bg-white/15 rounded-md px-2 py-1">
                   <span className="text-xs">🔥</span>
@@ -175,7 +175,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
             {/* Tiers preview */}
             {activeTiers.length > 0 && (
               <div className="px-3 pb-2">
-                <p className="text-[9px] font-semibold text-slate-600 mb-1.5">🏆 Niveles</p>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5">🏆 Niveles</p>
                 <div className="flex gap-1.5">
                   {activeTiers.slice(0, 4).map((tier, i) => (
                     <div
@@ -185,7 +185,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
                     >
                       <div className="text-sm">{i === 0 ? '🥉' : i === 1 ? '🥈' : i === 2 ? '🥇' : '💎'}</div>
                       <p className="text-xs font-bold text-slate-700 truncate">{tier.name}</p>
-                      <p className="text-[6px] text-slate-400">x{tier.multiplier}</p>
+                      <p className="text-[10px] text-slate-400">x{tier.multiplier}</p>
                     </div>
                   ))}
                 </div>
@@ -195,7 +195,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
             {/* Rewards preview */}
             {activeRewards.length > 0 ? (
               <div className="px-3 pb-3">
-                <p className="text-[9px] font-semibold text-slate-600 mb-1.5">🎁 Premios</p>
+                <p className="text-xs font-semibold text-slate-600 mb-1.5">🎁 Premios</p>
                 <div className="space-y-1.5">
                   {activeRewards.slice(0, 3).map((r, i) => {
                     const rt = REWARD_TYPES.find(t => t.value === r.type) || REWARD_TYPES[0];
@@ -217,7 +217,7 @@ const PhonePreview = ({ program, themeColor, businessName }) => {
             ) : (
               <div className="px-3 py-6 text-center">
                 <p className="text-2xl mb-1">🎁</p>
-                <p className="text-[9px] text-slate-400">Agrega premios para verlos aquí</p>
+                <p className="text-xs text-slate-400">Agrega premios para verlos aquí</p>
               </div>
             )}
           </div>
@@ -582,10 +582,10 @@ const LoyaltyManager = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold text-slate-800">Programa de Fidelidad</h2>
+              <h2 className="text-lg lg:text-xl font-bold text-slate-800">Programa de Fidelidad</h2>
               <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded-full bg-amber-100 text-amber-600 border border-amber-200/80">Beta</span>
             </div>
-            <p className="text-sm text-slate-400">Convierte visitantes en clientes frecuentes</p>
+            <p className="hidden lg:block text-sm text-slate-400">Convierte visitantes en clientes frecuentes</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -657,14 +657,14 @@ const LoyaltyManager = () => {
       )}
 
       {/* ═══ TABS ═══ */}
-      <div className="flex gap-1 mb-6 bg-slate-100/80 rounded-2xl p-1.5">
+      <div className="flex gap-1 mb-6 bg-slate-100/80 rounded-2xl p-[3px] lg:p-1.5">
         {TABS.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             data-tour={tab.tourId || undefined}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${
-              activeTab === tab.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 lg:py-3 rounded-xl text-sm font-medium transition-all active:scale-[0.97] lg:active:scale-100 ${
+              activeTab === tab.id ? 'bg-white text-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.08)]' : 'text-slate-500 hover:text-slate-700'
             }`}
           >
             <span className="text-base">{tab.emoji}</span>
@@ -684,7 +684,7 @@ const LoyaltyManager = () => {
           {/* TAB: Rules */}
           {activeTab === 'rules' && (
             <div className="space-y-4" data-tour="points-config">
-              <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 lg:p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <span className="text-xl">🪙</span>
                   <h3 className="text-base font-bold text-slate-800">Reglas de puntos</h3>
@@ -722,7 +722,7 @@ const LoyaltyManager = () => {
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 p-6">
+              <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 lg:p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <span className="text-xl">🎉</span>
                   <h3 className="text-base font-bold text-slate-800">Bonificaciones</h3>
@@ -737,7 +737,7 @@ const LoyaltyManager = () => {
                         inputMode="numeric"
                         value={program.firstOrderBonus}
                         onChange={e => setProgram(p => ({ ...p, firstOrderBonus: Number(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 rounded-lg border border-emerald-200 text-sm font-semibold text-center focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none"
+                        className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-emerald-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 outline-none"
                         min="0" placeholder="0 = sin bonus"
                       />
                       <span className="text-xs text-slate-400 whitespace-nowrap">puntos</span>
@@ -752,7 +752,7 @@ const LoyaltyManager = () => {
                         inputMode="numeric"
                         value={program.pointsExpiryDays}
                         onChange={e => setProgram(p => ({ ...p, pointsExpiryDays: Number(e.target.value) || 0 }))}
-                        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-slate-200 outline-none"
+                        className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-slate-200 outline-none"
                         min="0" placeholder="0 = nunca"
                       />
                       <span className="text-xs text-slate-400 whitespace-nowrap">días</span>
@@ -894,8 +894,8 @@ const LoyaltyManager = () => {
                           >
                             <FaMedal className="w-5 h-5" style={{ color: tier.color }} />
                           </div>
-                          <p className="text-[10px] font-bold text-slate-700">{tier.name}</p>
-                          <p className="text-[9px] text-slate-400">x{tier.multiplier}</p>
+                          <p className="text-xs font-bold text-slate-700">{tier.name}</p>
+                          <p className="text-xs text-slate-400">x{tier.multiplier}</p>
                         </div>
                       ))}
                     </div>
@@ -921,12 +921,12 @@ const LoyaltyManager = () => {
                         <div>
                           <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Puntos mínimos</label>
                           <input type="number" inputMode="numeric" value={tier.minPoints} onChange={e => updateTier(idx, 'minPoints', Number(e.target.value) || 0)}
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="0" />
+                            className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="0" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Multiplicador</label>
                           <input type="number" inputMode="decimal" value={tier.multiplier} onChange={e => updateTier(idx, 'multiplier', Number(e.target.value) || 1)}
-                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="1" step="0.5" />
+                            className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-[14px] lg:text-sm font-semibold text-center focus:ring-2 focus:ring-orange-100 focus:border-orange-300 outline-none" min="1" step="0.5" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Color</label>
@@ -1115,13 +1115,13 @@ const LoyaltyManager = () => {
       <AnimatePresence>
         {showRewardModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex lg:items-center items-end justify-center lg:p-4"
             onClick={() => setShowRewardModal(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
               onClick={e => e.stopPropagation()}
-              className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col"
+              className="bg-white rounded-t-2xl lg:rounded-2xl w-full max-w-md shadow-2xl max-h-[92vh] lg:max-h-[90vh] flex flex-col"
             >
               <div className="flex items-center justify-between p-5 pb-3 shrink-0">
                 <div>

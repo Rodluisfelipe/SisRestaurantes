@@ -168,13 +168,13 @@ const WhatsAppCustomizer = () => {
   };
 
   if (loading) return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 flex items-center justify-center">
+    <div className="bg-white rounded-2xl lg:rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-gray-200 p-8 flex items-center justify-center">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
     </div>
   );
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-2xl lg:rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm border border-slate-100 lg:border-gray-200 overflow-hidden">
       {/* Header */}
       <div className="px-6 py-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
@@ -182,8 +182,8 @@ const WhatsAppCustomizer = () => {
             <MessageSquare className="text-green-600" size={20} />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-gray-900">Personalizar Mensaje WhatsApp</h3>
-            <p className="text-sm text-gray-500">Configura qué información incluir y en qué orden</p>
+            <h3 className="text-base lg:text-lg font-bold text-gray-900">WhatsApp</h3>
+            <p className="hidden lg:block text-sm text-gray-500">Configura qué información incluir y en qué orden</p>
           </div>
         </div>
       </div>
@@ -216,19 +216,19 @@ const WhatsAppCustomizer = () => {
               if (!meta) return null;
               return (
                 <motion.div key={mod.id} layout
-                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                  className={`flex items-center gap-3 p-3.5 lg:p-3 rounded-xl lg:rounded-lg border transition-colors ${
                     mod.enabled ? 'bg-white border-gray-200 shadow-sm' : 'bg-gray-50 border-gray-100 opacity-60'
                   }`}
                 >
                   {/* Flechas de orden */}
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex flex-col gap-1 lg:gap-0.5">
                     <button onClick={() => moveModule(idx, -1)} disabled={idx === 0}
-                      className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30">
-                      <ChevronUp size={14} />
+                      className="p-2 lg:p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 rounded-lg active:bg-gray-100">
+                      <ChevronUp size={16} />
                     </button>
                     <button onClick={() => moveModule(idx, 1)} disabled={idx === modules.length - 1}
-                      className="p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30">
-                      <ChevronDown size={14} />
+                      className="p-2 lg:p-0.5 text-gray-400 hover:text-gray-600 disabled:opacity-30 rounded-lg active:bg-gray-100">
+                      <ChevronDown size={16} />
                     </button>
                   </div>
 
@@ -276,11 +276,11 @@ const WhatsAppCustomizer = () => {
           {/* Botones de acción */}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100">
             <motion.button whileTap={{ scale: 0.95 }} onClick={resetTemplate}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2.5 lg:py-2 text-[13px] lg:text-sm text-gray-600 bg-gray-100 rounded-xl lg:rounded-lg hover:bg-gray-200 transition-colors">
               <RotateCcw size={14} /> Restaurar
             </motion.button>
             <motion.button whileTap={{ scale: 0.95 }} onClick={saveTemplate} disabled={saving || !hasChanges}
-              className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center gap-1.5 px-4 py-2.5 lg:py-2 text-[13px] lg:text-sm font-semibold lg:font-medium rounded-xl lg:rounded-lg transition-colors ${
                 hasChanges ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
               }`}>
               <Save size={14} /> {saving ? 'Guardando...' : 'Guardar'}

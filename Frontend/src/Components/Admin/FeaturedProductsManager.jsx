@@ -40,13 +40,13 @@ export default function FeaturedProductsManager({
       </button>
 
       {/* Sección de Productos Destacados */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FaStar className="text-amber-500 text-sm" />
             <div>
               <h3 className="text-sm font-semibold text-slate-800">{isService ? 'Servicios Destacados' : 'Productos Destacados'}</h3>
-              <p className="text-[11px] text-slate-500">
+              <p className="text-xs text-slate-500">
                 Arrastra para reordenar &bull; {featuredProducts.length}/5
               </p>
             </div>
@@ -68,7 +68,7 @@ export default function FeaturedProductsManager({
                 onDragStart={(e) => handleFeaturedDragStart(e, index)}
                 onDragOver={(e) => handleFeaturedDragOver(e, index, featuredProducts)}
                 onDragEnd={handleFeaturedDragEnd}
-                className={`flex items-center gap-3 px-4 py-2.5 transition-all cursor-grab active:cursor-grabbing ${
+                className={`flex items-center gap-3 px-4 py-2.5 transition-all cursor-grab active:cursor-grabbing active:scale-[0.98] lg:active:scale-100 ${
                   draggedFeaturedItem === index
                     ? 'bg-amber-50 opacity-50'
                     : 'hover:bg-slate-50'

@@ -389,7 +389,7 @@ const SubscriptionPayment = () => {
     return (
       <div className="space-y-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl border border-[#DCE4F5] overflow-hidden shadow-lg">
+          className="bg-white rounded-2xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-lg">
           <div className={`px-6 py-8 text-center ${
             isApproved ? 'bg-emerald-50' : isPending ? 'bg-amber-50' : 'bg-red-50'
           }`}>
@@ -461,7 +461,7 @@ const SubscriptionPayment = () => {
       {/* ==========================================
           SUSCRIPCIÓN ACTUAL — Compact inline  
           ========================================== */}
-      <div className="bg-white rounded-xl border border-[#DCE4F5] overflow-hidden shadow-sm">
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <div className="px-3.5 py-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold text-[#1F2937]">Suscripción</h3>
@@ -546,7 +546,7 @@ const SubscriptionPayment = () => {
       {/* ==========================================
           TABS: RENOVAR / HISTORIAL
           ========================================== */}
-      <div className="bg-white rounded-xl border border-[#DCE4F5] overflow-hidden shadow-sm">
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
         <div className="flex border-b border-[#DCE4F5]">
           <button onClick={() => setActiveTab('plan')}
             className={`flex-1 py-2 text-[11px] font-semibold transition-all relative ${activeTab === 'plan' ? 'text-[#3A7AFF]' : 'text-[#6C7A92]'}`}>

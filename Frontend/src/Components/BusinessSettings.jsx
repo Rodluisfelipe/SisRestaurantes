@@ -354,7 +354,7 @@ const BusinessSettings = () => {
     <div className="space-y-3">
       <form onSubmit={handleSubmit} className="space-y-3">
         {/* Información Básica */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
               <FaStore className="text-[10px] text-slate-500" />
@@ -511,7 +511,7 @@ const BusinessSettings = () => {
         <BusinessHoursSettings />
 
         {/* Agenda y Reservas */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
@@ -797,7 +797,7 @@ const BusinessSettings = () => {
         </div>}
 
         {/* Redes Sociales */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
               <FaShareAlt className="text-[10px] text-slate-500" />
@@ -937,7 +937,7 @@ const BusinessSettings = () => {
 
       {/* Vista Previa del Logo */}
       {previewLogo && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
               <FaImage className="text-[10px] text-slate-500" />
