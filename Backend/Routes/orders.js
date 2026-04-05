@@ -101,8 +101,15 @@ const orderPhoneLimiter = rateLimit({
 // Rate limiter for public order tracking/history
 const publicOrderLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 60,
   message: { message: 'Demasiadas consultas. Intente nuevamente más tarde.' }
+});
+
+// Separate rate limiter for chat messages (more generous)
+const chatLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 15,
+  message: { message: 'Demasiados mensajes. Espera un momento.' }
 });
 
 // Generate a customer token for order tracking
@@ -665,7 +672,7 @@ router.get('/track/:id', publicOrderLimiter, async (req, res) => {
 // ─── ORDER CHAT MESSAGES ────────────────────────────────────────────────
 
 // Customer sends a message (public, token-based auth)
-router.post('/:id/messages/customer', publicOrderLimiter, async (req, res) => {
+router.post('/:id/messages/customer', chatLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const token = req.headers['x-customer-token'] || req.body.customerToken;

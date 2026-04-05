@@ -73,6 +73,7 @@ const OrderTracker = ({
   const [chatText, setChatText] = useState('');
   const [chatSending, setChatSending] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
+  const [chatError, setChatError] = useState(null);
   const chatScrollRef = useRef(null);
   const chatUnreadRef = useRef(0);
 
@@ -195,11 +196,16 @@ const OrderTracker = ({
   const handleChatSend = async () => {
     if (!chatText.trim() || chatSending) return;
     setChatSending(true);
+    setChatError(null);
     try {
       const res = await api.post(`/orders/${orderId}/messages/customer`, { text: chatText.trim(), customerToken }, { headers: { 'X-Customer-Token': customerToken } });
       setChatMessages(prev => [...prev, res.data]);
       setChatText('');
-    } catch (_) {}
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Error al enviar mensaje';
+      setChatError(msg);
+      setTimeout(() => setChatError(null), 4000);
+    }
     finally { setChatSending(false); }
   };
 
@@ -742,9 +748,9 @@ const OrderTracker = ({
 
           {/* ═══ CHAT TAB ═══ */}
           {activeTab === 'chat' && showChatTab && (
-            <div className="flex flex-col" style={{ height: 'calc(100vh - 260px)', maxHeight: '450px' }}>
+            <div className="flex flex-col h-full min-h-[350px]">
               {/* Messages */}
-              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 min-h-0">
                 {chatMessages.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     {I.chat('w-10 h-10 text-gray-300 mb-3')}
@@ -768,7 +774,10 @@ const OrderTracker = ({
 
               {/* Input */}
               {!isTerminal && (
-                <div className="border-t border-gray-100 p-3 bg-white">
+                <div className="border-t border-gray-100 p-3 bg-white flex-shrink-0">
+                  {chatError && (
+                    <p className="text-xs text-red-500 mb-2 px-1">{chatError}</p>
+                  )}
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
