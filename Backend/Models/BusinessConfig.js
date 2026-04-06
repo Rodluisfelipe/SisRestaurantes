@@ -200,6 +200,12 @@ const businessConfigSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Print Agent auto-print mode: comanda, recibo, both
+  printAgentMode: {
+    type: String,
+    enum: ['comanda', 'recibo', 'both'],
+    default: 'both'
+  },
   paymentInfo: {
     nequi: { type: String, default: '' },
     daviplata: { type: String, default: '' },

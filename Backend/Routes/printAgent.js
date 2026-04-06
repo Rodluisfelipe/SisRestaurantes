@@ -49,6 +49,39 @@ router.delete('/revoke-key', authenticateToken, async (req, res) => {
   }
 });
 
+// PUT /api/print-agent/mode — Update the auto-print mode (authed admin)
+router.put('/mode', authenticateToken, async (req, res) => {
+  try {
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) return res.status(400).json({ error: 'No business associated' });
+
+    const { mode } = req.body;
+    if (!['comanda', 'recibo', 'both'].includes(mode)) {
+      return res.status(400).json({ error: 'Invalid mode. Must be: comanda, recibo, or both' });
+    }
+
+    await BusinessConfig.findByIdAndUpdate(businessId, { printAgentMode: mode });
+    res.json({ mode });
+  } catch (error) {
+    logger.error('Error updating print agent mode', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/print-agent/mode — Get the current auto-print mode (authed admin)
+router.get('/mode', authenticateToken, async (req, res) => {
+  try {
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) return res.status(400).json({ error: 'No business associated' });
+
+    const config = await BusinessConfig.findById(businessId).select('printAgentMode').lean();
+    res.json({ mode: config?.printAgentMode || 'both' });
+  } catch (error) {
+    logger.error('Error getting print agent mode', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/print-agent/stream?key=<key> — SSE stream of new orders
 router.get('/stream', async (req, res) => {
   const key = req.query.key;
@@ -58,7 +91,7 @@ router.get('/stream', async (req, res) => {
 
   try {
     const business = await BusinessConfig.findOne({ printAgentKey: key })
-      .select('_id businessName address phone nit slug')
+      .select('_id businessName address phone nit slug printAgentMode')
       .lean();
 
     if (!business) {
@@ -83,7 +116,8 @@ router.get('/stream', async (req, res) => {
       address: business.address,
       phone: business.phone,
       nit: business.nit,
-      slug: business.slug
+      slug: business.slug,
+      printMode: business.printAgentMode || 'both'
     });
     res.write(`event: connected\ndata: ${connData}\n\n`);
     if (res.flush) res.flush();

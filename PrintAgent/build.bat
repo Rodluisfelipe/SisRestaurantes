@@ -9,9 +9,15 @@ where go >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Go no esta instalado.
     echo Descarga Go de: https://go.dev/dl/
-    echo Instala y reinicia esta terminal.
     pause
     exit /b 1
+)
+
+:: Check Wails
+where wails >nul 2>&1
+if errorlevel 1 (
+    echo Instalando Wails CLI...
+    go install github.com/wailsapp/wails/v2/cmd/wails@latest
 )
 
 echo Go encontrado:
@@ -28,22 +34,25 @@ if errorlevel 1 (
 )
 echo.
 
-:: Build
-echo Compilando...
-go build -ldflags="-s -w -H windowsgui" -o menuby-print.exe .
+:: Build with Wails
+echo Compilando con Wails...
+wails build
 if errorlevel 1 (
     echo ERROR compilando
     pause
     exit /b 1
 )
 
+:: Sign with MenuBy certificate
+echo.
+echo Firmando ejecutable...
+powershell -Command "$cert = Get-ChildItem 'Cert:\CurrentUser\My\E9EAB4D81F044ECA06B9A0EF1316E5270560DABF' -ErrorAction SilentlyContinue; if ($cert) { Set-AuthenticodeSignature -FilePath 'build\bin\menuby-print.exe' -Certificate $cert -HashAlgorithm SHA256 | Out-Null; Write-Host 'Firma aplicada correctamente' } else { Write-Host 'ADVERTENCIA: Certificado no encontrado, exe sin firmar' }"
+
 echo.
 echo ========================================
-echo  Build exitoso: menuby-print.exe
+echo  Build exitoso: build\bin\menuby-print.exe
 echo  Tamano:
-for %%I in (menuby-print.exe) do echo   %%~zI bytes (%%~zI)
+for %%I in (build\bin\menuby-print.exe) do echo   %%~zI bytes
 echo ========================================
 echo.
-echo Para ejecutar: menuby-print.exe
-echo Asegurate de tener config.json configurado.
 pause

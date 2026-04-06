@@ -10,6 +10,7 @@ import (
 // ESC/POS command bytes
 var (
 	cmdInit        = []byte{0x1B, 0x40}       // Initialize printer
+	cmdCodePage850 = []byte{0x1B, 0x74, 0x02} // Select Code Page 850 (Multilingual Latin)
 	cmdAlignLeft   = []byte{0x1B, 0x61, 0x00} // Left align
 	cmdAlignCenter = []byte{0x1B, 0x61, 0x01} // Center align
 	cmdAlignRight  = []byte{0x1B, 0x61, 0x02} // Right align
@@ -63,6 +64,7 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 
 	// Init + beep
 	buf = append(buf, cmdInit...)
+	buf = append(buf, cmdCodePage850...)
 	buf = append(buf, cmdFontA...)
 	buf = append(buf, cmdBeep...)
 
@@ -282,6 +284,7 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 
 	// Init printer + select Font A
 	buf = append(buf, cmdInit...)
+	buf = append(buf, cmdCodePage850...)
 	buf = append(buf, cmdFontA...)
 	// Beep on new order
 	buf = append(buf, cmdBeep...)
@@ -601,13 +604,15 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 // === Helper Functions ===
 
 func appendLine(buf []byte, text string) []byte {
-	buf = append(buf, []byte(text)...)
+	buf = append(buf, toCP850(text)...)
 	buf = append(buf, cmdFeed...)
 	return buf
 }
 
 func appendLineJustified(buf []byte, left, right string, cols int) []byte {
-	spaces := cols - len(left) - len(right)
+	leftLen := len([]rune(left))
+	rightLen := len([]rune(right))
+	spaces := cols - leftLen - rightLen
 	if spaces < 1 {
 		spaces = 1
 	}
@@ -621,7 +626,8 @@ func separator(cols int) string {
 
 // wrapText returns the first line that fits, truncated if needed
 func wrapText(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
 	return truncate(s, maxLen)
@@ -629,36 +635,40 @@ func wrapText(s string, maxLen int) string {
 
 // appendWrapped writes text that may span multiple lines
 func appendWrapped(buf []byte, text string, cols int) []byte {
-	if len(text) <= cols {
+	runes := []rune(text)
+	if len(runes) <= cols {
 		return appendLine(buf, text)
 	}
 	// Split into lines that fit
-	for len(text) > 0 {
+	for len(runes) > 0 {
 		lineLen := cols
-		if lineLen > len(text) {
-			lineLen = len(text)
+		if lineLen > len(runes) {
+			lineLen = len(runes)
 		}
 		// Try to break at a space
-		if lineLen < len(text) {
-			lastSpace := strings.LastIndex(text[:lineLen], " ")
+		lineStr := string(runes[:lineLen])
+		if lineLen < len(runes) {
+			lastSpace := strings.LastIndex(lineStr, " ")
 			if lastSpace > cols/3 {
 				lineLen = lastSpace + 1
+				lineStr = string(runes[:lineLen])
 			}
 		}
-		buf = appendLine(buf, strings.TrimRight(text[:lineLen], " "))
-		text = text[lineLen:]
+		buf = appendLine(buf, strings.TrimRight(lineStr, " "))
+		runes = runes[lineLen:]
 	}
 	return buf
 }
 
 func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
 	if maxLen < 4 {
-		return s[:maxLen]
+		return string(runes[:maxLen])
 	}
-	return s[:maxLen-3] + "..."
+	return string(runes[:maxLen-3]) + "..."
 }
 
 func safeStr(s, fallback string) string {
@@ -727,4 +737,56 @@ func formatCOP(amount float64) string {
 		return "-$" + str
 	}
 	return "$" + str
+}
+
+// toCP850 converts a UTF-8 string to Code Page 850 bytes.
+// Characters not in CP850 are replaced with '?'.
+func toCP850(s string) []byte {
+	out := make([]byte, 0, len(s))
+	for _, r := range s {
+		if r < 128 {
+			out = append(out, byte(r))
+			continue
+		}
+		if b, ok := utf8ToCP850[r]; ok {
+			out = append(out, b)
+		} else {
+			out = append(out, '?')
+		}
+	}
+	return out
+}
+
+// utf8ToCP850 maps Unicode code points to CP850 byte values.
+// Covers all Spanish, Portuguese, and common Latin characters.
+var utf8ToCP850 = map[rune]byte{
+	// Lowercase accented vowels
+	'á': 0xA0, 'é': 0x82, 'í': 0xA1, 'ó': 0xA2, 'ú': 0xA3,
+	'à': 0x85, 'è': 0x8A, 'ì': 0x8D, 'ò': 0x95, 'ù': 0x97,
+	'â': 0x83, 'ê': 0x88, 'î': 0x8C, 'ô': 0x93, 'û': 0x96,
+	'ä': 0x84, 'ë': 0x89, 'ï': 0x8B, 'ö': 0x94, 'ü': 0x81,
+	'ã': 0xC6, 'õ': 0xE4,
+
+	// Uppercase accented vowels
+	'Á': 0xB5, 'É': 0x90, 'Í': 0xD6, 'Ó': 0xE0, 'Ú': 0xE9,
+	'À': 0xB7, 'È': 0xD4, 'Ì': 0xDE, 'Ò': 0xE3, 'Ù': 0xEB,
+	'Â': 0xB6, 'Ê': 0xD2, 'Î': 0xD7, 'Ô': 0xE2, 'Û': 0xEA,
+	'Ä': 0x8E, 'Ë': 0xD3, 'Ï': 0xD8, 'Ö': 0x99, 'Ü': 0x9A,
+	'Ã': 0xC7, 'Õ': 0xE5,
+
+	// Spanish special
+	'ñ': 0xA4, 'Ñ': 0xA5,
+	'¿': 0xA8, '¡': 0xAD,
+
+	// Symbols
+	'°': 0xF8, '·': 0xFA, '±': 0xF1,
+	'ç': 0x87, 'Ç': 0x80,
+	'€': 0xD5, // CP858 position
+	'£': 0x9C, '¥': 0x9D, '¢': 0xBD,
+	'×': 0xE8, '÷': 0xF6,
+	'ß': 0xE1,
+	'«': 0xAE, '»': 0xAF,
+	'©': 0xB8, '®': 0xA9,
+	'½': 0xAB, '¼': 0xAC,
+	'─': 0xC4, '│': 0xB3,
 }

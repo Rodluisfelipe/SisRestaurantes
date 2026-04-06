@@ -1,323 +1,100 @@
 package main
 
 import (
+	"context"
+	"embed"
 	"fmt"
 	"log"
 	"os"
-	"sync"
 	"syscall"
-	"time"
+	"unsafe"
 
-	"fyne.io/systray"
+	"github.com/wailsapp/wails/v2"
+	"github.com/wailsapp/wails/v2/pkg/options"
+	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/wailsapp/wails/v2/pkg/options/windows"
 )
 
-var (
-	cfg           *Config
-	sseClient     *SSEClient
-	printCount    int
-	lastError     string
-	mu            sync.Mutex
-	statusItem    *systray.MenuItem
-	printerItem   *systray.MenuItem
-	counterItem   *systray.MenuItem
-	reconnectItem *systray.MenuItem
-)
+//go:embed frontend/dist
+var assets embed.FS
 
-// hideConsole hides the console window (used after wizard completes)
-func hideConsole() {
+// ensureSingleInstance creates a named mutex so only one copy can run.
+// Returns a handle that must be kept alive for the process lifetime.
+func ensureSingleInstance() (uintptr, error) {
 	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	user32 := syscall.NewLazyDLL("user32.dll")
-	getConsoleWindow := kernel32.NewProc("GetConsoleWindow")
-	showWindow := user32.NewProc("ShowWindow")
-	hwnd, _, _ := getConsoleWindow.Call()
-	if hwnd != 0 {
-		showWindow.Call(hwnd, 0) // SW_HIDE = 0
+	createMutex := kernel32.NewProc("CreateMutexW")
+	name, _ := syscall.UTF16PtrFromString("Global\\MenuByPrintAgent_SingleInstance")
+	handle, _, err := createMutex.Call(0, 1, uintptr(unsafe.Pointer(name)))
+	if handle == 0 {
+		return 0, fmt.Errorf("CreateMutex failed: %v", err)
 	}
-}
-
-// showConsole shows the console window (used for wizard)
-func showConsole() {
-	kernel32 := syscall.NewLazyDLL("kernel32.dll")
-	user32 := syscall.NewLazyDLL("user32.dll")
-	getConsoleWindow := kernel32.NewProc("GetConsoleWindow")
-	showWindow := user32.NewProc("ShowWindow")
-	allocConsole := kernel32.NewProc("AllocConsole")
-	hwnd, _, _ := getConsoleWindow.Call()
-	if hwnd == 0 {
-		// No console exists (compiled with -H windowsgui), create one
-		allocConsole.Call()
-		hwnd, _, _ = getConsoleWindow.Call()
+	// ERROR_ALREADY_EXISTS = 183
+	if err.(syscall.Errno) == 183 {
+		syscall.CloseHandle(syscall.Handle(handle))
+		return 0, fmt.Errorf("already running")
 	}
-	if hwnd != 0 {
-		showWindow.Call(hwnd, 5) // SW_SHOW = 5
-	}
-	// Reattach stdout/stderr/stdin to the new console
-	conout, _ := syscall.Open("CONOUT$", syscall.O_RDWR, 0)
-	os.Stdout = os.NewFile(uintptr(conout), "/dev/stdout")
-	os.Stderr = os.NewFile(uintptr(conout), "/dev/stderr")
-	conin, _ := syscall.Open("CONIN$", syscall.O_RDWR, 0)
-	os.Stdin = os.NewFile(uintptr(conin), "/dev/stdin")
+	return handle, nil
 }
 
 func main() {
-	// Setup logging to file
+	// Single instance guard — exit immediately if another copy is running
+	mutexHandle, err := ensureSingleInstance()
+	if err != nil {
+		// Show a brief message box and exit
+		user32 := syscall.NewLazyDLL("user32.dll")
+		msgBox := user32.NewProc("MessageBoxW")
+		title, _ := syscall.UTF16PtrFromString("MenuBy Print Agent")
+		msg, _ := syscall.UTF16PtrFromString("El agente ya está en ejecución.\nRevisa el icono en la barra de tareas.")
+		msgBox.Call(0, uintptr(unsafe.Pointer(msg)), uintptr(unsafe.Pointer(title)), 0x40) // MB_ICONINFORMATION
+		os.Exit(0)
+	}
+	_ = mutexHandle // keep alive for process lifetime
+
+	// Setup logging
 	logFile, err := os.OpenFile("menuby-print.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err == nil {
 		log.SetOutput(logFile)
 	}
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("=== MenuBy Print Agent starting ===")
+	log.Println("=== MenuBy Print Agent v2 starting ===")
 
-	// Load config
-	cfg, err = LoadConfig()
-	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
-	}
+	app := NewApp()
 
-	// Hide console immediately if already configured (no wizard needed)
-	if cfg.IsConfigured() {
-		hideConsole()
-	}
-
-	// If not configured, run interactive setup wizard
-	if !cfg.IsConfigured() {
-		showConsole()
-		runSetupWizard(cfg)
-	}
-
-	// Verify printer exists
-	printerName, err := ResolvePrinter(cfg)
-	if err != nil {
-		log.Printf("WARNING: %v", err)
-		// If no printer configured, run printer selection
-		showConsole()
-		selectPrinterWizard(cfg)
-	} else {
-		log.Printf("Using printer: %s", printerName)
-		cfg.PrinterName = printerName
-	}
-
-	// Hide console once wizard is done, systray takes over
-	hideConsole()
-
-	// Start system tray
-	systray.Run(onReady, onExit)
-}
-
-func onReady() {
-	systray.SetIcon(PrinterIcon)
-	systray.SetTitle("MenuBy Print")
-	systray.SetTooltip("MenuBy Print Agent — Conectando...")
-
-	// Menu items
-	statusItem = systray.AddMenuItem("⏳ Conectando...", "Estado de conexión")
-	statusItem.Disable()
-
-	printerItem = systray.AddMenuItem("🖨 "+safeStr(cfg.PrinterName, "Sin impresora"), "Impresora seleccionada")
-	printerItem.Disable()
-
-	counterItem = systray.AddMenuItem("📄 Tickets: 0", "Tickets impresos en esta sesión")
-	counterItem.Disable()
-
-	systray.AddSeparator()
-
-	// Printer selection submenu
-	selectPrinterItem := systray.AddMenuItem("Cambiar impresora", "Seleccionar otra impresora")
-
-	systray.AddSeparator()
-
-	reconnectItem = systray.AddMenuItem("🔄 Reconectar", "Forzar reconexión al servidor")
-	testItem := systray.AddMenuItem("🧪 Imprimir prueba", "Imprimir ticket de prueba")
-
-	systray.AddSeparator()
-
-	quitItem := systray.AddMenuItem("❌ Salir", "Cerrar MenuBy Print Agent")
-
-	// Start SSE client
-	sseClient = NewSSEClient(cfg)
-	sseClient.onConnect = onSSEConnect
-	sseClient.onDisconnect = onSSEDisconnect
-	sseClient.onOrder = onNewOrder
-	sseClient.onReceipt = onPrintReceipt
-	sseClient.Start()
-
-	// Handle menu clicks
-	go func() {
-		for {
-			select {
-			case <-selectPrinterItem.ClickedCh:
-				handleSelectPrinter()
-			case <-reconnectItem.ClickedCh:
-				handleReconnect()
-			case <-testItem.ClickedCh:
-				handleTestPrint()
-			case <-quitItem.ClickedCh:
-				systray.Quit()
-			}
-		}
-	}()
-}
-
-func onExit() {
-	log.Println("=== MenuBy Print Agent shutting down ===")
-	if sseClient != nil {
-		sseClient.Stop()
-	}
-}
-
-func onSSEConnect(info *BusinessInfo) {
-	log.Printf("Connected to: %s", info.BusinessName)
-	systray.SetTooltip(fmt.Sprintf("MenuBy Print — %s", info.BusinessName))
-	statusItem.SetTitle(fmt.Sprintf("✅ Conectado: %s", info.BusinessName))
-}
-
-func onSSEDisconnect() {
-	log.Println("Disconnected from server")
-	systray.SetTooltip("MenuBy Print Agent — Desconectado")
-	statusItem.SetTitle("❌ Desconectado — reconectando...")
-}
-
-func onNewOrder(order map[string]interface{}) {
-	business := sseClient.GetBusiness()
-	if business == nil {
-		log.Println("[Print] No business info, skipping print")
-		return
-	}
-
-	// Auto-print COMANDA (kitchen ticket, no prices)
-	comanda := GenerateComanda(order, business, cfg.PaperWidth, cfg.AutoCut)
-	printDocument(comanda, order, "Comanda")
-}
-
-func onPrintReceipt(order map[string]interface{}) {
-	business := sseClient.GetBusiness()
-	if business == nil {
-		log.Println("[Print] No business info, skipping print")
-		return
-	}
-
-	// Print RECIBO (receipt with prices, for customer)
-	recibo := GenerateRecibo(order, business, cfg.PaperWidth, cfg.AutoCut)
-	printDocument(recibo, order, "Recibo")
-}
-
-func printDocument(data []byte, order map[string]interface{}, docType string) {
-	printerName, err := ResolvePrinter(cfg)
-	if err != nil {
-		mu.Lock()
-		lastError = err.Error()
-		mu.Unlock()
-		log.Printf("[Print] ERROR resolving printer: %v", err)
-		return
-	}
-
-	err = PrintRaw(printerName, data)
-	if err != nil {
-		mu.Lock()
-		lastError = err.Error()
-		mu.Unlock()
-		log.Printf("[Print] ERROR printing: %v", err)
-		return
-	}
-
-	mu.Lock()
-	printCount++
-	count := printCount
-	lastError = ""
-	mu.Unlock()
-
-	orderNum := getString(order, "orderNumber")
-	log.Printf("[Print] ✓ %s #%s printed (total: %d)", docType, orderNum, count)
-	counterItem.SetTitle(fmt.Sprintf("📄 Tickets: %d", count))
-}
-
-func handleSelectPrinter() {
-	printers, err := ListPrinters()
-	if err != nil {
-		log.Printf("[Printer] Error listing: %v", err)
-		return
-	}
-
-	if len(printers) == 0 {
-		log.Println("[Printer] No printers found")
-		printerItem.SetTitle("🖨 Sin impresoras")
-		return
-	}
-
-	// Cycle through printers on each click
-	mu.Lock()
-	currentIdx := 0
-	for i, p := range printers {
-		if p == cfg.PrinterName {
-			currentIdx = (i + 1) % len(printers)
-			break
-		}
-	}
-	cfg.PrinterName = printers[currentIdx]
-	_ = cfg.Save()
-	mu.Unlock()
-
-	printerItem.SetTitle("🖨 " + cfg.PrinterName)
-	log.Printf("[Printer] Selected: %s", cfg.PrinterName)
-}
-
-func handleReconnect() {
-	log.Println("[SSE] Manual reconnect requested")
-	if sseClient != nil {
-		sseClient.Stop()
-	}
-	time.Sleep(500 * time.Millisecond)
-	sseClient = NewSSEClient(cfg)
-	sseClient.onConnect = onSSEConnect
-	sseClient.onDisconnect = onSSEDisconnect
-	sseClient.onOrder = onNewOrder
-	sseClient.onReceipt = onPrintReceipt
-	sseClient.Start()
-	statusItem.SetTitle("⏳ Reconectando...")
-}
-
-func handleTestPrint() {
-	business := sseClient.GetBusiness()
-	if business == nil {
-		business = &BusinessInfo{BusinessName: "Test Business", Phone: "0000000000"}
-	}
-
-	testOrder := map[string]interface{}{
-		"orderNumber":  "TEST",
-		"customerName": "Pedido de Prueba",
-		"phone":        "3001234567",
-		"orderType":    "inSite",
-		"tableNumber":  "1",
-		"paymentMethod": "cash",
-		"items": []interface{}{
-			map[string]interface{}{
-				"name":             "Producto de Prueba",
-				"price":            float64(15000),
-				"quantity":         float64(2),
-				"selectedToppings": []interface{}{},
-			},
-			map[string]interface{}{
-				"name":     "Otro Producto",
-				"price":    float64(8000),
-				"quantity": float64(1),
-				"selectedToppings": []interface{}{
-					map[string]interface{}{
-						"groupName":  "Extras",
-						"optionName": "Queso Extra",
-						"price":      float64(3000),
-					},
-				},
-			},
+	err = wails.Run(&options.App{
+		Title:     "MenuBy Print Agent",
+		Width:     460,
+		Height:    640,
+		MinWidth:  400,
+		MinHeight: 500,
+		AssetServer: &assetserver.Options{
+			Assets: assets,
 		},
-		"totalAmount":    float64(41000),
-		"deliveryFee":    float64(0),
-		"discountAmount": float64(0),
-		"finalAmount":    float64(41000),
-		"createdAt":      time.Now().Format(time.RFC3339),
-	}
+		BackgroundColour: &options.RGBA{R: 247, G: 247, B: 248, A: 255},
+		OnStartup:        app.startup,
+		OnShutdown:       app.shutdown,
+		OnBeforeClose: func(ctx context.Context) (prevent bool) {
+			app.mu.Lock()
+			quit := app.forceQuit
+			app.mu.Unlock()
+			if quit {
+				return false // allow close
+			}
+			// Minimize to system tray instead of closing
+			runtime.WindowHide(ctx)
+			return true
+		},
+		Bind: []interface{}{
+			app,
+		},
+		Windows: &windows.Options{
+			WebviewIsTransparent: false,
+			WindowIsTranslucent:  false,
+			Theme:                windows.Light,
+		},
+	})
 
-	// Print both comanda and receipt as test
-	onNewOrder(testOrder)
-	time.Sleep(500 * time.Millisecond)
-	onPrintReceipt(testOrder)
+	if err != nil {
+		log.Fatalf("Error starting app: %v", err)
+	}
 }

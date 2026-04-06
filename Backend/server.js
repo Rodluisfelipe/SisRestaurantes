@@ -172,6 +172,7 @@ app.use(mongoSanitize());
 app.use('/uploads/banners', express.static('uploads/banners'));
 app.use('/uploads/announcements', express.static('uploads/announcements'));
 app.use('/uploads/products', express.static('uploads/products'));
+app.use('/uploads/print-agent', express.static('uploads/print-agent'));
 app.use('/downloads', express.static('uploads/downloads'));
 
 // Authenticated access to payment proofs and order proofs
