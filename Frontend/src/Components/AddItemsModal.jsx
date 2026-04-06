@@ -4,7 +4,7 @@ import { FaTimes, FaSearch, FaPlus, FaMinus, FaShoppingCart } from 'react-icons/
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 
-export default function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
+function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) {
   const { businessId } = useBusinessConfig();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -239,3 +239,5 @@ export default function AddItemsModal({ isOpen, onClose, order, onItemsAdded }) 
     </AnimatePresence>
   );
 }
+
+export default React.memo(AddItemsModal);

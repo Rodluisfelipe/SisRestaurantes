@@ -178,8 +178,8 @@ export default function useOrdersDashboard() {
     }
   };
 
-  const fetchOrders = async () => {
-    setLoading(true);
+  const fetchOrders = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const response = await api.get(`/orders?businessId=${businessId}&status=pending,pending_payment,payment_uploaded,payment_confirmed,confirmed,inProgress,preparing,ready&_t=${Date.now()}`);
       setOrders(response.data);
@@ -425,7 +425,7 @@ export default function useOrdersDashboard() {
     if (businessId) {
       fetchOrders();
       const interval = setInterval(() => {
-        if (!document.hidden) fetchOrders();
+        if (!document.hidden) fetchOrders(true);
       }, 30000);
       return () => clearInterval(interval);
     }
