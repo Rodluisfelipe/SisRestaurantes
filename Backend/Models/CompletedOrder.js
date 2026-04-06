@@ -48,7 +48,7 @@ const completedOrderSchema = new mongoose.Schema({
   // In-app ordering fields (for analytics breakdowns)
   orderChannel: {
     type: String,
-    enum: ['whatsapp', 'inapp', 'pos'],
+    enum: ['whatsapp', 'inapp', 'pos', 'admin'],
     default: 'whatsapp'
   },
   paymentMethod: {
