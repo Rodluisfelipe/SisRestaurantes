@@ -30,6 +30,10 @@ export function GetHistory() {
   return window['go']['main']['App']['GetHistory']();
 }
 
+export function GetPrintMode() {
+  return window['go']['main']['App']['GetPrintMode']();
+}
+
 export function GetPrinterStatusInfo() {
   return window['go']['main']['App']['GetPrinterStatusInfo']();
 }
