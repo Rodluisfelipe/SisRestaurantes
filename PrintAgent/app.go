@@ -396,13 +396,10 @@ func (a *App) startSSE() {
 	}
 	a.sseClient.onOrder = func(order map[string]interface{}) {
 		mode := a.getPrintMode()
-		if mode == "both" {
-			// Print both in a single continuous strip — no cut on comanda, cut only on recibo
-			a.handlePrintWithCut(order, "comanda", false)
-			a.handlePrintWithCut(order, "recibo", a.cfg.AutoCut)
-		} else if mode == "comanda" {
+		if mode == "comanda" || mode == "both" {
 			a.handlePrint(order, "comanda")
-		} else if mode == "recibo" {
+		}
+		if mode == "recibo" || mode == "both" {
 			a.handlePrint(order, "recibo")
 		}
 	}
@@ -414,10 +411,6 @@ func (a *App) startSSE() {
 }
 
 func (a *App) handlePrint(order map[string]interface{}, docType string) {
-	a.handlePrintWithCut(order, docType, a.cfg.AutoCut)
-}
-
-func (a *App) handlePrintWithCut(order map[string]interface{}, docType string, autoCut bool) {
 	business := a.sseClient.GetBusiness()
 	if business == nil {
 		log.Println("[Print] No business info, skipping")
@@ -426,9 +419,9 @@ func (a *App) handlePrintWithCut(order map[string]interface{}, docType string, a
 
 	var data []byte
 	if docType == "comanda" {
-		data = GenerateComanda(order, business, a.cfg.PaperWidth, autoCut)
+		data = GenerateComanda(order, business, a.cfg.PaperWidth, a.cfg.AutoCut)
 	} else {
-		data = GenerateRecibo(order, business, a.cfg.PaperWidth, autoCut)
+		data = GenerateRecibo(order, business, a.cfg.PaperWidth, a.cfg.AutoCut)
 	}
 
 	orderNum := getString(order, "orderNumber")
