@@ -22,6 +22,7 @@ const PAYMENT_LABELS = {
 import { socket, socketDiagnostic, forceReconnect } from '../services/socket';
 import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
 import AddItemsModal from './AddItemsModal';
+import QuickOrderModal from './QuickOrderModal';
 import OrderCard from './OrderCard';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';
 import api from '../services/api';
@@ -148,6 +149,7 @@ function ModernOrdersDashboard() {
 
   const [assignDomiOrder, setAssignDomiOrder] = useState(null);
   const [addItemsOrder, setAddItemsOrder] = useState(null);
+  const [showQuickOrder, setShowQuickOrder] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCompletedOrders, setShowCompletedOrders] = useState(false);
@@ -330,6 +332,15 @@ function ModernOrdersDashboard() {
               <span className="hidden sm:inline">Pantalla</span>
             </button>
           )}
+
+          {/* Quick Order */}
+          <button
+            onClick={() => setShowQuickOrder(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 transition-colors"
+          >
+            <FaPlus className="text-[10px]" />
+            <span className="hidden sm:inline">Pedido</span>
+          </button>
 
           {/* Refresh */}
           <motion.button
@@ -1018,6 +1029,14 @@ function ModernOrdersDashboard() {
         onItemsAdded={(updatedOrder) => {
           setOrderDetails(updatedOrder);
           // Socket will handle updating the orders list
+        }}
+      />
+
+      <QuickOrderModal
+        isOpen={showQuickOrder}
+        onClose={() => setShowQuickOrder(false)}
+        onOrderCreated={() => {
+          // Socket will handle adding the new order to the list
         }}
       />
     </div>

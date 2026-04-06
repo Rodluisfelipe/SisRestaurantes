@@ -191,12 +191,12 @@ router.get("/", tenantAuth, async (req, res) => {
   }
 });
 
-// Create a new order (POS orders skip rate limiter)
+// Create a new order (POS and admin orders skip rate limiter)
 router.post("/", (req, res, next) => {
-  if (req.body.orderChannel === 'pos') return next();
+  if (req.body.orderChannel === 'pos' || req.body.orderChannel === 'admin') return next();
   return createOrderLimiter(req, res, next);
 }, (req, res, next) => {
-  if (req.body.orderChannel === 'pos') return next();
+  if (req.body.orderChannel === 'pos' || req.body.orderChannel === 'admin') return next();
   return orderPhoneLimiter(req, res, next);
 }, validateCreateOrder, async (req, res) => {
   try {
@@ -386,7 +386,8 @@ router.post("/", (req, res, next) => {
     // Determine initial status based on ordering channel
     const isInApp = orderChannel === 'inapp';
     const isPOS = orderChannel === 'pos';
-    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
+    const isAdmin = orderChannel === 'admin';
+    const initialStatus = isPOS || isAdmin ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
     const customerToken = isInApp ? generateCustomerToken() : null;
 
     // Create the order
@@ -561,7 +562,7 @@ router.get("/completed", tenantAuth, async (req, res) => {
     if (orderType && allowedOrderTypes.includes(orderType)) {
       filter.orderType = orderType;
     }
-    const allowedChannels = ['whatsapp', 'inapp', 'pos'];
+    const allowedChannels = ['whatsapp', 'inapp', 'pos', 'admin'];
     if (orderChannel && allowedChannels.includes(orderChannel)) {
       filter.orderChannel = orderChannel;
     }
