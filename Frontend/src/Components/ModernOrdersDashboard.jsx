@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateDailyReportPDF } from './DailyReportPDF';
 import { ORDER_STATUS } from '../utils/constants';
@@ -156,6 +156,12 @@ function ModernOrdersDashboard() {
   const [viewMode, setViewMode] = useState('grid');
   const [showProofModal, setShowProofModal] = useState(false);
   const [proofImageUrl, setProofImageUrl] = useState('');
+
+  // Stable callbacks for memoized modals — prevents re-renders from socket updates
+  const closeAddItems = useCallback(() => setAddItemsOrder(null), []);
+  const onItemsAdded = useCallback((updatedOrder) => setOrderDetails(updatedOrder), [setOrderDetails]);
+  const closeQuickOrder = useCallback(() => setShowQuickOrder(false), []);
+  const onQuickOrderCreated = useCallback(() => {}, []);
 
   const VISIBLE_STATUSES = ['pending', 'pending_payment', 'payment_uploaded', 'payment_confirmed', 'confirmed', 'preparing', 'inProgress', 'ready', 'completed'];
 
@@ -1024,20 +1030,15 @@ function ModernOrdersDashboard() {
 
       <AddItemsModal
         isOpen={!!addItemsOrder}
-        onClose={() => setAddItemsOrder(null)}
+        onClose={closeAddItems}
         order={addItemsOrder}
-        onItemsAdded={(updatedOrder) => {
-          setOrderDetails(updatedOrder);
-          // Socket will handle updating the orders list
-        }}
+        onItemsAdded={onItemsAdded}
       />
 
       <QuickOrderModal
         isOpen={showQuickOrder}
-        onClose={() => setShowQuickOrder(false)}
-        onOrderCreated={() => {
-          // Socket will handle adding the new order to the list
-        }}
+        onClose={closeQuickOrder}
+        onOrderCreated={onQuickOrderCreated}
       />
     </div>
   );

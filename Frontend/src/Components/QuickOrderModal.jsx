@@ -18,7 +18,7 @@ const PAYMENT_METHODS = [
   { value: 'other', label: 'Otro' },
 ];
 
-export default function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
+function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
   const { businessId, businessConfig } = useBusinessConfig();
 
   // Steps: 'customer' -> 'products' -> 'review'
@@ -583,3 +583,5 @@ export default function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
     </AnimatePresence>
   );
 }
+
+export default React.memo(QuickOrderModal);
