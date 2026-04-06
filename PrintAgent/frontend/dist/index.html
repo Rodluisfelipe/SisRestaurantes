@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MenuBy Print Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- ═══ Setup Screen ═══ -->
+        <div id="setup-screen" class="screen hidden">
+            <div class="setup-container">
+                <div class="setup-brand">
+                    <div class="brand-mark">
+                        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect width="40" height="40" rx="10" fill="#E31E24"/>
+                            <path d="M8 28V12h2.8l5.2 10.4L21.2 12H24v16h-2.4V16.8L16.8 26h-1.6L10.4 16.8V28H8Z" fill="white"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="brand-name">MenuBy <span class="brand-tag">Print</span></h1>
+                        <p class="brand-sub">Agente de impresion</p>
+                    </div>
+                </div>
+
+                <!-- Step 1: Key -->
+                <div class="card setup-card" id="step-key">
+                    <div class="step-badge">Paso 1</div>
+                    <h3 class="card-title">Conecta tu negocio</h3>
+                    <p class="card-desc">Copia la clave desde tu panel MenuBy → Configuracion → Print Agent</p>
+                    <input type="text" id="input-key" class="input" placeholder="Pega tu clave de 64 caracteres..." spellcheck="false" autocomplete="off">
+                    <div id="key-error" class="error-msg hidden"></div>
+                    <button id="btn-validate" class="btn btn-red" onclick="validateKey()">
+                        <span class="btn-label">Verificar clave</span>
+                        <span class="btn-spinner hidden"></span>
+                    </button>
+                </div>
+
+                <!-- Step 2: Printer -->
+                <div class="card setup-card hidden" id="step-printer">
+                    <div class="success-pill" id="connected-business"></div>
+
+                    <div class="step-badge">Paso 2</div>
+                    <h3 class="card-title">Configura tu impresora</h3>
+
+                    <label class="label">Impresora</label>
+                    <select id="select-printer" class="input select"></select>
+
+                    <label class="label mt-14">Ancho de papel</label>
+                    <div class="paper-row" id="paper-options">
+                        <button class="chip active" data-width="80">80 mm</button>
+                        <button class="chip" data-width="76">76 mm</button>
+                        <button class="chip" data-width="58">58 mm</button>
+                        <button class="chip" data-width="44">44 mm</button>
+                    </div>
+
+                    <button class="btn btn-red mt-14" onclick="saveSetup()">Guardar y conectar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Dashboard Screen ═══ -->
+        <div id="dashboard-screen" class="screen hidden">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <svg class="header-logo" viewBox="0 0 40 40" fill="none">
+                        <rect width="40" height="40" rx="10" fill="#E31E24"/>
+                        <path d="M8 28V12h2.8l5.2 10.4L21.2 12H24v16h-2.4V16.8L16.8 26h-1.6L10.4 16.8V28H8Z" fill="white"/>
+                    </svg>
+                    <div>
+                        <h2 class="header-title">MenuBy Print</h2>
+                        <p class="header-business" id="dash-business">—</p>
+                    </div>
+                </div>
+                <button class="btn-icon" onclick="openSettings()" title="Configuracion">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>
+                </button>
+            </header>
+
+            <!-- Update Banner -->
+            <div id="update-banner" class="update-banner hidden">
+                <svg class="update-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                <span>Nueva version <strong id="update-version"></strong> disponible</span>
+                <a id="update-link" class="update-dl" onclick="openUpdateLink()">Descargar</a>
+                <button class="update-dismiss" onclick="dismissUpdate()">&times;</button>
+            </div>
+
+            <!-- Status Card -->
+            <div class="card status-card" id="status-card">
+                <div class="status-row">
+                    <div class="status-dot-wrap" id="status-dot-wrap">
+                        <div class="status-dot"></div>
+                    </div>
+                    <div class="status-info">
+                        <span class="status-label" id="status-text">Conectando...</span>
+                        <span class="status-sub">
+                            <span class="printer-dot" id="printer-dot"></span>
+                            <span id="printer-name">—</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="stat-row">
+                    <div class="stat">
+                        <span class="stat-num" id="print-count">0</span>
+                        <span class="stat-label">Tickets impresos</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="actions">
+                <button class="action-card" onclick="testPrint()">
+                    <div class="action-icon-wrap red">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z"/></svg>
+                    </div>
+                    <span class="action-label">Prueba</span>
+                </button>
+                <button class="action-card" onclick="reprintLast()">
+                    <div class="action-icon-wrap red">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3"/></svg>
+                    </div>
+                    <span class="action-label">Reimprimir</span>
+                </button>
+                <button class="action-card" onclick="reconnect()">
+                    <div class="action-icon-wrap gray">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182"/></svg>
+                    </div>
+                    <span class="action-label">Reconectar</span>
+                </button>
+                <button class="action-card" onclick="openTickets()">
+                    <div class="action-icon-wrap blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z"/></svg>
+                    </div>
+                    <span class="action-label">Tickets</span>
+                </button>
+            </div>
+
+            <!-- Tab Bar -->
+            <div class="tab-bar">
+                <button class="tab active" id="tab-activity" onclick="switchTab('activity')">Actividad</button>
+                <button class="tab" id="tab-history" onclick="switchTab('history')">Historial</button>
+            </div>
+
+            <!-- Activity Log -->
+            <div class="log-section" id="section-activity">
+                <div class="log-bar">
+                    <h3 class="log-title">Actividad</h3>
+                    <button class="btn-text" onclick="clearLog()">Limpiar</button>
+                </div>
+                <div class="log-list" id="log-list">
+                    <div class="log-empty">Esperando actividad...</div>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div class="log-section hidden" id="section-history">
+                <div class="log-bar">
+                    <h3 class="log-title">Historial de impresiones</h3>
+                    <button class="btn-text" onclick="clearHistory()">Limpiar</button>
+                </div>
+                <div class="log-list" id="history-list">
+                    <div class="log-empty">Sin impresiones aun...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Settings Modal ═══ -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-bg" onclick="closeSettings()"></div>
+            <div class="modal-panel">
+                <div class="modal-top">
+                    <h3>Configuracion</h3>
+                    <button class="btn-icon sm" onclick="closeSettings()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <label class="label">Impresora</label>
+                    <select id="settings-printer" class="input select"></select>
+
+                    <label class="label mt-14">Ancho de papel</label>
+                    <div class="paper-row" id="settings-paper">
+                        <button class="chip" data-width="80">80 mm</button>
+                        <button class="chip" data-width="76">76 mm</button>
+                        <button class="chip" data-width="58">58 mm</button>
+                        <button class="chip" data-width="44">44 mm</button>
+                    </div>
+
+                    <div class="switch-row mt-14">
+                        <span>Corte automatico</span>
+                        <button class="switch" id="toggle-autocut" onclick="toggleAutocut()"><div class="switch-thumb"></div></button>
+                    </div>
+                    <div class="switch-row">
+                        <span>Iniciar con Windows</span>
+                        <button class="switch" id="toggle-autostart" onclick="toggleAutostart()"><div class="switch-thumb"></div></button>
+                    </div>
+
+                    <div class="sep"></div>
+
+                    <label class="label">Clave de conexion</label>
+                    <input type="text" id="settings-key" class="input mono" readonly>
+
+                    <div class="btn-row mt-10">
+                        <button class="btn btn-ghost" onclick="openAppFolder()">Abrir carpeta</button>
+                        <button class="btn btn-ghost danger" onclick="resetConfig()">Cambiar clave</button>
+                    </div>
+
+                    <button class="btn btn-red mt-14" onclick="saveSettings()">Guardar cambios</button>
+
+                    <div class="sep"></div>
+
+                    <div class="settings-footer">
+                        <span class="settings-version" id="settings-version">v2.1.0</span>
+                        <button class="btn-text danger" onclick="quitApp()">Salir del agente</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ Preview Modal ═══ -->
+        <div id="preview-modal" class="modal hidden">
+            <div class="modal-bg" onclick="closePreview()"></div>
+            <div class="modal-panel">
+                <div class="modal-top">
+                    <h3>Vista previa — <span id="preview-title"></span></h3>
+                    <button class="btn-icon sm" onclick="closePreview()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <pre class="preview-text" id="preview-text"></pre>
+                    <button class="btn btn-red mt-10" id="preview-reprint-btn" onclick="reprintFromPreview()">
+                        <span class="btn-label">Reimprimir este ticket</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="wails.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

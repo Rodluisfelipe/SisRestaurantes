@@ -3,11 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 	"unsafe"
 
 	winprinter "github.com/alexbrainman/printer"
@@ -96,29 +93,20 @@ func stripESCPOS(data []byte) string {
 	return string(result)
 }
 
-// saveToFile saves ticket as readable text file
-func saveToFile(data []byte, docType string) error {
-	exe, _ := os.Executable()
-	dir := filepath.Dir(exe)
-	ticketsDir := filepath.Join(dir, "tickets")
-	os.MkdirAll(ticketsDir, 0755)
-
-	timestamp := time.Now().Format("2006-01-02_15-04-05")
-	filename := filepath.Join(ticketsDir, fmt.Sprintf("%s_%s.txt", docType, timestamp))
-
-	text := stripESCPOS(data)
-	err := os.WriteFile(filename, []byte(text), 0644)
-	if err != nil {
-		return err
-	}
-	log.Printf("[Print] Saved to file: %s", filename)
-	return nil
+// saveToFile saves ticket as a PDF that mimics thermal printer output
+func saveToFile(data []byte, docType string, paperWidthMM int) error {
+	_, err := saveTicketPDF(data, docType, paperWidthMM)
+	return err
 }
 
-func PrintRaw(printerName string, data []byte) error {
-	// Test mode: save to file instead of printing
+func PrintRaw(printerName string, data []byte, paperWidthMM ...int) error {
+	// Test mode: save PDF to file instead of printing
 	if isTestPrinter(printerName) {
-		return saveToFile(data, "ticket")
+		pw := 80
+		if len(paperWidthMM) > 0 && paperWidthMM[0] > 0 {
+			pw = paperWidthMM[0]
+		}
+		return saveToFile(data, "ticket", pw)
 	}
 
 	p, err := winprinter.Open(printerName)
@@ -199,4 +187,83 @@ func ResolvePrinter(cfg *Config) (string, error) {
 	}
 
 	return "", fmt.Errorf("no printer configured and no default printer found")
+}
+
+// Printer status constants
+const (
+	printerStatusPaused    = 0x00000001
+	printerStatusError     = 0x00000002
+	printerStatusPaperJam  = 0x00000008
+	printerStatusPaperOut  = 0x00000010
+	printerStatusOffline   = 0x00000080
+)
+
+// GetPrinterStatus returns the status of a named printer via winspool.drv
+func GetPrinterStatus(printerName string) map[string]interface{} {
+	if isTestPrinter(printerName) {
+		return map[string]interface{}{
+			"status": "ready",
+			"label":  "Archivo (prueba)",
+			"online": true,
+		}
+	}
+
+	winspool := syscall.NewLazyDLL("winspool.drv")
+	openPrinter := winspool.NewProc("OpenPrinterW")
+	closePrinter := winspool.NewProc("ClosePrinter")
+	getPrinter := winspool.NewProc("GetPrinterW")
+
+	nameW, _ := syscall.UTF16PtrFromString(printerName)
+	var handle uintptr
+	ret, _, _ := openPrinter.Call(uintptr(unsafe.Pointer(nameW)), uintptr(unsafe.Pointer(&handle)), 0)
+	if ret == 0 {
+		return map[string]interface{}{
+			"status": "error",
+			"label":  "No disponible",
+			"online": false,
+		}
+	}
+	defer closePrinter.Call(handle)
+
+	// PRINTER_INFO_6 = { DWORD dwStatus; } — the simplest level
+	var needed uint32
+	getPrinter.Call(handle, 6, 0, 0, uintptr(unsafe.Pointer(&needed)))
+	if needed == 0 {
+		needed = 4
+	}
+
+	buf := make([]byte, needed)
+	ret, _, _ = getPrinter.Call(handle, 6,
+		uintptr(unsafe.Pointer(&buf[0])), uintptr(needed),
+		uintptr(unsafe.Pointer(&needed)))
+	if ret == 0 {
+		return map[string]interface{}{
+			"status": "unknown",
+			"label":  "Desconocido",
+			"online": true,
+		}
+	}
+
+	status := *(*uint32)(unsafe.Pointer(&buf[0]))
+
+	if status == 0 {
+		return map[string]interface{}{"status": "ready", "label": "Lista", "online": true}
+	}
+	if status&printerStatusOffline != 0 {
+		return map[string]interface{}{"status": "offline", "label": "Fuera de linea", "online": false}
+	}
+	if status&printerStatusPaperOut != 0 {
+		return map[string]interface{}{"status": "paper_out", "label": "Sin papel", "online": false}
+	}
+	if status&printerStatusPaperJam != 0 {
+		return map[string]interface{}{"status": "paper_jam", "label": "Papel atascado", "online": false}
+	}
+	if status&printerStatusError != 0 {
+		return map[string]interface{}{"status": "error", "label": "Error", "online": false}
+	}
+	if status&printerStatusPaused != 0 {
+		return map[string]interface{}{"status": "paused", "label": "Pausada", "online": true}
+	}
+
+	return map[string]interface{}{"status": "ready", "label": "Lista", "online": true}
 }

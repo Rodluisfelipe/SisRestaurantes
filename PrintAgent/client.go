@@ -20,6 +20,7 @@ type BusinessInfo struct {
 	Phone        string `json:"phone"`
 	NIT          string `json:"nit"`
 	Slug         string `json:"slug"`
+	PrintMode    string `json:"printMode"` // "comanda", "recibo", or "both"
 }
 
 // SSEClient manages the connection to the backend SSE stream

@@ -8,6 +8,7 @@ import AI from './AdminIcons';
 export default function PrintAgentConfig() {
   const { businessConfig, businessId } = useBusinessConfig();
   const [printKey, setPrintKey] = useState('');
+  const [printMode, setPrintMode] = useState('both');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
@@ -18,6 +19,14 @@ export default function PrintAgentConfig() {
       setPrintKey(businessConfig.printAgentKey);
     }
   }, [businessConfig]);
+
+  // Load current print mode
+  useEffect(() => {
+    if (!businessConfig?.printAgentKey) return;
+    api.get('/print-agent/mode')
+      .then(res => setPrintMode(res.data.mode || 'both'))
+      .catch(() => {});
+  }, [businessConfig?.printAgentKey]);
 
   const handleGenerateKey = async () => {
     setLoading(true);
@@ -164,13 +173,55 @@ export default function PrintAgentConfig() {
 
             {/* Download button */}
             <a
-              href={`${import.meta.env.VITE_API_URL}/downloads/menuby-print.exe`}
+              href={`${import.meta.env.VITE_API_URL}/uploads/print-agent/menuby-print.exe`}
               download="menuby-print.exe"
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-500 transition-colors"
             >
               <FaDownload className="text-xs" />
               Descargar Print Agent
             </a>
+
+            {/* Print mode selector */}
+            <div className="bg-slate-50 rounded-lg p-3 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-bold text-slate-700">¿Qué imprimir automáticamente?</p>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { value: 'comanda', label: 'Comanda', desc: 'Solo cocina' },
+                  { value: 'recibo', label: 'Recibo', desc: 'Solo cliente' },
+                  { value: 'both', label: 'Ambos', desc: 'Comanda + Recibo' },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={async () => {
+                      setPrintMode(opt.value);
+                      try {
+                        await api.put('/print-agent/mode', { mode: opt.value });
+                        setSuccess(`Modo cambiado a: ${opt.label}`);
+                        setTimeout(() => setSuccess(''), 3000);
+                      } catch (e) {
+                        setError('Error guardando modo');
+                        setTimeout(() => setError(null), 3000);
+                      }
+                    }}
+                    className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-lg text-center transition-all border ${
+                      printMode === opt.value
+                        ? 'bg-white border-slate-800 shadow-sm'
+                        : 'bg-transparent border-transparent hover:bg-white/60'
+                    }`}
+                  >
+                    <span className={`text-xs font-bold ${printMode === opt.value ? 'text-slate-800' : 'text-slate-500'}`}>
+                      {opt.label}
+                    </span>
+                    <span className="text-[10px] text-slate-400">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 leading-relaxed">
+                <strong>Comanda:</strong> ticket de cocina sin precios. <strong>Recibo:</strong> ticket del cliente con precios y QR.
+              </p>
+            </div>
 
             {/* Actions */}
             <div className="flex gap-2">

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "menuby-print",
+  "outputfilename": "menuby-print",
+  "frontend:install": "",
+  "frontend:build": "",
+  "frontend:dev:watcher": "",
+  "frontend:dev:serverUrl": "",
+  "author": {
+    "name": "MenuBy",
+    "email": "soporte@menuby.tech"
+  },
+  "info": {
+    "companyName": "MenuBy",
+    "productName": "MenuBy Print Agent",
+    "productVersion": "2.1.0",
+    "copyright": "Copyright (c) 2026 MenuBy",
+    "comments": "Agente de impresion para restaurantes MenuBy"
+  }
+}

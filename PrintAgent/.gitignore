@@ -2,3 +2,8 @@ menuby-print.exe
 menuby-print.log
 config.json
 go.sum
+*.pfx
+*.syso
+build/bin/
+*.bak
+*.exe
