@@ -228,10 +228,11 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
           productId: item.productId,
           name: item.name,
           price: item.price,
+          totalPrice: item.totalPrice || item.price,
           quantity: item.quantity,
           selectedToppings: item.selectedToppings || [],
         })),
-        totalAmount: grandTotal,
+        totalAmount: cartTotal,
         ...(orderType === 'delivery' && selectedZone ? {
           deliveryFee,
           deliveryZoneName: selectedZone.name,
@@ -456,7 +457,11 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
                               <div>
                                 <p className="text-[13px] font-medium text-slate-800">{zone.name}</p>
                                 {zone.estimatedTime && (
-                                  <p className="text-[10px] text-slate-400">{zone.estimatedTime}</p>
+                                  <p className="text-[10px] text-slate-400">
+                                    {typeof zone.estimatedTime === 'object'
+                                      ? `${zone.estimatedTime.min}-${zone.estimatedTime.max} min`
+                                      : zone.estimatedTime}
+                                  </p>
                                 )}
                               </div>
                               <span className={`text-[13px] font-bold ${selectedZone?.id === zone.id ? 'text-emerald-600' : 'text-slate-700'}`}>

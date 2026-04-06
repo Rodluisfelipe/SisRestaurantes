@@ -16,6 +16,8 @@ export function GetDefaultPrinterName():Promise<string>;
 
 export function GetHistory():Promise<Array<{[key: string]: any}>>;
 
+export function GetPrintMode():Promise<string>;
+
 export function GetPrinterStatusInfo():Promise<{[key: string]: any}>;
 
 export function GetPrinters():Promise<Array<string>>;
