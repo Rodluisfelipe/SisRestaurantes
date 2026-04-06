@@ -22,11 +22,11 @@ export default function PrintAgentConfig() {
 
   // Load current print mode
   useEffect(() => {
-    if (!businessConfig?.printAgentKey) return;
-    api.get('/print-agent/mode')
+    if (!businessConfig?.printAgentKey || !businessId) return;
+    api.get(`/print-agent/mode?businessId=${businessId}`)
       .then(res => setPrintMode(res.data.mode || 'both'))
       .catch(() => {});
-  }, [businessConfig?.printAgentKey]);
+  }, [businessConfig?.printAgentKey, businessId]);
 
   const handleGenerateKey = async () => {
     setLoading(true);
@@ -197,7 +197,7 @@ export default function PrintAgentConfig() {
                     onClick={async () => {
                       setPrintMode(opt.value);
                       try {
-                        await api.put('/print-agent/mode', { mode: opt.value });
+                        await api.put('/print-agent/mode', { mode: opt.value, businessId });
                         setSuccess(`Modo cambiado a: ${opt.label}`);
                         setTimeout(() => setSuccess(''), 3000);
                       } catch (e) {
