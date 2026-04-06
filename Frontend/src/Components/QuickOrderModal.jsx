@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaSearch, FaPlus, FaMinus, FaUser, FaPhone, FaShoppingCart, FaChair, FaHome, FaTruck, FaMoneyBillWave, FaTrash, FaCheck } from 'react-icons/fa';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import ProductToppingsSelector from './ProductToppingsSelector';
 
 const ORDER_TYPES = [
   { value: 'inSite', label: 'En sitio', Icon: FaChair, color: 'bg-blue-50 text-blue-600 border-blue-200' },
@@ -47,6 +48,15 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [cart, setCart] = useState([]);
 
+  // Toppings
+  const [showToppings, setShowToppings] = useState(null);
+
+  // Delivery zones
+  const [deliveryZones, setDeliveryZones] = useState([]);
+  const [selectedZone, setSelectedZone] = useState(null);
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [loadingZones, setLoadingZones] = useState(false);
+
   // UI
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -67,6 +77,9 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
       setPaymentMethod('cash');
       setCustomerNotes('');
       setCart([]);
+      setShowToppings(null);
+      setSelectedZone(null);
+      setDeliveryFee(0);
       setProductSearch('');
       setSelectedCategory('all');
       setError('');
@@ -84,6 +97,16 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
       setProducts(pRes.data.filter(p => p.active !== false));
       setCategories(cRes.data || []);
     }).catch(() => {}).finally(() => setLoadingProducts(false));
+  }, [isOpen, businessId]);
+
+  // Load delivery zones
+  useEffect(() => {
+    if (!isOpen || !businessId) return;
+    setLoadingZones(true);
+    api.get('/delivery-zones/public', { params: { businessId } })
+      .then(res => setDeliveryZones(res.data?.zones || []))
+      .catch(() => setDeliveryZones([]))
+      .finally(() => setLoadingZones(false));
   }, [isOpen, businessId]);
 
   // Debounced customer search
@@ -129,12 +152,36 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
 
   const addToCart = (product) => {
     setCart(prev => {
-      const existing = prev.find(c => c.productId === product._id);
+      const toppingsKey = JSON.stringify(product.selectedToppings || []);
+      const uniqueId = `${product._id}-${toppingsKey}`;
+      const existing = prev.find(c => c.uniqueId === uniqueId);
       if (existing) {
-        return prev.map(c => c.productId === product._id ? { ...c, quantity: c.quantity + 1 } : c);
+        return prev.map(c => c.uniqueId === uniqueId ? { ...c, quantity: c.quantity + (product.quantity || 1) } : c);
       }
-      return [...prev, { productId: product._id, name: product.name, price: product.price, quantity: 1, selectedToppings: [] }];
+      const itemPrice = product.totalPrice || product.price || 0;
+      return [...prev, {
+        productId: product._id,
+        uniqueId,
+        name: product.name,
+        price: product.price,
+        totalPrice: itemPrice,
+        quantity: product.quantity || 1,
+        selectedToppings: product.selectedToppings || [],
+      }];
     });
+  };
+
+  const handleProductClick = (product) => {
+    if (product.toppingGroups && product.toppingGroups.length > 0) {
+      setShowToppings(product);
+    } else {
+      addToCart(product);
+    }
+  };
+
+  const handleToppingsComplete = (productWithToppings) => {
+    addToCart(productWithToppings);
+    setShowToppings(null);
   };
 
   const updateCartQty = (index, delta) => {
@@ -150,7 +197,14 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
     setCart(prev => prev.filter((_, i) => i !== index));
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cartTotal = cart.reduce((sum, item) => sum + (item.totalPrice || item.price) * item.quantity, 0);
+
+  const handleSelectZone = (zone) => {
+    setSelectedZone(zone);
+    setDeliveryFee(zone.pricing?.displayPrice || 0);
+  };
+
+  const grandTotal = cartTotal + (orderType === 'delivery' ? deliveryFee : 0);
 
   const canProceedToProducts = customerName.trim().length > 0;
   const canSubmit = cart.length > 0 && customerName.trim().length > 0;
@@ -177,7 +231,12 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
           quantity: item.quantity,
           selectedToppings: item.selectedToppings || [],
         })),
-        totalAmount: cartTotal,
+        totalAmount: grandTotal,
+        ...(orderType === 'delivery' && selectedZone ? {
+          deliveryFee,
+          deliveryZoneName: selectedZone.name,
+          deliveryCalculated: true,
+        } : {}),
       };
       const res = await api.post('/orders', orderData);
 
@@ -334,7 +393,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
                   {ORDER_TYPES.map(t => (
                     <button
                       key={t.value}
-                      onClick={() => setOrderType(t.value)}
+                      onClick={() => { setOrderType(t.value); if (t.value !== 'delivery') { setSelectedZone(null); setDeliveryFee(0); } }}
                       className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg text-center transition-all border ${
                         orderType === t.value ? t.color + ' shadow-sm' : 'bg-transparent border-transparent hover:bg-slate-50'
                       }`}
@@ -360,15 +419,55 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
                 </div>
               )}
               {orderType === 'delivery' && (
-                <div>
-                  <label className="text-[10px] text-slate-400 mb-0.5 block">Dirección</label>
-                  <input
-                    type="text"
-                    value={address}
-                    onChange={(e) => setAddress(e.target.value)}
-                    placeholder="Dirección de entrega"
-                    className="w-full px-3 py-2 bg-slate-100 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] text-slate-400 mb-0.5 block">Dirección</label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Dirección de entrega"
+                      className="w-full px-3 py-2 bg-slate-100 rounded-lg text-sm text-slate-800 outline-none focus:ring-2 focus:ring-slate-300"
+                    />
+                  </div>
+                  {/* Delivery zones */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">Zona de entrega</label>
+                    {loadingZones ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                        <span className="ml-2 text-[11px] text-slate-400">Cargando zonas...</span>
+                      </div>
+                    ) : deliveryZones.length === 0 ? (
+                      <p className="text-[11px] text-slate-400 py-2">No hay zonas configuradas</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {deliveryZones.map(zone => (
+                          <button
+                            key={zone.id}
+                            onClick={() => handleSelectZone(zone)}
+                            className={`w-full text-left px-3 py-2.5 rounded-lg border-2 transition-all ${
+                              selectedZone?.id === zone.id
+                                ? 'border-emerald-500 bg-emerald-50'
+                                : 'border-slate-200 bg-white hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-[13px] font-medium text-slate-800">{zone.name}</p>
+                                {zone.estimatedTime && (
+                                  <p className="text-[10px] text-slate-400">{zone.estimatedTime}</p>
+                                )}
+                              </div>
+                              <span className={`text-[13px] font-bold ${selectedZone?.id === zone.id ? 'text-emerald-600' : 'text-slate-700'}`}>
+                                ${zone.pricing?.displayPrice?.toLocaleString() || 0}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -417,7 +516,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
 
           {/* Step 2: Products */}
           {step === 'products' && (
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col overflow-hidden relative">
               {/* Search + categories */}
               <div className="px-4 pt-3 pb-2 space-y-2 shrink-0">
                 <div className="relative">
@@ -450,14 +549,19 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
                 ) : (
                   <div className="space-y-0.5">
                     {filteredProducts.map(product => {
-                      const inCart = cart.find(c => c.productId === product._id);
+                      const inCart = cart.find(c => c.productId === product._id && (!c.selectedToppings || c.selectedToppings.length === 0));
+                      const totalInCart = cart.filter(c => c.productId === product._id).reduce((sum, c) => sum + c.quantity, 0);
+                      const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
                       return (
                         <div key={product._id} className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors">
                           <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-medium text-slate-800 truncate">{product.name}</p>
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-[13px] font-medium text-slate-800 truncate">{product.name}</p>
+                              {hasToppings && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Extras</span>}
+                            </div>
                             <p className="text-[11px] text-slate-500">${product.price?.toLocaleString()}</p>
                           </div>
-                          {inCart ? (
+                          {inCart && !hasToppings ? (
                             <div className="flex items-center gap-1.5">
                               <button onClick={() => updateCartQty(cart.indexOf(inCart), -1)} className="w-7 h-7 bg-slate-200 hover:bg-slate-300 rounded-md flex items-center justify-center">
                                 <FaMinus className="text-[8px] text-slate-600" />
@@ -468,9 +572,14 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
                               </button>
                             </div>
                           ) : (
-                            <button onClick={() => addToCart(product)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-semibold rounded-lg transition-colors">
-                              Agregar
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              {totalInCart > 0 && (
+                                <span className="text-[10px] bg-slate-800 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold">{totalInCart}</span>
+                              )}
+                              <button onClick={() => handleProductClick(product)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-[11px] font-semibold rounded-lg transition-colors">
+                                {hasToppings ? 'Elegir' : 'Agregar'}
+                              </button>
+                            </div>
                           )}
                         </div>
                       );
@@ -493,9 +602,21 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
                   className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   <FaShoppingCart className="text-xs" />
-                  Revisar ({cart.length}) · ${cartTotal.toLocaleString()}
+                  Revisar ({cart.length}) · ${grandTotal.toLocaleString()}
                 </button>
               </div>
+
+              {/* Topping selector overlay */}
+              {showToppings && (
+                <div className="absolute inset-0 z-10 bg-white rounded-t-2xl lg:rounded-xl overflow-y-auto">
+                  <ProductToppingsSelector
+                    product={showToppings}
+                    onAddToCart={handleToppingsComplete}
+                    onClose={() => setShowToppings(null)}
+                    compact
+                  />
+                </div>
+              )}
             </div>
           )}
 
@@ -513,6 +634,7 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
                   <span className="capitalize">{ORDER_TYPES.find(t => t.value === orderType)?.label}</span>
                   {tableNumber && <span>· Mesa {tableNumber}</span>}
                   {address && <span>· {address}</span>}
+                  {selectedZone && <span>· Zona: {selectedZone.name}</span>}
                   <span>· {PAYMENT_METHODS.find(p => p.value === paymentMethod)?.label}</span>
                 </div>
                 {customerNotes && <p className="text-[11px] text-amber-600">Nota: {customerNotes}</p>}
@@ -523,28 +645,55 @@ function QuickOrderModal({ isOpen, onClose, onOrderCreated }) {
                 <h4 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Productos ({cart.length})</h4>
                 <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
                   {cart.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between px-3 py-2.5 bg-white">
-                      <div className="flex-1 min-w-0">
+                    <div key={i} className="px-3 py-2.5 bg-white">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
+                            <span className="text-[11px] text-slate-400">x{item.quantity}</span>
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
-                          <span className="text-[11px] text-slate-400">x{item.quantity}</span>
+                          <span className="text-[13px] font-semibold text-slate-800">${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
+                          <button onClick={() => removeFromCart(i)} className="text-red-400 hover:text-red-600">
+                            <FaTrash className="text-[10px]" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[13px] font-semibold text-slate-800">${(item.price * item.quantity).toLocaleString()}</span>
-                        <button onClick={() => removeFromCart(i)} className="text-red-400 hover:text-red-600">
-                          <FaTrash className="text-[10px]" />
-                        </button>
-                      </div>
+                      {item.selectedToppings && item.selectedToppings.length > 0 && (
+                        <div className="mt-1 pl-2 border-l-2 border-amber-200">
+                          {item.selectedToppings.map((t, ti) => (
+                            <p key={ti} className="text-[10px] text-amber-600">
+                              + {t.groupName}: {t.optionName}
+                              {t.subGroups?.map((sg, si) => (
+                                <span key={si}> / {sg.optionName}</span>
+                              ))}
+                              {(t.price > 0 || t.basePrice > 0) && ` ($${((t.price || 0) + (t.basePrice || 0)).toLocaleString()})`}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Total */}
+              {orderType === 'delivery' && deliveryFee > 0 && (
+                <div className="flex justify-between items-center px-4 py-2 bg-slate-50 rounded-lg text-sm">
+                  <span className="text-slate-500">Subtotal</span>
+                  <span className="font-medium text-slate-700">${cartTotal.toLocaleString()}</span>
+                </div>
+              )}
+              {orderType === 'delivery' && deliveryFee > 0 && (
+                <div className="flex justify-between items-center px-4 py-2 bg-slate-50 rounded-lg text-sm">
+                  <span className="text-slate-500">Domicilio ({selectedZone?.name})</span>
+                  <span className="font-medium text-slate-700">${deliveryFee.toLocaleString()}</span>
+                </div>
+              )}
               <div className="bg-slate-800 text-white rounded-lg px-4 py-3 flex justify-between items-center">
                 <span className="text-sm font-bold">Total</span>
-                <span className="text-lg font-bold">${cartTotal.toLocaleString()}</span>
+                <span className="text-lg font-bold">${grandTotal.toLocaleString()}</span>
               </div>
 
               <p className="text-[11px] text-slate-400 text-center">
