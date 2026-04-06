@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -395,10 +396,13 @@ func (a *App) startSSE() {
 	}
 	a.sseClient.onOrder = func(order map[string]interface{}) {
 		mode := a.getPrintMode()
-		if mode == "comanda" || mode == "both" {
+		if mode == "both" {
+			// Print both in a single continuous strip — no cut on comanda, cut only on recibo
+			a.handlePrintWithCut(order, "comanda", false)
+			a.handlePrintWithCut(order, "recibo", a.cfg.AutoCut)
+		} else if mode == "comanda" {
 			a.handlePrint(order, "comanda")
-		}
-		if mode == "recibo" || mode == "both" {
+		} else if mode == "recibo" {
 			a.handlePrint(order, "recibo")
 		}
 	}
@@ -410,6 +414,10 @@ func (a *App) startSSE() {
 }
 
 func (a *App) handlePrint(order map[string]interface{}, docType string) {
+	a.handlePrintWithCut(order, docType, a.cfg.AutoCut)
+}
+
+func (a *App) handlePrintWithCut(order map[string]interface{}, docType string, autoCut bool) {
 	business := a.sseClient.GetBusiness()
 	if business == nil {
 		log.Println("[Print] No business info, skipping")
@@ -418,9 +426,9 @@ func (a *App) handlePrint(order map[string]interface{}, docType string) {
 
 	var data []byte
 	if docType == "comanda" {
-		data = GenerateComanda(order, business, a.cfg.PaperWidth, a.cfg.AutoCut)
+		data = GenerateComanda(order, business, a.cfg.PaperWidth, autoCut)
 	} else {
-		data = GenerateRecibo(order, business, a.cfg.PaperWidth, a.cfg.AutoCut)
+		data = GenerateRecibo(order, business, a.cfg.PaperWidth, autoCut)
 	}
 
 	orderNum := getString(order, "orderNumber")
@@ -461,4 +469,61 @@ func (a *App) handlePrint(order map[string]interface{}, docType string) {
 		"count":       count,
 		"timestamp":   time.Now().Format("15:04:05"),
 	})
+}
+
+// validateKey checks the key against the server and returns the business name
+func validateKey(apiURL, key string) (string, error) {
+	url := fmt.Sprintf("%s/api/print-agent/stream?key=%s", apiURL, key)
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Cache-Control", "no-cache")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("no se pudo conectar al servidor")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 401 {
+		return "", fmt.Errorf("clave no válida o revocada")
+	}
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("error del servidor (%d)", resp.StatusCode)
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	deadline := time.After(12 * time.Second)
+	dataCh := make(chan string, 1)
+
+	go func() {
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "data: ") {
+				dataCh <- strings.TrimPrefix(line, "data: ")
+				return
+			}
+		}
+		dataCh <- ""
+	}()
+
+	select {
+	case jsonData := <-dataCh:
+		if jsonData == "" {
+			return "Negocio", nil
+		}
+		var info struct {
+			BusinessName string `json:"businessName"`
+		}
+		if err := json.Unmarshal([]byte(jsonData), &info); err == nil && info.BusinessName != "" {
+			return info.BusinessName, nil
+		}
+		return "Negocio", nil
+	case <-deadline:
+		return "", fmt.Errorf("timeout esperando respuesta del servidor")
+	}
 }
