@@ -9,7 +9,7 @@ import {
   FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaClock, FaTimes,
   FaChair, FaHome, FaTag, FaExclamationTriangle, FaWifi,
   FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle,
-  FaCreditCard, FaPlus
+  FaCreditCard, FaPlus, FaCommentDots
 } from 'react-icons/fa';
 
 const PAYMENT_LABELS = {
@@ -28,11 +28,10 @@ import useOrdersDashboard from '../hooks/useOrdersDashboard';
 import api from '../services/api';
 
 // Inline admin chat for order details
-const AdminOrderChat = ({ orderId, messages: initialMessages }) => {
+const AdminOrderChat = ({ orderId, messages: initialMessages, isOpen, onClose }) => {
   const [messages, setMessages] = useState(initialMessages || []);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  const [isOpen, setIsOpen] = useState(true);
   const scrollRef = useRef(null);
 
   // Sync when orderDetails changes
@@ -69,64 +68,70 @@ const AdminOrderChat = ({ orderId, messages: initialMessages }) => {
   };
 
   const formatTime = (ts) => new Date(ts).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
-  const unreadCount = messages.filter(m => m.sender === 'customer').length;
+
+  if (!isOpen) return null;
 
   return (
-    <div>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between bg-slate-50 hover:bg-slate-100 rounded-lg px-3 py-2 transition-colors"
-      >
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+      transition={{ duration: 0.15 }}
+      className="absolute bottom-0 right-0 left-0 lg:left-auto lg:right-4 lg:bottom-4 lg:w-80 z-30 bg-white rounded-t-2xl lg:rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden"
+      style={{ maxHeight: '70vh' }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Chat header */}
+      <div className="flex items-center justify-between px-3.5 py-2.5 bg-blue-500 text-white shrink-0">
         <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
-          <span className="text-[12px] font-semibold text-slate-600">Chat con cliente</span>
-          {!isOpen && unreadCount > 0 && (
-            <span className="w-4 h-4 rounded-full bg-blue-500 text-[9px] font-bold text-white flex items-center justify-center">{unreadCount}</span>
-          )}
+          <FaCommentDots className="text-xs" />
+          <span className="text-[13px] font-bold">Chat con cliente</span>
         </div>
-        <svg className={`w-3 h-3 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
-      </button>
+        <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors">
+          <FaTimes className="text-[10px]" />
+        </button>
+      </div>
 
-      {isOpen && (
-        <div className="mt-1 border border-slate-200 rounded-lg overflow-hidden bg-white">
-          <div ref={scrollRef} className="h-52 overflow-y-auto p-2 space-y-1.5 bg-slate-50/50">
-            {messages.length === 0 && (
-              <p className="text-[11px] text-slate-400 text-center py-6">Sin mensajes</p>
-            )}
-            {messages.map((m, i) => (
-              <div key={m._id || i} className={`flex ${m.sender === 'business' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[80%] px-2.5 py-1.5 rounded-lg text-[12px] ${
-                  m.sender === 'business'
-                    ? 'bg-slate-800 text-white rounded-br-sm'
-                    : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm'
-                }`}>
-                  <p className="break-words">{m.text}</p>
-                  <p className={`text-[9px] mt-0.5 ${m.sender === 'business' ? 'text-slate-400' : 'text-slate-400'}`}>{formatTime(m.timestamp)}</p>
-                </div>
-              </div>
-            ))}
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-50/50" style={{ minHeight: '200px', maxHeight: '50vh' }}>
+        {messages.length === 0 && (
+          <p className="text-[11px] text-slate-400 text-center py-8">Sin mensajes aún</p>
+        )}
+        {messages.map((m, i) => (
+          <div key={m._id || i} className={`flex ${m.sender === 'business' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] px-3 py-2 text-[12px] leading-relaxed ${
+              m.sender === 'business'
+                ? 'bg-blue-500 text-white rounded-2xl rounded-br-md'
+                : 'bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-bl-md shadow-sm'
+            }`}>
+              <p className="break-words">{m.text}</p>
+              <p className={`text-[9px] mt-0.5 ${m.sender === 'business' ? 'text-blue-200' : 'text-slate-400'}`}>{formatTime(m.timestamp)}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 p-1.5 border-t border-slate-100">
-            <input
-              type="text"
-              value={text}
-              onChange={(e) => setText(e.target.value.slice(0, 500))}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-              placeholder="Responder..."
-              className="flex-1 px-2.5 py-2 rounded-lg bg-slate-50 border border-slate-200 text-[12px] focus:outline-none focus:ring-1 focus:ring-slate-300"
-              maxLength={500}
-            />
-            <button
-              onClick={handleSend}
-              disabled={!text.trim() || sending}
-              className="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center text-xs font-bold transition-all active:scale-90 disabled:opacity-40"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+        ))}
+      </div>
+
+      {/* Input */}
+      <div className="flex items-center gap-2 p-2.5 border-t border-slate-100 bg-white shrink-0">
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value.slice(0, 500))}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+          placeholder="Escribe un mensaje..."
+          className="flex-1 px-3 py-2 rounded-full bg-slate-100 border-0 text-[12px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+          maxLength={500}
+          autoFocus
+        />
+        <button
+          onClick={handleSend}
+          disabled={!text.trim() || sending}
+          className="w-9 h-9 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center transition-all active:scale-90 disabled:opacity-40 shrink-0"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+        </button>
+      </div>
+    </motion.div>
   );
 };
 
@@ -150,6 +155,7 @@ function ModernOrdersDashboard() {
   const [assignDomiOrder, setAssignDomiOrder] = useState(null);
   const [addItemsOrder, setAddItemsOrder] = useState(null);
   const [showQuickOrder, setShowQuickOrder] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCompletedOrders, setShowCompletedOrders] = useState(false);
@@ -530,6 +536,7 @@ function ModernOrdersDashboard() {
                     onConfirmPayment={confirmPayment}
                     onRejectPayment={rejectPayment}
                     onAssignDelivery={setAssignDomiOrder}
+                    onOpenChat={(order) => { showOrderDetails(order); setTimeout(() => setShowChatModal(true), 100); }}
                   />
                 );
               })}
@@ -549,6 +556,7 @@ function ModernOrdersDashboard() {
             onClick={() => {
               setSelectedOrder(null);
               setOrderDetails(null);
+              setShowChatModal(false);
             }}
           >
             <motion.div
@@ -564,56 +572,36 @@ function ModernOrdersDashboard() {
                 <div className="w-9 h-1 rounded-full bg-slate-300" />
               </div>
               {/* Modal Header */}
-              <div className="sticky top-0 bg-white border-b border-slate-200 px-5 py-3 rounded-t-xl">
+              <div className="sticky top-0 bg-white border-b border-slate-200 px-4 py-3 rounded-t-xl z-10 space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     {(() => { const ModalTypeIcon = getOrderTypeInfo(orderDetails.orderType).Icon; return (
-                      <div className={`w-9 h-9 ${getOrderTypeInfo(orderDetails.orderType).color} rounded-lg flex items-center justify-center`}>
-                        <ModalTypeIcon className="text-white text-sm" />
+                      <div className={`w-8 h-8 ${getOrderTypeInfo(orderDetails.orderType).color} rounded-lg flex items-center justify-center`}>
+                        <ModalTypeIcon className="text-white text-xs" />
                       </div>
                     ); })()}
                     <div>
                       <h2 className="text-base font-bold text-slate-800">Pedido #{orderDetails.orderNumber}</h2>
-                      <p className="text-xs text-slate-500">{getOrderTypeInfo(orderDetails.orderType).label} · {orderDetails._id?.slice(-6)}</p>
+                      <p className="text-[11px] text-slate-400">{getOrderTypeInfo(orderDetails.orderType).label} · {orderDetails._id?.slice(-6)}</p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button
-                        onClick={async () => {
-                          try {
-                            await api.post(`/print-agent/print-comanda/${orderDetails._id}`);
-                          } catch {
-                            handlePrintOrder(orderDetails);
-                          }
-                        }}
-                        className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
-                        title="Imprimir comanda"
-                      >
-                        <FaPrint className="text-slate-500 text-xs" />
-                      </button>
-                    {orderDetails.status !== 'pending' && orderDetails.status !== 'pending_payment' && (
+                  <div className="flex items-center gap-1.5">
+                    {orderDetails.orderChannel === 'inapp' && !['completed', 'delivered', 'cancelled'].includes(orderDetails.status) && (
                       <button
-                        onClick={async () => {
-                          try {
-                            await api.post(`/print-agent/print-receipt/${orderDetails._id}`);
-                          } catch (e) {
-                            console.log('Print agent not connected, using browser print');
-                            handlePrintOrder(orderDetails);
-                          }
-                        }}
-                        className="w-11 h-11 bg-emerald-50 hover:bg-emerald-100 rounded-lg flex items-center justify-center transition-colors"
-                        title="Imprimir recibo (para cliente)"
+                        onClick={() => setShowChatModal(prev => !prev)}
+                        className="relative flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 px-2.5 py-2 rounded-lg text-[11px] font-semibold border border-blue-200/60 transition-colors"
                       >
-                        <FaMoneyBillWave className="text-emerald-600 text-xs" />
+                        <FaCommentDots className="text-[10px]" /> Chat
+                        {(orderDetails.messages || []).filter(m => m.sender === 'customer').length > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                            {(orderDetails.messages || []).filter(m => m.sender === 'customer').length}
+                          </span>
+                        )}
                       </button>
                     )}
                     <button
-                      onClick={() => {
-                        setSelectedOrder(null);
-                        setOrderDetails(null);
-                      }}
-                      className="w-11 h-11 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
+                      onClick={() => { setSelectedOrder(null); setOrderDetails(null); setShowChatModal(false); }}
+                      className="w-9 h-9 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center transition-colors"
                     >
                       <FaTimes className="text-slate-400 text-xs" />
                     </button>
@@ -622,108 +610,153 @@ function ModernOrdersDashboard() {
               </div>
 
               {/* Modal Body */}
-              <div className="p-5 space-y-5">
-                {/* Order Info */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-2">
-                      <FaUser className="text-xs text-slate-400" />
-                      <span className="text-[13px] text-slate-500">Cliente:</span>
-                      <span className="text-[13px] font-medium text-slate-800">{orderDetails.customerName}</span>
+              <div className="p-4 space-y-3">
+                {/* ── Info Strip ── */}
+                <div className="bg-slate-50 rounded-xl p-3 space-y-2">
+                  {/* Row 1: Customer + Phone */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FaUser className="text-[10px] text-slate-400 shrink-0" />
+                      <span className="text-[13px] font-semibold text-slate-800 truncate">{orderDetails.customerName}</span>
                     </div>
-                    
                     {orderDetails.phone && (
-                      <div className="flex items-center gap-2">
-                        <FaPhone className="text-xs text-slate-400" />
-                        <span className="text-[13px] text-slate-500">Teléfono:</span>
-                        <span className="text-[13px] font-medium text-slate-800">{orderDetails.phone}</span>
-                      </div>
-                    )}
-
-                    {orderDetails.tableNumber && (
-                      <div className="flex items-center gap-2">
-                        <FaChair className="text-xs text-slate-400" />
-                        <span className="text-[13px] text-slate-500">{businessConfig?.businessType === 'hotel' ? 'Hab.:' : 'Mesa:'}</span>
-                        <span className="text-[13px] font-medium text-slate-800">{orderDetails.tableNumber}</span>
-                      </div>
-                    )}
-                    
-                    {orderDetails.orderType === 'delivery' && orderDetails.address && (
-                      <div className="flex items-start gap-2">
-                        <FaHome className="text-xs text-slate-400 mt-0.5" />
-                        <span className="text-[13px] text-slate-500">Dirección:</span>
-                        <span className="text-[13px] font-medium text-slate-800 leading-snug">{orderDetails.address}</span>
-                      </div>
-                    )}
-                    
-                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
-                      <div className="flex items-center gap-2">
-                        <FaMapMarkerAlt className="text-xs text-slate-400" />
-                        <span className="text-[13px] text-slate-500">Zona:</span>
-                        <span className="text-[13px] font-medium text-slate-800">{orderDetails.deliveryZoneName}</span>
-                      </div>
-                    )}
-                    
-                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryFee && (
-                      <div className="flex items-center gap-2">
-                        <FaTruck className="text-xs text-slate-400" />
-                        <span className="text-[13px] text-slate-500">Costo de envío:</span>
-                        <span className="text-[13px] font-medium text-slate-800">${orderDetails.deliveryFee.toLocaleString()}</span>
-                      </div>
-                    )}
-                    
-                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryNeedsConfirmation && (
-                      <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 rounded-lg border border-amber-200">
-                        <FaExclamationTriangle className="text-xs text-amber-500 shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-[13px] font-semibold text-amber-800">Envío por confirmar</p>
-                          <p className="text-[11px] text-amber-600">Fuera de zonas automáticas</p>
-                        </div>
-                      </div>
+                      <a href={`tel:${orderDetails.phone}`} className="flex items-center gap-1.5 text-[12px] text-slate-500 hover:text-blue-500 shrink-0 tabular-nums">
+                        <FaPhone className="text-[9px]" /> {orderDetails.phone}
+                      </a>
                     )}
                   </div>
-                  
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-2">
-                      <FaClock className="text-xs text-slate-400" />
-                      <span className="text-[13px] text-slate-500">Tiempo:</span>
-                      <span className="text-[13px] font-medium text-slate-800">{calculateTimeElapsed(orderDetails.createdAt)}</span>
-                    </div>
-                    
-                    {(() => { const ModalStatusIcon = getStatusInfo(orderDetails.status).Icon; return (
-                      <div className="flex items-center gap-2">
-                        <ModalStatusIcon className="text-xs text-slate-400" />
-                        <span className="text-[13px] text-slate-500">Estado:</span>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${getStatusInfo(orderDetails.status).textColor} ${getStatusInfo(orderDetails.status).bgColor}`}>
-                          {getStatusInfo(orderDetails.status).label}
-                        </span>
-                      </div>
-                    ); })()}
 
+                  {/* Row 2: Context tags */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-500">
+                    {orderDetails.tableNumber && (
+                      <span className="flex items-center gap-1">
+                        <FaChair className="text-[9px] text-slate-300" /> {businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} {orderDetails.tableNumber}
+                      </span>
+                    )}
+                    {orderDetails.orderType === 'delivery' && orderDetails.address && (
+                      <span className="flex items-center gap-1">
+                        <FaHome className="text-[9px] text-slate-300" /> {orderDetails.address}
+                      </span>
+                    )}
+                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
+                      <span className="flex items-center gap-1">
+                        <FaMapMarkerAlt className="text-[9px] text-slate-300" /> {orderDetails.deliveryZoneName}
+                      </span>
+                    )}
+                    {orderDetails.orderType === 'delivery' && orderDetails.deliveryFee > 0 && (
+                      <span className="flex items-center gap-1 font-semibold text-slate-600">
+                        <FaTruck className="text-[9px] text-slate-300" /> Envío ${orderDetails.deliveryFee.toLocaleString()}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <FaClock className="text-[9px] text-slate-300" /> {calculateTimeElapsed(orderDetails.createdAt)}
+                    </span>
                     {orderDetails.paymentMethod && (
-                      <div className="flex items-center gap-2">
-                        <FaCreditCard className="text-xs text-slate-400" />
-                        <span className="text-[13px] text-slate-500">Pago:</span>
-                        <span className="text-[13px] font-medium text-slate-800">{PAYMENT_LABELS[orderDetails.paymentMethod] || orderDetails.paymentMethod}</span>
-                      </div>
+                      <span className="flex items-center gap-1">
+                        <FaCreditCard className="text-[9px] text-slate-300" /> {PAYMENT_LABELS[orderDetails.paymentMethod] || orderDetails.paymentMethod}
+                      </span>
+                    )}
+                    {(() => { const si = getStatusInfo(orderDetails.status); return (
+                      <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${si.bgColor} ${si.textColor}`}>
+                        <si.Icon className="text-[7px]" /> {si.label}
+                      </span>
+                    ); })()}
+                  </div>
+
+                  {orderDetails.orderType === 'delivery' && orderDetails.deliveryNeedsConfirmation && (
+                    <div className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-200">
+                      <FaExclamationTriangle className="text-[10px] text-amber-500 shrink-0" />
+                      <span className="text-[11px] font-semibold text-amber-700">Envío por confirmar — fuera de zonas automáticas</span>
+                    </div>
+                  )}
+
+                  {orderDetails.customerNotes && (
+                    <div className="flex items-start gap-1.5 bg-amber-50/60 px-2.5 py-1.5 rounded-lg">
+                      <FaTag className="text-[9px] text-amber-400 mt-0.5 shrink-0" />
+                      <p className="text-[12px] text-amber-700">{orderDetails.customerNotes}</p>
+                    </div>
+                  )}
+
+                  {orderDetails.orderChannel === 'inapp' && (
+                    <div className="flex items-center gap-1.5 text-[11px] text-indigo-600 font-medium">
+                      <FaMoneyBillWave className="text-[9px]" /> Pedido in-app
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Action Buttons — TOP ── */}
+                <div className="space-y-1.5">
+                  {/* Primary actions */}
+                  {orderDetails.status === ORDER_STATUS.PAYMENT_UPLOADED && (
+                    <div className="flex gap-2">
+                      <button onClick={() => confirmPayment(orderDetails._id)} className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
+                        <FaCheckCircle className="text-xs" /> Confirmar pago
+                      </button>
+                      <button onClick={() => rejectPayment(orderDetails._id)} className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-5 py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
+                        <FaTimesCircle className="text-xs" /> Rechazar
+                      </button>
+                    </div>
+                  )}
+
+                  {orderDetails.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
+                    <button onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)} className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
+                      <FaPlay className="text-xs" /> Iniciar preparación
+                    </button>
+                  )}
+
+                  {orderDetails.status === ORDER_STATUS.PENDING_PAYMENT && (
+                    <button onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.PAYMENT_CONFIRMED)} className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
+                      <FaCheckCircle className="text-xs" /> Confirmar pago
+                    </button>
+                  )}
+
+                  {orderDetails.status === ORDER_STATUS.PENDING && (
+                    <button onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)} className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
+                      <FaPlay className="text-xs" /> Iniciar preparación
+                    </button>
+                  )}
+
+                  {orderDetails.status === ORDER_STATUS.IN_PROGRESS && (
+                    <div className="space-y-1.5">
+                      {orderDetails.orderType === 'delivery' && !orderDetails.deliveryToken && !orderDetails.deliveryPersonId && !orderDetails.confirmationCode && (
+                        <button onClick={() => setAssignDomiOrder(orderDetails)} className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
+                          <FaMotorcycle className="text-sm" /> Asignar domiciliario
+                        </button>
+                      )}
+                      <button onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)} className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-sm font-bold transition-colors active:scale-[0.98]">
+                        <FaCheck className="text-xs" /> {orderDetails.orderType === 'delivery' ? 'Completar pedido' : 'Marcar como completado'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Secondary actions row */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {!orderDetails.sentToKitchen && (
+                      <button onClick={() => sendToKitchen(orderDetails._id)} className="flex items-center justify-center gap-1.5 bg-orange-50 hover:bg-orange-100 text-orange-600 py-2.5 rounded-xl text-xs font-semibold border border-orange-200/60 transition-colors active:scale-[0.97]">
+                        <FaUtensils className="text-[10px]" /> Enviar a cocina
+                      </button>
+                    )}
+                    {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
+                      <button onClick={() => setAddItemsOrder(orderDetails)} className="flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 py-2.5 rounded-xl text-xs font-semibold border border-blue-200/60 transition-colors active:scale-[0.97]">
+                        <FaPlus className="text-[10px]" /> Agregar productos
+                      </button>
+                    )}
+                    {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
+                      <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + orderDetails.orderNumber + '?')) { updateOrderStatus(orderDetails._id, ORDER_STATUS.CANCELLED); setOrderDetails(null); } }} className="flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 py-2.5 rounded-xl text-xs font-semibold border border-red-200/60 transition-colors active:scale-[0.97]">
+                        <FaTimes className="text-[9px]" /> Cancelar pedido
+                      </button>
                     )}
                   </div>
                 </div>
 
-                {/* Order Chat - prominent position */}
-                {orderDetails.orderChannel === 'inapp' && !['completed', 'delivered', 'cancelled'].includes(orderDetails.status) && (
-                  <AdminOrderChat orderId={orderDetails._id} messages={orderDetails.messages || []} />
-                )}
+                {/* ── Chat removed from body — now floating ── */}
 
-                {/* Order Items */}
+                {/* ── Products ── */}
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-800 mb-2">Productos</h3>
-                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-lg overflow-hidden">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Productos</h3>
+                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
                     {orderDetails.items?.map((item, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-start px-3 py-2.5 bg-white"
-                      >
+                      <div key={index} className="flex justify-between items-start px-3 py-2 bg-white">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
@@ -732,14 +765,13 @@ function ModernOrdersDashboard() {
                               <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold inline-flex items-center gap-0.5">{AI.gift('w-3 h-3')} Loyalty</span>
                             )}
                           </div>
-                          
                           {item.selectedToppings && item.selectedToppings.length > 0 && (
                             <div className="mt-1 flex flex-wrap gap-1">
                               {item.selectedToppings.flatMap((topping, toppingIndex) => {
                                 const tags = [];
                                 if (topping.optionName) {
                                   tags.push(
-                                    <span key={`t-${toppingIndex}`} className="text-[11px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
+                                    <span key={`t-${toppingIndex}`} className="text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded">
                                       + {topping.groupName && <>{topping.groupName}: </>}{topping.optionName}{topping.price > 0 && ` ($${topping.price.toLocaleString()})`}
                                     </span>
                                   );
@@ -747,7 +779,7 @@ function ModernOrdersDashboard() {
                                 if (topping.subGroups) {
                                   topping.subGroups.forEach((sg, si) => {
                                     tags.push(
-                                      <span key={`s-${toppingIndex}-${si}`} className="text-[11px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                                      <span key={`s-${toppingIndex}-${si}`} className="text-[10px] text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
                                         + {sg.subGroupTitle && <>{sg.subGroupTitle}: </>}{sg.optionName}{sg.price > 0 && ` ($${sg.price.toLocaleString()})`}
                                       </span>
                                     );
@@ -758,226 +790,99 @@ function ModernOrdersDashboard() {
                             </div>
                           )}
                         </div>
-                        
                         <div className="text-right shrink-0 ml-3">
                           <p className="text-[13px] font-semibold text-slate-800">${(item.price * item.quantity).toLocaleString()}</p>
-                          {item.quantity > 1 && <p className="text-[11px] text-slate-400">${item.price.toLocaleString()} c/u</p>}
+                          {item.quantity > 1 && <p className="text-[10px] text-slate-400">${item.price.toLocaleString()} c/u</p>}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Total */}
-                <div className="bg-slate-50 rounded-lg px-3 py-3 space-y-1.5">
-                  {orderDetails.couponCode ? (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[13px] text-slate-500">Subtotal</span>
-                        <span className="text-[13px] text-slate-700">${(orderDetails.totalAmount || 0).toLocaleString()}</span>
-                      </div>
-                      {orderDetails.deliveryFee && (
-                        <div className="flex justify-between items-center">
-                          <span className="text-[13px] text-slate-500">Envío</span>
-                          <span className="text-[13px] text-slate-700">${orderDetails.deliveryFee.toLocaleString()}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center">
-                        <span className="text-[13px] text-emerald-600">Cupón ({orderDetails.couponCode})</span>
-                        <span className="text-[13px] text-emerald-600">-${(orderDetails.discountAmount || 0).toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
-                        <span className="text-sm font-bold text-slate-800">Total</span>
-                        <span className="text-base font-bold text-emerald-600">${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0) - (orderDetails.discountAmount || 0)).toLocaleString()}</span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {orderDetails.deliveryFee ? (
-                        <>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[13px] text-slate-500">Subtotal</span>
-                            <span className="text-[13px] text-slate-700">${(orderDetails.totalAmount || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[13px] text-slate-500">Envío</span>
-                            <span className="text-[13px] text-slate-700">${orderDetails.deliveryFee.toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
-                            <span className="text-sm font-bold text-slate-800">Total</span>
-                            <span className="text-base font-bold text-slate-800">${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0)).toLocaleString()}</span>
-                          </div>
-                        </>
-                      ) : orderDetails.deliveryNeedsConfirmation ? (
-                        <>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[13px] text-slate-500">Subtotal</span>
-                            <span className="text-[13px] text-slate-700">${(orderDetails.totalAmount || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-[13px] text-amber-600 font-medium">Envío</span>
-                            <span className="text-[13px] text-amber-600 font-medium">Por confirmar</span>
-                          </div>
-                          <div className="flex justify-between items-center border-t border-slate-200 pt-2 mt-1">
-                            <span className="text-sm font-bold text-slate-800">Total estimado</span>
-                            <span className="text-base font-bold text-slate-800">${(orderDetails.totalAmount || 0).toLocaleString()} + envío</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-bold text-slate-800">Total</span>
-                          <span className="text-base font-bold text-slate-800">${(orderDetails.totalAmount || 0).toLocaleString()}</span>
-                        </div>
-                      )}
-                    </>
+                {/* ── Total ── */}
+                <div className="bg-slate-800 rounded-xl px-4 py-3 space-y-1">
+                  {(orderDetails.deliveryFee > 0 || orderDetails.couponCode || orderDetails.deliveryNeedsConfirmation) && (
+                    <div className="flex justify-between items-center text-slate-400 text-[12px]">
+                      <span>Subtotal</span>
+                      <span>${(orderDetails.totalAmount || 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {orderDetails.deliveryFee > 0 && (
+                    <div className="flex justify-between items-center text-slate-400 text-[12px]">
+                      <span>Envío</span>
+                      <span>${orderDetails.deliveryFee.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {orderDetails.deliveryNeedsConfirmation && !orderDetails.deliveryFee && (
+                    <div className="flex justify-between items-center text-amber-400 text-[12px]">
+                      <span>Envío</span>
+                      <span>Por confirmar</span>
+                    </div>
+                  )}
+                  {orderDetails.couponCode && (
+                    <div className="flex justify-between items-center text-emerald-400 text-[12px]">
+                      <span>Cupón ({orderDetails.couponCode})</span>
+                      <span>-${(orderDetails.discountAmount || 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-sm font-bold text-white">Total</span>
+                    <span className="text-lg font-bold text-white">
+                      {orderDetails.couponCode
+                        ? `$${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0) - (orderDetails.discountAmount || 0)).toLocaleString()}`
+                        : orderDetails.deliveryNeedsConfirmation && !orderDetails.deliveryFee
+                          ? `$${(orderDetails.totalAmount || 0).toLocaleString()} + envío`
+                          : `$${((orderDetails.totalAmount || 0) + (orderDetails.deliveryFee || 0)).toLocaleString()}`
+                      }
+                    </span>
+                  </div>
+                </div>
+
+                {/* ── Payment Proof ── */}
+                {orderDetails.paymentProof && (
+                  <div
+                    className="flex items-center gap-3 bg-purple-50 rounded-xl px-3 py-2.5 border border-purple-200/60 cursor-pointer hover:bg-purple-100 transition-colors"
+                    onClick={() => { setProofImageUrl(getProofUrl(orderDetails.paymentProof)); setShowProofModal(true); }}
+                  >
+                    <img src={getProofUrl(orderDetails.paymentProof)} alt="Comprobante" className="w-12 h-12 rounded-lg object-cover border border-purple-200" />
+                    <div>
+                      <p className="text-[12px] font-semibold text-purple-800">Comprobante de pago</p>
+                      <p className="text-[11px] text-purple-600">Toca para ver completo</p>
+                    </div>
+                    <FaImage className="text-purple-400 text-sm ml-auto" />
+                  </div>
+                )}
+
+                {/* ── Print row ── */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={async () => { try { await api.post(`/print-agent/print-comanda/${orderDetails._id}`); } catch { handlePrintOrder(orderDetails); } }}
+                    className="flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 py-2.5 rounded-xl text-xs font-semibold border border-slate-200/60 transition-colors active:scale-[0.97]"
+                  >
+                    <FaPrint className="text-[10px]" /> Imprimir comanda
+                  </button>
+                  {orderDetails.status !== 'pending' && orderDetails.status !== 'pending_payment' && (
+                    <button
+                      onClick={async () => { try { await api.post(`/print-agent/print-receipt/${orderDetails._id}`); } catch { handlePrintOrder(orderDetails); } }}
+                      className="flex items-center justify-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 py-2.5 rounded-xl text-xs font-semibold border border-emerald-200/60 transition-colors active:scale-[0.97]"
+                    >
+                      <FaMoneyBillWave className="text-[10px]" /> Imprimir recibo
+                    </button>
                   )}
                 </div>
-
-                {/* Payment Proof Section */}
-                {orderDetails.paymentProof && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-800 mb-2">Comprobante de pago</h3>
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
-                      <img 
-                        src={getProofUrl(orderDetails.paymentProof)} 
-                        alt="Comprobante de pago"
-                        className="w-full max-h-64 object-contain bg-slate-50 cursor-pointer"
-                        onClick={() => {
-                          setProofImageUrl(getProofUrl(orderDetails.paymentProof));
-                          setShowProofModal(true);
-                        }}
-                      />
-                      {orderDetails.paymentMethod && (
-                        <div className="px-3 py-2 bg-slate-50 border-t border-slate-200">
-                          <span className="text-[11px] text-slate-500">Método: </span>
-                          <span className="text-[11px] font-semibold text-slate-700 capitalize">{orderDetails.paymentMethod === 'roomCharge' ? 'Cargo a habitación' : orderDetails.paymentMethod}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Customer Notes */}
-                {orderDetails.customerNotes && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    <p className="text-[11px] font-semibold text-amber-700 mb-0.5">Nota del cliente:</p>
-                    <p className="text-[13px] text-amber-800">{orderDetails.customerNotes}</p>
-                  </div>
-                )}
-
-                {/* Order Channel Badge */}
-                {orderDetails.orderChannel === 'inapp' && (
-                  <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
-                    <FaMoneyBillWave className="text-indigo-500 text-xs" />
-                    <span className="text-[12px] font-medium text-indigo-700">Pedido in-app (pago por transferencia)</span>
-                  </div>
-                )}
-
-                {/* Action buttons */}
-                <div className="flex gap-2 flex-wrap">
-                  {/* Payment confirm/reject for uploaded proofs */}
-                      {orderDetails.status === ORDER_STATUS.PAYMENT_UPLOADED && (
-                        <>
-                          <button
-                            onClick={() => confirmPayment(orderDetails._id)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                          >
-                            <FaCheckCircle className="text-xs" />
-                            <span>Confirmar pago</span>
-                          </button>
-                          <button
-                            onClick={() => rejectPayment(orderDetails._id)}
-                            className="flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                          >
-                            <FaTimesCircle className="text-xs" />
-                            <span>Rechazar</span>
-                          </button>
-                        </>
-                      )}
-
-                      {/* Start preparation after payment confirmed */}
-                      {orderDetails.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                        <button
-                          onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                        >
-                          <FaPlay className="text-xs" />
-                          <span>Iniciar preparación</span>
-                        </button>
-                      )}
-
-                      {orderDetails.status === ORDER_STATUS.PENDING_PAYMENT && (
-                        <button
-                          onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.PAYMENT_CONFIRMED)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                        >
-                          <FaCheckCircle className="text-xs" />
-                          <span>Confirmar pago</span>
-                        </button>
-                      )}
-
-                      {orderDetails.status === ORDER_STATUS.PENDING && (
-                        <button
-                          onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.IN_PROGRESS)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                        >
-                          <FaPlay className="text-xs" />
-                          <span>Iniciar preparación</span>
-                        </button>
-                      )}
-                      
-                      {orderDetails.status === ORDER_STATUS.IN_PROGRESS && (
-                        <>
-                          {orderDetails.orderType === 'delivery' && !orderDetails.deliveryToken && !orderDetails.deliveryPersonId && !orderDetails.confirmationCode && (
-                            <button
-                              onClick={() => setAssignDomiOrder(orderDetails)}
-                              className="flex-1 flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                            >
-                              <FaMotorcycle className="text-xs" />
-                              <span>Asignar Domi</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => updateOrderStatus(orderDetails._id, ORDER_STATUS.COMPLETED)}
-                            className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                          >
-                            <FaCheck className="text-xs" />
-                            <span>{orderDetails.orderType === 'delivery' ? 'Completar (Forzado)' : 'Marcar como completado'}</span>
-                          </button>
-                        </>
-                      )}
-                      
-                      {!orderDetails.sentToKitchen && (
-                        <button
-                          onClick={() => sendToKitchen(orderDetails._id)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                        >
-                          <FaUtensils className="text-xs" />
-                          <span>Enviar a cocina</span>
-                        </button>
-                      )}
-
-                      {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
-                        <button
-                          onClick={() => setAddItemsOrder(orderDetails)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2.5 rounded-lg text-sm font-semibold border border-blue-200 transition-colors"
-                        >
-                          <FaPlus className="text-xs" />
-                          <span>Agregar productos</span>
-                        </button>
-                      )}
-
-                      {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
-                        <button
-                          onClick={() => { if (window.confirm('¿Cancelar pedido #' + orderDetails.orderNumber + '?')) { updateOrderStatus(orderDetails._id, ORDER_STATUS.CANCELLED); setOrderDetails(null); } }}
-                          className="flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-500 px-4 py-2.5 rounded-lg text-sm font-semibold border border-red-200 transition-colors"
-                        >
-                          <FaTimes className="text-xs" />
-                          <span>Cancelar pedido</span>
-                        </button>
-                      )}
-                </div>
               </div>
+
+              {/* Floating Chat Modal */}
+              <AnimatePresence>
+                {showChatModal && orderDetails.orderChannel === 'inapp' && (
+                  <AdminOrderChat
+                    orderId={orderDetails._id}
+                    messages={orderDetails.messages || []}
+                    isOpen={showChatModal}
+                    onClose={() => setShowChatModal(false)}
+                  />
+                )}
+              </AnimatePresence>
             </motion.div>
           </motion.div>
         )}
