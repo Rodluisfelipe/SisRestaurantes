@@ -1031,6 +1031,95 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
   }
 });
 
+// Add items to an existing active order (admin only)
+router.patch("/:id/add-items", tenantAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { items } = req.body;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Items array is required and cannot be empty" });
+    }
+
+    // Validate each item
+    for (const item of items) {
+      if (!item.name || !item.quantity || item.quantity < 1 || item.price == null) {
+        return res.status(400).json({ message: "Each item must have name, quantity (>= 1), and price" });
+      }
+    }
+
+    const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
+
+    // Find the active order
+    const order = await Order.findOne({
+      _id: id,
+      ...(tenantBizId ? { businessId: tenantBizId } : {})
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Don't allow adding items to completed/cancelled/delivered orders
+    if (['completed', 'cancelled', 'delivered'].includes(order.status)) {
+      return res.status(400).json({ message: "Cannot add items to a completed, cancelled, or delivered order" });
+    }
+
+    // Sanitize and build new items
+    const newItems = items.map(item => ({
+      productId: item.productId || undefined,
+      name: stripHtml(String(item.name)),
+      price: Number(item.price),
+      quantity: Number(item.quantity),
+      selectedToppings: Array.isArray(item.selectedToppings) ? item.selectedToppings : [],
+      isLoyaltyReward: false,
+    }));
+
+    // Calculate new total for the added items
+    const addedTotal = newItems.reduce((sum, item) => {
+      const toppingsPrice = (item.selectedToppings || []).reduce((ts, t) => {
+        let tp = Number(t.price) || 0;
+        if (t.subGroups) {
+          tp += t.subGroups.reduce((ss, sg) => ss + (Number(sg.price) || 0), 0);
+        }
+        return ts + tp;
+      }, 0);
+      return sum + (item.price + toppingsPrice) * item.quantity;
+    }, 0);
+
+    // Push new items and update totals
+    order.items.push(...newItems);
+    order.totalAmount = (order.totalAmount || 0) + addedTotal;
+
+    // Recalculate finalAmount (total + delivery - discount)
+    order.finalAmount = order.totalAmount + (order.deliveryFee || 0) - (order.discountAmount || 0);
+    order.updatedAt = new Date();
+
+    await order.save();
+
+    // Emit socket event so dashboards update in real time
+    socketService.emitToBusiness(order.businessId.toString(), "order_updated", order);
+    socketService.emitToOrder(order._id, 'order_status_changed', { orderId: order._id, status: order.status, order });
+
+    // Emit print event for the added items only (so kitchen gets the new items)
+    socketService.emitToBusiness(order.businessId.toString(), "order_items_added", {
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      addedItems: newItems,
+      addedTotal
+    });
+
+    res.json(order);
+  } catch (error) {
+    logger.error('Error adding items to order', { error: error.message, orderId: req.params.id });
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
 // Send order to kitchen without changing status (admin only)
 router.patch("/:id/send-to-kitchen", tenantAuth, validateSendToKitchen, async (req, res) => {
   try {
