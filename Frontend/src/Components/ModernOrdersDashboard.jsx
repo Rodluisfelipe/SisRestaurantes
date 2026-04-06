@@ -9,7 +9,7 @@ import {
   FaUser, FaPhone, FaMapMarkerAlt, FaTruck, FaClock, FaTimes,
   FaChair, FaHome, FaTag, FaExclamationTriangle, FaWifi,
   FaMoneyBillWave, FaImage, FaTimesCircle, FaCheckCircle, FaPrint, FaMotorcycle,
-  FaCreditCard
+  FaCreditCard, FaPlus
 } from 'react-icons/fa';
 
 const PAYMENT_LABELS = {
@@ -21,6 +21,7 @@ const PAYMENT_LABELS = {
 
 import { socket, socketDiagnostic, forceReconnect } from '../services/socket';
 import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
+import AddItemsModal from './AddItemsModal';
 import OrderCard from './OrderCard';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';
 import api from '../services/api';
@@ -146,6 +147,7 @@ function ModernOrdersDashboard() {
   } = useOrdersDashboard();
 
   const [assignDomiOrder, setAssignDomiOrder] = useState(null);
+  const [addItemsOrder, setAddItemsOrder] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showCompletedOrders, setShowCompletedOrders] = useState(false);
@@ -940,6 +942,16 @@ function ModernOrdersDashboard() {
 
                       {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
                         <button
+                          onClick={() => setAddItemsOrder(orderDetails)}
+                          className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2.5 rounded-lg text-sm font-semibold border border-blue-200 transition-colors"
+                        >
+                          <FaPlus className="text-xs" />
+                          <span>Agregar productos</span>
+                        </button>
+                      )}
+
+                      {orderDetails.status !== ORDER_STATUS.COMPLETED && orderDetails.status !== ORDER_STATUS.CANCELLED && orderDetails.status !== ORDER_STATUS.DELIVERED && (
+                        <button
                           onClick={() => { if (window.confirm('¿Cancelar pedido #' + orderDetails.orderNumber + '?')) { updateOrderStatus(orderDetails._id, ORDER_STATUS.CANCELLED); setOrderDetails(null); } }}
                           className="flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-500 px-4 py-2.5 rounded-lg text-sm font-semibold border border-red-200 transition-colors"
                         >
@@ -996,6 +1008,16 @@ function ModernOrdersDashboard() {
           // You could optionally do something here, like optimistic update
           // updateOrderStatus(assignDomiOrder._id, ORDER_STATUS.IN_PROGRESS); 
           // Since it will be reflected via Socket anyway, doing nothing is also fine.
+        }}
+      />
+
+      <AddItemsModal
+        isOpen={!!addItemsOrder}
+        onClose={() => setAddItemsOrder(null)}
+        order={addItemsOrder}
+        onItemsAdded={(updatedOrder) => {
+          setOrderDetails(updatedOrder);
+          // Socket will handle updating the orders list
         }}
       />
     </div>
