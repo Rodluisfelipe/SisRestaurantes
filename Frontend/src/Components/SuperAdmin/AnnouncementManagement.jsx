@@ -429,7 +429,7 @@ function AnnouncementManagement() {
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#333F50]">
                     <button
                       onClick={() => handleEdit(ann)}
-                      className="px-3 py-1.5 bg-blue-500/20 text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-500/30 transition-colors"
+                      className="px-3 py-1.5 bg-cyan-500/20 text-cyan-400 rounded-lg text-xs font-medium hover:bg-cyan-500/30 transition-colors"
                     >
                       ✏️ Editar
                     </button>

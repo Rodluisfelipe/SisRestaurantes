@@ -1,23 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 import { subscriptionApi } from '../../services/superadminApi';
+import { SAModal, SAButton, SABadge } from '../../Components/SuperAdmin/ui';
 
 // Helper: attach superadmin_token to requests (since these endpoints require protectSuperAdmin)
 const saAuthHeader = () => {
   const token = localStorage.getItem('superadmin_token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
-import { 
-  FaCheckCircle, 
-  FaTimes, 
-  FaClock, 
-  FaEye, 
-  FaDownload,
-  FaStore,
-  FaDollarSign,
-  FaCalendarAlt
-} from 'react-icons/fa';
 
 const PaymentRequestsReview = () => {
   const [requests, setRequests] = useState([]);
@@ -164,13 +155,13 @@ const PaymentRequestsReview = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
-        return { color: 'yellow', text: 'En Revisión', icon: FaClock, bg: 'bg-yellow-100 text-yellow-800' };
+        return { variant: 'warning', text: 'En Revisión' };
       case 'approved':
-        return { color: 'green', text: 'Aprobado', icon: FaCheckCircle, bg: 'bg-green-100 text-green-800' };
+        return { variant: 'success', text: 'Aprobado' };
       case 'rejected':
-        return { color: 'red', text: 'Rechazado', icon: FaTimes, bg: 'bg-red-100 text-red-800' };
+        return { variant: 'danger', text: 'Rechazado' };
       default:
-        return { color: 'gray', text: 'Desconocido', icon: FaClock, bg: 'bg-gray-100 text-gray-800' };
+        return { variant: 'neutral', text: 'Desconocido' };
     }
   };
 
@@ -192,289 +183,149 @@ const PaymentRequestsReview = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="w-8 h-8 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-2 sm:px-0 pb-6">
-      {/* Filtros - Mobile responsive */}
-      <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 sticky top-0 z-10">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setFilter('pending')}
-            className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-sm ${
-              filter === 'pending'
-                ? 'bg-yellow-500 text-white shadow-yellow-500/50'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
+    <div className="space-y-6">
+      {/* Filter tabs */}
+      <div className="flex gap-1.5 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1 w-fit">
+        {[
+          { id: 'pending', label: 'Pendientes', count: requests.filter(r => r.status === 'pending').length },
+          { id: 'approved', label: 'Aprobadas', count: requests.filter(r => r.status === 'approved').length },
+          { id: 'rejected', label: 'Rechazadas', count: requests.filter(r => r.status === 'rejected').length },
+          { id: 'all', label: 'Todas', count: requests.length },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setFilter(tab.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+              filter === tab.id
+                ? 'bg-white/[0.08] text-white'
+                : 'text-white/35 hover:text-white/55'
             }`}
           >
-            <div className="flex items-center justify-center space-x-1">
-              <FaClock className="text-xs sm:text-sm" />
-              <span className="hidden sm:inline">Pendientes</span>
-              <span className="sm:hidden">Pend.</span>
-              <span className="bg-white/20 px-1.5 py-0.5 rounded-full text-xs font-bold">
-                {requests.filter(r => r.status === 'pending').length}
-              </span>
-            </div>
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setFilter('approved')}
-            className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-sm ${
-              filter === 'approved'
-                ? 'bg-green-500 text-white shadow-green-500/50'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
-            }`}
-          >
-            <div className="flex items-center justify-center space-x-1">
-              <FaCheckCircle className="text-xs sm:text-sm" />
-              <span className="hidden sm:inline">Aprobadas</span>
-              <span className="sm:hidden">Aprob.</span>
-              <span className="bg-white/20 px-1.5 py-0.5 rounded-full text-xs font-bold">
-                {requests.filter(r => r.status === 'approved').length}
-              </span>
-            </div>
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setFilter('rejected')}
-            className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-sm ${
-              filter === 'rejected'
-                ? 'bg-red-500 text-white shadow-red-500/50'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
-            }`}
-          >
-            <div className="flex items-center justify-center space-x-1">
-              <FaTimes className="text-xs sm:text-sm" />
-              <span className="hidden sm:inline">Rechazadas</span>
-              <span className="sm:hidden">Rech.</span>
-              <span className="bg-white/20 px-1.5 py-0.5 rounded-full text-xs font-bold">
-                {requests.filter(r => r.status === 'rejected').length}
-              </span>
-            </div>
-          </motion.button>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setFilter('all')}
-            className={`px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl font-semibold text-xs sm:text-sm transition-all shadow-sm ${
-              filter === 'all'
-                ? 'bg-blue-500 text-white shadow-blue-500/50'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300'
-            }`}
-          >
-            <div className="flex items-center justify-center space-x-1">
-              <span className="hidden sm:inline">Todas</span>
-              <span className="sm:hidden">Total</span>
-              <span className="bg-white/20 px-1.5 py-0.5 rounded-full text-xs font-bold">
-                {requests.length}
-              </span>
-            </div>
-          </motion.button>
-        </div>
+            {tab.label}
+            <span className={`text-[10px] tabular-nums ${filter === tab.id ? 'text-white/50' : 'text-white/20'}`}>{tab.count}</span>
+          </button>
+        ))}
       </div>
 
-      {/* Lista de Solicitudes - Cards responsive */}
+      {/* Empty state */}
       {requests.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-md p-8 sm:p-12 text-center"
-        >
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-100 rounded-full flex items-center justify-center">
-              <FaDollarSign className="text-4xl sm:text-5xl text-gray-400" />
-            </div>
-            <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">
-                No hay solicitudes de pago
-              </h3>
-              <p className="text-sm sm:text-base text-gray-500">
-                {filter !== 'all' 
-                  ? `No hay solicitudes ${filter === 'pending' ? 'pendientes' : filter === 'approved' ? 'aprobadas' : 'rechazadas'}`
-                  : 'Aún no se han recibido solicitudes de pago'}
-              </p>
-            </div>
+        <div className="text-center py-16">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+            <svg className="w-6 h-6 text-white/20" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
+            </svg>
           </div>
-        </motion.div>
+          <p className="text-sm text-white/40 mb-1">No hay solicitudes de pago</p>
+          <p className="text-xs text-white/25">
+            {filter !== 'all'
+              ? `No hay solicitudes ${filter === 'pending' ? 'pendientes' : filter === 'approved' ? 'aprobadas' : 'rechazadas'}`
+              : 'Aún no se han recibido solicitudes'}
+          </p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <div className="space-y-2">
           {requests.map((request) => {
             const badge = getStatusBadge(request.status);
-            const BadgeIcon = badge.icon;
-            
+            const relatedSub = getRelatedSubscription(request.businessId);
+
             return (
               <motion.div
                 key={request._id || request.id}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                whileHover={{ scale: 1.02 }}
-                className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all overflow-hidden"
+                className="bg-white/[0.02] border border-white/[0.06] rounded-xl overflow-hidden hover:bg-white/[0.04] transition-colors"
               >
-                {/* Header con negocio y estado */}
-                <div className={`px-4 sm:px-6 py-4 ${badge.bg} bg-opacity-10 border-l-4 ${
-                  badge.color === 'yellow' ? 'border-yellow-500' :
-                  badge.color === 'green' ? 'border-green-500' :
-                  badge.color === 'red' ? 'border-red-500' : 'border-gray-500'
-                }`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <FaStore className="text-gray-400 flex-shrink-0" />
-                        <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate">
-                          {request.businessName || request.businessId?.businessName || request.businessId || 'N/A'}
-                        </h3>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <BadgeIcon className={`text-sm ${
-                          badge.color === 'yellow' ? 'text-yellow-600' :
-                          badge.color === 'green' ? 'text-green-600' :
-                          badge.color === 'red' ? 'text-red-600' : 'text-gray-600'
-                        }`} />
-                        <span className={`text-xs sm:text-sm font-semibold ${badge.bg} px-2.5 py-1 rounded-full`}>
-                          {badge.text}
+                {/* Main row */}
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-medium text-white truncate">
+                        {request.businessName || request.businessId?.businessName || 'N/A'}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <SABadge variant={badge.variant} dot>{badge.text}</SABadge>
+                        <span className="text-[11px] text-white/25">
+                          {new Date(request.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       </div>
                     </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-lg font-semibold text-white tabular-nums">${request.amount?.toLocaleString('es-CO')}</p>
+                      <p className="text-[11px] text-white/30">{request.monthsPurchased} {request.monthsPurchased === 1 ? 'mes' : 'meses'} · {request.paymentMethod}</p>
+                    </div>
                   </div>
-                </div>
 
-                  {/* Información principal */}
-                <div className="px-4 sm:px-6 py-4 space-y-3">
-                  {/* Información de suscripción relacionada */}
-                  {(() => {
-                    const relatedSub = getRelatedSubscription(request.businessId);
-                    if (relatedSub) {
-                      const isActive = relatedSub.status === 'active';
-                      const isExpired = relatedSub.status === 'expired';
-                      return (
-                        <div className={`rounded-lg p-3 border-l-4 ${
-                          isActive ? 'bg-blue-50 border-blue-500' : 
-                          isExpired ? 'bg-red-50 border-red-500' : 
-                          'bg-gray-50 border-gray-500'
-                        }`}>
-                          <p className="text-xs font-semibold text-gray-600 mb-1">Suscripción Actual:</p>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className={`text-sm font-bold ${
-                                isActive ? 'text-blue-700' : 
-                                isExpired ? 'text-red-700' : 
-                                'text-gray-700'
-                              }`}>
-                                {isActive ? '✓ Activa' : isExpired ? '✗ Expirada' : relatedSub.status}
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                Hasta: {new Date(relatedSub.endDate || relatedSub.periodEnd).toLocaleDateString('es-CO')}
-                              </p>
-                            </div>
-                            {request.status === 'pending' && (
-                              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-semibold">
-                                Aprobará extender
-                              </span>
-                            )}
-                          </div>
+                  {/* Related subscription info */}
+                  {relatedSub && (
+                    <div className={`rounded-lg px-3 py-2 mb-3 border-l-2 ${
+                      relatedSub.status === 'active' ? 'bg-cyan-500/[0.04] border-cyan-500/30' :
+                      relatedSub.status === 'expired' ? 'bg-red-500/[0.04] border-red-500/30' :
+                      'bg-white/[0.02] border-white/[0.1]'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-[11px] text-white/40">Suscripción actual</p>
+                          <p className={`text-xs font-medium ${
+                            relatedSub.status === 'active' ? 'text-cyan-400' :
+                            relatedSub.status === 'expired' ? 'text-red-400' : 'text-white/50'
+                          }`}>
+                            {relatedSub.status === 'active' ? 'Activa' : relatedSub.status === 'expired' ? 'Expirada' : relatedSub.status}
+                            {' · hasta '}
+                            {new Date(relatedSub.endDate || relatedSub.periodEnd).toLocaleDateString('es-CO')}
+                          </p>
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  {/* Monto destacado */}
-                  <div className="flex items-center justify-between bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 sm:p-4">
-                    <div className="flex items-center space-x-2">
-                      <FaDollarSign className="text-green-600 text-xl sm:text-2xl" />
-                      <div>
-                        <p className="text-xs text-gray-600">Monto</p>
-                        <p className="text-lg sm:text-xl font-bold text-gray-900">
-                          ${request.amount?.toLocaleString('es-CO')} COP
-                        </p>
+                        {request.status === 'pending' && (
+                          <span className="text-[10px] text-amber-400/70 bg-amber-500/[0.08] px-2 py-0.5 rounded">Extenderá</span>
+                        )}
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Detalles en grid */}
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 mb-1">Meses</p>
-                      <p className="text-sm sm:text-base font-semibold text-gray-900">
-                        {request.monthsPurchased} {request.monthsPurchased === 1 ? 'mes' : 'meses'}
-                      </p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-xs text-gray-500 mb-1">Método</p>
-                      <p className="text-sm sm:text-base font-semibold text-gray-900">
-                        {request.paymentMethod}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Fecha */}
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <FaCalendarAlt className="text-sm" />
-                    <span className="text-xs sm:text-sm">
-                      {new Date(request.createdAt).toLocaleDateString('es-CO', { 
-                        day: 'numeric', 
-                        month: 'long', 
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Acciones - Botones grandes para móvil */}
-                <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200">
-                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <SAButton
+                      variant="ghost"
+                      size="xs"
                       onClick={() => {
                         const proofUrl = request.proofUrl || request.proof;
-                        if (proofUrl) {
-                          openProofInNewTab(proofUrl);
-                        } else {
-                          alert('No hay comprobante disponible');
-                        }
+                        if (proofUrl) openProofInNewTab(proofUrl);
+                        else alert('No hay comprobante disponible');
                       }}
-                      className="flex-1 flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 sm:py-2.5 rounded-lg font-semibold text-sm sm:text-base transition-colors shadow-sm"
+                      icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
                     >
-                      <FaEye />
-                      <span>Ver Comprobante</span>
-                    </motion.button>
-                    
+                      Comprobante
+                    </SAButton>
+
                     {request.status === 'pending' && (
                       <>
-                        <motion.button
-                          whileTap={{ scale: 0.95 }}
+                        <SAButton
+                          variant="filled"
+                          size="xs"
                           onClick={() => {
                             const requestId = request._id || request.id;
-                            if (requestId) {
-                              handleApprove(requestId);
-                            } else {
-                              console.error('Error: request._id is undefined', request);
-                              alert('Error: No se pudo identificar la solicitud de pago');
-                            }
+                            if (requestId) handleApprove(requestId);
+                            else alert('Error: No se pudo identificar la solicitud');
                           }}
                           disabled={processing}
-                          className="flex-1 flex items-center justify-center space-x-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-3 sm:py-2.5 rounded-lg font-semibold text-sm sm:text-base transition-colors shadow-sm"
+                          icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
                         >
-                          <FaCheckCircle />
-                          <span>Aprobar</span>
-                        </motion.button>
-                        <motion.button
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => {
-                            setSelectedRequest(request);
-                            setShowRejectModal(true);
-                          }}
+                          Aprobar
+                        </SAButton>
+                        <SAButton
+                          variant="danger"
+                          size="xs"
+                          onClick={() => { setSelectedRequest(request); setShowRejectModal(true); }}
                           disabled={processing}
-                          className="flex-1 flex items-center justify-center space-x-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-3 sm:py-2.5 rounded-lg font-semibold text-sm sm:text-base transition-colors shadow-sm"
+                          icon={<svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>}
                         >
-                          <FaTimes />
-                          <span>Rechazar</span>
-                        </motion.button>
+                          Rechazar
+                        </SAButton>
                       </>
                     )}
                   </div>
@@ -485,77 +336,44 @@ const PaymentRequestsReview = () => {
         </div>
       )}
 
-      {/* Modal de Rechazo - Responsive */}
-      {showRejectModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 sm:p-6">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-xl shadow-2xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex items-center space-x-3 mb-4 pb-4 border-b border-gray-200">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-                <FaTimes className="text-red-600 text-xl" />
-              </div>
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900">
-                Rechazar Solicitud de Pago
-              </h3>
+      {/* Reject Modal */}
+      <SAModal
+        isOpen={showRejectModal && !!selectedRequest}
+        onClose={() => { setShowRejectModal(false); setSelectedRequest(null); setRejectionReason(''); }}
+        title="Rechazar Solicitud"
+        subtitle={selectedRequest ? `${selectedRequest.businessName || selectedRequest.businessId?.businessName || ''} · $${selectedRequest.amount?.toLocaleString('es-CO')} COP` : ''}
+        width="max-w-md"
+        footer={
+          <>
+            <SAButton variant="ghost" size="md" onClick={() => { setShowRejectModal(false); setSelectedRequest(null); setRejectionReason(''); }} disabled={processing}>
+              Cancelar
+            </SAButton>
+            <SAButton variant="danger" size="md" onClick={handleReject} disabled={processing || !rejectionReason.trim()} loading={processing}>
+              Rechazar
+            </SAButton>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {selectedRequest && (
+            <div className="bg-white/[0.03] border border-white/[0.06] rounded-lg p-3 space-y-1.5">
+              <p className="text-xs text-white/50"><span className="text-white/70">Meses:</span> {selectedRequest.monthsPurchased}</p>
+              <p className="text-xs text-white/50"><span className="text-white/70">Método:</span> {selectedRequest.paymentMethod}</p>
             </div>
-            
-            <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-2">
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold">Negocio:</span>{' '}
-                <span className="text-gray-900">{selectedRequest.businessName || selectedRequest.businessId?.businessName || selectedRequest.businessId}</span>
-              </p>
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold">Monto:</span>{' '}
-                <span className="text-gray-900">${selectedRequest.amount?.toLocaleString('es-CO')} COP</span>
-              </p>
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold">Meses:</span>{' '}
-                <span className="text-gray-900">{selectedRequest.monthsPurchased}</span>
-              </p>
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Motivo del Rechazo <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                className="w-full p-3 sm:p-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 text-sm sm:text-base resize-none"
-                rows="4"
-                placeholder="Ej: Comprobante no válido, monto incorrecto, información incompleta, etc."
-                required
-              />
-            </div>
-            
-            <div className="flex flex-col sm:flex-row gap-3">
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  setShowRejectModal(false);
-                  setSelectedRequest(null);
-                  setRejectionReason('');
-                }}
-                disabled={processing}
-                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 disabled:opacity-50 font-semibold text-sm sm:text-base transition-colors"
-              >
-                Cancelar
-              </motion.button>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={handleReject}
-                disabled={processing || !rejectionReason.trim()}
-                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold text-sm sm:text-base transition-colors shadow-sm"
-              >
-                {processing ? 'Rechazando...' : 'Rechazar Solicitud'}
-              </motion.button>
-            </div>
-          </motion.div>
+          )}
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Motivo del rechazo <span className="text-red-400">*</span></label>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-red-500/40 transition-all resize-none"
+              rows="3"
+              placeholder="Ej: Comprobante no válido, monto incorrecto..."
+              required
+            />
+          </div>
         </div>
-      )}
+      </SAModal>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { SAToast } from "../../Components/SuperAdmin/ui";
 
 const API_URL = (import.meta.env.VITE_API_URL || "https://157-245-125-216.nip.io") + "/api";
 
@@ -34,7 +35,7 @@ export default function OrderManagement() {
   const [filterTab, setFilterTab] = useState("all");
   const [businessFilter, setBusinessFilter] = useState("");
   const [search, setSearch] = useState("");
-  const [toast, setToast] = useState(null);
+  const [toastData, setToastData] = useState({ visible: false, message: '', type: 'success' });
   const [changingId, setChangingId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
 
@@ -63,9 +64,9 @@ export default function OrderManagement() {
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
   const showToast = (msg, type = "success") => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    setToastData({ visible: true, message: msg, type });
   };
+  const closeToast = () => setToastData(prev => ({ ...prev, visible: false }));
 
   const changeStatus = async (orderId, newStatus, fromCollection) => {
     setChangingId(orderId);
@@ -121,33 +122,13 @@ export default function OrderManagement() {
   return (
     <div className="space-y-6">
       {/* Toast */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, x: 20 }}
-            animate={{ opacity: 1, y: 0, x: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className={`fixed top-20 right-6 z-50 px-4 py-3 rounded-xl backdrop-blur-xl border shadow-2xl flex items-center gap-2.5 ${
-              toast.type === "error"
-                ? "bg-red-500/15 border-red-500/20 text-red-300"
-                : "bg-emerald-500/15 border-emerald-500/20 text-emerald-300"
-            }`}
-          >
-            {toast.type === "error" ? (
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-            ) : (
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            )}
-            <span className="text-sm">{toast.msg}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <SAToast message={toastData.message} type={toastData.type} visible={toastData.visible} onClose={closeToast} />
 
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Total", value: stats.total, accent: "text-white/80" },
-          { label: "Activos", value: stats.active, accent: "text-blue-400" },
+          { label: "Activos", value: stats.active, accent: "text-cyan-400" },
           { label: "Completados", value: stats.completed, accent: "text-emerald-400" },
           { label: "Cancelados", value: stats.cancelled, accent: "text-red-400" },
         ].map(s => (
@@ -171,7 +152,7 @@ export default function OrderManagement() {
             aria-label="Buscar pedidos"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none focus:border-blue-400/40 focus:ring-1 focus:ring-blue-400/20 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/10 transition-all"
           />
         </div>
 
@@ -179,12 +160,12 @@ export default function OrderManagement() {
         <select
           value={businessFilter}
           onChange={e => setBusinessFilter(e.target.value)}
-          className="px-3 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm outline-none focus:border-blue-400/40 transition-all appearance-none cursor-pointer sm:w-52"
+          className="px-3 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm outline-none focus:border-cyan-500/40 transition-all appearance-none cursor-pointer sm:w-52"
           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
         >
-          <option value="" className="bg-[#0d1b2a]">Todos los negocios</option>
+          <option value="" className="bg-[#141419]">Todos los negocios</option>
           {businesses.map(b => (
-            <option key={b.id} value={b.id} className="bg-[#0d1b2a]">{b.name}</option>
+            <option key={b.id} value={b.id} className="bg-[#141419]">{b.name}</option>
           ))}
         </select>
       </div>
@@ -197,7 +178,7 @@ export default function OrderManagement() {
             onClick={() => setFilterTab(tab.id)}
             className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all duration-200 border ${
               filterTab === tab.id
-                ? "bg-blue-500/15 text-blue-400 border-blue-500/20"
+                ? "bg-cyan-500/15 text-cyan-400 border-cyan-500/20"
                 : "text-white/40 hover:text-white/60 hover:bg-white/[0.04] border-transparent"
             }`}
           >
@@ -222,7 +203,7 @@ export default function OrderManagement() {
       {/* Loading */}
       {loading && (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-2 border-white/10 border-t-blue-400 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-white/10 border-t-cyan-400 rounded-full animate-spin" />
         </div>
       )}
 
@@ -285,7 +266,7 @@ export default function OrderManagement() {
                   {/* Collection badge */}
                   <span className={`hidden sm:inline-flex px-2 py-0.5 rounded-md text-[10px] font-medium border ${
                     order._collection === "orders"
-                      ? "bg-blue-500/10 text-blue-400/60 border-blue-500/15"
+                      ? "bg-cyan-500/10 text-cyan-400/60 border-cyan-500/15"
                       : "bg-white/[0.04] text-white/30 border-white/[0.06]"
                   }`}>
                     {order._collection === "orders" ? "Activo" : "Historial"}
@@ -399,7 +380,7 @@ export default function OrderManagement() {
                             </p>
                           )}
                           {order._collection === "completedorders" && !["completed", "delivered", "cancelled"].includes(order.status) && (
-                            <p className="mt-2 text-[10px] text-blue-400/50 flex items-center gap-1">
+                            <p className="mt-2 text-[10px] text-cyan-400/50 flex items-center gap-1">
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
                               Al cambiar a un estado activo se moverá a pedidos activos
                             </p>

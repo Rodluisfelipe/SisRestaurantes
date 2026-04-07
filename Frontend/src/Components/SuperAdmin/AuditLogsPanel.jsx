@@ -8,7 +8,7 @@ const headers = () => ({ 'Authorization': `Bearer ${getToken()}`, 'Content-Type'
 
 const ACTION_LABELS = {
   create: { label: 'Creado', color: 'bg-emerald-500/20 text-emerald-400', icon: '+' },
-  update: { label: 'Editado', color: 'bg-blue-500/20 text-blue-400', icon: '✎' },
+  update: { label: 'Editado', color: 'bg-cyan-500/20 text-cyan-400', icon: '✎' },
   delete: { label: 'Eliminado', color: 'bg-red-500/20 text-red-400', icon: '×' },
   toggle: { label: 'Toggle', color: 'bg-amber-500/20 text-amber-400', icon: '⇄' },
   reorder: { label: 'Reordenado', color: 'bg-purple-500/20 text-purple-400', icon: '↕' },
@@ -74,7 +74,7 @@ function DiffView({ before, after, action }) {
     if (changes.length === 0) return <p className="text-xs text-white/40">Sin cambios detectados</p>;
     return (
       <div className="space-y-2">
-        <p className="text-xs text-blue-400 font-medium mb-2">Campos modificados ({changes.length}):</p>
+        <p className="text-xs text-cyan-400 font-medium mb-2">Campos modificados ({changes.length}):</p>
         {changes.map(key => (
           <div key={key} className="bg-black/30 rounded-lg p-2.5 text-xs">
             <span className="text-white/50 font-mono">{key}</span>
@@ -221,7 +221,7 @@ export default function AuditLogsPanel() {
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
             <p className="text-white/40 text-xs uppercase tracking-wider">Hoy</p>
-            <p className="text-2xl font-bold text-blue-400 mt-1">{stats.today}</p>
+            <p className="text-2xl font-bold text-cyan-400 mt-1">{stats.today}</p>
           </div>
           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
             <p className="text-white/40 text-xs uppercase tracking-wider">Por Acción</p>
@@ -254,7 +254,7 @@ export default function AuditLogsPanel() {
           </svg>
           <span className="text-white/60 text-sm font-medium">Filtros</span>
           {hasFilters && (
-            <button onClick={clearFilters} className="ml-auto text-xs text-blue-400 hover:text-blue-300 transition">
+            <button onClick={clearFilters} className="ml-auto text-xs text-cyan-400 hover:text-cyan-300 transition">
               Limpiar filtros
             </button>
           )}
@@ -263,7 +263,7 @@ export default function AuditLogsPanel() {
           <select
             value={filterBusiness}
             onChange={e => { setFilterBusiness(e.target.value); setPage(1); }}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 [&>option]:bg-gray-800"
+            className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/40 [&>option]:bg-[#141419]"
           >
             <option value="">Todos los negocios</option>
             {businesses.map(b => (
@@ -273,7 +273,7 @@ export default function AuditLogsPanel() {
           <select
             value={filterResource}
             onChange={e => { setFilterResource(e.target.value); setPage(1); }}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 [&>option]:bg-gray-800"
+            className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/40 [&>option]:bg-[#141419]"
           >
             <option value="">Todos los recursos</option>
             {Object.entries(RESOURCE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -281,7 +281,7 @@ export default function AuditLogsPanel() {
           <select
             value={filterAction}
             onChange={e => { setFilterAction(e.target.value); setPage(1); }}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 [&>option]:bg-gray-800"
+            className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/40 [&>option]:bg-[#141419]"
           >
             <option value="">Todas las acciones</option>
             {Object.entries(ACTION_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
@@ -290,14 +290,14 @@ export default function AuditLogsPanel() {
             type="date"
             value={filterFrom}
             onChange={e => { setFilterFrom(e.target.value); setPage(1); }}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+            className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/40 [color-scheme:dark]"
             placeholder="Desde"
           />
           <input
             type="date"
             value={filterTo}
             onChange={e => { setFilterTo(e.target.value); setPage(1); }}
-            className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50"
+            className="bg-white/[0.03] border border-white/[0.06] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500/40 [color-scheme:dark]"
             placeholder="Hasta"
           />
         </div>
@@ -314,7 +314,7 @@ export default function AuditLogsPanel() {
       {/* Logs list */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : logs.length === 0 ? (
         <div className="text-center py-16">
@@ -512,7 +512,7 @@ export default function AuditLogsPanel() {
                 onClick={() => setPage(pageNum)}
                 className={`w-8 h-8 text-xs rounded-lg transition ${
                   pageNum === page
-                    ? 'bg-blue-500/30 text-blue-400 font-medium'
+                    ? 'bg-cyan-500/30 text-cyan-400 font-medium'
                     : 'text-white/40 hover:bg-white/10'
                 }`}
               >

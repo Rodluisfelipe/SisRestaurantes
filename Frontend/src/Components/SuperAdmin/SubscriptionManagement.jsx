@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import axios from 'axios';
-import { FaCrown, FaPlus, FaEdit, FaTrash, FaCalendarAlt, FaDollarSign } from 'react-icons/fa';
 import superadminApi, { subscriptionApi } from '../../services/superadminApi';
+import { SAModal, SAButton, SABadge } from './ui';
 
 const SubscriptionManagement = () => {
   const [subscriptions, setSubscriptions] = useState([]);
@@ -233,13 +232,13 @@ const SubscriptionManagement = () => {
     setIsSubmitting(false);
   };
 
-  const getStatusColor = (status) => {
+  const getStatusVariant = (status) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'expired': return 'bg-red-100 text-red-800';
-      case 'cancelled': return 'bg-gray-100 text-gray-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'active': return 'success';
+      case 'expired': return 'danger';
+      case 'cancelled': return 'neutral';
+      case 'pending': return 'warning';
+      default: return 'neutral';
     }
   };
 
@@ -264,7 +263,7 @@ const SubscriptionManagement = () => {
   if (loading && subscriptions.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="w-8 h-8 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
       </div>
     );
   }
@@ -272,419 +271,184 @@ const SubscriptionManagement = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <div className="flex items-center space-x-3 mb-2">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <FaCrown className="text-white text-xl" />
-            </div>
-            <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white">Gestión de Suscripciones</h2>
-              <p className="text-white/80 text-sm md:text-base">Administra los planes de suscripción de los negocios</p>
-            </div>
-          </div>
+          <h2 className="text-lg font-semibold text-white">Suscripciones</h2>
+          <p className="text-xs text-white/40 mt-0.5">Administra los planes de suscripción</p>
         </div>
-        <button
+        <SAButton
+          variant="primary"
+          size="md"
           onClick={() => setShowForm(true)}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center justify-center space-x-2 font-semibold shadow-lg"
+          icon={<svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>}
         >
-          <FaPlus size={16} />
-          <span>Nueva Suscripción</span>
-        </button>
+          Nueva Suscripción
+        </SAButton>
       </div>
 
       {/* Subscriptions List */}
-      <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 md:p-6">
-        {subscriptions.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <FaCrown className="text-white text-3xl" />
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">No hay suscripciones registradas</h3>
-            <p className="text-white/70 mb-6">Crea la primera suscripción para comenzar a gestionar los planes de los negocios</p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="inline-flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold"
+      {subscriptions.length === 0 ? (
+        <div className="text-center py-16">
+          <div className="w-14 h-14 mx-auto mb-4 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center">
+            <span className="text-2xl">👑</span>
+          </div>
+          <p className="text-sm text-white/40 mb-1">No hay suscripciones</p>
+          <p className="text-xs text-white/25 mb-4">Crea la primera suscripción para comenzar</p>
+          <SAButton variant="filled" size="sm" onClick={() => setShowForm(true)}>Crear Suscripción</SAButton>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {subscriptions.map((subscription, index) => (
+            <motion.div
+              key={subscription._id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.04 }}
+              className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.04] transition-colors"
             >
-              <FaPlus size={16} />
-              <span>Crear Primera Suscripción</span>
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {subscriptions.map((subscription, index) => (
-              <motion.div
-                key={subscription._id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="bg-white/5 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-white/10 hover:bg-white/10 transition-all duration-200"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                  {/* Business Info */}
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <span className="text-white text-xl">
-                        {getPlanIcon(subscription.planType)}
-                      </span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-white font-semibold text-lg truncate">
-                        {subscription.businessId?.businessName || 'Negocio no encontrado'}
-                      </h3>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-white/70 text-sm">
-                        <span className="flex items-center space-x-1">
-                          <span>{getPlanText(subscription.planType)}</span>
-                        </span>
-                        <span className="flex items-center space-x-1">
-                          <FaDollarSign size={12} />
-                          <span className="font-semibold text-white">{subscription.price.toLocaleString()}</span>
-                        </span>
-                      </div>
-                    </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-cyan-500/[0.08] border border-cyan-500/[0.12] flex items-center justify-center shrink-0">
+                    <span className="text-sm">{getPlanIcon(subscription.planType)}</span>
                   </div>
-                  
-                  {/* Status and Actions */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                    {/* Status and Date */}
-                    <div className="flex flex-col sm:items-end space-y-2">
-                      <div className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(subscription.status)}`}>
-                        {getStatusText(subscription.status)}
-                      </div>
-                      <div className="text-white/70 text-sm">
-                        <div className="flex items-center space-x-1">
-                          <FaCalendarAlt size={12} />
-                          <span>Hasta: {new Date(subscription.endDate).toLocaleDateString('es-ES')}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Action Buttons */}
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleEdit(subscription)}
-                        className="p-3 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 hover:text-blue-300 rounded-xl transition-all duration-200 flex items-center justify-center"
-                        title="Editar suscripción"
-                      >
-                        <FaEdit size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(subscription._id)}
-                        className="p-3 bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 rounded-xl transition-all duration-200 flex items-center justify-center"
-                        title="Eliminar suscripción"
-                      >
-                        <FaTrash size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Info (Notes) */}
-                {subscription.notes && (
-                  <div className="mt-4 pt-4 border-t border-white/10">
-                    <p className="text-white/60 text-sm">
-                      <span className="font-medium text-white/80">Notas:</span> {subscription.notes}
-                    </p>
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-          >
-            {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-                    <FaCrown className="text-white text-lg" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">
-                      {editingSubscription ? 'Editar Suscripción' : 'Nueva Suscripción'}
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-medium text-white truncate">
+                      {subscription.businessId?.businessName || 'Negocio no encontrado'}
                     </h3>
-                    <p className="text-sm text-gray-500">
-                      {editingSubscription ? 'Modifica los datos de la suscripción' : 'Crea una nueva suscripción para un negocio'}
-                    </p>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-xs text-white/40">{getPlanText(subscription.planType)}</span>
+                      <span className="text-xs font-medium text-white/70 tabular-nums">${subscription.price?.toLocaleString()}</span>
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={resetForm}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-right hidden sm:block">
+                    <SABadge variant={getStatusVariant(subscription.status)} dot>{getStatusText(subscription.status)}</SABadge>
+                    <p className="text-[11px] text-white/30 mt-1">Hasta {new Date(subscription.endDate).toLocaleDateString('es-ES')}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleEdit(subscription)} className="p-2 rounded-lg text-white/30 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Editar">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                    </button>
+                    <button onClick={() => handleDelete(subscription._id)} className="p-2 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all" title="Eliminar">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            {/* Form Content */}
-            <div className="p-6">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Business Selection */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    <span className="flex items-center space-x-2">
-                      <span>🏢</span>
-                      <span>Negocio</span>
-                      <span className="text-red-500">*</span>
-                    </span>
-                  </label>
-                  <select
-                    name="businessId"
-                    value={formData.businessId}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-white text-gray-900 ${
-                      formErrors.businessId 
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                        : 'border-gray-200 focus:ring-blue-500 focus:border-transparent'
-                    }`}
-                    required
-                  >
-                    <option value="">Selecciona un negocio</option>
-                    {businesses.map(business => (
-                      <option key={business._id} value={business._id}>
-                        {business.businessName}
-                      </option>
-                    ))}
-                  </select>
-                  {formErrors.businessId && (
-                    <p className="text-red-500 text-sm flex items-center space-x-1">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      <span>{formErrors.businessId}</span>
-                    </p>
-                  )}
-                </div>
-
-                {/* Plan Type and Price Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      <span className="flex items-center space-x-2">
-                        <span>📅</span>
-                        <span>Tipo de Plan</span>
-                        <span className="text-red-500">*</span>
-                      </span>
-                    </label>
-                    <select
-                      name="planType"
-                      value={formData.planType}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white text-gray-900"
-                      required
-                    >
-                      <option value="monthly">📅 Plan Mensual</option>
-                      <option value="annual">👑 Plan Anual</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="block text-sm font-semibold text-gray-700">
-                      <span className="flex items-center space-x-2">
-                        <span>💰</span>
-                        <span>Precio</span>
-                        <span className="text-red-500">*</span>
-                      </span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-semibold">$</span>
-                      <input
-                        type="number"
-                        name="price"
-                        value={formData.price}
-                        onChange={handleInputChange}
-                        className={`w-full pl-8 pr-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-white text-gray-900 ${
-                          formErrors.price 
-                            ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                            : 'border-gray-200 focus:ring-blue-500 focus:border-transparent'
-                        }`}
-                        placeholder="0.00"
-                        step="0.01"
-                        min="0"
-                        required
-                      />
-                    </div>
-                    {formErrors.price && (
-                      <p className="text-red-500 text-sm flex items-center space-x-1">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        <span>{formErrors.price}</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Date Range */}
-                <div className="space-y-4">
-                  <h4 className="text-lg font-semibold text-gray-800 flex items-center space-x-2">
-                    <FaCalendarAlt className="text-blue-500" />
-                    <span>Período de Suscripción</span>
-                  </h4>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="block text-sm font-semibold text-gray-700">
-                        <span className="flex items-center space-x-2">
-                          <span>📅</span>
-                          <span>Fecha de Inicio</span>
-                          <span className="text-red-500">*</span>
-                        </span>
-                      </label>
-                      <input
-                        type="date"
-                        name="startDate"
-                        value={formData.startDate}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-white text-gray-900 ${
-                          formErrors.startDate 
-                            ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                            : 'border-gray-200 focus:ring-blue-500 focus:border-transparent'
-                        }`}
-                        required
-                      />
-                      {formErrors.startDate && (
-                        <p className="text-red-500 text-sm flex items-center space-x-1">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          <span>{formErrors.startDate}</span>
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="block text-sm font-semibold text-gray-700">
-                        <span className="flex items-center space-x-2">
-                          <span>🏁</span>
-                          <span>Fecha de Fin</span>
-                          <span className="text-red-500">*</span>
-                        </span>
-                      </label>
-                      <input
-                        type="date"
-                        name="endDate"
-                        value={formData.endDate}
-                        onChange={handleInputChange}
-                        className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-white text-gray-900 ${
-                          formErrors.endDate 
-                            ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                            : 'border-gray-200 focus:ring-blue-500 focus:border-transparent'
-                        }`}
-                        required
-                      />
-                      {formErrors.endDate && (
-                        <p className="text-red-500 text-sm flex items-center space-x-1">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          <span>{formErrors.endDate}</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Auto-calculated duration info */}
-                  {formData.startDate && formData.endDate && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                      <div className="flex items-center space-x-2 text-blue-800">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z" />
-                        </svg>
-                        <span className="text-sm font-medium">
-                          Duración: {Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60 * 24))} días
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Notes */}
-                <div className="space-y-2">
-                  <label className="block text-sm font-semibold text-gray-700">
-                    <span className="flex items-center space-x-2">
-                      <span>📝</span>
-                      <span>Notas Adicionales</span>
-                    </span>
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:ring-2 transition-all duration-200 bg-white text-gray-900 resize-none ${
-                      formErrors.notes 
-                        ? 'border-red-300 focus:ring-red-500 focus:border-red-500' 
-                        : 'border-gray-200 focus:ring-blue-500 focus:border-transparent'
-                    }`}
-                    rows="4"
-                    placeholder="Agrega cualquier información adicional sobre esta suscripción..."
-                  />
-                  <div className="flex justify-between items-center">
-                    <p className={`text-xs ${formData.notes.length > 500 ? 'text-red-500' : 'text-gray-500'}`}>
-                      {formData.notes.length}/500 caracteres
-                    </p>
-                    {formErrors.notes && (
-                      <p className="text-red-500 text-sm flex items-center space-x-1">
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        <span>{formErrors.notes}</span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={resetForm}
-                    className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 font-semibold flex items-center justify-center space-x-2"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    <span>Cancelar</span>
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 font-semibold flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        <span>Guardando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>{editingSubscription ? 'Actualizar' : 'Crear'} Suscripción</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </motion.div>
+              {subscription.notes && (
+                <p className="text-xs text-white/30 mt-3 pt-3 border-t border-white/[0.04]">
+                  <span className="text-white/50">Notas:</span> {subscription.notes}
+                </p>
+              )}
+              <div className="sm:hidden mt-2 flex items-center gap-2">
+                <SABadge variant={getStatusVariant(subscription.status)} dot>{getStatusText(subscription.status)}</SABadge>
+                <span className="text-[11px] text-white/30">Hasta {new Date(subscription.endDate).toLocaleDateString('es-ES')}</span>
+              </div>
+            </motion.div>
+          ))}
         </div>
       )}
+
+      {/* Form Modal */}
+      <SAModal
+        isOpen={showForm}
+        onClose={resetForm}
+        title={editingSubscription ? 'Editar Suscripción' : 'Nueva Suscripción'}
+        subtitle="Gestiona el plan de un negocio"
+        width="max-w-xl"
+        footer={
+          <>
+            <SAButton variant="ghost" size="md" onClick={resetForm}>Cancelar</SAButton>
+            <SAButton variant="primary" size="md" type="submit" form="sub-form" loading={isSubmitting}>
+              {editingSubscription ? 'Actualizar' : 'Crear'}
+            </SAButton>
+          </>
+        }
+      >
+        <form id="sub-form" onSubmit={handleSubmit} className="space-y-5">
+          {/* Business */}
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Negocio <span className="text-red-400">*</span></label>
+            <select name="businessId" value={formData.businessId} onChange={handleInputChange}
+              className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all [&>option]:bg-[#141419]"
+              required>
+              <option value="">Selecciona un negocio</option>
+              {businesses.map(business => (
+                <option key={business._id} value={business._id}>{business.businessName}</option>
+              ))}
+            </select>
+            {formErrors.businessId && <p className="text-red-400 text-xs mt-1">{formErrors.businessId}</p>}
+          </div>
+
+          {/* Plan type + Price */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Tipo de Plan <span className="text-red-400">*</span></label>
+              <select name="planType" value={formData.planType} onChange={handleInputChange}
+                className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all [&>option]:bg-[#141419]"
+                required>
+                <option value="monthly">Plan Mensual</option>
+                <option value="annual">Plan Anual</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Precio <span className="text-red-400">*</span></label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                <input type="number" name="price" value={formData.price} onChange={handleInputChange}
+                  className="w-full pl-7 pr-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all"
+                  placeholder="0" step="0.01" min="0" required />
+              </div>
+              {formErrors.price && <p className="text-red-400 text-xs mt-1">{formErrors.price}</p>}
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Fecha Inicio <span className="text-red-400">*</span></label>
+              <input type="date" name="startDate" value={formData.startDate} onChange={handleInputChange}
+                className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all [color-scheme:dark]"
+                required />
+              {formErrors.startDate && <p className="text-red-400 text-xs mt-1">{formErrors.startDate}</p>}
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Fecha Fin <span className="text-red-400">*</span></label>
+              <input type="date" name="endDate" value={formData.endDate} onChange={handleInputChange}
+                className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all [color-scheme:dark]"
+                required />
+              {formErrors.endDate && <p className="text-red-400 text-xs mt-1">{formErrors.endDate}</p>}
+            </div>
+          </div>
+
+          {/* Duration info */}
+          {formData.startDate && formData.endDate && (
+            <div className="bg-cyan-500/[0.06] border border-cyan-500/10 rounded-lg px-3 py-2.5 flex items-center gap-2">
+              <svg className="w-4 h-4 text-cyan-400/60 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
+              </svg>
+              <span className="text-xs text-cyan-400/70">
+                Duración: {Math.ceil((new Date(formData.endDate) - new Date(formData.startDate)) / (1000 * 60 * 60 * 24))} días
+              </span>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Notas</label>
+            <textarea name="notes" value={formData.notes} onChange={handleInputChange}
+              className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all resize-none"
+              rows="3" placeholder="Información adicional..." />
+            <div className="flex justify-end mt-1">
+              <p className={`text-[10px] ${formData.notes.length > 500 ? 'text-red-400' : 'text-white/20'}`}>
+                {formData.notes.length}/500
+              </p>
+            </div>
+            {formErrors.notes && <p className="text-red-400 text-xs mt-1">{formErrors.notes}</p>}
+          </div>
+        </form>
+      </SAModal>
     </div>
   );
 };

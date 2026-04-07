@@ -89,14 +89,14 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
             className="relative w-full max-w-lg bg-[#0d1b2a]/95 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Top accent */}
-            <div className="h-[2px] bg-gradient-to-r from-transparent via-blue-400/60 to-transparent" />
+            <div className="h-[2px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
 
             <div className="p-6 sm:p-8">
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/20 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
                   </div>
@@ -126,7 +126,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                     transition={{ delay: idx * 0.05 }}
                   >
                     <label className="block text-xs font-medium text-white/40 mb-1.5 ml-1">
-                      {field.label} {field.required && <span className="text-blue-400">*</span>}
+                      {field.label} {field.required && <span className="text-cyan-400">*</span>}
                     </label>
                     <div className="relative group flex items-center gap-2">
                       <div className="relative flex-1">
@@ -136,9 +136,9 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                           onChange={handleChange}
                           required={field.required}
                           placeholder={field.placeholder}
-                          className="w-full px-4 py-2.5 pl-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-blue-400/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-blue-400/20"
+                          className="w-full px-4 py-2.5 pl-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-cyan-500/10"
                         />
-                        <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                        <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                           {field.icon}
                         </svg>
                       </div>
@@ -161,7 +161,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                   transition={{ delay: 0.2 }}
                 >
                   <label className="block text-xs font-medium text-white/40 mb-1.5 ml-1">
-                    Slug <span className="text-blue-400">*</span>
+                    Slug <span className="text-cyan-400">*</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1 group">
@@ -171,9 +171,9 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                         onChange={handleChange}
                         required
                         placeholder="mi-negocio"
-                        className="w-full px-4 py-2.5 pl-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-blue-400/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-blue-400/20 font-mono"
+                        className="w-full px-4 py-2.5 pl-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-cyan-500/10 font-mono"
                       />
-                      <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-cyan-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-3.828a4.5 4.5 0 010 6.364l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757" />
                       </svg>
                     </div>
@@ -187,7 +187,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                   </div>
                   {form.slug && (
                     <p className="mt-1.5 text-[11px] text-white/20 ml-1">
-                      menuby.tech/<span className="text-blue-400/60">{form.slug}</span>
+                      menuby.tech/<span className="text-cyan-400/60">{form.slug}</span>
                     </p>
                   )}
                 </motion.div>
@@ -219,7 +219,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                   className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-300 ${
                     loading
                       ? 'bg-white/[0.06] text-white/30 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-400 hover:to-indigo-500 shadow-lg shadow-blue-500/20'
+                      : 'bg-white text-black hover:bg-white/90 active:scale-[0.98]'
                   }`}
                 >
                   {loading ? (

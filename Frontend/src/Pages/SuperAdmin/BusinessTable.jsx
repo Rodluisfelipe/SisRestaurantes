@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef } from "react";
 import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta } from "../../services/superadminApi";
 import { socket } from "../../services/socket";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { SAToast } from "../../Components/SuperAdmin/ui";
 
 export default function BusinessTable({ refreshTrigger }) {
   const [businesses, setBusinesses] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ text: "", type: "success" });
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all"); // all | active | inactive
   const debounceRef = useRef(null);
@@ -25,9 +26,9 @@ export default function BusinessTable({ refreshTrigger }) {
   };
 
   const showMessage = (text, type = "success") => {
-    setMessage({ text, type });
-    setTimeout(() => setMessage({ text: "", type: "success" }), 3000);
+    setToast({ visible: true, message: text, type });
   };
+  const closeToast = () => setToast(prev => ({ ...prev, visible: false }));
 
   useEffect(() => {
     loadBusinesses();
@@ -125,44 +126,25 @@ export default function BusinessTable({ refreshTrigger }) {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Toast message */}
-      <AnimatePresence>
-        {message.text && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            className={`fixed top-4 right-4 z-[100] px-4 py-3 rounded-xl border backdrop-blur-xl shadow-xl flex items-center gap-2.5 text-sm ${
-              message.type === 'error'
-                ? 'bg-red-500/15 border-red-500/20 text-red-300'
-                : 'bg-emerald-500/15 border-emerald-500/20 text-emerald-300'
-            }`}
-          >
-            {message.type === 'error' ? (
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-            {message.text}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <SAToast message={toast.message} type={toast.type} visible={toast.visible} onClose={closeToast} />
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         {[
-          { label: 'Total', value: stats.total, color: 'blue' },
-          { label: 'Activos', value: stats.active, color: 'emerald' },
-          { label: 'Inactivos', value: stats.inactive, color: 'amber' },
-        ].map(stat => (
-          <div key={stat.label} className={`px-4 py-3 rounded-xl bg-${stat.color}-500/[0.06] border border-${stat.color}-500/10`}>
-            <p className="text-2xl font-bold text-white">{stat.value}</p>
-            <p className={`text-xs text-${stat.color}-400/70`}>{stat.label}</p>
-          </div>
+          { label: 'Total', value: stats.total },
+          { label: 'Activos', value: stats.active, color: 'text-emerald-400' },
+          { label: 'Inactivos', value: stats.inactive, color: 'text-amber-400' },
+        ].map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06, duration: 0.3 }}
+            className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4"
+          >
+            <span className="text-[11px] font-medium text-white/35 uppercase tracking-wider">{stat.label}</span>
+            <p className={`text-2xl font-semibold mt-1 tabular-nums ${stat.color || 'text-white'}`}>{stat.value}</p>
+          </motion.div>
         ))}
       </div>
 
@@ -178,7 +160,7 @@ export default function BusinessTable({ refreshTrigger }) {
             aria-label="Buscar negocio"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none focus:border-blue-400/30 focus:ring-1 focus:ring-blue-400/10 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/20 outline-none focus:border-cyan-500/40 focus:ring-1 focus:ring-cyan-500/10 transition-all"
           />
         </div>
         <div className="flex gap-1.5 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
@@ -188,7 +170,7 @@ export default function BusinessTable({ refreshTrigger }) {
               onClick={() => setFilterStatus(f)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 filterStatus === f
-                  ? 'bg-blue-500/20 text-blue-400'
+                  ? 'bg-cyan-500/20 text-cyan-400'
                   : 'text-white/35 hover:text-white/55'
               }`}
             >
@@ -201,7 +183,7 @@ export default function BusinessTable({ refreshTrigger }) {
       {/* Loading */}
       {loading && (
         <div className="flex justify-center py-12">
-          <div className="w-8 h-8 border-2 border-blue-400/20 border-t-blue-400 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-cyan-400/20 border-t-cyan-400 rounded-full animate-spin" />
         </div>
       )}
 
@@ -247,8 +229,8 @@ export default function BusinessTable({ refreshTrigger }) {
                       {b.logo ? (
                         <img src={b.logo} alt="" className="w-9 h-9 rounded-xl object-cover border border-white/10" />
                       ) : (
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-white/10 flex items-center justify-center">
-                          <span className="text-sm font-bold text-blue-400">{b.businessName?.charAt(0)?.toUpperCase()}</span>
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-white/10 flex items-center justify-center">
+                          <span className="text-sm font-bold text-cyan-400">{b.businessName?.charAt(0)?.toUpperCase()}</span>
                         </div>
                       )}
                       <span className="font-medium text-white text-sm">{b.businessName}</span>
@@ -311,7 +293,7 @@ export default function BusinessTable({ refreshTrigger }) {
                       <button
                         onClick={() => handleOpenAdmin(b)}
                         title="Panel Admin"
-                        className="p-2 rounded-lg text-blue-400/60 hover:text-blue-400 hover:bg-blue-500/10 transition-all"
+                        className="p-2 rounded-lg text-cyan-400/60 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
@@ -361,8 +343,8 @@ export default function BusinessTable({ refreshTrigger }) {
                 {b.logo ? (
                   <img src={b.logo} alt="" className="w-11 h-11 rounded-xl object-cover border border-white/10" />
                 ) : (
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-white/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-base font-bold text-blue-400">{b.businessName?.charAt(0)?.toUpperCase()}</span>
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <span className="text-base font-bold text-cyan-400">{b.businessName?.charAt(0)?.toUpperCase()}</span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -415,7 +397,7 @@ export default function BusinessTable({ refreshTrigger }) {
                 </button>
                 <button
                   onClick={() => handleOpenAdmin(b)}
-                  className="p-2 rounded-lg text-blue-400/60 hover:text-blue-400 bg-blue-500/10 border border-blue-500/10 transition-all"
+                  className="p-2 rounded-lg text-cyan-400/60 hover:text-cyan-400 bg-cyan-500/10 border border-cyan-500/10 transition-all"
                   title="Panel"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
