@@ -102,6 +102,7 @@ export default function Menu() {
   const [businessNotFound, setBusinessNotFound] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+  const [subscriptionPlanType, setSubscriptionPlanType] = useState(null);
   const [closedOverlayDismissed, setClosedOverlayDismissed] = useState(false);
 
   // Estados para modales de favoritos, historial y loyalty
@@ -600,9 +601,11 @@ export default function Menu() {
           }
           
           setSubscriptionStatus(status);
+          setSubscriptionPlanType(sub.planType || null);
         } else {
           // Sin suscripción = activo (para no bloquear el menú si no hay suscripción configurada)
           setSubscriptionStatus(null);
+          setSubscriptionPlanType(null);
         }
       } catch (err) {
         // Si no hay suscripción o hay error, asumir que está activo (para no bloquear el menú)
@@ -622,6 +625,36 @@ export default function Menu() {
     
     return () => clearInterval(interval);
   }, [businessId]);
+
+  // Load custom Google Font for menu
+  const menuFont = businessConfig?.theme?.menuFont;
+  useEffect(() => {
+    if (!menuFont) return;
+    const FONT_MAP = {
+      inter: 'Inter:wght@400;500;600;700',
+      playfair: 'Playfair+Display:wght@400;500;600;700',
+      poppins: 'Poppins:wght@400;500;600;700',
+      lora: 'Lora:wght@400;500;600;700',
+      montserrat: 'Montserrat:wght@400;500;600;700',
+    };
+    const fontSpec = FONT_MAP[menuFont];
+    if (!fontSpec) return;
+    const id = `gfont-${menuFont}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${fontSpec}&display=swap`;
+    document.head.appendChild(link);
+  }, [menuFont]);
+
+  const menuFontFamily = menuFont ? {
+    inter: "'Inter', sans-serif",
+    playfair: "'Playfair Display', serif",
+    poppins: "'Poppins', sans-serif",
+    lora: "'Lora', serif",
+    montserrat: "'Montserrat', sans-serif",
+  }[menuFont] || undefined : undefined;
 
   useEffect(() => {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId para aceptar tanto slugs como ObjectIDs
@@ -1326,6 +1359,7 @@ export default function Menu() {
               status = 'grace';
             }
             setSubscriptionStatus(status);
+            setSubscriptionPlanType(sub.planType || null);
           }
         }
         return false;
@@ -1438,7 +1472,7 @@ export default function Menu() {
 
   return (
     <FlyToCartProvider>
-    <main className="min-h-screen bg-gray-50 pb-20 pt-safe">
+    <main className="min-h-screen bg-gray-50 pb-20 pt-safe" style={menuFontFamily ? { fontFamily: menuFontFamily } : undefined}>
       <BusinessHeader 
         comesFromCatalog={comesFromCatalog}
         onShowFavorites={() => setShowFavorites(true)}
@@ -1449,6 +1483,7 @@ export default function Menu() {
         showLoyaltyButton={!!orderInfo.phone}
         onShowReviews={() => setShowReviewsSheet(true)}
         reviewStats={businessConfig?.reviewStats}
+        subscriptionPlanType={subscriptionPlanType}
       />
       
       {/* Aviso de datos en cache — sin conexión pero con datos guardados */}

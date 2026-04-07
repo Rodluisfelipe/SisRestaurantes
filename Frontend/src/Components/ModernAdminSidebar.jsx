@@ -132,9 +132,19 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-400 rounded-full border-2 border-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <h1 className="text-sm font-bold text-slate-800 truncate leading-tight">
-              {businessConfig?.businessName || 'Mi Negocio'}
-            </h1>
+            <div className="flex items-center gap-1">
+              <h1 className="text-sm font-bold text-slate-800 truncate leading-tight">
+                {businessConfig?.businessName || 'Mi Negocio'}
+              </h1>
+              {subscriptionData?.subscription?.planType === 'annual' && subscriptionData?.isActive && (
+                <span className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-gradient-to-r from-violet-100 to-purple-100 border border-violet-200/60" title="Plan Anual PRO">
+                  <svg className="w-2.5 h-2.5 text-violet-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2l2.5 4 4.5-1.5-2 5L16 16H4l1-6.5-2-5L7.5 6z" />
+                  </svg>
+                  <span className="text-[7px] font-black text-violet-600 uppercase tracking-wider leading-none">PRO</span>
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-slate-400 font-medium">Sistema de gestión</p>
           </div>
         </div>
