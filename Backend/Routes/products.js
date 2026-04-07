@@ -8,6 +8,8 @@ const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const { audit } = require('../utils/auditLog');
+const BusinessConfig = require('../Models/BusinessConfig');
 const rateLimit = require('express-rate-limit');
 const {
   validateProductsReorder,
@@ -216,6 +218,10 @@ router.post("/", tenantAuth, validateProductInput, async (req, res) => {
     
     // Emitir evento de actualización por WebSocket
     emitToBusiness(newProduct.businessId?.toString(), "products_update", { type: "created", product: populatedProduct });
+    
+    // Audit log
+    const bizCreate = await BusinessConfig.findById(newProduct.businessId).select('businessName').lean();
+    audit({ action: 'create', resource: 'product', resourceId: newProduct._id, resourceName: newProduct.name, businessId: newProduct.businessId, businessName: bizCreate?.businessName, after: newProduct.toObject(), req });
     
     logger.info(`Created new product: ${newProduct.name} for business ${productData.businessId}`);
     res.json(populatedProduct);
@@ -471,6 +477,9 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
       }));
     }
 
+    // Snapshot before update for audit
+    const beforeUpdate = await Product.findOne({ _id: productId, businessId: finalBusinessId }).lean();
+
     const updatedProduct = await Product.findOneAndUpdate(
       { _id: productId, businessId: finalBusinessId },
       { 
@@ -497,6 +506,12 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
 
     logger.info('Producto actualizado', { productId: updatedProduct._id.toString() }, req);
     
+    // Audit log
+    if (beforeUpdate) {
+      const bizUpdate = await BusinessConfig.findById(finalBusinessId).select('businessName').lean();
+      audit({ action: 'update', resource: 'product', resourceId: productId, resourceName: updatedProduct.name, businessId: finalBusinessId, businessName: bizUpdate?.businessName, before: beforeUpdate, after: updatedProduct.toObject(), req });
+    }
+    
     res.json(updatedProduct);
   } catch (error) {
     logger.error('Error al actualizar producto', error, req);
@@ -509,11 +524,17 @@ router.delete("/:id", tenantAuth, validateDeleteProduct, async (req, res) => {
   try {
     // Use businessId from token for tenant isolation, fallback for superadmin
     const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
+    // Snapshot before delete for audit
+    const beforeDelete = await Product.findOne({ _id: req.params.id, ...(tenantBizId ? { businessId: tenantBizId } : {}) }).lean();
+
     const deletedProduct = await Product.findOneAndDelete({ _id: req.params.id, ...(tenantBizId ? { businessId: tenantBizId } : {}) });
     
     // Emitir evento de actualización por WebSocket
     if (deletedProduct) {
       emitToBusiness(deletedProduct.businessId?.toString(), "products_update", { type: "deleted", productId: deletedProduct._id });
+      // Audit log
+      const bizDel = await BusinessConfig.findById(deletedProduct.businessId).select('businessName').lean();
+      audit({ action: 'delete', resource: 'product', resourceId: deletedProduct._id, resourceName: deletedProduct.name, businessId: deletedProduct.businessId, businessName: bizDel?.businessName, before: beforeDelete, req });
     }
     
     res.json({ message: "Producto eliminado" });
@@ -537,9 +558,16 @@ router.patch("/:id/toggle", tenantAuth, validateToggleProduct, async (req, res) 
       return res.status(404).json({ message: "Producto no encontrado" });
     }
     
+    // Snapshot before toggle
+    const beforeToggle = product.toObject();
+    
     // Toggle del estado activo
     product.active = !product.active;
     await product.save();
+    
+    // Audit log
+    const bizToggle = await BusinessConfig.findById(product.businessId).select('businessName').lean();
+    audit({ action: 'toggle', resource: 'product', resourceId: product._id, resourceName: product.name, businessId: product.businessId, businessName: bizToggle?.businessName, before: beforeToggle, after: product.toObject(), req });
     
     logger.info(`Product toggled`, { productId: product._id.toString(), name: product.name, active: product.active }, req);
     
