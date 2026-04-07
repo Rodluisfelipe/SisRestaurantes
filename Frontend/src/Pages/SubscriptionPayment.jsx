@@ -354,7 +354,26 @@ const SubscriptionPayment = () => {
   const plans = selectedGateway === 'direct' ? DIRECT_PLANS : selectedGateway === 'dlocal' ? dlocalPlans : epaycoPlans;
   const selectedPlan = plans.find(p => p.months === selectedMonths);
   const isTestMode = selectedGateway === 'dlocal' ? dlocalConfig.isTest : selectedGateway === 'epayco' ? epaycoConfig.isTest : false;
+  const getPlanDisplayName = () => {
+    if (!subscription) return '';
+    // Derive from planType first (most reliable), then lastMonthsPurchased as fallback
+    if (subscription.planType === 'annual' || subscription.lastMonthsPurchased === 12) return 'Plan Anual';
+    if (subscription.planType === 'semiannual' || subscription.lastMonthsPurchased === 6) return 'Plan Semestral';
+    if (subscription.planType === 'quarterly' || subscription.lastMonthsPurchased === 3) return 'Plan Trimestral';
+    return 'Plan Mensual';
+  };
+
+  const getPlanTierLevel = () => {
+    if (!subscription) return 0;
+    if (subscription.planType === 'annual' || subscription.lastMonthsPurchased === 12) return 4;
+    if (subscription.planType === 'semiannual' || subscription.lastMonthsPurchased === 6) return 3;
+    if (subscription.planType === 'quarterly' || subscription.lastMonthsPurchased === 3) return 2;
+    return 1;
+  };
+
   const subStatus = getSubscriptionStatus();
+  const planTier = getPlanTierLevel();
+  const isAnnualPlan = planTier === 4;
   const hasPendingRequest = myRequests.some(r => r.status === 'pending');
 
   // Combine all history for display
@@ -459,84 +478,164 @@ const SubscriptionPayment = () => {
       )}
 
       {/* ==========================================
-          SUSCRIPCIÓN ACTUAL — Compact inline  
+          SUSCRIPCIÓN ACTUAL — Premium for annual, compact for others  
           ========================================== */}
-      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
-        <div className="px-3.5 py-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-[#1F2937]">Suscripción</h3>
-            {subStatus ? (
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                subStatus.color === 'green' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                subStatus.color === 'yellow' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                'bg-red-50 text-red-700 border border-red-200'
-              }`}>{subStatus.text}</span>
-            ) : (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gray-50 text-[#6C7A92] border border-[#DCE4F5]">Sin plan</span>
-            )}
+      {isAnnualPlan && subscription && subStatus?.status === 'active' ? (
+        /* ── ANNUAL PREMIUM CARD ── */
+        <div className="relative overflow-hidden rounded-2xl lg:rounded-xl border border-violet-300/30 shadow-[0_2px_16px_rgba(139,92,246,0.08)]">
+          {/* Animated dark gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-950 via-purple-900 to-indigo-950" />
+          
+          {/* Glow orbs */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-500/15 rounded-full blur-3xl animate-premium-glow" />
+          <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl animate-premium-glow" style={{ animationDelay: '1.5s' }} />
+          
+          {/* Shimmer sweep */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/[0.04] to-transparent animate-premium-shimmer" />
           </div>
 
-          {subscription ? (
-            <>
-              {subscription.periodStart && subscription.periodEnd && (
-                <div className="mt-2">
-                  <div className="h-1.5 bg-[#F4F6FB] rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, Math.max(2, ((Date.now() - new Date(subscription.periodStart).getTime()) / (new Date(subscription.periodEnd).getTime() - new Date(subscription.periodStart).getTime())) * 100))}%` }}
-                      transition={{ duration: 1, ease: 'easeOut' }}
-                      className={`h-full rounded-full ${
-                        subStatus?.color === 'green' ? 'bg-emerald-400' :
-                        subStatus?.color === 'yellow' ? 'bg-amber-400' : 'bg-red-400'
-                      }`}
-                    />
-                  </div>
-                </div>
-              )}
-              
-              <div className="mt-2 flex items-center gap-3 text-[10px] text-[#6C7A92]">
-                <span>
-                  <span className="font-semibold text-[#1F2937]">
-                    {subscription.lastMonthsPurchased 
-                      ? `${subscription.lastMonthsPurchased} ${subscription.lastMonthsPurchased === 1 ? 'mes' : 'meses'}`
-                      : subscription.planType === 'annual' ? 'Anual' 
-                      : subscription.planType === 'semiannual' ? 'Semestral'
-                      : subscription.planType === 'quarterly' ? 'Trimestral'
-                      : 'Mensual'}
-                  </span>
-                </span>
-                <span className="text-[#DCE4F5]">|</span>
-                <span>Vence <span className="font-semibold text-[#1F2937]">{formatDate(subscription.periodEnd)}</span></span>
-                {subscription.price > 0 && (
-                  <>
-                    <span className="text-[#DCE4F5]">|</span>
-                    <span className="font-semibold text-[#1F2937]">{formatCurrency(subscription.price)}</span>
-                  </>
-                )}
-              </div>
+          {/* Sparkles */}
+          <div className="absolute top-3 right-6 w-1 h-1 bg-violet-300/60 rounded-full animate-premium-sparkle-1" />
+          <div className="absolute bottom-4 right-12 w-0.5 h-0.5 bg-purple-300/50 rounded-full animate-premium-sparkle-2" />
+          <div className="absolute top-5 left-16 w-0.5 h-0.5 bg-indigo-300/40 rounded-full animate-premium-sparkle-3" />
 
-              {subStatus?.status === 'grace' && (
-                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-200">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+          {/* Content */}
+          <div className="relative px-4 py-3.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                {/* Crown icon */}
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/25 to-purple-600/25 border border-violet-400/20 flex items-center justify-center animate-premium-float">
+                  <svg className="w-4.5 h-4.5 text-violet-300 animate-premium-crown-glow" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M10 2l2.5 4 4.5-1.5-2 5L16 16H4l1-6.5-2-5L7.5 6z" />
                   </svg>
-                  <span>Período de gracia &mdash; {subscription.graceDaysRemaining > 0 ? `${subscription.graceDaysRemaining} día(s)` : 'Renueva ahora'}</span>
                 </div>
-              )}
-              {subStatus?.status === 'suspended' && (
-                <div className="mt-2 flex items-center gap-1.5 text-[10px] text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5 border border-red-200">
-                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                  </svg>
-                  <span>Menú desactivado &mdash; Renueva para reactivar</span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-violet-100">Plan Anual</span>
+                    <span className="text-[7px] font-black bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent px-1.5 py-0.5 rounded-full border border-violet-400/25 uppercase tracking-[0.12em] leading-none">PRO</span>
+                  </div>
+                  <span className="text-[10px] text-violet-300/50 font-medium">Suscripción Premium</span>
                 </div>
+              </div>
+              <span className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/20">
+                Activa
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            {subscription.periodStart && subscription.periodEnd && (
+              <div className="mt-3">
+                <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min(100, Math.max(2, ((Date.now() - new Date(subscription.periodStart).getTime()) / (new Date(subscription.periodEnd).getTime() - new Date(subscription.periodStart).getTime())) * 100))}%` }}
+                    transition={{ duration: 1.2, ease: 'easeOut' }}
+                    className="h-full rounded-full bg-gradient-to-r from-violet-500 via-purple-400 to-violet-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Info row */}
+            <div className="mt-2.5 flex items-center gap-3 text-[10px]">
+              <span className="text-violet-200/80">
+                Vence <span className="font-semibold text-violet-100">{formatDate(subscription.periodEnd)}</span>
+              </span>
+              {subscription.daysRemaining > 0 && (
+                <>
+                  <span className="text-violet-400/30">|</span>
+                  <span className="font-bold tabular-nums bg-gradient-to-r from-violet-200 to-purple-300 bg-clip-text text-transparent">
+                    {subscription.daysRemaining} días restantes
+                  </span>
+                </>
               )}
-            </>
-          ) : (
-            <p className="mt-1 text-[10px] text-[#6C7A92]">Activa un plan para publicar tu menú digital</p>
-          )}
+              {subscription.price > 0 && (
+                <>
+                  <span className="text-violet-400/30">|</span>
+                  <span className="font-semibold text-violet-200/80">{formatCurrency(subscription.price)}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom accent */}
+          <div className="h-[1px] bg-gradient-to-r from-transparent via-violet-400/25 to-transparent" />
         </div>
-      </div>
+      ) : (
+        /* ── STANDARD CARD (monthly/quarterly/semiannual/expired/grace) ── */
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <div className="px-3.5 py-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-[#1F2937]">Suscripción</h3>
+              {subStatus ? (
+                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                  subStatus.color === 'green' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                  subStatus.color === 'yellow' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                  'bg-red-50 text-red-700 border border-red-200'
+                }`}>{subStatus.text}</span>
+              ) : (
+                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-gray-50 text-[#6C7A92] border border-[#DCE4F5]">Sin plan</span>
+              )}
+            </div>
+
+            {subscription ? (
+              <>
+                {subscription.periodStart && subscription.periodEnd && (
+                  <div className="mt-2">
+                    <div className="h-1.5 bg-[#F4F6FB] rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, Math.max(2, ((Date.now() - new Date(subscription.periodStart).getTime()) / (new Date(subscription.periodEnd).getTime() - new Date(subscription.periodStart).getTime())) * 100))}%` }}
+                        transition={{ duration: 1, ease: 'easeOut' }}
+                        className={`h-full rounded-full ${
+                          subStatus?.color === 'green' ? 'bg-emerald-400' :
+                          subStatus?.color === 'yellow' ? 'bg-amber-400' : 'bg-red-400'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mt-2 flex items-center gap-3 text-[10px] text-[#6C7A92]">
+                  <span>
+                    <span className="font-semibold text-[#1F2937]">
+                      {getPlanDisplayName()}
+                    </span>
+                  </span>
+                  <span className="text-[#DCE4F5]">|</span>
+                  <span>Vence <span className="font-semibold text-[#1F2937]">{formatDate(subscription.periodEnd)}</span></span>
+                  {subscription.price > 0 && (
+                    <>
+                      <span className="text-[#DCE4F5]">|</span>
+                      <span className="font-semibold text-[#1F2937]">{formatCurrency(subscription.price)}</span>
+                    </>
+                  )}
+                </div>
+
+                {subStatus?.status === 'grace' && (
+                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5 border border-amber-200">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <span>Período de gracia &mdash; {subscription.graceDaysRemaining > 0 ? `${subscription.graceDaysRemaining} día(s)` : 'Renueva ahora'}</span>
+                  </div>
+                )}
+                {subStatus?.status === 'suspended' && (
+                  <div className="mt-2 flex items-center gap-1.5 text-[10px] text-red-600 bg-red-50 rounded-lg px-2.5 py-1.5 border border-red-200">
+                    <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                    </svg>
+                    <span>Menú desactivado &mdash; Renueva para reactivar</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="mt-1 text-[10px] text-[#6C7A92]">Activa un plan para publicar tu menú digital</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Pending request banner */}
       {hasPendingRequest && (
@@ -581,22 +680,27 @@ const SubscriptionPayment = () => {
                   return (
                     <button key={plan.months} type="button" onClick={() => setSelectedMonths(plan.months)}
                       className={`relative flex-1 py-2 px-1 rounded-lg border transition-all text-center ${
-                        isSelected
-                          ? 'border-[#3A7AFF] bg-[#3A7AFF]/5 shadow-sm'
-                          : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
+                        isBestValue
+                          ? isSelected
+                            ? 'border-violet-400/50 bg-gradient-to-b from-violet-950 to-purple-950 shadow-md shadow-violet-500/10'
+                            : 'border-violet-300/30 bg-gradient-to-b from-violet-950/90 to-purple-950/90 hover:border-violet-400/40'
+                          : isSelected
+                            ? 'border-[#3A7AFF] bg-[#3A7AFF]/5 shadow-sm'
+                            : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
                       }`}>
                       {isBestValue && (
-                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[7px] font-bold bg-[#3A7AFF] text-white px-1.5 py-px rounded-full whitespace-nowrap leading-tight">
-                          MEJOR
+                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[7px] font-bold bg-gradient-to-r from-violet-500 to-purple-500 text-white px-1.5 py-px rounded-full whitespace-nowrap leading-tight flex items-center gap-0.5">
+                          <svg className="w-2 h-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2l2.5 4 4.5-1.5-2 5L16 16H4l1-6.5-2-5L7.5 6z" /></svg>
+                          PRO
                         </div>
                       )}
-                      <div className={`text-sm font-bold leading-none ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>{plan.months}</div>
-                      <div className="text-[8px] text-[#6C7A92] leading-tight">{plan.months === 1 ? 'mes' : 'meses'}</div>
-                      <div className={`text-[10px] font-bold mt-0.5 leading-none ${isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
+                      <div className={`text-sm font-bold leading-none ${isBestValue ? 'text-violet-200' : isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>{plan.months}</div>
+                      <div className={`text-[8px] leading-tight ${isBestValue ? 'text-violet-400/60' : 'text-[#6C7A92]'}`}>{plan.months === 1 ? 'mes' : 'meses'}</div>
+                      <div className={`text-[10px] font-bold mt-0.5 leading-none ${isBestValue ? 'text-violet-100' : isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
                         {formatCurrency(displayTotal)}
                       </div>
                       {savingsVsMonthly > 0 && selectedGateway === 'direct' && (
-                        <div className="text-[7px] text-emerald-600 font-semibold mt-0.5 leading-tight">
+                        <div className={`text-[7px] font-semibold mt-0.5 leading-tight ${isBestValue ? 'text-emerald-400' : 'text-emerald-600'}`}>
                           -{formatCurrency(savingsVsMonthly)}
                         </div>
                       )}
