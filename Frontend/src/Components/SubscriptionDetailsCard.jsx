@@ -6,11 +6,21 @@ const SubscriptionDetailsCard = ({ subscription }) => {
   if (!subscription) return null;
 
   const getPlanName = (plan) => {
-    return plan === 'annual' ? 'Plan Anual' : 'Plan Mensual';
+    switch (plan) {
+      case 'annual': return 'Plan Anual';
+      case 'semiannual': return 'Plan Semestral';
+      case 'quarterly': return 'Plan Trimestral';
+      default: return 'Plan Mensual';
+    }
   };
 
   const getPlanIcon = (plan) => {
-    return plan === 'annual' ? '👑' : '📅';
+    switch (plan) {
+      case 'annual': return '👑';
+      case 'semiannual': return '🛡️';
+      case 'quarterly': return '💎';
+      default: return '📅';
+    }
   };
 
   return (

@@ -411,7 +411,7 @@ async function activateSubscription(payment) {
 
   if (sub) {
     sub.status = 'active';
-    sub.planType = months >= 12 ? 'annual' : 'monthly';
+    sub.planType = months >= 12 ? 'annual' : months >= 6 ? 'semiannual' : months >= 3 ? 'quarterly' : 'monthly';
     sub.startDate = sub.startDate || now;
     sub.endDate = endDate;
     sub.periodStart = startDate;

@@ -7,6 +7,104 @@ import { FaCrown, FaCalendarAlt, FaExclamationTriangle, FaArrowRight, FaClock } 
  * Recibe toda la data de suscripcion via props (de useSubscriptionData).
  * NO hace API calls, NO registra socket listeners, NO corre timers propios.
  */
+
+/* ── Plan tier config ── */
+const PLAN_TIERS = {
+  monthly: {
+    label: 'Mensual',
+    shortLabel: 'MES',
+    tier: 1,
+    bg: 'bg-slate-50',
+    border: 'border-slate-200/80',
+    iconBg: 'bg-slate-100',
+    iconColor: 'text-slate-500',
+    textColor: 'text-slate-700',
+    badgeBg: 'bg-slate-100',
+    badgeText: 'text-slate-600',
+    daysBg: 'text-slate-500',
+    gradient: null,
+  },
+  quarterly: {
+    label: 'Trimestral',
+    shortLabel: 'TRI',
+    tier: 2,
+    bg: 'bg-sky-50/80',
+    border: 'border-sky-200/70',
+    iconBg: 'bg-gradient-to-br from-sky-100 to-blue-100',
+    iconColor: 'text-sky-600',
+    textColor: 'text-sky-800',
+    badgeBg: 'bg-sky-100',
+    badgeText: 'text-sky-700',
+    daysBg: 'text-sky-600',
+    gradient: null,
+  },
+  semiannual: {
+    label: 'Semestral',
+    shortLabel: 'SEM',
+    tier: 3,
+    bg: 'bg-amber-50/70',
+    border: 'border-amber-300/60',
+    iconBg: 'bg-gradient-to-br from-amber-100 to-yellow-100',
+    iconColor: 'text-amber-600',
+    textColor: 'text-amber-800',
+    badgeBg: 'bg-amber-100',
+    badgeText: 'text-amber-700',
+    daysBg: 'text-amber-600',
+    gradient: 'from-amber-400/10 via-yellow-300/5 to-transparent',
+  },
+  annual: {
+    label: 'Anual',
+    shortLabel: 'PRO',
+    tier: 4,
+    bg: 'bg-violet-50/60',
+    border: 'border-violet-300/50',
+    iconBg: 'bg-gradient-to-br from-violet-200 to-purple-200',
+    iconColor: 'text-violet-600',
+    textColor: 'text-violet-900',
+    badgeBg: 'bg-gradient-to-r from-violet-100 to-purple-100',
+    badgeText: 'text-violet-700',
+    daysBg: 'text-violet-600',
+    gradient: 'from-violet-400/10 via-purple-300/5 to-transparent',
+  },
+};
+
+const getTier = (planType) => PLAN_TIERS[planType] || PLAN_TIERS.monthly;
+
+/* ── Inline SVG icons per tier ── */
+const TierIcon = ({ planType, className = '' }) => {
+  const t = planType;
+  if (t === 'annual') {
+    // Crown
+    return (
+      <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+        <path d="M10 2l2.5 4 4.5-1.5-2 5L16 16H4l1-6.5-2-5L7.5 6z" />
+      </svg>
+    );
+  }
+  if (t === 'semiannual') {
+    // Shield with star
+    return (
+      <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 1L3 4v5c0 4.5 3 8.5 7 10 4-1.5 7-5.5 7-10V4l-7-3zm0 7.5l1.1 2.2 2.4.4-1.7 1.7.4 2.4L10 13.9l-2.2 1.3.4-2.4-1.7-1.7 2.4-.4L10 8.5z" clipRule="evenodd" />
+      </svg>
+    );
+  }
+  if (t === 'quarterly') {
+    // Diamond
+    return (
+      <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+        <path d="M10 1L5 7l5 12 5-12-5-6zM6.5 7L10 2.5 13.5 7 10 17 6.5 7z" />
+        <path d="M10 2.5L6.5 7h7L10 2.5z" opacity="0.5" />
+      </svg>
+    );
+  }
+  // Monthly — calendar
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor">
+      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+    </svg>
+  );
+};
 const SubscriptionStatus = ({
   subscription,
   loading,
@@ -23,8 +121,10 @@ const SubscriptionStatus = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const getPlanIcon = (planType) => (planType === 'annual' ? FaCrown : FaCalendarAlt);
-  const getPlanText = (planType) => (planType === 'annual' ? 'Plan Anual' : 'Plan Mensual');
+  const getPlanText = (planType) => {
+    const tier = getTier(planType);
+    return `Plan ${tier.label}`;
+  };
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -123,26 +223,56 @@ const SubscriptionStatus = ({
   }
 
   if (compact) {
-    const PlanIcon = getPlanIcon(subscription.planType);
+    const tier = getTier(subscription.planType);
+    const isHighTier = tier.tier >= 3;
     return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200/80">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <PlanIcon className={`text-xs ${subscription.planType === 'annual' ? 'text-yellow-500' : 'text-slate-500'}`} />
-          <span className="text-[11px] font-semibold text-slate-700 truncate">
-            {getPlanText(subscription.planType)}
-          </span>
-          <span className="text-[9px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded-full uppercase leading-none">
-            Activo
-          </span>
+      <button
+        onClick={handleNavigate}
+        className={`group relative w-full overflow-hidden rounded-xl ${tier.bg} border ${tier.border} transition-all duration-200 hover:shadow-sm active:scale-[0.98]`}
+      >
+        {/* Shimmer on high tiers */}
+        {isHighTier && (
+          <div className={`absolute inset-0 bg-gradient-to-r ${tier.gradient} pointer-events-none`} />
+        )}
+        {tier.tier === 4 && (
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute -top-8 -right-8 w-24 h-24 bg-violet-300/10 rounded-full blur-2xl" />
+          </div>
+        )}
+        <div className="relative flex items-center gap-2.5 px-3 py-2.5">
+          {/* Tier icon */}
+          <div className={`w-7 h-7 rounded-lg ${tier.iconBg} flex items-center justify-center shrink-0`}>
+            <TierIcon planType={subscription.planType} className={`w-3.5 h-3.5 ${tier.iconColor}`} />
+          </div>
+          {/* Plan info */}
+          <div className="flex flex-col min-w-0 flex-1 text-left">
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[11px] font-bold ${tier.textColor} leading-tight tracking-tight`}>
+                {getPlanText(subscription.planType)}
+              </span>
+              {tier.tier >= 3 && (
+                <span className={`text-[8px] font-extrabold ${tier.badgeText} ${tier.badgeBg} px-1.5 py-0.5 rounded-full uppercase leading-none tracking-wider`}>
+                  {tier.shortLabel}
+                </span>
+              )}
+            </div>
+            <span className="text-[9px] text-slate-400 leading-tight font-medium">
+              Activo
+            </span>
+          </div>
+          {/* Days remaining */}
+          <div className="shrink-0 text-right">
+            <span className={`text-xs font-bold tabular-nums ${tier.daysBg}`}>
+              {subscription.daysRemaining > 0 ? subscription.daysRemaining : '∞'}
+            </span>
+            <span className="block text-[8px] text-slate-400 font-medium leading-tight">días</span>
+          </div>
         </div>
-        <span className="text-[11px] font-bold text-slate-500 tabular-nums shrink-0">
-          {subscription.daysRemaining > 0 ? `${subscription.daysRemaining}d` : <span className="text-emerald-500">OK</span>}
-        </span>
-      </div>
+      </button>
     );
   }
 
-  const PlanIcon = getPlanIcon(subscription.planType);
+  const tier = getTier(subscription.planType);
 
   return (
     <div
@@ -151,15 +281,17 @@ const SubscriptionStatus = ({
           ? 'bg-red-50 border-red-200'
           : isInGracePeriod
           ? 'bg-yellow-50 border-yellow-200'
-          : 'bg-emerald-50 border-emerald-200'
+          : `${tier.bg} ${tier.border}`
       }`}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          <PlanIcon className={`text-lg shrink-0 ${subscription.planType === 'annual' ? 'text-yellow-500' : 'text-slate-500'}`} />
+          <div className={`w-8 h-8 rounded-lg ${tier.iconBg} flex items-center justify-center shrink-0`}>
+            <TierIcon planType={subscription.planType} className={`w-4 h-4 ${tier.iconColor}`} />
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <h3 className="text-sm font-bold text-slate-800 truncate">
+              <h3 className={`text-sm font-bold ${tier.textColor} truncate`}>
                 {getPlanText(subscription.planType)}
               </h3>
             </div>

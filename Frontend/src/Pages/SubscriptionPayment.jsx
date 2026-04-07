@@ -499,7 +499,10 @@ const SubscriptionPayment = () => {
                   <span className="font-semibold text-[#1F2937]">
                     {subscription.lastMonthsPurchased 
                       ? `${subscription.lastMonthsPurchased} ${subscription.lastMonthsPurchased === 1 ? 'mes' : 'meses'}`
-                      : subscription.planType === 'annual' ? 'Anual' : 'Mensual'}
+                      : subscription.planType === 'annual' ? 'Anual' 
+                      : subscription.planType === 'semiannual' ? 'Semestral'
+                      : subscription.planType === 'quarterly' ? 'Trimestral'
+                      : 'Mensual'}
                   </span>
                 </span>
                 <span className="text-[#DCE4F5]">|</span>

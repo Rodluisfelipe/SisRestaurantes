@@ -469,7 +469,7 @@ async function activateSubscription(payment) {
     
     if (subscription) {
       // Actualizar suscripción existente
-      subscription.planType = months >= 12 ? 'annual' : 'monthly';
+      subscription.planType = months >= 12 ? 'annual' : months >= 6 ? 'semiannual' : months >= 3 ? 'quarterly' : 'monthly';
       subscription.status = 'active';
       subscription.paymentStatus = 'paid';
       subscription.isActive = true;
