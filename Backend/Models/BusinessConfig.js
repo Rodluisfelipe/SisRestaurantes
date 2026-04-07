@@ -170,7 +170,9 @@ const businessConfigSchema = new mongoose.Schema({
   },
   theme: {
     buttonColor: { type: String, default: "#2563eb" },
-    buttonTextColor: { type: String, default: "#ffffff" }
+    buttonTextColor: { type: String, default: "#ffffff" },
+    primaryColor: { type: String, default: "" },
+    menuFont: { type: String, enum: ['', 'inter', 'playfair', 'poppins', 'lora', 'montserrat'], default: '' }
   },
   // Feature flags
   features: {

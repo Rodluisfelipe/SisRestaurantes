@@ -132,7 +132,8 @@ router.get('/check/:businessId', subscriptionCheckLimiter, async (req, res) => {
         subscription: {
           status: currentStatus,
           isActive: currentStatus === 'active',
-          isInGracePeriod: currentStatus === 'grace'
+          isInGracePeriod: currentStatus === 'grace',
+          planType: subscription.planType || 'monthly'
         }
       });
     }

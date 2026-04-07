@@ -23,7 +23,8 @@ const BusinessHeader = ({
   showHistoryButton = false,
   showLoyaltyButton = false,
   onShowReviews,
-  reviewStats
+  reviewStats,
+  subscriptionPlanType
 }) => {
   const [logoError, setLogoError] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -193,10 +194,19 @@ const BusinessHeader = ({
               </div>
             </div>
 
-            {/* Name */}
-            <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight leading-tight text-center ${hasCover ? 'text-white drop-shadow-md' : 'text-slate-800'}`}>
-              {businessConfig.businessName || 'Mi Negocio'}
-            </h1>
+            {/* Name + Verified badge */}
+            <div className="flex items-center justify-center gap-1.5">
+              <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight leading-tight text-center ${hasCover ? 'text-white drop-shadow-md' : 'text-slate-800'}`}>
+                {businessConfig.businessName || 'Mi Negocio'}
+              </h1>
+              {(subscriptionPlanType === 'annual' || subscriptionPlanType === 'semiannual') && (
+                <span className={`inline-flex items-center shrink-0 ${hasCover ? 'text-blue-300 drop-shadow' : 'text-blue-500'}`} title="Negocio verificado">
+                  <svg className="w-4.5 h-4.5 sm:w-5 sm:h-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </span>
+              )}
+            </div>
 
             {/* Meta row: rating + address + socials */}
             <div className="flex items-center gap-2 flex-wrap justify-center">
