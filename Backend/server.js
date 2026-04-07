@@ -233,6 +233,7 @@ if (process.env.NODE_ENV !== 'production') {
 // Rutas específicas para superadmin (integradas desde BackendSA)
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
 app.use("/api/superadmin", require("./Routes/superadmin"));
+app.use("/api/audit-logs", require("./Routes/auditLogs")); // Audit trail (superadmin)
 // Importante: paymentRequests debe ir ANTES de subscriptions para que /api/subscription/me se procese correctamente
 app.use("/api", require("./Routes/paymentRequests"));
 app.use("/api/subscriptions", require("./Routes/subscriptions"));

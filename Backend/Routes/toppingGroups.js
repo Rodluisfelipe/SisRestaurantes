@@ -9,6 +9,8 @@ const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const { audit } = require('../utils/auditLog');
+const BusinessConfig = require('../Models/BusinessConfig');
 
 // Get all topping groups
 router.get("/", async (req, res) => {
@@ -84,6 +86,10 @@ router.post("/", tenantAuth, async (req, res) => {
     const group = new ToppingGroup(req.body);
     await group.save();
     
+    // Audit log
+    const biz = await BusinessConfig.findById(group.businessId).select('name').lean();
+    audit({ action: 'create', resource: 'toppingGroup', resourceId: group._id, resourceName: group.name, businessId: group.businessId, businessName: biz?.name, after: group.toObject(), req });
+    
     logger.info('Topping group created', { id: group._id, name: group.name }, req);
     
     // Emitir evento de WebSocket
@@ -132,6 +138,7 @@ router.put("/:id", tenantAuth, async (req, res) => {
     if (!existingGroup) {
       return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado", 404));
     }
+    const beforeUpdate = existingGroup.toObject();
 
     // Preparar datos de actualización de forma más segura
     // Filtrar opciones vacías (sin nombre) que el frontend puede enviar al agregar una opción nueva sin completarla
@@ -168,6 +175,10 @@ router.put("/:id", tenantAuth, async (req, res) => {
     // Actualizar usando save() en lugar de findByIdAndUpdate para mejor control
     Object.assign(existingGroup, updateData);
     const updatedGroup = await existingGroup.save();
+    
+    // Audit log
+    const biz = await BusinessConfig.findById(updatedGroup.businessId).select('name').lean();
+    audit({ action: 'update', resource: 'toppingGroup', resourceId: updatedGroup._id, resourceName: updatedGroup.name, businessId: updatedGroup.businessId, businessName: biz?.name, before: beforeUpdate, after: updatedGroup.toObject(), req });
     
     logger.info('Topping group updated', { id: updatedGroup._id, name: updatedGroup.name }, req);
     
@@ -229,6 +240,10 @@ router.delete("/:id", tenantAuth, async (req, res) => {
     if (!deleted) {
       return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado (puede que ya fue eliminado)", 404));
     }
+
+    // Audit log
+    const biz = await BusinessConfig.findById(deleted.businessId).select('name').lean();
+    audit({ action: 'delete', resource: 'toppingGroup', resourceId: deleted._id, resourceName: deleted.name, businessId: deleted.businessId, businessName: biz?.name, before: deleted.toObject(), req });
 
     // Emitir evento de WebSocket
     try {

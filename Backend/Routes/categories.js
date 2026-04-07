@@ -8,6 +8,8 @@ const { resolveBusinessId } = require("../utils/businessResolver");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const { audit } = require('../utils/auditLog');
+const BusinessConfig = require('../Models/BusinessConfig');
 const {
   validateCreateCategory,
   validateReorderCategories,
@@ -46,6 +48,7 @@ router.post("/", tenantAuth, validateCreateCategory, async (req, res) => {
     if (req.body._id) {
       // Compound query: only update categories belonging to this tenant
       const tenantBusinessId = req.user.businessId || req.body.businessId;
+      const beforeUpdate = await Category.findOne({ _id: req.body._id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) }).lean();
       const updatedCategory = await Category.findOneAndUpdate(
         { _id: req.body._id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) },
         {
@@ -60,6 +63,10 @@ router.post("/", tenantAuth, validateCreateCategory, async (req, res) => {
       if (!updatedCategory) {
         return res.status(404).json({ message: "Categoría no encontrada" });
       }
+      
+      // Audit log
+      const biz = await BusinessConfig.findById(updatedCategory.businessId).select('name').lean();
+      audit({ action: 'update', resource: 'category', resourceId: updatedCategory._id, resourceName: updatedCategory.name, businessId: updatedCategory.businessId, businessName: biz?.name, before: beforeUpdate, after: updatedCategory.toObject ? updatedCategory.toObject() : updatedCategory, req });
       
       // Emitir evento de actualización por WebSocket
       emitToBusiness(updatedCategory.businessId?.toString(), "categories_update", { type: "updated", category: updatedCategory });
@@ -82,6 +89,9 @@ router.post("/", tenantAuth, validateCreateCategory, async (req, res) => {
     const newCategory = new Category(categoryData);
     try {
       const savedCategory = await newCategory.save();
+      // Audit log
+      const biz = await BusinessConfig.findById(savedCategory.businessId).select('name').lean();
+      audit({ action: 'create', resource: 'category', resourceId: savedCategory._id, resourceName: savedCategory.name, businessId: savedCategory.businessId, businessName: biz?.name, after: savedCategory.toObject(), req });
       // Emitir evento de actualización por WebSocket
       emitToBusiness(savedCategory.businessId?.toString(), "categories_update", { type: "created", category: savedCategory });
       logger.info('Category created', { id: savedCategory._id, name: savedCategory.name }, req);
@@ -157,6 +167,7 @@ router.put("/:id", tenantAuth, validateUpdateCategory, async (req, res) => {
     
     // Compound query: only update categories belonging to this tenant
     const tenantBusinessId = req.user.businessId || req.body.businessId;
+    const beforeUpdate = await Category.findOne({ _id: req.params.id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) }).lean();
     const updatedCategory = await Category.findOneAndUpdate(
       { _id: req.params.id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) },
       updateData,
@@ -166,6 +177,10 @@ router.put("/:id", tenantAuth, validateUpdateCategory, async (req, res) => {
     if (!updatedCategory) {
       return res.status(404).json(formatHttpError(req, "Categoría no encontrada", 404));
     }
+    
+    // Audit log
+    const biz = await BusinessConfig.findById(updatedCategory.businessId).select('name').lean();
+    audit({ action: 'update', resource: 'category', resourceId: updatedCategory._id, resourceName: updatedCategory.name, businessId: updatedCategory.businessId, businessName: biz?.name, before: beforeUpdate, after: updatedCategory.toObject ? updatedCategory.toObject() : updatedCategory, req });
     
     // Emitir evento de actualización por WebSocket
     emitToBusiness(updatedCategory.businessId?.toString(), "categories_update", { type: "updated", category: updatedCategory });
@@ -183,10 +198,14 @@ router.delete("/:id", tenantAuth, validateDeleteCategory, async (req, res) => {
   try {
     // Use businessId from token for tenant isolation, fallback for superadmin
     const tenantBusinessId = req.user.businessId || req.query.businessId;
+    const beforeDelete = await Category.findOne({ _id: req.params.id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) }).lean();
     const category = await Category.findOneAndDelete({ _id: req.params.id, ...(tenantBusinessId ? { businessId: tenantBusinessId } : {}) });
     if (!category) {
       return res.status(404).json(formatHttpError(req, "Categoría no encontrada", 404));
     }
+    // Audit log
+    const biz = await BusinessConfig.findById(category.businessId).select('name').lean();
+    audit({ action: 'delete', resource: 'category', resourceId: category._id, resourceName: category.name, businessId: category.businessId, businessName: biz?.name, before: beforeDelete, req });
     // Emitir evento de actualización por WebSocket
     emitToBusiness(category.businessId?.toString(), "categories_update", { type: "deleted", categoryId: category._id });
     logger.info('Category deleted', { id: category._id }, req);
