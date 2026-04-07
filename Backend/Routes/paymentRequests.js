@@ -543,7 +543,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
       subscription.paymentMethod = paymentMethodMap[paymentRequest.paymentMethod] || paymentRequest.paymentMethod?.toUpperCase() || 'OTHER';
       
       // ACTUALIZAR con datos del pago (prioridad sobre manual)
-      subscription.planType = paymentRequest.monthsPurchased >= 12 ? 'annual' : 'monthly';
+      subscription.planType = paymentRequest.monthsPurchased >= 12 ? 'annual' : paymentRequest.monthsPurchased >= 6 ? 'semiannual' : paymentRequest.monthsPurchased >= 3 ? 'quarterly' : 'monthly';
       subscription.price = paymentRequest.amount; // Usar el precio del pago
       subscription.isActive = true;
       

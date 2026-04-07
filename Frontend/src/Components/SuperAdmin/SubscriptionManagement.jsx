@@ -139,6 +139,10 @@ const SubscriptionManagement = () => {
         const endDate = new Date(startDate);
         if (planType === 'monthly') {
           endDate.setMonth(endDate.getMonth() + 1);
+        } else if (planType === 'quarterly') {
+          endDate.setMonth(endDate.getMonth() + 3);
+        } else if (planType === 'semiannual') {
+          endDate.setMonth(endDate.getMonth() + 6);
         } else if (planType === 'annual') {
           endDate.setFullYear(endDate.getFullYear() + 1);
         }
@@ -253,11 +257,21 @@ const SubscriptionManagement = () => {
   };
 
   const getPlanIcon = (planType) => {
-    return planType === 'annual' ? '👑' : '📅';
+    switch (planType) {
+      case 'annual': return '👑';
+      case 'semiannual': return '🛡️';
+      case 'quarterly': return '💎';
+      default: return '📅';
+    }
   };
 
   const getPlanText = (planType) => {
-    return planType === 'annual' ? 'Plan Anual' : 'Plan Mensual';
+    switch (planType) {
+      case 'annual': return 'Plan Anual';
+      case 'semiannual': return 'Plan Semestral';
+      case 'quarterly': return 'Plan Trimestral';
+      default: return 'Plan Mensual';
+    }
   };
 
   if (loading && subscriptions.length === 0) {
@@ -389,6 +403,8 @@ const SubscriptionManagement = () => {
                 className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all [&>option]:bg-[#141419]"
                 required>
                 <option value="monthly">Plan Mensual</option>
+                <option value="quarterly">Plan Trimestral</option>
+                <option value="semiannual">Plan Semestral</option>
                 <option value="annual">Plan Anual</option>
               </select>
             </div>
