@@ -12,7 +12,7 @@ const STATUS_LABELS = {
 
 const STATUS_COLORS = {
   pending: 'bg-yellow-100/80 text-yellow-300 border-yellow-500/20',
-  qualified: 'bg-blue-100/80 text-blue-300 border-blue-500/20',
+  qualified: 'bg-cyan-100/80 text-cyan-300 border-cyan-500/20',
   approved: 'bg-indigo-100/80 text-indigo-300 border-indigo-500/20',
   credited: 'bg-emerald-100/80 text-emerald-300 border-emerald-500/20',
   rejected: 'bg-red-100/80 text-red-300 border-red-500/20',
@@ -137,7 +137,7 @@ export default function ReferralManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-8 h-8 border-3 border-white/10 border-t-blue-400 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-white/10 border-t-cyan-400 rounded-full animate-spin" />
       </div>
     );
   }
@@ -149,7 +149,7 @@ export default function ReferralManagement() {
         {[
           { label: 'Total', value: kpis.total || 0, color: 'text-white' },
           { label: 'Pendientes', value: kpis.pending || 0, color: 'text-yellow-400' },
-          { label: 'Calificados', value: kpis.qualified || 0, color: 'text-blue-400' },
+          { label: 'Calificados', value: kpis.qualified || 0, color: 'text-cyan-400' },
           { label: 'Acreditados', value: kpis.credited || 0, color: 'text-emerald-400' },
           { label: 'Rechazados', value: kpis.rejected || 0, color: 'text-red-400' },
           { label: 'Conversi\u00f3n', value: `${kpis.conversionRate || 0}%`, color: 'text-indigo-400' },
@@ -173,7 +173,7 @@ export default function ReferralManagement() {
             onClick={() => setTab(t.id)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               tab === t.id
-                ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20'
+                ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20'
                 : 'text-white/40 hover:text-white/60 border border-transparent'
             }`}
           >
@@ -319,7 +319,7 @@ export default function ReferralManagement() {
                 </div>
                 <button
                   onClick={() => setConfigDraft(d => ({ ...d, requireApproval: !d.requireApproval }))}
-                  className={`w-12 h-7 rounded-full transition-colors relative ${configDraft.requireApproval ? 'bg-blue-500' : 'bg-white/10'}`}
+                  className={`w-12 h-7 rounded-full transition-colors relative ${configDraft.requireApproval ? 'bg-cyan-500' : 'bg-white/10'}`}
                 >
                   <div className={`w-5 h-5 rounded-full bg-white shadow absolute top-1 transition-transform ${configDraft.requireApproval ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
@@ -342,7 +342,7 @@ export default function ReferralManagement() {
                     min={field.min}
                     max={field.max}
                     step={field.step || 1}
-                    className="w-full px-3 py-2 bg-white/[0.05] border border-white/[0.1] rounded-lg text-white/80 text-sm focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500/30 outline-none"
+                    className="w-full px-3 py-2 bg-white/[0.05] border border-white/[0.1] rounded-lg text-white/80 text-sm focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none"
                   />
                 </div>
               ))}
@@ -352,7 +352,7 @@ export default function ReferralManagement() {
                 <button
                   onClick={saveConfig}
                   disabled={configSaving}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-cyan-500 hover:bg-cyan-600 text-white transition-colors disabled:opacity-50"
                 >
                   {configSaving ? 'Guardando...' : 'Guardar configuraci\u00f3n'}
                 </button>
@@ -403,7 +403,7 @@ export default function ReferralManagement() {
                         <td className="px-4 py-3 text-white/80 font-medium">{r.businessName || '\u2014'}</td>
                         <td className="px-4 py-3 text-white/60">{r.totalReferrals}</td>
                         <td className="px-4 py-3 text-emerald-400 font-medium">{formatCurrency(r.totalCredits)}</td>
-                        <td className="px-4 py-3 text-blue-400">{formatCurrency(r.currentCredits)}</td>
+                        <td className="px-4 py-3 text-cyan-400">{formatCurrency(r.currentCredits)}</td>
                       </tr>
                     ))}
                   </tbody>

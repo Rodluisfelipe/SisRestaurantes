@@ -68,6 +68,7 @@ async function showDashboard() {
     checkPrinterStatus();
     checkForUpdate();
     setInterval(checkPrinterStatus, 30000); // poll every 30s
+    setInterval(checkForUpdate, 300000); // re-check updates every 5min
 }
 
 // ── Setup Flow ───────────────────────────────────

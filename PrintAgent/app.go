@@ -18,7 +18,7 @@ import (
 )
 
 // AppVersion is the current application version (semver)
-const AppVersion = "2.1.0"
+const AppVersion = "2.2.0"
 
 // App struct — the Wails application bridge
 type App struct {
@@ -319,15 +319,18 @@ func (a *App) GetVersion() string {
 // CheckForUpdate checks the server for a newer version
 func (a *App) CheckForUpdate() map[string]interface{} {
 	url := a.cfg.APIUrl + "/uploads/print-agent/version.json"
+	log.Printf("[update] Checking for updates at: %s (current: %s)", url, AppVersion)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
+		log.Printf("[update] HTTP error: %v", err)
 		return map[string]interface{}{"available": false}
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
+		log.Printf("[update] Non-200 status: %d", resp.StatusCode)
 		return map[string]interface{}{"available": false}
 	}
 
@@ -337,10 +340,12 @@ func (a *App) CheckForUpdate() map[string]interface{} {
 		Notes       string `json:"notes"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		log.Printf("[update] JSON decode error: %v", err)
 		return map[string]interface{}{"available": false}
 	}
 
 	ver := strings.TrimPrefix(info.Version, "v")
+	log.Printf("[update] Server version: %s, local: %s", ver, AppVersion)
 	if ver != AppVersion && ver > AppVersion {
 		return map[string]interface{}{
 			"available": true,

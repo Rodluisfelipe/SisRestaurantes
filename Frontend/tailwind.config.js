@@ -6,6 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        geist: ['Geist', 'system-ui', 'sans-serif'],
+        'geist-mono': ['Geist Mono', 'ui-monospace', 'monospace'],
+      },
       screens: {
         'xs': '480px',
       },

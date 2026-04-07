@@ -187,6 +187,7 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 				continue
 			}
 
+			groupName := getString(toppingMap, "groupName")
 			subGroups, hasSubGroups := toppingMap["subGroups"].([]interface{})
 			if hasSubGroups && len(subGroups) > 0 {
 				for _, sub := range subGroups {
@@ -196,13 +197,21 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 					}
 					subName := getString(subMap, "optionName")
 					if subName != "" {
-						buf = appendLine(buf, "  >> "+truncate(subName, itemCols-5))
+						label := subName
+						if groupName != "" {
+							label = groupName + ": " + subName
+						}
+						buf = appendLine(buf, "  >> "+truncate(label, itemCols-5))
 					}
 				}
 			} else {
 				tName := getString(toppingMap, "optionName")
 				if tName != "" {
-					buf = appendLine(buf, "  >> "+truncate(tName, itemCols-5))
+					label := tName
+					if groupName != "" {
+						label = groupName + ": " + tName
+					}
+					buf = appendLine(buf, "  >> "+truncate(label, itemCols-5))
 				}
 			}
 		}
@@ -480,6 +489,7 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 			}
 
 			// Handle subGroups (nested toppings)
+			groupName := getString(toppingMap, "groupName")
 			subGroups, hasSubGroups := toppingMap["subGroups"].([]interface{})
 			if hasSubGroups && len(subGroups) > 0 {
 				for _, sub := range subGroups {
@@ -490,10 +500,14 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 					subName := getString(subMap, "optionName")
 					subPrice := getFloat(subMap, "price")
 					if subName != "" {
+						label := subName
+						if groupName != "" {
+							label = groupName + ": " + subName
+						}
 						if isCompact {
-							buf = appendLine(buf, " +"+truncate(subName, itemCols-2))
+							buf = appendLine(buf, " +"+truncate(label, itemCols-2))
 						} else {
-							tLine := "  + " + subName
+							tLine := "  + " + label
 							if subPrice > 0 {
 								buf = appendLineJustified(buf, tLine, formatCOP(subPrice), itemCols)
 							} else {
@@ -506,10 +520,14 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 				tName := getString(toppingMap, "optionName")
 				tPrice := getFloat(toppingMap, "price")
 				if tName != "" {
+					label := tName
+					if groupName != "" {
+						label = groupName + ": " + tName
+					}
 					if isCompact {
-						buf = appendLine(buf, " +"+truncate(tName, itemCols-2))
+						buf = appendLine(buf, " +"+truncate(label, itemCols-2))
 					} else {
-						tLine := "  + " + tName
+						tLine := "  + " + label
 						if tPrice > 0 {
 							buf = appendLineJustified(buf, tLine, formatCOP(tPrice), itemCols)
 						} else {
