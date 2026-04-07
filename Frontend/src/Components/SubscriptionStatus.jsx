@@ -225,6 +225,73 @@ const SubscriptionStatus = ({
   if (compact) {
     const tier = getTier(subscription.planType);
     const isHighTier = tier.tier >= 3;
+    const isAnnual = tier.tier === 4;
+
+    /* ── ANNUAL: Premium animated card ── */
+    if (isAnnual) {
+      return (
+        <button
+          onClick={handleNavigate}
+          className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-violet-950/90 via-purple-900/80 to-indigo-950/90 border border-violet-400/20 transition-all duration-500 hover:border-violet-400/50 hover:shadow-[0_0_20px_rgba(139,92,246,0.15),0_0_40px_rgba(139,92,246,0.05)] active:scale-[0.97]"
+        >
+          {/* Animated background glow orbs — intensify on hover */}
+          <div className="absolute -top-6 -right-6 w-20 h-20 bg-violet-500/20 rounded-full animate-premium-glow pointer-events-none transition-all duration-500 group-hover:bg-violet-500/35 group-hover:w-24 group-hover:h-24" />
+          <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-purple-500/15 rounded-full animate-premium-glow pointer-events-none transition-all duration-500 group-hover:bg-purple-500/25 group-hover:w-20 group-hover:h-20" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-indigo-400/[0.08] rounded-full blur-xl pointer-events-none transition-all duration-500 group-hover:w-32 group-hover:h-32 group-hover:bg-indigo-400/[0.12]" />
+
+          {/* Shimmer sweep */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-xl">
+            <div className="absolute inset-0 w-1/3 bg-gradient-to-r from-transparent via-white/[0.07] to-transparent animate-premium-shimmer transition-opacity duration-300 group-hover:via-white/[0.12]" />
+          </div>
+
+          {/* Sparkle particles — brighter on hover */}
+          <div className="absolute top-2 right-4 w-1 h-1 bg-violet-300/80 rounded-full animate-premium-sparkle-1 pointer-events-none transition-colors duration-300 group-hover:bg-violet-200" />
+          <div className="absolute bottom-3 right-8 w-0.5 h-0.5 bg-purple-300/70 rounded-full animate-premium-sparkle-2 pointer-events-none transition-colors duration-300 group-hover:bg-purple-200" />
+          <div className="absolute top-3 left-10 w-0.5 h-0.5 bg-indigo-300/60 rounded-full animate-premium-sparkle-3 pointer-events-none transition-colors duration-300 group-hover:bg-indigo-200" />
+          {/* Extra sparkles on hover */}
+          <div className="absolute top-1 left-6 w-0.5 h-0.5 bg-violet-300/0 rounded-full animate-premium-sparkle-2 pointer-events-none transition-colors duration-300 group-hover:bg-violet-300/80" />
+          <div className="absolute bottom-2 right-3 w-1 h-1 bg-purple-300/0 rounded-full animate-premium-sparkle-3 pointer-events-none transition-colors duration-300 group-hover:bg-purple-300/70" />
+
+          {/* Content */}
+          <div className="relative flex items-center gap-2.5 px-3 py-3">
+            {/* Crown icon with glow — lifts on hover */}
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/30 to-purple-600/30 border border-violet-400/20 flex items-center justify-center shrink-0 animate-premium-float transition-all duration-500 group-hover:from-violet-500/40 group-hover:to-purple-600/40 group-hover:border-violet-400/40 group-hover:shadow-[0_0_12px_rgba(139,92,246,0.3)] group-hover:-translate-y-0.5">
+              <svg className="w-4 h-4 text-violet-300 animate-premium-crown-glow transition-colors duration-300 group-hover:text-violet-200" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10 2l2.5 4 4.5-1.5-2 5L16 16H4l1-6.5-2-5L7.5 6z" />
+              </svg>
+            </div>
+
+            {/* Plan info — brightens on hover */}
+            <div className="flex flex-col min-w-0 flex-1 text-left">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-violet-100 leading-tight tracking-tight transition-colors duration-300 group-hover:text-white">
+                  Plan Anual
+                </span>
+                <span className="text-[7px] font-black bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent px-1.5 py-0.5 rounded-full border border-violet-400/30 uppercase leading-none tracking-[0.15em] transition-all duration-300 group-hover:border-violet-300/50 group-hover:from-violet-300 group-hover:to-purple-300">
+                  PRO
+                </span>
+              </div>
+              <span className="text-[9px] text-violet-300/60 leading-tight font-medium transition-colors duration-300 group-hover:text-violet-300/90">
+                Activo
+              </span>
+            </div>
+
+            {/* Days remaining — glows on hover */}
+            <div className="shrink-0 text-right">
+              <span className="text-sm font-bold tabular-nums bg-gradient-to-b from-violet-200 to-purple-300 bg-clip-text text-transparent transition-all duration-300 group-hover:from-white group-hover:to-violet-200">
+                {subscription.daysRemaining > 0 ? subscription.daysRemaining : '∞'}
+              </span>
+              <span className="block text-[8px] text-violet-400/50 font-medium leading-tight transition-colors duration-300 group-hover:text-violet-300/70">días</span>
+            </div>
+          </div>
+
+          {/* Bottom accent line — brightens on hover */}
+          <div className="h-[1px] bg-gradient-to-r from-transparent via-violet-400/30 to-transparent transition-all duration-500 group-hover:via-violet-400/60" />
+        </button>
+      );
+    }
+
+    /* ── Semiannual / Quarterly / Monthly ── */
     return (
       <button
         onClick={handleNavigate}
@@ -233,11 +300,6 @@ const SubscriptionStatus = ({
         {/* Shimmer on high tiers */}
         {isHighTier && (
           <div className={`absolute inset-0 bg-gradient-to-r ${tier.gradient} pointer-events-none`} />
-        )}
-        {tier.tier === 4 && (
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -top-8 -right-8 w-24 h-24 bg-violet-300/10 rounded-full blur-2xl" />
-          </div>
         )}
         <div className="relative flex items-center gap-2.5 px-3 py-2.5">
           {/* Tier icon */}

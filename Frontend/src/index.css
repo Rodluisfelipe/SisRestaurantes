@@ -191,6 +191,65 @@ body {
   100% { transform: translateX(100%); }
 }
 
+/* ── Premium subscription tier animations ── */
+@keyframes premium-shimmer {
+  0% { transform: translateX(-100%) skewX(-15deg); }
+  100% { transform: translateX(200%) skewX(-15deg); }
+}
+
+@keyframes premium-glow {
+  0%, 100% { opacity: 0.4; filter: blur(20px); }
+  50% { opacity: 0.7; filter: blur(25px); }
+}
+
+@keyframes premium-border-rotate {
+  0% { --angle: 0deg; }
+  100% { --angle: 360deg; }
+}
+
+@keyframes premium-float {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-2px) scale(1.02); }
+}
+
+@keyframes premium-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+
+@keyframes premium-crown-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(167,139,250,0.3)); }
+  50% { filter: drop-shadow(0 0 6px rgba(167,139,250,0.6)) drop-shadow(0 0 12px rgba(139,92,246,0.3)); }
+}
+
+.animate-premium-shimmer {
+  animation: premium-shimmer 3s ease-in-out infinite;
+}
+
+.animate-premium-glow {
+  animation: premium-glow 3s ease-in-out infinite;
+}
+
+.animate-premium-float {
+  animation: premium-float 4s ease-in-out infinite;
+}
+
+.animate-premium-sparkle-1 {
+  animation: premium-sparkle 2.5s ease-in-out infinite;
+}
+
+.animate-premium-sparkle-2 {
+  animation: premium-sparkle 3s ease-in-out infinite 0.8s;
+}
+
+.animate-premium-sparkle-3 {
+  animation: premium-sparkle 2.8s ease-in-out infinite 1.5s;
+}
+
+.animate-premium-crown-glow {
+  animation: premium-crown-glow 2s ease-in-out infinite;
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.4s ease-out;
 }
