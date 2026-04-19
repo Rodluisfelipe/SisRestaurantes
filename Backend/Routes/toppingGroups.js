@@ -11,6 +11,23 @@ const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
 const { audit } = require('../utils/auditLog');
 const BusinessConfig = require('../Models/BusinessConfig');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
+
+const ensureToppingsFeatureEnabled = async (businessId, req, res) => {
+  const { planConfig, commercialPlan } = await getSubscriptionForBusiness(businessId);
+  if (isFeatureEnabledForPlan(planConfig, 'toppings')) {
+    return true;
+  }
+
+  res.status(403).json(
+    formatHttpError(req, 'Tu plan actual no incluye toppings/extras.', 403, {
+      code: 'PLAN_FEATURE_NOT_AVAILABLE',
+      feature: 'toppings',
+      plan: commercialPlan
+    })
+  );
+  return false;
+};
 
 // Get all topping groups
 router.get("/", async (req, res) => {
@@ -68,6 +85,10 @@ router.post("/", tenantAuth, async (req, res) => {
       } catch (error) {
         return res.status(404).json(formatHttpError(req, "Negocio no encontrado", 404, { detail: error.message }));
       }
+    }
+
+    if (!(await ensureToppingsFeatureEnabled(req.body.businessId, req, res))) {
+      return;
     }
     
     // Filtrar opciones vacías (sin nombre) antes de crear
@@ -138,6 +159,11 @@ router.put("/:id", tenantAuth, async (req, res) => {
     if (!existingGroup) {
       return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado", 404));
     }
+
+    if (!(await ensureToppingsFeatureEnabled(existingGroup.businessId, req, res))) {
+      return;
+    }
+
     const beforeUpdate = existingGroup.toObject();
 
     // Preparar datos de actualización de forma más segura
@@ -236,10 +262,16 @@ router.delete("/:id", tenantAuth, async (req, res) => {
       }
     }
 
-    const deleted = await ToppingGroup.findOneAndDelete(filter);
-    if (!deleted) {
+    const existingGroup = await ToppingGroup.findOne(filter);
+    if (!existingGroup) {
       return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado (puede que ya fue eliminado)", 404));
     }
+
+    if (!(await ensureToppingsFeatureEnabled(existingGroup.businessId, req, res))) {
+      return;
+    }
+
+    const deleted = await ToppingGroup.findOneAndDelete({ _id: existingGroup._id });
 
     // Audit log
     const biz = await BusinessConfig.findById(deleted.businessId).select('name').lean();
@@ -268,6 +300,10 @@ router.patch("/:groupId/options/:optionId/toggle", tenantAuth, async (req, res) 
     const group = await ToppingGroup.findById(groupId);
     if (!group) {
       return res.status(404).json(formatHttpError(req, "Grupo de toppings no encontrado", 404));
+    }
+
+    if (!(await ensureToppingsFeatureEnabled(group.businessId, req, res))) {
+      return;
     }
     
     // Buscar la opción en las opciones principales

@@ -16,6 +16,7 @@ const {
   validateAssignStaff,
   validateCreateRecurring,
 } = require('../middleware/validators/bookingValidators');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
 // Rate limiter for public booking creation
 const bookingRateLimiter = rateLimit({
@@ -26,6 +27,21 @@ const bookingRateLimiter = rateLimit({
 
 // Generate a customer token for booking tracking
 const generateCustomerToken = () => crypto.randomBytes(16).toString('hex');
+
+const ensureBookingsFeatureEnabled = async (businessId, req, res) => {
+  const { planConfig, commercialPlan } = await getSubscriptionForBusiness(businessId);
+  if (isFeatureEnabledForPlan(planConfig, 'bookings')) {
+    return true;
+  }
+
+  res.status(403).json({
+    message: 'Tu plan actual no incluye el módulo de reservas.',
+    code: 'PLAN_FEATURE_NOT_AVAILABLE',
+    feature: 'bookings',
+    plan: commercialPlan
+  });
+  return false;
+};
 
 /**
  * GET /api/bookings/slots
@@ -42,6 +58,10 @@ router.get('/slots', async (req, res) => {
 
     if (!businessId || !date) {
       return res.status(400).json({ message: 'businessId and date are required' });
+    }
+
+    if (!(await ensureBookingsFeatureEnabled(businessId, req, res))) {
+      return;
     }
 
     const durationMin = parseInt(duration, 10) || 30;
@@ -181,6 +201,10 @@ router.get('/', tenantAuth, async (req, res) => {
       return res.status(400).json({ message: 'businessId is required' });
     }
 
+    if (!(await ensureBookingsFeatureEnabled(businessId, req, res))) {
+      return;
+    }
+
     const fromDate = from ? new Date(from + 'T00:00:00.000Z') : new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z');
     const toDate = to ? new Date(to + 'T23:59:59.999Z') : new Date(fromDate.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -214,6 +238,10 @@ router.patch('/:id/status', tenantAuth, validateUpdateBookingStatus, async (req,
     const booking = await Booking.findById(id);
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (!(await ensureBookingsFeatureEnabled(booking.businessId, req, res))) {
+      return;
     }
 
     // Enforce valid state transitions
@@ -315,6 +343,10 @@ router.get('/stats', tenantAuth, async (req, res) => {
     const { businessId, from, to } = req.query;
     if (!businessId) return res.status(400).json({ message: 'businessId is required' });
 
+    if (!(await ensureBookingsFeatureEnabled(businessId, req, res))) {
+      return;
+    }
+
     const fromDate = from ? new Date(from + 'T00:00:00.000Z') : new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00.000Z');
     const toDate = to ? new Date(to + 'T23:59:59.999Z') : new Date(fromDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
@@ -386,6 +418,10 @@ router.get('/customer/:phone', tenantAuth, async (req, res) => {
     const { businessId } = req.query;
     if (!businessId) return res.status(400).json({ message: 'businessId is required' });
 
+    if (!(await ensureBookingsFeatureEnabled(businessId, req, res))) {
+      return;
+    }
+
     // Get customer profile
     const customer = await Customer.findOne({ businessId, phone }).lean();
 
@@ -433,6 +469,10 @@ router.get('/available-staff', async (req, res) => {
     const { businessId, forCustomer, serviceId } = req.query;
     if (!businessId) return res.status(400).json({ message: 'businessId is required' });
 
+    if (!(await ensureBookingsFeatureEnabled(businessId, req, res))) {
+      return;
+    }
+
     const filter = {
       businessId,
       role: { $in: ['staff', 'manager', 'admin'] }
@@ -478,6 +518,10 @@ router.patch('/:id/assign-staff', tenantAuth, validateAssignStaff, async (req, r
       return res.status(404).json({ message: 'Booking not found' });
     }
 
+    if (!(await ensureBookingsFeatureEnabled(booking.businessId, req, res))) {
+      return;
+    }
+
     if (staffId) {
       const staffMember = await Admin.findById(staffId).select('name username').lean();
       if (!staffMember) return res.status(404).json({ message: 'Staff member not found' });
@@ -513,6 +557,10 @@ router.post('/recurring', tenantAuth, validateCreateRecurring, async (req, res) 
 
     if (!businessId || !recurrenceType || !endDate || !bookingTemplate) {
       return res.status(400).json({ message: 'businessId, recurrenceType, endDate, and bookingTemplate are required' });
+    }
+
+    if (!(await ensureBookingsFeatureEnabled(businessId, req, res))) {
+      return;
     }
 
     const validTypes = ['weekly', 'biweekly', 'monthly'];
@@ -623,6 +671,10 @@ router.get('/cancellation-policy', async (req, res) => {
     const { businessId } = req.query;
     if (!businessId) return res.status(400).json({ message: 'businessId is required' });
 
+    if (!(await ensureBookingsFeatureEnabled(businessId, req, res))) {
+      return;
+    }
+
     const config = await BusinessConfig.findById(businessId)
       .select('bookingSettings.allowCancellation bookingSettings.cancellationDeadlineHours').lean();
 
@@ -655,6 +707,10 @@ router.post('/', bookingRateLimiter, validateCreateBooking, async (req, res) => 
 
     if (!businessId || !customerName || !items || !bookingDate) {
       return res.status(400).json({ message: 'businessId, customerName, items, and bookingDate are required' });
+    }
+
+    if (!(await ensureBookingsFeatureEnabled(businessId, req, res))) {
+      return;
     }
 
     const config = await BusinessConfig.findById(businessId);
@@ -803,6 +859,11 @@ router.get('/:id', async (req, res) => {
     }
     const booking = await Booking.findById(id).lean();
     if (!booking) return res.status(404).json({ message: 'Booking not found' });
+
+    if (!(await ensureBookingsFeatureEnabled(booking.businessId, req, res))) {
+      return;
+    }
+
     res.json(booking);
   } catch (error) {
     logger.error('Error fetching booking', error);

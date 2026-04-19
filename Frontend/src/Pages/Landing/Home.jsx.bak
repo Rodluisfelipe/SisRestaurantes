@@ -1,0 +1,731 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
+import useLandingSEO from '../../hooks/useLandingSEO';
+
+/* ── Brand & Data ── */
+const BRAND = '#E31E24';
+
+const STATS = [
+  { value: '500+', label: 'Restaurantes activos' },
+  { value: '40%', label: 'Aumento en ventas' },
+  { value: '5 min', label: 'Tiempo de registro' },
+  { value: '0%', label: 'Comisiones' },
+];
+
+const STEPS = [
+  { num: '01', icon: '📝', title: 'Regístrate Gratis', desc: 'Crea tu cuenta en 5 minutos. Sin tarjeta de crédito, sin compromisos.' },
+  { num: '02', icon: '🍽️', title: 'Sube tu Menú', desc: 'Agrega productos, imágenes, precios y extras. Generamos tu menú digital y QR.' },
+  { num: '03', icon: '🚀', title: 'Recibe Pedidos', desc: 'Tus clientes ordenan desde el celular. Tú recibes en tiempo real.' },
+];
+
+const FEATURES = [
+  { icon: '📱', title: 'Menú Digital + QR', desc: 'Menú responsivo con tu marca. Comparte el link o imprime el QR para mesas.' },
+  { icon: '🛵', title: 'Pedidos a Domicilio', desc: 'Zonas de entrega con cobro automático. Verificación de cobertura al instante.' },
+  { icon: '💳', title: 'Múltiples Pagos', desc: 'Efectivo, Nequi, Daviplata y transferencia. Info visible y copiable.' },
+  { icon: '👨‍🍳', title: 'Pantalla de Cocina', desc: 'Vista fullscreen para cocina con timers. Tu equipo ve pedidos en tiempo real.' },
+  { icon: '📊', title: 'Reportes Diarios', desc: 'Ventas, productos top, ticket promedio. Exporta tu cierre diario en PDF.' },
+  { icon: '⭐', title: 'Reseñas y Clientes', desc: 'Tus clientes califican y repiten. Tú construyes reputación.' },
+  { icon: '🔔', title: 'Notificaciones Push', desc: 'Alertas al instante cuando llega un pedido o cuando un cliente paga.' },
+  { icon: '💬', title: 'WhatsApp Integrado', desc: 'Personaliza el mensaje de WhatsApp. Activa o desactiva secciones con drag & drop.' },
+  { icon: '🎨', title: 'Tu Marca, Tu Estilo', desc: 'Colores, logo, horarios. Todo configurable desde tu panel.' },
+];
+
+const TESTIMONIALS = [
+  { name: 'María González', role: 'Restaurante El Sazón', city: 'Bogotá', quote: 'Desde que usamos Menuby, nuestras ventas aumentaron un 35%. Los clientes aman pedir desde el celular.', stars: 5, metric: '+35% ventas' },
+  { name: 'Carlos Rodríguez', role: 'Burger House', city: 'Medellín', quote: 'Lo mejor es que no cobran comisión. En otras plataformas perdía mucho por cada pedido.', stars: 5, metric: '$0 comisiones' },
+  { name: 'Ana Martínez', role: 'Cafe & Postres Lina', city: 'Cali', quote: 'La pantalla de cocina nos cambió la vida. Ya no se pierde ningún pedido. Todo en tiempo real.', stars: 5, metric: '0 pedidos perdidos' },
+];
+
+const COMPARISON = [
+  { feature: 'Comisión por pedido', menuby: '0%', rappi: '15-30%', menupp: '0%', impreso: 'N/A' },
+  { feature: 'Costo mensual', menuby: 'Desde $0', rappi: 'Gratis*', menupp: '$49.900+', impreso: '$50.000+' },
+  { feature: 'Menú digital + QR', menuby: true, rappi: false, menupp: true, impreso: false },
+  { feature: 'Pedidos online', menuby: true, rappi: true, menupp: true, impreso: false },
+  { feature: 'Pantalla de cocina', menuby: true, rappi: false, menupp: false, impreso: false },
+  { feature: 'Zonas de entrega', menuby: true, rappi: true, menupp: false, impreso: false },
+  { feature: 'Pagos en línea', menuby: true, rappi: true, menupp: true, impreso: false },
+  { feature: 'Notificaciones push', menuby: true, rappi: true, menupp: false, impreso: false },
+  { feature: 'Reseñas de clientes', menuby: true, rappi: true, menupp: false, impreso: false },
+  { feature: 'Personalización marca', menuby: true, rappi: false, menupp: true, impreso: true },
+  { feature: 'Actualización al instante', menuby: true, rappi: false, menupp: true, impreso: false },
+  { feature: 'Reportes y analytics', menuby: true, rappi: true, menupp: false, impreso: false },
+];
+
+const PRICING_PLANS = [
+  {
+    id: 'free',
+    name: 'Gratis',
+    price: '$0',
+    note: 'siempre',
+    annual: null,
+    limits: ['20 productos', '5 categorías', '30 pedidos/mes', '5 mesas', '1 usuario'],
+    includes: ['Menú QR', 'Carrito básico', 'Logo y portada', '1 zona de entrega', 'Reseñas', 'Google OAuth'],
+    extra: 'Autoprint: 1 impresora · Lealtad: puntos básicos sin tiers',
+    tone: 'border-slate-200',
+  },
+  {
+    id: 'starter',
+    name: 'Starter',
+    price: '$39.900',
+    note: '/mes',
+    annual: '$34.900/mes anual ($418.800/año)',
+    limits: ['60 productos', '12 categorías', '350 pedidos/mes', '15 mesas', '3 usuarios'],
+    includes: ['Todo Gratis + push notif.', 'Zonas de entrega ilimitadas', 'Toppings/extras', '3 cupones', '1 banner', 'KDS básico'],
+    extra: 'Autoprint: 2 impresoras · Lealtad: puntos + recompensas canjeables · Verificado en menu: rojo',
+    tone: 'border-red-200 shadow-xl shadow-red-100/60',
+  },
+  {
+    id: 'pro',
+    name: 'Pro',
+    price: '$59.900',
+    note: '/mes',
+    annual: '$49.900/mes anual ($598.800/año)',
+    limits: ['Ilimitado en todo'],
+    includes: ['Todo Starter + pedidos ilimitados', 'Reservas + recordatorios automáticos', 'Tiers de lealtad', 'Cupones ilimitados', '3 banners', 'Carritos abandonados'],
+    extra: 'Analytics completo + IA · Autoprint ilimitado · Lealtad: tiers completos · Verificado en menu: azul',
+    tone: 'border-gray-900/20',
+  },
+  {
+    id: 'pro_max',
+    name: 'Pro Max',
+    price: '$89.900',
+    note: '/mes',
+    annual: '$74.900/mes anual ($898.800/año)',
+    limits: ['Ilimitado en todo'],
+    includes: ['Todo Pro + soporte prioritario', 'Acceso a eventos exclusivos', 'Tutoriales premium', 'Nuevas funciones con acceso anticipado'],
+    extra: 'Distintivo verificado dorado en menu · IA avanzada · Operación sin límites',
+    tone: 'border-amber-300 shadow-xl shadow-amber-100/70',
+  },
+];
+
+const FAQ_ITEMS = [
+  { q: '¿Cuánto cuesta Menuby?', a: 'Tenemos 4 planes: Gratis ($0 siempre), Starter ($39.900/mes o $34.900/mes anual), Pro ($59.900/mes o $49.900/mes anual) y Pro Max ($89.900/mes o $74.900/mes anual). Sin comisiones por pedido.' },
+  { q: '¿Cuánto tarda configurar mi menú?', a: 'Aproximadamente 5 minutos para el registro. Puedes tener tu menú completo con productos e imágenes en menos de una hora.' },
+  { q: '¿Puedo modificar mi menú después?', a: 'Sí, puedes agregar, editar o eliminar productos, categorías, precios y fotos en cualquier momento desde tu panel.' },
+  { q: '¿Cobran comisión por pedido?', a: 'No. Menuby cobra una tarifa fija mensual. No importa cuántos pedidos recibas, nunca se cobra comisión.' },
+  { q: '¿Funciona con WhatsApp?', a: 'Sí. Tus clientes pueden enviar su pedido por WhatsApp con mensaje formateado. También puedes recibir pedidos en la plataforma.' },
+  { q: '¿Necesito conocimientos técnicos?', a: 'No. Todo se maneja desde un panel visual. Si sabes usar un celular, puedes configurar Menuby.' },
+  { q: '¿Puedo cancelar en cualquier momento?', a: 'Sí. No hay contratos ni permanencia mínima. Puedes cancelar tu suscripción cuando quieras.' },
+];
+
+/* ── Animated Counter ── */
+const useCounter = (end, duration = 2000, active = false) => {
+  const [count, setCount] = useState(0);
+  const num = parseInt(String(end).replace(/[^0-9]/g, ''), 10) || 0;
+  useEffect(() => {
+    if (!active) return;
+    let start = null;
+    const step = (ts) => {
+      if (!start) start = ts;
+      const p = Math.min((ts - start) / duration, 1);
+      setCount(Math.floor((1 - Math.pow(1 - p, 3)) * num));
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, [active, num, duration]);
+  return count;
+};
+
+/* ── Section with scroll-triggered fade ── */
+const Section = ({ children, className = '', id }) => {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  return (
+    <motion.section
+      id={id}
+      ref={ref}
+      initial={{ opacity: 0, y: 30 }}
+      animate={inView ? { opacity: 1, y: 0 } : {}}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+      className={className}
+    >
+      {children}
+    </motion.section>
+  );
+};
+
+/* ── Stat Card ── */
+const StatCard = ({ value, label }) => {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true });
+  const count = useCounter(value, 2000, inView);
+  const suffix = String(value).replace(/[0-9]/g, '');
+  return (
+    <div ref={ref} className="text-center px-2">
+      <p className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-none">
+        {count}{suffix}
+      </p>
+      <p className="text-xs sm:text-sm text-red-100 mt-1.5">{label}</p>
+    </div>
+  );
+};
+
+/* ── Phone Mockup ── */
+const PhoneMockup = () => (
+  <div className="relative mx-auto w-[220px] h-[440px] sm:w-[250px] sm:h-[500px] md:w-[280px] md:h-[560px]">
+    <div className="absolute inset-0 bg-gray-900 rounded-[2.5rem] sm:rounded-[3rem] shadow-2xl shadow-red-500/20 border-4 border-gray-800 overflow-hidden">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 sm:w-28 h-5 sm:h-6 bg-gray-900 rounded-b-2xl z-20" />
+      <div className="absolute inset-2 rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-white">
+        <div className="h-9 sm:h-10 bg-red-500 flex items-end justify-center pb-1">
+          <span className="text-[9px] sm:text-[10px] text-white/90 font-medium">menuby.tech</span>
+        </div>
+        <div className="p-2.5 sm:p-3 space-y-2.5 sm:space-y-3">
+          <div className="bg-gray-100 rounded-xl px-3 py-2 flex items-center gap-2">
+            <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-gray-300" />
+            <div className="h-2 bg-gray-300 rounded-full flex-1" />
+          </div>
+          <div className="flex gap-1.5 sm:gap-2">
+            {['🍔', '🍕', '🌮', '🍣'].map((e, i) => (
+              <div key={i} className={`flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center text-sm sm:text-base ${i === 0 ? 'bg-red-500 text-white' : 'bg-gray-100'}`}>{e}</div>
+            ))}
+          </div>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="flex gap-2.5 sm:gap-3 bg-gray-50 rounded-xl p-2">
+              <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-xl flex-shrink-0 ${i === 1 ? 'bg-red-100' : i === 2 ? 'bg-amber-100' : 'bg-green-100'}`} />
+              <div className="flex-1 space-y-1.5 py-1">
+                <div className="h-2 sm:h-2.5 bg-gray-200 rounded-full w-3/4" />
+                <div className="h-1.5 sm:h-2 bg-gray-200 rounded-full w-1/2" />
+                <div className="h-2 sm:h-2.5 bg-red-200 rounded-full w-1/3" />
+              </div>
+            </div>
+          ))}
+          <div className="bg-red-500 rounded-xl py-2 sm:py-2.5 text-center">
+            <span className="text-white text-[10px] sm:text-xs font-bold">Ver carrito (3)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Floating notifications - hidden on small screens to prevent overflow */}
+    <motion.div
+      animate={{ y: [0, -8, 0] }}
+      transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+      className="hidden sm:flex absolute -right-3 md:-right-4 top-20 sm:top-24 bg-white rounded-2xl shadow-xl shadow-gray-200/60 px-3 sm:px-4 py-2.5 sm:py-3 items-center gap-2 border border-gray-100"
+    >
+      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-green-100 rounded-full flex items-center justify-center text-xs sm:text-sm">✅</div>
+      <div>
+        <p className="text-[10px] sm:text-[11px] font-bold text-gray-800">Nuevo pedido</p>
+        <p className="text-[9px] sm:text-[10px] text-gray-500">hace 2 min</p>
+      </div>
+    </motion.div>
+    <motion.div
+      animate={{ y: [0, 8, 0] }}
+      transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut', delay: 1.5 }}
+      className="hidden sm:flex absolute -left-3 md:-left-4 bottom-28 sm:bottom-32 bg-white rounded-2xl shadow-xl shadow-gray-200/60 px-3 sm:px-4 py-2.5 sm:py-3 items-center gap-2 border border-gray-100"
+    >
+      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-amber-100 rounded-full flex items-center justify-center text-xs sm:text-sm">⭐</div>
+      <div>
+        <p className="text-[10px] sm:text-[11px] font-bold text-gray-800">Nueva reseña</p>
+        <p className="text-[9px] sm:text-[10px] text-gray-500">5 estrellas</p>
+      </div>
+    </motion.div>
+  </div>
+);
+
+/* ── Icons ── */
+const Check = () => <svg className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>;
+const Cross = () => <svg className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>;
+const StarIcon = () => <svg className="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>;
+
+/* ── FAQ Accordion ── */
+function FAQAccordion() {
+  const [open, setOpen] = useState(null);
+  return (
+    <div className="space-y-3">
+      {FAQ_ITEMS.map((item, i) => (
+        <div key={i} className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <button
+            onClick={() => setOpen(open === i ? null : i)}
+            className="w-full flex items-center justify-between px-5 sm:px-6 py-4 sm:py-5 text-left gap-4 active:bg-gray-50 transition-colors"
+          >
+            <span className="text-sm sm:text-base font-semibold text-gray-800 leading-snug">{item.q}</span>
+            <svg className={`w-5 h-5 text-gray-400 flex-shrink-0 transition-transform duration-300 ${open === i ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          <AnimatePresence initial={false}>
+            {open === i && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                className="overflow-hidden"
+              >
+                <p className="px-5 sm:px-6 pb-5 text-sm sm:text-base text-gray-500 leading-relaxed">{item.a}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── Comparison Card (mobile) ── */
+const CellVal = ({ val }) => typeof val === 'boolean' ? (val ? <Check /> : <Cross />) : <span className="text-xs font-semibold text-gray-700">{val}</span>;
+
+const ComparisonMobileCard = ({ row }) => {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 p-4">
+      <p className="text-sm font-semibold text-gray-800 mb-3">{row.feature}</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex items-center gap-2 bg-red-50/60 rounded-lg px-3 py-2">
+          <span className="text-[10px] font-bold text-red-500 uppercase">Menuby</span>
+          <CellVal val={row.menuby} />
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+          <span className="text-[10px] font-bold text-gray-400 uppercase">Rappi</span>
+          <CellVal val={row.rappi} />
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+          <span className="text-[10px] font-bold text-gray-400 uppercase">Menupp</span>
+          <CellVal val={row.menupp} />
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+          <span className="text-[10px] font-bold text-gray-400 uppercase">Impreso</span>
+          <CellVal val={row.impreso} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ═══════════════════════════════════════ */
+/* ═══════════ MAIN COMPONENT ═══════════ */
+/* ═══════════════════════════════════════ */
+export default function Home() {
+  useLandingSEO({
+    title: 'Crear Menú Digital para Restaurantes Gratis | Menuby Colombia',
+    description: 'Crea tu menú digital con código QR en 5 minutos. Recibe pedidos online por WhatsApp, gestiona cocina en tiempo real. Sin comisiones. 500+ restaurantes en Colombia. Prueba 7 días gratis.',
+    canonical: '/',
+    keywords: 'crear menú digital, menú digital restaurante, menú QR gratis, carta digital restaurante, pedidos online restaurante, código QR restaurante, menú digital Colombia, menú interactivo, crear menú digital gratis, plataforma menú digital sin comisiones',
+  });
+
+  return (
+    <div className="bg-white overflow-x-hidden">
+
+      {/* ═══ HERO ═══ */}
+      <section className="relative min-h-[85vh] sm:min-h-[90vh] flex items-center pt-20 sm:pt-24 pb-12 sm:pb-16 overflow-hidden">
+        {/* BG */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white via-red-50/30 to-white" />
+        <div className="absolute top-10 -right-32 sm:-right-40 w-72 sm:w-[500px] h-72 sm:h-[500px] bg-red-100/40 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 -left-32 sm:-left-40 w-60 sm:w-[400px] h-60 sm:h-[400px] bg-red-50/50 rounded-full blur-3xl" />
+
+        <div className="relative w-full max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-8 items-center">
+            {/* Left */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7 }}
+              className="text-center lg:text-left"
+            >
+              <div className="inline-flex items-center gap-2 bg-red-50 text-red-600 text-xs font-semibold px-4 py-2 rounded-full mb-5 sm:mb-6">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
+                500+ restaurantes confían en nosotros
+              </div>
+
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-[1.1] tracking-tight">
+                Crea tu{' '}
+                <span className="bg-gradient-to-r from-red-500 to-red-600 bg-clip-text text-transparent">
+                  Menú Digital
+                </span>
+                {' '}para Restaurantes
+              </h1>
+
+              <p className="mt-5 sm:mt-6 text-base sm:text-lg text-gray-600 max-w-lg mx-auto lg:mx-0 leading-relaxed">
+                Menú digital con código QR, pedidos por WhatsApp, pagos online, zonas de entrega y pantalla de cocina en tiempo real.
+                <strong> Sin comisiones. Sin contratos. Listo en 5 minutos.</strong>
+              </p>
+
+              <div className="mt-7 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-4 sm:py-3.5 rounded-2xl sm:rounded-xl text-white font-bold text-base sm:text-sm shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/30 transition-all active:scale-[0.98] hover:-translate-y-0.5"
+                  style={{ backgroundColor: BRAND }}
+                >
+                  Crear Mi Menú Gratis
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                </Link>
+                <Link
+                  to="/demo"
+                  className="inline-flex items-center justify-center gap-2 px-6 sm:px-7 py-4 sm:py-3.5 rounded-2xl sm:rounded-xl bg-white text-gray-700 font-semibold text-base sm:text-sm border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all active:scale-[0.98]"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                  Ver Demo
+                </Link>
+              </div>
+
+              {/* Trust row */}
+              <div className="mt-8 sm:mt-10 flex items-center gap-4 justify-center lg:justify-start">
+                <div className="flex -space-x-2">
+                  {['bg-red-400', 'bg-amber-400', 'bg-blue-400', 'bg-green-400'].map((col, i) => (
+                    <div key={i} className={`w-8 h-8 rounded-full ${col} border-2 border-white flex items-center justify-center text-white text-[10px] font-bold`}>
+                      {['M', 'C', 'A', 'L'][i]}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex gap-0.5">
+                    {[...Array(5)].map((_, i) => <StarIcon key={i} />)}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">4.9/5 de nuestros restaurantes</p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Right - Phone */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+              className="flex justify-center lg:justify-end order-first lg:order-last"
+            >
+              <PhoneMockup />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ BRAND MARQUEE ═══ */}
+      <div className="bg-gray-50 border-y border-gray-100 py-5 sm:py-6 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6">
+          <p className="text-center text-[10px] sm:text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3 sm:mb-4">
+            Perfecto para cualquier negocio de comida
+          </p>
+          <div className="flex flex-wrap justify-center gap-x-4 sm:gap-x-8 gap-y-2 text-xs sm:text-sm text-gray-500">
+            {['🍔 Hamburgueserías', '🍕 Pizzerías', '☕ Cafeterías', '🌮 Mexicana', '🍣 Sushi', '🍰 Pastelerías', '🍗 Asaderos', '🥗 Saludable'].map(t => (
+              <span key={t} className="whitespace-nowrap">{t}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ HOW IT WORKS ═══ */}
+      <Section className="py-16 sm:py-20 lg:py-28" id="how-it-works">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Cómo funciona</span>
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
+              Cómo Crear tu Menú Digital en 3 Pasos
+            </h2>
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-500">
+              No necesitas conocimientos técnicos. Crea tu menú digital con código QR y recibe pedidos online en minutos.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 lg:gap-12">
+            {STEPS.map((s, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 25 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.12 }}
+                className="relative text-center"
+              >
+                {i < STEPS.length - 1 && (
+                  <div className="hidden md:block absolute top-10 left-[60%] w-[calc(100%-20%)] h-px bg-gradient-to-r from-red-200 to-transparent" />
+                )}
+                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-red-50 text-2xl sm:text-3xl mb-4 sm:mb-5">
+                  {s.icon}
+                </div>
+                <span className="absolute top-0 right-1/2 translate-x-10 sm:translate-x-12 -translate-y-1 text-[10px] font-bold text-red-400 bg-red-50 px-2 py-0.5 rounded-full">
+                  Paso {s.num}
+                </span>
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-2">{s.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">{s.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══ FEATURES ═══ */}
+      <Section className="py-16 sm:py-20 lg:py-28 bg-gray-50" id="features">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Funcionalidades</span>
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
+              Funcionalidades del Menú Digital para Restaurantes
+            </h2>
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-500">
+              Herramientas profesionales de menú digital, pedidos online y gestión de cocina para restaurantes de cualquier tamaño.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {FEATURES.map((f, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.05 }}
+                className="group bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 hover:border-red-100 hover:shadow-lg hover:shadow-red-50 transition-all duration-300 active:scale-[0.99]"
+              >
+                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-red-50 flex items-center justify-center text-lg sm:text-xl mb-3 sm:mb-4 group-hover:scale-110 transition-transform">
+                  {f.icon}
+                </div>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 mb-1 sm:mb-1.5">{f.title}</h3>
+                <p className="text-xs sm:text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══ STATS ═══ */}
+      <section className="relative py-12 sm:py-16 overflow-hidden" style={{ background: 'linear-gradient(135deg, #E31E24 0%, #b81a1f 100%)' }}>
+        <div className="absolute inset-0 opacity-30" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` }} />
+        <div className="relative max-w-5xl mx-auto px-5 sm:px-6 grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+          {STATS.map((s, i) => <StatCard key={i} {...s} />)}
+        </div>
+      </section>
+
+      {/* ═══ TESTIMONIALS ═══ */}
+      <Section className="py-16 sm:py-20 lg:py-28" id="testimonials">
+        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-16">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Testimonios</span>
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
+              Restaurantes que ya Usan su Menú Digital
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            {TESTIMONIALS.map((t, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
+              >
+                <div className="flex gap-0.5 mb-3 sm:mb-4">
+                  {[...Array(t.stars)].map((_, j) => <StarIcon key={j} />)}
+                </div>
+                <p className="text-sm text-gray-600 leading-relaxed italic mb-4 sm:mb-5">&ldquo;{t.quote}&rdquo;</p>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-sm font-bold text-red-600 flex-shrink-0">
+                      {t.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-gray-900 truncate">{t.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{t.role} · {t.city}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-bold text-green-700 bg-green-50 px-2 sm:px-2.5 py-1 rounded-full whitespace-nowrap flex-shrink-0">{t.metric}</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══ COMPARISON ═══ */}
+      <Section className="py-16 sm:py-20 lg:py-28 bg-gray-50" id="comparison">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Comparativa</span>
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
+              Menuby vs Otras Plataformas de Menú Digital
+            </h2>
+          </div>
+
+          {/* Mobile: Card layout */}
+          <div className="grid grid-cols-1 gap-3 sm:hidden">
+            {COMPARISON.map((row, i) => <ComparisonMobileCard key={i} row={row} />)}
+          </div>
+
+          {/* Desktop: Table */}
+          <div className="hidden sm:block bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+            <div className="grid grid-cols-5 bg-gray-50 border-b border-gray-200 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-gray-500 py-3 px-4 sm:px-6">
+              <span>Característica</span>
+              <span className="text-center text-red-600">Menuby</span>
+              <span className="text-center">Rappi</span>
+              <span className="text-center">Menupp</span>
+              <span className="text-center">Impreso</span>
+            </div>
+            {COMPARISON.map((row, i) => (
+              <div key={i} className={`grid grid-cols-5 items-center py-3.5 px-4 sm:px-6 text-sm ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} ${i < COMPARISON.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                <span className="text-gray-700 font-medium text-xs sm:text-sm">{row.feature}</span>
+                <span className="flex justify-center">
+                  {typeof row.menuby === 'boolean' ? (row.menuby ? <Check /> : <Cross />) : <span className="font-bold text-gray-900 text-xs sm:text-sm">{row.menuby}</span>}
+                </span>
+                <span className="flex justify-center">
+                  {typeof row.rappi === 'boolean' ? (row.rappi ? <Check /> : <Cross />) : <span className="text-gray-500 text-xs sm:text-sm">{row.rappi}</span>}
+                </span>
+                <span className="flex justify-center">
+                  {typeof row.menupp === 'boolean' ? (row.menupp ? <Check /> : <Cross />) : <span className="text-gray-500 text-xs sm:text-sm">{row.menupp}</span>}
+                </span>
+                <span className="flex justify-center">
+                  {typeof row.impreso === 'boolean' ? (row.impreso ? <Check /> : <Cross />) : <span className="text-gray-500 text-xs sm:text-sm">{row.impreso}</span>}
+                </span>
+              </div>
+            ))}
+            <div className="bg-red-50 px-4 sm:px-6 py-3 text-center text-xs text-gray-500">
+              * Rappi no cobra mensualidad pero retiene 15-30% de comisión por cada pedido
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══ PRICING ═══ */}
+      <Section className="py-16 sm:py-20 lg:py-28" id="pricing">
+        <div className="max-w-6xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Precios</span>
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
+              Planes flexibles para cada etapa
+            </h2>
+            <p className="mt-3 sm:mt-4 text-sm sm:text-base text-gray-500">Empieza gratis y escala con Starter, Pro o Pro Max. Sin comisiones ocultas y con anualidad más barata.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6">
+            {PRICING_PLANS.map((plan) => (
+              <div key={plan.id} className={`bg-white rounded-3xl border-2 p-6 sm:p-7 ${plan.tone}`}>
+                <h3 className="text-lg font-extrabold text-gray-900">{plan.name}</h3>
+                <div className="mt-2 flex items-end gap-1">
+                  <span className="text-4xl font-extrabold text-gray-900">{plan.price}</span>
+                  <span className="text-sm text-gray-500">{plan.note}</span>
+                </div>
+                {plan.annual && (
+                  <p className="mt-1.5 text-xs text-gray-500">Anual: <span className="font-bold text-gray-700">{plan.annual}</span></p>
+                )}
+
+                <div className="mt-4 space-y-1.5">
+                  {plan.limits.map((item) => (
+                    <p key={item} className="text-xs sm:text-sm text-gray-700 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">{item}</p>
+                  ))}
+                </div>
+
+                <div className="mt-4 space-y-2.5">
+                  {plan.includes.map((f) => (
+                    <div key={f} className="flex items-start gap-2.5">
+                      <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      <span className="text-xs sm:text-sm text-gray-700 leading-relaxed">{f}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mt-4 text-xs text-gray-500 border-t border-gray-100 pt-3">{plan.extra}</p>
+
+                <Link
+                  to="/register"
+                  className="mt-5 block w-full text-center py-3.5 rounded-xl text-white font-bold text-sm shadow-lg shadow-red-500/20 hover:-translate-y-0.5 transition-all active:scale-[0.98]"
+                  style={{ backgroundColor: BRAND }}
+                >
+                  {plan.id === 'free' ? 'Empezar Gratis' : 'Elegir Plan'}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══ FAQ ═══ */}
+      <Section className="py-16 sm:py-20 lg:py-28 bg-gray-50" id="faq">
+        <div className="max-w-3xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="text-center mb-10 sm:mb-12">
+            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Preguntas Frecuentes</span>
+            <h2 className="mt-3 text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900">
+              Preguntas Frecuentes sobre el Menú Digital
+            </h2>
+          </div>
+          <FAQAccordion />
+        </div>
+      </Section>
+
+      {/* ═══ SEMANTIC SEO CONTENT ═══ */}
+      <Section className="py-16 sm:py-20 lg:py-28 bg-white">
+        <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
+          <div className="prose prose-lg max-w-none text-gray-600">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6">
+              ¿Qué es un Menú Digital y Por Qué tu Restaurante lo Necesita?
+            </h2>
+            <p>
+              Un <strong>menú digital</strong> es una carta interactiva que tus clientes pueden consultar desde su celular escaneando un <strong>código QR</strong>. A diferencia del menú impreso tradicional, un menú digital para restaurantes se actualiza en tiempo real: puedes cambiar precios, agregar platos nuevos, marcar productos agotados y destacar promociones al instante, sin reimprimir nada.
+            </p>
+            <p>
+              En Colombia, la adopción del <strong>menú QR</strong> creció más del 300% desde 2020. Los restaurantes que implementan un menú digital reportan un <strong>aumento del 15-25% en el ticket promedio</strong> gracias a las fotos de alta calidad, descripciones detalladas y sugerencias automáticas de acompañamientos. Además, eliminan costos recurrentes de impresión y reducen errores en la toma de pedidos.
+            </p>
+
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-10 mb-4">
+              Cómo Crear un Menú Digital Gratis con Menuby
+            </h3>
+            <p>
+              Con <strong>Menuby</strong>, crear tu menú digital es gratis y toma menos de 5 minutos. Solo necesitas registrarte, subir los platos de tu restaurante con fotos y precios, y compartir tu enlace personalizado o <strong>código QR</strong>. Tus clientes podrán ver la carta, hacer pedidos y pagar desde su celular — sin descargar ninguna app.
+            </p>
+            <p>
+              A diferencia de otras plataformas de menú digital como Menupp, Yumm o Meniu, Menuby no cobra comisiones por pedido ni porcentaje sobre ventas. Puedes iniciar con un plan <strong>Gratis</strong> y luego crecer a <strong>Starter, Pro o Pro Max</strong> según tu operación, manteniendo costos predecibles y sin contratos forzosos.
+            </p>
+
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mt-10 mb-4">
+              Beneficios del Menú Digital para Restaurantes en Colombia
+            </h3>
+            <ul className="space-y-2 text-gray-600">
+              <li><strong>Sin comisiones:</strong> A diferencia de apps de delivery, Menuby no cobra porcentaje de tus ventas.</li>
+              <li><strong>Pedidos directos:</strong> Los clientes piden por tu menú digital y recibes el pedido por WhatsApp o en la pantalla de cocina.</li>
+              <li><strong>QR personalizado:</strong> Genera un código QR único para tu restaurante que puedes imprimir en mesas, volantes o redes sociales.</li>
+              <li><strong>Actualización instantánea:</strong> Cambia precios, agrega platos o marca productos agotados en segundos.</li>
+              <li><strong>Pagos online:</strong> Acepta pagos con tarjeta, PSE y otros métodos directamente en tu menú digital.</li>
+              <li><strong>Multi-idioma:</strong> Ideal para restaurantes turísticos que necesitan carta en español e inglés.</li>
+            </ul>
+
+            <p className="mt-8">
+              <Link to="/register" className="text-red-500 font-bold hover:text-red-600 transition-colors">
+                Crea tu menú digital gratis →
+              </Link>
+              {' '}o conoce todas nuestras{' '}
+              <Link to="/features" className="text-red-500 font-bold hover:text-red-600 transition-colors">
+                funcionalidades
+              </Link>.
+            </p>
+          </div>
+        </div>
+      </Section>
+
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="relative py-16 sm:py-20 lg:py-28 bg-gray-900 overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 right-0 w-60 sm:w-96 h-60 sm:h-96 bg-red-500/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-48 sm:w-80 h-48 sm:h-80 bg-red-500/5 rounded-full blur-3xl" />
+        </div>
+        <div className="relative max-w-3xl mx-auto px-5 sm:px-6 text-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-white leading-tight">
+            ¿Listo para transformar{' '}
+            <span className="bg-gradient-to-r from-red-400 to-red-500 bg-clip-text text-transparent">tu restaurante?</span>
+          </h2>
+          <p className="mt-4 sm:mt-5 text-gray-400 text-base sm:text-lg max-w-xl mx-auto">
+            Únete a más de 500 restaurantes que ya digitalizaron su negocio con Menuby. Empieza gratis hoy.
+          </p>
+          <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+            <Link
+              to="/register"
+              className="inline-flex items-center justify-center gap-2 px-7 sm:px-8 py-4 rounded-2xl sm:rounded-xl text-white font-bold text-base sm:text-sm shadow-lg shadow-red-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-[0.98]"
+              style={{ backgroundColor: BRAND }}
+            >
+              Crear Mi Menú Gratis
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+            </Link>
+            <a
+              href="https://wa.me/573028181520?text=Hola%2C%20quiero%20saber%20m%C3%A1s%20sobre%20Menuby"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-7 sm:px-8 py-4 rounded-2xl sm:rounded-xl bg-white/10 text-white font-semibold text-base sm:text-sm backdrop-blur-sm border border-white/10 hover:bg-white/20 transition-all active:scale-[0.98]"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+              Hablar con Ventas
+            </a>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  );
+}

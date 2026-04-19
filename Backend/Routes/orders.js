@@ -10,7 +10,7 @@ const socketService = require("../services/socketService");
 const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
 const { isValidObjectId } = require("../utils/validators");
 const logger = require("../utils/logger");
-const { getSubscriptionForBusiness } = require('../utils/subscriptionHelper');
+const { getSubscriptionForBusiness, getPlanLimitStatus, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 const LoyaltyProgram = require('../Models/LoyaltyProgram');
 const CustomerLoyalty = require('../Models/CustomerLoyalty');
 const { ORDER_STATUS } = require('../utils/constants');
@@ -28,7 +28,7 @@ const {
   validateRejectPayment,
 } = require('../middleware/validators/orderValidators');
 const rateLimit = require('express-rate-limit');
-const { startOfDayCOL, endOfDayCOL } = require('../utils/timezone');
+const { startOfDayCOL, endOfDayCOL, startOfMonthCOL, endOfMonthCOL } = require('../utils/timezone');
 const { validateOrderPrices } = require('../utils/orderPricing');
 const { applyCoupon } = require('../utils/orderCoupon');
 const Counter = require('../Models/Counter');
@@ -312,7 +312,15 @@ router.post("/", (req, res, next) => {
     }
 
     // Verificar estado de la suscripción antes de permitir crear órdenes
-    const { subscription, status: subscriptionStatus, isSuspended, periodEnd: periodEndDate, graceUntil: graceUntilDate } = await getSubscriptionForBusiness(businessObjectId);
+    const {
+      subscription,
+      status: subscriptionStatus,
+      isSuspended,
+      periodEnd: periodEndDate,
+      graceUntil: graceUntilDate,
+      planConfig,
+      commercialPlan
+    } = await getSubscriptionForBusiness(businessObjectId);
     
     if (subscription) {
       logger.info('Verificación de suscripción al crear orden', {
@@ -336,6 +344,48 @@ router.post("/", (req, res, next) => {
           subscriptionStatus: 'suspended'
         });
       }
+    }
+
+    if (orderChannel === 'inapp' && !isFeatureEnabledForPlan(planConfig, 'inAppOrdering')) {
+      return res.status(403).json({
+        message: 'Tu plan actual no incluye pedidos en la app.',
+        code: 'PLAN_FEATURE_NOT_AVAILABLE',
+        feature: 'inAppOrdering',
+        plan: commercialPlan
+      });
+    }
+
+    if (orderChannel === 'pos' && !isFeatureEnabledForPlan(planConfig, 'pos')) {
+      return res.status(403).json({
+        message: 'Tu plan actual no incluye POS.',
+        code: 'PLAN_FEATURE_NOT_AVAILABLE',
+        feature: 'pos',
+        plan: commercialPlan
+      });
+    }
+
+    const monthStart = startOfMonthCOL();
+    const monthEnd = endOfMonthCOL();
+    const [activeMonthOrders, completedMonthOrders] = await Promise.all([
+      Order.countDocuments({ businessId: businessObjectId, createdAt: { $gte: monthStart, $lt: monthEnd } }),
+      CompletedOrder.countDocuments({ businessId: businessObjectId, createdAt: { $gte: monthStart, $lt: monthEnd } })
+    ]);
+    const currentMonthOrders = activeMonthOrders + completedMonthOrders;
+    const orderLimitStatus = await getPlanLimitStatus({
+      businessId: businessObjectId,
+      resourceKey: 'monthlyOrders',
+      currentCount: currentMonthOrders
+    });
+
+    if (orderLimitStatus.limitReached) {
+      return res.status(403).json({
+        message: orderLimitStatus.message,
+        code: 'PLAN_LIMIT_REACHED',
+        resource: 'monthlyOrders',
+        plan: orderLimitStatus.commercialPlan,
+        limit: orderLimitStatus.limitValue,
+        current: currentMonthOrders
+      });
     }
     
     // Generate order number
@@ -387,7 +437,7 @@ router.post("/", (req, res, next) => {
     const isInApp = orderChannel === 'inapp';
     const isPOS = orderChannel === 'pos';
     const isAdmin = orderChannel === 'admin';
-    const initialStatus = isPOS || isAdmin ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
+    const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isAdmin ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
     const customerToken = isInApp ? generateCustomerToken() : null;
 
     // Create the order
@@ -1129,9 +1179,28 @@ router.patch("/:id/send-to-kitchen", tenantAuth, validateSendToKitchen, async (r
     if (!isValidObjectId(id)) {
       return res.status(400).json({ message: "Invalid order ID" });
     }
+
+    const tenantBizIdKitchen = req.user.businessId || req.body.businessId || req.query.businessId;
+    const existingOrder = await Order.findOne(
+      { _id: id, ...(tenantBizIdKitchen ? { businessId: tenantBizIdKitchen } : {}) },
+      { businessId: 1 }
+    ).lean();
+
+    if (!existingOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const { planConfig, commercialPlan } = await getSubscriptionForBusiness(existingOrder.businessId);
+    if (!isFeatureEnabledForPlan(planConfig, 'kds')) {
+      return res.status(403).json({
+        message: 'Tu plan actual no incluye KDS.',
+        code: 'PLAN_FEATURE_NOT_AVAILABLE',
+        feature: 'kds',
+        plan: commercialPlan
+      });
+    }
     
     // Update only the sentToKitchen field — compound query ensures tenant isolation
-    const tenantBizIdKitchen = req.user.businessId || req.body.businessId || req.query.businessId;
     const updatedOrder = await Order.findOneAndUpdate(
       { _id: id, ...(tenantBizIdKitchen ? { businessId: tenantBizIdKitchen } : {}) },
       { 

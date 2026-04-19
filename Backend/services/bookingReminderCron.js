@@ -3,6 +3,7 @@ const Booking = require('../Models/Booking');
 const BusinessConfig = require('../Models/BusinessConfig');
 const { sendPushToBusinessId, sendPushToCustomer } = require('./pushService');
 const logger = require('../utils/logger');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
 /**
  * Booking Reminder Cron
@@ -40,11 +41,29 @@ async function checkBookingReminders() {
     const configMap = {};
     configs.forEach(c => { configMap[c._id.toString()] = c; });
 
+    const reminderFeatureMap = {};
+    await Promise.all(
+      businessIds.map(async (businessId) => {
+        try {
+          const { planConfig } = await getSubscriptionForBusiness(businessId);
+          reminderFeatureMap[businessId] = isFeatureEnabledForPlan(planConfig, 'bookingReminders');
+        } catch (error) {
+          reminderFeatureMap[businessId] = false;
+          logger.warn('[BookingReminder] Error checking bookingReminders feature', {
+            businessId,
+            error: error.message
+          });
+        }
+      })
+    );
+
     let totalSent = 0;
 
     for (const booking of upcomingBookings) {
       const config = configMap[booking.businessId.toString()];
       if (!config) continue;
+
+      if (!reminderFeatureMap[booking.businessId.toString()]) continue;
 
       // Check if reminders are enabled (default: true)
       if (config.bookingSettings?.enableReminders === false) continue;

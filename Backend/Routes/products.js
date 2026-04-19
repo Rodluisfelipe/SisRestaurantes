@@ -11,6 +11,7 @@ const { tenantAuth } = require("../middleware/tenantAuth");
 const { audit } = require('../utils/auditLog');
 const BusinessConfig = require('../Models/BusinessConfig');
 const rateLimit = require('express-rate-limit');
+const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
 const {
   validateProductsReorder,
   validateReorderFeatured,
@@ -204,6 +205,25 @@ router.post("/", tenantAuth, validateProductInput, async (req, res) => {
     
     // Force businessId from authenticated user's token, fallback for superadmin
     productData.businessId = req.user.businessId || req.body.businessId;
+
+    const currentCount = await Product.countDocuments({ businessId: productData.businessId });
+    const limitStatus = await getPlanLimitStatus({
+      businessId: productData.businessId,
+      resourceKey: 'products',
+      currentCount
+    });
+
+    if (limitStatus.limitReached) {
+      return res.status(403).json(
+        formatHttpError(req, limitStatus.message, 403, {
+          code: 'PLAN_LIMIT_REACHED',
+          resource: 'products',
+          plan: limitStatus.commercialPlan,
+          limit: limitStatus.limitValue,
+          current: currentCount
+        })
+      );
+    }
     
     const newProduct = new Product(productData);
     await newProduct.save();

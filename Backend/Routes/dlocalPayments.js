@@ -20,12 +20,15 @@ const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../utils/logger');
 const { resolveBusinessId, requireBusinessId } = require('../utils/businessResolver');
 const dlocalService = require('../services/dlocalService');
+const { resolvePaymentSelection, inferLegacyPlanTypeFromMonths } = require('../utils/commercialPlans');
 
 // Modelo para guardar referencias de pago dLocal Go
 const dlocalPaymentSchema = new mongoose.Schema({
   reference: { type: String, required: true, unique: true, index: true },
   businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', required: true },
   months: { type: Number, required: true },
+  commercialPlan: { type: String, enum: ['starter', 'pro', 'pro_max'], required: true },
+  billingCycle: { type: String, enum: ['monthly', 'annual'], required: true },
   basePrice: { type: Number, required: true },
   totalAmount: { type: Number, required: true },
   commission: { type: Number, required: true },
@@ -72,14 +75,19 @@ router.get('/plans', (req, res) => {
 // ============================================
 router.post('/create', authMiddleware, async (req, res) => {
   try {
-    const { months } = req.body;
+    const { months, plan, commercialPlan, billingCycle } = req.body;
     const businessId = await requireBusinessId(req);
 
     if (!businessId) {
       return res.status(400).json({ success: false, message: 'businessId requerido' });
     }
-    if (![1, 3, 6, 12].includes(months)) {
-      return res.status(400).json({ success: false, message: 'Duración de plan inválida' });
+    const paymentSelection = resolvePaymentSelection({
+      commercialPlan: commercialPlan || plan,
+      billingCycle,
+      months
+    });
+    if (!paymentSelection || paymentSelection.commercialPlan === 'free') {
+      return res.status(400).json({ success: false, message: 'Plan o ciclo inválido' });
     }
 
     // Expirar pagos viejos en estado "created" (más de 30 min)
@@ -88,13 +96,12 @@ router.post('/create', authMiddleware, async (req, res) => {
       { status: 'expired' }
     );
 
-    const plans = dlocalService.getPlans();
-    const plan = plans.find(p => p.months === months);
-    if (!plan) {
+    const selectedPlan = dlocalService.getPlanDetails(paymentSelection);
+    if (!selectedPlan) {
       return res.status(400).json({ success: false, message: 'Plan no encontrado' });
     }
 
-    const reference = dlocalService.generatePaymentReference(businessId, months);
+    const reference = dlocalService.generatePaymentReference(businessId, paymentSelection);
 
     // Info del negocio
     const business = await BusinessConfig.findById(businessId);
@@ -107,10 +114,12 @@ router.post('/create', authMiddleware, async (req, res) => {
     const payment = new DlocalPayment({
       reference,
       businessId,
-      months,
-      basePrice: plan.basePrice,
-      totalAmount: plan.total,
-      commission: plan.commission,
+      months: selectedPlan.months,
+      commercialPlan: paymentSelection.commercialPlan,
+      billingCycle: paymentSelection.billingCycle,
+      basePrice: selectedPlan.basePrice,
+      totalAmount: selectedPlan.total,
+      commission: selectedPlan.commission,
       createdBy: req.user?._id,
       slug,
     });
@@ -119,11 +128,11 @@ router.post('/create', authMiddleware, async (req, res) => {
     // dLocal Go API: POST /v1/payments
     // Auth: Bearer API_KEY:SECRET_KEY
     const paymentBody = {
-      amount: plan.total,
+      amount: selectedPlan.total,
       currency: 'COP',
       country: 'CO',
       order_id: reference,
-      description: `Suscripción ${plan.label} - ${business?.businessName || slug}`,
+      description: `Suscripción ${selectedPlan.label} - ${business?.businessName || slug}`,
       notification_url: `${BACKEND_URL}/api/dlocal/webhook`,
       success_url: `${FRONTEND_URL}/${slug}/payment-result?ref=${reference}&gw=dlocal&status=1`,
       back_url: `${FRONTEND_URL}/${slug}/payment-result?ref=${reference}&gw=dlocal&status=2`,
@@ -131,7 +140,11 @@ router.post('/create', authMiddleware, async (req, res) => {
 
     const headers = dlocalService.generateAuthHeaders();
 
-    logger.info('dLocal Go: Creating payment', { reference, amount: plan.total, url: `${dlocalService.config.baseUrl}/v1/payments` });
+    logger.info('dLocal Go: Creating payment', {
+      reference,
+      amount: selectedPlan.total,
+      url: `${dlocalService.config.baseUrl}/v1/payments`
+    });
 
     const dlocalRes = await axios.post(
       `${dlocalService.config.baseUrl}/v1/payments`,
@@ -149,8 +162,10 @@ router.post('/create', authMiddleware, async (req, res) => {
     logger.info('dLocal Go payment created', {
       reference,
       dlocalId: dlocalData.id,
-      months,
-      total: plan.total,
+      commercialPlan: paymentSelection.commercialPlan,
+      billingCycle: paymentSelection.billingCycle,
+      months: selectedPlan.months,
+      total: selectedPlan.total,
       redirectUrl: dlocalData.redirect_url ? 'yes' : 'no',
     });
 
@@ -335,6 +350,8 @@ router.get('/status/:ref', authMiddleware, async (req, res) => {
       payment: {
         reference: payment.reference,
         months: payment.months,
+        commercialPlan: payment.commercialPlan,
+        billingCycle: payment.billingCycle,
         status: payment.status,
         totalAmount: payment.totalAmount,
         paymentMethod: payment.paymentMethod,
@@ -363,7 +380,7 @@ router.get('/history', authMiddleware, async (req, res) => {
     })
     .sort({ createdAt: -1 })
     .limit(20)
-    .select('reference months basePrice totalAmount commission status paymentMethod dlocalPaymentId responseMessage createdAt updatedAt')
+    .select('reference months commercialPlan billingCycle basePrice totalAmount commission status paymentMethod dlocalPaymentId responseMessage createdAt updatedAt')
     .lean();
 
     res.json({ success: true, payments, gateway: 'dlocal' });
@@ -392,7 +409,7 @@ async function activateSubscription(payment) {
   _activationLocks.set(lockKey, lockPromise);
   
   try {
-  const { businessId, months, reference, totalAmount } = payment;
+  const { businessId, months, reference, totalAmount, commercialPlan, billingCycle } = payment;
 
   const now = new Date();
   let sub = await Subscription.findOne({ businessId });
@@ -411,7 +428,9 @@ async function activateSubscription(payment) {
 
   if (sub) {
     sub.status = 'active';
-    sub.planType = months >= 12 ? 'annual' : months >= 6 ? 'semiannual' : months >= 3 ? 'quarterly' : 'monthly';
+    sub.planType = inferLegacyPlanTypeFromMonths(months);
+    sub.commercialPlan = commercialPlan || sub.commercialPlan;
+    sub.billingCycle = billingCycle || sub.billingCycle || (months >= 12 ? 'annual' : 'monthly');
     sub.startDate = sub.startDate || now;
     sub.endDate = endDate;
     sub.periodStart = startDate;
@@ -427,7 +446,9 @@ async function activateSubscription(payment) {
   } else {
     sub = new Subscription({
       businessId,
-      planType: months >= 12 ? 'annual' : 'monthly',
+      planType: inferLegacyPlanTypeFromMonths(months),
+      commercialPlan: commercialPlan || 'pro',
+      billingCycle: billingCycle || (months >= 12 ? 'annual' : 'monthly'),
       status: 'active',
       startDate: now,
       endDate,

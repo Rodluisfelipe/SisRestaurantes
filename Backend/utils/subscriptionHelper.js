@@ -1,5 +1,13 @@
 const Subscription = require('../Models/Subscription');
 const logger = require('../utils/logger');
+const {
+  getPlanConfig,
+  resolveSubscriptionCommercialPlan,
+  resolveSubscriptionBillingCycle,
+  isUnlimited,
+  isLimitReached,
+  getLimitExceededMessage
+} = require('../utils/commercialPlans');
 
 /**
  * Centralized subscription status calculation.
@@ -71,15 +79,54 @@ async function getSubscriptionForBusiness(businessId) {
     .sort({ createdAt: -1 });
 
   const statusInfo = calculateSubscriptionStatus(subscription);
+  const commercialPlan = resolveSubscriptionCommercialPlan(subscription);
+  const billingCycle = resolveSubscriptionBillingCycle(subscription);
+  const planConfig = getPlanConfig(commercialPlan);
 
   return {
     subscription,
+    commercialPlan,
+    billingCycle,
+    planConfig,
     ...statusInfo
   };
+}
+
+/**
+ * Devuelve la información de límite para un recurso según el plan activo.
+ * @param {Object} params
+ * @param {string} params.businessId
+ * @param {string} params.resourceKey
+ * @param {number} params.currentCount
+ */
+async function getPlanLimitStatus({ businessId, resourceKey, currentCount }) {
+  const subscriptionInfo = await getSubscriptionForBusiness(businessId);
+  const { commercialPlan, planConfig } = subscriptionInfo;
+  const limitValue = planConfig?.limits?.[resourceKey];
+  const reached = isLimitReached(limitValue, currentCount);
+
+  return {
+    ...subscriptionInfo,
+    resourceKey,
+    currentCount,
+    limitValue,
+    isUnlimited: isUnlimited(limitValue),
+    limitReached: reached,
+    remaining: isUnlimited(limitValue) ? null : Math.max(0, limitValue - currentCount),
+    message: reached
+      ? getLimitExceededMessage(commercialPlan, resourceKey, limitValue)
+      : null
+  };
+}
+
+function isFeatureEnabledForPlan(planConfig, featureKey) {
+  return !!planConfig?.features?.[featureKey];
 }
 
 module.exports = {
   calculateSubscriptionStatus,
   getSubscriptionForBusiness,
+  getPlanLimitStatus,
+  isFeatureEnabledForPlan,
   GRACE_DAYS
 };

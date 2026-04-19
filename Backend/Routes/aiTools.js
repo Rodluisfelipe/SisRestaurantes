@@ -3,6 +3,7 @@ const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../utils/logger');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
 // Rate limiter: 30 AI tool calls per 10 minutes per user
 const aiLimiter = rateLimit({
@@ -18,6 +19,27 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 // openai/gpt-oss-120b uses reasoning tokens that consume max_tokens budget,
 // often leaving content empty. Use it as last resort with higher max_tokens.
 const GROQ_TOOLS_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b'];
+
+async function ensureAiToolsEnabled(req, res) {
+  const businessId = req.user?.businessId || req.body?.businessId || req.query?.businessId;
+  if (!businessId) {
+    res.status(400).json({ message: 'businessId es requerido para usar herramientas IA' });
+    return false;
+  }
+
+  const { planConfig, commercialPlan } = await getSubscriptionForBusiness(businessId);
+  if (isFeatureEnabledForPlan(planConfig, 'aiTools')) {
+    return true;
+  }
+
+  res.status(403).json({
+    message: 'Tu plan actual no incluye herramientas IA.',
+    code: 'PLAN_FEATURE_NOT_AVAILABLE',
+    feature: 'aiTools',
+    plan: commercialPlan
+  });
+  return false;
+}
 
 async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
   const messages = [
@@ -107,6 +129,10 @@ router.post('/generate-names', authMiddleware, aiLimiter, async (req, res) => {
       return res.status(400).json({ message: 'Descripción del plato es requerida' });
     }
 
+    if (!(await ensureAiToolsEnabled(req, res))) {
+      return;
+    }
+
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       return res.status(503).json({ message: 'Servicio de IA no disponible' });
@@ -158,6 +184,10 @@ router.post('/review-response', authMiddleware, aiLimiter, async (req, res) => {
     const { reviewText, rating, customerName, businessName, businessType } = req.body;
     if (!reviewText && !rating) {
       return res.status(400).json({ message: 'Datos de la reseña son requeridos' });
+    }
+
+    if (!(await ensureAiToolsEnabled(req, res))) {
+      return;
     }
 
     const apiKey = process.env.GROQ_API_KEY;

@@ -17,6 +17,7 @@ const {
 const { validatePolygon } = require("../utils/geospatial");
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
+const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
 
 // Rate limiting para geocodificación y zonas (previene abuso de APIs externas)
 const rateLimit = require('express-rate-limit');
@@ -511,6 +512,28 @@ router.post("/", authMiddleware, zoneLimiter, validateDeliveryZoneInput, async (
     if (!businessId) {
       return res.status(400).json(
         formatHttpError(req, "No se pudo determinar el negocio. Por favor, cierre sesión e inicie de nuevo.", 400)
+      );
+    }
+
+    const currentCount = await DeliveryZone.countDocuments({
+      businessId,
+      isActive: true
+    });
+    const limitStatus = await getPlanLimitStatus({
+      businessId,
+      resourceKey: 'deliveryZones',
+      currentCount
+    });
+
+    if (limitStatus.limitReached) {
+      return res.status(403).json(
+        formatHttpError(req, limitStatus.message, 403, {
+          code: 'PLAN_LIMIT_REACHED',
+          resource: 'deliveryZones',
+          plan: limitStatus.commercialPlan,
+          limit: limitStatus.limitValue,
+          current: currentCount
+        })
       );
     }
     

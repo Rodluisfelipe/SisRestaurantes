@@ -288,11 +288,8 @@ const businessConfigSchema = new mongoose.Schema({
   // Referral program
   referralCode: {
     type: String,
-    unique: true,
-    sparse: true,
     uppercase: true,
-    trim: true,
-    default: null
+    trim: true
   },
   referralCredits: {
     type: Number,

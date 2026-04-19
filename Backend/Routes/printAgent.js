@@ -6,6 +6,32 @@ const Admin = require('../Models/Admin');
 const { printEmitter } = require('../services/socketService');
 const { authenticateToken } = require('../middleware/auth');
 const logger = require('../utils/logger');
+const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
+
+// Tracks active Print Agent SSE connections per business to enforce plan-based autoprint limits.
+const activePrintAgentConnections = new Map();
+
+function getActiveAgentCount(businessId) {
+  return activePrintAgentConnections.get(String(businessId))?.size || 0;
+}
+
+function registerAgentConnection(businessId, connectionId) {
+  const key = String(businessId);
+  const existing = activePrintAgentConnections.get(key) || new Set();
+  existing.add(connectionId);
+  activePrintAgentConnections.set(key, existing);
+}
+
+function unregisterAgentConnection(businessId, connectionId) {
+  const key = String(businessId);
+  const existing = activePrintAgentConnections.get(key);
+  if (!existing) return;
+
+  existing.delete(connectionId);
+  if (existing.size === 0) {
+    activePrintAgentConnections.delete(key);
+  }
+}
 
 // Helper: resolve businessId from JWT, body, query, or DB lookup
 async function resolveBusinessId(req) {
@@ -99,6 +125,26 @@ router.get('/stream', async (req, res) => {
     }
 
     const businessId = business._id.toString();
+    const activeAgents = getActiveAgentCount(businessId);
+    const autoprintLimitStatus = await getPlanLimitStatus({
+      businessId,
+      resourceKey: 'autoprintPrinters',
+      currentCount: activeAgents
+    });
+
+    if (autoprintLimitStatus.limitReached) {
+      return res.status(403).json({
+        error: autoprintLimitStatus.message,
+        code: 'PLAN_LIMIT_REACHED',
+        resource: 'autoprintPrinters',
+        plan: autoprintLimitStatus.commercialPlan,
+        limit: autoprintLimitStatus.limitValue,
+        current: activeAgents
+      });
+    }
+
+    const connectionId = crypto.randomUUID();
+    registerAgentConnection(businessId, connectionId);
 
     // SSE headers
     res.writeHead(200, {
@@ -122,7 +168,12 @@ router.get('/stream', async (req, res) => {
     res.write(`event: connected\ndata: ${connData}\n\n`);
     if (res.flush) res.flush();
 
-    logger.info('Print agent connected via SSE', { businessId, slug: business.slug });
+    logger.info('Print agent connected via SSE', {
+      businessId,
+      slug: business.slug,
+      connectionId,
+      activeAgents: getActiveAgentCount(businessId)
+    });
 
     // Keep-alive every 25 seconds
     const keepalive = setInterval(() => {
@@ -157,7 +208,12 @@ router.get('/stream', async (req, res) => {
       clearInterval(keepalive);
       printEmitter.off(`print:${businessId}`, orderHandler);
       printEmitter.off(`receipt:${businessId}`, receiptHandler);
-      logger.info('Print agent disconnected', { businessId });
+      unregisterAgentConnection(businessId, connectionId);
+      logger.info('Print agent disconnected', {
+        businessId,
+        connectionId,
+        activeAgents: getActiveAgentCount(businessId)
+      });
     });
 
   } catch (error) {
