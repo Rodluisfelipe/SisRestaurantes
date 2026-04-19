@@ -65,17 +65,7 @@ const staggerChild = {
 };
 
 const MagneticButton = ({ children }) => {
-  const ref = useRef(null);
-  const handleMouse = (e) => {
-    const el = ref.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const x = (e.clientX - rect.left - rect.width / 2) * 0.15;
-    const y = (e.clientY - rect.top - rect.height / 2) * 0.15;
-    el.style.transform = 'translate(' + x + 'px,' + y + 'px)';
-  };
-  const reset = () => { if (ref.current) ref.current.style.transform = 'translate(0,0)'; };
-  return <div ref={ref} onMouseMove={handleMouse} onMouseLeave={reset} className="inline-block transition-transform duration-200">{children}</div>;
+  return <div className="inline-block">{children}</div>;
 };
 
 /* === SECTION WRAPPER === */
@@ -121,8 +111,6 @@ function RealMenuMockup() {
     <div className="relative select-none" ref={ref}>
       <motion.div
         className="w-[290px] sm:w-[310px] mx-auto"
-        animate={{ rotateY: [0, 1, -1, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
         style={{ perspective: '1200px', transformStyle: 'preserve-3d' }}
       >
         <div className="rounded-[2.8rem] p-[10px]" style={{ background: 'linear-gradient(145deg, #2a2a2a, #1a1a1a, #0a0a0a)', boxShadow: '0 30px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)' }}>
@@ -171,8 +159,8 @@ function RealMenuMockup() {
                 </div>
                 {/* Play overlay */}
                 <motion.div
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 3, repeat: Infinity }}
                   className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2.2rem]"
                 >
                   <div className="w-14 h-14 rounded-full bg-white/95 flex items-center justify-center shadow-xl">
@@ -229,12 +217,8 @@ function KDSMockup() {
   const [orders, setOrders] = useState(initialOrders);
 
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
     const t = setInterval(() => {
+      setNow(new Date());
       setOrders(prev => prev.map(o => ({ ...o, startSecs: o.startSecs + 1 })));
     }, 1000);
     return () => clearInterval(t);
@@ -608,7 +592,7 @@ export default function Home() {
         .marquee-track { animation: marquee-scroll 35s linear infinite; }
         .marquee-track:hover { animation-play-state: paused; }
         @keyframes grain { 0%,100% { transform: translate(0,0) } 10% { transform: translate(-5%,-10%) } 30% { transform: translate(3%,-15%) } 50% { transform: translate(-15%,5%) } 70% { transform: translate(8%,10%) } 90% { transform: translate(-10%,15%) } }
-        .noise::after { content: ''; position: absolute; inset: -50%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); animation: grain 8s steps(10) infinite; pointer-events: none; }
+        .noise::after { content: ''; position: absolute; inset: 0; background-color: rgba(0,0,0,0.015); pointer-events: none; }
       `}</style>
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" />
 
@@ -625,10 +609,10 @@ export default function Home() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold mb-7 backdrop-blur-sm"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[11px] font-bold mb-7"
                   style={{ background: 'rgba(232,0,45,0.06)', color: C.accent, border: '1px solid rgba(232,0,45,0.12)' }}
                 >
-                  <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} className="text-sm">🔥</motion.span>
+                  <span className="text-sm">🔥</span>
                   +500 restaurantes en Colombia
                 </motion.div>
               </FadeInWhenVisible>
@@ -687,7 +671,7 @@ export default function Home() {
                   style={{ color: C.text, border: '1px solid ' + C.border, background: 'rgba(255,255,255,0.6)' }}
                 >
                   Ver Demo
-                  <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="inline-block">→</motion.span>
+                  <span className="inline-block">→</span>
                 </Link>
               </motion.div>
 
@@ -880,14 +864,12 @@ export default function Home() {
 
                         {/* Central icon cluster */}
                         <div className="text-center relative z-10">
-                          <motion.div
-                            animate={{ y: [0, -8, 0] }}
-                            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                          <div
+                            className="w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center"
+                            style={{ background: feat.color + '12', boxShadow: '0 20px 60px ' + feat.color + '15' }}
                           >
-                            <div className="w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center" style={{ background: feat.color + '12', boxShadow: '0 20px 60px ' + feat.color + '15' }}>
                               <feat.icon size={48} style={{ color: feat.color }} strokeWidth={1.5} />
                             </div>
-                          </motion.div>
 
                           {/* Feature mini pills */}
                           <div className="flex flex-wrap justify-center gap-1.5 max-w-[280px] mx-auto">
