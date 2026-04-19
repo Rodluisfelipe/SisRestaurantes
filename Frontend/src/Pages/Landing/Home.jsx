@@ -140,7 +140,7 @@ function RealMenuMockup() {
                     <div className="absolute inset-0 flex items-end px-3 pb-2">
                       <div>
                         <p className="text-white text-[11px] font-extrabold">McDonald's</p>
-                        <p className="text-white/70 text-[8px]">Abierto ahora</p>
+                        <p className="text-white/90 text-[8px]">Abierto ahora</p>
                       </div>
                     </div>
                   </div>
@@ -176,7 +176,7 @@ function RealMenuMockup() {
                   className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-[2.2rem]"
                 >
                   <div className="w-14 h-14 rounded-full bg-white/95 flex items-center justify-center shadow-xl">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill={C.accent}><path d="M8 5v14l11-7z"/></svg>
+                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill={C.accent}><path d="M8 5v14l11-7z"/></svg>
                   </div>
                 </motion.div>
                 <p className="text-[10px] font-semibold absolute bottom-4 left-0 right-0 text-center" style={{ color: C.muted }}>
@@ -203,6 +203,8 @@ function RealMenuMockup() {
                     className="w-full h-full border-0"
                     style={{ borderRadius: '2.2rem', opacity: iframeLoaded ? 1 : 0, transition: 'opacity 0.5s ease' }}
                     onLoad={() => setIframeLoaded(true)}
+                    aria-hidden="true"
+                    tabIndex={-1}
                   />
                 )}
               </>
@@ -268,7 +270,7 @@ function KDSMockup() {
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[11px] font-bold text-white/90">KDS — Cocina</span>
             </div>
-            <span className="text-[10px] font-mono text-white/40">{time}</span>
+            <span className="text-[10px] font-mono text-white/70">{time}</span>
           </div>
           <div className="p-3 space-y-2.5" style={{ minHeight: '320px' }}>
             <AnimatePresence>
@@ -301,6 +303,7 @@ function KDSMockup() {
                     </div>
                     <button
                       onClick={() => handleDone(order.id)}
+                      aria-label={'Marcar pedido ' + order.table + ' como listo'}
                       className="w-full py-1.5 rounded-lg text-[10px] font-bold text-white transition-all hover:brightness-110 active:scale-[0.97]"
                       style={{ background: '#10B981' }}
                     >
@@ -372,11 +375,11 @@ function DashboardMockup() {
                 {barData.map((b, i) => (
                   <div key={b.day} className="flex flex-col items-center gap-1 flex-1">
                     <motion.div
-                      initial={{ height: 0 }}
-                      animate={{ height: b.h + '%' }}
+                      initial={{ scaleY: 0 }}
+                      animate={{ scaleY: 1 }}
                       transition={{ duration: 0.8, delay: i * 0.08, ease: 'easeOut' }}
                       className="w-full rounded-t-md"
-                      style={{ background: i === 5 ? C.accent : C.accent + '30', minHeight: '4px' }}
+                      style={{ background: i === 5 ? C.accent : C.accent + '30', minHeight: '4px', height: b.h + '%', transformOrigin: 'bottom' }}
                     />
                     <span className="text-[8px] font-medium" style={{ color: C.muted }}>{b.day}</span>
                   </div>
@@ -396,11 +399,11 @@ function DashboardMockup() {
                       </div>
                       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#E5E7EB' }}>
                         <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: p.pct + '%' }}
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: 1 }}
                           transition={{ duration: 1, delay: 0.3 + i * 0.1 }}
                           className="h-full rounded-full"
-                          style={{ background: i === 0 ? C.accent : C.accent + '60' }}
+                          style={{ background: i === 0 ? C.accent : C.accent + '60', width: p.pct + '%', transformOrigin: 'left' }}
                         />
                       </div>
                     </div>
@@ -436,10 +439,11 @@ function FAQAccordion() {
           <button
             onClick={() => setOpen(open === i ? null : i)}
             className="w-full flex items-center justify-between px-5 py-4 text-left"
+            aria-expanded={open === i}
           >
             <span className="text-[13px] font-semibold pr-4" style={{ color: C.text }}>{item.q}</span>
             <motion.div animate={{ rotate: open === i ? 180 : 0 }} transition={{ duration: 0.2 }}>
-              <ChevronDown size={16} style={{ color: C.muted }} />
+              <ChevronDown size={16} style={{ color: C.muted }} aria-hidden="true" />
             </motion.div>
           </button>
           <AnimatePresence>
@@ -598,7 +602,6 @@ export default function Home() {
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: C.text, background: C.bg, overflowX: 'hidden' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap');
         .hd { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 900; letter-spacing: -0.04em; line-height: 1; }
         .hd-sub { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; }
         @keyframes marquee-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
@@ -607,6 +610,7 @@ export default function Home() {
         @keyframes grain { 0%,100% { transform: translate(0,0) } 10% { transform: translate(-5%,-10%) } 30% { transform: translate(3%,-15%) } 50% { transform: translate(-15%,5%) } 70% { transform: translate(8%,10%) } 90% { transform: translate(-10%,15%) } }
         .noise::after { content: ''; position: absolute; inset: -50%; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E"); animation: grain 8s steps(10) infinite; pointer-events: none; }
       `}</style>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" />
 
       {/* ========== HERO ========== */}
       <div className="relative overflow-hidden noise">
@@ -645,6 +649,7 @@ export default function Home() {
                     transition={{ duration: 1.2, delay: 0.8, ease: 'easeOut' }}
                     className="absolute -bottom-2 left-0 w-full"
                     viewBox="0 0 100 8" fill="none"
+                    aria-hidden="true"
                   >
                     <motion.path d="M2 6C20 2 40 2 50 4C60 6 80 3 98 2" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round" fill="none" />
                   </motion.svg>
@@ -720,7 +725,7 @@ export default function Home() {
       <div className="py-7 overflow-hidden relative" style={{ background: C.surface, borderTop: '1px solid ' + C.borderLight, borderBottom: '1px solid ' + C.borderLight }}>
         <div className="absolute left-0 top-0 bottom-0 w-20 z-10" style={{ background: `linear-gradient(90deg, ${C.surface}, transparent)` }} />
         <div className="absolute right-0 top-0 bottom-0 w-20 z-10" style={{ background: `linear-gradient(270deg, ${C.surface}, transparent)` }} />
-        <div className="flex marquee-track w-max">
+        <div className="flex marquee-track w-max" aria-hidden="true">
           {[...MARQUEE, ...MARQUEE].map((item, i) => (
             <span key={i} className="shrink-0 mx-2 px-4 py-2 rounded-full text-[11px] font-semibold" style={{ background: C.bg, border: '1px solid ' + C.borderLight, color: C.text }}>
               {item}
@@ -920,7 +925,7 @@ export default function Home() {
             <h2 className="hd-sub text-3xl sm:text-4xl lg:text-[2.8rem] text-center mb-4 text-white">
               Asi se ve Menuby en accion
             </h2>
-            <p className="text-center text-sm mb-10 max-w-lg mx-auto text-white/50">
+            <p className="text-center text-sm mb-10 max-w-lg mx-auto text-white/60">
               Interactivo. Haz clic, agrega productos, marca pedidos como listos.
             </p>
           </FadeInWhenVisible>
@@ -934,10 +939,12 @@ export default function Home() {
                   className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-[12px] sm:text-[13px] font-semibold transition-all duration-200"
                   style={{
                     background: demoTab === i ? 'rgba(255,255,255,0.1)' : 'transparent',
-                    color: demoTab === i ? '#fff' : 'rgba(255,255,255,0.4)',
+                    color: demoTab === i ? '#fff' : 'rgba(255,255,255,0.65)',
                   }}
+                  aria-label={tab.label}
+                  aria-pressed={demoTab === i}
                 >
-                  <tab.icon size={14} style={{ color: demoTab === i ? C.accent : 'rgba(255,255,255,0.3)' }} />
+                  <tab.icon size={14} aria-hidden="true" style={{ color: demoTab === i ? C.accent : 'rgba(255,255,255,0.4)' }} />
                   <span className="hidden sm:inline">{tab.label}</span>
                 </button>
               ))}
@@ -1022,7 +1029,7 @@ export default function Home() {
                 <p className="hd text-3xl sm:text-5xl text-white mb-1">
                   <CounterValue end={s.end} active={statsInView} />{s.suffix}
                 </p>
-                <p className="text-[11px] sm:text-xs text-white/40 font-medium">{s.label}</p>
+                <p className="text-[11px] sm:text-xs text-white/70 font-medium">{s.label}</p>
               </FadeInWhenVisible>
             ))}
           </div>
@@ -1048,6 +1055,7 @@ export default function Home() {
                 key={c}
                 onClick={() => setBillingCycle(c)}
                 className="px-5 py-2.5 rounded-lg text-xs font-semibold transition-all"
+                aria-pressed={billingCycle === c}
                 style={{
                   background: billingCycle === c ? C.surface : 'transparent',
                   color: billingCycle === c ? C.text : C.muted,
