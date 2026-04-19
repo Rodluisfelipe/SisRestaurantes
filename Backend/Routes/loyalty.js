@@ -11,6 +11,7 @@ const {
   validateUpdateProgram,
   validateRedeem,
 } = require('../middleware/validators/loyaltyValidators');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
 // Helper: get the effective businessId for admin routes
 async function getAdminBusinessId(req) {
@@ -20,6 +21,16 @@ async function getAdminBusinessId(req) {
   const raw = req.query.businessId || req.body.businessId;
   if (!raw) return null;
   return resolveBusinessId(raw);
+}
+
+async function getPlanGateInfo(businessId) {
+  const { planConfig, commercialPlan } = await getSubscriptionForBusiness(businessId);
+  return {
+    planConfig,
+    commercialPlan,
+    hasLoyaltyRewards: isFeatureEnabledForPlan(planConfig, 'loyaltyRewards'),
+    hasLoyaltyTiers: isFeatureEnabledForPlan(planConfig, 'loyaltyTiers')
+  };
 }
 
 const publicLimiter = rateLimit({
@@ -66,6 +77,31 @@ router.put('/program', tenantAuth, validateUpdateProgram, async (req, res) => {
       firstOrderBonus, referralBonus, pointsExpiryDays,
       tiersEnabled, tiers, rewards
     } = req.body;
+
+    const planGate = await getPlanGateInfo(businessId);
+
+    const requestedTiersEnabled = tiersEnabled === true || tiersEnabled === 'true';
+    const hasTierPayload = Array.isArray(tiers) && tiers.length > 0;
+    if (requestedTiersEnabled || hasTierPayload) {
+      if (!planGate.hasLoyaltyTiers) {
+        return res.status(403).json({
+          message: 'Tu plan actual no incluye niveles de lealtad (tiers).',
+          code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          feature: 'loyaltyTiers',
+          plan: planGate.commercialPlan
+        });
+      }
+    }
+
+    const wantsRewards = Array.isArray(rewards) && rewards.length > 0;
+    if (wantsRewards && !planGate.hasLoyaltyRewards) {
+      return res.status(403).json({
+        message: 'Tu plan actual no incluye recompensas canjeables.',
+        code: 'PLAN_FEATURE_NOT_AVAILABLE',
+        feature: 'loyaltyRewards',
+        plan: planGate.commercialPlan
+      });
+    }
 
     const update = {
       isActive: !!isActive,
@@ -180,8 +216,11 @@ router.get('/top-customers', tenantAuth, async (req, res) => {
     ]);
 
     // Get program rewards to calculate claimable rewards per customer
+    const { hasLoyaltyRewards } = await getPlanGateInfo(businessId);
     const program = await LoyaltyProgram.findOne({ businessId }).lean();
-    const activeRewards = (program?.rewards || []).filter(r => r.isActive);
+    const activeRewards = hasLoyaltyRewards
+      ? (program?.rewards || []).filter(r => r.isActive)
+      : [];
 
     const enriched = customers.map(c => ({
       ...c,
@@ -217,13 +256,15 @@ router.get('/balance', publicLimiter, async (req, res) => {
       return res.json({ active: false });
     }
 
+    const { hasLoyaltyRewards } = await getPlanGateInfo(businessId);
+
     const loyalty = await CustomerLoyalty.findOne({ businessId, phone }).lean();
     if (!loyalty) {
       return res.json({
         active: true,
         points: 0,
         currentTier: program.tiers?.[0]?.name || '',
-        rewards: program.rewards.filter(r => r.isActive),
+        rewards: hasLoyaltyRewards ? program.rewards.filter(r => r.isActive) : [],
         tiers: program.tiersEnabled ? program.tiers : [],
         totalEarned: 0,
         pointsPerAmount: program.pointsPerAmount,
@@ -236,7 +277,7 @@ router.get('/balance', publicLimiter, async (req, res) => {
       points: loyalty.points,
       totalEarned: loyalty.totalEarned,
       currentTier: loyalty.currentTier,
-      rewards: program.rewards.filter(r => r.isActive),
+      rewards: hasLoyaltyRewards ? program.rewards.filter(r => r.isActive) : [],
       tiers: program.tiersEnabled ? program.tiers : [],
       pointsPerAmount: program.pointsPerAmount,
       amountPerPoints: program.amountPerPoints,
@@ -266,6 +307,16 @@ router.post('/redeem', publicLimiter, validateRedeem, async (req, res) => {
     const program = await LoyaltyProgram.findOne({ businessId, isActive: true });
     if (!program) {
       return res.status(404).json({ message: 'Programa de fidelidad no disponible' });
+    }
+
+    const { hasLoyaltyRewards, commercialPlan } = await getPlanGateInfo(businessId);
+    if (!hasLoyaltyRewards) {
+      return res.status(403).json({
+        message: 'Tu plan actual no incluye recompensas canjeables.',
+        code: 'PLAN_FEATURE_NOT_AVAILABLE',
+        feature: 'loyaltyRewards',
+        plan: commercialPlan
+      });
     }
 
     const reward = program.rewards.id(rewardId);

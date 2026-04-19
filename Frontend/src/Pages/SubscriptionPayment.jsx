@@ -6,12 +6,96 @@ import { useBusinessSocket } from '../hooks/useBusinessSocket';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Planes de pago directo (sin comisión de pasarela, con descuento por duración)
+// Planes comerciales directos (sin comisión de pasarela)
 const DIRECT_PLANS = [
-  { months: 1, label: '1 Mes', basePrice: 30000, total: 30000, commission: 0, pricePerMonth: 30000, discount: 0 },
-  { months: 3, label: '3 Meses', basePrice: 90000, total: 85500, commission: 0, pricePerMonth: 28500, discount: 5 },
-  { months: 6, label: '6 Meses', basePrice: 180000, total: 162000, commission: 0, pricePerMonth: 27000, discount: 10 },
-  { months: 12, label: '12 Meses', basePrice: 360000, total: 306000, commission: 0, pricePerMonth: 25500, discount: 15 },
+  {
+    id: 'starter_monthly',
+    commercialPlan: 'starter',
+    billingCycle: 'monthly',
+    months: 1,
+    label: 'Starter Mensual',
+    basePrice: 39900,
+    total: 39900,
+    commission: 0,
+    pricePerMonth: 39900,
+  },
+  {
+    id: 'starter_annual',
+    commercialPlan: 'starter',
+    billingCycle: 'annual',
+    months: 12,
+    label: 'Starter Anual',
+    basePrice: 418800,
+    total: 418800,
+    commission: 0,
+    pricePerMonth: 34900,
+  },
+  {
+    id: 'pro_monthly',
+    commercialPlan: 'pro',
+    billingCycle: 'monthly',
+    months: 1,
+    label: 'Pro Mensual',
+    basePrice: 59900,
+    total: 59900,
+    commission: 0,
+    pricePerMonth: 59900,
+  },
+  {
+    id: 'pro_annual',
+    commercialPlan: 'pro',
+    billingCycle: 'annual',
+    months: 12,
+    label: 'Pro Anual',
+    basePrice: 598800,
+    total: 598800,
+    commission: 0,
+    pricePerMonth: 49900,
+  },
+  {
+    id: 'pro_max_monthly',
+    commercialPlan: 'pro_max',
+    billingCycle: 'monthly',
+    months: 1,
+    label: 'Pro Max Mensual',
+    basePrice: 89900,
+    total: 89900,
+    commission: 0,
+    pricePerMonth: 89900,
+  },
+  {
+    id: 'pro_max_annual',
+    commercialPlan: 'pro_max',
+    billingCycle: 'annual',
+    months: 12,
+    label: 'Pro Max Anual',
+    basePrice: 898800,
+    total: 898800,
+    commission: 0,
+    pricePerMonth: 74900,
+  },
+];
+
+const COMMERCIAL_PLANS = [
+  { id: 'starter', label: 'Starter', monthly: 39900, annualMonthly: 34900, description: 'Para negocios en crecimiento' },
+  { id: 'pro', label: 'Pro', monthly: 59900, annualMonthly: 49900, description: 'Escala sin límites' },
+  { id: 'pro_max', label: 'Pro Max', monthly: 89900, annualMonthly: 74900, description: 'Eventos exclusivos, tutoriales premium y acceso anticipado' },
+];
+
+const BILLING_CYCLES = [
+  { id: 'monthly', label: 'Mensual' },
+  { id: 'annual', label: 'Anual', badge: 'Ahorra más' },
+];
+
+const USAGE_RESOURCE_ORDER = [
+  'products',
+  'categories',
+  'monthlyOrders',
+  'tables',
+  'staffUsers',
+  'deliveryZones',
+  'coupons',
+  'banners',
 ];
 
 // Métodos de pago directo
@@ -35,7 +119,8 @@ const SubscriptionPayment = () => {
   const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [selectedMonths, setSelectedMonths] = useState(1);
+  const [selectedCommercialPlan, setSelectedCommercialPlan] = useState('starter');
+  const [selectedBillingCycle, setSelectedBillingCycle] = useState('monthly');
   const [selectedGateway, setSelectedGateway] = useState('direct'); // 'direct' | 'epayco' | 'dlocal'
   const [epaycoConfig, setEpaycoConfig] = useState({ publicKey: '', isTest: false });
   const [dlocalConfig, setDlocalConfig] = useState({ isTest: false });
@@ -60,6 +145,16 @@ const SubscriptionPayment = () => {
   }, [user]);
 
   useEffect(() => {
+    if (!subscription) return;
+    if (subscription.commercialPlan === 'starter' || subscription.commercialPlan === 'pro' || subscription.commercialPlan === 'pro_max') {
+      setSelectedCommercialPlan(subscription.commercialPlan);
+    }
+    if (subscription.billingCycle === 'monthly' || subscription.billingCycle === 'annual') {
+      setSelectedBillingCycle(subscription.billingCycle);
+    }
+  }, [subscription]);
+
+  useEffect(() => {
     if (!socket) return;
     const handleActivated = (data) => {
       setPaymentResult({
@@ -73,6 +168,21 @@ const SubscriptionPayment = () => {
     socket.on('subscription_activated', handleActivated);
     return () => socket.off('subscription_activated', handleActivated);
   }, [socket]);
+
+  const normalizeGatewayPlans = (plans = []) => plans.map((plan) => {
+    if (plan.commercialPlan && plan.billingCycle) return plan;
+
+    const months = Number(plan.months) || 1;
+    const inferredCycle = months >= 12 ? 'annual' : 'monthly';
+    const fallbackPlan = plan.commercialPlan || 'starter';
+    return {
+      ...plan,
+      id: plan.id || `${fallbackPlan}_${inferredCycle}`,
+      commercialPlan: fallbackPlan,
+      billingCycle: plan.billingCycle || inferredCycle,
+      months,
+    };
+  });
 
   const loadData = async () => {
     try {
@@ -123,7 +233,7 @@ const SubscriptionPayment = () => {
     try {
       const res = await api.get('/epayco/plans');
       if (res.data.success) {
-        setEpaycoPlans(res.data.plans);
+        setEpaycoPlans(normalizeGatewayPlans(res.data.plans));
         setEpaycoConfig({ publicKey: res.data.publicKey, isTest: res.data.isTest });
       }
     } catch (error) {
@@ -135,7 +245,7 @@ const SubscriptionPayment = () => {
     try {
       const res = await api.get('/dlocal/plans');
       if (res.data.success) {
-        setDlocalPlans(res.data.plans);
+        setDlocalPlans(normalizeGatewayPlans(res.data.plans));
         setDlocalConfig({ isTest: res.data.isTest });
       }
     } catch (error) {
@@ -159,6 +269,30 @@ const SubscriptionPayment = () => {
     }
   };
 
+  useEffect(() => {
+    const availablePlans = selectedGateway === 'direct'
+      ? DIRECT_PLANS
+      : selectedGateway === 'dlocal'
+        ? dlocalPlans
+        : epaycoPlans;
+
+    if (!availablePlans.length) return;
+
+    const hasCurrent = availablePlans.some(
+      p => p.commercialPlan === selectedCommercialPlan && p.billingCycle === selectedBillingCycle
+    );
+
+    if (!hasCurrent) {
+      const fallback = availablePlans[0];
+      if (fallback?.commercialPlan && fallback.commercialPlan !== selectedCommercialPlan) {
+        setSelectedCommercialPlan(fallback.commercialPlan);
+      }
+      if (fallback?.billingCycle && fallback.billingCycle !== selectedBillingCycle) {
+        setSelectedBillingCycle(fallback.billingCycle);
+      }
+    }
+  }, [selectedGateway, selectedCommercialPlan, selectedBillingCycle, dlocalPlans, epaycoPlans]);
+
   const checkPaymentStatus = async (ref, statusCode) => {
     const gw = searchParams.get('gw');
     const endpoints = gw === 'dlocal' ? ['/dlocal/status/', '/epayco/status/'] : ['/epayco/status/', '/dlocal/status/'];
@@ -169,7 +303,8 @@ const SubscriptionPayment = () => {
         if (res.data.success) {
           const { payment } = res.data;
           if (payment.status === 'approved') {
-            setPaymentResult({ status: 'approved', message: `\u00A1Pago aprobado! Tu suscripci\u00F3n de ${payment.months} mes(es) est\u00E1 activa.`, reference: payment.reference });
+            const planText = formatPlanSummary(payment.commercialPlan, payment.billingCycle, payment.months);
+            setPaymentResult({ status: 'approved', message: `\u00A1Pago aprobado! Tu suscripci\u00F3n ${planText} est\u00E1 activa.`, reference: payment.reference });
             await loadSubscription();
           } else if (payment.status === 'pending') {
             setPaymentResult({ status: 'pending', message: 'Tu pago est\u00E1 siendo procesado. Te notificaremos cuando se confirme.', reference: payment.reference });
@@ -211,13 +346,18 @@ const SubscriptionPayment = () => {
       alert('Sube el comprobante de pago');
       return;
     }
+    if (!selectedPlan) {
+      alert('Selecciona un plan válido');
+      return;
+    }
     setProcessing(true);
     try {
-      const plan = DIRECT_PLANS.find(p => p.months === selectedMonths);
       const formData = new FormData();
       formData.append('proof', proofFile);
-      formData.append('monthsPurchased', selectedMonths);
-      formData.append('amount', plan.total);
+      formData.append('commercialPlan', selectedCommercialPlan);
+      formData.append('billingCycle', selectedBillingCycle);
+      formData.append('monthsPurchased', selectedPlan.months);
+      formData.append('amount', selectedPlan.total);
       formData.append('paymentMethod', selectedMethod);
       if (businessId) formData.append('businessId', businessId);
 
@@ -254,7 +394,11 @@ const SubscriptionPayment = () => {
     if (processing) return;
     setProcessing(true);
     try {
-      const res = await api.post('/epayco/create', { months: selectedMonths, businessId });
+      const res = await api.post('/epayco/create', {
+        commercialPlan: selectedCommercialPlan,
+        billingCycle: selectedBillingCycle,
+        businessId
+      });
       if (!res.data.success) { alert(res.data.message || 'Error al crear el pago'); return; }
       const { checkoutData } = res.data;
 
@@ -310,7 +454,11 @@ const SubscriptionPayment = () => {
       if (r) localStorage.setItem('refreshToken', r);
       if (u) localStorage.setItem('user', u);
 
-      const res = await api.post('/dlocal/create', { months: selectedMonths, businessId });
+      const res = await api.post('/dlocal/create', {
+        commercialPlan: selectedCommercialPlan,
+        billingCycle: selectedBillingCycle,
+        businessId
+      });
       if (!res.data.success) { alert(res.data.message || 'Error al crear el pago'); return; }
 
       if (res.data.redirectUrl) {
@@ -327,6 +475,10 @@ const SubscriptionPayment = () => {
   };
 
   const handlePay = () => {
+    if (!selectedPlan) {
+      alert('No hay una tarifa disponible para la combinación seleccionada');
+      return;
+    }
     if (selectedGateway === 'direct') {
       handleDirectPayment();
     } else if (selectedGateway === 'dlocal') {
@@ -351,30 +503,60 @@ const SubscriptionPayment = () => {
   const formatDate = (d) => d ? new Date(d).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' }) : '\u2014';
   const formatCurrency = (n) => `$${(n || 0).toLocaleString('es-CO')}`;
 
+  const getPlanName = (planId) => {
+    if (planId === 'free') return 'Gratis';
+    return COMMERCIAL_PLANS.find(p => p.id === planId)?.label || 'Plan';
+  };
+  const cycleLabel = (cycle) => cycle === 'annual' ? 'Anual' : 'Mensual';
+  const formatPlanSummary = (planId, cycle, months) => {
+    if (planId) return `${getPlanName(planId)} ${cycleLabel(cycle)}`;
+    if (months) return `${months} ${months === 1 ? 'mes' : 'meses'}`;
+    return 'Sin plan';
+  };
+
+  const getSubscriptionCommercialPlan = () => {
+    if (!subscription) return 'free';
+    if (subscription.commercialPlan) return subscription.commercialPlan;
+    if (subscription.isTrialPeriod) return 'free';
+    if ((subscription.lastMonthsPurchased && subscription.lastMonthsPurchased > 0) || subscription.price > 0) return 'pro';
+    return 'free';
+  };
+
+  const getSubscriptionBillingCycle = () => {
+    if (!subscription) return 'monthly';
+    if (subscription.billingCycle) return subscription.billingCycle;
+    if (subscription.planType === 'annual' || subscription.lastMonthsPurchased === 12) return 'annual';
+    return 'monthly';
+  };
+
   const plans = selectedGateway === 'direct' ? DIRECT_PLANS : selectedGateway === 'dlocal' ? dlocalPlans : epaycoPlans;
-  const selectedPlan = plans.find(p => p.months === selectedMonths);
+  const selectedPlan = plans.find(
+    p => p.commercialPlan === selectedCommercialPlan && p.billingCycle === selectedBillingCycle
+  );
   const isTestMode = selectedGateway === 'dlocal' ? dlocalConfig.isTest : selectedGateway === 'epayco' ? epaycoConfig.isTest : false;
   const getPlanDisplayName = () => {
     if (!subscription) return '';
-    // Derive from planType first (most reliable), then lastMonthsPurchased as fallback
-    if (subscription.planType === 'annual' || subscription.lastMonthsPurchased === 12) return 'Plan Anual';
-    if (subscription.planType === 'semiannual' || subscription.lastMonthsPurchased === 6) return 'Plan Semestral';
-    if (subscription.planType === 'quarterly' || subscription.lastMonthsPurchased === 3) return 'Plan Trimestral';
-    return 'Plan Mensual';
-  };
-
-  const getPlanTierLevel = () => {
-    if (!subscription) return 0;
-    if (subscription.planType === 'annual' || subscription.lastMonthsPurchased === 12) return 4;
-    if (subscription.planType === 'semiannual' || subscription.lastMonthsPurchased === 6) return 3;
-    if (subscription.planType === 'quarterly' || subscription.lastMonthsPurchased === 3) return 2;
-    return 1;
+    return formatPlanSummary(
+      getSubscriptionCommercialPlan(),
+      getSubscriptionBillingCycle(),
+      subscription.lastMonthsPurchased
+    );
   };
 
   const subStatus = getSubscriptionStatus();
-  const planTier = getPlanTierLevel();
-  const isAnnualPlan = planTier === 4;
+  const subscriptionPlan = getSubscriptionCommercialPlan();
+  const subscriptionCycle = getSubscriptionBillingCycle();
+  const isAnnualPlan = (subscriptionPlan === 'pro' || subscriptionPlan === 'pro_max') && subscriptionCycle === 'annual';
   const hasPendingRequest = myRequests.some(r => r.status === 'pending');
+  const usageItems = USAGE_RESOURCE_ORDER
+    .map((key) => subscription?.usage?.[key])
+    .filter(Boolean);
+
+  const getUsageBarColor = (status) => {
+    if (status === 'limit') return 'bg-red-500';
+    if (status === 'warning') return 'bg-amber-500';
+    return 'bg-emerald-500';
+  };
 
   // Combine all history for display
   const allHistory = [
@@ -382,6 +564,8 @@ const SubscriptionPayment = () => {
     ...myRequests.map(r => ({
       _id: r._id || r.id,
       months: r.monthsPurchased,
+      commercialPlan: r.commercialPlan,
+      billingCycle: r.billingCycle,
       totalAmount: r.amount,
       status: r.status,
       createdAt: r.createdAt,
@@ -637,6 +821,47 @@ const SubscriptionPayment = () => {
         </div>
       )}
 
+      {subscription && usageItems.length > 0 && (
+        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-[#DCE4F5] overflow-hidden shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-sm">
+          <div className="px-3.5 py-2.5 border-b border-[#DCE4F5] flex items-center justify-between">
+            <h3 className="text-xs font-bold text-[#1F2937]">Uso de tu plan</h3>
+            <span className="text-[10px] font-semibold text-[#3A7AFF]">{getPlanDisplayName()}</span>
+          </div>
+          <div className="p-3.5 space-y-2">
+            {usageItems.map((item) => {
+              const percent = Math.min(100, Math.max(0, item.percent || 0));
+              const statusText = item.unlimited
+                ? 'Sin límite'
+                : item.remaining <= 0
+                  ? 'Límite alcanzado'
+                  : `${item.remaining} disponible${item.remaining === 1 ? '' : 's'}`;
+
+              return (
+                <div key={item.key} className="rounded-lg border border-[#EEF3FF] p-2.5 bg-[#F9FBFF]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-semibold text-[#1F2937]">{item.label}</span>
+                    <span className="text-[10px] font-bold text-[#1F2937]">
+                      {item.used} / {item.unlimited ? 'Ilimitado' : item.limit}
+                    </span>
+                  </div>
+
+                  {!item.unlimited && (
+                    <div className="mt-1.5 h-1.5 rounded-full bg-[#E9EEF9] overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${getUsageBarColor(item.status)}`}
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="mt-1 text-[9px] text-[#6C7A92]">{statusText}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Pending request banner */}
       {hasPendingRequest && (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3.5 py-2.5">
@@ -667,46 +892,75 @@ const SubscriptionPayment = () => {
             <motion.div key="plan" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="p-3.5 space-y-3">
               
-              {/* Plan selector — horizontal row */}
-              <div className="flex gap-1.5">
-                {DIRECT_PLANS.map(plan => {
-                  const isSelected = selectedMonths === plan.months;
-                  const savingsVsMonthly = plan.months > 1 ? (DIRECT_PLANS[0].total * plan.months) - plan.total : 0;
-                  const isBestValue = plan.months === 12;
-                  const displayTotal = selectedGateway === 'direct' ? plan.total 
-                    : selectedGateway === 'dlocal' ? (dlocalPlans.find(p => p.months === plan.months)?.total || plan.total) 
-                    : (epaycoPlans.find(p => p.months === plan.months)?.total || plan.total);
-                  
+              {/* Plan selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {COMMERCIAL_PLANS.map(plan => {
+                  const isSelected = selectedCommercialPlan === plan.id;
+                  const monthlyValue = selectedBillingCycle === 'annual' ? plan.annualMonthly : plan.monthly;
+                  const isPro = plan.id === 'pro';
+                  const isProMax = plan.id === 'pro_max';
+                  const isPremium = isPro || isProMax;
+                  const selectedTheme = isProMax
+                    ? 'border-amber-400/50 bg-gradient-to-br from-amber-950 to-orange-950'
+                    : 'border-violet-400/40 bg-gradient-to-br from-violet-950 to-purple-950';
+                  const unselectedTheme = isProMax
+                    ? 'bg-amber-50 text-amber-700'
+                    : 'bg-violet-50 text-violet-600';
+
                   return (
-                    <button key={plan.months} type="button" onClick={() => setSelectedMonths(plan.months)}
-                      className={`relative flex-1 py-2 px-1 rounded-lg border transition-all text-center ${
-                        isBestValue
-                          ? isSelected
-                            ? 'border-violet-400/50 bg-gradient-to-b from-violet-950 to-purple-950 shadow-md shadow-violet-500/10'
-                            : 'border-violet-300/30 bg-gradient-to-b from-violet-950/90 to-purple-950/90 hover:border-violet-400/40'
-                          : isSelected
-                            ? 'border-[#3A7AFF] bg-[#3A7AFF]/5 shadow-sm'
-                            : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
-                      }`}>
-                      {isBestValue && (
-                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[7px] font-bold bg-gradient-to-r from-violet-500 to-purple-500 text-white px-1.5 py-px rounded-full whitespace-nowrap leading-tight flex items-center gap-0.5">
-                          <svg className="w-2 h-2" viewBox="0 0 20 20" fill="currentColor"><path d="M10 2l2.5 4 4.5-1.5-2 5L16 16H4l1-6.5-2-5L7.5 6z" /></svg>
-                          PRO
-                        </div>
-                      )}
-                      <div className={`text-sm font-bold leading-none ${isBestValue ? 'text-violet-200' : isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>{plan.months}</div>
-                      <div className={`text-[8px] leading-tight ${isBestValue ? 'text-violet-400/60' : 'text-[#6C7A92]'}`}>{plan.months === 1 ? 'mes' : 'meses'}</div>
-                      <div className={`text-[10px] font-bold mt-0.5 leading-none ${isBestValue ? 'text-violet-100' : isSelected ? 'text-[#3A7AFF]' : 'text-[#1F2937]'}`}>
-                        {formatCurrency(displayTotal)}
+                    <button
+                      key={plan.id}
+                      type="button"
+                      onClick={() => setSelectedCommercialPlan(plan.id)}
+                      className={`text-left rounded-lg border p-2.5 transition-all ${
+                        isSelected
+                          ? isPremium
+                            ? selectedTheme
+                            : 'border-[#3A7AFF] bg-[#3A7AFF]/5'
+                          : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs font-bold ${isPremium && isSelected ? 'text-violet-100' : 'text-[#1F2937]'}`}>
+                          {plan.label}
+                        </span>
+                        {isPremium && (
+                          <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded-full ${isSelected ? 'bg-violet-500/20 text-violet-200' : unselectedTheme}`}>
+                            {isProMax ? 'MAX' : 'PRO'}
+                          </span>
+                        )}
                       </div>
-                      {savingsVsMonthly > 0 && selectedGateway === 'direct' && (
-                        <div className={`text-[7px] font-semibold mt-0.5 leading-tight ${isBestValue ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                          -{formatCurrency(savingsVsMonthly)}
-                        </div>
-                      )}
+                      <p className={`text-[9px] mt-1 ${isPremium && isSelected ? 'text-violet-300/80' : 'text-[#6C7A92]'}`}>
+                        {plan.description}
+                      </p>
+                      <p className={`text-sm font-bold mt-1 ${isPremium && isSelected ? 'text-violet-100' : 'text-[#1F2937]'}`}>
+                        {formatCurrency(monthlyValue)}
+                        <span className={`text-[9px] font-medium ml-1 ${isPremium && isSelected ? 'text-violet-300/80' : 'text-[#6C7A92]'}`}>
+                          /mes
+                        </span>
+                      </p>
                     </button>
                   );
                 })}
+              </div>
+
+              {/* Billing cycle selector */}
+              <div className="flex items-center gap-1 bg-[#F4F6FB] rounded-lg p-1">
+                {BILLING_CYCLES.map(cycle => (
+                  <button
+                    key={cycle.id}
+                    type="button"
+                    onClick={() => setSelectedBillingCycle(cycle.id)}
+                    className={`flex-1 py-1.5 px-2 rounded-md text-[10px] font-semibold transition-all ${
+                      selectedBillingCycle === cycle.id ? 'bg-white text-[#3A7AFF] shadow-sm' : 'text-[#6C7A92]'
+                    }`}
+                  >
+                    {cycle.label}
+                    {cycle.badge && (
+                      <span className="ml-1 text-[8px] text-emerald-600">{cycle.badge}</span>
+                    )}
+                  </button>
+                ))}
               </div>
 
               {/* Gateway selector — direct + pasarelas */}
@@ -748,18 +1002,17 @@ const SubscriptionPayment = () => {
                     <div className="flex items-center justify-between text-[10px] text-[#6C7A92]">
                       <span>{selectedPlan.label} &mdash; Sin comisión</span>
                       <div className="text-right">
-                        {selectedPlan.discount > 0 && (
-                          <span className="text-[9px] line-through text-[#6C7A92]/60 mr-1.5">{formatCurrency(selectedPlan.basePrice)}</span>
-                        )}
                         <span className="text-sm font-bold text-[#1F2937]">{formatCurrency(selectedPlan.total)}</span>
                       </div>
                     </div>
-                    {selectedPlan.discount > 0 && (
-                      <div className="flex items-center justify-between mt-1">
-                        <span className="text-[9px] text-emerald-600 font-semibold">{selectedPlan.discount}% de descuento</span>
-                        <span className="text-[9px] text-emerald-600 font-semibold">Ahorras {formatCurrency(selectedPlan.basePrice - selectedPlan.total)}</span>
-                      </div>
-                    )}
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[9px] text-[#6C7A92]">
+                        {selectedPlan.billingCycle === 'annual' ? 'Pago anual' : 'Pago mensual'}
+                      </span>
+                      <span className="text-[9px] text-emerald-600 font-semibold">
+                        {formatCurrency(selectedPlan.pricePerMonth)}/mes
+                      </span>
+                    </div>
                   </div>
 
                   {/* Payment info cards */}
@@ -926,7 +1179,7 @@ const SubscriptionPayment = () => {
                         <div className="flex items-center gap-2.5">
                           <span className={`text-[8px] font-semibold px-1.5 py-0.5 rounded border ${s.bg} ${s.text} ${s.border}`}>{s.label}</span>
                           <div>
-                            <span className="text-[11px] font-semibold text-[#1F2937]">{payment.months} {payment.months === 1 ? 'mes' : 'meses'}</span>
+                            <span className="text-[11px] font-semibold text-[#1F2937]">{formatPlanSummary(payment.commercialPlan, payment.billingCycle, payment.months)}</span>
                             <span className="text-[9px] text-[#6C7A92] ml-1.5">{formatDate(payment.createdAt)}</span>
                           </div>
                         </div>

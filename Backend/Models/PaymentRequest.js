@@ -21,6 +21,18 @@ const paymentRequestSchema = new mongoose.Schema({
     default: 'COP',
     enum: ['COP']
   },
+  commercialPlan: {
+    type: String,
+    enum: ['starter', 'pro', 'pro_max'],
+    required: true,
+    index: true
+  },
+  billingCycle: {
+    type: String,
+    enum: ['monthly', 'annual'],
+    required: true,
+    default: 'monthly'
+  },
   monthsPurchased: {
     type: Number,
     required: true,

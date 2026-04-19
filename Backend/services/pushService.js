@@ -8,6 +8,7 @@ try {
 
 const PushSubscription = require('../Models/PushSubscription');
 const logger = require('../utils/logger');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
 let vapidConfigured = false;
 
@@ -49,6 +50,21 @@ const sendPushToBusinessId = async (businessId, payload) => {
     logger.debug('Push notifications disabled - VAPID not configured');
     return { sent: 0, failed: 0, removed: 0 };
   }
+
+  if (businessId) {
+    try {
+      const { planConfig } = await getSubscriptionForBusiness(businessId);
+      if (!isFeatureEnabledForPlan(planConfig, 'pushNotifications')) {
+        return { sent: 0, failed: 0, removed: 0 };
+      }
+    } catch (error) {
+      logger.warn('Could not verify pushNotifications feature for business', {
+        businessId,
+        error: error.message
+      });
+    }
+  }
+
   if (!payload.title || !payload.body) {
     throw new Error('Push payload must include title and body');
   }
@@ -113,6 +129,21 @@ const sendPushToCustomer = async (customerToken, payload, businessId) => {
     logger.debug('Push notifications disabled - VAPID not configured');
     return { sent: 0, failed: 0, removed: 0 };
   }
+
+  if (businessId) {
+    try {
+      const { planConfig } = await getSubscriptionForBusiness(businessId);
+      if (!isFeatureEnabledForPlan(planConfig, 'pushNotifications')) {
+        return { sent: 0, failed: 0, removed: 0 };
+      }
+    } catch (error) {
+      logger.warn('Could not verify pushNotifications feature for customer push', {
+        businessId,
+        error: error.message
+      });
+    }
+  }
+
   if (!customerToken || !payload.title || !payload.body) {
     return { sent: 0, failed: 0, removed: 0 };
   }

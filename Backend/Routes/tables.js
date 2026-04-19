@@ -7,6 +7,7 @@ const mongoose = require("mongoose");
 const { isValidObjectId, isValidBusinessIdentifier } = require("../utils/validators");
 const { tenantAuth } = require("../middleware/tenantAuth");
 const logger = require("../utils/logger");
+const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
 const {
   validateCreateTable,
   validateUpdateTable,
@@ -192,6 +193,23 @@ router.post("/", tenantAuth, validateCreateTable, async (req, res) => {
     const existingTable = await Table.findOne({ businessId, tableNumber });
     if (existingTable) {
       return res.status(400).json({ message: "A table with this number already exists" });
+    }
+
+    const currentCount = await Table.countDocuments({ businessId, isActive: true });
+    const limitStatus = await getPlanLimitStatus({
+      businessId,
+      resourceKey: 'tables',
+      currentCount
+    });
+
+    if (limitStatus.limitReached) {
+      return res.status(403).json({
+        message: limitStatus.message,
+        code: 'PLAN_LIMIT_REACHED',
+        plan: limitStatus.commercialPlan,
+        limit: limitStatus.limitValue,
+        current: currentCount
+      });
     }
     
     // Generate the QR code URL - use the original slug for better readability

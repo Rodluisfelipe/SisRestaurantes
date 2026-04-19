@@ -18,6 +18,16 @@ const { formatHttpError } = require('../utils/errorFormatter');
 const socketService = require('../services/socketService');
 const { calculateSubscriptionStatus, GRACE_DAYS } = require('../utils/subscriptionHelper');
 const sanitizeUpload = require('../middleware/sanitizeUpload');
+const {
+  resolvePaymentSelection,
+  getCyclePrice,
+  getCycleMonths,
+  getPlanConfig,
+  inferLegacyPlanTypeFromMonths,
+  resolveSubscriptionCommercialPlan,
+  resolveSubscriptionBillingCycle
+} = require('../utils/commercialPlans');
+const { getBusinessResourceUsage, mapUsageWithLimits } = require('../utils/subscriptionUsage');
 
 // Configurar multer para subida de comprobantes
 const storage = multer.diskStorage({
@@ -99,6 +109,11 @@ router.get('/subscription/me', authMiddleware, async (req, res) => {
     }
     
     const { status: currentStatus, periodEnd: periodEndDate, graceUntil: graceUntilDate } = calculateSubscriptionStatus(subscription);
+    const resolvedCommercialPlan = resolveSubscriptionCommercialPlan(subscription);
+    const resolvedBillingCycle = resolveSubscriptionBillingCycle(subscription);
+    const planConfig = getPlanConfig(resolvedCommercialPlan);
+    const usageValues = await getBusinessResourceUsage(businessId);
+    const usage = mapUsageWithLimits(planConfig, usageValues);
     
     res.json({
       success: true,
@@ -108,6 +123,9 @@ router.get('/subscription/me', authMiddleware, async (req, res) => {
         _id: subscription._id,
         businessId: subscription.businessId,
         planType: subscription.planType,
+        commercialPlan: resolvedCommercialPlan,
+        billingCycle: resolvedBillingCycle,
+        usage,
         status: currentStatus,
         startDate: subscription.startDate,
         endDate: subscription.endDate,
@@ -147,7 +165,22 @@ router.get('/subscription/me', authMiddleware, async (req, res) => {
 // POST /api/payments/manual/request - Crear solicitud de pago manual
 router.post('/payments/manual/request', authMiddleware, upload.single('proof'), sanitizeUpload({ maxWidth: 1600, quality: 90 }), async (req, res) => {
   try {
-    const { monthsPurchased, amount, paymentMethod, businessId: bodyBusinessId } = req.body;
+    const {
+      monthsPurchased,
+      amount,
+      paymentMethod,
+      commercialPlan,
+      plan,
+      billingCycle,
+      cycle,
+      businessId: bodyBusinessId
+    } = req.body;
+
+    const paymentSelection = resolvePaymentSelection({
+      commercialPlan: commercialPlan || plan,
+      billingCycle: billingCycle || cycle,
+      months: monthsPurchased
+    });
     
     let businessId = req.user.businessId;
     const isSuperAdmin = req.user.isSuperAdmin || req.user.role === 'superadmin';
@@ -230,14 +263,28 @@ router.post('/payments/manual/request', authMiddleware, upload.single('proof'), 
       return res.status(400).json(formatHttpError(req, 'Comprobante de pago requerido', 400));
     }
     
-    if (!monthsPurchased || !amount || !paymentMethod) {
+    if (!paymentSelection || paymentSelection.commercialPlan === 'free' || !paymentMethod) {
       // Eliminar archivo si faltan datos
       try {
         fs.unlinkSync(req.file.path);
       } catch (unlinkError) {
         logger.error('Error deleting uploaded file', unlinkError, req);
       }
-      return res.status(400).json(formatHttpError(req, 'Faltan datos requeridos: meses, monto y método de pago', 400));
+      return res.status(400).json(formatHttpError(req, 'Debes seleccionar plan (Starter, Pro o Pro Max), ciclo y método de pago', 400));
+    }
+
+    const expectedAmount = getCyclePrice(paymentSelection.commercialPlan, paymentSelection.billingCycle);
+    const parsedAmount = Number.parseFloat(amount);
+    const normalizedAmount = Number.isFinite(parsedAmount) && parsedAmount > 0 ? parsedAmount : expectedAmount;
+
+    // Evita manipulación del monto en la solicitud manual.
+    if (Math.abs(normalizedAmount - expectedAmount) > 500) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkError) {
+        logger.error('Error deleting uploaded file', unlinkError, req);
+      }
+      return res.status(400).json(formatHttpError(req, 'El monto no coincide con el plan seleccionado', 400));
     }
     
     // Verificar si ya hay una solicitud pendiente
@@ -256,8 +303,10 @@ router.post('/payments/manual/request', authMiddleware, upload.single('proof'), 
     
     const paymentRequest = new PaymentRequest({
       businessId,
-      amount: parseFloat(amount),
-      monthsPurchased: parseInt(monthsPurchased),
+      amount: normalizedAmount,
+      commercialPlan: paymentSelection.commercialPlan,
+      billingCycle: paymentSelection.billingCycle,
+      monthsPurchased: paymentSelection.months,
       paymentMethod,
       proofUrl,
       status: PAYMENT_REQUEST_STATUS.PENDING
@@ -269,7 +318,9 @@ router.post('/payments/manual/request', authMiddleware, upload.single('proof'), 
       requestId: paymentRequest._id, 
       businessId,
       amount: paymentRequest.amount,
-      monthsPurchased: paymentRequest.monthsPurchased
+      monthsPurchased: paymentRequest.monthsPurchased,
+      commercialPlan: paymentRequest.commercialPlan,
+      billingCycle: paymentRequest.billingCycle
     }, req);
     
     res.status(201).json({
@@ -279,6 +330,8 @@ router.post('/payments/manual/request', authMiddleware, upload.single('proof'), 
         id: paymentRequest._id,
         amount: paymentRequest.amount,
         monthsPurchased: paymentRequest.monthsPurchased,
+        commercialPlan: paymentRequest.commercialPlan,
+        billingCycle: paymentRequest.billingCycle,
         paymentMethod: paymentRequest.paymentMethod,
         status: paymentRequest.status,
         createdAt: paymentRequest.createdAt
@@ -343,6 +396,8 @@ router.get('/payments/manual/my-requests', authMiddleware, async (req, res) => {
         _id: req._id,
         amount: req.amount,
         monthsPurchased: req.monthsPurchased,
+        commercialPlan: req.commercialPlan,
+        billingCycle: req.billingCycle,
         paymentMethod: req.paymentMethod,
         proofUrl: req.proofUrl,
         status: req.status,
@@ -386,6 +441,8 @@ router.get('/admin/payment-requests', protectSuperAdmin, async (req, res) => {
           businessName: requestObj.businessId?.businessName || (typeof requestObj.businessId === 'object' && requestObj.businessId?.toString()) || requestObj.businessId?.toString() || 'N/A',
           amount: requestObj.amount,
           monthsPurchased: requestObj.monthsPurchased,
+          commercialPlan: requestObj.commercialPlan,
+          billingCycle: requestObj.billingCycle,
           paymentMethod: requestObj.paymentMethod,
           proofUrl: requestObj.proofUrl,
           proof: requestObj.proofUrl, // Alias para compatibilidad
@@ -427,6 +484,9 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
     
     const businessId = paymentRequest.businessId;
     const now = new Date();
+    const purchasedMonths = paymentRequest.monthsPurchased || getCycleMonths(paymentRequest.billingCycle);
+    const selectedCommercialPlan = paymentRequest.commercialPlan || 'pro';
+    const selectedBillingCycle = paymentRequest.billingCycle || (purchasedMonths >= 12 ? 'annual' : 'monthly');
     
     // Asegurar que businessId es ObjectId (convertir si es necesario)
     let businessObjectId = businessId;
@@ -472,7 +532,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
       if (currentPeriodEnd && now <= currentPeriodEnd) {
         // Aún está activa, extender desde periodEnd
         newPeriodEnd = new Date(currentPeriodEnd);
-        const targetMonth = newPeriodEnd.getMonth() + paymentRequest.monthsPurchased;
+        const targetMonth = newPeriodEnd.getMonth() + purchasedMonths;
         const targetYear = newPeriodEnd.getFullYear() + Math.floor(targetMonth / 12);
         const finalMonth = targetMonth % 12;
         newPeriodEnd = new Date(targetYear, finalMonth, newPeriodEnd.getDate());
@@ -498,7 +558,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
         if (currentGraceUntil && now <= currentGraceUntil) {
           // Está en gracia, extender desde periodEnd original
           newPeriodEnd = new Date(currentPeriodEnd);
-          const targetMonth = newPeriodEnd.getMonth() + paymentRequest.monthsPurchased;
+          const targetMonth = newPeriodEnd.getMonth() + purchasedMonths;
           const targetYear = newPeriodEnd.getFullYear() + Math.floor(targetMonth / 12);
           const finalMonth = targetMonth % 12;
           newPeriodEnd = new Date(targetYear, finalMonth, newPeriodEnd.getDate());
@@ -506,7 +566,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
         } else {
           // Ya pasó la gracia, empezar desde hoy con el pago
           newPeriodEnd = new Date(now);
-          const targetMonth = newPeriodEnd.getMonth() + paymentRequest.monthsPurchased;
+          const targetMonth = newPeriodEnd.getMonth() + purchasedMonths;
           const targetYear = newPeriodEnd.getFullYear() + Math.floor(targetMonth / 12);
           const finalMonth = targetMonth % 12;
           newPeriodEnd = new Date(targetYear, finalMonth, newPeriodEnd.getDate());
@@ -515,7 +575,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
       } else {
         // No hay periodEnd definido, empezar desde hoy
         newPeriodEnd = new Date(now);
-        const targetMonth = newPeriodEnd.getMonth() + paymentRequest.monthsPurchased;
+        const targetMonth = newPeriodEnd.getMonth() + purchasedMonths;
         const targetYear = newPeriodEnd.getFullYear() + Math.floor(targetMonth / 12);
         const finalMonth = targetMonth % 12;
         newPeriodEnd = new Date(targetYear, finalMonth, newPeriodEnd.getDate());
@@ -530,7 +590,9 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
       subscription.status = 'active';
       subscription.paymentStatus = 'paid';
       subscription.lastPaymentAt = now;
-      subscription.lastMonthsPurchased = paymentRequest.monthsPurchased;
+      subscription.lastMonthsPurchased = purchasedMonths;
+      subscription.commercialPlan = selectedCommercialPlan;
+      subscription.billingCycle = selectedBillingCycle;
       
       // Mapear paymentMethod de PaymentRequest al formato de Subscription
       const paymentMethodMap = {
@@ -543,7 +605,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
       subscription.paymentMethod = paymentMethodMap[paymentRequest.paymentMethod] || paymentRequest.paymentMethod?.toUpperCase() || 'OTHER';
       
       // ACTUALIZAR con datos del pago (prioridad sobre manual)
-      subscription.planType = paymentRequest.monthsPurchased >= 12 ? 'annual' : paymentRequest.monthsPurchased >= 6 ? 'semiannual' : paymentRequest.monthsPurchased >= 3 ? 'quarterly' : 'monthly';
+      subscription.planType = inferLegacyPlanTypeFromMonths(purchasedMonths);
       subscription.price = paymentRequest.amount; // Usar el precio del pago
       subscription.isActive = true;
       
@@ -554,7 +616,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
     } else {
       // Crear nueva suscripción
       const newPeriodEnd = new Date(now);
-      newPeriodEnd.setMonth(newPeriodEnd.getMonth() + paymentRequest.monthsPurchased);
+      newPeriodEnd.setMonth(newPeriodEnd.getMonth() + purchasedMonths);
       
       // Calcular graceUntil
       const newGraceUntil = new Date(newPeriodEnd);
@@ -564,7 +626,9 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
         businessId: mongoose.Types.ObjectId.isValid(businessObjectId) 
           ? new mongoose.Types.ObjectId(businessObjectId) 
           : businessObjectId,
-        planType: paymentRequest.monthsPurchased >= 12 ? 'annual' : 'monthly',
+        planType: inferLegacyPlanTypeFromMonths(purchasedMonths),
+        commercialPlan: selectedCommercialPlan,
+        billingCycle: selectedBillingCycle,
         startDate: now,
         endDate: newPeriodEnd,
         periodStart: now,
@@ -574,7 +638,7 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
         paymentStatus: 'paid',
         status: 'active',
         lastPaymentAt: now,
-        lastMonthsPurchased: paymentRequest.monthsPurchased,
+        lastMonthsPurchased: purchasedMonths,
         // Mapear paymentMethod de PaymentRequest al formato de Subscription
         paymentMethod: (() => {
           const paymentMethodMap = {
@@ -620,6 +684,8 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
           paymentStatus: savedSubscription.paymentStatus,
           lastPaymentAt: savedSubscription.lastPaymentAt,
           lastMonthsPurchased: savedSubscription.lastMonthsPurchased,
+          commercialPlan: savedSubscription.commercialPlan,
+          billingCycle: savedSubscription.billingCycle,
           businessId: savedSubscription.businessId.toString()
         },
         message: `Pago aprobado. Tu suscripción está activa hasta el ${new Date(savedSubscription.periodEnd).toLocaleDateString('es-CO')}`,
@@ -662,7 +728,9 @@ router.post('/admin/payment-requests/:id/approve', protectSuperAdmin, async (req
         isActive: savedSubscription.isActive,
         paymentStatus: savedSubscription.paymentStatus,
         lastPaymentAt: savedSubscription.lastPaymentAt,
-        lastMonthsPurchased: savedSubscription.lastMonthsPurchased
+        lastMonthsPurchased: savedSubscription.lastMonthsPurchased,
+        commercialPlan: savedSubscription.commercialPlan,
+        billingCycle: savedSubscription.billingCycle
       },
       activated: true,
       timestamp: now.toISOString()

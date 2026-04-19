@@ -9,6 +9,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 const { resolveBusinessId } = require('../utils/businessResolver');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
+const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
 
 // Rate limiter for public coupon validation (prevent brute-force)
 const couponValidateLimiter = rateLimit({
@@ -419,6 +420,28 @@ router.post('/', authMiddleware, async (req, res) => {
     }
     if (discountType === 'percentage' && discountValue > 100) {
       return res.status(400).json(formatHttpError(req, 'El porcentaje no puede ser mayor a 100', 400));
+    }
+
+    const currentCount = await BusinessCoupon.countDocuments({
+      businessId,
+      isActive: true
+    });
+    const limitStatus = await getPlanLimitStatus({
+      businessId,
+      resourceKey: 'coupons',
+      currentCount
+    });
+
+    if (limitStatus.limitReached) {
+      return res.status(403).json(
+        formatHttpError(req, limitStatus.message, 403, {
+          code: 'PLAN_LIMIT_REACHED',
+          resource: 'coupons',
+          plan: limitStatus.commercialPlan,
+          limit: limitStatus.limitValue,
+          current: currentCount
+        })
+      );
     }
 
     // Verificar código duplicado dentro del negocio

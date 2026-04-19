@@ -19,12 +19,15 @@ const logger = require('../utils/logger');
 const { isValidObjectId } = require('../utils/validators');
 const { resolveBusinessId } = require('../utils/businessResolver');
 const epaycoService = require('../services/epaycoService');
+const { resolvePaymentSelection, inferLegacyPlanTypeFromMonths } = require('../utils/commercialPlans');
 
 // Modelo para guardar referencias de pago ePayco
 const epaycoPaymentSchema = new mongoose.Schema({
   reference: { type: String, required: true, unique: true, index: true },
   businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', required: true },
   months: { type: Number, required: true },
+  commercialPlan: { type: String, enum: ['starter', 'pro', 'pro_max'], required: true },
+  billingCycle: { type: String, enum: ['monthly', 'annual'], required: true },
   basePrice: { type: Number, required: true },
   totalAmount: { type: Number, required: true },
   commission: { type: Number, required: true },
@@ -74,7 +77,13 @@ router.post('/create', authMiddleware, async (req, res) => {
       return res.status(503).json({ success: false, message: 'Pasarela de pagos no configurada' });
     }
 
-    const { months, businessId: bodyBusinessId } = req.body;
+    const {
+      months,
+      plan,
+      commercialPlan,
+      billingCycle,
+      businessId: bodyBusinessId
+    } = req.body;
     let businessId = req.user.businessId || bodyBusinessId || req.query.businessId;
     
     // Resolver businessId si no está en el token ni en el body
@@ -97,12 +106,25 @@ router.post('/create', authMiddleware, async (req, res) => {
       return res.status(400).json({ success: false, message: e.message });
     }
     
+    const paymentSelection = resolvePaymentSelection({
+      commercialPlan: commercialPlan || plan,
+      billingCycle,
+      months
+    });
+
+    if (!paymentSelection || paymentSelection.commercialPlan === 'free') {
+      return res.status(400).json({
+        success: false,
+        message: 'Plan no válido. Selecciona Starter, Pro o Pro Max con ciclo mensual o anual.'
+      });
+    }
+
     // Validar plan
-    const plan = epaycoService.getPlanDetails(months);
-    if (!plan) {
+    const selectedPlan = epaycoService.getPlanDetails(paymentSelection);
+    if (!selectedPlan) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Plan no válido. Opciones: 1, 3, 6, 12 meses' 
+        message: 'Plan no válido. Selecciona Starter, Pro o Pro Max con ciclo mensual o anual.' 
       });
     }
     
@@ -119,16 +141,18 @@ router.post('/create', authMiddleware, async (req, res) => {
     );
     
     // Generar referencia única
-    const reference = epaycoService.generatePaymentReference(businessId, months);
+    const reference = epaycoService.generatePaymentReference(businessId, paymentSelection);
     
     // Guardar en BD
     const payment = new EpaycoPayment({
       reference,
       businessId,
-      months: plan.months,
-      basePrice: plan.basePrice,
-      totalAmount: plan.total,
-      commission: plan.commission,
+      months: selectedPlan.months,
+      commercialPlan: paymentSelection.commercialPlan,
+      billingCycle: paymentSelection.billingCycle,
+      basePrice: selectedPlan.basePrice,
+      totalAmount: selectedPlan.total,
+      commission: selectedPlan.commission,
       createdBy: req.user.id,
     });
     await payment.save();
@@ -136,11 +160,11 @@ router.post('/create', authMiddleware, async (req, res) => {
     // Datos para el checkout de ePayco
     const checkoutData = {
       // Datos del pago
-      name: `Suscripción Menuby - ${plan.label}`,
-      description: `Suscripción ${plan.label} para ${business.businessName}`,
+      name: `Suscripción Menuby - ${selectedPlan.label}`,
+      description: `Suscripción ${selectedPlan.label} para ${business.businessName}`,
       invoice: reference,
       currency: 'cop',
-      amount: plan.total.toString(),
+      amount: selectedPlan.total.toString(),
       tax_base: '0',
       tax: '0',
       tax_ico: '0',
@@ -160,16 +184,23 @@ router.post('/create', authMiddleware, async (req, res) => {
       
       // Extra data
       extra1: businessId,
-      extra2: months.toString(),
+      extra2: selectedPlan.months.toString(),
       extra3: reference,
     };
 
-    logger.info('ePayco payment created', { reference, businessId, months, total: plan.total });
+    logger.info('ePayco payment created', {
+      reference,
+      businessId,
+      commercialPlan: paymentSelection.commercialPlan,
+      billingCycle: paymentSelection.billingCycle,
+      months: selectedPlan.months,
+      total: selectedPlan.total
+    });
     
     res.json({
       success: true,
       reference,
-      plan,
+      plan: selectedPlan,
       checkoutData,
       business: { name: business.businessName, slug: business.slug },
     });
@@ -399,6 +430,8 @@ router.get('/status/:ref', authMiddleware, async (req, res) => {
         reference: payment.reference,
         status: payment.status,
         months: payment.months,
+        commercialPlan: payment.commercialPlan,
+        billingCycle: payment.billingCycle,
         basePrice: payment.basePrice,
         totalAmount: payment.totalAmount,
         commission: payment.commission,
@@ -435,7 +468,7 @@ async function activateSubscription(payment) {
   _activationLocks.set(lockKey, lockPromise);
   
   try {
-    const { businessId, months, basePrice, reference } = payment;
+    const { businessId, months, basePrice, reference, commercialPlan, billingCycle } = payment;
     
     const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || '1');
     
@@ -469,7 +502,9 @@ async function activateSubscription(payment) {
     
     if (subscription) {
       // Actualizar suscripción existente
-      subscription.planType = months >= 12 ? 'annual' : months >= 6 ? 'semiannual' : months >= 3 ? 'quarterly' : 'monthly';
+      subscription.planType = inferLegacyPlanTypeFromMonths(months);
+      subscription.commercialPlan = commercialPlan || subscription.commercialPlan;
+      subscription.billingCycle = billingCycle || subscription.billingCycle || (months >= 12 ? 'annual' : 'monthly');
       subscription.status = 'active';
       subscription.paymentStatus = 'paid';
       subscription.isActive = true;
@@ -490,7 +525,9 @@ async function activateSubscription(payment) {
       // Crear nueva suscripción
       subscription = new Subscription({
         businessId,
-        planType: months >= 12 ? 'annual' : 'monthly',
+        planType: inferLegacyPlanTypeFromMonths(months),
+        commercialPlan: commercialPlan || 'pro',
+        billingCycle: billingCycle || (months >= 12 ? 'annual' : 'monthly'),
         status: 'active',
         paymentStatus: 'paid',
         isActive: true,
@@ -582,7 +619,7 @@ router.get('/history', authMiddleware, async (req, res) => {
     })
     .sort({ createdAt: -1 })
     .limit(20)
-    .select('reference months basePrice totalAmount commission status paymentMethod responseMessage epaycoRef createdAt updatedAt')
+    .select('reference months commercialPlan billingCycle basePrice totalAmount commission status paymentMethod responseMessage epaycoRef createdAt updatedAt')
     .lean();
 
     res.json({ success: true, payments });

@@ -280,6 +280,8 @@ router.post('/register', registerLimiter, validateRegister, async (req, res) => 
     const initialSubscription = new Subscription({
       businessId: businessConfig._id,
       planType: 'monthly',
+      commercialPlan: 'free',
+      billingCycle: 'monthly',
       status: 'active',
       startDate: now,
       endDate: periodEnd,
@@ -897,6 +899,8 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
     await new Subscription({
       businessId: businessConfig._id,
       planType: 'monthly',
+      commercialPlan: 'free',
+      billingCycle: 'monthly',
       status: 'active',
       startDate: now,
       endDate: periodEnd,
@@ -972,7 +976,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       }
     });
   } catch (error) {
-    logger.error('Error en Google auth', process.env.NODE_ENV !== 'production' ? error : undefined);
+    logger.error('Error en Google auth', { message: error.message, stack: error.stack?.split('\n').slice(0, 3).join(' | ') });
     res.status(500).json({ message: 'Error en el servidor al procesar autenticación con Google' });
   }
 });
@@ -1144,6 +1148,7 @@ router.get('/business-types', (req, res) => {
 
 const { requireRole } = require('../middleware/authMiddleware');
 const { validateUpdateStaff } = require('../middleware/validators/staffValidators');
+const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
 
 // GET /auth/staff — list staff users for this business
 router.get('/staff', authMiddleware, requireRole('admin', 'superadmin'), async (req, res) => {
@@ -1182,6 +1187,27 @@ router.post('/staff', authMiddleware, requireRole('admin', 'superadmin'), async 
     const existing = await Admin.findOne({ username: username.toLowerCase().trim() });
     if (existing) {
       return res.status(400).json({ message: 'Este nombre de usuario ya está en uso' });
+    }
+
+    const currentUsers = await Admin.countDocuments({
+      businessId: bId,
+      role: { $in: ['admin', 'staff', 'manager'] }
+    });
+    const limitStatus = await getPlanLimitStatus({
+      businessId: bId,
+      resourceKey: 'staffUsers',
+      currentCount: currentUsers
+    });
+
+    if (limitStatus.limitReached) {
+      return res.status(403).json({
+        message: limitStatus.message,
+        code: 'PLAN_LIMIT_REACHED',
+        resource: 'staffUsers',
+        plan: limitStatus.commercialPlan,
+        limit: limitStatus.limitValue,
+        current: currentUsers
+      });
     }
 
     const staff = new Admin({

@@ -13,6 +13,14 @@ const { SUBSCRIPTION_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { calculateSubscriptionStatus } = require('../utils/subscriptionHelper');
+const {
+  normalizeCommercialPlan,
+  normalizeBillingCycle,
+  getPlanConfig,
+  resolveSubscriptionCommercialPlan,
+  resolveSubscriptionBillingCycle
+} = require('../utils/commercialPlans');
+const { getBusinessResourceUsage, mapUsageWithLimits } = require('../utils/subscriptionUsage');
 
 // Rate limiter for public subscription check endpoint
 const subscriptionCheckLimiter = rateLimit({
@@ -26,7 +34,7 @@ const subscriptionCheckLimiter = rateLimit({
 // Validación de entrada para crear/actualizar suscripción
 const validateSubscriptionInput = (req, res, next) => {
   const errors = [];
-  const { businessId, planType, startDate, endDate, price, notes, status, paymentStatus } = req.body;
+  const { businessId, planType, startDate, endDate, price, notes, status, paymentStatus, commercialPlan, billingCycle } = req.body;
   
   // Validar businessId (solo para POST)
   if (req.method === 'POST') {
@@ -40,8 +48,16 @@ const validateSubscriptionInput = (req, res, next) => {
   // Validar planType
   if (req.method === 'POST' && !planType) {
     errors.push({ field: 'planType', message: 'planType es requerido' });
-  } else if (planType !== undefined && !['monthly', 'annual'].includes(planType)) {
-    errors.push({ field: 'planType', message: 'planType debe ser "monthly" o "annual"' });
+  } else if (planType !== undefined && !['monthly', 'quarterly', 'semiannual', 'annual'].includes(planType)) {
+    errors.push({ field: 'planType', message: 'planType debe ser monthly, quarterly, semiannual o annual' });
+  }
+
+  if (commercialPlan !== undefined && !normalizeCommercialPlan(commercialPlan)) {
+    errors.push({ field: 'commercialPlan', message: 'commercialPlan debe ser free, starter, pro o pro_max' });
+  }
+
+  if (billingCycle !== undefined && !normalizeBillingCycle(billingCycle)) {
+    errors.push({ field: 'billingCycle', message: 'billingCycle debe ser monthly o annual' });
   }
   
   // Validar startDate
@@ -126,6 +142,8 @@ router.get('/check/:businessId', subscriptionCheckLimiter, async (req, res) => {
     
     // For unauthenticated requests (public/customer), return minimal info
     if (!isAuthenticated) {
+      const commercialPlan = resolveSubscriptionCommercialPlan(subscription);
+      const billingCycle = resolveSubscriptionBillingCycle(subscription);
       return res.json({
         success: true,
         hasSubscription: true,
@@ -133,7 +151,9 @@ router.get('/check/:businessId', subscriptionCheckLimiter, async (req, res) => {
           status: currentStatus,
           isActive: currentStatus === 'active',
           isInGracePeriod: currentStatus === 'grace',
-          planType: subscription.planType || 'monthly'
+          planType: subscription.planType || 'monthly',
+          commercialPlan,
+          billingCycle
         }
       });
     }
@@ -148,6 +168,8 @@ router.get('/check/:businessId', subscriptionCheckLimiter, async (req, res) => {
         _id: subscription._id,
         id: subscription._id,
         planType: subscription.planType,
+        commercialPlan: resolveSubscriptionCommercialPlan(subscription),
+        billingCycle: resolveSubscriptionBillingCycle(subscription),
         status: currentStatus, // active, grace, suspended
         paymentStatus: subscription.paymentStatus,
         startDate: subscription.startDate,
@@ -277,6 +299,11 @@ router.get('/me', authMiddleware, async (req, res) => {
     const currentStatus = subscription.getCurrentStatus ? subscription.getCurrentStatus() : 'active';
     const periodEndDate = subscription.periodEnd || subscription.endDate;
     const graceUntilDate = subscription.graceUntil || (subscription.calculateGraceUntil ? subscription.calculateGraceUntil() : null);
+    const resolvedCommercialPlan = resolveSubscriptionCommercialPlan(subscription);
+    const resolvedBillingCycle = resolveSubscriptionBillingCycle(subscription);
+    const planConfig = getPlanConfig(resolvedCommercialPlan);
+    const usageValues = await getBusinessResourceUsage(businessId);
+    const usage = mapUsageWithLimits(planConfig, usageValues);
     
     res.json({
       success: true,
@@ -286,6 +313,9 @@ router.get('/me', authMiddleware, async (req, res) => {
         _id: subscription._id,
         businessId: subscription.businessId,
         planType: subscription.planType,
+        commercialPlan: resolvedCommercialPlan,
+        billingCycle: resolvedBillingCycle,
+        usage,
         status: currentStatus, // active, grace, suspended
         startDate: subscription.startDate,
         endDate: subscription.endDate,
@@ -370,7 +400,9 @@ router.get('/:businessId', async (req, res) => {
 // POST /api/subscriptions - Crear nueva suscripción
 router.post('/', validateSubscriptionInput, async (req, res) => {
   try {
-    const { businessId, planType, startDate, endDate, price, notes } = req.body;
+    const { businessId, planType, startDate, endDate, price, notes, commercialPlan, billingCycle } = req.body;
+    const normalizedCommercialPlan = normalizeCommercialPlan(commercialPlan) || (price > 0 ? 'pro' : 'free');
+    const normalizedBillingCycle = normalizeBillingCycle(billingCycle) || (planType === 'annual' ? 'annual' : 'monthly');
     
     // Verificar que el negocio existe
     const business = await BusinessConfig.findById(businessId);
@@ -421,6 +453,8 @@ router.post('/', validateSubscriptionInput, async (req, res) => {
     const subscription = new Subscription({
       businessId,
       planType,
+      commercialPlan: normalizedCommercialPlan,
+      billingCycle: normalizedBillingCycle,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       periodStart: new Date(startDate), // Establecer periodStart igual que startDate
@@ -439,7 +473,7 @@ router.post('/', validateSubscriptionInput, async (req, res) => {
     // Poblar la información del negocio
     await subscription.populate('businessId', 'businessName slug');
     
-    logger.info('Subscription created', { businessId, planType }, req);
+    logger.info('Subscription created', { businessId, planType, commercialPlan: normalizedCommercialPlan, billingCycle: normalizedBillingCycle }, req);
     res.status(201).json({
       success: true,
       message: 'Suscripción creada exitosamente',
@@ -455,7 +489,7 @@ router.post('/', validateSubscriptionInput, async (req, res) => {
 router.put('/:id', validateSubscriptionInput, async (req, res) => {
   try {
     const { id } = req.params;
-    const { planType, startDate, endDate, price, status, paymentStatus, notes } = req.body;
+    const { planType, startDate, endDate, price, status, paymentStatus, notes, commercialPlan, billingCycle } = req.body;
     
     if (!isValidObjectId(id)) {
       return res.status(400).json({
@@ -474,6 +508,14 @@ router.put('/:id', validateSubscriptionInput, async (req, res) => {
     
     // Actualizar campos - SINCRONIZAR periodStart y periodEnd con startDate y endDate
     if (planType) subscription.planType = planType;
+    if (commercialPlan !== undefined) {
+      const normalizedCommercialPlan = normalizeCommercialPlan(commercialPlan);
+      if (normalizedCommercialPlan) subscription.commercialPlan = normalizedCommercialPlan;
+    }
+    if (billingCycle !== undefined) {
+      const normalizedBillingCycle = normalizeBillingCycle(billingCycle);
+      if (normalizedBillingCycle) subscription.billingCycle = normalizedBillingCycle;
+    }
     if (startDate) {
       subscription.startDate = new Date(startDate);
       subscription.periodStart = new Date(startDate); // Sincronizar periodStart

@@ -13,6 +13,7 @@
 
 const crypto = require('crypto');
 const logger = require('../utils/logger');
+const { getPaidPlanOptions, resolvePaymentSelection } = require('../utils/commercialPlans');
 
 const config = {
   apiKey: process.env.DLOCAL_API_KEY || '',
@@ -24,13 +25,7 @@ const config = {
   },
 };
 
-// Planes — mismos precios base que ePayco
-const PLANS = {
-  1: { months: 1, basePrice: 30000, label: '1 Mes' },
-  3: { months: 3, basePrice: 90000, label: '3 Meses' },
-  6: { months: 6, basePrice: 180000, label: '6 Meses' },
-  12: { months: 12, basePrice: 360000, label: '12 Meses' },
-};
+const BASE_PLANS = getPaidPlanOptions();
 
 // dLocal Go: 1.99% + USD 0.20
 const PERCENT_FEE = 0.0199;
@@ -51,18 +46,35 @@ function calculateTotalWithCommission(basePrice) {
  * Obtener todos los planes con precios dLocal
  */
 function getPlans() {
-  return Object.values(PLANS).map(plan => {
+  return BASE_PLANS.map(plan => {
     const total = calculateTotalWithCommission(plan.basePrice);
     const commission = total - plan.basePrice;
     return {
+      id: `${plan.commercialPlan}_${plan.billingCycle}`,
+      commercialPlan: plan.commercialPlan,
+      billingCycle: plan.billingCycle,
       months: plan.months,
       label: plan.label,
       basePrice: plan.basePrice,
       total,
       commission,
-      pricePerMonth: Math.round(plan.basePrice / plan.months),
+      pricePerMonth: plan.pricePerMonth,
     };
   });
+}
+
+function getPlanDetails(selectionInput) {
+  if (!selectionInput) return null;
+
+  const selection = typeof selectionInput === 'object'
+    ? resolvePaymentSelection(selectionInput)
+    : resolvePaymentSelection({ months: selectionInput });
+
+  if (!selection || selection.commercialPlan === 'free') return null;
+
+  return getPlans().find(
+    (p) => p.commercialPlan === selection.commercialPlan && p.billingCycle === selection.billingCycle
+  ) || null;
 }
 
 /**
@@ -96,10 +108,16 @@ function verifyWebhookSignature(bodyStr, receivedSignature) {
 /**
  * Generar referencia de pago única
  */
-function generatePaymentReference(businessId, months) {
+function generatePaymentReference(businessId, selectionInput) {
+  const selection = typeof selectionInput === 'object'
+    ? resolvePaymentSelection(selectionInput)
+    : resolvePaymentSelection({ months: selectionInput });
   const bizSuffix = businessId.toString().slice(-6);
   const random = crypto.randomBytes(4).toString('hex');
-  return `DL-${bizSuffix}-${months}M-${Date.now()}-${random}`;
+  const planPart = selection
+    ? `${selection.commercialPlan}-${selection.billingCycle}`
+    : 'legacy';
+  return `DL-${bizSuffix}-${planPart}-${Date.now()}-${random}`;
 }
 
 function isConfigured() {
@@ -108,8 +126,9 @@ function isConfigured() {
 
 module.exports = {
   config,
-  PLANS,
+  PLANS: BASE_PLANS,
   getPlans,
+  getPlanDetails,
   calculateTotalWithCommission,
   generateAuthHeaders,
   verifyWebhookSignature,

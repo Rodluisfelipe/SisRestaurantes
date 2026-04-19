@@ -304,37 +304,47 @@ export default function NichePage() {
 
       {/* ═══ PRICING MINI ═══ */}
       <Section className="py-16 sm:py-20 lg:py-28 bg-white" id="pricing">
-        <div className="max-w-md mx-auto px-5 sm:px-6 text-center">
+        <div className="max-w-5xl mx-auto px-5 sm:px-6 text-center">
           <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-red-500">Precio</span>
           <h2 className="mt-3 text-2xl sm:text-3xl font-extrabold text-gray-900 mb-2">
-            {page.keyword.charAt(0).toUpperCase() + page.keyword.slice(1)} desde $30.000/mes
+            {page.keyword.charAt(0).toUpperCase() + page.keyword.slice(1)} con planes desde Gratis
           </h2>
-          <p className="text-sm text-gray-500 mb-8">Un solo plan con todo incluido. Sin comisiones por pedido.</p>
+          <p className="text-sm text-gray-500 mb-8">Elige entre Gratis, Starter, Pro o Pro Max y escala sin comisiones por pedido.</p>
 
-          <div className="relative bg-white rounded-3xl border-2 border-red-100 p-6 sm:p-8 shadow-xl shadow-red-50/50">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-red-500 text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-lg whitespace-nowrap">
-              7 días gratis · Sin tarjeta
-            </div>
-            <div className="mt-4 mb-6">
-              <div className="flex items-baseline justify-center gap-1">
-                <span className="text-4xl sm:text-5xl font-extrabold text-gray-900">$30.000</span>
-                <span className="text-gray-400 text-sm">/mes</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">COP · Todo incluido</p>
+          <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-4 text-left">
+            <div className="bg-white rounded-2xl border border-slate-200 p-5">
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Gratis</p>
+              <p className="mt-1 text-3xl font-extrabold text-gray-900">$0</p>
+              <p className="text-xs text-gray-500">siempre</p>
+              <p className="mt-3 text-xs text-gray-600">20 productos · 30 pedidos/mes · 5 mesas · 1 usuario</p>
             </div>
 
-            <div className="space-y-2.5 mb-6 text-left">
-              {['Menú digital ilimitado', 'Pedidos por WhatsApp e In-App', 'Pantalla de cocina en tiempo real', 'Zonas de entrega con mapa', 'Múltiples métodos de pago', 'QR personalizable', 'Notificaciones push', 'Reportes y cierre diario', 'Soporte por WhatsApp'].map((f, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-                  <span className="text-xs sm:text-sm text-gray-700">{f}</span>
-                </div>
-              ))}
+            <div className="bg-white rounded-2xl border border-red-200 p-5 shadow-lg shadow-red-100/50">
+              <p className="text-xs font-bold uppercase tracking-wide text-red-500">Starter</p>
+              <p className="mt-1 text-3xl font-extrabold text-gray-900">$39.900</p>
+              <p className="text-xs text-gray-500">/mes · anual $34.900/mes</p>
+              <p className="mt-3 text-xs text-gray-600">60 productos · 350 pedidos/mes · 15 mesas · 3 usuarios · verificado rojo en menu</p>
             </div>
 
+            <div className="bg-white rounded-2xl border border-gray-900/20 p-5">
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-700">Pro</p>
+              <p className="mt-1 text-3xl font-extrabold text-gray-900">$59.900</p>
+              <p className="text-xs text-gray-500">/mes · anual $49.900/mes</p>
+              <p className="mt-3 text-xs text-gray-600">Ilimitado en todo · reservas + IA · verificado azul en menu</p>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-amber-300 p-5 shadow-lg shadow-amber-100/60">
+              <p className="text-xs font-bold uppercase tracking-wide text-amber-700">Pro Max</p>
+              <p className="mt-1 text-3xl font-extrabold text-gray-900">$89.900</p>
+              <p className="text-xs text-gray-500">/mes · anual $74.900/mes</p>
+              <p className="mt-3 text-xs text-gray-600">Ilimitado en todo · eventos exclusivos · tutoriales premium · acceso anticipado · verificado dorado en menu</p>
+            </div>
+          </div>
+
+          <div className="mt-7">
             <Link
               to="/register"
-              className="block w-full text-center py-4 rounded-2xl sm:rounded-xl text-white font-bold shadow-lg shadow-red-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+              className="inline-flex w-full sm:w-auto justify-center px-8 py-4 rounded-2xl sm:rounded-xl text-white font-bold shadow-lg shadow-red-500/25 hover:shadow-xl hover:-translate-y-0.5 transition-all"
               style={{ backgroundColor: BRAND }}
             >
               Empezar Gratis →

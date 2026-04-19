@@ -11,6 +11,17 @@ const subscriptionSchema = new mongoose.Schema({
     enum: ['monthly', 'quarterly', 'semiannual', 'annual'],
     required: true
   },
+  commercialPlan: {
+    type: String,
+    enum: ['free', 'starter', 'pro', 'pro_max'],
+    default: 'free',
+    index: true
+  },
+  billingCycle: {
+    type: String,
+    enum: ['monthly', 'annual'],
+    default: 'monthly'
+  },
   status: {
     type: String,
     enum: ['active', 'expired', 'cancelled', 'pending'],

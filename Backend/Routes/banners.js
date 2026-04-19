@@ -12,6 +12,7 @@ const fs = require('fs');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { BANNER_STATUS } = require('../utils/constants');
+const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
 
 // Rate limiter for public banner click tracking
 const bannerClickLimiter = rateLimit({
@@ -137,6 +138,28 @@ router.post('/superadmin-create', protectSuperAdmin, upload.single('image'), san
         success: false,
         message: 'Negocio no encontrado'
       });
+    }
+
+    const currentCount = await Banner.countDocuments({
+      businessId,
+      status: { $ne: BANNER_STATUS.REJECTED }
+    });
+    const limitStatus = await getPlanLimitStatus({
+      businessId,
+      resourceKey: 'banners',
+      currentCount
+    });
+
+    if (limitStatus.limitReached) {
+      return res.status(403).json(
+        formatHttpError(req, limitStatus.message, 403, {
+          code: 'PLAN_LIMIT_REACHED',
+          resource: 'banners',
+          plan: limitStatus.commercialPlan,
+          limit: limitStatus.limitValue,
+          current: currentCount
+        })
+      );
     }
 
     // Crear el banner
@@ -275,6 +298,30 @@ router.post('/', authMiddleware, upload.single('image'), sanitizeUpload({ maxWid
     if (!business) {
       return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404));
     }
+
+    const currentCount = await Banner.countDocuments({
+      businessId,
+      status: { $ne: BANNER_STATUS.REJECTED }
+    });
+    const limitStatus = await getPlanLimitStatus({
+      businessId,
+      resourceKey: 'banners',
+      currentCount
+    });
+
+    if (limitStatus.limitReached) {
+      return res.status(403).json(
+        formatHttpError(req, limitStatus.message, 403, {
+          code: 'PLAN_LIMIT_REACHED',
+          resource: 'banners',
+          plan: limitStatus.commercialPlan,
+          limit: limitStatus.limitValue,
+          current: currentCount
+        })
+      );
+    }
+
+    const endDateObj = new Date(endDate);
 
     // Crear banner
     const banner = new Banner({

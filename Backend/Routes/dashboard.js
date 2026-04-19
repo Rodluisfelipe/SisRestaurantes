@@ -9,6 +9,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const { startOfDayCOL, endOfDayCOL } = require('../utils/timezone');
 const logger = require('../utils/logger');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
 // ── Dashboard stats cache (60-second TTL per business) ──
 const _statsCache = new Map();
@@ -403,6 +404,16 @@ router.get('/abandoned-carts', tenantAuth, async (req, res) => {
     const businessId = req.query.businessId || req.user?.businessId;
     if (!businessId) return res.status(400).json({ message: 'businessId is required' });
 
+    const abandonedFeatureStatus = await getSubscriptionForBusiness(businessId);
+    if (!isFeatureEnabledForPlan(abandonedFeatureStatus.planConfig, 'abandonedCarts')) {
+      return res.status(403).json({
+        message: 'Tu plan actual no incluye carritos abandonados.',
+        code: 'PLAN_FEATURE_NOT_AVAILABLE',
+        feature: 'abandonedCarts',
+        plan: abandonedFeatureStatus.commercialPlan
+      });
+    }
+
     const ViewerSession = require('../Models/ViewerSession');
     const bid = new mongoose.Types.ObjectId(businessId);
     const todayStart = startOfDayCOL(new Date());
@@ -460,6 +471,16 @@ router.get('/viewer-stats', tenantAuth, async (req, res) => {
   try {
     const businessId = req.query.businessId || req.user?.businessId;
     if (!businessId) return res.status(400).json({ message: 'businessId is required' });
+
+    const analyticsFeatureStatus = await getSubscriptionForBusiness(businessId);
+    if (!isFeatureEnabledForPlan(analyticsFeatureStatus.planConfig, 'advancedAnalytics')) {
+      return res.status(403).json({
+        message: 'Tu plan actual no incluye analíticas avanzadas.',
+        code: 'PLAN_FEATURE_NOT_AVAILABLE',
+        feature: 'advancedAnalytics',
+        plan: analyticsFeatureStatus.commercialPlan
+      });
+    }
 
     const ViewerSession = require('../Models/ViewerSession');
     const bid = new mongoose.Types.ObjectId(businessId);

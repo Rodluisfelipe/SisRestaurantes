@@ -3,6 +3,65 @@ import { motion } from 'framer-motion';
 import superadminApi, { subscriptionApi } from '../../services/superadminApi';
 import { SAModal, SAButton, SABadge } from './ui';
 
+const PLAN_PRICING = {
+  free: { monthly: 0, annual: 0 },
+  starter: { monthly: 39900, annual: 418800 },
+  pro: { monthly: 59900, annual: 598800 },
+  pro_max: { monthly: 89900, annual: 898800 }
+};
+
+const resolveLegacyPlanType = (billingCycle = 'monthly') => (
+  billingCycle === 'annual' ? 'annual' : 'monthly'
+);
+
+const getSuggestedPrice = (commercialPlan, billingCycle) => {
+  const normalizedPlan = commercialPlan || 'starter';
+  const normalizedCycle = normalizedPlan === 'free' ? 'monthly' : (billingCycle || 'monthly');
+  return PLAN_PRICING[normalizedPlan]?.[normalizedCycle] ?? 0;
+};
+
+const inferBillingCycle = (subscription = {}) => {
+  if (subscription.billingCycle === 'monthly' || subscription.billingCycle === 'annual') {
+    return subscription.billingCycle;
+  }
+
+  return subscription.planType === 'annual' ? 'annual' : 'monthly';
+};
+
+const inferCommercialPlan = (subscription = {}) => {
+  if (subscription.commercialPlan === 'free' || subscription.commercialPlan === 'starter' || subscription.commercialPlan === 'pro' || subscription.commercialPlan === 'pro_max') {
+    return subscription.commercialPlan;
+  }
+
+  const billingCycle = inferBillingCycle(subscription);
+  const price = Number(subscription.price || 0);
+
+  if (price <= 0) {
+    return 'free';
+  }
+
+  const candidates = ['starter', 'pro', 'pro_max'];
+  let closestPlan = 'starter';
+  let closestDiff = Number.MAX_SAFE_INTEGER;
+
+  candidates.forEach((candidate) => {
+    const diff = Math.abs(price - getSuggestedPrice(candidate, billingCycle));
+    if (diff < closestDiff) {
+      closestDiff = diff;
+      closestPlan = candidate;
+    }
+  });
+
+  return closestPlan;
+};
+
+const formatDateForInput = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().split('T')[0];
+};
+
 const SubscriptionManagement = () => {
   const [subscriptions, setSubscriptions] = useState([]);
   const [businesses, setBusinesses] = useState([]);
@@ -12,9 +71,11 @@ const SubscriptionManagement = () => {
   const [formData, setFormData] = useState({
     businessId: '',
     planType: 'monthly',
+    commercialPlan: 'starter',
+    billingCycle: 'monthly',
     startDate: '',
     endDate: '',
-    price: '',
+    price: getSuggestedPrice('starter', 'monthly').toString(),
     notes: ''
   });
   const [formErrors, setFormErrors] = useState({});
@@ -100,9 +161,22 @@ const SubscriptionManagement = () => {
         errors.endDate = 'La fecha de fin debe ser posterior a la fecha de inicio';
       }
     }
+
+    if (!['free', 'starter', 'pro', 'pro_max'].includes(formData.commercialPlan)) {
+      errors.commercialPlan = 'Selecciona un plan comercial válido';
+    }
+
+    if (!['monthly', 'annual'].includes(formData.billingCycle)) {
+      errors.billingCycle = 'Selecciona un ciclo válido';
+    }
     
-    if (!formData.price || formData.price <= 0) {
-      errors.price = 'El precio debe ser mayor a 0';
+    const parsedPrice = Number(formData.price);
+    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
+      errors.price = 'El precio debe ser un número mayor o igual a 0';
+    } else if (formData.commercialPlan === 'free' && parsedPrice !== 0) {
+      errors.price = 'El plan Gratis debe tener precio 0';
+    } else if (formData.commercialPlan !== 'free' && parsedPrice <= 0) {
+      errors.price = 'El precio debe ser mayor a 0 para planes pagos';
     }
     
     if (formData.notes && formData.notes.length > 500) {
@@ -111,6 +185,26 @@ const SubscriptionManagement = () => {
     
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  const calculateEndDate = (startDateValue, planType) => {
+    if (!startDateValue) return '';
+
+    const startDate = new Date(startDateValue);
+    if (Number.isNaN(startDate.getTime())) return '';
+
+    const endDate = new Date(startDate);
+    if (planType === 'annual') {
+      endDate.setFullYear(endDate.getFullYear() + 1);
+    } else if (planType === 'semiannual') {
+      endDate.setMonth(endDate.getMonth() + 6);
+    } else if (planType === 'quarterly') {
+      endDate.setMonth(endDate.getMonth() + 3);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+
+    return endDate.toISOString().split('T')[0];
   };
 
   const handleInputChange = (e) => {
@@ -123,36 +217,59 @@ const SubscriptionManagement = () => {
         [name]: ''
       }));
     }
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
 
-    // Auto-calcular fecha de fin basada en el tipo de plan (solo si endDate está vacío o si el usuario quiere auto-calcular)
-    // No sobrescribir si el usuario ya editó la fecha de fin manualmente
-    if ((name === 'planType' || name === 'startDate') && !formData.endDate) {
-      if (formData.startDate && value) {
-        const startDate = new Date(name === 'startDate' ? value : formData.startDate);
-        const planType = name === 'planType' ? value : formData.planType;
-        
-        const endDate = new Date(startDate);
-        if (planType === 'monthly') {
-          endDate.setMonth(endDate.getMonth() + 1);
-        } else if (planType === 'quarterly') {
-          endDate.setMonth(endDate.getMonth() + 3);
-        } else if (planType === 'semiannual') {
-          endDate.setMonth(endDate.getMonth() + 6);
-        } else if (planType === 'annual') {
-          endDate.setFullYear(endDate.getFullYear() + 1);
-        }
-        
-        setFormData(prev => ({
+    if (name === 'commercialPlan') {
+      setFormData(prev => {
+        const nextCommercialPlan = value;
+        const nextBillingCycle = nextCommercialPlan === 'free' ? 'monthly' : prev.billingCycle;
+        const nextPlanType = resolveLegacyPlanType(nextBillingCycle);
+        const nextEndDate = prev.startDate && !prev.endDate
+          ? calculateEndDate(prev.startDate, nextPlanType)
+          : prev.endDate;
+
+        return {
           ...prev,
-          endDate: endDate.toISOString().split('T')[0]
-        }));
-      }
+          commercialPlan: nextCommercialPlan,
+          billingCycle: nextBillingCycle,
+          planType: nextPlanType,
+          price: getSuggestedPrice(nextCommercialPlan, nextBillingCycle).toString(),
+          endDate: nextEndDate
+        };
+      });
+      return;
     }
+
+    if (name === 'billingCycle') {
+      setFormData(prev => {
+        const nextPlanType = resolveLegacyPlanType(value);
+        const nextEndDate = prev.startDate && !prev.endDate
+          ? calculateEndDate(prev.startDate, nextPlanType)
+          : prev.endDate;
+
+        return {
+          ...prev,
+          billingCycle: value,
+          planType: nextPlanType,
+          price: getSuggestedPrice(prev.commercialPlan, value).toString(),
+          endDate: nextEndDate
+        };
+      });
+      return;
+    }
+
+    setFormData(prev => {
+      const nextData = {
+        ...prev,
+        [name]: value
+      };
+
+      // Auto-calcular fecha de fin si está vacía
+      if (name === 'startDate' && !prev.endDate) {
+        nextData.endDate = calculateEndDate(value, prev.planType);
+      }
+
+      return nextData;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -164,9 +281,15 @@ const SubscriptionManagement = () => {
     
     try {
       setIsSubmitting(true);
+
+      const normalizedBillingCycle = formData.commercialPlan === 'free'
+        ? 'monthly'
+        : formData.billingCycle;
       
       const subscriptionData = {
         ...formData,
+        billingCycle: normalizedBillingCycle,
+        planType: resolveLegacyPlanType(normalizedBillingCycle),
         price: parseFloat(formData.price)
       };
 
@@ -190,13 +313,17 @@ const SubscriptionManagement = () => {
   };
 
   const handleEdit = (subscription) => {
+    const resolvedBillingCycle = inferBillingCycle(subscription);
+    const resolvedCommercialPlan = inferCommercialPlan(subscription);
     setEditingSubscription(subscription);
     setFormData({
-      businessId: subscription.businessId._id,
-      planType: subscription.planType,
-      startDate: subscription.startDate.split('T')[0],
-      endDate: subscription.endDate.split('T')[0],
-      price: subscription.price.toString(),
+      businessId: subscription.businessId?._id || subscription.businessId || '',
+      planType: subscription.planType || resolveLegacyPlanType(resolvedBillingCycle),
+      commercialPlan: resolvedCommercialPlan,
+      billingCycle: resolvedBillingCycle,
+      startDate: formatDateForInput(subscription.startDate),
+      endDate: formatDateForInput(subscription.endDate),
+      price: (subscription.price ?? getSuggestedPrice(resolvedCommercialPlan, resolvedBillingCycle)).toString(),
       notes: subscription.notes || ''
     });
     setShowForm(true);
@@ -225,9 +352,11 @@ const SubscriptionManagement = () => {
     setFormData({
       businessId: '',
       planType: 'monthly',
+      commercialPlan: 'starter',
+      billingCycle: 'monthly',
       startDate: '',
       endDate: '',
-      price: '',
+      price: getSuggestedPrice('starter', 'monthly').toString(),
       notes: ''
     });
     setFormErrors({});
@@ -256,23 +385,27 @@ const SubscriptionManagement = () => {
     }
   };
 
-  const getPlanIcon = (planType) => {
-    switch (planType) {
-      case 'annual': return '👑';
-      case 'semiannual': return '🛡️';
-      case 'quarterly': return '💎';
-      default: return '📅';
+  const getPlanIcon = (commercialPlan) => {
+    switch (commercialPlan) {
+      case 'free': return '🆓';
+      case 'pro_max': return '💎';
+      case 'pro': return '👑';
+      default: return '🚀';
     }
   };
 
-  const getPlanText = (planType) => {
-    switch (planType) {
-      case 'annual': return 'Plan Anual';
-      case 'semiannual': return 'Plan Semestral';
-      case 'quarterly': return 'Plan Trimestral';
-      default: return 'Plan Mensual';
+  const getPlanText = (commercialPlan) => {
+    switch (commercialPlan) {
+      case 'free': return 'Gratis';
+      case 'pro_max': return 'Pro Max';
+      case 'pro': return 'Pro';
+      default: return 'Starter';
     }
   };
+
+  const getBillingCycleText = (billingCycle) => (
+    billingCycle === 'annual' ? 'Anual' : 'Mensual'
+  );
 
   if (loading && subscriptions.length === 0) {
     return (
@@ -312,55 +445,60 @@ const SubscriptionManagement = () => {
         </div>
       ) : (
         <div className="space-y-2">
-          {subscriptions.map((subscription, index) => (
-            <motion.div
-              key={subscription._id}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.04 }}
-              className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.04] transition-colors"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-lg bg-cyan-500/[0.08] border border-cyan-500/[0.12] flex items-center justify-center shrink-0">
-                    <span className="text-sm">{getPlanIcon(subscription.planType)}</span>
+          {subscriptions.map((subscription, index) => {
+            const commercialPlan = inferCommercialPlan(subscription);
+            const billingCycle = inferBillingCycle(subscription);
+
+            return (
+              <motion.div
+                key={subscription._id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.04 }}
+                className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4 hover:bg-white/[0.04] transition-colors"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-cyan-500/[0.08] border border-cyan-500/[0.12] flex items-center justify-center shrink-0">
+                      <span className="text-sm">{getPlanIcon(commercialPlan)}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-medium text-white truncate">
+                        {subscription.businessId?.businessName || 'Negocio no encontrado'}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-xs text-white/40">{getPlanText(commercialPlan)} - {getBillingCycleText(billingCycle)}</span>
+                        <span className="text-xs font-medium text-white/70 tabular-nums">${subscription.price?.toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-medium text-white truncate">
-                      {subscription.businessId?.businessName || 'Negocio no encontrado'}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-0.5">
-                      <span className="text-xs text-white/40">{getPlanText(subscription.planType)}</span>
-                      <span className="text-xs font-medium text-white/70 tabular-nums">${subscription.price?.toLocaleString()}</span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <div className="text-right hidden sm:block">
+                      <SABadge variant={getStatusVariant(subscription.status)} dot>{getStatusText(subscription.status)}</SABadge>
+                      <p className="text-[11px] text-white/30 mt-1">Hasta {new Date(subscription.endDate).toLocaleDateString('es-ES')}</p>
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => handleEdit(subscription)} className="p-2 rounded-lg text-white/30 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Editar">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
+                      </button>
+                      <button onClick={() => handleDelete(subscription._id)} className="p-2 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all" title="Eliminar">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                      </button>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <div className="text-right hidden sm:block">
-                    <SABadge variant={getStatusVariant(subscription.status)} dot>{getStatusText(subscription.status)}</SABadge>
-                    <p className="text-[11px] text-white/30 mt-1">Hasta {new Date(subscription.endDate).toLocaleDateString('es-ES')}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleEdit(subscription)} className="p-2 rounded-lg text-white/30 hover:text-cyan-400 hover:bg-cyan-500/10 transition-all" title="Editar">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>
-                    </button>
-                    <button onClick={() => handleDelete(subscription._id)} className="p-2 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all" title="Eliminar">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                    </button>
-                  </div>
+                {subscription.notes && (
+                  <p className="text-xs text-white/30 mt-3 pt-3 border-t border-white/[0.04]">
+                    <span className="text-white/50">Notas:</span> {subscription.notes}
+                  </p>
+                )}
+                <div className="sm:hidden mt-2 flex items-center gap-2">
+                  <SABadge variant={getStatusVariant(subscription.status)} dot>{getStatusText(subscription.status)}</SABadge>
+                  <span className="text-[11px] text-white/30">Hasta {new Date(subscription.endDate).toLocaleDateString('es-ES')}</span>
                 </div>
-              </div>
-              {subscription.notes && (
-                <p className="text-xs text-white/30 mt-3 pt-3 border-t border-white/[0.04]">
-                  <span className="text-white/50">Notas:</span> {subscription.notes}
-                </p>
-              )}
-              <div className="sm:hidden mt-2 flex items-center gap-2">
-                <SABadge variant={getStatusVariant(subscription.status)} dot>{getStatusText(subscription.status)}</SABadge>
-                <span className="text-[11px] text-white/30">Hasta {new Date(subscription.endDate).toLocaleDateString('es-ES')}</span>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            );
+          })}
         </div>
       )}
 
@@ -395,29 +533,72 @@ const SubscriptionManagement = () => {
             {formErrors.businessId && <p className="text-red-400 text-xs mt-1">{formErrors.businessId}</p>}
           </div>
 
-          {/* Plan type + Price */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Commercial plan and cycle */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-white/50 mb-1.5">Tipo de Plan <span className="text-red-400">*</span></label>
-              <select name="planType" value={formData.planType} onChange={handleInputChange}
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Plan Comercial <span className="text-red-400">*</span></label>
+              <select name="commercialPlan" value={formData.commercialPlan} onChange={handleInputChange}
                 className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all [&>option]:bg-[#141419]"
                 required>
-                <option value="monthly">Plan Mensual</option>
-                <option value="quarterly">Plan Trimestral</option>
-                <option value="semiannual">Plan Semestral</option>
-                <option value="annual">Plan Anual</option>
+                <option value="free">Gratis</option>
+                <option value="starter">Starter</option>
+                <option value="pro">Pro</option>
+                <option value="pro_max">Pro Max</option>
               </select>
+              {formErrors.commercialPlan && <p className="text-red-400 text-xs mt-1">{formErrors.commercialPlan}</p>}
             </div>
             <div>
-              <label className="block text-xs font-medium text-white/50 mb-1.5">Precio <span className="text-red-400">*</span></label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
-                <input type="number" name="price" value={formData.price} onChange={handleInputChange}
-                  className="w-full pl-7 pr-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all"
-                  placeholder="0" step="0.01" min="0" required />
-              </div>
-              {formErrors.price && <p className="text-red-400 text-xs mt-1">{formErrors.price}</p>}
+              <label className="block text-xs font-medium text-white/50 mb-1.5">Ciclo de Cobro <span className="text-red-400">*</span></label>
+              <select
+                name="billingCycle"
+                value={formData.billingCycle}
+                onChange={handleInputChange}
+                disabled={formData.commercialPlan === 'free'}
+                className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all disabled:opacity-60 disabled:cursor-not-allowed [&>option]:bg-[#141419]"
+                required
+              >
+                <option value="monthly">Mensual</option>
+                <option value="annual">Anual</option>
+              </select>
+              {formData.commercialPlan === 'free' && (
+                <p className="text-[11px] text-white/35 mt-1">Gratis siempre usa ciclo mensual.</p>
+              )}
+              {formErrors.billingCycle && <p className="text-red-400 text-xs mt-1">{formErrors.billingCycle}</p>}
             </div>
+          </div>
+
+          {/* Price */}
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Precio <span className="text-red-400">*</span></label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleInputChange}
+                className="w-full pl-7 pr-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white text-sm outline-none focus:border-cyan-500/40 transition-all"
+                placeholder="0"
+                step="0.01"
+                min="0"
+                readOnly={formData.commercialPlan === 'free'}
+                required
+              />
+            </div>
+            <p className="text-[11px] text-white/35 mt-1">
+              Valor sugerido: ${getSuggestedPrice(formData.commercialPlan, formData.billingCycle).toLocaleString()}
+            </p>
+            {formErrors.price && <p className="text-red-400 text-xs mt-1">{formErrors.price}</p>}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-white/50 mb-1.5">Tipo de periodo (legacy)</label>
+            <input
+              type="text"
+              value={formData.planType === 'annual' ? 'Anual' : 'Mensual'}
+              readOnly
+              className="w-full px-3 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white/70 text-sm outline-none"
+            />
           </div>
 
           {/* Dates */}

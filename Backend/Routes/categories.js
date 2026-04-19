@@ -10,6 +10,7 @@ const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
 const { audit } = require('../utils/auditLog');
 const BusinessConfig = require('../Models/BusinessConfig');
+const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
 const {
   validateCreateCategory,
   validateReorderCategories,
@@ -85,6 +86,25 @@ router.post("/", tenantAuth, validateCreateCategory, async (req, res) => {
       active: req.body.active,
       businessId: req.user.businessId || req.body.businessId
     };
+
+    const currentCount = await Category.countDocuments({ businessId: categoryData.businessId });
+    const limitStatus = await getPlanLimitStatus({
+      businessId: categoryData.businessId,
+      resourceKey: 'categories',
+      currentCount
+    });
+
+    if (limitStatus.limitReached) {
+      return res.status(403).json(
+        formatHttpError(req, limitStatus.message, 403, {
+          code: 'PLAN_LIMIT_REACHED',
+          resource: 'categories',
+          plan: limitStatus.commercialPlan,
+          limit: limitStatus.limitValue,
+          current: currentCount
+        })
+      );
+    }
     
     const newCategory = new Category(categoryData);
     try {

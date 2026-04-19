@@ -14,6 +14,7 @@
 
 const crypto = require('crypto');
 const logger = require('../utils/logger');
+const { getPaidPlanOptions, resolvePaymentSelection } = require('../utils/commercialPlans');
 
 // Configuración de ePayco desde variables de entorno
 const config = {
@@ -24,17 +25,7 @@ const config = {
   isTest: process.env.EPAYCO_TEST === 'true',
 };
 
-/**
- * Planes de suscripción disponibles
- * Precio base = lo que nosotros recibimos neto
- * totalConComision = lo que paga el cliente (base + ~4% para cubrir comisión ePayco)
- */
-const PLANS = {
-  1: { months: 1, basePrice: 30000, label: '1 Mes' },
-  3: { months: 3, basePrice: 90000, label: '3 Meses' },
-  6: { months: 6, basePrice: 180000, label: '6 Meses' },
-  12: { months: 12, basePrice: 360000, label: '12 Meses' },
-};
+const BASE_PLANS = getPaidPlanOptions();
 
 /**
  * Calcular precio con comisión ePayco incluida
@@ -53,37 +44,60 @@ function calculateTotalWithCommission(basePrice) {
 /**
  * Obtener detalle de un plan con precios
  */
-function getPlanDetails(months) {
-  const plan = PLANS[months];
-  if (!plan) return null;
-  
-  const total = calculateTotalWithCommission(plan.basePrice);
-  const commission = total - plan.basePrice;
-  
+function toGatewayPlan(basePlan) {
+  const total = calculateTotalWithCommission(basePlan.basePrice);
+  const commission = total - basePlan.basePrice;
+
   return {
-    months: plan.months,
-    label: plan.label,
-    basePrice: plan.basePrice,
+    id: `${basePlan.commercialPlan}_${basePlan.billingCycle}`,
+    commercialPlan: basePlan.commercialPlan,
+    billingCycle: basePlan.billingCycle,
+    months: basePlan.months,
+    label: basePlan.label,
+    basePrice: basePlan.basePrice,
     commission,
     total,
-    pricePerMonth: Math.round(plan.basePrice / plan.months),
+    pricePerMonth: basePlan.pricePerMonth
   };
+}
+
+function getPlanDetails(selectionInput) {
+  if (!selectionInput) return null;
+
+  const selection = typeof selectionInput === 'object'
+    ? resolvePaymentSelection(selectionInput)
+    : resolvePaymentSelection({ months: selectionInput });
+
+  if (!selection || selection.commercialPlan === 'free') return null;
+
+  const basePlan = BASE_PLANS.find(
+    (p) => p.commercialPlan === selection.commercialPlan && p.billingCycle === selection.billingCycle
+  );
+
+  if (!basePlan) return null;
+  return toGatewayPlan(basePlan);
 }
 
 /**
  * Obtener todos los planes con precios
  */
 function getAllPlans() {
-  return Object.keys(PLANS).map(k => getPlanDetails(parseInt(k)));
+  return BASE_PLANS.map(toGatewayPlan);
 }
 
 /**
  * Generar referencia única de pago
  */
-function generatePaymentReference(businessId, months) {
+function generatePaymentReference(businessId, selectionInput) {
+  const selection = typeof selectionInput === 'object'
+    ? resolvePaymentSelection(selectionInput)
+    : resolvePaymentSelection({ months: selectionInput });
   const timestamp = Date.now();
   const random = crypto.randomBytes(4).toString('hex');
-  return `SUB-${businessId.slice(-6)}-${months}M-${timestamp}-${random}`;
+  const planPart = selection
+    ? `${selection.commercialPlan}-${selection.billingCycle}`
+    : 'legacy';
+  return `SUB-${businessId.toString().slice(-6)}-${planPart}-${timestamp}-${random}`;
 }
 
 /**
@@ -135,7 +149,7 @@ function isConfigured() {
 
 module.exports = {
   config,
-  PLANS,
+  PLANS: BASE_PLANS,
   calculateTotalWithCommission,
   getPlanDetails,
   getAllPlans,

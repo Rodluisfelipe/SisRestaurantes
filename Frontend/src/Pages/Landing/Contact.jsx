@@ -38,7 +38,7 @@ const CONTACT_METHODS = [
 
 const FAQ = [
   { q: '¿Cuánto tiempo toma configurar mi menú?', a: 'Solo 5 minutos para el registro. Tu menú completo puede estar listo en menos de una hora.' },
-  { q: '¿Hay costo de configuración?', a: 'No, la configuración es completamente gratuita. Solo pagas $30.000/mes.' },
+  { q: '¿Hay costo de configuración?', a: 'No. Puedes comenzar con el plan Gratis ($0). También tenemos Starter ($39.900/mes), Pro ($59.900/mes) y Pro Max ($89.900/mes), con opción anual más económica.' },
   { q: '¿Puedo cambiar mi menú cuando quiera?', a: 'Sí, puedes actualizar tu menú en tiempo real desde cualquier dispositivo.' },
   { q: '¿Ofrecen soporte técnico?', a: 'Sí, por WhatsApp con respuesta inmediata durante horario laboral y email 24/7.' },
 ];

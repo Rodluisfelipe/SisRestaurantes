@@ -1,5 +1,34 @@
 # MenuBy — Funciones Completas (sin POS)
 
+## 💼 Planes y Precios Comerciales (2026)
+
+### Gratis — $0 siempre
+- 20 productos, 5 categorías, 30 pedidos/mes, 5 mesas, 1 usuario
+- Menú QR, carrito básico, logo y portada, 1 zona de entrega, reseñas, Google OAuth
+- Autoprint: 1 impresora
+- Lealtad: puntos básicos sin tiers
+
+### Starter — $39.900/mes · $34.900/mes anual ($418.800/año)
+- 60 productos, 12 categorías, 350 pedidos/mes, 15 mesas, 3 usuarios
+- Todo lo de Gratis + push notifications, zonas de entrega ilimitadas, toppings/extras, 3 cupones, 1 banner, KDS básico
+- Autoprint: 2 impresoras
+- Lealtad: puntos + recompensas canjeables
+- Distintivo verificado en menú: rojo
+
+### Pro — $59.900/mes · $49.900/mes anual ($598.800/año)
+- Ilimitado en todo
+- Todo lo de Starter + pedidos ilimitados, reservas, recordatorios automáticos, tiers de lealtad, cupones ilimitados, 3 banners, carritos abandonados, analytics completo, IA
+- Autoprint: impresoras ilimitadas
+- Lealtad: tiers completos
+- Distintivo verificado en menú: azul
+
+### Pro Max — $89.900/mes · $74.900/mes anual ($898.800/año)
+- Ilimitado en todo
+- Todo lo de Pro + soporte prioritario, acceso a eventos exclusivos, tutoriales premium y nuevas funciones con acceso anticipado
+- Autoprint: impresoras ilimitadas
+- Lealtad: tiers completos
+- Distintivo verificado en menú: dorado
+
 ## 📊 Dashboard y Analíticas
 - **Panel de métricas**: KPIs en tiempo real, gráficos de ventas, productos más vendidos, estadísticas de clientes
 - **Visitantes en tiempo real**: Ver cuántas personas están viendo tu menú en este momento

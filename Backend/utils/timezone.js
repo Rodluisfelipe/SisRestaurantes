@@ -28,4 +28,27 @@ function endOfDayCOL(date = new Date()) {
   return new Date(start.getTime() + 24 * 60 * 60 * 1000);
 }
 
-module.exports = { startOfDayCOL, endOfDayCOL, COL_OFFSET_MS };
+/**
+ * Devuelve la medianoche del primer día del mes actual en hora Colombia, expresada como Date UTC.
+ */
+function startOfMonthCOL(date = new Date()) {
+  const colTime = new Date(date.getTime() - COL_OFFSET_MS);
+  colTime.setUTCDate(1);
+  colTime.setUTCHours(0, 0, 0, 0);
+  return new Date(colTime.getTime() + COL_OFFSET_MS);
+}
+
+/**
+ * Devuelve la medianoche del primer día del siguiente mes en hora Colombia, expresada como Date UTC.
+ */
+function endOfMonthCOL(date = new Date()) {
+  const start = startOfMonthCOL(date);
+  const next = new Date(start);
+  const colNext = new Date(next.getTime() - COL_OFFSET_MS);
+  colNext.setUTCMonth(colNext.getUTCMonth() + 1);
+  colNext.setUTCDate(1);
+  colNext.setUTCHours(0, 0, 0, 0);
+  return new Date(colNext.getTime() + COL_OFFSET_MS);
+}
+
+module.exports = { startOfDayCOL, endOfDayCOL, startOfMonthCOL, endOfMonthCOL, COL_OFFSET_MS };

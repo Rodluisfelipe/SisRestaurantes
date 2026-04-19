@@ -6,6 +6,7 @@ const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const authMiddleware = require('../middleware/authMiddleware');
 const rateLimit = require('express-rate-limit');
+const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
 // Rate limiter for public push subscribe/unsubscribe endpoints
 const pushSubscribeLimiter = rateLimit({
@@ -44,6 +45,17 @@ router.post('/subscribe', pushSubscribeLimiter, validatePushSubscriptionInput, a
       resolvedBusinessId = await resolveBusinessId(businessId);
     } catch (error) {
       return res.status(404).json(formatHttpError(req, error.message, 404));
+    }
+
+    const { planConfig, commercialPlan } = await getSubscriptionForBusiness(resolvedBusinessId);
+    if (!isFeatureEnabledForPlan(planConfig, 'pushNotifications')) {
+      return res.status(403).json(
+        formatHttpError(req, 'Tu plan actual no incluye notificaciones push.', 403, {
+          code: 'PLAN_FEATURE_NOT_AVAILABLE',
+          feature: 'pushNotifications',
+          plan: commercialPlan
+        })
+      );
     }
 
     // Buscar si ya existe una suscripción con este endpoint

@@ -103,6 +103,7 @@ export default function Menu() {
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [subscriptionPlanType, setSubscriptionPlanType] = useState(null);
+  const [subscriptionCommercialPlan, setSubscriptionCommercialPlan] = useState(null);
   const [closedOverlayDismissed, setClosedOverlayDismissed] = useState(false);
 
   // Estados para modales de favoritos, historial y loyalty
@@ -602,15 +603,18 @@ export default function Menu() {
           
           setSubscriptionStatus(status);
           setSubscriptionPlanType(sub.planType || null);
+          setSubscriptionCommercialPlan(sub.commercialPlan || null);
         } else {
           // Sin suscripción = activo (para no bloquear el menú si no hay suscripción configurada)
           setSubscriptionStatus(null);
           setSubscriptionPlanType(null);
+          setSubscriptionCommercialPlan(null);
         }
       } catch (err) {
         // Si no hay suscripción o hay error, asumir que está activo (para no bloquear el menú)
         logger.warn('Error cargando estado de suscripción:', err);
         setSubscriptionStatus(null);
+        setSubscriptionCommercialPlan(null);
       } finally {
         setSubscriptionLoading(false);
       }
@@ -1360,6 +1364,7 @@ export default function Menu() {
             }
             setSubscriptionStatus(status);
             setSubscriptionPlanType(sub.planType || null);
+            setSubscriptionCommercialPlan(sub.commercialPlan || null);
           }
         }
         return false;
@@ -1484,6 +1489,7 @@ export default function Menu() {
         onShowReviews={() => setShowReviewsSheet(true)}
         reviewStats={businessConfig?.reviewStats}
         subscriptionPlanType={subscriptionPlanType}
+        subscriptionCommercialPlan={subscriptionCommercialPlan}
       />
       
       {/* Aviso de datos en cache — sin conexión pero con datos guardados */}
