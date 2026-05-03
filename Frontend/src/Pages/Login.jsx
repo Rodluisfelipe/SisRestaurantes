@@ -52,181 +52,218 @@ export default function Login() {
     if (error) setError("");
   };
 
+  const toRgba = (hex, alpha) => {
+    if (!hex) return `rgba(37, 99, 235, ${alpha})`;
+    let value = hex.trim();
+    if (value.startsWith('#')) value = value.slice(1);
+    if (value.length === 3) {
+      value = value.split('').map((c) => c + c).join('');
+    }
+    if (value.length !== 6 || /[^0-9a-f]/i.test(value)) {
+      return `rgba(37, 99, 235, ${alpha})`;
+    }
+    const intVal = parseInt(value, 16);
+    const r = (intVal >> 16) & 255;
+    const g = (intVal >> 8) & 255;
+    const b = intVal & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
   // Usar valores por defecto si no hay businessConfig
   // Proteger acceso a businessConfig para evitar errores cuando es undefined
   const logo = businessConfig?.logo || defaultLogo;
   const businessName = businessConfig?.businessName || "Mi Negocio";
   const theme = businessConfig?.theme || { buttonColor: '#2563eb', buttonTextColor: '#ffffff' };
+  const brandBase = theme.primaryColor || theme.buttonColor || '#2563eb';
+  const brandTextColor = theme.buttonTextColor || '#ffffff';
+  const brandSoft = toRgba(brandBase, 0.08);
+  const brandSoftStrong = toRgba(brandBase, 0.14);
+  const brandBorder = toRgba(brandBase, 0.22);
+  const coverImage = businessConfig?.coverImage || "";
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white rounded-2xl shadow-xl p-8">
-        <div className="flex flex-col items-center">
-          {/* Logo */}
-          <div className="w-24 h-24 md:w-32 md:h-32 relative mb-4">
-            <img
-              src={logo}
-              alt={`Logo de ${businessName}`}
-              className="w-full h-full object-contain rounded-full shadow-lg border-4 border-white"
-              onError={(e) => {
-                if (e.target.src !== defaultLogo) {
-                  e.target.src = defaultLogo;
-                }
-              }}
-            />
-            <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full">
-              Admin
-            </div>
-          </div>
-
-          {/* Título */}
-          <h2 className="mt-2 text-center text-2xl md:text-3xl font-extrabold text-gray-900">
-            {businessName}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Panel de Administración
-          </p>
-        </div>
-
-        {/* Google Login */}
-        <div className="mt-6">
-          <div className="flex justify-center">
-            <GoogleLogin
-              onSuccess={async (credentialResponse) => {
-                setError("");
-                setIsGoogleLoading(true);
-                try {
-                  const credential = credentialResponse?.credential;
-                  if (!credential) {
-                    setError("No se pudo obtener el token de Google.");
-                    return;
-                  }
-
-                  const result = await googleAuth(credential);
-                  if (result.needsBusinessName) {
-                    navigate("/register", { state: { googlePending: true } });
-                    return;
-                  }
-                  if (result.token) {
-                    loginWithGoogle(result);
-                  } else {
-                    setError("No se pudo iniciar sesión con Google.");
-                  }
-                } catch (err) {
-                  setError(err.response?.data?.message || "Error al iniciar sesión con Google");
-                } finally {
-                  setIsGoogleLoading(false);
-                }
-              }}
-              onError={() => setError("Error al conectar con Google")}
-              text="signin_with"
-              shape="rectangular"
-              size="large"
-              width="100%"
-              theme="outline"
-              locale="es"
-            />
-          </div>
-          {isGoogleLoading && (
-            <div className="flex justify-center mt-3">
-              <svg className="animate-spin h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            </div>
-          )}
-        </div>
-
-        <div className="relative mt-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-200"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-4 bg-white text-gray-500">o inicia con usuario</span>
-          </div>
-        </div>
-
-        {/* Formulario */}
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm space-y-4">
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                Usuario
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <div className="relative min-h-screen">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `radial-gradient(1000px circle at 10% -10%, ${brandSoft}, transparent 55%), radial-gradient(900px circle at 90% 10%, ${brandSoftStrong}, transparent 55%)`
+          }}
+        ></div>
+        <div className="relative mx-auto flex min-h-screen max-w-5xl items-center px-4 sm:px-6 lg:px-8">
+          <div
+            className="grid w-full overflow-hidden rounded-2xl border bg-white shadow-[0_30px_80px_-60px_rgba(15,23,42,0.45)] lg:grid-cols-2"
+            style={{ borderColor: brandBorder }}
+          >
+            <div
+              className="relative border-b bg-white p-10 lg:border-b-0 lg:border-r lg:p-12 overflow-hidden"
+              style={
+                coverImage
+                  ? {
+                      borderColor: brandBorder,
+                      backgroundImage: `url(${coverImage})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }
+                  : { borderColor: brandBorder }
+              }
+            >
+              <div className={`absolute inset-0 ${coverImage ? 'bg-slate-900/45' : 'bg-white'}`}></div>
+              <div className={`relative z-10 flex h-full flex-col items-center justify-center gap-4 text-center ${coverImage ? 'text-white' : 'text-slate-900'}`}>
+                <div className={`h-24 w-24 rounded-3xl border p-3 shadow-sm sm:h-28 sm:w-28 ${coverImage ? 'border-white/40 bg-white/90' : 'border-slate-200 bg-white'}`}>
+                  <img
+                    src={logo}
+                    alt={`Logo de ${businessName}`}
+                    className="h-full w-full object-contain"
+                    onError={(e) => {
+                      if (e.target.src !== defaultLogo) {
+                        e.target.src = defaultLogo;
+                      }
+                    }}
+                  />
                 </div>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                  placeholder="Nombre de usuario"
-                value={credentials.username}
-                onChange={handleChange}
-              />
+                <h1 className={`text-2xl font-geist font-semibold tracking-tight ${coverImage ? 'text-white' : 'text-slate-900'}`}>
+                  {businessName}
+                </h1>
+                <div className="h-0.5 w-12 rounded-full" style={{ backgroundColor: brandBase }}></div>
               </div>
             </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Contraseña
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
+
+            <div className="p-8 lg:p-12" style={{ '--brand': brandBase }}>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Acceso</p>
+                <h2 className="mt-3 text-2xl font-geist font-semibold text-slate-900">
+                  Iniciar Sesión
+                </h2>
+                <p className="mt-2 text-sm text-slate-500">
+                  Ingresa con Google o tu usuario del negocio.
+                </p>
+                <div className="mt-4 h-0.5 w-10 rounded-full" style={{ backgroundColor: brandBase }}></div>
+              </div>
+
+              <div className="mt-6 rounded-xl border border-slate-200 bg-white p-3">
+                <div className="flex justify-center">
+                  <GoogleLogin
+                    onSuccess={async (credentialResponse) => {
+                      setError("");
+                      setIsGoogleLoading(true);
+                      try {
+                        const credential = credentialResponse?.credential;
+                        if (!credential) {
+                          setError("No se pudo obtener el token de Google.");
+                          return;
+                        }
+
+                        const result = await googleAuth(credential);
+                        if (result.needsBusinessName) {
+                          navigate("/register", { state: { googlePending: true } });
+                          return;
+                        }
+                        if (result.token) {
+                          loginWithGoogle(result);
+                        } else {
+                          setError("No se pudo iniciar sesión con Google.");
+                        }
+                      } catch (err) {
+                        setError(err.response?.data?.message || "Error al iniciar sesión con Google");
+                      } finally {
+                        setIsGoogleLoading(false);
+                      }
+                    }}
+                    onError={() => setError("Error al conectar con Google")}
+                    text="signin_with"
+                    shape="rectangular"
+                    size="large"
+                    width="100%"
+                    theme="outline"
+                    locale="es"
+                  />
                 </div>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                  className="pl-10 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Contraseña"
-                value={credentials.password}
-                onChange={handleChange}
-              />
+                {isGoogleLoading && (
+                  <div className="flex justify-center mt-3">
+                    <svg className="animate-spin h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative mt-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-white text-slate-500">o inicia con usuario</span>
+                </div>
+              </div>
+
+              <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="username" className="block text-sm font-medium text-slate-700 mb-2">
+                      Usuario
+                    </label>
+                    <input
+                      id="username"
+                      name="username"
+                      type="text"
+                      autoComplete="username"
+                      required
+                      className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 transition focus:border-[color:var(--brand)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand)] focus:ring-opacity-20"
+                      placeholder="Nombre de usuario"
+                      value={credentials.username}
+                      onChange={handleChange}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-2">
+                      Contraseña
+                    </label>
+                    <input
+                      id="password"
+                      name="password"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder-slate-400 transition focus:border-[color:var(--brand)] focus:outline-none focus:ring-2 focus:ring-[color:var(--brand)] focus:ring-opacity-20"
+                      placeholder="Contraseña"
+                      value={credentials.password}
+                      onChange={handleChange}
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isLoading || isGoogleLoading}
+                  style={{ backgroundColor: brandBase, color: brandTextColor }}
+                  className={`w-full rounded-lg px-4 py-3 text-sm font-semibold shadow-sm transition ${
+                    isLoading || isGoogleLoading ? 'opacity-70 cursor-not-allowed' : 'hover:opacity-95'
+                  }`}
+                >
+                  {isLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Iniciando sesión...
+                    </span>
+                  ) : (
+                    "Iniciar Sesión"
+                  )}
+                </button>
+              </form>
             </div>
           </div>
-          </div>
-
-          {/* Mensaje de error */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
-
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{ backgroundColor: theme.buttonColor, color: theme.buttonTextColor }}
-              className={`group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg transition-colors duration-200 ${
-                isLoading ? 'opacity-75 cursor-not-allowed' : ''
-              }`}
-            >
-              {isLoading ? (
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              ) : (
-                <span className="absolute left-0 inset-y-0 flex items-center pl-3">
-                  <svg className="h-5 w-5 text-blue-500 group-hover:text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                  </svg>
-                </span>
-              )}
-              {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-            </button>
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );
