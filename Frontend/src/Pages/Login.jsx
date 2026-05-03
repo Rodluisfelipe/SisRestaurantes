@@ -1,15 +1,17 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../Context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import api from "../services/api";
+import { GoogleLogin } from "@react-oauth/google";
+import { googleAuth } from "../services/authService";
 import { useBusinessConfig } from "../Context/BusinessContext";
 
 export default function Login() {
   const [credentials, setCredentials] = useState({ username: "", password: "" });
-  const { login, isAuthenticated } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const { businessConfig } = useBusinessConfig();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [error, setError] = useState("");
 
   // Logo por defecto
@@ -47,6 +49,7 @@ export default function Login() {
       ...credentials,
       [e.target.name]: e.target.value
     });
+    if (error) setError("");
   };
 
   // Usar valores por defecto si no hay businessConfig
@@ -83,6 +86,64 @@ export default function Login() {
           <p className="mt-2 text-center text-sm text-gray-600">
             Panel de Administración
           </p>
+        </div>
+
+        {/* Google Login */}
+        <div className="mt-6">
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={async (credentialResponse) => {
+                setError("");
+                setIsGoogleLoading(true);
+                try {
+                  const credential = credentialResponse?.credential;
+                  if (!credential) {
+                    setError("No se pudo obtener el token de Google.");
+                    return;
+                  }
+
+                  const result = await googleAuth(credential);
+                  if (result.needsBusinessName) {
+                    navigate("/register", { state: { googlePending: true } });
+                    return;
+                  }
+                  if (result.token) {
+                    loginWithGoogle(result);
+                  } else {
+                    setError("No se pudo iniciar sesión con Google.");
+                  }
+                } catch (err) {
+                  setError(err.response?.data?.message || "Error al iniciar sesión con Google");
+                } finally {
+                  setIsGoogleLoading(false);
+                }
+              }}
+              onError={() => setError("Error al conectar con Google")}
+              text="signin_with"
+              shape="rectangular"
+              size="large"
+              width="100%"
+              theme="outline"
+              locale="es"
+            />
+          </div>
+          {isGoogleLoading && (
+            <div className="flex justify-center mt-3">
+              <svg className="animate-spin h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+          )}
+        </div>
+
+        <div className="relative mt-6">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-200"></div>
+          </div>
+          <div className="relative flex justify-center text-sm">
+            <span className="px-4 bg-white text-gray-500">o inicia con usuario</span>
+          </div>
         </div>
 
         {/* Formulario */}
