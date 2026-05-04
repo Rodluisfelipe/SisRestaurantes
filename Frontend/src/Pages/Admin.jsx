@@ -321,7 +321,7 @@ function Admin() {
             <source src="/audio/new-order-notification.mp3" type="audio/mpeg" />
           </audio>
 
-          <div className="p-4 sm:p-4 md:p-6 pb-28 lg:pb-6">
+          <div className="p-4 sm:p-4 md:p-6 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-6">
             {/* Banner de nuevo pedido */}
             <OrderNotificationBanner
               showOrderBanner={showOrderBanner}
