@@ -104,7 +104,7 @@ export default function MobileBottomNav({ activeTab, setActiveTab, pendingOrders
   return (
     <>
       <nav
-        className="fixed bottom-0 inset-x-0 z-50 block lg:hidden"
+        className="fixed bottom-0 inset-x-0 z-40 block lg:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         {/* Solid background with top shadow */}
