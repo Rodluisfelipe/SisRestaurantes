@@ -227,7 +227,10 @@ router.post("/", (req, res, next) => {
       // POS payment details (for ticket reprinting)
       posPaymentInfo,
       // Customer email
-      customerEmail
+      customerEmail,
+      // Gift order fields
+      isGift,
+      gift
     } = req.body;
     
 
@@ -269,6 +272,25 @@ router.post("/", (req, res, next) => {
     }
     if (address && address.length > 500) {
       return res.status(400).json({ message: "address exceeds max length (500)" });
+    }
+
+    // Validate gift fields
+    if (isGift) {
+      if (!gift || typeof gift !== 'object') {
+        return res.status(400).json({ message: "gift data is required for gift orders" });
+      }
+      if (!gift.recipientName || typeof gift.recipientName !== 'string' || gift.recipientName.trim().length === 0) {
+        return res.status(400).json({ message: "gift.recipientName is required" });
+      }
+      if (gift.recipientName.length > 100) {
+        return res.status(400).json({ message: "gift.recipientName exceeds max length (100)" });
+      }
+      if (gift.recipientPhone && gift.recipientPhone.length > 30) {
+        return res.status(400).json({ message: "gift.recipientPhone exceeds max length (30)" });
+      }
+      if (gift.message && gift.message.length > 300) {
+        return res.status(400).json({ message: "gift.message exceeds max length (300)" });
+      }
     }
     
     // Use centralized business validation
@@ -462,6 +484,14 @@ router.post("/", (req, res, next) => {
       paymentMethod: paymentMethod || null,
       customerToken,
       customerNotes: stripHtml(customerNotes || ''),
+      // Gift order fields
+      isGift: !!isGift,
+      gift: isGift ? {
+        recipientName: stripHtml(gift.recipientName || ''),
+        recipientPhone: stripHtml(gift.recipientPhone || ''),
+        message: stripHtml(gift.message || ''),
+        hidePrices: !!gift.hidePrices
+      } : undefined,
       statusHistory: [{ status: initialStatus, timestamp: new Date(), note: 'Pedido creado' }],
       // Datos de zona de entrega
       deliveryFee: deliveryFee || null,

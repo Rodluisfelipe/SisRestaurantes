@@ -70,6 +70,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const [locationChecked, setLocationChecked] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
   const [customerNotes, setCustomerNotes] = useState('');
+  // Gift order state (delivery only)
+  const [isGift, setIsGift] = useState(false);
+  const [giftRecipientName, setGiftRecipientName] = useState('');
+  const [giftRecipientPhone, setGiftRecipientPhone] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
+  const [giftHidePrices, setGiftHidePrices] = useState(true);
   const [formState, setFormState] = useState({
     tableNumber: '',
     address: ''
@@ -337,6 +343,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       logSystem(`Procesando pedido tipo: ${orderInfo.orderType}`);
       
       if (orderInfo.orderType === 'delivery') {
+        // Validate gift recipient if marked as gift
+        if (isGift && !giftRecipientName.trim()) {
+          return;
+        }
+
         setLocalIsSubmitting(true);
         
         const updatedOrderInfo = {
@@ -344,7 +355,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
           orderType: 'delivery',
           paymentMethod: selectedPaymentMethod,
           customerNotes: customerNotes.trim(),
-          tableNumber: ''
+          tableNumber: '',
+          ...(isGift && {
+            isGift: true,
+            gift: {
+              recipientName: giftRecipientName.trim(),
+              recipientPhone: giftRecipientPhone.trim(),
+              message: giftMessage.trim(),
+              hidePrices: giftHidePrices
+            }
+          })
         };
         
         updateOrderInfo(updatedOrderInfo);
@@ -956,6 +976,56 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                         />
                       )}
                     </>
+                  )}
+                </div>
+              )}
+
+              {/* ── Regalo: enviar a otra persona (solo domicilio) ── */}
+              {(orderType === 'delivery' || orderInfo?.orderType === 'delivery') && (
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsGift(v => !v)}
+                    className="w-full flex items-center justify-between p-2.5 rounded-xl border transition-all"
+                    style={{ borderColor: isGift ? themeColor : '#e2e8f0', backgroundColor: isGift ? `${themeColor}10` : '#fff' }}
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: isGift ? themeColor : '#475569' }}>
+                      <span className="text-base">🎁</span> Enviar como regalo a otra persona
+                    </span>
+                    <span className="relative inline-block w-9 h-5 rounded-full transition-colors" style={{ backgroundColor: isGift ? themeColor : '#e2e8f0' }}>
+                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${isGift ? 'left-[18px]' : 'left-0.5'}`} />
+                    </span>
+                  </button>
+
+                  {isGift && (
+                    <div className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                      <p className="text-[11px] text-slate-500">El pedido se entrega en la dirección de arriba (la del destinatario). Tus datos quedan como comprador.</p>
+                      <input
+                        type="text"
+                        value={giftRecipientName}
+                        onChange={(e) => setGiftRecipientName(e.target.value.slice(0, 100))}
+                        placeholder="Nombre del destinatario *"
+                        className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                      />
+                      <input
+                        type="tel"
+                        value={giftRecipientPhone}
+                        onChange={(e) => setGiftRecipientPhone(e.target.value.slice(0, 30))}
+                        placeholder="Teléfono del destinatario"
+                        className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                      />
+                      <textarea
+                        value={giftMessage}
+                        onChange={(e) => setGiftMessage(e.target.value.slice(0, 300))}
+                        placeholder="Mensaje de regalo (ej: ¡Feliz cumpleaños! 🎉)"
+                        rows={2}
+                        className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 resize-none"
+                      />
+                      <label className="flex items-center gap-2 text-[12px] text-slate-600 cursor-pointer select-none">
+                        <input type="checkbox" checked={giftHidePrices} onChange={(e) => setGiftHidePrices(e.target.checked)} className="rounded" />
+                        Ocultar precios al destinatario
+                      </label>
+                    </div>
                   )}
                 </div>
               )}

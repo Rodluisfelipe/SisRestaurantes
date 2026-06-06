@@ -1137,7 +1137,17 @@ export default function Menu() {
           deliveryNeedsConfirmation: orderDetails.deliveryNeedsConfirmation || false
         }),
         // Booking data (only passed for routing, not sent to /orders)
-        ...(orderDetails.customerEmail && { customerEmail: orderDetails.customerEmail })
+        ...(orderDetails.customerEmail && { customerEmail: orderDetails.customerEmail }),
+        // Gift order data
+        ...(orderDetails.isGift && {
+          isGift: true,
+          gift: {
+            recipientName: orderDetails.gift?.recipientName || '',
+            recipientPhone: orderDetails.gift?.recipientPhone || '',
+            message: orderDetails.gift?.message || '',
+            hidePrices: !!orderDetails.gift?.hidePrices
+          }
+        })
       };
 
       // Separate booking data for the /bookings endpoint

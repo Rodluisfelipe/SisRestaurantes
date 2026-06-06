@@ -227,6 +227,19 @@ const orderSchema = new mongoose.Schema({
     default: false
   },
   
+  // Gift order fields — a customer buys and sends products as a gift to a third party.
+  // customerName/phone = buyer (sender, who pays & coordinates). address/deliveryZone = recipient's delivery target.
+  isGift: {
+    type: Boolean,
+    default: false
+  },
+  gift: {
+    recipientName: { type: String, trim: true, default: '' },
+    recipientPhone: { type: String, trim: true, default: '' },
+    message: { type: String, trim: true, maxlength: 300, default: '' },
+    hidePrices: { type: Boolean, default: false }
+  },
+
   // Booking / appointment fields
   isBooking: {
     type: Boolean,
@@ -358,7 +371,9 @@ orderSchema.index({ deliveryZoneId: 1 });
 // customerToken already has index:true in field definition
 orderSchema.index({ businessId: 1, orderChannel: 1, status: 1 });
 orderSchema.index({ businessId: 1, bookingDate: 1 });
-orderSchema.index({ businessId: 1, offlineId: 1 }, { sparse: true, unique: true });
+// Partial unique index: only enforced when offlineId is an actual string.
+// `sparse` does NOT work here because offlineId is stored as explicit null on most orders.
+orderSchema.index({ businessId: 1, offlineId: 1 }, { unique: true, partialFilterExpression: { offlineId: { $type: 'string' } } });
 
 // Enable optimistic concurrency — prevents silent overwrites on concurrent updates
 orderSchema.set('optimisticConcurrency', true);

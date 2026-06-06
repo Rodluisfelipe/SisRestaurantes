@@ -58,6 +58,9 @@ function OrderCard({
                   <div className="flex items-center gap-1.5">
                     <h3 className="font-bold text-slate-800 text-sm leading-tight">#{order.orderNumber}</h3>
                     <span className="text-[10px] text-slate-400 font-medium">{orderTypeInfo.label}</span>
+                    {order.isGift && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">🎁 Regalo</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -136,6 +139,17 @@ function OrderCard({
               <div className="flex items-center gap-1.5 bg-amber-50 px-2 py-1 rounded-lg border border-amber-200 mb-2">
                 <FaExclamationTriangle className="text-[9px] text-amber-500 shrink-0" />
                 <span className="text-[10px] font-semibold text-amber-700">Envío por confirmar</span>
+              </div>
+            )}
+
+            {/* Gift recipient info */}
+            {order.isGift && order.gift && (
+              <div className="mb-2 p-2 rounded-lg bg-pink-50 border border-pink-200 space-y-1">
+                <p className="text-[10px] font-bold text-pink-700">
+                  🎁 Regalo para {order.gift.recipientName}{order.gift.recipientPhone ? ` · ${order.gift.recipientPhone}` : ''}
+                </p>
+                {order.gift.message && <p className="text-[10px] text-pink-600 italic">"{order.gift.message}"</p>}
+                {order.gift.hidePrices && <p className="text-[9px] text-pink-500 font-semibold">⚠️ No incluir precios en la entrega</p>}
               </div>
             )}
 
@@ -245,6 +259,9 @@ function OrderCard({
                 <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${statusInfo.textColor} ${statusInfo.bgColor}`}>
                   <StatusIcon className="text-[7px]" /> {statusInfo.label}
                 </span>
+                {order.isGift && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-700 border border-pink-200">🎁</span>
+                )}
                 {hasChat && !isTerminal && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onOpenChat?.(order); }}

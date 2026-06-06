@@ -200,6 +200,28 @@ export const createWhatsAppMessage = async (orderInfo, cart, totalAmount, totalI
     lines.push(content);
   }
 
-  const msg = lines.join('\n');
+  let msg = lines.join('\n');
+
+  // ── Gift order: append restaurant info + a copy-paste block to forward to the recipient ──
+  if (orderInfo.isGift && orderInfo.gift) {
+    const g = orderInfo.gift;
+    const sep = '\n\n━━━━━━━━━━━━━━━\n';
+
+    // Restaurant-facing block (knows it's a gift, who the recipient is, where to deliver)
+    let giftInfo = `${sep}🎁 *PEDIDO DE REGALO*\n`;
+    giftInfo += `Para: *${g.recipientName || '—'}*`;
+    if (g.recipientPhone) giftInfo += `\n📞 Destinatario: ${g.recipientPhone}`;
+    giftInfo += `\nDe parte de: ${orderInfo.customerName || 'Cliente'}`;
+    if (g.hidePrices) giftInfo += `\n⚠️ No incluir factura ni precios en la entrega`;
+    msg += giftInfo;
+
+    // Block the restaurant copies and forwards to the recipient (NO prices)
+    let forward = `${sep}📋 *COPIA Y ENVÍA ESTO AL DESTINATARIO:*\n`;
+    forward += `\n¡Hola ${g.recipientName || ''}! 🎁 Tienes un regalo en camino de parte de ${orderInfo.customerName || 'alguien especial'}.`;
+    if (g.message && g.message.trim()) forward += `\n\n💌 "${g.message.trim()}"`;
+    forward += `\n\n— ${businessName}`;
+    msg += forward;
+  }
+
   return encodeURIComponent(msg).replace(/'/g, "%27");
 }; 
