@@ -142,6 +142,11 @@ router.get("/:id", publicProductLimiter, async (req, res) => {
 
 // Validación de entrada para crear/actualizar producto
 const validateProductInput = (req, res, next) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json(
+      formatHttpError(req, 'El cuerpo de la solicitud es inválido o está vacío', 400)
+    );
+  }
   const errors = [];
   let { name, price, businessId } = req.body;
   

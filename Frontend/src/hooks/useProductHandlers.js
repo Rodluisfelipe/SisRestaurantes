@@ -83,22 +83,23 @@ export default function useProductHandlers({ businessId, products, setProducts, 
     if (!form.price || numericPrice <= 0 || isNaN(numericPrice)) { showErrorMessage('El precio debe ser mayor a 0'); return; }
     if (!form.category) { showErrorMessage('Debes seleccionar una categoría para el producto'); return; }
 
-    const formData = new FormData();
-    formData.append('name', form.name);
-    formData.append('description', form.description);
-    formData.append('price', numericPrice);
-    formData.append('category', form.category);
-    if (form.image) formData.append('image', form.image);
-    formData.append('toppingGroups', JSON.stringify(extractToppingGroupIds(form.toppingGroups)));
-    formData.append('businessId', businessId);
-    if (form.itemType) formData.append('itemType', form.itemType);
-    if (form.itemType === 'service' && form.durationMinutes) formData.append('durationMinutes', parseInt(form.durationMinutes, 10));
+    const payload = {
+      name: form.name,
+      description: form.description,
+      price: numericPrice,
+      category: form.category,
+      toppingGroups: extractToppingGroupIds(form.toppingGroups),
+      businessId,
+    };
+    if (form.image) payload.image = form.image;
+    if (form.itemType) payload.itemType = form.itemType;
+    if (form.itemType === 'service' && form.durationMinutes) payload.durationMinutes = parseInt(form.durationMinutes, 10);
 
     try {
       if (editingId) {
         setShowConfirmModal(true);
       } else {
-        const response = await api.post('/products', formData);
+        const response = await api.post('/products', payload);
         showSuccessMessage('Producto creado exitosamente');
         resetForm();
         setTimeout(() => setShowProductModal(false), 500);
