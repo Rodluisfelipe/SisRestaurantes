@@ -186,7 +186,9 @@ router.get('/shifts/feed', requireWorker, async (req, res) => {
       if (dateFrom) q.date.$gte = new Date(dateFrom);
       if (dateTo) q.date.$lte = new Date(dateTo);
     } else {
-      q.date = { $gte: new Date() };
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      q.date = { $gte: today };
     }
     // Excluir donde el worker ya aplicó
     const appliedShiftIds = await ShiftApplication.find({ workerId: req.worker._id }).distinct('shiftId');
