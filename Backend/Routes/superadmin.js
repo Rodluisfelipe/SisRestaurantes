@@ -5,6 +5,10 @@ const authMiddleware = require('../middleware/authSuperAdmin');
 const Order = require('../Models/Order');
 const CompletedOrder = require('../Models/CompletedOrder');
 const BusinessConfig = require('../Models/BusinessConfig');
+const Banner = require('../Models/Banner');
+const PaymentRequest = require('../Models/PaymentRequest');
+const Subscription = require('../Models/Subscription');
+const AuditLog = require('../Models/AuditLog');
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
@@ -98,18 +102,130 @@ router.get('/orders', async (req, res) => {
       return new Date(db) - new Date(da);
     });
 
-    // Get business list for filter dropdown
-    const businesses = await BusinessConfig.find({}, 'businessName slug').sort({ businessName: 1 }).lean();
+    // Get business list for filter dropdown + REAL totals (not limited by the 200 cap above)
+    const [businesses, totalActive, totalCompleted] = await Promise.all([
+      BusinessConfig.find({}, 'businessName slug').sort({ businessName: 1 }).lean(),
+      (!col || col === 'active') ? Order.countDocuments(activeQuery) : Promise.resolve(0),
+      (!col || col === 'completed') ? CompletedOrder.countDocuments(completedQuery) : Promise.resolve(0),
+    ]);
 
     res.json({
       success: true,
       orders: allOrders,
       businesses: businesses.map(b => ({ id: b._id, name: b.businessName, slug: b.slug })),
-      total: allOrders.length
+      loaded: allOrders.length,
+      totals: {
+        active: totalActive,
+        completed: totalCompleted,
+        all: totalActive + totalCompleted,
+      },
+      cappedAt: 200,
     });
   } catch (error) {
     logger.error('Error fetching orders (superadmin)', error, req);
     res.status(500).json({ message: 'Error al obtener pedidos' });
+  }
+});
+
+// GET /api/superadmin/stats/overview - KPIs agregados para el Home Dashboard
+router.get('/stats/overview', async (req, res) => {
+  try {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalBusinesses,
+      activeBusinesses,
+      activeOrdersCount,
+      completedOrdersCount,
+      ordersThisMonth,
+      gmvAllTimeAgg,
+      gmvThisMonthAgg,
+      pendingBanners,
+      pendingPaymentRequests,
+      activeSubscriptions,
+      expiringSubscriptions,
+      topBusinessesAgg,
+      recentAuditLogs,
+    ] = await Promise.all([
+      BusinessConfig.countDocuments({}),
+      BusinessConfig.countDocuments({ isActive: true }),
+      Order.estimatedDocumentCount(),
+      CompletedOrder.estimatedDocumentCount(),
+      CompletedOrder.countDocuments({ completedAt: { $gte: startOfMonth } }),
+      CompletedOrder.aggregate([
+        { $match: { status: { $ne: 'cancelled' } } },
+        { $group: { _id: null, sum: { $sum: '$totalAmount' } } },
+      ]),
+      CompletedOrder.aggregate([
+        { $match: { completedAt: { $gte: startOfMonth }, status: { $ne: 'cancelled' } } },
+        { $group: { _id: null, sum: { $sum: '$totalAmount' } } },
+      ]),
+      Banner.countDocuments({ status: 'pending' }),
+      PaymentRequest.countDocuments({ status: 'pending' }),
+      Subscription.countDocuments({ status: 'active' }),
+      Subscription.countDocuments({
+        status: 'active',
+        periodEnd: { $gte: now, $lte: sevenDaysFromNow },
+      }),
+      CompletedOrder.aggregate([
+        { $match: { status: { $ne: 'cancelled' } } },
+        { $group: { _id: '$businessId', count: { $sum: 1 }, gmv: { $sum: '$totalAmount' } } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+        { $lookup: { from: 'businessconfigs', localField: '_id', foreignField: '_id', as: 'business' } },
+        { $unwind: { path: '$business', preserveNullAndEmptyArrays: true } },
+        { $project: {
+          _id: 0,
+          businessId: '$_id',
+          name: { $ifNull: ['$business.businessName', 'Sin nombre'] },
+          slug: '$business.slug',
+          count: 1,
+          gmv: 1,
+        } },
+      ]),
+      AuditLog.find({})
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .select('action resource resourceName userEmail userRole businessName createdAt reverted')
+        .lean(),
+    ]);
+
+    res.json({
+      success: true,
+      generatedAt: now.toISOString(),
+      kpis: {
+        businesses: {
+          total: totalBusinesses,
+          active: activeBusinesses,
+          inactive: Math.max(0, totalBusinesses - activeBusinesses),
+        },
+        orders: {
+          activeNow: activeOrdersCount,
+          completedAllTime: completedOrdersCount,
+          totalAllTime: activeOrdersCount + completedOrdersCount,
+          thisMonth: ordersThisMonth,
+        },
+        gmv: {
+          allTime: gmvAllTimeAgg[0]?.sum || 0,
+          thisMonth: gmvThisMonthAgg[0]?.sum || 0,
+        },
+        subscriptions: {
+          active: activeSubscriptions,
+          expiringSoon: expiringSubscriptions,
+        },
+      },
+      pending: {
+        banners: pendingBanners,
+        paymentRequests: pendingPaymentRequests,
+      },
+      topBusinesses: topBusinessesAgg,
+      recentActivity: recentAuditLogs,
+    });
+  } catch (error) {
+    logger.error('Error fetching stats/overview (superadmin)', error, req);
+    res.status(500).json({ message: 'Error al obtener estadísticas' });
   }
 });
 
