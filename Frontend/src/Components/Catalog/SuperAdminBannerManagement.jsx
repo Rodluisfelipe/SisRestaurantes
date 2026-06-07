@@ -357,7 +357,7 @@ const SuperAdminBannerManagement = () => {
                           <button
                             onClick={() => handleApprove(banner._id, banner.priority)}
                             disabled={loading}
-                            className="px-3 py-1 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors text-sm font-medium disabled:opacity-50"
+                            className="px-3 py-1 bg-green-500 text-slate-900 dark:text-white rounded-md hover:bg-green-600 transition-colors text-sm font-medium disabled:opacity-50"
                           >
                             Aprobar
                           </button>
@@ -367,7 +367,7 @@ const SuperAdminBannerManagement = () => {
                               setShowRejectModal(true);
                             }}
                             disabled={loading}
-                            className="px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm font-medium disabled:opacity-50"
+                            className="px-3 py-1 bg-red-500 text-slate-900 dark:text-white rounded-md hover:bg-red-600 transition-colors text-sm font-medium disabled:opacity-50"
                           >
                             Rechazar
                           </button>
@@ -378,7 +378,7 @@ const SuperAdminBannerManagement = () => {
                         <button
                           onClick={() => handleToggleStatus(banner._id, banner.status)}
                           disabled={loading}
-                          className="px-3 py-1 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 transition-colors text-sm font-medium disabled:opacity-50"
+                          className="px-3 py-1 bg-yellow-500 text-slate-900 dark:text-white rounded-md hover:bg-yellow-600 transition-colors text-sm font-medium disabled:opacity-50"
                         >
                           Desactivar
                         </button>
@@ -388,7 +388,7 @@ const SuperAdminBannerManagement = () => {
                         <button
                           onClick={() => handleToggleStatus(banner._id, banner.status)}
                           disabled={loading}
-                          className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm font-medium disabled:opacity-50"
+                          className="px-3 py-1 bg-blue-500 text-slate-900 dark:text-white rounded-md hover:bg-blue-600 transition-colors text-sm font-medium disabled:opacity-50"
                         >
                           Activar
                         </button>
@@ -397,7 +397,7 @@ const SuperAdminBannerManagement = () => {
                       <button
                         onClick={() => handleDelete(banner._id)}
                         disabled={loading}
-                        className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50"
+                        className="px-3 py-1 bg-red-600 text-slate-900 dark:text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium disabled:opacity-50"
                       >
                         Eliminar
                       </button>
@@ -454,7 +454,7 @@ const SuperAdminBannerManagement = () => {
                 <button
                   onClick={handleReject}
                   disabled={loading || !rejectionReason.trim()}
-                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-red-500 text-slate-900 dark:text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Rechazando...' : 'Rechazar'}
                 </button>

@@ -10,10 +10,10 @@ export default function SAToast({ message, type = 'success', visible, onClose, d
   }, [visible, duration, onClose]);
 
   const styles = {
-    success: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400',
-    error: 'bg-red-500/15 border-red-500/25 text-red-400',
-    info: 'bg-cyan-500/15 border-cyan-500/25 text-cyan-400',
-    warning: 'bg-amber-500/15 border-amber-500/25 text-amber-400',
+    success: 'bg-emerald-50 dark:bg-emerald-500/15 border-emerald-200 dark:border-emerald-500/25 text-emerald-700 dark:text-emerald-400',
+    error: 'bg-red-50 dark:bg-red-500/15 border-red-200 dark:border-red-500/25 text-red-700 dark:text-red-400',
+    info: 'bg-cyan-50 dark:bg-cyan-500/15 border-cyan-200 dark:border-cyan-500/25 text-cyan-700 dark:text-cyan-400',
+    warning: 'bg-amber-50 dark:bg-amber-500/15 border-amber-200 dark:border-amber-500/25 text-amber-700 dark:text-amber-400',
   };
 
   const icons = {
@@ -31,7 +31,7 @@ export default function SAToast({ message, type = 'success', visible, onClose, d
           animate={{ opacity: 1, y: 0, x: '-50%' }}
           exit={{ opacity: 0, y: -20, x: '-50%' }}
           transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-          className={`fixed top-5 left-1/2 z-[70] flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium shadow-xl shadow-black/20 ${styles[type]}`}
+          className={`fixed top-5 left-1/2 z-[70] flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium shadow-xl shadow-slate-900/10 dark:shadow-black/20 ${styles[type]}`}
           onClick={onClose}
         >
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

@@ -12,10 +12,10 @@ const STATUS_LABELS = {
 
 const STATUS_COLORS = {
   pending: 'bg-yellow-100/80 text-yellow-300 border-yellow-500/20',
-  qualified: 'bg-cyan-100/80 text-cyan-300 border-cyan-500/20',
-  approved: 'bg-indigo-100/80 text-indigo-300 border-indigo-500/20',
-  credited: 'bg-emerald-100/80 text-emerald-300 border-emerald-500/20',
-  rejected: 'bg-red-100/80 text-red-300 border-red-500/20',
+  qualified: 'bg-cyan-100/80 text-cyan-300 border-cyan-200 dark:border-cyan-500/20',
+  approved: 'bg-indigo-100/80 text-indigo-300 border-indigo-200 dark:border-indigo-500/20',
+  credited: 'bg-emerald-100/80 text-emerald-300 border-emerald-200 dark:border-emerald-500/20',
+  rejected: 'bg-red-100/80 text-red-300 border-red-200 dark:border-red-500/20',
 };
 
 function formatCurrency(amount) {
@@ -147,16 +147,16 @@ export default function ReferralManagement() {
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { label: 'Total', value: kpis.total || 0, color: 'text-white' },
+          { label: 'Total', value: kpis.total || 0, color: 'text-slate-900 dark:text-white' },
           { label: 'Pendientes', value: kpis.pending || 0, color: 'text-yellow-400' },
-          { label: 'Calificados', value: kpis.qualified || 0, color: 'text-cyan-400' },
-          { label: 'Acreditados', value: kpis.credited || 0, color: 'text-emerald-400' },
-          { label: 'Rechazados', value: kpis.rejected || 0, color: 'text-red-400' },
-          { label: 'Conversi\u00f3n', value: `${kpis.conversionRate || 0}%`, color: 'text-indigo-400' },
+          { label: 'Calificados', value: kpis.qualified || 0, color: 'text-cyan-600 dark:text-cyan-400' },
+          { label: 'Acreditados', value: kpis.credited || 0, color: 'text-emerald-600 dark:text-emerald-400' },
+          { label: 'Rechazados', value: kpis.rejected || 0, color: 'text-red-600 dark:text-red-400' },
+          { label: 'Conversi\u00f3n', value: `${kpis.conversionRate || 0}%`, color: 'text-indigo-600 dark:text-indigo-400' },
         ].map(kpi => (
-          <div key={kpi.label} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3 text-center">
+          <div key={kpi.label} className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-xl p-3 text-center">
             <p className={`text-xl font-bold ${kpi.color}`}>{kpi.value}</p>
-            <p className="text-[10px] text-white/30 uppercase tracking-wider mt-0.5">{kpi.label}</p>
+            <p className="text-[10px] text-slate-500 dark:text-white/30 uppercase tracking-wider mt-0.5">{kpi.label}</p>
           </div>
         ))}
       </div>
@@ -173,8 +173,8 @@ export default function ReferralManagement() {
             onClick={() => setTab(t.id)}
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
               tab === t.id
-                ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20'
-                : 'text-white/40 hover:text-white/60 border border-transparent'
+                ? 'bg-cyan-100 dark:bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-500/20'
+                : 'text-slate-500 dark:text-white/40 hover:text-slate-600 dark:hover:text-slate-900 dark:hover:text-slate-600 dark:text-white/60 border border-transparent'
             }`}
           >
             {t.label}
@@ -194,8 +194,8 @@ export default function ReferralManagement() {
                   onClick={() => handleFilterChange(s)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                     statusFilter === s
-                      ? 'bg-white/10 text-white border border-white/20'
-                      : 'text-white/30 hover:text-white/50 border border-transparent'
+                      ? 'bg-white/10 text-slate-900 dark:text-white border border-white/20'
+                      : 'text-slate-500 dark:text-white/30 hover:text-slate-900 dark:hover:text-slate-600 dark:text-white/50 border border-transparent'
                   }`}
                 >
                   {s === 'all' ? 'Todos' : STATUS_LABELS[s]}
@@ -204,56 +204,56 @@ export default function ReferralManagement() {
             </div>
 
             {/* Table */}
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+            <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
               {referrals.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-sm text-white/30">No hay referidos {statusFilter !== 'all' ? `con estado "${STATUS_LABELS[statusFilter]}"` : ''}</p>
+                  <p className="text-sm text-slate-500 dark:text-white/30">No hay referidos {statusFilter !== 'all' ? `con estado "${STATUS_LABELS[statusFilter]}"` : ''}</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-white/[0.06]">
-                        <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Referente</th>
-                        <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Referido</th>
-                        <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Estado</th>
-                        <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Cr\u00e9ditos</th>
-                        <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Fecha</th>
-                        <th className="text-right px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Acciones</th>
+                      <tr className="border-b border-slate-200 dark:border-white/[0.06]">
+                        <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Referente</th>
+                        <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Referido</th>
+                        <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Estado</th>
+                        <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Cr\u00e9ditos</th>
+                        <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Fecha</th>
+                        <th className="text-right px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Acciones</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.04]">
+                    <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                       {referrals.map(r => (
-                        <tr key={r.id} className="hover:bg-white/[0.02] transition-colors">
+                        <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-white dark:bg-white/[0.02] transition-colors">
                           <td className="px-4 py-3">
-                            <p className="text-white/80 font-medium truncate max-w-[140px]">{r.referrer?.name || '\u2014'}</p>
+                            <p className="text-slate-800 dark:text-white/80 font-medium truncate max-w-[140px]">{r.referrer?.name || '\u2014'}</p>
                           </td>
                           <td className="px-4 py-3">
-                            <p className="text-white/80 font-medium truncate max-w-[140px]">{r.referred?.name || '\u2014'}</p>
+                            <p className="text-slate-800 dark:text-white/80 font-medium truncate max-w-[140px]">{r.referred?.name || '\u2014'}</p>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${STATUS_COLORS[r.status] || 'text-white/40'}`}>
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${STATUS_COLORS[r.status] || 'text-slate-500 dark:text-white/40'}`}>
                               {STATUS_LABELS[r.status] || r.status}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-white/60">
+                          <td className="px-4 py-3 text-slate-600 dark:text-white/60">
                             {r.referrerCreditsAwarded > 0 ? formatCurrency(r.referrerCreditsAwarded) : '\u2014'}
                           </td>
-                          <td className="px-4 py-3 text-white/40 text-xs">{formatDate(r.createdAt)}</td>
+                          <td className="px-4 py-3 text-slate-500 dark:text-white/40 text-xs">{formatDate(r.createdAt)}</td>
                           <td className="px-4 py-3 text-right">
                             {['pending', 'qualified'].includes(r.status) && (
                               <div className="flex gap-2 justify-end">
                                 <button
                                   onClick={() => handleApprove(r.id)}
                                   disabled={actionLoading === r.id}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/20 transition-all disabled:opacity-50"
+                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-100 dark:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-500/25 border border-emerald-200 dark:border-emerald-500/20 transition-all disabled:opacity-50"
                                 >
                                   {actionLoading === r.id ? '...' : 'Aprobar'}
                                 </button>
                                 <button
                                   onClick={() => setRejectModal(r.id)}
                                   disabled={actionLoading === r.id}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/20 transition-all disabled:opacity-50"
+                                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-100 dark:bg-red-500/15 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/25 border border-red-200 dark:border-red-500/20 transition-all disabled:opacity-50"
                                 >
                                   Rechazar
                                 </button>
@@ -269,20 +269,20 @@ export default function ReferralManagement() {
 
               {/* Pagination */}
               {pagination.totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.06]">
-                  <p className="text-xs text-white/30">P\u00e1gina {pagination.page} de {pagination.totalPages}</p>
+                <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200 dark:border-white/[0.06]">
+                  <p className="text-xs text-slate-500 dark:text-white/30">P\u00e1gina {pagination.page} de {pagination.totalPages}</p>
                   <div className="flex gap-2">
                     <button
                       onClick={() => fetchOverview(pagination.page - 1, statusFilter)}
                       disabled={pagination.page <= 1}
-                      className="px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/70 bg-white/[0.04] disabled:opacity-30 transition-all"
+                      className="px-3 py-1.5 rounded-lg text-xs text-slate-500 dark:text-white/40 hover:text-slate-700 dark:hover:text-slate-900 dark:hover:text-slate-700 dark:text-white/70 bg-slate-100 dark:bg-white/[0.04] disabled:opacity-30 transition-all"
                     >
                       Anterior
                     </button>
                     <button
                       onClick={() => fetchOverview(pagination.page + 1, statusFilter)}
                       disabled={pagination.page >= pagination.totalPages}
-                      className="px-3 py-1.5 rounded-lg text-xs text-white/40 hover:text-white/70 bg-white/[0.04] disabled:opacity-30 transition-all"
+                      className="px-3 py-1.5 rounded-lg text-xs text-slate-500 dark:text-white/40 hover:text-slate-700 dark:hover:text-slate-900 dark:hover:text-slate-700 dark:text-white/70 bg-slate-100 dark:bg-white/[0.04] disabled:opacity-30 transition-all"
                     >
                       Siguiente
                     </button>
@@ -296,12 +296,12 @@ export default function ReferralManagement() {
         {/* CONFIG TAB */}
         {tab === 'config' && configDraft && (
           <motion.div key="config" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6 space-y-5 max-w-xl">
+            <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-6 space-y-5 max-w-xl">
               {/* Toggle active */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-white/80">Programa activo</p>
-                  <p className="text-xs text-white/30">Habilitar o deshabilitar el programa de referidos</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-white/80">Programa activo</p>
+                  <p className="text-xs text-slate-500 dark:text-white/30">Habilitar o deshabilitar el programa de referidos</p>
                 </div>
                 <button
                   onClick={() => setConfigDraft(d => ({ ...d, isActive: !d.isActive }))}
@@ -314,8 +314,8 @@ export default function ReferralManagement() {
               {/* Require approval */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-white/80">Requerir aprobaci\u00f3n</p>
-                  <p className="text-xs text-white/30">Los cr\u00e9ditos se otorgan solo tras aprobaci\u00f3n manual</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-white/80">Requerir aprobaci\u00f3n</p>
+                  <p className="text-xs text-slate-500 dark:text-white/30">Los cr\u00e9ditos se otorgan solo tras aprobaci\u00f3n manual</p>
                 </div>
                 <button
                   onClick={() => setConfigDraft(d => ({ ...d, requireApproval: !d.requireApproval }))}
@@ -334,7 +334,7 @@ export default function ReferralManagement() {
                 { key: 'minSubscriptionMonths', label: 'M\u00edn meses suscripci\u00f3n', min: 1, max: 24 },
               ].map(field => (
                 <div key={field.key}>
-                  <label className="text-sm font-medium text-white/80 block mb-1">{field.label}</label>
+                  <label className="text-sm font-medium text-slate-800 dark:text-white/80 block mb-1">{field.label}</label>
                   <input
                     type="number"
                     value={configDraft[field.key] ?? ''}
@@ -342,7 +342,7 @@ export default function ReferralManagement() {
                     min={field.min}
                     max={field.max}
                     step={field.step || 1}
-                    className="w-full px-3 py-2 bg-white/[0.05] border border-white/[0.1] rounded-lg text-white/80 text-sm focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none"
+                    className="w-full px-3 py-2 bg-slate-100 dark:bg-white/[0.05] border border-slate-300 dark:border-white/[0.1] rounded-lg text-slate-800 dark:text-white/80 text-sm focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/30 outline-none"
                   />
                 </div>
               ))}
@@ -352,7 +352,7 @@ export default function ReferralManagement() {
                 <button
                   onClick={saveConfig}
                   disabled={configSaving}
-                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-cyan-500 hover:bg-cyan-600 text-white transition-colors disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-cyan-500 hover:bg-cyan-600 text-slate-900 dark:text-white transition-colors disabled:opacity-50"
                 >
                   {configSaving ? 'Guardando...' : 'Guardar configuraci\u00f3n'}
                 </button>
@@ -360,7 +360,7 @@ export default function ReferralManagement() {
                   <motion.p
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className={`text-sm font-medium ${configMsg.includes('Error') ? 'text-red-400' : 'text-emerald-400'}`}
+                    className={`text-sm font-medium ${configMsg.includes('Error') ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}
                   >
                     {configMsg}
                   </motion.p>
@@ -373,37 +373,37 @@ export default function ReferralManagement() {
         {/* TOP REFERRERS TAB */}
         {tab === 'top' && (
           <motion.div key="top" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+            <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
               {topReferrers.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-sm text-white/30">No hay referentes acreditados a\u00fan</p>
+                  <p className="text-sm text-slate-500 dark:text-white/30">No hay referentes acreditados a\u00fan</p>
                 </div>
               ) : (
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/[0.06]">
-                      <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">#</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Negocio</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Referidos</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Cr\u00e9ditos ganados</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-white/30 uppercase tracking-wider font-semibold">Saldo actual</th>
+                    <tr className="border-b border-slate-200 dark:border-white/[0.06]">
+                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">#</th>
+                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Negocio</th>
+                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Referidos</th>
+                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Cr\u00e9ditos ganados</th>
+                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 dark:text-white/30 uppercase tracking-wider font-semibold">Saldo actual</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/[0.04]">
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04]">
                     {topReferrers.map((r, i) => (
-                      <tr key={r.businessId} className="hover:bg-white/[0.02] transition-colors">
+                      <tr key={r.businessId} className="hover:bg-slate-50 dark:hover:bg-white dark:bg-white/[0.02] transition-colors">
                         <td className="px-4 py-3">
                           <span className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-bold ${
                             i === 0 ? 'bg-yellow-500/20 text-yellow-400' :
                             i === 1 ? 'bg-slate-400/20 text-slate-300' :
-                            i === 2 ? 'bg-orange-500/20 text-orange-400' :
-                            'bg-white/5 text-white/30'
+                            i === 2 ? 'bg-orange-200 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400' :
+                            'bg-white/5 text-slate-500 dark:text-white/30'
                           }`}>{i + 1}</span>
                         </td>
-                        <td className="px-4 py-3 text-white/80 font-medium">{r.businessName || '\u2014'}</td>
-                        <td className="px-4 py-3 text-white/60">{r.totalReferrals}</td>
-                        <td className="px-4 py-3 text-emerald-400 font-medium">{formatCurrency(r.totalCredits)}</td>
-                        <td className="px-4 py-3 text-cyan-400">{formatCurrency(r.currentCredits)}</td>
+                        <td className="px-4 py-3 text-slate-800 dark:text-white/80 font-medium">{r.businessName || '\u2014'}</td>
+                        <td className="px-4 py-3 text-slate-600 dark:text-white/60">{r.totalReferrals}</td>
+                        <td className="px-4 py-3 text-emerald-600 dark:text-emerald-400 font-medium">{formatCurrency(r.totalCredits)}</td>
+                        <td className="px-4 py-3 text-cyan-600 dark:text-cyan-400">{formatCurrency(r.currentCredits)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -431,29 +431,29 @@ export default function ReferralManagement() {
               onClick={(e) => e.stopPropagation()}
               className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full space-y-4"
             >
-              <h3 className="text-lg font-bold text-white">Rechazar referido</h3>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Rechazar referido</h3>
               <div>
-                <label className="text-sm text-white/60 block mb-1">Raz\u00f3n (opcional)</label>
+                <label className="text-sm text-slate-600 dark:text-white/60 block mb-1">Raz\u00f3n (opcional)</label>
                 <textarea
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   rows={3}
                   maxLength={500}
-                  className="w-full px-3 py-2 bg-white/[0.05] border border-white/[0.1] rounded-lg text-white/80 text-sm resize-none focus:ring-2 focus:ring-red-500/30 outline-none"
+                  className="w-full px-3 py-2 bg-slate-100 dark:bg-white/[0.05] border border-slate-300 dark:border-white/[0.1] rounded-lg text-slate-800 dark:text-white/80 text-sm resize-none focus:ring-2 focus:ring-red-500/30 outline-none"
                   placeholder="Motivo del rechazo..."
                 />
               </div>
               <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => { setRejectModal(null); setRejectReason(''); }}
-                  className="px-4 py-2 rounded-lg text-sm text-white/40 hover:text-white/60 transition-colors"
+                  className="px-4 py-2 rounded-lg text-sm text-slate-500 dark:text-white/40 hover:text-slate-600 dark:hover:text-slate-900 dark:hover:text-slate-600 dark:text-white/60 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleReject}
                   disabled={actionLoading === rejectModal}
-                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 text-white transition-colors disabled:opacity-50"
+                  className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500 hover:bg-red-600 text-slate-900 dark:text-white transition-colors disabled:opacity-50"
                 >
                   {actionLoading === rejectModal ? 'Rechazando...' : 'Rechazar'}
                 </button>

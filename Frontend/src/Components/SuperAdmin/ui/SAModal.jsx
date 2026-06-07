@@ -20,7 +20,7 @@ export default function SAModal({ isOpen, onClose, title, subtitle, children, wi
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm"
           />
 
           {/* Panel */}
@@ -29,17 +29,17 @@ export default function SAModal({ isOpen, onClose, title, subtitle, children, wi
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className={`relative w-full ${width} bg-[#141419] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/40 max-h-[85vh] flex flex-col`}
+            className={`relative w-full ${width} bg-white dark:bg-[#141419] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-2xl shadow-slate-900/10 dark:shadow-black/40 max-h-[85vh] flex flex-col`}
           >
             {/* Header */}
             {(title || onClose) && (
-              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-white/[0.06]">
                 <div>
-                  {title && <h2 className="text-sm font-semibold text-white">{title}</h2>}
-                  {subtitle && <p className="text-xs text-white/40 mt-0.5">{subtitle}</p>}
+                  {title && <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h2>}
+                  {subtitle && <p className="text-xs text-slate-500 dark:text-white/40 mt-0.5">{subtitle}</p>}
                 </div>
                 {onClose && (
-                  <button onClick={onClose} className="p-1.5 text-white/30 hover:text-white/70 hover:bg-white/[0.06] rounded-lg transition-colors">
+                  <button onClick={onClose} className="p-1.5 text-slate-500 dark:text-white/30 hover:text-slate-900 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-lg transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
@@ -55,7 +55,7 @@ export default function SAModal({ isOpen, onClose, title, subtitle, children, wi
 
             {/* Footer */}
             {footer && (
-              <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-white/[0.06]">
+              <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-200 dark:border-white/[0.06]">
                 {footer}
               </div>
             )}

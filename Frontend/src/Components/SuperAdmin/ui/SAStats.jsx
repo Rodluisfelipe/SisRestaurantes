@@ -14,18 +14,18 @@ export default function SAStats({ items = [] }) {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: i * 0.06, duration: 0.3 }}
-          className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4"
+          className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl p-4"
         >
           <div className="flex items-center justify-between mb-2.5">
-            <span className="text-[11px] font-medium text-white/35 uppercase tracking-wider">{item.label}</span>
-            {item.icon && <span className="text-white/20">{item.icon}</span>}
+            <span className="text-[11px] font-medium text-slate-500 dark:text-white/35 uppercase tracking-wider">{item.label}</span>
+            {item.icon && <span className="text-slate-400 dark:text-white/20">{item.icon}</span>}
           </div>
           <div className="flex items-end gap-2">
-            <span className={`text-2xl font-semibold tabular-nums ${item.color || 'text-white'}`}>
+            <span className={`text-2xl font-semibold tabular-nums ${item.color || 'text-slate-900 dark:text-white'}`}>
               {typeof item.value === 'number' ? item.value.toLocaleString() : item.value}
             </span>
             {item.trend && (
-              <span className={`text-[11px] font-medium mb-0.5 ${item.trendUp ? 'text-emerald-400' : 'text-red-400'}`}>
+              <span className={`text-[11px] font-medium mb-0.5 ${item.trendUp ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                 {item.trend}
               </span>
             )}
