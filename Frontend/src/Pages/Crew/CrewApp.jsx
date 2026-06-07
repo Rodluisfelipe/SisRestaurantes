@@ -51,7 +51,7 @@ export default function CrewApp() {
   if (needsOnboarding) return <CrewOnboarding onDone={refreshMe} />;
 
   return (
-    <div className="bg-[#0A0A14]">
+    <div className="bg-slate-50">
       <AnimatePresence mode="wait">
         <motion.div
           key={tab}
@@ -66,8 +66,8 @@ export default function CrewApp() {
         </motion.div>
       </AnimatePresence>
 
-      {/* Bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0A0A14]/85 backdrop-blur-xl border-t border-white/[0.06] safe-area-bottom">
+      {/* Bottom nav — MenuBy style */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200 safe-area-bottom">
         <div className="flex items-center justify-around px-2 py-2 max-w-md mx-auto">
           {TABS.map((t) => {
             const active = tab === t.id;
@@ -80,14 +80,14 @@ export default function CrewApp() {
                 {active && (
                   <motion.div
                     layoutId="crew-nav-indicator"
-                    className="absolute top-0 w-10 h-0.5 bg-gradient-to-r from-[#7B2FFF] to-[#FF6B35] rounded-full"
+                    className="absolute top-0 w-10 h-0.5 bg-red-600 rounded-full"
                     transition={{ type: 'spring', stiffness: 350, damping: 28 }}
                   />
                 )}
-                <span className={active ? 'text-[#FF6B35]' : 'text-white/40'}>
+                <span className={active ? 'text-red-600' : 'text-slate-400'}>
                   {t.icon(active)}
                 </span>
-                <span className={`text-[10px] font-bold transition-colors ${active ? 'text-white' : 'text-white/40'}`}>
+                <span className={`text-[10px] font-bold transition-colors ${active ? 'text-slate-900' : 'text-slate-400'}`}>
                   {t.label}
                 </span>
               </button>

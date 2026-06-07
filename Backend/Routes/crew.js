@@ -373,8 +373,8 @@ router.post('/bookings/:id/review-business', requireWorker, async (req, res) => 
 // POST /crew/businesses/shifts — publicar shift
 router.post('/businesses/shifts', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.tenant?.businessId || req.user?.businessId;
-    if (!businessId) return res.status(400).json({ message: 'Negocio no resuelto' });
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.body.businessId;
+    if (!businessId) return res.status(400).json({ message: 'No se pudo identificar el negocio. Vuelve a iniciar sesión.' });
     const biz = await BusinessConfig.findById(businessId).lean();
     if (!biz) return res.status(404).json({ message: 'Negocio no encontrado' });
 
@@ -383,11 +383,19 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
       workersNeeded, hourlyRate, requirements, perks, visibility, matchMode, isSOS,
     } = req.body || {};
 
-    if (!title || !role || !date || !startTime || !endTime || !hoursTotal || !hourlyRate) {
-      return res.status(400).json({ message: 'Faltan campos requeridos' });
+    const missing = [];
+    if (!title) missing.push('título');
+    if (!role) missing.push('rol');
+    if (!date) missing.push('fecha');
+    if (!startTime) missing.push('hora de inicio');
+    if (!endTime) missing.push('hora de fin');
+    if (!hoursTotal) missing.push('horas');
+    if (!hourlyRate) missing.push('tarifa por hora');
+    if (missing.length) {
+      return res.status(400).json({ message: `Faltan campos: ${missing.join(', ')}` });
     }
     if (!VALID_SKILLS.includes(role)) {
-      return res.status(400).json({ message: `role inválido` });
+      return res.status(400).json({ message: `Rol no válido: ${role}` });
     }
 
     const shift = new ShiftPost({
@@ -423,7 +431,7 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
 
 // GET /crew/businesses/shifts — mis shifts
 router.get('/businesses/shifts', tenantAuth, async (req, res) => {
-  const businessId = req.tenant?.businessId || req.user?.businessId;
+  const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
   const { status } = req.query;
   const q = { businessId };
   if (status) q.status = status;
@@ -433,7 +441,7 @@ router.get('/businesses/shifts', tenantAuth, async (req, res) => {
 
 // GET /crew/businesses/shifts/:id/applicants
 router.get('/businesses/shifts/:id/applicants', tenantAuth, async (req, res) => {
-  const businessId = req.tenant?.businessId || req.user?.businessId;
+  const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
   const shift = await ShiftPost.findOne({ _id: req.params.id, businessId });
   if (!shift) return res.status(404).json({ message: 'Shift no encontrado' });
 
@@ -447,7 +455,7 @@ router.get('/businesses/shifts/:id/applicants', tenantAuth, async (req, res) => 
 // POST /crew/businesses/applications/:id/accept
 router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.tenant?.businessId || req.user?.businessId;
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
     const app = await ShiftApplication.findById(req.params.id);
     if (!app) return res.status(404).json({ message: 'Application no encontrada' });
     if (String(app.businessId) !== String(businessId)) {
@@ -489,7 +497,7 @@ router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) 
 
 // POST /crew/businesses/applications/:id/reject
 router.post('/businesses/applications/:id/reject', tenantAuth, async (req, res) => {
-  const businessId = req.tenant?.businessId || req.user?.businessId;
+  const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
   const app = await ShiftApplication.findById(req.params.id);
   if (!app || String(app.businessId) !== String(businessId)) {
     return res.status(404).json({ message: 'Application no encontrada' });
@@ -503,7 +511,7 @@ router.post('/businesses/applications/:id/reject', tenantAuth, async (req, res) 
 // POST /crew/businesses/bookings/:id/complete — confirma fin de turno
 router.post('/businesses/bookings/:id/complete', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.tenant?.businessId || req.user?.businessId;
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
     const booking = await ShiftBooking.findById(req.params.id);
     if (!booking || String(booking.businessId) !== String(businessId)) {
       return res.status(404).json({ message: 'Booking no encontrado' });
@@ -555,7 +563,7 @@ router.post('/businesses/bookings/:id/complete', tenantAuth, async (req, res) =>
 // POST /crew/businesses/bookings/:id/review-worker
 router.post('/businesses/bookings/:id/review-worker', tenantAuth, async (req, res) => {
   try {
-    const businessId = req.tenant?.businessId || req.user?.businessId;
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
     const { rating, comment, tags } = req.body || {};
     if (!rating || rating < 1 || rating > 5) return res.status(400).json({ message: 'rating 1-5' });
 

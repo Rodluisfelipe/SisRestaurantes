@@ -558,7 +558,7 @@ function Admin() {
                 {activeTab === 'crew' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Crew" onGoBack={() => setActiveTab('dashboard')}>
-                      <CrewPanel />
+                      <CrewPanel businessId={businessId} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
