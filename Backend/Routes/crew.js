@@ -431,12 +431,20 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
 
 // GET /crew/businesses/shifts — mis shifts
 router.get('/businesses/shifts', tenantAuth, async (req, res) => {
-  const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
-  const { status } = req.query;
-  const q = { businessId };
-  if (status) q.status = status;
-  const shifts = await ShiftPost.find(q).sort({ date: -1 }).limit(50).lean();
-  res.json({ success: true, shifts });
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
+    if (!businessId) {
+      return res.status(400).json({ success: false, message: 'businessId es requerido' });
+    }
+    const { status } = req.query;
+    const q = { businessId };
+    if (status) q.status = status;
+    const shifts = await ShiftPost.find(q).sort({ date: -1 }).limit(50).lean();
+    res.json({ success: true, shifts });
+  } catch (e) {
+    logger.error('crew biz shifts list error', e);
+    res.status(500).json({ success: false, message: 'Error al cargar los shifts' });
+  }
 });
 
 // GET /crew/businesses/shifts/:id/applicants
