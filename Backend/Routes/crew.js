@@ -452,15 +452,26 @@ router.get('/businesses/shifts', tenantAuth, async (req, res) => {
 
 // GET /crew/businesses/shifts/:id/applicants
 router.get('/businesses/shifts/:id/applicants', tenantAuth, async (req, res) => {
-  const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
-  const shift = await ShiftPost.findOne({ _id: req.params.id, businessId });
-  if (!shift) return res.status(404).json({ message: 'Shift no encontrado' });
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
+    if (!businessId) {
+      return res.status(400).json({ success: false, message: 'businessId es requerido' });
+    }
+    const shift = await ShiftPost.findOne({ _id: req.params.id, businessId });
+    if (!shift) {
+      logger.warn('Shift not found for applicants', { shiftId: req.params.id, businessId }, req);
+      return res.status(404).json({ message: 'Shift no encontrado' });
+    }
 
-  const applications = await ShiftApplication.find({ shiftId: shift._id })
-    .sort({ matchScore: -1, appliedAt: 1 })
-    .populate('workerId', 'name photo level xp rating stats badgesEarned skills university bio')
-    .lean();
-  res.json({ success: true, applications });
+    const applications = await ShiftApplication.find({ shiftId: shift._id })
+      .sort({ matchScore: -1, appliedAt: 1 })
+      .populate('workerId', 'name photo level xp rating stats badgesEarned skills university bio')
+      .lean();
+    res.json({ success: true, applications });
+  } catch (e) {
+    logger.error('crew applicants error', e, req);
+    res.status(500).json({ message: 'Error al cargar applicants' });
+  }
 });
 
 // POST /crew/businesses/applications/:id/accept
@@ -508,15 +519,23 @@ router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) 
 
 // POST /crew/businesses/applications/:id/reject
 router.post('/businesses/applications/:id/reject', tenantAuth, async (req, res) => {
-  const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
-  const app = await ShiftApplication.findById(req.params.id);
-  if (!app || String(app.businessId) !== String(businessId)) {
-    return res.status(404).json({ message: 'Application no encontrada' });
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
+    if (!businessId) {
+      return res.status(400).json({ success: false, message: 'businessId es requerido' });
+    }
+    const app = await ShiftApplication.findById(req.params.id);
+    if (!app || String(app.businessId) !== String(businessId)) {
+      return res.status(404).json({ message: 'Application no encontrada' });
+    }
+    app.status = 'rejected';
+    app.respondedAt = new Date();
+    await app.save();
+    res.json({ success: true });
+  } catch (e) {
+    logger.error('crew reject app error', e, req);
+    res.status(500).json({ message: 'Error al rechazar' });
   }
-  app.status = 'rejected';
-  app.respondedAt = new Date();
-  await app.save();
-  res.json({ success: true });
 });
 
 // POST /crew/businesses/bookings/:id/complete — confirma fin de turno
