@@ -406,6 +406,7 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
       date: new Date(date), startTime, endTime, hoursTotal,
       workersNeeded: workersNeeded || 1,
       hourlyRate,
+      totalPay: Math.round(Number(hoursTotal) * Number(hourlyRate)),
       requirements: requirements || {},
       perks: perks || [],
       visibility: visibility || 'public',
