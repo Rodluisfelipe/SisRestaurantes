@@ -131,6 +131,24 @@ function SuperAdminDashboard() {
     if (token) setResetToken(token);
   }, [token]);
 
+  // Compute visible tabs based on permissions — must be before any early return
+  // so the redirect-useEffect below is always called in the same order.
+  const visibleSections = perms.loading || !perms.role
+    ? NAV_SECTIONS
+    : NAV_SECTIONS
+        .map(s => ({ ...s, items: s.items.filter(i => perms.canAccessTab(i.id)) }))
+        .filter(s => s.items.length > 0);
+  const visibleIds = new Set(visibleSections.flatMap(s => s.items.map(i => i.id)));
+
+  // If current view is not accessible (e.g. role changed), redirect to home.
+  // IMPORTANT: keep this hook BEFORE any conditional return to satisfy Rules of Hooks.
+  useEffect(() => {
+    if (isLogged && !perms.loading && perms.role && !visibleIds.has(currentView)) {
+      setCurrentView('home');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLogged, perms.loading, perms.role, currentView]);
+
   const handleCreated = () => {
     setShowCreate(false);
     setRefresh(r => r + 1);
@@ -167,21 +185,6 @@ function SuperAdminDashboard() {
       onSuccess={() => setAuthView('dashboard')} 
     />;
   }
-
-  // Filter nav items based on user role permissions (once perms loaded)
-  const visibleSections = perms.loading || !perms.role
-    ? NAV_SECTIONS
-    : NAV_SECTIONS
-        .map(s => ({ ...s, items: s.items.filter(i => perms.canAccessTab(i.id)) }))
-        .filter(s => s.items.length > 0);
-  const visibleIds = new Set(visibleSections.flatMap(s => s.items.map(i => i.id)));
-
-  // If current view is not accessible, redirect to home
-  useEffect(() => {
-    if (!perms.loading && perms.role && !visibleIds.has(currentView)) {
-      setCurrentView('home');
-    }
-  }, [perms.loading, perms.role, currentView, visibleIds]);
 
   const currentNavItem = ALL_NAV_ITEMS.find(item => item.id === currentView);
   const roleInfo = perms.role ? ROLE_INFO[perms.role] : null;
