@@ -13,14 +13,22 @@ function readStored() {
 
 /**
  * Persisted light/dark theme for the SuperAdmin panel only.
- * Returns [theme, toggleTheme, setTheme].
- * The caller is responsible for applying the `dark` class to its root container.
+ * Applies the `dark` class to `<html>` while mounted, so it cascades
+ * to portals (modals, lightboxes) and auth screens outside the panel root.
+ * Cleans up on unmount so other pages aren't affected.
  */
 export function useSuperAdminTheme() {
   const [theme, setTheme] = useState(readStored);
 
   useEffect(() => {
     try { localStorage.setItem(KEY, theme); } catch {}
+    const root = document.documentElement;
+    if (theme === 'dark') root.classList.add('dark');
+    else root.classList.remove('dark');
+    return () => {
+      // On unmount of the superadmin panel, drop the class so other pages aren't tinted.
+      root.classList.remove('dark');
+    };
   }, [theme]);
 
   const toggleTheme = useCallback(() => {

@@ -15,17 +15,19 @@ const logger = require('../utils/logger');
 // Rutas protegidas (requieren autenticación de superadmin)
 router.use(authMiddleware.protectSuperAdmin);
 
-// Crear nuevo negocio
-router.post('/business', superadmin.crearNegocio);
+const { requireRole } = authMiddleware;
 
-// Listar negocios
+// Crear nuevo negocio — solo admin+
+router.post('/business', requireRole('admin'), superadmin.crearNegocio);
+
+// Listar negocios — cualquier rol (auditor incluido)
 router.get('/business', superadmin.listarNegocios);
 
-// Activar/desactivar negocio
-router.patch('/business/:id/activate', superadmin.activarNegocio);
+// Activar/desactivar negocio — support+ (soporte puede pausar/reactivar)
+router.patch('/business/:id/activate', requireRole('support'), superadmin.activarNegocio);
 
-// Toggle POS beta para un negocio
-router.patch('/business/:id/pos-beta', async (req, res) => {
+// Toggle POS beta para un negocio — admin+
+router.patch('/business/:id/pos-beta', requireRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
     const { enabled } = req.body;
@@ -44,8 +46,8 @@ router.patch('/business/:id/pos-beta', async (req, res) => {
   }
 });
 
-// Eliminar negocio
-router.delete('/business/:id', superadmin.eliminarNegocio);
+// Eliminar negocio — solo admin+ (destructivo)
+router.delete('/business/:id', requireRole('admin'), superadmin.eliminarNegocio);
 
 // ========== GESTIÓN DE PEDIDOS (SuperAdmin) ==========
 
@@ -229,8 +231,8 @@ router.get('/stats/overview', async (req, res) => {
   }
 });
 
-// PATCH /api/superadmin/orders/:id/status - Cambiar estado de un pedido
-router.patch('/orders/:id/status', async (req, res) => {
+// PATCH /api/superadmin/orders/:id/status - Cambiar estado de un pedido — support+
+router.patch('/orders/:id/status', requireRole('support'), async (req, res) => {
   try {
     const { id } = req.params;
     const { status, fromCollection } = req.body;

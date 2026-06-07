@@ -13,11 +13,14 @@ import PaymentRequestsReview from "./PaymentRequestsReview";
 import OrderManagement from "./OrderManagement";
 import ReferralManagement from "../../Components/SuperAdmin/ReferralManagement";
 import AuditLogsPanel from "../../Components/SuperAdmin/AuditLogsPanel";
+import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
 import Home from "./Home";
 import { SAButton } from "../../Components/SuperAdmin/ui";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSuperAdminTheme } from "./useSuperAdminTheme";
+import { useTeamPermissions } from "./useTeamPermissions";
+import { ROLE_INFO } from "./permissions";
 
 const NAV_SECTIONS = [
   {
@@ -73,6 +76,11 @@ const NAV_SECTIONS = [
   {
     title: 'Sistema',
     items: [
+      { id: 'team', label: 'Equipo', desc: 'Gestionar usuarios SuperAdmin', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+        </svg>
+      )},
       { id: 'audit', label: 'Auditoría', desc: 'Registro de cambios', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -94,6 +102,7 @@ function SuperAdminDashboard() {
   const [subscriptionSubTab, setSubscriptionSubTab] = useState('payments');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, toggleTheme] = useSuperAdminTheme();
+  const perms = useTeamPermissions();
   const params = useParams();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
@@ -159,10 +168,26 @@ function SuperAdminDashboard() {
     />;
   }
 
+  // Filter nav items based on user role permissions (once perms loaded)
+  const visibleSections = perms.loading || !perms.role
+    ? NAV_SECTIONS
+    : NAV_SECTIONS
+        .map(s => ({ ...s, items: s.items.filter(i => perms.canAccessTab(i.id)) }))
+        .filter(s => s.items.length > 0);
+  const visibleIds = new Set(visibleSections.flatMap(s => s.items.map(i => i.id)));
+
+  // If current view is not accessible, redirect to home
+  useEffect(() => {
+    if (!perms.loading && perms.role && !visibleIds.has(currentView)) {
+      setCurrentView('home');
+    }
+  }, [perms.loading, perms.role, currentView, visibleIds]);
+
   const currentNavItem = ALL_NAV_ITEMS.find(item => item.id === currentView);
+  const roleInfo = perms.role ? ROLE_INFO[perms.role] : null;
 
   return (
-    <div className={`${theme === 'dark' ? 'dark' : ''} min-h-screen flex font-geist bg-slate-50 dark:bg-[#09090b] text-slate-900 dark:text-white transition-colors`}>
+    <div className="min-h-screen flex font-geist bg-slate-50 dark:bg-[#09090b] text-slate-900 dark:text-white transition-colors">
 
       {/* Mobile sidebar overlay */}
       <AnimatePresence>
@@ -203,7 +228,7 @@ function SuperAdminDashboard() {
 
         {/* Nav sections */}
         <nav className="flex-1 overflow-y-auto py-3 px-2.5">
-          {NAV_SECTIONS.map(section => (
+          {visibleSections.map(section => (
             <div key={section.title} className="mb-4">
               <p className="px-2.5 mb-1.5 text-[10px] font-semibold text-slate-500 dark:text-white/20 uppercase tracking-[0.08em]">{section.title}</p>
               {section.items.map(item => {
@@ -238,6 +263,29 @@ function SuperAdminDashboard() {
 
         {/* Sidebar footer */}
         <div className="px-2.5 py-3 border-t border-slate-200 dark:border-white/[0.06] space-y-0.5 shrink-0">
+          {/* Logged user + role chip */}
+          {perms.me && (
+            <div className="flex items-center gap-2 px-2.5 py-2 mb-1 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.04]">
+              <div className={`w-7 h-7 rounded-full bg-gradient-to-br ${
+                roleInfo?.color === 'amber' ? 'from-amber-400 to-orange-500' :
+                roleInfo?.color === 'violet' ? 'from-purple-400 to-violet-500' :
+                roleInfo?.color === 'cyan' ? 'from-cyan-400 to-blue-500' :
+                'from-slate-400 to-slate-500'
+              } flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
+                {(perms.me.name || perms.me.email || '?').slice(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-slate-900 dark:text-white truncate">{perms.me.name || perms.me.email.split('@')[0]}</p>
+                <p className={`text-[10px] font-bold uppercase tracking-wider ${
+                  roleInfo?.color === 'amber' ? 'text-amber-700 dark:text-amber-400' :
+                  roleInfo?.color === 'violet' ? 'text-violet-700 dark:text-violet-400' :
+                  roleInfo?.color === 'cyan' ? 'text-cyan-700 dark:text-cyan-400' :
+                  'text-slate-600 dark:text-slate-400'
+                }`}>{roleInfo?.label || perms.role}</p>
+              </div>
+            </div>
+          )}
+
           <button
             onClick={toggleTheme}
             className="w-full flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] text-slate-600 dark:text-white/30 hover:text-slate-900 dark:hover:text-white/60 hover:bg-slate-100/60 dark:hover:bg-white/[0.03] transition-all"
@@ -322,7 +370,7 @@ function SuperAdminDashboard() {
           <AnimatePresence mode="wait">
             {currentView === 'home' && (
               <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
-                <Home onNavigate={setCurrentView} />
+                <Home onNavigate={setCurrentView} userName={perms.me?.name || perms.me?.email?.split('@')[0]} />
               </motion.div>
             )}
 
@@ -387,6 +435,12 @@ function SuperAdminDashboard() {
             {currentView === 'referrals' && (
               <motion.div key="referrals" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <ReferralManagement />
+              </motion.div>
+            )}
+
+            {currentView === 'team' && (
+              <motion.div key="team" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <TeamManagement />
               </motion.div>
             )}
 

@@ -25,6 +25,32 @@ const SuperAdminSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // Rol dentro del panel SuperAdmin. Determina permisos.
+  // - owner: control total + gestión del equipo
+  // - admin: operaciones del día a día (sin gestión del equipo)
+  // - support: aprobaciones y atención (sin tocar suscripciones ni borrar)
+  // - auditor: solo lectura
+  role: {
+    type: String,
+    enum: ['owner', 'admin', 'support', 'auditor'],
+    default: 'owner',
+    index: true
+  },
+  // Soft-disable: bloquea login sin borrar el registro
+  active: {
+    type: Boolean,
+    default: true
+  },
+  // Quién lo creó (para auditoría). Null si es seed inicial.
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SuperAdmin',
+    default: null
+  },
+  lastLoginAt: {
+    type: Date,
+    default: null
+  },
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   refreshToken: {

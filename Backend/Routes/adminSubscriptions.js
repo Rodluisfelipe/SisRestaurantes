@@ -2,11 +2,18 @@ const express = require('express');
 const router = express.Router();
 const Subscription = require('../Models/Subscription');
 const BusinessConfig = require('../Models/BusinessConfig');
-const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
+const { protectSuperAdmin, requireRole } = require('../middleware/authSuperAdmin');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 
 router.use(protectSuperAdmin); // Todas las rutas requieren SuperAdmin
+
+// Gate de escritura: solo admin+ puede crear/modificar suscripciones manualmente.
+// GET/* sigue abierto (auditor incluido).
+router.use((req, res, next) => {
+  if (req.method === 'GET') return next();
+  return requireRole('admin')(req, res, next);
+});
 
 // GET /api/admin/subscriptions/overview
 router.get('/overview', async (req, res) => {

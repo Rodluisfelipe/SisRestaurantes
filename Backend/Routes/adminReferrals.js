@@ -3,7 +3,7 @@ const router = express.Router();
 const ReferralConfig = require('../Models/ReferralConfig');
 const Referral = require('../Models/Referral');
 const BusinessConfig = require('../Models/BusinessConfig');
-const { protectSuperAdmin } = require('../middleware/authSuperAdmin');
+const { protectSuperAdmin, requireRole } = require('../middleware/authSuperAdmin');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { depositCredits } = require('../utils/referralHelper');
@@ -14,6 +14,13 @@ const {
 } = require('../middleware/validators/referralValidators');
 
 router.use(protectSuperAdmin);
+
+// PUT /config necesita admin+. Aprobar/rechazar referidos: support+. Lecturas: cualquiera.
+router.use((req, res, next) => {
+  if (req.method === 'GET') return next();
+  if (req.path === '/config') return requireRole('admin')(req, res, next);
+  return requireRole('support')(req, res, next);
+});
 
 // ─── GET /api/admin/referrals/config ─── Get referral program config
 router.get('/config', async (req, res) => {
