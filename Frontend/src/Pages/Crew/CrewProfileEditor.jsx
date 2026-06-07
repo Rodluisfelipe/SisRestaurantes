@@ -524,7 +524,8 @@ function FilePicker({ label, file, onChange, subtitle }) {
     <div>
       <p className="text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">{label}</p>
       {subtitle && <p className="text-[10px] text-slate-500 mb-2">{subtitle}</p>}
-      <input ref={ref} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" />
+      {/* Sin `capture` → el navegador muestra galería + cámara */}
+      <input ref={ref} type="file" accept="image/*" onChange={onFile} className="hidden" />
       <button
         type="button"
         onClick={() => ref.current?.click()}
@@ -543,7 +544,7 @@ function FilePicker({ label, file, onChange, subtitle }) {
           <p className={`text-[12px] font-bold ${file ? 'text-emerald-700' : 'text-slate-700'}`}>
             {file ? '✓ Imagen seleccionada' : 'Tocar para subir'}
           </p>
-          <p className="text-[10px] text-slate-500">{file ? file.name : 'JPG, PNG o WebP (max 8MB)'}</p>
+          <p className="text-[10px] text-slate-500">{file ? file.name : 'Desde galería o cámara · JPG, PNG o WebP · máx 8MB'}</p>
         </div>
       </button>
     </div>

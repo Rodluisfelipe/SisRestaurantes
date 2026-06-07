@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
+import CrewWorkerProfileModal from './CrewWorkerProfileModal';
 
 function makeApi(businessId) {
   return {
@@ -211,6 +212,7 @@ function ShiftRow({ shift, onClick }) {
 function ApplicantsView({ api, shift, onBack }) {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [openApp, setOpenApp] = useState(null); // application abierta en el modal
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -246,7 +248,7 @@ function ApplicantsView({ api, shift, onBack }) {
       </button>
       <h2 className="text-[16px] font-extrabold text-slate-900">{shift.title}</h2>
       <p className="text-[12px] text-slate-500 mb-4">
-        {apps.length} {apps.length === 1 ? 'postulante' : 'postulantes'}
+        {apps.length} {apps.length === 1 ? 'postulante' : 'postulantes'} · Toca una tarjeta para ver el perfil completo
       </p>
 
       {loading && <p className="text-sm text-slate-500">Cargando postulantes…</p>}
@@ -259,70 +261,141 @@ function ApplicantsView({ api, shift, onBack }) {
 
       <div className="space-y-2.5">
         {apps.map((a) => (
-          <ApplicantCard key={a._id} app={a} onAccept={() => respond(a._id, 'accept')} onReject={() => respond(a._id, 'reject')} />
+          <ApplicantCard
+            key={a._id}
+            app={a}
+            onOpenProfile={() => setOpenApp(a)}
+            onAccept={() => respond(a._id, 'accept')}
+            onReject={() => respond(a._id, 'reject')}
+          />
         ))}
       </div>
+
+      {openApp && (
+        <CrewWorkerProfileModal
+          workerId={openApp.workerId?._id || openApp.workerId}
+          businessId={api.bizId}
+          matchScore={openApp.matchScore}
+          onClose={() => setOpenApp(null)}
+          onAccept={openApp.status === 'pending' ? () => { respond(openApp._id, 'accept'); setOpenApp(null); } : undefined}
+          onReject={openApp.status === 'pending' ? () => { respond(openApp._id, 'reject'); setOpenApp(null); } : undefined}
+        />
+      )}
     </div>
   );
 }
 
-function ApplicantCard({ app, onAccept, onReject }) {
+function ApplicantCard({ app, onAccept, onReject, onOpenProfile }) {
   const w = app.workerId || {};
-  const matchTone = app.matchScore >= 75 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' :
+  const matchTone = app.matchScore >= 75 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
                    app.matchScore >= 50 ? 'text-amber-700 bg-amber-50 border-amber-200' :
                    'text-slate-600 bg-slate-50 border-slate-200';
+
+  const kycStatus = w.kyc?.status;
+  const expCount = (w.experiences || []).length;
+  const eduCount = (w.education || []).length;
+
   return (
-    <div className="p-4 bg-white border border-slate-200 rounded-xl">
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[14px] font-extrabold text-slate-700 shrink-0">
-          {(w.name || '?').slice(0,1).toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-extrabold text-slate-900 truncate">{w.name || 'Postulante'}</p>
-          <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5 flex-wrap">
-            <span>Nivel {w.level || 1}</span>
-            <span>·</span>
-            <span>{(w.rating?.avg || 0).toFixed(1)}★ ({w.rating?.count || 0})</span>
-            <span>·</span>
-            <span>{w.stats?.shiftsCompleted || 0} turnos</span>
-            {w.university && <><span>·</span><span className="truncate">{w.university}</span></>}
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 hover:shadow-md transition-shadow">
+      {/* Header clickeable abre el perfil completo */}
+      <button onClick={onOpenProfile} className="w-full text-left p-4 hover:bg-slate-50 transition">
+        <div className="flex items-start gap-3 mb-3">
+          {/* Avatar con foto real */}
+          {w.photo ? (
+            <img src={w.photo} alt={w.name} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0" />
+          ) : (
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 border border-slate-200 flex items-center justify-center text-[18px] font-extrabold text-slate-600 shrink-0">
+              {(w.name || '?').slice(0,1).toUpperCase()}
+            </div>
+          )}
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-[14px] font-extrabold text-slate-900 truncate">{w.name || 'Postulante'}</p>
+              {kycStatus === 'approved' && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full">
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                  Verificado
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5 flex-wrap">
+              <span className="font-bold text-red-600">Nivel {w.level || 1}</span>
+              <span>·</span>
+              <span>{(w.rating?.avg || 0).toFixed(1)}★ ({w.rating?.count || 0})</span>
+              <span>·</span>
+              <span>{w.stats?.shiftsCompleted || 0} turnos</span>
+              {w.university && <><span>·</span><span className="truncate">{w.university}</span></>}
+            </div>
+            {/* Bio preview */}
+            {w.bio && (
+              <p className="text-[12px] text-slate-700 mt-1.5 line-clamp-2 leading-snug">{w.bio}</p>
+            )}
           </div>
-        </div>
-        <span className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold border rounded-full tabular-nums ${matchTone}`}>
-          {app.matchScore}% afinidad
-        </span>
-      </div>
 
-      {w.skills?.length > 0 && (
-        <div className="flex flex-wrap gap-1 mb-3">
-          {w.skills.slice(0, 5).map((s) => (
-            <span key={s.key} className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 rounded-full">
-              {s.key} · {s.level}
+          <span className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold border rounded-full tabular-nums ${matchTone}`}>
+            {app.matchScore}%
+          </span>
+        </div>
+
+        {/* Resumen rápido del CV */}
+        <div className="flex items-center gap-3 text-[11px] text-slate-600 mb-2 flex-wrap">
+          {expCount > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              {expCount} {expCount === 1 ? 'experiencia' : 'experiencias'}
             </span>
-          ))}
+          )}
+          {eduCount > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
+              {eduCount} {eduCount === 1 ? 'estudio' : 'estudios'}
+            </span>
+          )}
+          {(w.references || []).length > 0 && (
+            <span className="inline-flex items-center gap-1">
+              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              {w.references.length} {w.references.length === 1 ? 'referencia' : 'referencias'}
+            </span>
+          )}
         </div>
-      )}
 
-      {app.status === 'pending' ? (
-        <div className="flex gap-2">
-          <button
-            onClick={onReject}
-            className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[12px] font-bold transition"
-          >Rechazar</button>
-          <button
-            onClick={onAccept}
-            className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[12px] font-extrabold transition shadow-sm"
-          >Aceptar postulante</button>
-        </div>
-      ) : (
-        <p className={`text-[11px] font-bold text-center py-2 rounded-lg border ${
-          app.status === 'accepted'
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-            : 'bg-slate-50 text-slate-500 border-slate-200'
-        }`}>
-          {app.status === 'accepted' ? 'Aceptado' : app.status === 'rejected' ? 'Rechazado' : app.status}
-        </p>
-      )}
+        {w.skills?.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {w.skills.slice(0, 5).map((s) => (
+              <span key={s.key} className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 rounded-full">
+                {s.key} · {s.level}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <p className="text-[10px] font-bold text-red-600 mt-2 text-right hover:underline">Ver perfil completo →</p>
+      </button>
+
+      {/* Acciones */}
+      <div className="px-4 pb-3 pt-3 border-t border-slate-100">
+        {app.status === 'pending' ? (
+          <div className="flex gap-2">
+            <button
+              onClick={onReject}
+              className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[12px] font-bold transition"
+            >Rechazar</button>
+            <button
+              onClick={onAccept}
+              className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[12px] font-extrabold transition shadow-sm"
+            >Aceptar</button>
+          </div>
+        ) : (
+          <p className={`text-[11px] font-bold text-center py-2 rounded-lg border ${
+            app.status === 'accepted'
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-slate-50 text-slate-500 border-slate-200'
+          }`}>
+            {app.status === 'accepted' ? 'Aceptado' : app.status === 'rejected' ? 'Rechazado' : app.status}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -782,6 +782,47 @@ router.get('/businesses/shifts', tenantAuth, async (req, res) => {
   }
 });
 
+// GET /crew/businesses/workers/:workerId — perfil completo del worker
+// Solo accesible si este worker tiene application o booking con este business.
+router.get('/businesses/workers/:workerId', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+    const { workerId } = req.params;
+    if (!mongoose.isValidObjectId(workerId)) return res.status(400).json({ message: 'workerId inválido' });
+
+    // Verifica que haya relación previa (application o booking)
+    const hasApp = await ShiftApplication.exists({ workerId, businessId });
+    const hasBooking = await ShiftBooking.exists({ workerId, businessId });
+    if (!hasApp && !hasBooking) {
+      return res.status(403).json({ message: 'No hay relación con este trabajador' });
+    }
+
+    const worker = await Worker.findById(workerId)
+      .select('-password -refreshToken -payoutMethod -cedula -kyc.cedulaFrontUrl -kyc.cedulaBackUrl -kyc.selfieUrl -wallet')
+      .lean();
+    if (!worker) return res.status(404).json({ message: 'Trabajador no encontrado' });
+
+    // Sanitizar: las referencias no exponen teléfono/email completos al business
+    if (worker.references) {
+      worker.references = worker.references.map(r => ({
+        name: r.name, relation: r.relation,
+        hasContact: !!(r.phone || r.email),
+      }));
+    }
+
+    // Historial de turnos completados con este negocio
+    const pastBookings = await ShiftBooking.find({
+      workerId, businessId, status: 'completed',
+    }).select('agreedTotal completedAt reviewByBusiness').sort({ completedAt: -1 }).limit(5).lean();
+
+    res.json({ success: true, worker, pastBookings });
+  } catch (e) {
+    logger.error('crew worker profile error', e);
+    res.status(500).json({ message: e.message || 'Error al cargar perfil' });
+  }
+});
+
 // GET /crew/businesses/shifts/:id/applicants
 router.get('/businesses/shifts/:id/applicants', tenantAuth, async (req, res) => {
   try {
@@ -797,7 +838,7 @@ router.get('/businesses/shifts/:id/applicants', tenantAuth, async (req, res) => 
 
     const applications = await ShiftApplication.find({ shiftId: shift._id })
       .sort({ matchScore: -1, appliedAt: 1 })
-      .populate('workerId', 'name photo level xp rating stats badgesEarned skills university bio')
+      .populate('workerId', 'name photo level xp rating stats badgesEarned skills languages university bio experiences education references kyc.status acceptsSOS streakDays hourlyRate location')
       .lean();
     res.json({ success: true, applications });
   } catch (e) {
