@@ -10,6 +10,7 @@ import TiltCard from './components/TiltCard';
 import StreakFlame from './components/StreakFlame';
 import AnimatedCounter from './components/AnimatedCounter';
 import DailyQuests from './components/DailyQuests';
+import CrewShiftDetail from './CrewShiftDetail';
 
 function formatCOP(n) {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -33,6 +34,7 @@ export default function CrewFeed() {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(null);
+  const [openShift, setOpenShift] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +68,20 @@ export default function CrewFeed() {
   const curr = xpForLevel(worker?.level || 1);
   const next = xpForLevel((worker?.level || 1) + 1);
   const pct = Math.min(100, (((worker?.xp || 0) - curr) / (next - curr)) * 100);
+
+  // Si hay un shift abierto, mostrar el detalle full screen
+  if (openShift) {
+    return (
+      <CrewShiftDetail
+        shiftId={openShift}
+        onBack={() => setOpenShift(null)}
+        onApplied={() => {
+          setShifts((prev) => prev.filter((s) => s._id !== openShift));
+          setOpenShift(null);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-geist pb-24">
@@ -157,6 +173,7 @@ export default function CrewFeed() {
                   index={i}
                   onApply={() => apply(s._id)}
                   applying={applying === s._id}
+                  onOpen={() => setOpenShift(s._id)}
                 />
               ))}
             </AnimatePresence>
@@ -169,8 +186,11 @@ export default function CrewFeed() {
   );
 }
 
-function ShiftCard({ shift, index, onApply, applying }) {
+function ShiftCard({ shift, index, onApply, applying, onOpen }) {
   const biz = shift.businessId || {};
+  const cover = biz.coverImage;
+  const logo = biz.logo;
+
   return (
     <TiltCard
       maxTilt={3}
@@ -179,68 +199,101 @@ function ShiftCard({ shift, index, onApply, applying }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 200 }}
       transition={{ delay: index * 0.04, duration: 0.25 }}
-      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all"
+      className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg hover:border-slate-300 transition-all overflow-hidden"
     >
-      {/* Header */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-[12px] font-extrabold text-slate-700 shrink-0">
-          {(biz.businessName || 'M').slice(0, 1).toUpperCase()}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-[14px] font-extrabold text-slate-900 leading-tight">{shift.title}</h3>
-          <p className="text-[12px] text-slate-500 truncate mt-0.5">{biz.businessName || 'Negocio MenuBy'}</p>
-        </div>
+      {/* Cover image como fondo del header */}
+      <button onClick={onOpen} className="relative w-full h-32 block overflow-hidden bg-gradient-to-br from-slate-300 to-slate-500">
+        {cover ? (
+          <img src={cover} alt={biz.businessName} className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent" />
+
+        {/* SOS pill */}
         {shift.isSOS && (
-          <span className="shrink-0 px-2 py-0.5 text-[10px] font-extrabold bg-red-100 text-red-700 border border-red-300 rounded-full">
+          <span className="absolute top-2.5 right-2.5 px-2 py-0.5 text-[10px] font-extrabold bg-red-500 text-white rounded-full shadow-lg animate-pulse">
             Urgente
           </span>
         )}
-      </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <Stat label="Fecha" value={formatDate(shift.date)} />
-        <Stat label="Duración" value={`${shift.hoursTotal} horas`} />
-        <Stat label="Pago total" value={formatCOP(shift.totalPay)} accent />
-      </div>
-
-      {/* Role + Perks */}
-      <div className="flex flex-wrap items-center gap-1.5 mb-3">
-        <span className="px-2 py-0.5 text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 rounded-full">
-          {ROLE_LABEL[shift.role] || shift.role}
-        </span>
-        {(shift.perks || []).slice(0, 2).map((p) => (
-          <span key={p} className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
-            {p.replace(/_/g, ' ')}
-          </span>
-        ))}
-        {(shift.perks || []).length > 2 && (
-          <span className="text-[10px] font-bold text-slate-400">+{(shift.perks || []).length - 2}</span>
-        )}
-      </div>
-
-      {/* Match score */}
-      {shift.matchScore != null && (
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full ${shift.matchScore >= 70 ? 'bg-emerald-500' : shift.matchScore >= 50 ? 'bg-amber-500' : 'bg-slate-400'}`}
-              style={{ width: `${shift.matchScore}%` }}
-            />
+        {/* Business name floating at bottom */}
+        <div className="absolute bottom-2.5 left-3 right-3 flex items-end gap-2.5">
+          <div className="w-11 h-11 rounded-xl bg-white border-2 border-white shadow-lg overflow-hidden shrink-0">
+            {logo ? (
+              <img src={logo} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center text-[13px] font-extrabold text-white">
+                {(biz.businessName || 'M').slice(0, 1).toUpperCase()}
+              </div>
+            )}
           </div>
-          <span className={`text-[10px] font-bold tabular-nums ${shift.matchScore >= 70 ? 'text-emerald-600' : 'text-slate-500'}`}>
-            {shift.matchScore}% afinidad
-          </span>
+          <div className="flex-1 min-w-0 pb-0.5">
+            <p className="text-[13px] font-extrabold text-white truncate drop-shadow-lg">{biz.businessName || 'Negocio'}</p>
+            <p className="text-[10px] text-white/80 font-semibold uppercase tracking-wider">{biz.businessType || 'Restaurante'}</p>
+          </div>
         </div>
-      )}
+      </button>
 
-      <MagneticButton
-        onClick={onApply}
-        disabled={applying}
-        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-[13px] shadow-md shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 transition-all disabled:opacity-50"
-      >
-        {applying ? 'Enviando…' : 'Postularme'}
-      </MagneticButton>
+      {/* Body */}
+      <div className="p-4">
+        <h3 className="text-[14px] font-extrabold text-slate-900 leading-tight">{shift.title}</h3>
+        <p className="text-[11px] text-slate-500 mt-0.5">{ROLE_LABEL[shift.role] || shift.role}</p>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          <Stat label="Fecha" value={formatDate(shift.date)} />
+          <Stat label="Duración" value={`${shift.hoursTotal} horas`} />
+          <Stat label="Pago total" value={formatCOP(shift.totalPay)} accent />
+        </div>
+
+        {/* Perks */}
+        {(shift.perks || []).length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+            {(shift.perks || []).slice(0, 3).map((p) => (
+              <span key={p} className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full capitalize">
+                {p.replace(/_/g, ' ')}
+              </span>
+            ))}
+            {(shift.perks || []).length > 3 && (
+              <span className="text-[10px] font-bold text-slate-400">+{(shift.perks || []).length - 3}</span>
+            )}
+          </div>
+        )}
+
+        {/* Match score */}
+        {shift.matchScore != null && (
+          <div className="flex items-center gap-2 mt-3">
+            <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${shift.matchScore >= 70 ? 'bg-emerald-500' : shift.matchScore >= 50 ? 'bg-amber-500' : 'bg-slate-400'}`}
+                style={{ width: `${shift.matchScore}%` }}
+              />
+            </div>
+            <span className={`text-[10px] font-bold tabular-nums ${shift.matchScore >= 70 ? 'text-emerald-600' : 'text-slate-500'}`}>
+              {shift.matchScore}% afinidad
+            </span>
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2 mt-4">
+          <button
+            onClick={onOpen}
+            className="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[12px] transition flex items-center gap-1.5"
+          >
+            Ver detalle
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </button>
+          <MagneticButton
+            onClick={onApply}
+            disabled={applying}
+            className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-[13px] shadow-md shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 transition-all disabled:opacity-50"
+          >
+            {applying ? 'Enviando…' : 'Postularme'}
+          </MagneticButton>
+        </div>
+      </div>
     </TiltCard>
   );
 }

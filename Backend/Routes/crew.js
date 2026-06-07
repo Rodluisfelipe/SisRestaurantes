@@ -26,6 +26,8 @@ const ShiftPost = require('../Models/ShiftPost');
 const ShiftApplication = require('../Models/ShiftApplication');
 const ShiftBooking = require('../Models/ShiftBooking');
 const BusinessConfig = require('../Models/BusinessConfig');
+const Product = require('../Models/Product');
+const Category = require('../Models/Category');
 const Conversation = require('../Models/Conversation');
 const Message = require('../Models/Message');
 const { tenantAuth } = require('../middleware/tenantAuth');
@@ -542,6 +544,30 @@ router.get('/shifts/:id', requireWorker, async (req, res) => {
         : null,
     };
 
+    // Menú del negocio para que el worker se haga una idea del lugar (solo lectura)
+    const [categories, products] = await Promise.all([
+      Category.find({ businessId: shift.businessId._id }).sort({ displayOrder: 1, name: 1 }).lean(),
+      Product.find({ businessId: shift.businessId._id, active: true })
+        .sort({ displayOrder: 1, name: 1 })
+        .select('name description price image category displayOrder')
+        .lean(),
+    ]);
+
+    // Agrupar productos por categoría para render directo
+    const byCategory = {};
+    for (const p of products) {
+      const k = String(p.category || 'sin_categoria');
+      if (!byCategory[k]) byCategory[k] = [];
+      byCategory[k].push(p);
+    }
+    const menu = categories.map((c) => ({
+      _id: c._id, name: c.name, displayOrder: c.displayOrder || 0,
+      products: byCategory[String(c._id)] || [],
+    })).filter((c) => c.products.length > 0);
+    if (byCategory.sin_categoria?.length) {
+      menu.push({ _id: 'sin_categoria', name: 'Otros', displayOrder: 999, products: byCategory.sin_categoria });
+    }
+
     res.json({
       success: true,
       shift,
@@ -549,6 +575,7 @@ router.get('/shifts/:id', requireWorker, async (req, res) => {
         scores,
         recentReviews: recentReviews.map(r => r.reviewByWorker),
       },
+      menu,
       matchScore: calcMatchScore(shift, req.worker),
     });
   } catch (e) {
