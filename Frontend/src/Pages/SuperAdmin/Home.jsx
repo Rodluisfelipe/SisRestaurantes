@@ -167,7 +167,7 @@ export default function Home({ onNavigate, userName }) {
     );
   }
 
-  const hasAlerts = (pending?.banners > 0 || pending?.paymentRequests > 0 || kpis?.subscriptions.expiringSoon > 0);
+  const hasAlerts = (pending?.banners > 0 || pending?.paymentRequests > 0 || kpis?.subscriptions?.expiringSoon > 0);
 
   return (
     <div className="space-y-6">
@@ -200,7 +200,7 @@ export default function Home({ onNavigate, userName }) {
         <div className="flex flex-wrap gap-2">
           <AlertPill tone="amber" label="banners por aprobar" count={pending?.banners} onClick={() => onNavigate?.('banners')} />
           <AlertPill tone="red" label="solicitudes de pago" count={pending?.paymentRequests} onClick={() => onNavigate?.('subscriptions')} />
-          <AlertPill tone="blue" label="suscripciones vencen en 7d" count={kpis?.subscriptions.expiringSoon} onClick={() => onNavigate?.('subscriptions')} />
+          <AlertPill tone="blue" label="suscripciones vencen en 7d" count={kpis?.subscriptions?.expiringSoon} onClick={() => onNavigate?.('subscriptions')} />
         </div>
       )}
 
@@ -209,32 +209,32 @@ export default function Home({ onNavigate, userName }) {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <KPICard
             label="Negocios"
-            value={formatNumber(kpis?.businesses.total)}
-            sub={`${formatNumber(kpis?.businesses.active)} activos · ${formatNumber(kpis?.businesses.inactive)} inactivos`}
+            value={formatNumber(kpis?.businesses?.total)}
+            sub={`${formatNumber(kpis?.businesses?.active)} activos · ${formatNumber(kpis?.businesses?.inactive)} inactivos`}
             accent="blue"
             delay={0}
             icon={ICONS.business}
           />
           <KPICard
             label="Pedidos histórico"
-            value={formatNumber(kpis?.orders.totalAllTime)}
-            sub={`${formatNumber(kpis?.orders.thisMonth)} este mes · ${formatNumber(kpis?.orders.activeNow)} en curso`}
+            value={formatNumber(kpis?.orders?.totalAllTime)}
+            sub={`${formatNumber(kpis?.orders?.thisMonth)} este mes · ${formatNumber(kpis?.orders?.activeNow)} en curso`}
             accent="cyan"
             delay={0.06}
             icon={ICONS.orders}
           />
           <KPICard
             label="GMV histórico"
-            value={formatShortCOP(kpis?.gmv.allTime)}
-            sub={`${formatShortCOP(kpis?.gmv.thisMonth)} este mes`}
+            value={formatShortCOP(kpis?.gmv?.allTime)}
+            sub={`${formatShortCOP(kpis?.gmv?.thisMonth)} este mes`}
             accent="emerald"
             delay={0.12}
             icon={ICONS.gmv}
           />
           <KPICard
             label="Suscripciones"
-            value={formatNumber(kpis?.subscriptions.active)}
-            sub={`${formatNumber(kpis?.subscriptions.expiringSoon)} vencen en 7 días`}
+            value={formatNumber(kpis?.subscriptions?.active)}
+            sub={`${formatNumber(kpis?.subscriptions?.expiringSoon)} vencen en 7 días`}
             accent="violet"
             delay={0.18}
             icon={ICONS.subs}

@@ -272,16 +272,16 @@ function SuperAdminDashboard() {
                 roleInfo?.color === 'cyan' ? 'from-cyan-400 to-blue-500' :
                 'from-slate-400 to-slate-500'
               } flex items-center justify-center text-[10px] font-bold text-white shrink-0`}>
-                {(perms.me.name || perms.me.email || '?').slice(0, 2).toUpperCase()}
+                {String(perms.me.name || perms.me.email || '?').slice(0, 2).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-semibold text-slate-900 dark:text-white truncate">{perms.me.name || perms.me.email.split('@')[0]}</p>
+                <p className="text-[12px] font-semibold text-slate-900 dark:text-white truncate">{perms.me.name || (perms.me.email || '').split('@')[0] || 'SuperAdmin'}</p>
                 <p className={`text-[10px] font-bold uppercase tracking-wider ${
                   roleInfo?.color === 'amber' ? 'text-amber-700 dark:text-amber-400' :
                   roleInfo?.color === 'violet' ? 'text-violet-700 dark:text-violet-400' :
                   roleInfo?.color === 'cyan' ? 'text-cyan-700 dark:text-cyan-400' :
                   'text-slate-600 dark:text-slate-400'
-                }`}>{roleInfo?.label || perms.role}</p>
+                }`}>{roleInfo?.label || perms.role || '—'}</p>
               </div>
             </div>
           )}
