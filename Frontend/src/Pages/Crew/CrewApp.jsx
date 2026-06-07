@@ -6,6 +6,8 @@ import CrewOnboarding from './CrewOnboarding';
 import CrewFeed from './CrewFeed';
 import CrewMyShifts from './CrewMyShifts';
 import CrewProfile from './CrewProfile';
+import CrewChat from './CrewChat';
+import CrewProfileEditor from './CrewProfileEditor';
 import LevelUpCelebration from './components/LevelUpCelebration';
 
 const TABS = [
@@ -28,6 +30,15 @@ const TABS = [
     ),
   },
   {
+    id: 'chat',
+    label: 'Mensajes',
+    icon: (active) => (
+      <svg className="w-5 h-5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+      </svg>
+    ),
+  },
+  {
     id: 'profile',
     label: 'Perfil',
     icon: (active) => (
@@ -41,6 +52,7 @@ const TABS = [
 export default function CrewApp() {
   const { isAuthed, worker, refreshMe } = useCrew();
   const [tab, setTab] = useState('feed');
+  const [editingProfile, setEditingProfile] = useState(false);
   const [levelUp, setLevelUp] = useState(null);
   const prevLevelRef = useRef(null);
 
@@ -78,7 +90,10 @@ export default function CrewApp() {
         >
           {tab === 'feed' && <CrewFeed />}
           {tab === 'shifts' && <CrewMyShifts />}
-          {tab === 'profile' && <CrewProfile />}
+          {tab === 'chat' && <CrewChat />}
+          {tab === 'profile' && (editingProfile
+            ? <CrewProfileEditor onBack={() => setEditingProfile(false)} />
+            : <CrewProfile onEdit={() => setEditingProfile(true)} />)}
         </motion.div>
       </AnimatePresence>
 

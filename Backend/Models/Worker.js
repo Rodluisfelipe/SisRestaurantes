@@ -26,6 +26,31 @@ const availabilitySlotSchema = new mongoose.Schema({
   to: { type: String, required: true },
 }, { _id: false });
 
+const experienceSchema = new mongoose.Schema({
+  company: { type: String, required: true, trim: true, maxlength: 80 },
+  role: { type: String, required: true, trim: true, maxlength: 60 },
+  startDate: { type: Date, required: true },
+  endDate: { type: Date, default: null }, // null = actual
+  description: { type: String, maxlength: 400, default: '' },
+  city: { type: String, default: '', maxlength: 40 },
+}, { timestamps: true });
+
+const educationSchema = new mongoose.Schema({
+  institution: { type: String, required: true, trim: true, maxlength: 80 },
+  degree: { type: String, trim: true, maxlength: 80, default: '' },
+  fieldOfStudy: { type: String, trim: true, maxlength: 80, default: '' },
+  startYear: { type: Number, min: 1950, max: 2100 },
+  endYear: { type: Number, min: 1950, max: 2100, default: null }, // null = en curso
+  isCurrent: { type: Boolean, default: false },
+}, { timestamps: true });
+
+const referenceSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true, maxlength: 80 },
+  relation: { type: String, required: true, maxlength: 60 }, // "Ex jefe", "Profesor", etc
+  phone: { type: String, trim: true, default: '' },
+  email: { type: String, trim: true, lowercase: true, default: '' },
+}, { _id: true });
+
 const workerSchema = new mongoose.Schema({
   // Identidad
   phone: { type: String, required: true, unique: true, trim: true, index: true },
@@ -41,8 +66,9 @@ const workerSchema = new mongoose.Schema({
 
   // Perfil
   birthDate: { type: Date, default: null },
-  bio: { type: String, maxlength: 200, default: '' },
+  bio: { type: String, maxlength: 400, default: '' },
   university: { type: String, trim: true, default: null },
+  cedula: { type: String, trim: true, default: null }, // # cédula (sin imágenes aquí)
   skills: [skillSchema],
   certifications: [{
     key: { type: String },
@@ -50,6 +76,27 @@ const workerSchema = new mongoose.Schema({
     expiresAt: { type: Date, default: null },
   }],
   languages: [{ type: String }], // ['es', 'en', 'pt']
+
+  // CV expandido
+  experiences: [experienceSchema],
+  education: [educationSchema],
+  references: [referenceSchema],
+
+  // KYC en casa — verificación documental
+  kyc: {
+    status: {
+      type: String,
+      enum: ['none', 'pending', 'approved', 'rejected', 'expired'],
+      default: 'none',
+    },
+    cedulaFrontUrl: { type: String, default: null }, // path en Spaces
+    cedulaBackUrl: { type: String, default: null },
+    selfieUrl: { type: String, default: null }, // selfie sosteniendo la cédula
+    submittedAt: { type: Date, default: null },
+    reviewedAt: { type: Date, default: null },
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'SuperAdmin', default: null },
+    rejectionReason: { type: String, default: null },
+  },
 
   // Disponibilidad
   availability: [availabilitySlotSchema],

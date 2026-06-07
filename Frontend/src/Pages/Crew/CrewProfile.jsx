@@ -30,7 +30,7 @@ function levelTier(level) {
   return 'Nuevo';
 }
 
-export default function CrewProfile() {
+export default function CrewProfile({ onEdit }) {
   const { worker, logout } = useCrew();
   const [revealBadge, setRevealBadge] = useState(null);
   if (!worker) return null;
@@ -44,7 +44,18 @@ export default function CrewProfile() {
     <div className="min-h-screen bg-slate-50 text-slate-900 font-geist pb-24">
       {/* Hero */}
       <div className="bg-white border-b border-slate-200">
-        <div className="max-w-md mx-auto px-5 pt-6 pb-5">
+        <div className="relative max-w-md mx-auto px-5 pt-6 pb-5">
+          {/* Edit button */}
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 z-10 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition flex items-center gap-1"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              Editar
+            </button>
+          )}
+
           <div className="flex items-start gap-4 mb-5">
             <div className="relative shrink-0">
               <svg className="w-20 h-20 -rotate-90 absolute inset-0" viewBox="0 0 80 80">
@@ -63,9 +74,13 @@ export default function CrewProfile() {
                   </linearGradient>
                 </defs>
               </svg>
-              <div className="w-20 h-20 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[24px] font-extrabold text-slate-700">
-                {(worker.name || '?').slice(0, 1).toUpperCase()}
-              </div>
+              {worker.photo ? (
+                <img src={worker.photo} alt="" className="w-20 h-20 rounded-full object-cover border border-slate-200" />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[24px] font-extrabold text-slate-700">
+                  {(worker.name || '?').slice(0, 1).toUpperCase()}
+                </div>
+              )}
             </div>
 
             <div className="flex-1 min-w-0">
