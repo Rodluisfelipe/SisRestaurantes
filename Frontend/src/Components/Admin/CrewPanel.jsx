@@ -9,11 +9,15 @@ import { API_URL } from '../../config';
 function makeApi(businessId) {
   return {
     base: `${API_URL}/crew`,
+    bizId: businessId,
     headers: () => ({
       'Content-Type': 'application/json',
       Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
     }),
+    // Para GET: añade ?businessId= a la URL
     withBiz: (path) => `${path}${path.includes('?') ? '&' : '?'}businessId=${businessId}`,
+    // Para POST/PATCH/DELETE: mezcla businessId en el body
+    body: (obj = {}) => JSON.stringify({ ...obj, businessId }),
   };
 }
 
@@ -152,7 +156,6 @@ export default function CrewPanel({ businessId }) {
           <motion.div key="new" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <NewShiftForm
               api={api}
-              businessId={businessId}
               onCreated={() => { setView('mine'); loadShifts(); }}
               onCancel={() => setView('mine')}
             />
@@ -212,7 +215,7 @@ function ApplicantsView({ api, shift, onBack }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${api.base}/businesses/shifts/${shift._id}/applicants`, { headers: api.headers() });
+      const r = await fetch(api.withBiz(`${api.base}/businesses/shifts/${shift._id}/applicants`), { headers: api.headers() });
       const data = await r.json();
       setApps(data.applications || []);
     } catch (e) { console.error(e); }
@@ -223,9 +226,14 @@ function ApplicantsView({ api, shift, onBack }) {
 
   const respond = async (appId, action) => {
     try {
-      await fetch(`${api.base}/businesses/applications/${appId}/${action}`, {
-        method: 'POST', headers: api.headers(),
+      const r = await fetch(`${api.base}/businesses/applications/${appId}/${action}`, {
+        method: 'POST', headers: api.headers(), body: api.body({}),
       });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        alert(e.message || 'No se pudo procesar la respuesta');
+        return;
+      }
       load();
     } catch { alert('No se pudo procesar la respuesta'); }
   };
@@ -319,7 +327,7 @@ function ApplicantCard({ app, onAccept, onReject }) {
   );
 }
 
-function NewShiftForm({ api, businessId, onCreated, onCancel }) {
+function NewShiftForm({ api, onCreated, onCancel }) {
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -344,7 +352,7 @@ function NewShiftForm({ api, businessId, onCreated, onCancel }) {
     try {
       const r = await fetch(`${api.base}/businesses/shifts`, {
         method: 'POST', headers: api.headers(),
-        body: JSON.stringify({ ...form, businessId }),
+        body: api.body(form),
       });
       if (!r.ok) {
         const e = await r.json().catch(() => ({}));

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCrew } from './useCrew';
 import CrewLogin from './CrewLogin';
@@ -6,6 +6,7 @@ import CrewOnboarding from './CrewOnboarding';
 import CrewFeed from './CrewFeed';
 import CrewMyShifts from './CrewMyShifts';
 import CrewProfile from './CrewProfile';
+import LevelUpCelebration from './components/LevelUpCelebration';
 
 const TABS = [
   {
@@ -40,12 +41,27 @@ const TABS = [
 export default function CrewApp() {
   const { isAuthed, worker, refreshMe } = useCrew();
   const [tab, setTab] = useState('feed');
+  const [levelUp, setLevelUp] = useState(null);
+  const prevLevelRef = useRef(null);
 
   // Onboarding incompleto = sin skills configurados
   const needsOnboarding = useMemo(() => {
     if (!worker) return false;
     return !worker.skills || worker.skills.length === 0;
   }, [worker]);
+
+  // Detectar level up automático
+  useEffect(() => {
+    if (!worker?.level) return;
+    if (prevLevelRef.current == null) {
+      prevLevelRef.current = worker.level;
+      return;
+    }
+    if (worker.level > prevLevelRef.current) {
+      setLevelUp({ from: prevLevelRef.current, to: worker.level });
+    }
+    prevLevelRef.current = worker.level;
+  }, [worker?.level]);
 
   if (!isAuthed) return <CrewLogin onAuthed={refreshMe} />;
   if (needsOnboarding) return <CrewOnboarding onDone={refreshMe} />;
@@ -65,6 +81,14 @@ export default function CrewApp() {
           {tab === 'profile' && <CrewProfile />}
         </motion.div>
       </AnimatePresence>
+
+      {/* Level Up Celebration */}
+      <LevelUpCelebration
+        open={!!levelUp}
+        fromLevel={levelUp?.from || 1}
+        toLevel={levelUp?.to || 1}
+        onClose={() => setLevelUp(null)}
+      />
 
       {/* Bottom nav — MenuBy style */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200 safe-area-bottom">

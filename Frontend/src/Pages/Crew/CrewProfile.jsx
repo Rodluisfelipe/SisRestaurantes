@@ -1,5 +1,9 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useCrew } from './useCrew';
+import AnimatedCounter from './components/AnimatedCounter';
+import StreakFlame from './components/StreakFlame';
+import BadgeReveal from './components/BadgeReveal';
 
 const BADGE_LABEL = {
   first_shift: 'Primer turno',
@@ -28,6 +32,7 @@ function levelTier(level) {
 
 export default function CrewProfile() {
   const { worker, logout } = useCrew();
+  const [revealBadge, setRevealBadge] = useState(null);
   if (!worker) return null;
 
   const xpForLevel = (n) => Math.pow(n - 1, 2) * 50;
@@ -66,8 +71,11 @@ export default function CrewProfile() {
             <div className="flex-1 min-w-0">
               <h1 className="text-[18px] font-extrabold leading-tight truncate">{worker.name}</h1>
               <p className="text-[12px] text-slate-500 mt-0.5">{worker.phone}</p>
-              <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-50 border border-red-200">
-                <span className="text-[10px] font-bold text-red-700 uppercase tracking-wider">Nivel {worker.level} · {levelTier(worker.level)}</span>
+              <div className="mt-2 inline-flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-md shadow-red-500/30">
+                  Nivel {worker.level} · {levelTier(worker.level)}
+                </span>
+                {worker.streakDays > 0 && <StreakFlame days={worker.streakDays} size="sm" />}
               </div>
             </div>
           </div>
@@ -75,14 +83,21 @@ export default function CrewProfile() {
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
             <div className="flex items-center justify-between mb-2">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Próximo nivel</p>
-              <p className="text-[11px] font-extrabold text-slate-800 tabular-nums">{worker.xp} / {next} XP</p>
+              <p className="text-[11px] font-extrabold text-slate-800 tabular-nums">
+                <AnimatedCounter value={worker.xp} /> / {next} XP
+              </p>
             </div>
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${pct}%` }}
-                transition={{ duration: 0.8, ease: 'easeOut' }}
-                className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full"
+                transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 via-red-500 to-red-600 rounded-full"
+              />
+              <motion.div
+                animate={{ x: ['-100%', '300%'] }}
+                transition={{ duration: 2.8, repeat: Infinity, ease: 'linear' }}
+                className="absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-white/70 to-transparent"
               />
             </div>
           </div>
@@ -94,9 +109,20 @@ export default function CrewProfile() {
         <section>
           <h2 className="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">Estadísticas</h2>
           <div className="grid grid-cols-3 gap-2">
-            <StatBox label="Turnos" value={worker.stats?.shiftsCompleted || 0} />
-            <StatBox label="Horas" value={`${worker.stats?.hoursWorked || 0}`} suffix="h" />
-            <StatBox label="Ingresos" value={formatCOP(worker.stats?.totalEarned || 0)} small />
+            <StatBox
+              label="Turnos"
+              value={<AnimatedCounter value={worker.stats?.shiftsCompleted || 0} duration={1.4} />}
+            />
+            <StatBox
+              label="Horas"
+              value={<><AnimatedCounter value={worker.stats?.hoursWorked || 0} duration={1.4} /></>}
+              suffix="h"
+            />
+            <StatBox
+              label="Ingresos"
+              value={formatCOP(worker.stats?.totalEarned || 0)}
+              small
+            />
           </div>
         </section>
 
@@ -112,19 +138,32 @@ export default function CrewProfile() {
               <p className="text-[11px] text-slate-400 mt-1">Completa tu primer turno para empezar a obtenerlos</p>
             </div>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
-              {(worker.badgesEarned || []).map((b) => (
-                <div key={b.key} className="px-4 py-3 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-red-50 border border-red-200 flex items-center justify-center shrink-0">
-                    <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>
-                  </div>
+            <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100 overflow-hidden">
+              {(worker.badgesEarned || []).map((b, i) => (
+                <motion.button
+                  key={b.key}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setRevealBadge(b.key)}
+                  className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50 transition"
+                >
+                  <motion.div
+                    whileHover={{ rotate: [0, -5, 5, 0] }}
+                    transition={{ duration: 0.4 }}
+                    className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/25"
+                  >
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>
+                  </motion.div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[13px] font-bold text-slate-800">{BADGE_LABEL[b.key] || b.key}</p>
                     <p className="text-[10px] text-slate-400">
                       Obtenido el {new Date(b.earnedAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}
                     </p>
                   </div>
-                </div>
+                  <svg className="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </motion.button>
               ))}
             </div>
           )}
@@ -170,6 +209,8 @@ export default function CrewProfile() {
           Cerrar sesión
         </button>
       </div>
+
+      {revealBadge && <BadgeReveal badgeKey={revealBadge} onClose={() => setRevealBadge(null)} />}
     </div>
   );
 }

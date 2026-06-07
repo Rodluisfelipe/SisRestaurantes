@@ -2,6 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import crewApi from '../../services/crewApi';
 import { useCrew } from './useCrew';
+import { Toaster } from 'sonner';
+import { crewToast } from './components/crewToast';
+import { cannon } from './components/confettiBurst';
+import MagneticButton from './components/MagneticButton';
+import TiltCard from './components/TiltCard';
+import StreakFlame from './components/StreakFlame';
+import AnimatedCounter from './components/AnimatedCounter';
+import DailyQuests from './components/DailyQuests';
 
 function formatCOP(n) {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -25,7 +33,6 @@ export default function CrewFeed() {
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(null);
-  const [success, setSuccess] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -46,10 +53,10 @@ export default function CrewFeed() {
     try {
       await crewApi.post(`/shifts/${shiftId}/apply`);
       setShifts((prev) => prev.filter((s) => s._id !== shiftId));
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 2000);
+      cannon(); // 🎉 confetti burst
+      crewToast.success('Postulación enviada — te avisaremos si te aceptan');
     } catch (e) {
-      alert(e?.response?.data?.message || 'No se pudo enviar la postulación');
+      crewToast.error(e?.response?.data?.message || 'No se pudo enviar la postulación');
     } finally {
       setApplying(null);
     }
@@ -62,37 +69,59 @@ export default function CrewFeed() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-geist pb-24">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200">
-        <div className="max-w-md mx-auto px-5 pt-4 pb-3">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Hola</p>
-              <p className="text-[18px] font-extrabold leading-tight">{worker?.name?.split(' ')[0] || 'Crew'}</p>
+      {/* Header con gradient mesh sutil */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-xl border-b border-slate-200 overflow-hidden">
+        <div className="absolute -top-16 -right-10 w-48 h-48 bg-red-200/40 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-12 -left-10 w-40 h-40 bg-amber-200/30 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-md mx-auto px-5 pt-4 pb-3">
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <div className="flex items-center gap-2">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Hola</p>
+                <p className="text-[18px] font-extrabold leading-tight">{worker?.name?.split(' ')[0] || 'Crew'}</p>
+              </div>
+              {worker?.streakDays > 0 && <StreakFlame days={worker.streakDays} size="sm" />}
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
-              <span className="text-[11px] font-bold text-slate-500">Nivel</span>
-              <span className="text-[13px] font-extrabold text-red-600 tabular-nums">{worker?.level || 1}</span>
-            </div>
+            <motion.div
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 shadow-lg shadow-red-500/30"
+            >
+              <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>
+              <span className="text-[11px] font-bold text-white">Nivel</span>
+              <span className="text-[14px] font-extrabold text-white tabular-nums">
+                <AnimatedCounter value={worker?.level || 1} duration={0.6} />
+              </span>
+            </motion.div>
           </div>
 
           <div className="flex items-center justify-between mb-1">
             <span className="text-[10px] font-semibold text-slate-500">Progreso al siguiente nivel</span>
-            <span className="text-[10px] font-bold text-slate-700 tabular-nums">{worker?.xp || 0} / {next} XP</span>
+            <span className="text-[10px] font-bold text-slate-700 tabular-nums">
+              <AnimatedCounter value={worker?.xp || 0} /> / {next} XP
+            </span>
           </div>
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-red-500 to-red-600 rounded-full"
+              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 via-red-500 to-red-600 rounded-full"
+            />
+            {/* Shimmer overlay */}
+            <motion.div
+              animate={{ x: ['-100%', '300%'] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+              className="absolute inset-y-0 w-1/4 bg-gradient-to-r from-transparent via-white/70 to-transparent"
             />
           </div>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-5 pt-5">
-        <div className="flex items-center justify-between mb-4">
+      <main className="max-w-md mx-auto px-5 pt-5 space-y-5">
+        <DailyQuests worker={worker} />
+
+        <div className="flex items-center justify-between">
           <h2 className="text-[16px] font-extrabold text-slate-900">Turnos disponibles</h2>
           <button onClick={load} className="text-[12px] font-semibold text-red-600 hover:text-red-700 transition flex items-center gap-1">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
@@ -135,20 +164,7 @@ export default function CrewFeed() {
         )}
       </main>
 
-      <AnimatePresence>
-        {success && (
-          <motion.div
-            initial={{ opacity: 0, y: 30, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ type: 'spring', damping: 18 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-emerald-600 text-white px-5 py-3 rounded-2xl shadow-2xl shadow-emerald-500/30 flex items-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-            <p className="text-[13px] font-bold">Postulación enviada</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Toaster position="top-center" closeButton={false} />
     </div>
   );
 }
@@ -156,12 +172,14 @@ export default function CrewFeed() {
 function ShiftCard({ shift, index, onApply, applying }) {
   const biz = shift.businessId || {};
   return (
-    <motion.div
+    <TiltCard
+      maxTilt={3}
+      as={motion.div}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: 200 }}
       transition={{ delay: index * 0.04, duration: 0.25 }}
-      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow"
+      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all"
     >
       {/* Header */}
       <div className="flex items-start gap-3 mb-3">
@@ -216,14 +234,14 @@ function ShiftCard({ shift, index, onApply, applying }) {
         </div>
       )}
 
-      <button
+      <MagneticButton
         onClick={onApply}
         disabled={applying}
-        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-[13px] shadow-md shadow-red-500/20 hover:shadow-lg hover:shadow-red-500/30 active:scale-[0.98] transition-all disabled:opacity-50"
+        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-[13px] shadow-md shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/35 transition-all disabled:opacity-50"
       >
         {applying ? 'Enviando…' : 'Postularme'}
-      </button>
-    </motion.div>
+      </MagneticButton>
+    </TiltCard>
   );
 }
 

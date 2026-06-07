@@ -205,7 +205,7 @@ router.get('/shifts/feed', requireWorker, async (req, res) => {
     res.json({ success: true, shifts: enriched });
   } catch (e) {
     logger.error('crew feed error', e);
-    res.status(500).json({ message: 'Error al cargar el feed' });
+    res.status(500).json({ message: e.message || 'Error al cargar el feed', error: e.name });
   }
 });
 
@@ -251,7 +251,7 @@ router.get('/shifts/:id', requireWorker, async (req, res) => {
     });
   } catch (e) {
     logger.error('crew shift detail error', e);
-    res.status(500).json({ message: 'Error al cargar el shift' });
+    res.status(500).json({ message: e.message || 'Error al cargar el shift', error: e.name });
   }
 });
 
@@ -264,15 +264,18 @@ router.post('/shifts/:id/apply', requireWorker, async (req, res) => {
       return res.status(400).json({ message: 'Este shift ya no está disponible' });
     }
 
-    // Reglas mínimas: nivel, rating
-    if (req.worker.level < shift.requirements.minLevel) {
-      return res.status(403).json({ message: `Nivel mínimo requerido: ${shift.requirements.minLevel}` });
+    // Reglas mínimas (defensivas contra docs viejos sin requirements)
+    const reqs = shift.requirements || {};
+    const minLevel = reqs.minLevel || 1;
+    const minRating = reqs.minRating || 0;
+    if ((req.worker.level || 1) < minLevel) {
+      return res.status(403).json({ message: `Nivel mínimo requerido: ${minLevel}` });
     }
-    if (req.worker.rating.avg < shift.requirements.minRating) {
-      return res.status(403).json({ message: `Rating mínimo requerido: ${shift.requirements.minRating}` });
+    if ((req.worker.rating?.avg || 0) < minRating) {
+      return res.status(403).json({ message: `Rating mínimo requerido: ${minRating}` });
     }
-    if (req.worker.blockedByBusinessIds.some(b => String(b) === String(shift.businessId))) {
-      return res.status(403).json({ message: 'No puedes aplicar a este negocio' });
+    if ((req.worker.blockedByBusinessIds || []).some(b => String(b) === String(shift.businessId))) {
+      return res.status(403).json({ message: 'No puedes postularte a este negocio' });
     }
 
     try {
@@ -292,7 +295,7 @@ router.post('/shifts/:id/apply', requireWorker, async (req, res) => {
     }
   } catch (e) {
     logger.error('crew apply error', e);
-    res.status(500).json({ message: 'Error al aplicar' });
+    res.status(500).json({ message: e.message || 'Error al aplicar', error: e.name });
   }
 });
 
@@ -428,7 +431,7 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
     res.status(201).json({ success: true, shift });
   } catch (e) {
     logger.error('crew biz post shift error', e);
-    res.status(500).json({ message: 'Error al publicar shift' });
+    res.status(500).json({ message: e.message || 'Error al publicar shift', error: e.name });
   }
 });
 
@@ -513,7 +516,7 @@ router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) 
     res.json({ success: true, booking });
   } catch (e) {
     logger.error('crew accept app error', e);
-    res.status(500).json({ message: 'Error al aceptar' });
+    res.status(500).json({ message: e.message || 'Error al aceptar', error: e.name });
   }
 });
 
@@ -586,7 +589,7 @@ router.post('/businesses/bookings/:id/complete', tenantAuth, async (req, res) =>
     res.json({ success: true, booking, leveledUp: result.leveledUp, xpGained });
   } catch (e) {
     logger.error('crew complete booking error', e);
-    res.status(500).json({ message: 'Error al completar booking' });
+    res.status(500).json({ message: e.message || 'Error al completar booking', error: e.name });
   }
 });
 
