@@ -234,6 +234,9 @@ if (process.env.NODE_ENV !== 'production') {
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
 app.use("/api/superadmin/team", require("./Routes/superadminTeam"));
 app.use("/api/superadmin", require("./Routes/superadmin"));
+
+// Crew — marketplace de turnos
+app.use("/api/crew", require("./Routes/crew"));
 app.use("/api/audit-logs", require("./Routes/auditLogs")); // Audit trail (superadmin)
 // Importante: paymentRequests debe ir ANTES de subscriptions para que /api/subscription/me se procese correctamente
 app.use("/api", require("./Routes/paymentRequests"));
