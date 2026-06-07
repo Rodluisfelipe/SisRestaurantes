@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import DashboardMetrics from './DashboardMetrics';
 import ModoOperacion from './ModoOperacion';
+import AnnouncementInlineBar from './AnnouncementInlineBar';
 
 /**
  * AdminDashboard v4 — Ultra-professional mobile-first dashboard.
@@ -317,6 +318,9 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
         <p className="text-sm font-bold text-slate-700">{greeting}</p>
         <StatusBadge businessConfig={businessConfig} />
       </div>
+
+      {/* ═══ ANNOUNCEMENT INLINE BAR — SuperAdmin messages (ML style) ═══ */}
+      <AnnouncementInlineBar />
 
       {/* ═══ LIVE ORDERS BANNER — Prominent (mobile only) ═══ */}
       {!q && pendingOrdersCount > 0 && (

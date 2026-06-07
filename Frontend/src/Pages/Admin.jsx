@@ -279,8 +279,9 @@ function Admin() {
 
       <MultiSessionWarning />
 
-      {/* Popup de anuncios/novedades — solo para dueños, no superadmin */}
-      {!isSuperAdminMode && <AnnouncementPopup />}
+      {/* Anuncios/novedades: ahora se muestran como barra inline en el AdminDashboard
+          (Components/Admin/AnnouncementInlineBar.jsx), no como modal. */}
+      {/* {!isSuperAdminMode && <AnnouncementPopup />} */}
 
       {/* Welcome Wizard for new users */}
       {showWelcome && (
