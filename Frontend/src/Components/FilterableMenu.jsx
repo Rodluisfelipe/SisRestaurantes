@@ -4,6 +4,7 @@ import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import FeaturedProducts from './FeaturedProducts';
+import PopularProducts from './PopularProducts';
 import PendingReviewCard from './PendingReviewCard';
 import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
 
@@ -744,6 +745,17 @@ const FilterableMenu = ({
           />
         </div>
       </div>
+
+      {/* Los más pedidos (premium) */}
+      {businessId && !searchTerm && (
+        <PopularProducts
+          businessId={businessId}
+          onAddToCart={addToCart}
+          theme={businessConfig?.theme}
+          onToppingsOpen={onToppingsOpen}
+          onToppingsClose={onToppingsClose}
+        />
+      )}
 
       {/* Productos Destacados */}
       {businessId && (

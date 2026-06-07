@@ -180,6 +180,20 @@ const businessConfigSchema = new mongoose.Schema({
     orderHistoryEnabled: { type: Boolean, default: true },
     posBetaEnabled: { type: Boolean, default: false }
   },
+  // "Los más pedidos" — sección premium de recomendados en el menú
+  popularSection: {
+    enabled: { type: Boolean, default: true },
+    title: { type: String, default: 'Los más pedidos', maxlength: 40 },
+    // auto = solo ventas reales | hybrid = ventas + destacados + favoritos | manual = solo fijados
+    mode: { type: String, enum: ['auto', 'hybrid', 'manual'], default: 'hybrid' },
+    windowDays: { type: Number, default: 30, min: 1, max: 365 },
+    limit: { type: Number, default: 10, min: 3, max: 24 },
+    minOrders: { type: Number, default: 1, min: 0 },
+    showBadges: { type: Boolean, default: true },
+    showOrderCounts: { type: Boolean, default: true },
+    pinnedProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    hiddenProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
+  },
   // In-app ordering configuration
   orderingMode: {
     type: String,

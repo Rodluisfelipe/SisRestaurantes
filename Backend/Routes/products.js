@@ -10,8 +10,9 @@ const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
 const { audit } = require('../utils/auditLog');
 const BusinessConfig = require('../Models/BusinessConfig');
+const CompletedOrder = require('../Models/CompletedOrder');
 const rateLimit = require('express-rate-limit');
-const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
+const { getPlanLimitStatus, getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 const {
   validateProductsReorder,
   validateReorderFeatured,
@@ -121,6 +122,228 @@ router.get("/featured", publicProductLimiter, async (req, res) => {
   } catch (error) {
     logger.error("Error getting featured products", error, req);
     res.status(500).json(formatHttpError(req, "Error al obtener productos destacados", 500));
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// GET /products/popular — "Los más pedidos" (sección premium del menú)
+// Ranking por ventas reales + híbrido (destacados + favoritos por reseñas).
+// Gated por plan de pago (feature popularSection). DEBE ir ANTES de /:id
+// ─────────────────────────────────────────────────────────────
+
+// Caché en memoria por negocio (TTL corto) para evitar agregaciones en cada carga del menú
+const popularCache = new Map(); // businessId -> { expires, payload }
+const POPULAR_TTL_MS = 3 * 60 * 1000;
+
+function invalidatePopularCache(businessId) {
+  if (businessId) popularCache.delete(String(businessId));
+}
+// Exponer para que otras rutas (config/admin/orders) puedan invalidar
+router.invalidatePopularCache = invalidatePopularCache;
+
+async function buildPopularPayload(businessId, popCfg) {
+  const bid = new mongoose.Types.ObjectId(String(businessId));
+  const mode = popCfg.mode || 'hybrid';
+  const windowDays = Math.min(Math.max(parseInt(popCfg.windowDays, 10) || 30, 1), 365);
+  const limit = Math.min(Math.max(parseInt(popCfg.limit, 10) || 10, 3), 24);
+  const minOrders = Math.max(parseInt(popCfg.minOrders, 10) || 0, 0);
+  const pinned = (popCfg.pinnedProductIds || []).map(String);
+  const hidden = new Set((popCfg.hiddenProductIds || []).map(String));
+
+  const now = Date.now();
+  const since = new Date(now - windowDays * 86400000);
+  const weekAgo = new Date(now - 7 * 86400000);
+
+  // Agregación de ventas reales desde pedidos completados
+  let salesAgg = [];
+  if (mode !== 'manual') {
+    salesAgg = await CompletedOrder.aggregate([
+      { $match: { businessId: bid, completedAt: { $gte: since } } },
+      { $unwind: '$items' },
+      { $match: { 'items.productId': { $ne: null } } },
+      { $group: {
+        _id: '$items.productId',
+        units: { $sum: '$items.quantity' },
+        lines: { $sum: 1 },
+        weeklyLines: { $sum: { $cond: [{ $gte: ['$completedAt', weekAgo] }, 1, 0] } }
+      }},
+      { $sort: { units: -1, lines: -1 } },
+      { $limit: 60 }
+    ]);
+  }
+
+  const statsById = new Map();
+  salesAgg.forEach(s => statsById.set(String(s._id), s));
+
+  // Orden de candidatos: fijados -> ranking de ventas -> (híbrido) destacados/favoritos
+  const ordered = [];
+  const seen = new Set();
+  const pushId = (id) => {
+    const key = String(id);
+    if (!key || seen.has(key) || hidden.has(key)) return;
+    seen.add(key);
+    ordered.push(key);
+  };
+
+  pinned.forEach(pushId);
+
+  salesAgg
+    .filter(s => s.lines >= minOrders)
+    .forEach(s => pushId(s._id));
+
+  // Modo híbrido / manual: completar con destacados y favoritos por reseñas
+  let favoriteIds = [];
+  if (mode === 'hybrid' || mode === 'manual' || ordered.length < limit) {
+    try {
+      const cfg = await BusinessConfig.findById(bid).select('reviewStats.favoriteProductIds').lean();
+      favoriteIds = (cfg?.reviewStats?.favoriteProductIds || []).map(String);
+    } catch { /* noop */ }
+  }
+
+  if (mode !== 'auto') {
+    const featured = await Product.find({ businessId: bid, isFeatured: true, active: true })
+      .sort({ featuredOrder: 1, displayOrder: 1 }).select('_id').lean();
+    featured.forEach(p => pushId(p._id));
+    favoriteIds.forEach(pushId);
+  } else {
+    // En auto, solo rellenar si hay muy pocos resultados (UX): nada extra
+  }
+
+  const favoriteSet = new Set(favoriteIds);
+  const finalIds = ordered.slice(0, limit);
+  if (finalIds.length === 0) {
+    return { enabled: true, title: popCfg.title || 'Los más pedidos', showBadges: !!popCfg.showBadges, showOrderCounts: !!popCfg.showOrderCounts, windowDays, products: [] };
+  }
+
+  // Cargar productos reales (activos) preservando el orden calculado
+  const products = await Product.find({ _id: { $in: finalIds }, businessId: bid, active: true })
+    .populate({
+      path: 'toppingGroups',
+      match: { active: true },
+      select: 'name description isMultipleChoice isRequired options basePrice subGroups'
+    })
+    .lean();
+
+  const productsById = new Map(products.map(p => [String(p._id), p]));
+  const pinnedSet = new Set(pinned);
+
+  // Ranking solo entre los que tienen ventas, para badges #1/#2/#3
+  const salesRankIds = salesAgg.filter(s => s.lines >= minOrders).map(s => String(s._id));
+  const rankById = new Map();
+  salesRankIds.forEach((id, i) => rankById.set(id, i + 1));
+
+  const result = [];
+  finalIds.forEach((id) => {
+    const p = productsById.get(id);
+    if (!p) return; // producto inactivo o borrado
+    const s = statsById.get(id);
+    const rank = rankById.get(id) || null;
+    result.push({
+      ...p,
+      popular: {
+        rank,
+        units: s?.units || 0,
+        weeklyCount: s?.weeklyLines || 0,
+        isTopSeller: !!(rank && rank <= 3 && (s?.units || 0) > 0),
+        isFavorite: favoriteSet.has(id),
+        isFeatured: !!p.isFeatured,
+        isPinned: pinnedSet.has(id)
+      }
+    });
+  });
+
+  return {
+    enabled: true,
+    title: popCfg.title || 'Los más pedidos',
+    showBadges: popCfg.showBadges !== false,
+    showOrderCounts: popCfg.showOrderCounts !== false,
+    windowDays,
+    products: result
+  };
+}
+
+router.get("/popular", publicProductLimiter, async (req, res) => {
+  try {
+    let { businessId } = req.query;
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, "businessId es requerido", 400));
+    }
+    businessId = await resolveBusinessId(businessId);
+    const cacheKey = String(businessId);
+
+    // Servir desde caché si está fresco
+    const cached = popularCache.get(cacheKey);
+    if (cached && cached.expires > Date.now()) {
+      return res.json(cached.payload);
+    }
+
+    const config = await BusinessConfig.findById(businessId).select('popularSection').lean();
+    const popCfg = config?.popularSection || {};
+
+    // Apagado por el negocio
+    if (popCfg.enabled === false) {
+      const payload = { enabled: false, products: [] };
+      popularCache.set(cacheKey, { expires: Date.now() + POPULAR_TTL_MS, payload });
+      return res.json(payload);
+    }
+
+    // Gating por plan de pago
+    const { planConfig } = await getSubscriptionForBusiness(businessId);
+    if (!isFeatureEnabledForPlan(planConfig, 'popularSection')) {
+      const payload = { enabled: false, locked: true, products: [] };
+      popularCache.set(cacheKey, { expires: Date.now() + POPULAR_TTL_MS, payload });
+      return res.json(payload);
+    }
+
+    const payload = await buildPopularPayload(businessId, popCfg);
+    popularCache.set(cacheKey, { expires: Date.now() + POPULAR_TTL_MS, payload });
+    res.json(payload);
+  } catch (error) {
+    logger.error("Error getting popular products", error, req);
+    res.status(500).json(formatHttpError(req, "Error al obtener los más pedidos", 500));
+  }
+});
+
+// PUT /products/popular/config — admin: configurar la sección "Los más pedidos"
+// DEBE ir antes de cualquier PUT /:id
+router.put("/popular/config", tenantAuth, async (req, res) => {
+  try {
+    let { businessId, ...body } = req.body;
+    if (!businessId) {
+      return res.status(400).json(formatHttpError(req, "businessId es requerido", 400));
+    }
+    businessId = await resolveBusinessId(businessId);
+
+    const cfg = await BusinessConfig.findById(businessId).select('popularSection').lean();
+    const next = { ...(cfg?.popularSection || {}) };
+
+    if (body.enabled !== undefined) next.enabled = !!body.enabled;
+    if (typeof body.title === 'string') next.title = body.title.trim().slice(0, 40) || 'Los más pedidos';
+    if (['auto', 'hybrid', 'manual'].includes(body.mode)) next.mode = body.mode;
+    if (body.windowDays !== undefined) next.windowDays = Math.min(Math.max(parseInt(body.windowDays, 10) || 30, 1), 365);
+    if (body.limit !== undefined) next.limit = Math.min(Math.max(parseInt(body.limit, 10) || 10, 3), 24);
+    if (body.minOrders !== undefined) next.minOrders = Math.max(parseInt(body.minOrders, 10) || 0, 0);
+    if (body.showBadges !== undefined) next.showBadges = !!body.showBadges;
+    if (body.showOrderCounts !== undefined) next.showOrderCounts = !!body.showOrderCounts;
+
+    const toIds = (arr) => Array.isArray(arr)
+      ? arr.filter(id => mongoose.isValidObjectId(id)).map(id => new mongoose.Types.ObjectId(String(id)))
+      : undefined;
+    const pinned = toIds(body.pinnedProductIds); if (pinned) next.pinnedProductIds = pinned;
+    const hidden = toIds(body.hiddenProductIds); if (hidden) next.hiddenProductIds = hidden;
+
+    const updated = await BusinessConfig.findByIdAndUpdate(
+      businessId,
+      { $set: { popularSection: next } },
+      { new: true }
+    ).select('popularSection').lean();
+
+    invalidatePopularCache(businessId);
+    logger.info(`Updated popular section config for business ${businessId}`, null, req);
+    res.json(updated?.popularSection || next);
+  } catch (error) {
+    logger.error("Error updating popular section config", error, req);
+    res.status(500).json(formatHttpError(req, "Error al guardar la configuración de los más pedidos", 500));
   }
 });
 

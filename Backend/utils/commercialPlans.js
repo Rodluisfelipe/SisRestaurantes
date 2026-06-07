@@ -42,6 +42,7 @@ const COMMERCIAL_PLANS = {
       abandonedCarts: false,
       advancedAnalytics: false,
       aiTools: false,
+      popularSection: false,
       exclusiveEvents: false,
       premiumTutorials: false,
       earlyAccessFeatures: false
@@ -78,6 +79,7 @@ const COMMERCIAL_PLANS = {
       abandonedCarts: false,
       advancedAnalytics: false,
       aiTools: false,
+      popularSection: true,
       exclusiveEvents: false,
       premiumTutorials: false,
       earlyAccessFeatures: false
@@ -114,6 +116,7 @@ const COMMERCIAL_PLANS = {
       abandonedCarts: true,
       advancedAnalytics: true,
       aiTools: true,
+      popularSection: true,
       exclusiveEvents: false,
       premiumTutorials: false,
       earlyAccessFeatures: false
@@ -150,6 +153,7 @@ const COMMERCIAL_PLANS = {
       abandonedCarts: true,
       advancedAnalytics: true,
       aiTools: true,
+      popularSection: true,
       exclusiveEvents: true,
       premiumTutorials: true,
       earlyAccessFeatures: true

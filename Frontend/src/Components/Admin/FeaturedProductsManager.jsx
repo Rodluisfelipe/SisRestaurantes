@@ -3,6 +3,7 @@ import {
   FaStar, FaChevronLeft, FaGripVertical, FaTimes
 } from 'react-icons/fa';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import PopularSectionManager from './PopularSectionManager';
 
 /**
  * Pestaña "product-order": muestra productos destacados con drag-and-drop
@@ -106,6 +107,9 @@ export default function FeaturedProductsManager({
           </div>
         )}
       </div>
+
+      {/* Sección premium: Los más pedidos */}
+      <PopularSectionManager businessId={businessId} products={products} />
 
       <ProductOrderSelector
         products={products}
