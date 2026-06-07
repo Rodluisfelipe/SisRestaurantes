@@ -135,6 +135,58 @@ const AdminOrderChat = ({ orderId, messages: initialMessages, isOpen, onClose })
   );
 };
 
+// Gift order panel — shows recipient info + ready-to-send message to forward to the recipient
+const GiftPanel = ({ order, businessName }) => {
+  const [copied, setCopied] = useState(false);
+  if (!order?.isGift || !order?.gift) return null;
+  const g = order.gift;
+  const recipientMsg = `¡Hola ${g.recipientName || ''}! 🎁 Tienes un regalo en camino de parte de ${order.customerName || 'alguien especial'}.`
+    + (g.message ? `\n\n💌 "${g.message}"` : '')
+    + `\n\n— ${businessName || ''}`;
+  const phoneDigits = (g.recipientPhone || '').replace(/\D/g, '');
+  const waUrl = phoneDigits
+    ? `https://wa.me/${phoneDigits}?text=${encodeURIComponent(recipientMsg)}`
+    : `https://wa.me/?text=${encodeURIComponent(recipientMsg)}`;
+  const copyMsg = async () => {
+    try { await navigator.clipboard.writeText(recipientMsg); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* noop */ }
+  };
+  return (
+    <div className="rounded-xl border border-pink-200 bg-pink-50/70 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 bg-pink-100/70 border-b border-pink-200">
+        <span className="text-base">🎁</span>
+        <span className="text-[13px] font-bold text-pink-800">Pedido de regalo</span>
+      </div>
+      <div className="p-3 space-y-2">
+        <div className="text-[12px] text-pink-900 space-y-0.5">
+          <p><span className="font-semibold">Destinatario:</span> {g.recipientName || '—'}</p>
+          {g.recipientPhone && (
+            <p><span className="font-semibold">Teléfono:</span> <a href={`tel:${g.recipientPhone}`} className="underline">{g.recipientPhone}</a></p>
+          )}
+          {order.address && <p><span className="font-semibold">Entregar en:</span> {order.address}</p>}
+          <p><span className="font-semibold">De parte de:</span> {order.customerName}{order.phone ? ` (${order.phone})` : ''}</p>
+        </div>
+        {g.hidePrices && (
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-pink-700 bg-white border border-pink-200 rounded-lg px-2.5 py-1.5">
+            <FaExclamationTriangle className="text-[10px] text-pink-500" /> No incluir factura ni precios en la entrega
+          </div>
+        )}
+        <div className="bg-white border border-pink-200 rounded-lg p-2.5">
+          <p className="text-[10px] uppercase tracking-wide text-pink-400 font-bold mb-1">Mensaje para enviar al destinatario</p>
+          <p className="text-[12px] text-slate-600 whitespace-pre-line mb-2">{recipientMsg}</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <a href={waUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-1.5 bg-green-500 hover:bg-green-600 text-white py-2.5 rounded-lg text-xs font-bold transition-colors active:scale-[0.97]">
+              <FaCommentDots className="text-[11px]" /> Enviar por WhatsApp
+            </a>
+            <button onClick={copyMsg} className="flex items-center justify-center gap-1.5 bg-pink-100 hover:bg-pink-200 text-pink-700 py-2.5 rounded-lg text-xs font-bold transition-colors active:scale-[0.97]">
+              {copied ? <><FaCheck className="text-[11px]" /> Copiado</> : 'Copiar mensaje'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function ModernOrdersDashboard() {
   const {
     orders, loading, error,
@@ -683,6 +735,11 @@ function ModernOrdersDashboard() {
                     </div>
                   )}
                 </div>
+
+                {/* ── Gift panel ── */}
+                {orderDetails.isGift && (
+                  <GiftPanel order={orderDetails} businessName={businessConfig?.businessName} />
+                )}
 
                 {/* ── Action Buttons — TOP ── */}
                 <div className="space-y-1.5">

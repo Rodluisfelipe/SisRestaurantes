@@ -1168,10 +1168,20 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 } else if (orderType === 'delivery') {
                   const trimmedAddress = (deliveryAddressRef.current?.value || '').trim();
                   if (!trimmedAddress) { alert('Por favor ingresa la dirección de entrega'); return; }
+                  if (isGift && !giftRecipientName.trim()) { alert('Ingresa el nombre del destinatario del regalo'); return; }
                   submitWith({
                     orderType: 'delivery', address: trimmedAddress, tableNumber: '',
                     deliveryFee: deliveryFee || null, deliveryZoneName: deliveryZoneInfo?.zoneName || null,
-                    deliveryZoneInfo: deliveryZoneInfo || null, deliveryCalculated: true, deliveryNeedsConfirmation: !deliveryFee
+                    deliveryZoneInfo: deliveryZoneInfo || null, deliveryCalculated: true, deliveryNeedsConfirmation: !deliveryFee,
+                    ...(isGift && {
+                      isGift: true,
+                      gift: {
+                        recipientName: giftRecipientName.trim(),
+                        recipientPhone: giftRecipientPhone.trim(),
+                        message: giftMessage.trim(),
+                        hidePrices: giftHidePrices
+                      }
+                    })
                   });
                 }
               };
