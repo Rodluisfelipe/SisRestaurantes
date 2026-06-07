@@ -102,7 +102,7 @@ function SuperAdminDashboard() {
   const [subscriptionSubTab, setSubscriptionSubTab] = useState('payments');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, toggleTheme] = useSuperAdminTheme();
-  const perms = useTeamPermissions();
+  const perms = useTeamPermissions(isLogged);
   const params = useParams();
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
