@@ -175,17 +175,24 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
   if (booking.payoutStatus === 'released') {
     return { alreadyReleased: true, booking };
   }
-  if (booking.payoutStatus !== 'held') {
+  // Aceptamos 'held' (flujo nuevo con escrow) y 'pending' (default viejo de
+  // bookings creados antes del sistema de escrow). Cualquier otro estado
+  // (refunded, p.ej.) sí es un error.
+  if (!['held', 'pending'].includes(booking.payoutStatus)) {
     const err = new Error(`Booking en estado ${booking.payoutStatus}, no se puede liberar`);
     err.code = 'INVALID_STATE'; throw err;
   }
 
   const payout = booking.agreedTotal;
-  const commission = booking.agreedCommission;
+  const commission = booking.agreedCommission || 0;
   const totalOut = payout + commission;
 
-  // 1. Sacar del pending del negocio (atómico, debe haber saldo en pending)
-  const biz = await BusinessConfig.findOneAndUpdate(
+  // 1. Intentar sacar del pending del negocio.
+  // Si no hay saldo en pending (booking legacy publicado antes del escrow),
+  // entramos en modo "legacy release": pagamos al worker igual y registramos
+  // todo con `metadata.legacy = true`. Crew asume la pérdida de la comisión
+  // en estos casos — la auditoría queda clara en el ledger.
+  let biz = await BusinessConfig.findOneAndUpdate(
     { _id: booking.businessId, 'crewWallet.pendingBalance': { $gte: totalOut } },
     {
       $inc: {
@@ -196,12 +203,25 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
     },
     { new: true, select: 'crewWallet' },
   );
+
+  let legacy = false;
   if (!biz) {
-    const err = new Error('Inconsistencia: el negocio no tiene escrow para este booking');
-    err.code = 'ESCROW_MISMATCH'; throw err;
+    legacy = true;
+    // No tocamos crewWallet del negocio (no había escrow). Solo leemos el
+    // estado actual para el ledger snapshot.
+    biz = await BusinessConfig.findById(booking.businessId).select('crewWallet').lean();
+    if (!biz) {
+      const err = new Error('Negocio no encontrado'); err.code = 'BIZ_NOT_FOUND'; throw err;
+    }
+    logger.warn('Releasing legacy booking without escrow', {
+      bookingId: String(booking._id),
+      businessId: String(booking.businessId),
+      workerId: String(booking.workerId),
+      payout, commission,
+    });
   }
 
-  // 2. Acreditar al worker
+  // 2. Acreditar al worker (siempre — esta es la promesa de Crew)
   const worker = await Worker.findByIdAndUpdate(
     booking.workerId,
     {
@@ -219,29 +239,21 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
   await booking.save();
 
   await ShiftPost.findByIdAndUpdate(booking.shiftId, {
-    $inc: { releasedAmount: totalOut, reservedAmount: -totalOut },
+    $inc: { releasedAmount: totalOut, reservedAmount: legacy ? 0 : -totalOut },
   });
 
-  // 4. Ledger — 3 entradas para visibilidad completa
-  await CrewWalletTxn.create([
+  // 4. Ledger — entradas con metadata de legacy si aplica
+  const entries = [
     {
       actorType: 'business', actorId: booking.businessId,
       counterpartType: 'worker', counterpartId: booking.workerId,
       kind: 'shift_release', direction: 'out', amount: payout,
-      balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
+      balanceAfter: biz.crewWallet?.balance ?? null,
+      pendingAfter: biz.crewWallet?.pendingBalance ?? null,
       shiftId: booking.shiftId, bookingId: booking._id,
       idempotencyKey: `shift_release:${booking._id}`,
-      note: 'Pago liberado al trabajador',
-      performedBy: performedBy || { kind: 'system' },
-    },
-    {
-      actorType: 'business', actorId: booking.businessId,
-      counterpartType: 'platform',
-      kind: 'shift_commission', direction: 'out', amount: commission,
-      balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
-      shiftId: booking.shiftId, bookingId: booking._id,
-      idempotencyKey: `shift_commission:${booking._id}`,
-      note: 'Comisión Crew',
+      note: legacy ? 'Pago liberado (turno previo al sistema de escrow)' : 'Pago liberado al trabajador',
+      metadata: legacy ? { legacy: true, reason: 'no-escrow-reserve' } : {},
       performedBy: performedBy || { kind: 'system' },
     },
     {
@@ -252,11 +264,33 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
       shiftId: booking.shiftId, bookingId: booking._id,
       idempotencyKey: `shift_payout:${booking._id}`,
       note: 'Pago recibido por turno completado',
+      metadata: legacy ? { legacy: true } : {},
       performedBy: performedBy || { kind: 'system' },
     },
-  ]);
+  ];
+  // Solo registramos la comisión si efectivamente hubo escrow (turnos nuevos)
+  if (!legacy && commission > 0) {
+    entries.splice(1, 0, {
+      actorType: 'business', actorId: booking.businessId,
+      counterpartType: 'platform',
+      kind: 'shift_commission', direction: 'out', amount: commission,
+      balanceAfter: biz.crewWallet?.balance ?? null,
+      pendingAfter: biz.crewWallet?.pendingBalance ?? null,
+      shiftId: booking.shiftId, bookingId: booking._id,
+      idempotencyKey: `shift_commission:${booking._id}`,
+      note: 'Comisión Crew',
+      performedBy: performedBy || { kind: 'system' },
+    });
+  }
+  await CrewWalletTxn.insertMany(entries);
 
-  return { booking, businessWallet: biz.crewWallet, workerWallet: worker.wallet, payout, commission };
+  return {
+    booking,
+    businessWallet: biz.crewWallet,
+    workerWallet: worker.wallet,
+    payout, commission,
+    legacy,
+  };
 }
 
 /**

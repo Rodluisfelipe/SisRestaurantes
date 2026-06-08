@@ -1087,49 +1087,67 @@ router.post('/businesses/bookings/:id/complete', tenantAuth, async (req, res) =>
     if (!booking || String(booking.businessId) !== String(businessId)) {
       return res.status(404).json({ message: 'Booking no encontrado' });
     }
-    if (booking.status === 'completed') {
+    // Si ya está completed PERO el payout no se liberó (caso de los bookings
+    // que quedaron rotos por el bug del release con escrow vacío), no devolvemos
+    // 400 — seguimos para liberar el pago y otorgar XP. Solo bloqueamos cuando
+    // realmente ya está todo procesado.
+    const isStuckCompleted = booking.status === 'completed' && booking.payoutStatus !== 'released';
+    if (booking.status === 'completed' && !isStuckCompleted) {
       return res.status(400).json({ message: 'Ya completado' });
     }
+    if (isStuckCompleted) {
+      logger.warn('Reprocessing stuck completed booking', { bookingId: String(booking._id) });
+    }
 
-    booking.status = 'completed';
-    booking.completedAt = new Date();
-    booking.confirmedByBusinessAt = new Date();
-    await booking.save();
-
-    // Libera el dinero a través del ledger: business.pendingBalance → worker.wallet.balance,
-    // y la comisión va al ingreso de la plataforma. Esto reemplaza el "MVP directo" anterior.
-    await crewLedger.releaseBookingFunds({
+    // 1) Liberar el dinero PRIMERO (si falla, no marcamos completed para que
+    // el negocio pueda reintentar). El ledger maneja el modo legacy si no hay escrow.
+    const release = await crewLedger.releaseBookingFunds({
       bookingId: booking._id,
       performedBy: { kind: 'admin', id: req.user.id },
     });
 
-    // Awards: XP + stats + posible badge — la billetera ya quedó actualizada por el ledger.
-    const xpGained = Math.round(booking.agreedHours * 25); // 25 XP por hora trabajada
-    const result = await Worker.addXP(booking.workerId, xpGained);
-    const worker = result.worker;
-    worker.stats.shiftsCompleted += 1;
-    worker.stats.hoursWorked += booking.agreedHours;
-    worker.lastShiftAt = new Date();
-
-    if (worker.stats.shiftsCompleted === 1 && !worker.badgesEarned.some(b => b.key === 'first_shift')) {
-      worker.badgesEarned.push({ key: 'first_shift' });
-      booking.badgesAwarded.push('first_shift');
-    }
-    if (worker.stats.shiftsCompleted === 10 && !worker.badgesEarned.some(b => b.key === '10_shifts')) {
-      worker.badgesEarned.push({ key: '10_shifts' });
-      booking.badgesAwarded.push('10_shifts');
+    // 2) Marcar completed (idempotente: si ya estaba, no afecta)
+    if (booking.status !== 'completed') {
+      booking.status = 'completed';
+      booking.completedAt = new Date();
+      booking.confirmedByBusinessAt = new Date();
     }
 
-    booking.xpAwarded = xpGained;
+    // 3) Awards — XP + stats + badges. Solo si el booking no había sido procesado antes
+    // (xpAwarded > 0 indica que ya pasó por aquí). Evita doble-XP en reintentos.
+    let xpGained = 0;
+    let leveledUp = false;
+    if (!booking.xpAwarded || booking.xpAwarded === 0) {
+      xpGained = Math.round(booking.agreedHours * 25);
+      const result = await Worker.addXP(booking.workerId, xpGained);
+      leveledUp = result.leveledUp;
+      const worker = result.worker;
+      worker.stats.shiftsCompleted += 1;
+      worker.stats.hoursWorked += booking.agreedHours;
+      worker.lastShiftAt = new Date();
+
+      if (worker.stats.shiftsCompleted === 1 && !worker.badgesEarned.some(b => b.key === 'first_shift')) {
+        worker.badgesEarned.push({ key: 'first_shift' });
+        booking.badgesAwarded.push('first_shift');
+      }
+      if (worker.stats.shiftsCompleted === 10 && !worker.badgesEarned.some(b => b.key === '10_shifts')) {
+        worker.badgesEarned.push({ key: '10_shifts' });
+        booking.badgesAwarded.push('10_shifts');
+      }
+
+      booking.xpAwarded = xpGained;
+      await worker.save();
+    }
+
     await booking.save();
-    await worker.save();
 
     res.json({
       success: true, booking,
-      leveledUp: result.leveledUp,
+      leveledUp,
       xpGained,
-      payout: booking.agreedTotal,
-      commission: booking.agreedCommission,
+      payout: release.payout,
+      commission: release.commission,
+      legacy: release.legacy || false,
     });
   } catch (e) {
     logger.error('crew complete booking error', e);

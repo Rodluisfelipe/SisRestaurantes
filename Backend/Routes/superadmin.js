@@ -571,6 +571,60 @@ router.post('/crew/recharges/:id/reject', requireRole('admin'), async (req, res)
   }
 });
 
+// POST /api/superadmin/crew/backfill-payouts — recupera bookings que quedaron
+// marcados como completed pero nunca recibieron el payout (bug del release
+// con escrow vacío que afectó turnos publicados antes del sistema).
+// Idempotente: el release interno detecta duplicados via idempotencyKey.
+router.post('/crew/backfill-payouts', requireRole('admin'), async (req, res) => {
+  try {
+    const ShiftBooking = require('../Models/ShiftBooking');
+    const { Worker } = require('../Models/Worker');
+    const stuck = await ShiftBooking.find({
+      status: 'completed',
+      payoutStatus: { $ne: 'released' },
+    }).limit(500).lean();
+
+    const results = { processed: 0, released: 0, failed: [], skipped: 0 };
+
+    for (const bk of stuck) {
+      try {
+        const release = await crewLedger.releaseBookingFunds({
+          bookingId: bk._id,
+          performedBy: { kind: 'superadmin', id: req.user.id },
+        });
+        if (release.alreadyReleased) { results.skipped++; continue; }
+        results.released++;
+
+        // Si el booking no tenía xpAwarded, le damos XP también
+        const fresh = await ShiftBooking.findById(bk._id);
+        if (!fresh.xpAwarded || fresh.xpAwarded === 0) {
+          const xp = Math.round((fresh.agreedHours || 0) * 25);
+          if (xp > 0) {
+            await Worker.addXP(fresh.workerId, xp);
+            await Worker.updateOne(
+              { _id: fresh.workerId },
+              {
+                $inc: { 'stats.shiftsCompleted': 1, 'stats.hoursWorked': fresh.agreedHours || 0 },
+                $set: { lastShiftAt: new Date() },
+              },
+            );
+            fresh.xpAwarded = xp;
+            await fresh.save();
+          }
+        }
+      } catch (e) {
+        results.failed.push({ bookingId: String(bk._id), error: e.message, code: e.code });
+      }
+      results.processed++;
+    }
+
+    res.json({ success: true, ...results });
+  } catch (e) {
+    logger.error('Error backfilling payouts', e, req);
+    res.status(500).json({ message: e.message || 'Error en backfill' });
+  }
+});
+
 // GET /api/superadmin/crew/treasury — visión global de plata en Crew
 router.get('/crew/treasury', async (req, res) => {
   try {
