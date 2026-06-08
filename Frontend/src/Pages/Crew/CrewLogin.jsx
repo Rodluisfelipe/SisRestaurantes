@@ -1,6 +1,27 @@
+/**
+ * CrewLogin — pantalla de entrada al marketplace Crew.
+ *
+ * Estética: fondo cósmico animado, headline grande con gradient,
+ * card glass con inputs flotantes, CTA con glow y sparkles flotando.
+ */
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useCrew } from './useCrew';
+import Aurora, { Sparkles } from './components/Aurora';
+import GradientText from './components/GradientText';
+import GlowButton from './components/GlowButton';
+import FloatingInput from './components/FloatingInput';
+
+const MODES = [
+  { id: 'signup', label: 'Registrarme' },
+  { id: 'login', label: 'Entrar' },
+];
+
+const STAGGER = {
+  initial: { opacity: 0, y: 18, filter: 'blur(8px)' },
+  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+  transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+};
 
 export default function CrewLogin({ onAuthed }) {
   const { signup, login, loading } = useCrew();
@@ -14,7 +35,11 @@ export default function CrewLogin({ onAuthed }) {
     try {
       if (mode === 'signup') {
         if (!form.name || form.name.trim().length < 2) {
-          setError('Por favor ingresa tu nombre.');
+          setError('Cuéntanos tu nombre completo para empezar.');
+          return;
+        }
+        if (form.password.length < 6) {
+          setError('La contraseña debe tener al menos 6 caracteres.');
           return;
         }
         await signup(form);
@@ -23,122 +48,211 @@ export default function CrewLogin({ onAuthed }) {
       }
       onAuthed?.();
     } catch (err) {
-      setError(err?.response?.data?.message || 'Algo no salió bien. Intenta de nuevo.');
+      setError(err?.response?.data?.message || 'Algo salió mal. Vuelve a intentarlo.');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-slate-50 font-geist">
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-10 font-geist overflow-hidden text-white">
+      <Aurora variant="hero" />
+      <Sparkles count={26} />
+
+      {/* Glow del logo en la parte superior */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="relative w-full max-w-[400px]"
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 1, delay: 0.1 }}
+        className="absolute top-12 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full bg-red-500/20 blur-[120px] pointer-events-none"
+        aria-hidden
+      />
+
+      <motion.div
+        initial="initial"
+        animate="animate"
+        variants={{ animate: { transition: { staggerChildren: 0.07, delayChildren: 0.1 } } }}
+        className="relative w-full max-w-[420px] z-10"
       >
-        {/* Brand */}
-        <div className="text-center mb-8">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/25 mb-4">
-            <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-              <path d="M16 3.13a4 4 0 010 7.75"/>
-            </svg>
-          </div>
-          <h1 className="text-[24px] font-extrabold text-slate-900 tracking-tight">MenuBy Crew</h1>
-          <p className="text-[13px] text-slate-500 mt-1.5 font-medium">Conecta con turnos en restaurantes de tu ciudad</p>
-        </div>
-
-        {/* Card */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          {/* Mode tabs */}
-          <div className="flex gap-1 p-1 mb-5 bg-slate-100 rounded-xl">
-            {[
-              { id: 'signup', label: 'Crear cuenta' },
-              { id: 'login', label: 'Iniciar sesión' },
-            ].map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => { setMode(m.id); setError(''); }}
-                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
-                  mode === m.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
-
-          {error && (
+        {/* Marca */}
+        <motion.div variants={STAGGER} className="text-center mb-8">
+          <div className="relative mx-auto w-14 h-14 mb-5">
             <motion.div
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 px-3.5 py-2.5 rounded-lg bg-red-50 border border-red-200"
-            >
-              <p className="text-[12px] text-red-700">{error}</p>
-            </motion.div>
-          )}
-
-          <form onSubmit={submit} className="space-y-3.5">
-            {mode === 'signup' && (
-              <Input
-                label="Nombre completo"
-                value={form.name}
-                onChange={(v) => setForm({ ...form, name: v })}
-                placeholder="Ej: Andrés Gómez"
-                autoComplete="name"
-              />
-            )}
-            <Input
-              label="Número de celular"
-              type="tel"
-              value={form.phone}
-              onChange={(v) => setForm({ ...form, phone: v })}
-              placeholder="3001234567"
-              autoComplete="tel"
+              animate={{ scale: [1, 1.08, 1], rotate: [0, 4, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-amber-400 shadow-[0_8px_32px_-4px_rgba(239,68,68,0.6)]"
             />
-            <Input
+            <div className="relative w-full h-full rounded-2xl flex items-center justify-center">
+              <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                <path d="M16 3.13a4 4 0 010 7.75"/>
+              </svg>
+            </div>
+            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.9)] animate-pulse" />
+          </div>
+
+          <span className="inline-block px-2.5 py-1 mb-3 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/70">
+            MenuBy · Crew
+          </span>
+
+          <h1 className="text-[36px] sm:text-[40px] font-black leading-[1.05] tracking-tight">
+            Tu próximo <GradientText variant="sunrise">turno</GradientText>
+            <br />
+            empieza acá.
+          </h1>
+          <p className="text-[13px] text-white/55 mt-3 max-w-[300px] mx-auto leading-relaxed">
+            Conecta con restaurantes de tu ciudad. Trabaja cuando quieras, sube de nivel, hazte tu reputación.
+          </p>
+        </motion.div>
+
+        {/* Card glass */}
+        <motion.div
+          variants={STAGGER}
+          className="relative rounded-[28px] p-6 sm:p-7 border border-white/[0.10] bg-white/[0.04] backdrop-blur-xl shadow-[0_24px_60px_-12px_rgba(0,0,0,0.5)] overflow-hidden"
+        >
+          {/* Borde brillante superior */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
+
+          {/* Tabs modo */}
+          <div className="relative flex p-1 mb-6 bg-black/30 border border-white/[0.06] rounded-2xl">
+            {MODES.map((m) => {
+              const active = mode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => { setMode(m.id); setError(''); }}
+                  className={`relative flex-1 py-2.5 rounded-xl text-[12px] font-extrabold uppercase tracking-wider transition-colors ${
+                    active ? 'text-white' : 'text-white/40 hover:text-white/70'
+                  }`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="crew-login-tab"
+                      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/90 via-orange-500/90 to-amber-500/90 shadow-[0_4px_20px_-4px_rgba(239,68,68,0.6)]"
+                    />
+                  )}
+                  <span className="relative">{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -6, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -6, height: 0 }}
+                className="mb-4 overflow-hidden"
+              >
+                <div className="px-4 py-3 rounded-xl bg-rose-500/[0.10] border border-rose-400/30 flex items-start gap-2.5">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-300 text-[11px]">!</span>
+                  <p className="text-[12.5px] text-rose-200 leading-relaxed">{error}</p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <form onSubmit={submit} className="space-y-3">
+            <AnimatePresence mode="popLayout">
+              {mode === 'signup' && (
+                <motion.div
+                  key="name"
+                  initial={{ opacity: 0, height: 0, y: -6 }}
+                  animate={{ opacity: 1, height: 'auto', y: 0 }}
+                  exit={{ opacity: 0, height: 0, y: -6 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <FloatingInput
+                    label="Tu nombre completo"
+                    value={form.name}
+                    onChange={(v) => setForm({ ...form, name: v })}
+                    autoComplete="name"
+                    required
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <FloatingInput
+              label="Celular"
+              type="tel"
+              prefix="+57"
+              value={form.phone}
+              onChange={(v) => setForm({ ...form, phone: v.replace(/\D/g, '').slice(0, 10) })}
+              autoComplete="tel"
+              required
+              maxLength={10}
+            />
+            <FloatingInput
               label="Contraseña"
               type="password"
               value={form.password}
               onChange={(v) => setForm({ ...form, password: v })}
-              placeholder={mode === 'signup' ? 'Mínimo 6 caracteres' : 'Tu contraseña'}
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+              required
             />
 
-            <motion.button
-              whileTap={loading ? undefined : { scale: 0.98 }}
-              disabled={loading}
-              type="submit"
-              className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-[14px] shadow-lg shadow-red-500/25 disabled:opacity-50 transition-all hover:shadow-xl hover:shadow-red-500/30"
-            >
-              {loading ? 'Procesando…' : mode === 'signup' ? 'Crear cuenta' : 'Iniciar sesión'}
-            </motion.button>
+            <div className="pt-3">
+              <GlowButton
+                type="submit"
+                size="lg"
+                variant="primary"
+                fullWidth
+                loading={loading}
+                iconRight={
+                  <svg className="w-5 h-5 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
+                  </svg>
+                }
+              >
+                {mode === 'signup' ? 'Crear mi cuenta' : 'Entrar a Crew'}
+              </GlowButton>
+            </div>
           </form>
-        </div>
 
-        <p className="text-center text-[11px] text-slate-400 mt-5 leading-relaxed">
-          Al continuar aceptas los términos de uso y la política de privacidad de MenuBy.
-        </p>
+          {/* Pruebas sociales */}
+          <motion.div variants={STAGGER} className="mt-6 pt-5 border-t border-white/[0.06] flex items-center justify-between gap-3">
+            <div className="flex items-center -space-x-2">
+              {[
+                'from-pink-400 to-rose-500',
+                'from-amber-300 to-orange-500',
+                'from-emerald-400 to-teal-500',
+                'from-sky-400 to-violet-500',
+              ].map((g, i) => (
+                <div
+                  key={i}
+                  className={`w-7 h-7 rounded-full bg-gradient-to-br ${g} border-2 border-[#0a0a14] shadow-md`}
+                />
+              ))}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-extrabold text-white/90">+1.200 trabajando ya</p>
+              <p className="text-[10px] text-white/40">Bogotá · Medellín · Cali · Barranquilla</p>
+            </div>
+            <div className="flex items-center gap-1 text-amber-300">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>
+              <span className="text-[11px] font-extrabold tabular-nums">4.8</span>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.div variants={STAGGER} className="mt-6 text-center space-y-2">
+          <p className="text-[11px] text-white/35 leading-relaxed">
+            Al continuar aceptas los <a href="#" className="text-white/60 underline underline-offset-2 hover:text-white">términos</a> y la <a href="#" className="text-white/60 underline underline-offset-2 hover:text-white">política de privacidad</a> de MenuBy.
+          </p>
+          <a
+            href="/admin"
+            className="inline-flex items-center gap-1.5 text-[12px] font-bold text-white/50 hover:text-white transition group"
+          >
+            ¿Eres dueño de restaurante?
+            <span className="text-white/40 group-hover:text-white transition">→</span>
+          </a>
+        </motion.div>
       </motion.div>
-    </div>
-  );
-}
-
-function Input({ label, value, onChange, placeholder, type = 'text', autoComplete }) {
-  return (
-    <div>
-      <label className="block text-[11px] font-semibold text-slate-600 mb-1.5">{label}</label>
-      <input
-        type={type}
-        autoComplete={autoComplete}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-red-500 focus:bg-white transition-all"
-        required
-      />
     </div>
   );
 }
