@@ -37,6 +37,8 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
   const [error, setError] = useState(null);
   const [applying, setApplying] = useState(false);
   const [expandedCat, setExpandedCat] = useState(null);
+  const [isFav, setIsFav] = useState(false);
+  const [togglingFav, setTogglingFav] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -45,6 +47,15 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
       setData(data);
       // Auto-expand primera categoría
       if (data?.menu?.[0]) setExpandedCat(String(data.menu[0]._id));
+      // Check if business is already favorited
+      const bizId = data?.shift?.businessId?._id;
+      if (bizId) {
+        try {
+          const { data: favData } = await crewApi.get('/workers/me/favorites');
+          const favIds = (favData.favorites || []).map((f) => String(f.businessId?._id || f.businessId));
+          setIsFav(favIds.includes(String(bizId)));
+        } catch {}
+      }
     } catch (e) {
       setError(e?.response?.data?.message || 'No se pudo cargar el turno');
     } finally { setLoading(false); }
@@ -66,7 +77,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a14] animate-pulse">
+      <div className="min-h-[100dvh] bg-[#0a0a14] animate-pulse">
         <div className="h-56 bg-white/[0.04]" />
         <div className="max-w-md mx-auto px-5 mt-5 space-y-3">
           <div className="h-24 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
@@ -78,7 +89,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[#0a0a14] flex items-center justify-center px-5">
+      <div className="min-h-[100dvh] bg-[#0a0a14] flex items-center justify-center px-5">
         <div className="rounded-2xl border border-red-500/30 bg-red-500/[0.08] p-6 text-center max-w-md">
           <p className="text-[14px] font-bold text-red-300">{error || 'Sin datos'}</p>
           <button onClick={onBack} className="mt-3 px-4 py-2 rounded-lg bg-white/[0.06] text-white/70 font-bold text-[13px]">Volver</button>
@@ -93,7 +104,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
   const logo = biz.logo;
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] text-white font-geist pb-32">
+    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
       {/* Hero con cover + logo */}
       <div className="relative">
         {/* Cover image */}
@@ -106,18 +117,43 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
           {/* Back button */}
           <button
             onClick={onBack}
-            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/[0.10] backdrop-blur-sm border border-white/[0.15] flex items-center justify-center shadow-lg active:scale-95 transition"
+            className="absolute left-4 w-9 h-9 rounded-full bg-white/[0.10] backdrop-blur-sm border border-white/[0.15] flex items-center justify-center shadow-lg active:scale-95 transition"
+            style={{ top: 'max(1rem, env(safe-area-inset-top, 0px))' }}
             aria-label="Volver"
           >
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
           </button>
 
-          {/* SOS pill */}
-          {shift.isSOS && (
-            <span className="absolute top-4 right-4 px-2.5 py-1 text-[11px] font-extrabold bg-red-500 text-white rounded-full shadow-lg animate-pulse">
-              Urgente
-            </span>
-          )}
+          {/* SOS pill + favorite */}
+          <div className="absolute top-4 right-4 flex items-center gap-2" style={{ top: 'max(1rem, env(safe-area-inset-top, 0px))' }}>
+            {shift.isSOS && (
+              <span className="px-2.5 py-1 text-[11px] font-extrabold bg-red-500 text-white rounded-full shadow-lg animate-pulse">
+                Urgente
+              </span>
+            )}
+            <button
+              onClick={async () => {
+                if (togglingFav) return;
+                setTogglingFav(true);
+                try {
+                  if (isFav) {
+                    await crewApi.delete(`/workers/me/favorites/${biz._id}`);
+                    setIsFav(false);
+                  } else {
+                    await crewApi.post('/workers/me/favorites', { businessId: biz._id });
+                    setIsFav(true);
+                  }
+                } catch (e) { console.error(e); }
+                finally { setTogglingFav(false); }
+              }}
+              className="w-9 h-9 rounded-full bg-white/[0.10] backdrop-blur-sm border border-white/[0.15] flex items-center justify-center shadow-lg active:scale-95 transition"
+              aria-label={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+            >
+              <svg className="w-4.5 h-4.5" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path className={isFav ? 'text-red-400' : 'text-white'} strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+              </svg>
+            </button>
+          </div>
 
           {/* Logo + name floating at bottom of cover */}
           <div className="absolute -bottom-8 left-0 right-0 px-5">
@@ -355,7 +391,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
       </div>
 
       {/* Sticky apply CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14] to-transparent pt-10 pb-4 px-5">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14] to-transparent pt-10 px-5" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
         <div className="max-w-md mx-auto">
           <MagneticButton
             onClick={apply}

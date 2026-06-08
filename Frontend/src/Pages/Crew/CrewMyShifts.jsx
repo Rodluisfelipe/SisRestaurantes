@@ -56,9 +56,9 @@ export default function CrewMyShifts() {
   const historyBookings = bookings.filter((b) => ['completed', 'no_show', 'cancelled_by_worker', 'cancelled_by_business'].includes(b.status));
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] text-white font-geist pb-24">
+    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
       <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
-        <div className="max-w-md mx-auto px-5 pt-5 pb-3">
+        <div className="max-w-md mx-auto px-5 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-3">
           <h1 className="text-[20px] font-extrabold text-white">Mis turnos</h1>
           <p className="text-[12px] text-white/40 mt-0.5">Revisa el estado de tus postulaciones y turnos asignados</p>
         </div>
@@ -122,6 +122,12 @@ export default function CrewMyShifts() {
                 await load();
               } catch (e) { alert(e?.response?.data?.message || 'Error'); }
             }}
+            onCheckOut={async () => {
+              try {
+                await crewApi.post(`/bookings/${b._id}/checkout`, {});
+                await load();
+              } catch (e) { alert(e?.response?.data?.message || 'Error'); }
+            }}
           />
         ))}
 
@@ -180,7 +186,7 @@ function AppCard({ app }) {
   );
 }
 
-function BookingCard({ booking, active, onCheckIn }) {
+function BookingCard({ booking, active, onCheckIn, onCheckOut }) {
   const info = BOOK_STATUS[booking.status] || BOOK_STATUS.confirmed;
   const shift = booking.shiftId || {};
   const biz = booking.businessId || {};
@@ -222,8 +228,18 @@ function BookingCard({ booking, active, onCheckIn }) {
         </button>
       )}
       {active && booking.status === 'checked_in' && (
-        <div className="text-center py-2 px-3 bg-red-500/10 border border-red-500/20 rounded-lg text-[12px] font-bold text-white/80">
-          En turno · check-in registrado a las {new Date(booking.checkInAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+        <div className="space-y-2">
+          <div className="text-center py-2 px-3 bg-red-500/10 border border-red-500/20 rounded-lg text-[12px] font-bold text-white/80">
+            En turno · check-in a las {new Date(booking.checkInAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+          {onCheckOut && (
+            <button
+              onClick={onCheckOut}
+              className="w-full py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.10] text-white font-bold text-[13px] active:scale-[0.98] transition-all hover:bg-white/[0.10]"
+            >
+              Finalizar turno (check-out)
+            </button>
+          )}
         </div>
       )}
 

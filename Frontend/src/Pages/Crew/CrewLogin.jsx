@@ -11,6 +11,7 @@ import Aurora, { Sparkles } from './components/Aurora';
 import GradientText from './components/GradientText';
 import GlowButton from './components/GlowButton';
 import FloatingInput from './components/FloatingInput';
+import CrewLogo from './CrewLogo';
 
 const MODES = [
   { id: 'signup', label: 'Registrarme' },
@@ -53,7 +54,7 @@ export default function CrewLogin({ onAuthed }) {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center px-4 py-10 font-geist overflow-hidden text-white">
+    <div className="relative min-h-[100dvh] flex items-center justify-center px-4 py-[max(2.5rem,env(safe-area-inset-top,0px))] font-geist overflow-hidden text-white">
       <Aurora variant="hero" />
       <Sparkles count={26} />
 
@@ -74,25 +75,17 @@ export default function CrewLogin({ onAuthed }) {
       >
         {/* Marca */}
         <motion.div variants={STAGGER} className="text-center mb-8">
-          <div className="relative mx-auto w-14 h-14 mb-5">
-            <motion.div
-              animate={{ scale: [1, 1.08, 1], rotate: [0, 4, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-600 via-red-500 to-red-400 shadow-[0_8px_32px_-4px_rgba(239,68,68,0.6)]"
-            />
-            <div className="relative w-full h-full rounded-2xl flex items-center justify-center">
-              <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-                <path d="M16 3.13a4 4 0 010 7.75"/>
-              </svg>
-            </div>
-            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-400 shadow-[0_0_12px_rgba(239,68,68,0.9)] animate-pulse" />
-          </div>
+          <motion.div
+            animate={{ scale: [1, 1.04, 1] }}
+            transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+            className="relative mx-auto mb-5"
+          >
+            <CrewLogo size={72} showText={false} />
+            <div className="absolute inset-0 bg-red-500/30 rounded-full blur-[40px] -z-10" />
+          </motion.div>
 
-          <span className="inline-block px-2.5 py-1 mb-3 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/70">
-            MenuBy · Crew
+          <span className="inline-block px-3 py-1.5 mb-3 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/70">
+            Crew <span className="text-white/40">by</span> MenuBy
           </span>
 
           <h1 className="text-[36px] sm:text-[40px] font-black leading-[1.05] tracking-tight">

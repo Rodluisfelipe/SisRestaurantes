@@ -8,6 +8,9 @@ import CrewMyShifts from './CrewMyShifts';
 import CrewProfile from './CrewProfile';
 import CrewChat from './CrewChat';
 import CrewProfileEditor from './CrewProfileEditor';
+import CrewWallet from './CrewWallet';
+import CrewFavorites from './CrewFavorites';
+import CrewWorkHistory from './CrewWorkHistory';
 import LevelUpCelebration from './components/LevelUpCelebration';
 
 const TABS = [
@@ -53,6 +56,7 @@ export default function CrewApp() {
   const { isAuthed, worker, refreshMe } = useCrew();
   const [tab, setTab] = useState('feed');
   const [editingProfile, setEditingProfile] = useState(false);
+  const [subView, setSubView] = useState(null); // 'wallet' | 'favorites' | 'history' | null
   const [levelUp, setLevelUp] = useState(null);
   const prevLevelRef = useRef(null);
 
@@ -79,7 +83,7 @@ export default function CrewApp() {
   if (needsOnboarding) return <CrewOnboarding onDone={refreshMe} />;
 
   return (
-    <div className="bg-[#0a0a14] min-h-screen">
+    <div className="bg-[#0a0a14] min-h-[100dvh]">
       <AnimatePresence mode="wait">
         <motion.div
           key={tab}
@@ -91,9 +95,18 @@ export default function CrewApp() {
           {tab === 'feed' && <CrewFeed />}
           {tab === 'shifts' && <CrewMyShifts />}
           {tab === 'chat' && <CrewChat />}
-          {tab === 'profile' && (editingProfile
-            ? <CrewProfileEditor onBack={() => setEditingProfile(false)} />
-            : <CrewProfile onEdit={() => setEditingProfile(true)} />)}
+          {tab === 'profile' && (
+            subView === 'wallet' ? <CrewWallet onBack={() => setSubView(null)} /> :
+            subView === 'favorites' ? <CrewFavorites onBack={() => setSubView(null)} /> :
+            subView === 'history' ? <CrewWorkHistory onBack={() => setSubView(null)} /> :
+            editingProfile ? <CrewProfileEditor onBack={() => setEditingProfile(false)} /> :
+            <CrewProfile
+              onEdit={() => setEditingProfile(true)}
+              onWallet={() => setSubView('wallet')}
+              onFavorites={() => setSubView('favorites')}
+              onHistory={() => setSubView('history')}
+            />
+          )}
         </motion.div>
       </AnimatePresence>
 
@@ -106,11 +119,11 @@ export default function CrewApp() {
       />
 
       {/* Bottom nav — cosmic glass with pill glow */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40">
         {/* Gradient fade */}
         <div className="absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-[#0a0a14] to-transparent pointer-events-none" />
         <div className="relative bg-[#0f0f1a]/90 backdrop-blur-2xl border-t border-white/[0.06]">
-          <div className="flex items-center justify-around px-3 py-2 max-w-md mx-auto">
+          <div className="flex items-center justify-around px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom,0px))] max-w-md mx-auto">
             {TABS.map((t) => {
               const active = tab === t.id;
               return (

@@ -5,7 +5,6 @@ import AnimatedCounter from './components/AnimatedCounter';
 import StreakFlame from './components/StreakFlame';
 import BadgeReveal from './components/BadgeReveal';
 import GradientText from './components/GradientText';
-import GlowButton from './components/GlowButton';
 
 const BADGE_LABEL = {
   first_shift: 'Primer turno',
@@ -32,7 +31,7 @@ function levelTier(level) {
   return 'Nuevo';
 }
 
-export default function CrewProfile({ onEdit }) {
+export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }) {
   const { worker, logout } = useCrew();
   const [revealBadge, setRevealBadge] = useState(null);
   if (!worker) return null;
@@ -43,7 +42,7 @@ export default function CrewProfile({ onEdit }) {
   const pct = Math.min(100, ((worker.xp - curr) / (next - curr)) * 100);
 
   return (
-    <div className="min-h-screen bg-[#0a0a14] text-white font-geist pb-24">
+    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
       {/* Hero — cosmic with animated ring */}
       <div className="relative overflow-hidden">
         {/* Aurora blobs */}
@@ -51,7 +50,7 @@ export default function CrewProfile({ onEdit }) {
         <div className="absolute -top-12 right-0 w-48 h-48 bg-red-400/15 rounded-full blur-[80px] pointer-events-none" />
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
 
-        <div className="relative max-w-md mx-auto px-5 pt-8 pb-6">
+        <div className="relative max-w-md mx-auto px-5 pt-[max(2rem,calc(0.5rem+env(safe-area-inset-top,0px)))] pb-6">
           {/* Edit button */}
           {onEdit && (
             <motion.button
@@ -159,8 +158,25 @@ export default function CrewProfile({ onEdit }) {
               suffix="h"
             />
             <StatBox
+              label="Rating"
+              value={worker.rating?.avg ? `${worker.rating.avg.toFixed(1)}★` : '—'}
+              small
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            <StatBox
               label="Ingresos"
               value={formatCOP(worker.stats?.totalEarned || 0)}
+              small
+            />
+            <StatBox
+              label="Puntualidad"
+              value={`${worker.stats?.shiftsCompleted ? Math.max(0, Math.round(((worker.stats.shiftsCompleted - (worker.stats?.noShows || 0)) / worker.stats.shiftsCompleted) * 100)) : 100}%`}
+              small
+            />
+            <StatBox
+              label="Cancel."
+              value={worker.stats?.cancellations || 0}
               small
             />
           </div>
@@ -227,7 +243,11 @@ export default function CrewProfile({ onEdit }) {
         {/* Wallet */}
         <section>
           <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Saldo</h2>
-          <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm">
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={onWallet}
+            className="w-full rounded-[22px] border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm text-left"
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-white/40 font-medium">Wallet MenuBy</p>
@@ -235,13 +255,36 @@ export default function CrewProfile({ onEdit }) {
                   <GradientText variant="sunrise">{formatCOP(worker.wallet?.balance || 0)}</GradientText>
                 </p>
               </div>
-              <GlowButton size="sm" variant="ghost" onClick={() => {}}>
-                Retirar
-              </GlowButton>
+              <svg className="w-5 h-5 text-white/20" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
             </div>
             <p className="text-[11px] text-white/30 mt-3 leading-relaxed">
               Usa tu saldo en restaurantes de la red MenuBy con 5% de bonificación.
             </p>
+          </motion.button>
+        </section>
+
+        {/* Quick access menu */}
+        <section>
+          <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Accesos</h2>
+          <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.03] divide-y divide-white/[0.05] overflow-hidden backdrop-blur-sm">
+            {[
+              { label: 'Mis Favoritos', desc: 'Restaurantes guardados', icon: '❤️', action: onFavorites },
+              { label: 'Historial Laboral', desc: 'Tu hoja de vida Crew', icon: '📋', action: onHistory },
+            ].map((item) => (
+              <motion.button
+                key={item.label}
+                whileTap={{ scale: 0.98 }}
+                onClick={item.action}
+                className="w-full px-4 py-3.5 flex items-center gap-3 text-left hover:bg-white/[0.04] transition"
+              >
+                <span className="text-[18px]">{item.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-bold text-white/90">{item.label}</p>
+                  <p className="text-[10px] text-white/30">{item.desc}</p>
+                </div>
+                <svg className="w-3.5 h-3.5 text-white/15" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </motion.button>
+            ))}
           </div>
         </section>
 

@@ -30,6 +30,7 @@ const Product = require('../Models/Product');
 const Category = require('../Models/Category');
 const Conversation = require('../Models/Conversation');
 const Message = require('../Models/Message');
+const CrewFavorite = require('../Models/CrewFavorite');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const { uploadImage, isSpacesConfigured } = require('../services/imageUploadService');
 const logger = require('../utils/logger');
@@ -1117,6 +1118,189 @@ router.post('/businesses/bookings/:id/review-worker', tenantAuth, async (req, re
   } catch (e) {
     logger.error('crew review worker error', e);
     res.status(500).json({ message: 'Error al guardar review' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  WORKER — Favoritos (restaurantes guardados)
+ * ───────────────────────────────────────────── */
+
+// GET /crew/workers/me/favorites
+router.get('/workers/me/favorites', requireWorker, async (req, res) => {
+  try {
+    const favs = await CrewFavorite.find({ workerId: req.worker._id })
+      .sort({ createdAt: -1 })
+      .populate('businessId', 'businessName logo coverImage address businessType')
+      .lean();
+    res.json({ success: true, favorites: favs });
+  } catch (e) {
+    logger.error('crew favorites list error', e);
+    res.status(500).json({ message: 'Error al cargar favoritos' });
+  }
+});
+
+// POST /crew/workers/me/favorites — agregar favorito
+router.post('/workers/me/favorites', requireWorker, async (req, res) => {
+  try {
+    const { businessId, note } = req.body || {};
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+    const existing = await CrewFavorite.findOne({ workerId: req.worker._id, businessId });
+    if (existing) return res.json({ success: true, favorite: existing, alreadyExists: true });
+    const fav = await CrewFavorite.create({ workerId: req.worker._id, businessId, note: note || '' });
+    res.status(201).json({ success: true, favorite: fav });
+  } catch (e) {
+    logger.error('crew add favorite error', e);
+    res.status(500).json({ message: 'Error al agregar favorito' });
+  }
+});
+
+// DELETE /crew/workers/me/favorites/:businessId — quitar favorito
+router.delete('/workers/me/favorites/:businessId', requireWorker, async (req, res) => {
+  try {
+    await CrewFavorite.deleteOne({ workerId: req.worker._id, businessId: req.params.businessId });
+    res.json({ success: true });
+  } catch (e) {
+    logger.error('crew remove favorite error', e);
+    res.status(500).json({ message: 'Error al quitar favorito' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  WORKER — Wallet (historial y retiro)
+ * ───────────────────────────────────────────── */
+
+// GET /crew/workers/me/wallet — balance + historial de movimientos
+router.get('/workers/me/wallet', requireWorker, async (req, res) => {
+  try {
+    const w = req.worker;
+    // Construimos historial a partir de bookings completados
+    const completedBookings = await ShiftBooking.find({
+      workerId: w._id,
+      status: 'completed',
+    })
+      .sort({ completedAt: -1 })
+      .limit(30)
+      .populate('businessId', 'businessName logo')
+      .populate('shiftId', 'title role date')
+      .lean();
+
+    const movements = completedBookings.map((b) => ({
+      _id: b._id,
+      type: 'income',
+      amount: b.agreedTotal,
+      description: b.shiftId?.title || 'Turno completado',
+      businessName: b.businessId?.businessName || 'Negocio',
+      businessLogo: b.businessId?.logo || null,
+      date: b.completedAt || b.updatedAt,
+    }));
+
+    res.json({
+      success: true,
+      wallet: {
+        balance: w.wallet?.balance || 0,
+        pendingBalance: w.wallet?.pendingBalance || 0,
+        currency: 'COP',
+      },
+      movements,
+    });
+  } catch (e) {
+    logger.error('crew wallet error', e);
+    res.status(500).json({ message: 'Error al cargar wallet' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  WORKER — Check-out (finalizar turno desde su lado)
+ * ───────────────────────────────────────────── */
+
+// POST /crew/bookings/:id/checkout
+router.post('/bookings/:id/checkout', requireWorker, async (req, res) => {
+  try {
+    const booking = await ShiftBooking.findById(req.params.id);
+    if (!booking) return res.status(404).json({ message: 'Booking no encontrado' });
+    if (String(booking.workerId) !== String(req.worker._id)) {
+      return res.status(403).json({ message: 'No es tu booking' });
+    }
+    if (booking.status !== 'checked_in') {
+      return res.status(400).json({ message: 'Solo puedes hacer check-out en turnos activos (checked_in)' });
+    }
+    // Worker marca fin — el business aún debe confirmar para liberar pago
+    booking.completedAt = new Date();
+    booking.status = 'completed';
+    booking.payoutStatus = 'held'; // pendiente de confirmación del business
+    await booking.save();
+
+    res.json({ success: true, booking });
+  } catch (e) {
+    logger.error('crew checkout error', e);
+    res.status(500).json({ message: 'Error al hacer check-out' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  WORKER — Historial laboral (resumen automático)
+ * ───────────────────────────────────────────── */
+
+// GET /crew/workers/me/work-history — CV automático
+router.get('/workers/me/work-history', requireWorker, async (req, res) => {
+  try {
+    const bookings = await ShiftBooking.find({
+      workerId: req.worker._id,
+      status: 'completed',
+    })
+      .sort({ completedAt: -1 })
+      .populate('businessId', 'businessName logo businessType address')
+      .populate('shiftId', 'title role date startTime endTime')
+      .lean();
+
+    // Agrupar por negocio
+    const byBusiness = {};
+    for (const b of bookings) {
+      const bizId = String(b.businessId?._id || b.businessId);
+      if (!byBusiness[bizId]) {
+        byBusiness[bizId] = {
+          business: b.businessId,
+          shifts: [],
+          totalHours: 0,
+          totalEarned: 0,
+          avgRating: null,
+          ratings: [],
+        };
+      }
+      byBusiness[bizId].shifts.push(b);
+      byBusiness[bizId].totalHours += b.agreedHours || 0;
+      byBusiness[bizId].totalEarned += b.agreedTotal || 0;
+      if (b.reviewByBusiness?.rating) byBusiness[bizId].ratings.push(b.reviewByBusiness.rating);
+    }
+
+    const history = Object.values(byBusiness).map((entry) => ({
+      business: entry.business,
+      shiftsCount: entry.shifts.length,
+      totalHours: entry.totalHours,
+      totalEarned: entry.totalEarned,
+      avgRating: entry.ratings.length > 0
+        ? Math.round((entry.ratings.reduce((a, b) => a + b, 0) / entry.ratings.length) * 10) / 10
+        : null,
+      firstShift: entry.shifts[entry.shifts.length - 1]?.shiftId?.date || null,
+      lastShift: entry.shifts[0]?.shiftId?.date || null,
+      roles: [...new Set(entry.shifts.map((s) => s.shiftId?.role).filter(Boolean))],
+    }));
+
+    res.json({
+      success: true,
+      history,
+      summary: {
+        totalBusinesses: history.length,
+        totalShifts: bookings.length,
+        totalHours: req.worker.stats?.hoursWorked || 0,
+        totalEarned: req.worker.stats?.totalEarned || 0,
+        avgRating: req.worker.rating?.avg || 0,
+        memberSince: req.worker.createdAt,
+      },
+    });
+  } catch (e) {
+    logger.error('crew work-history error', e);
+    res.status(500).json({ message: 'Error al cargar historial' });
   }
 });
 

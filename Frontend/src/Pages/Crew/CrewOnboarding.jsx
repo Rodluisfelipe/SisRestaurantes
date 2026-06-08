@@ -115,12 +115,12 @@ export default function CrewOnboarding({ onDone }) {
   const stepInfo = STEP_TITLES[step];
 
   return (
-    <div className="relative min-h-screen font-geist text-white overflow-hidden">
+    <div className="relative min-h-[100dvh] font-geist text-white overflow-hidden">
       <Aurora variant="default" />
       <Sparkles count={14} />
 
       {/* Header */}
-      <header className="relative z-10 px-5 pt-6 pb-4">
+      <header className="relative z-10 px-5 pt-[max(1.5rem,env(safe-area-inset-top,0px))] pb-4">
         <div className="max-w-md mx-auto">
           <div className="flex items-center justify-between mb-4">
             <button
@@ -359,7 +359,7 @@ export default function CrewOnboarding({ onDone }) {
       </main>
 
       {/* Fixed bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 px-5 pb-6 pt-12 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14]/95 to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 z-20 px-5 pt-12 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14]/95 to-transparent" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))' }}>
         <div className="max-w-md mx-auto">
           {step < 2 ? (
             <GlowButton
