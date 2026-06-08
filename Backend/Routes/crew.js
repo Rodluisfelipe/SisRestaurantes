@@ -78,6 +78,31 @@ async function requireWorker(req, res, next) {
 }
 
 /**
+ * Genera un código de check-in de 6 caracteres alfanuméricos sin caracteres
+ * ambiguos (0/O/I/1/L). Suficiente entropía para que el worker no lo adivine
+ * (32^6 ≈ 1.000 millones) y suficientemente corto para mostrarlo en grande.
+ */
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function generateCheckInCode() {
+  let s = '';
+  const arr = new Uint32Array(6);
+  // Usamos crypto si está disponible (mejor distribución que Math.random)
+  if (typeof require !== 'undefined') {
+    try {
+      const crypto = require('crypto');
+      const buf = crypto.randomBytes(6);
+      for (let i = 0; i < 6; i++) s += CODE_ALPHABET[buf[i] % CODE_ALPHABET.length];
+      return s;
+    } catch {}
+  }
+  for (let i = 0; i < 6; i++) {
+    arr[i] = Math.floor(Math.random() * CODE_ALPHABET.length);
+    s += CODE_ALPHABET[arr[i]];
+  }
+  return s;
+}
+
+/**
  * Algoritmo de score para ordenar applicants y recomendar workers.
  * Devuelve número 0-100.
  */
@@ -780,18 +805,44 @@ router.get('/workers/me/bookings', requireWorker, async (req, res) => {
   res.json({ success: true, bookings });
 });
 
-// POST /crew/bookings/:id/checkin
+// POST /crew/bookings/:id/checkin — validar con código del empleador
+// El negocio le muestra al worker un código de 6 caracteres (que el worker
+// ve solo cuando llega físicamente). Sin código correcto no hay check-in,
+// así garantizamos presencia real. Lat/lng/foto son opcionales para auditoría.
 router.post('/bookings/:id/checkin', requireWorker, async (req, res) => {
   try {
-    const { lat, lng, photo } = req.body || {};
+    const { code, lat, lng, photo } = req.body || {};
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ message: 'Falta el código de check-in', code: 'MISSING_CODE' });
+    }
     const booking = await ShiftBooking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking no encontrado' });
     if (String(booking.workerId) !== String(req.worker._id)) {
       return res.status(403).json({ message: 'No es tu booking' });
     }
     if (booking.status !== 'confirmed') {
-      return res.status(400).json({ message: 'Booking no se puede check-inear en este estado' });
+      return res.status(400).json({ message: 'Este turno no se puede check-inear en este estado' });
     }
+
+    // Throttle: si ya falló 8 veces, bloqueamos. El negocio puede regenerar el código.
+    if ((booking.checkInAttempts || 0) >= 8) {
+      return res.status(429).json({
+        message: 'Demasiados intentos. Pide al empleador que regenere el código.',
+        code: 'TOO_MANY_ATTEMPTS',
+      });
+    }
+
+    const normalized = code.trim().toUpperCase().replace(/[\s-]/g, '');
+    if (!booking.checkInCode || normalized !== booking.checkInCode) {
+      booking.checkInAttempts = (booking.checkInAttempts || 0) + 1;
+      await booking.save();
+      return res.status(400).json({
+        message: 'Código incorrecto. Verifícalo con el empleador.',
+        code: 'INVALID_CODE',
+        attemptsRemaining: Math.max(0, 8 - booking.checkInAttempts),
+      });
+    }
+
     booking.status = 'checked_in';
     booking.checkInAt = new Date();
     booking.checkInLat = lat || null;
@@ -802,6 +853,27 @@ router.post('/bookings/:id/checkin', requireWorker, async (req, res) => {
   } catch (e) {
     logger.error('crew checkin error', e);
     res.status(500).json({ message: 'Error al hacer check-in' });
+  }
+});
+
+// POST /crew/businesses/bookings/:id/regenerate-checkin-code — solo el negocio
+router.post('/businesses/bookings/:id/regenerate-checkin-code', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.body.businessId;
+    const booking = await ShiftBooking.findById(req.params.id);
+    if (!booking || String(booking.businessId) !== String(businessId)) {
+      return res.status(404).json({ message: 'Booking no encontrado' });
+    }
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ message: 'Solo turnos confirmados pueden regenerar código' });
+    }
+    booking.checkInCode = generateCheckInCode();
+    booking.checkInAttempts = 0;
+    await booking.save();
+    res.json({ success: true, checkInCode: booking.checkInCode });
+  } catch (e) {
+    logger.error('crew regenerate code error', e);
+    res.status(500).json({ message: 'Error al regenerar' });
   }
 });
 
@@ -987,6 +1059,26 @@ router.get('/businesses/workers/:workerId', tenantAuth, async (req, res) => {
   }
 });
 
+// GET /crew/businesses/shifts/:id/bookings — bookings creados de este shift
+// Devuelve el checkInCode visible solo para el negocio (auth tenantAuth).
+router.get('/businesses/shifts/:id/bookings', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+    const shift = await ShiftPost.findOne({ _id: req.params.id, businessId });
+    if (!shift) return res.status(404).json({ message: 'Shift no encontrado' });
+
+    const bookings = await ShiftBooking.find({ shiftId: shift._id })
+      .populate('workerId', 'name photo phone level rating')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ success: true, bookings });
+  } catch (e) {
+    logger.error('crew biz bookings list error', e);
+    res.status(500).json({ message: 'Error al cargar bookings' });
+  }
+});
+
 // GET /crew/businesses/shifts/:id/applicants
 router.get('/businesses/shifts/:id/applicants', tenantAuth, async (req, res) => {
   try {
@@ -1031,6 +1123,9 @@ router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) 
 
     // Crear booking — snapshot del pago y la comisión vigente al momento del accept,
     // para que cambios posteriores en tasas no muevan lo ya pactado.
+    // Genera el `checkInCode`: 6 caracteres alfanuméricos sin ambigüedad
+    // (sin 0/O/I/1) para evitar confusiones en pantalla. Solo el negocio lo ve.
+    const checkInCode = generateCheckInCode();
     const booking = await ShiftBooking.create({
       shiftId: shift._id, workerId: app.workerId, businessId: shift.businessId,
       agreedRate: shift.hourlyRate, agreedHours: shift.hoursTotal,
@@ -1038,6 +1133,7 @@ router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) 
       agreedCommission: shift.commissionAmount,
       payoutStatus: 'held',
       status: 'confirmed',
+      checkInCode,
     });
 
     // Marcar app aceptada

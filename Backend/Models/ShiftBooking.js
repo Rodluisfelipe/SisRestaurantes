@@ -33,10 +33,15 @@ const shiftBookingSchema = new mongoose.Schema({
   },
 
   // Check-in
+  // El código solo lo conoce el negocio. El worker NO puede check-inear sin verlo,
+  // así garantizamos que llegó físicamente al sitio. Se genera al aceptar el
+  // booking. Caracteres alfanuméricos sin ambigüedad (sin 0/O/I/1).
+  checkInCode: { type: String, default: null, index: true },
   checkInAt: { type: Date, default: null },
   checkInLat: { type: Number, default: null },
   checkInLng: { type: Number, default: null },
   checkInPhoto: { type: String, default: null },
+  checkInAttempts: { type: Number, default: 0 }, // anti brute-force
 
   // Check-out / completion
   completedAt: { type: Date, default: null },

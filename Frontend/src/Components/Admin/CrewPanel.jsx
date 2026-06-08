@@ -16,6 +16,7 @@ import CrewWorkerProfileModal from './CrewWorkerProfileModal';
 import BusinessCrewChatModal from './BusinessCrewChatModal';
 import CrewWalletCard from './CrewWalletCard';
 import CrewRechargeModal from './CrewRechargeModal';
+import CrewCheckInCodeCard from './CrewCheckInCodeCard';
 
 function makeApi(businessId) {
   return {
@@ -364,6 +365,7 @@ function MiniBox({ label, value, accent }) {
 
 function ApplicantsView({ api, shift, onBack }) {
   const [apps, setApps] = useState([]);
+  const [bookings, setBookings] = useState([]); // bookings ya creados (con checkInCode)
   const [loading, setLoading] = useState(true);
   const [openApp, setOpenApp] = useState(null);
   const [chatApp, setChatApp] = useState(null);
@@ -372,12 +374,26 @@ function ApplicantsView({ api, shift, onBack }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(api.withBiz(`${api.base}/businesses/shifts/${shift._id}/applicants`), { headers: api.headers() });
-      const data = await r.json();
-      setApps(data.applications || []);
+      const [r1, r2] = await Promise.all([
+        fetch(api.withBiz(`${api.base}/businesses/shifts/${shift._id}/applicants`), { headers: api.headers() }),
+        fetch(api.withBiz(`${api.base}/businesses/shifts/${shift._id}/bookings`), { headers: api.headers() }),
+      ]);
+      const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+      setApps(d1.applications || []);
+      setBookings(d2.bookings || []);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [shift._id]);
+
+  // Mapa workerId → booking, para hidratar los applicants aceptados con su código de check-in
+  const bookingByWorker = bookings.reduce((acc, b) => {
+    acc[String(b.workerId?._id || b.workerId)] = b;
+    return acc;
+  }, {});
+
+  const replaceBookingCode = (bookingId, newCode) => {
+    setBookings((prev) => prev.map((b) => (String(b._id) === String(bookingId) ? { ...b, checkInCode: newCode, checkInAttempts: 0 } : b)));
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -436,16 +452,23 @@ function ApplicantsView({ api, shift, onBack }) {
         {!loading && apps.length === 0 && (
           <p className="text-[12px] text-white/40 text-center py-6">Aún no hay postulantes. Agrega beneficios al turno para atraer más.</p>
         )}
-        {apps.map((a) => (
-          <ApplicantCard
-            key={a._id}
-            app={a}
-            onOpenProfile={() => setOpenApp(a)}
-            onAccept={() => respond(a._id, 'accept')}
-            onReject={() => respond(a._id, 'reject')}
-            onChat={() => setChatApp(a)}
-          />
-        ))}
+        {apps.map((a) => {
+          const wId = String(a.workerId?._id || a.workerId);
+          const booking = bookingByWorker[wId];
+          return (
+            <ApplicantCard
+              key={a._id}
+              app={a}
+              booking={booking}
+              businessId={api.bizId}
+              onOpenProfile={() => setOpenApp(a)}
+              onAccept={() => respond(a._id, 'accept')}
+              onReject={() => respond(a._id, 'reject')}
+              onChat={() => setChatApp(a)}
+              onCodeRegenerated={(newCode) => replaceBookingCode(booking?._id, newCode)}
+            />
+          );
+        })}
       </div>
 
       {openApp && (
@@ -474,7 +497,7 @@ function ApplicantsView({ api, shift, onBack }) {
   );
 }
 
-function ApplicantCard({ app, onAccept, onReject, onOpenProfile, onChat }) {
+function ApplicantCard({ app, booking, businessId, onAccept, onReject, onOpenProfile, onChat, onCodeRegenerated }) {
   const w = app.workerId || {};
   const matchTone = app.matchScore >= 75 ? 'from-emerald-500/30 to-emerald-500/10 text-emerald-200 border-emerald-400/30'
     : app.matchScore >= 50 ? 'from-amber-500/30 to-amber-500/10 text-amber-200 border-amber-400/30'
@@ -544,16 +567,32 @@ function ApplicantCard({ app, onAccept, onReject, onOpenProfile, onChat }) {
             </button>
           </div>
         ) : app.status === 'accepted' ? (
-          <div className="flex items-center gap-2">
-            <p className="flex-1 text-[11px] font-extrabold text-center py-1.5 rounded-xl bg-emerald-500/[0.12] text-emerald-300 border border-emerald-400/30">
-              Aceptado ✓
-            </p>
-            <button
-              onClick={onChat}
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] font-extrabold border border-white/[0.08]"
-            >
-              💬 Mensaje
-            </button>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <p className="flex-1 text-[11px] font-extrabold text-center py-1.5 rounded-xl bg-emerald-500/[0.12] text-emerald-300 border border-emerald-400/30">
+                Aceptado ✓
+              </p>
+              <button
+                onClick={onChat}
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] font-extrabold border border-white/[0.08]"
+              >
+                💬 Mensaje
+              </button>
+            </div>
+            {/* Código que el negocio le muestra al worker al llegar al sitio */}
+            {booking?.checkInCode && booking.status === 'confirmed' && (
+              <CrewCheckInCodeCard
+                bookingId={booking._id}
+                businessId={businessId}
+                code={booking.checkInCode}
+                onRegenerated={onCodeRegenerated}
+              />
+            )}
+            {booking?.status === 'checked_in' && (
+              <p className="text-[11px] text-center py-2 rounded-xl bg-sky-500/10 text-sky-200 border border-sky-400/30 font-extrabold">
+                🟢 Check-in registrado — {new Date(booking.checkInAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
           </div>
         ) : (
           <p className="text-[11px] font-bold text-center py-1.5 rounded-xl bg-white/[0.02] text-white/40 border border-white/[0.06]">

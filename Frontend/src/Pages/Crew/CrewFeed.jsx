@@ -8,7 +8,7 @@ import { cannon } from './components/confettiBurst';
 import TiltCard from './components/TiltCard';
 import StreakFlame from './components/StreakFlame';
 import AnimatedCounter from './components/AnimatedCounter';
-import DailyQuests from './components/DailyQuests';
+import MissionsDial from './components/MissionsDial';
 import GradientText from './components/GradientText';
 import GlowButton from './components/GlowButton';
 import CrewShiftDetail from './CrewShiftDetail';
@@ -104,17 +104,20 @@ export default function CrewFeed({ onDetailOpen }) {
               </div>
               {worker?.streakDays > 0 && <StreakFlame days={worker.streakDays} size="sm" />}
             </div>
-            <motion.div
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-red-500/20 to-red-600/15 border border-red-500/30"
-              style={{ boxShadow: '0 4px 20px -4px rgba(239,68,68,0.3)' }}
-            >
-              <svg className="w-3.5 h-3.5 text-red-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>
-              <span className="text-[11px] font-bold text-white/70">Nivel</span>
-              <span className="text-[15px] font-black text-white tabular-nums">
-                <AnimatedCounter value={worker?.level || 1} duration={0.6} />
-              </span>
-            </motion.div>
+            <div className="flex items-center gap-2">
+              <MissionsDial onRewardClaimed={refreshMe} />
+              <motion.div
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-red-500/20 to-red-600/15 border border-red-500/30"
+                style={{ boxShadow: '0 4px 20px -4px rgba(239,68,68,0.3)' }}
+              >
+                <svg className="w-3.5 h-3.5 text-red-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>
+                <span className="text-[11px] font-bold text-white/70">Nivel</span>
+                <span className="text-[15px] font-black text-white tabular-nums">
+                  <AnimatedCounter value={worker?.level || 1} duration={0.6} />
+                </span>
+              </motion.div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between mb-1.5">
@@ -141,7 +144,6 @@ export default function CrewFeed({ onDetailOpen }) {
       </header>
 
       <main className="max-w-md mx-auto px-5 pt-5 space-y-5">
-        <DailyQuests onRewardClaimed={refreshMe} />
 
         <div className="flex items-center justify-between">
           <h2 className="text-[16px] font-black text-white">

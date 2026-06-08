@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import crewApi from '../../services/crewApi';
+import CheckInModal from './components/CheckInModal';
 
 function formatCOP(n) {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -32,6 +33,7 @@ export default function CrewMyShifts() {
   const [applications, setApplications] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [checkInBooking, setCheckInBooking] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,12 +118,7 @@ export default function CrewMyShifts() {
             key={b._id}
             booking={b}
             active
-            onCheckIn={async () => {
-              try {
-                await crewApi.post(`/bookings/${b._id}/checkin`, {});
-                await load();
-              } catch (e) { alert(e?.response?.data?.message || 'Error'); }
-            }}
+            onCheckIn={() => setCheckInBooking(b)}
             onCheckOut={async () => {
               try {
                 await crewApi.post(`/bookings/${b._id}/checkout`, {});
@@ -139,6 +136,13 @@ export default function CrewMyShifts() {
         )}
         {!loading && tab === 'history' && historyBookings.map((b) => <BookingCard key={b._id} booking={b} />)}
       </main>
+
+      <CheckInModal
+        open={!!checkInBooking}
+        booking={checkInBooking}
+        onClose={() => setCheckInBooking(null)}
+        onSuccess={() => { setCheckInBooking(null); load(); }}
+      />
     </div>
   );
 }
