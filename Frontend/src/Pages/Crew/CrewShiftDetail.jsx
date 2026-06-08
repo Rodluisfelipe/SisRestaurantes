@@ -77,7 +77,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
 
   if (loading) {
     return (
-      <div className="min-h-[100dvh] bg-[#0a0a14] animate-pulse">
+      <div className="fixed inset-0 z-50 bg-[#0a0a14] animate-pulse">
         <div className="h-56 bg-white/[0.04]" />
         <div className="max-w-md mx-auto px-5 mt-5 space-y-3">
           <div className="h-24 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
@@ -89,7 +89,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
 
   if (error || !data) {
     return (
-      <div className="min-h-[100dvh] bg-[#0a0a14] flex items-center justify-center px-5">
+      <div className="fixed inset-0 z-50 bg-[#0a0a14] flex items-center justify-center px-5">
         <div className="rounded-2xl border border-red-500/30 bg-red-500/[0.08] p-6 text-center max-w-md">
           <p className="text-[14px] font-bold text-red-300">{error || 'Sin datos'}</p>
           <button onClick={onBack} className="mt-3 px-4 py-2 rounded-lg bg-white/[0.06] text-white/70 font-bold text-[13px]">Volver</button>
@@ -104,7 +104,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
   const logo = biz.logo;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0a0a14] text-white font-geist pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
       {/* Hero con cover + logo */}
       <div className="relative">
         {/* Cover image */}
@@ -391,7 +391,7 @@ export default function CrewShiftDetail({ shiftId, onBack, onApplied }) {
       </div>
 
       {/* Sticky apply CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14] to-transparent pt-10 px-5" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
+      <div className="sticky bottom-0 left-0 right-0 z-10 bg-gradient-to-t from-[#0a0a14] via-[#0a0a14] to-transparent pt-10 px-5" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))' }}>
         <div className="max-w-md mx-auto">
           <MagneticButton
             onClick={apply}

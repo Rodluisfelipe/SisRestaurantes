@@ -84,7 +84,7 @@ export default function CrewFeed() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
       {/* Header — cosmic with aurora blobs */}
       <header className="sticky top-0 z-30 overflow-hidden">
         <div className="absolute inset-0 bg-[#0a0a14]/80 backdrop-blur-2xl" />

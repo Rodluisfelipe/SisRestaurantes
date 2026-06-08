@@ -17,7 +17,7 @@ export default function CrewProfileEditor({ onBack }) {
   if (!worker) return null;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0a0a14] text-white font-geist pb-6">
       <header className="sticky top-0 z-20 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3 flex items-center gap-2">
           <button onClick={onBack} className="text-white/50 hover:text-white transition" aria-label="Atrás">

@@ -45,7 +45,7 @@ export default function CrewChat() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
       <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-4">
           <h1 className="text-[20px] font-extrabold text-white">Mensajes</h1>
@@ -141,7 +141,7 @@ function ChatThread({ conversation, onBack }) {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#0a0a14] text-white font-geist">
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0a14] text-white font-geist">
       <header className="bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06] sticky top-0 z-20">
         <div className="max-w-md mx-auto px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3 flex items-center gap-3">
           <button onClick={onBack} className="text-white/50 hover:text-white transition" aria-label="Volver">

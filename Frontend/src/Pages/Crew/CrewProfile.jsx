@@ -42,7 +42,7 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
   const pct = Math.min(100, ((worker.xp - curr) / (next - curr)) * 100);
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
       {/* Hero — cosmic with animated ring */}
       <div className="relative overflow-hidden">
         {/* Aurora blobs */}

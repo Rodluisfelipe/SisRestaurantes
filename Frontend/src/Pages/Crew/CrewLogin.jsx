@@ -78,10 +78,10 @@ export default function CrewLogin({ onAuthed }) {
           <motion.div
             animate={{ scale: [1, 1.04, 1] }}
             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-            className="relative mx-auto mb-5"
+            className="relative mx-auto mb-5 w-[120px] h-[120px]"
           >
-            <CrewLogo size={72} showText={false} />
-            <div className="absolute inset-0 bg-red-500/30 rounded-full blur-[40px] -z-10" />
+            <CrewLogo size={120} showText={false} />
+            <div className="absolute inset-0 bg-red-500/25 rounded-full blur-[50px] -z-10" />
           </motion.div>
 
           <span className="inline-block px-3 py-1.5 mb-3 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/70">

@@ -32,7 +32,7 @@ export default function CrewFavorites({ onBack }) {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#0a0a14] text-white font-geist pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0a0a14] text-white font-geist pb-6">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-4 flex items-center gap-3">
