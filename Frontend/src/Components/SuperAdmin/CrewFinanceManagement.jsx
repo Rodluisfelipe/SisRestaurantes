@@ -89,18 +89,32 @@ export default function CrewFinanceManagement() {
 function TreasuryView() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState(null);
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const { data } = await superadminApi.get('/crew/treasury');
-        setData(data);
-      } catch (e) { console.error(e); }
-      finally { setLoading(false); }
-    };
-    load();
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await superadminApi.get('/crew/treasury');
+      setData(data);
+    } catch (e) { console.error(e); }
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const runBackfill = async () => {
+    if (!confirm('¿Recuperar pagos pendientes de turnos completados? Esto acreditará a workers/XP que quedaron rotos por el bug del escrow.')) return;
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const { data } = await superadminApi.post('/crew/backfill-payouts');
+      setBackfillResult(data);
+      load();
+    } catch (e) {
+      setBackfillResult({ error: e?.response?.data?.message || e.message });
+    } finally { setBackfilling(false); }
+  };
 
   if (loading) {
     return (
@@ -175,6 +189,59 @@ function TreasuryView() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
+      </div>
+
+      {/* Backfill rescate */}
+      <div className="rounded-xl border border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/[0.06] p-4">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Recuperar pagos rotos</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">
+              Procesar bookings que quedaron como "completados" pero nunca recibieron pago
+            </p>
+            <p className="text-[11px] text-slate-600 dark:text-white/50 mt-1 leading-relaxed">
+              Acredita el dinero al worker, da XP, badges y stats retroactivos.
+              Idempotente — puedes correrlo varias veces sin duplicar nada.
+            </p>
+          </div>
+          <SAButton
+            variant="danger"
+            disabled={backfilling}
+            onClick={runBackfill}
+            icon={
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+            }
+          >
+            {backfilling ? 'Procesando…' : 'Ejecutar backfill'}
+          </SAButton>
+        </div>
+
+        {backfillResult && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-3 px-3 py-2.5 rounded-lg bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] text-xs"
+          >
+            {backfillResult.error ? (
+              <p className="text-rose-600 dark:text-rose-400 font-semibold">Error: {backfillResult.error}</p>
+            ) : (
+              <div className="space-y-1">
+                <p className="font-semibold text-slate-900 dark:text-white">
+                  Procesados {backfillResult.processed} · Acreditados <span className="text-emerald-600 dark:text-emerald-400">{backfillResult.released}</span>
+                  {backfillResult.skipped > 0 && <> · Ya estaban OK {backfillResult.skipped}</>}
+                </p>
+                {backfillResult.failed?.length > 0 && (
+                  <details className="cursor-pointer">
+                    <summary className="text-rose-600 dark:text-rose-400 font-semibold">{backfillResult.failed.length} fallaron — ver detalle</summary>
+                    <pre className="mt-1.5 text-[10px] text-slate-500 dark:text-white/50 overflow-x-auto">{JSON.stringify(backfillResult.failed, null, 2)}</pre>
+                  </details>
+                )}
+              </div>
+            )}
+          </motion.div>
+        )}
       </div>
     </div>
   );
