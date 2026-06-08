@@ -30,7 +30,7 @@ const ROLE_LABEL = {
   eventos: 'Eventos', delivery: 'Domiciliario',
 };
 
-export default function CrewFeed() {
+export default function CrewFeed({ onDetailOpen }) {
   const { worker, refreshMe } = useCrew();
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -74,10 +74,11 @@ export default function CrewFeed() {
     return (
       <CrewShiftDetail
         shiftId={openShift}
-        onBack={() => setOpenShift(null)}
+        onBack={() => { setOpenShift(null); onDetailOpen?.(false); }}
         onApplied={() => {
           setShifts((prev) => prev.filter((s) => s._id !== openShift));
           setOpenShift(null);
+          onDetailOpen?.(false);
         }}
       />
     );
@@ -184,7 +185,7 @@ export default function CrewFeed() {
                   index={i}
                   onApply={() => apply(s._id)}
                   applying={applying === s._id}
-                  onOpen={() => setOpenShift(s._id)}
+                  onOpen={() => { setOpenShift(s._id); onDetailOpen?.(true); }}
                 />
               ))}
             </AnimatePresence>

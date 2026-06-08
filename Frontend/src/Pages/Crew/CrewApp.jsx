@@ -57,6 +57,8 @@ export default function CrewApp() {
   const [tab, setTab] = useState('feed');
   const [editingProfile, setEditingProfile] = useState(false);
   const [subView, setSubView] = useState(null); // 'wallet' | 'favorites' | 'history' | null
+  const [chatOpen, setChatOpen] = useState(false);
+  const [shiftDetailOpen, setShiftDetailOpen] = useState(false);
   const [levelUp, setLevelUp] = useState(null);
   const prevLevelRef = useRef(null);
 
@@ -87,14 +89,14 @@ export default function CrewApp() {
       <AnimatePresence mode="wait">
         <motion.div
           key={tab}
-          initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }}
-          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, filter: 'blur(4px)' }}
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
         >
-          {tab === 'feed' && <CrewFeed />}
+          {tab === 'feed' && <CrewFeed onDetailOpen={setShiftDetailOpen} />}
           {tab === 'shifts' && <CrewMyShifts />}
-          {tab === 'chat' && <CrewChat />}
+          {tab === 'chat' && <CrewChat onThreadOpen={setChatOpen} />}
           {tab === 'profile' && (
             subView === 'wallet' ? <CrewWallet onBack={() => setSubView(null)} /> :
             subView === 'favorites' ? <CrewFavorites onBack={() => setSubView(null)} /> :
@@ -118,8 +120,8 @@ export default function CrewApp() {
         onClose={() => setLevelUp(null)}
       />
 
-      {/* Bottom nav — cosmic glass with pill glow */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40">
+      {/* Bottom nav — hidden when sub-views are open */}
+      <nav className={`fixed bottom-0 left-0 right-0 z-40 transition-transform duration-200 ${(subView || editingProfile || chatOpen || shiftDetailOpen) ? 'translate-y-full' : 'translate-y-0'}`}>
         {/* Gradient fade */}
         <div className="absolute inset-x-0 -top-8 h-8 bg-gradient-to-t from-[#0a0a14] to-transparent pointer-events-none" />
         <div className="relative bg-[#0f0f1a]/90 backdrop-blur-2xl border-t border-white/[0.06]">

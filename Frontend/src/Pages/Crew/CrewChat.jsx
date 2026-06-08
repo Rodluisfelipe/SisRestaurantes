@@ -24,7 +24,7 @@ function formatRelative(iso) {
   return new Date(iso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
 }
 
-export default function CrewChat() {
+export default function CrewChat({ onThreadOpen }) {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openConv, setOpenConv] = useState(null);
@@ -41,7 +41,7 @@ export default function CrewChat() {
   useEffect(() => { load(); }, [load]);
 
   if (openConv) {
-    return <ChatThread conversation={openConv} onBack={() => { setOpenConv(null); load(); }} />;
+    return <ChatThread conversation={openConv} onBack={() => { setOpenConv(null); onThreadOpen?.(false); load(); }} />;
   }
 
   return (
@@ -71,7 +71,7 @@ export default function CrewChat() {
         {conversations.map((c) => (
           <button
             key={c._id}
-            onClick={() => setOpenConv(c)}
+            onClick={() => { setOpenConv(c); onThreadOpen?.(true); }}
             className="w-full text-left p-3 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] transition flex items-center gap-3"
           >
             <div className="shrink-0 w-11 h-11 rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center text-[14px] font-extrabold text-white/50">
@@ -141,7 +141,7 @@ function ChatThread({ conversation, onBack }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0a14] text-white font-geist">
+    <div className="min-h-[100dvh] flex flex-col bg-[#0a0a14] text-white font-geist">
       <header className="bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06] sticky top-0 z-20">
         <div className="max-w-md mx-auto px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-3 flex items-center gap-3">
           <button onClick={onBack} className="text-white/50 hover:text-white transition" aria-label="Volver">
