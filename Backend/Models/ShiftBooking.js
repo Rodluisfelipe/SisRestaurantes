@@ -42,8 +42,11 @@ const shiftBookingSchema = new mongoose.Schema({
   completedAt: { type: Date, default: null },
   confirmedByBusinessAt: { type: Date, default: null },
 
-  // Pago
-  payoutStatus: { type: String, enum: ['pending', 'held', 'released', 'refunded'], default: 'pending' },
+  // Pago — descompuesto en lo que va al worker vs. lo que se queda Crew.
+  // Al crear el booking el dinero ya está en escrow (pendingBalance del negocio).
+  // Al completarse, agreedTotal → worker.wallet.balance y commissionAmount → Crew.
+  agreedCommission: { type: Number, default: 0 },
+  payoutStatus: { type: String, enum: ['held', 'released', 'refunded'], default: 'held' },
   payoutId: { type: String, default: null },
   releasedAt: { type: Date, default: null },
 

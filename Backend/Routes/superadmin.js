@@ -10,6 +10,9 @@ const PaymentRequest = require('../Models/PaymentRequest');
 const Subscription = require('../Models/Subscription');
 const AuditLog = require('../Models/AuditLog');
 const { Worker } = require('../Models/Worker');
+const CrewWalletTxn = require('../Models/CrewWalletTxn');
+const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
+const crewLedger = require('../services/crewLedger');
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
@@ -413,6 +416,125 @@ router.post('/crew/kyc/:workerId/reject', requireRole('admin'), async (req, res)
   } catch (error) {
     logger.error('Error rejecting crew KYC', error, req);
     res.status(500).json({ message: 'Error al rechazar' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  CREW — cola de retiros + overview de la billetera de la plataforma
+ *  Lectura desde auditor; pagos/rechazos requieren admin+ (mueve plata real).
+ * ───────────────────────────────────────────── */
+
+// GET /api/superadmin/crew/withdrawals?status=pending
+router.get('/crew/withdrawals', async (req, res) => {
+  try {
+    const { status = 'pending', limit = 100 } = req.query;
+    const q = {};
+    if (['pending', 'processing', 'paid', 'rejected'].includes(status)) q.status = status;
+    const [withdrawals, counts] = await Promise.all([
+      CrewWithdrawalRequest.find(q)
+        .sort({ createdAt: -1 })
+        .limit(Math.min(Number(limit), 200))
+        .populate('workerId', 'name phone email photo cedula kyc.status wallet')
+        .populate('paidBy', 'email name')
+        .lean(),
+      CrewWithdrawalRequest.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 }, total: { $sum: '$amount' } } },
+      ]),
+    ]);
+    const countsByStatus = counts.reduce((acc, c) => ({ ...acc, [c._id]: { count: c.count, total: c.total } }), {});
+    res.json({ success: true, withdrawals, counts: countsByStatus });
+  } catch (error) {
+    logger.error('Error listing crew withdrawals', error, req);
+    res.status(500).json({ message: 'Error al cargar retiros' });
+  }
+});
+
+// POST /api/superadmin/crew/withdrawals/:id/pay
+router.post('/crew/withdrawals/:id/pay', requireRole('admin'), async (req, res) => {
+  try {
+    const { externalReference } = req.body || {};
+    const result = await crewLedger.markWithdrawalPaid({
+      withdrawalId: req.params.id,
+      externalReference: externalReference || null,
+      paidBy: req.user.id,
+    });
+    res.json({ success: true, ...result });
+  } catch (e) {
+    if (['NOT_FOUND', 'INVALID_STATE'].includes(e.code)) {
+      return res.status(400).json({ message: e.message, code: e.code });
+    }
+    logger.error('Error paying crew withdrawal', e, req);
+    res.status(500).json({ message: e.message || 'Error al marcar pagado' });
+  }
+});
+
+// POST /api/superadmin/crew/withdrawals/:id/reject
+router.post('/crew/withdrawals/:id/reject', requireRole('admin'), async (req, res) => {
+  try {
+    const { reason } = req.body || {};
+    const result = await crewLedger.rejectWithdrawal({
+      withdrawalId: req.params.id,
+      reason,
+      rejectedBy: req.user.id,
+    });
+    res.json({ success: true, ...result });
+  } catch (e) {
+    if (['NOT_FOUND', 'INVALID_STATE', 'MISSING_REASON'].includes(e.code)) {
+      return res.status(400).json({ message: e.message, code: e.code });
+    }
+    logger.error('Error rejecting crew withdrawal', e, req);
+    res.status(500).json({ message: e.message || 'Error al rechazar' });
+  }
+});
+
+// GET /api/superadmin/crew/treasury — visión global de plata en Crew
+router.get('/crew/treasury', async (req, res) => {
+  try {
+    const [walletsAgg, commissionAgg, pendingWithdrawalsAgg, ledgerByKind] = await Promise.all([
+      BusinessConfig.aggregate([
+        { $group: {
+          _id: null,
+          totalAvailable: { $sum: '$crewWallet.balance' },
+          totalInEscrow: { $sum: '$crewWallet.pendingBalance' },
+          totalLifetimeSpent: { $sum: '$crewWallet.totalSpent' },
+          totalLifetimeCommission: { $sum: '$crewWallet.totalCommissionPaid' },
+          rechargedBusinesses: { $sum: { $cond: [{ $gt: ['$crewWallet.balance', 0] }, 1, 0] } },
+        } },
+      ]),
+      CrewWalletTxn.aggregate([
+        { $match: { kind: 'shift_commission' } },
+        { $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          total: { $sum: '$amount' },
+          count: { $sum: 1 },
+        } },
+        { $sort: { _id: -1 } },
+        { $limit: 12 },
+      ]),
+      CrewWithdrawalRequest.aggregate([
+        { $match: { status: 'pending' } },
+        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } },
+      ]),
+      CrewWalletTxn.aggregate([
+        { $match: { createdAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+        { $group: { _id: '$kind', count: { $sum: 1 }, total: { $sum: '$amount' } } },
+      ]),
+    ]);
+
+    res.json({
+      success: true,
+      treasury: {
+        businesses: walletsAgg[0] || {
+          totalAvailable: 0, totalInEscrow: 0, totalLifetimeSpent: 0, totalLifetimeCommission: 0, rechargedBusinesses: 0,
+        },
+        pendingWithdrawals: pendingWithdrawalsAgg[0] || { total: 0, count: 0 },
+      },
+      commissionByMonth: commissionAgg,
+      activityLast30d: ledgerByKind,
+    });
+  } catch (error) {
+    logger.error('Error fetching crew treasury', error, req);
+    res.status(500).json({ message: 'Error al cargar treasury' });
   }
 });
 

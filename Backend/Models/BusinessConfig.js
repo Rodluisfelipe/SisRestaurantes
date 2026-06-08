@@ -299,6 +299,20 @@ const businessConfigSchema = new mongoose.Schema({
     },
     favoriteProductIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }]
   },
+  // Crew marketplace wallet — billetera prepago del negocio para escrow de turnos.
+  // Toda publicación de turno reserva saldo aquí; el dinero se libera al worker
+  // cuando el turno se completa. Si se cancela, las reglas de devolución
+  // determinan cuánto vuelve a `balance` vs. queda como penalización para Crew.
+  crewWallet: {
+    balance: { type: Number, default: 0, min: 0 },        // disponible para reservar nuevos turnos
+    pendingBalance: { type: Number, default: 0, min: 0 }, // reservado en escrow (turnos publicados, sin liberar)
+    totalReserved: { type: Number, default: 0 },          // suma histórica de todo lo reservado
+    totalSpent: { type: Number, default: 0 },             // suma histórica liberada a workers
+    totalCommissionPaid: { type: Number, default: 0 },    // suma histórica que Crew se ha quedado
+    currency: { type: String, default: 'COP' },
+    lastRechargeAt: { type: Date, default: null },
+  },
+
   // Referral program
   referralCode: {
     type: String,

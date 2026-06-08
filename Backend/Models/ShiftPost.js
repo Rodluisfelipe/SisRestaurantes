@@ -33,6 +33,15 @@ const shiftPostSchema = new mongoose.Schema({
   currency: { type: String, default: 'COP' },
   paymentMethod: { type: String, enum: ['platform', 'cash_after_shift'], default: 'platform' },
 
+  // Escrow — comisión y reserva calculados al publicar.
+  // commissionRate va al 0..1 (ej. 0.10). `reservedAmount` es lo que sale
+  // de crewWallet.balance del negocio y queda en pendingBalance hasta liberar.
+  commissionRate: { type: Number, default: 0.10, min: 0, max: 0.5 },
+  commissionAmount: { type: Number, default: 0 },        // = totalPay * commissionRate (por workerNeeded)
+  reservedAmount: { type: Number, default: 0 },          // total escrow restante (no liberado)
+  releasedAmount: { type: Number, default: 0 },          // suma liberada a workers
+  refundedAmount: { type: Number, default: 0 },          // suma devuelta al negocio
+
   // Requisitos
   requirements: {
     minLevel: { type: Number, default: 1, min: 1 },

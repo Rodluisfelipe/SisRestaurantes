@@ -31,8 +31,11 @@ const Category = require('../Models/Category');
 const Conversation = require('../Models/Conversation');
 const Message = require('../Models/Message');
 const CrewFavorite = require('../Models/CrewFavorite');
+const CrewWalletTxn = require('../Models/CrewWalletTxn');
+const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const { uploadImage, isSpacesConfigured } = require('../services/imageUploadService');
+const crewLedger = require('../services/crewLedger');
 const logger = require('../utils/logger');
 
 // Multer en memoria para imágenes (foto perfil, KYC)
@@ -855,20 +858,41 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
       return res.status(400).json({ message: `Rol no válido: ${role}` });
     }
 
+    const totalPay = Math.round(Number(hoursTotal) * Number(hourlyRate));
+    const wn = Number(workersNeeded || 1);
+    const quote = crewLedger.quoteShiftEscrow({ totalPay, workersNeeded: wn, isSOS: !!isSOS });
+
+    // Validar saldo ANTES de crear el shift, para no dejar shifts huérfanos si
+    // el negocio no puede pagar. La reserva real ocurre después con findOneAndUpdate
+    // atómico (cubre la race condition de dos posts simultáneos).
+    const available = biz.crewWallet?.balance || 0;
+    if (available < quote.totalReserveNeeded) {
+      return res.status(402).json({
+        message: `Saldo Crew insuficiente. Necesitas ${quote.totalReserveNeeded.toLocaleString('es-CO')} COP y tienes ${available.toLocaleString('es-CO')} COP.`,
+        code: 'INSUFFICIENT_FUNDS',
+        required: quote.totalReserveNeeded,
+        available,
+        quote,
+      });
+    }
+
     const shift = new ShiftPost({
       businessId,
       postedBy: req.user.id,
       title, description: description || '', role,
       skillsBonus: (skillsBonus || []).filter(s => VALID_SKILLS.includes(s)),
       date: new Date(date), startTime, endTime, hoursTotal,
-      workersNeeded: workersNeeded || 1,
+      workersNeeded: wn,
       hourlyRate,
-      totalPay: Math.round(Number(hoursTotal) * Number(hourlyRate)),
+      totalPay,
       requirements: requirements || {},
       perks: perks || [],
       visibility: visibility || 'public',
       matchMode: matchMode || 'open',
       isSOS: !!isSOS,
+      commissionRate: quote.commissionRate,
+      commissionAmount: quote.commissionPerWorker,
+      reservedAmount: quote.totalReserveNeeded,
       location: {
         city: biz.address?.city || biz.city || '',
         neighborhood: biz.address?.neighborhood || '',
@@ -880,7 +904,23 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
       expiresAt: new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000),
     });
     await shift.save();
-    res.status(201).json({ success: true, shift });
+
+    // Reserva atómica del escrow. Si falla, eliminamos el shift huérfano.
+    try {
+      const result = await crewLedger.reserveShiftEscrow({
+        businessId, shift, performedBy: { kind: 'admin', id: req.user.id },
+      });
+      res.status(201).json({ success: true, shift, escrow: result.quote, wallet: result.wallet });
+    } catch (reserveErr) {
+      await ShiftPost.deleteOne({ _id: shift._id }).catch(() => {});
+      if (reserveErr.code === 'INSUFFICIENT_FUNDS') {
+        return res.status(402).json({
+          message: reserveErr.message, code: 'INSUFFICIENT_FUNDS',
+          required: reserveErr.required, available: reserveErr.available,
+        });
+      }
+      throw reserveErr;
+    }
   } catch (e) {
     logger.error('crew biz post shift error', e);
     res.status(500).json({ message: e.message || 'Error al publicar shift', error: e.name });
@@ -988,10 +1028,14 @@ router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) 
       return res.status(400).json({ message: 'Shift no aceptable' });
     }
 
-    // Crear booking
+    // Crear booking — snapshot del pago y la comisión vigente al momento del accept,
+    // para que cambios posteriores en tasas no muevan lo ya pactado.
     const booking = await ShiftBooking.create({
       shiftId: shift._id, workerId: app.workerId, businessId: shift.businessId,
-      agreedRate: shift.hourlyRate, agreedHours: shift.hoursTotal, agreedTotal: shift.totalPay,
+      agreedRate: shift.hourlyRate, agreedHours: shift.hoursTotal,
+      agreedTotal: shift.totalPay,
+      agreedCommission: shift.commissionAmount,
+      payoutStatus: 'held',
       status: 'confirmed',
     });
 
@@ -1049,27 +1093,27 @@ router.post('/businesses/bookings/:id/complete', tenantAuth, async (req, res) =>
     booking.status = 'completed';
     booking.completedAt = new Date();
     booking.confirmedByBusinessAt = new Date();
-    // En sprint 2: pago real en escrow → liberar aquí. MVP marca el flag.
-    booking.payoutStatus = 'released';
-    booking.releasedAt = new Date();
     await booking.save();
 
-    // Awards: XP + stats + posible badge "primer turno"
+    // Libera el dinero a través del ledger: business.pendingBalance → worker.wallet.balance,
+    // y la comisión va al ingreso de la plataforma. Esto reemplaza el "MVP directo" anterior.
+    await crewLedger.releaseBookingFunds({
+      bookingId: booking._id,
+      performedBy: { kind: 'admin', id: req.user.id },
+    });
+
+    // Awards: XP + stats + posible badge — la billetera ya quedó actualizada por el ledger.
     const xpGained = Math.round(booking.agreedHours * 25); // 25 XP por hora trabajada
     const result = await Worker.addXP(booking.workerId, xpGained);
     const worker = result.worker;
     worker.stats.shiftsCompleted += 1;
     worker.stats.hoursWorked += booking.agreedHours;
-    worker.stats.totalEarned += booking.agreedTotal;
     worker.lastShiftAt = new Date();
-    worker.wallet.balance += booking.agreedTotal; // MVP: directo a wallet sin escrow
 
-    // Badge "first_shift"
     if (worker.stats.shiftsCompleted === 1 && !worker.badgesEarned.some(b => b.key === 'first_shift')) {
       worker.badgesEarned.push({ key: 'first_shift' });
       booking.badgesAwarded.push('first_shift');
     }
-    // Badge "10_shifts"
     if (worker.stats.shiftsCompleted === 10 && !worker.badgesEarned.some(b => b.key === '10_shifts')) {
       worker.badgesEarned.push({ key: '10_shifts' });
       booking.badgesAwarded.push('10_shifts');
@@ -1079,7 +1123,13 @@ router.post('/businesses/bookings/:id/complete', tenantAuth, async (req, res) =>
     await booking.save();
     await worker.save();
 
-    res.json({ success: true, booking, leveledUp: result.leveledUp, xpGained });
+    res.json({
+      success: true, booking,
+      leveledUp: result.leveledUp,
+      xpGained,
+      payout: booking.agreedTotal,
+      commission: booking.agreedCommission,
+    });
   } catch (e) {
     logger.error('crew complete booking error', e);
     res.status(500).json({ message: e.message || 'Error al completar booking', error: e.name });
@@ -1302,6 +1352,177 @@ router.get('/workers/me/work-history', requireWorker, async (req, res) => {
     logger.error('crew work-history error', e);
     res.status(500).json({ message: 'Error al cargar historial' });
   }
+});
+
+/* ─────────────────────────────────────────────
+ *  BUSINESS — billetera Crew (recarga, saldo, extracto, cancelación)
+ *  Toda plata que se mueva en turnos pasa por acá. Es la regla central
+ *  del modelo de negocio.
+ * ───────────────────────────────────────────── */
+
+// GET /crew/businesses/wallet — saldo, pendings y resumen
+router.get('/businesses/wallet', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+    const biz = await BusinessConfig.findById(businessId).select('crewWallet businessName').lean();
+    if (!biz) return res.status(404).json({ message: 'Negocio no encontrado' });
+
+    res.json({
+      success: true,
+      wallet: biz.crewWallet || {
+        balance: 0, pendingBalance: 0, totalReserved: 0, totalSpent: 0, totalCommissionPaid: 0, currency: 'COP',
+      },
+      meta: { businessName: biz.businessName },
+      rates: {
+        standardCommission: crewLedger.STANDARD_COMMISSION,
+        sosCommission: crewLedger.SOS_COMMISSION,
+        minRecharge: crewLedger.MIN_RECHARGE,
+      },
+    });
+  } catch (e) {
+    logger.error('crew biz wallet error', e);
+    res.status(500).json({ message: e.message || 'Error al cargar billetera' });
+  }
+});
+
+// POST /crew/businesses/wallet/recharge — recarga manual (MVP).
+// En producción esto vendría tras callback de ePayco/dLocal con su reference.
+router.post('/businesses/wallet/recharge', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.body.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+    const { amount, externalReference } = req.body || {};
+    if (!Number.isFinite(amount)) return res.status(400).json({ message: 'amount inválido' });
+
+    const result = await crewLedger.depositBusinessWallet({
+      businessId,
+      amount: Math.round(amount),
+      idempotencyKey: externalReference || null,
+      note: externalReference ? `Recarga ref: ${externalReference}` : 'Recarga manual',
+      performedBy: { kind: 'admin', id: req.user.id },
+    });
+    res.json({ success: true, ...result });
+  } catch (e) {
+    if (e.code === 'AMOUNT_BELOW_MIN') {
+      return res.status(400).json({ message: e.message, code: e.code });
+    }
+    logger.error('crew biz wallet recharge error', e);
+    res.status(500).json({ message: e.message || 'Error al recargar' });
+  }
+});
+
+// GET /crew/businesses/wallet/transactions — extracto paginado
+router.get('/businesses/wallet/transactions', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+    const { limit = 50, kind } = req.query;
+    const q = { actorType: 'business', actorId: new mongoose.Types.ObjectId(businessId) };
+    if (kind) q.kind = kind;
+    const txns = await CrewWalletTxn.find(q)
+      .sort({ createdAt: -1 })
+      .limit(Math.min(Number(limit), 200))
+      .populate('shiftId', 'title date')
+      .populate('counterpartId', 'name')
+      .lean();
+    res.json({ success: true, transactions: txns });
+  } catch (e) {
+    logger.error('crew biz wallet txns error', e);
+    res.status(500).json({ message: e.message || 'Error al cargar extracto' });
+  }
+});
+
+// POST /crew/businesses/wallet/quote-shift — calcula cuánto va a costar un turno
+// (utilidad para el form de "Publicar turno" — muestra escrow antes de enviar).
+router.post('/businesses/wallet/quote-shift', tenantAuth, async (req, res) => {
+  const { totalPay, hoursTotal, hourlyRate, workersNeeded = 1, isSOS = false } = req.body || {};
+  const computedTotal = Number(totalPay) || (Number(hoursTotal) * Number(hourlyRate));
+  if (!computedTotal) return res.status(400).json({ message: 'Faltan datos de pago' });
+  const quote = crewLedger.quoteShiftEscrow({
+    totalPay: Math.round(computedTotal),
+    workersNeeded: Number(workersNeeded),
+    isSOS: !!isSOS,
+  });
+  res.json({ success: true, quote });
+});
+
+// POST /crew/businesses/shifts/:id/cancel — cancela turno y aplica reglas de refund
+router.post('/businesses/shifts/:id/cancel', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.body.businessId;
+    const shift = await ShiftPost.findById(req.params.id);
+    if (!shift || String(shift.businessId) !== String(businessId)) {
+      return res.status(404).json({ message: 'Turno no encontrado' });
+    }
+    const { reason } = req.body || {};
+    const result = await crewLedger.cancelShiftPost({
+      shiftId: shift._id,
+      reason,
+      performedBy: { kind: 'admin', id: req.user.id },
+    });
+    res.json({ success: true, ...result });
+  } catch (e) {
+    if (e.code === 'INVALID_STATE') return res.status(400).json({ message: e.message });
+    logger.error('crew biz cancel shift error', e);
+    res.status(500).json({ message: e.message || 'Error al cancelar' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  WORKER — billetera (extracto + retiros)
+ * ───────────────────────────────────────────── */
+
+// GET /crew/workers/me/wallet — saldo + summary
+router.get('/workers/me/wallet', requireWorker, async (req, res) => {
+  res.json({
+    success: true,
+    wallet: req.worker.wallet,
+    payoutMethod: req.worker.payoutMethod,
+    rates: { minWithdrawal: crewLedger.MIN_WITHDRAWAL },
+  });
+});
+
+// GET /crew/workers/me/wallet/transactions
+router.get('/workers/me/wallet/transactions', requireWorker, async (req, res) => {
+  const { limit = 50, kind } = req.query;
+  const q = { actorType: 'worker', actorId: req.worker._id };
+  if (kind) q.kind = kind;
+  const txns = await CrewWalletTxn.find(q)
+    .sort({ createdAt: -1 })
+    .limit(Math.min(Number(limit), 200))
+    .populate('shiftId', 'title date')
+    .populate('counterpartId', 'businessName')
+    .lean();
+  res.json({ success: true, transactions: txns });
+});
+
+// POST /crew/workers/me/wallet/withdraw — solicitar retiro
+router.post('/workers/me/wallet/withdraw', requireWorker, async (req, res) => {
+  try {
+    const { amount, payoutMethod } = req.body || {};
+    const result = await crewLedger.requestWithdrawal({
+      workerId: req.worker._id,
+      amount: Math.round(Number(amount)),
+      payoutMethod,
+    });
+    res.status(201).json({ success: true, ...result });
+  } catch (e) {
+    if (['AMOUNT_BELOW_MIN', 'MISSING_PAYOUT', 'INSUFFICIENT_FUNDS'].includes(e.code)) {
+      return res.status(400).json({ message: e.message, code: e.code });
+    }
+    logger.error('crew worker withdrawal error', e);
+    res.status(500).json({ message: e.message || 'Error al solicitar retiro' });
+  }
+});
+
+// GET /crew/workers/me/wallet/withdrawals — lista de retiros del worker
+router.get('/workers/me/wallet/withdrawals', requireWorker, async (req, res) => {
+  const withdrawals = await CrewWithdrawalRequest.find({ workerId: req.worker._id })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+  res.json({ success: true, withdrawals });
 });
 
 module.exports = router;
