@@ -33,9 +33,14 @@ const TXN_KINDS = [
 ];
 
 const crewWalletTxnSchema = new mongoose.Schema({
-  actorType: { type: String, enum: ['business', 'worker', 'platform'], required: true, index: true },
+  // Tipos de actor:
+  //   - 'business'      → BusinessConfig (negocio MenuBy)
+  //   - 'crew_employer' → CrewEmployer (empleador externo de Crew)
+  //   - 'worker'        → Worker
+  //   - 'platform'      → Crew como entidad (comisiones)
+  actorType: { type: String, enum: ['business', 'crew_employer', 'worker', 'platform'], required: true, index: true },
   actorId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true }, // referencia heterogénea
-  counterpartType: { type: String, enum: ['business', 'worker', 'platform', 'external'], default: null },
+  counterpartType: { type: String, enum: ['business', 'crew_employer', 'worker', 'platform', 'external'], default: null },
   counterpartId: { type: mongoose.Schema.Types.ObjectId, default: null },
 
   kind: { type: String, enum: TXN_KINDS, required: true, index: true },

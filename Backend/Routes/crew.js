@@ -34,7 +34,9 @@ const CrewFavorite = require('../Models/CrewFavorite');
 const CrewWalletTxn = require('../Models/CrewWalletTxn');
 const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
 const CrewRechargeRequest = require('../Models/CrewRechargeRequest');
+const CrewEmployer = require('../Models/CrewEmployer');
 const { tenantAuth } = require('../middleware/tenantAuth');
+const { requireEmployer, requireEmployerAny } = require('../middleware/crewEmployerAuth');
 const { uploadImage, isSpacesConfigured } = require('../services/imageUploadService');
 const crewLedger = require('../services/crewLedger');
 const logger = require('../utils/logger');
@@ -183,6 +185,129 @@ router.post('/workers/login', async (req, res) => {
     res.status(500).json({ message: 'Error al iniciar sesión' });
   }
 });
+
+/* ─────────────────────────────────────────────
+ *  CREW EMPLOYER — auth (negocios/personas externas a MenuBy)
+ *  Onboarding curado: signup → status pending_approval → SuperAdmin aprueba.
+ * ───────────────────────────────────────────── */
+
+function signEmployerToken(employerId) {
+  return jwt.sign({ id: employerId, kind: 'crew_employer' }, JWT_SECRET, { expiresIn: WORKER_TOKEN_TTL });
+}
+
+// POST /crew/employers/signup
+router.post('/employers/signup', async (req, res) => {
+  try {
+    const {
+      kind, phone, name, password, email,
+      // Específicos de business
+      businessType, address, whatsappNumber,
+    } = req.body || {};
+
+    if (!['individual', 'business'].includes(kind)) {
+      return res.status(400).json({ message: 'kind debe ser "individual" o "business"' });
+    }
+    if (!phone || !name || !password) {
+      return res.status(400).json({ message: 'phone, name y password son requeridos' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Contraseña mínima 6 caracteres' });
+    }
+    if (kind === 'business' && !businessType) {
+      return res.status(400).json({ message: 'businessType requerido para cuentas de negocio' });
+    }
+
+    // Chequeo de duplicados también contra Worker (mismo phone) para evitar
+    // conflictos de identidad en el ecosistema Crew.
+    const exists = await CrewEmployer.findOne({ phone });
+    if (exists) return res.status(409).json({ message: 'Ya hay una cuenta con ese teléfono' });
+
+    const employer = await CrewEmployer.create({
+      kind,
+      phone,
+      name: name.trim(),
+      password,
+      email: email ? email.trim().toLowerCase() : null,
+      businessType: kind === 'business' ? businessType : undefined,
+      whatsappNumber: whatsappNumber || null,
+      address: address || {},
+      status: 'pending_approval',
+    });
+
+    // Notificar a SuperAdmin via socket si está disponible
+    const io = req.app.get('io');
+    if (io) io.to('superadmin-channel').emit('crew-employer-pending', {
+      employerId: String(employer._id),
+      kind,
+      name: employer.name,
+    });
+
+    const token = signEmployerToken(employer._id);
+    res.status(201).json({
+      success: true,
+      token,
+      employer: sanitizeEmployer(employer),
+      next: 'pending_approval',
+      message: 'Cuenta creada. Estamos revisando tu solicitud. Te avisamos en cuanto se apruebe.',
+    });
+  } catch (e) {
+    logger.error('crew employer signup error', e);
+    res.status(500).json({ message: e.message || 'Error al registrar' });
+  }
+});
+
+// POST /crew/employers/login
+router.post('/employers/login', async (req, res) => {
+  try {
+    const { phone, password } = req.body || {};
+    const employer = await CrewEmployer.findOne({ phone });
+    if (!employer || !(await employer.comparePassword(password))) {
+      return res.status(401).json({ message: 'Teléfono o contraseña incorrectos' });
+    }
+    if (['banned'].includes(employer.status)) {
+      return res.status(403).json({ message: 'Tu cuenta está bloqueada.' });
+    }
+    employer.lastLoginAt = new Date();
+    await employer.save();
+    const token = signEmployerToken(employer._id);
+    res.json({
+      success: true,
+      token,
+      employer: sanitizeEmployer(employer),
+    });
+  } catch (e) {
+    logger.error('crew employer login error', e);
+    res.status(500).json({ message: 'Error al iniciar sesión' });
+  }
+});
+
+// GET /crew/employers/me — permite ver el perfil aún si está pending/rejected
+router.get('/employers/me', requireEmployerAny, async (req, res) => {
+  res.json({ success: true, employer: sanitizeEmployer(req.employer) });
+});
+
+// PUT /crew/employers/me — actualizar perfil (campos limitados)
+router.put('/employers/me', requireEmployerAny, async (req, res) => {
+  try {
+    const allowed = ['name', 'email', 'photo', 'coverImage', 'description', 'website',
+                     'whatsappNumber', 'address', 'location', 'businessType', 'nit', 'birthDate'];
+    const patch = {};
+    for (const k of allowed) if (req.body[k] !== undefined) patch[k] = req.body[k];
+    Object.assign(req.employer, patch);
+    await req.employer.save();
+    res.json({ success: true, employer: sanitizeEmployer(req.employer) });
+  } catch (e) {
+    logger.error('crew employer update error', e);
+    res.status(500).json({ message: e.message || 'Error al actualizar perfil' });
+  }
+});
+
+function sanitizeEmployer(emp) {
+  const o = emp.toObject ? emp.toObject() : emp;
+  delete o.password;
+  delete o.refreshToken;
+  return o;
+}
 
 /* ─────────────────────────────────────────────
  *  WORKER — perfil
@@ -653,11 +778,25 @@ router.get('/shifts/feed', requireWorker, async (req, res) => {
     const shifts = await ShiftPost.find(q)
       .sort({ isSOS: -1, featured: -1, date: 1 })
       .limit(Math.min(Number(limit), 50))
+      // Para legacy: si no hay ownerDisplay, hacemos populate del business como fallback.
       .populate('businessId', 'businessName slug logo coverImage businessType')
       .lean();
 
-    // Anexar matchScore para que el feed pueda priorizar
-    const enriched = shifts.map(s => ({ ...s, matchScore: calcMatchScore(s, req.worker) }));
+    // Normalizar el shape del card: el frontend lee de `ownerDisplay`, pero los
+    // shifts viejos (creados antes del refactor polimórfico) no tienen ese snapshot,
+    // así que lo construimos al vuelo desde el businessId populated.
+    const enriched = shifts.map((s) => {
+      if (!s.ownerDisplay?.name && s.businessId) {
+        s.ownerDisplay = {
+          name: s.businessId.businessName || '',
+          logo: s.businessId.logo || null,
+          coverImage: s.businessId.coverImage || null,
+          businessType: s.businessId.businessType || '',
+          verified: true,
+        };
+      }
+      return { ...s, matchScore: calcMatchScore(s, req.worker) };
+    });
     res.json({ success: true, shifts: enriched });
   } catch (e) {
     logger.error('crew feed error', e);
@@ -666,28 +805,38 @@ router.get('/shifts/feed', requireWorker, async (req, res) => {
 });
 
 // GET /crew/shifts/:id — detalle público + transparency
+// Polimórfico: si ownerType=business, populate businessId + menú; si crew_employer,
+// populate employerId (sin menú, no aplica).
 router.get('/shifts/:id', requireWorker, async (req, res) => {
   try {
-    const shift = await ShiftPost.findById(req.params.id)
-      .populate('businessId', 'businessName slug logo coverImage description businessType address whatsappNumber')
-      .lean();
+    let shift = await ShiftPost.findById(req.params.id).lean();
     if (!shift) return res.status(404).json({ message: 'Shift no encontrado' });
 
-    // Reviews previas de workers que ya trabajaron en este negocio
-    const recentReviews = await ShiftBooking.find({
-      businessId: shift.businessId._id,
-      'reviewByWorker.rating': { $exists: true },
-    })
-      .sort({ 'reviewByWorker.reviewedAt': -1 })
-      .limit(5)
-      .select('reviewByWorker')
-      .lean();
+    const ownerType = shift.ownerType || 'business';
 
-    // Scores agregados (sprint 2: cálculo más completo)
-    const allReviews = await ShiftBooking.find({
-      businessId: shift.businessId._id,
-      'reviewByWorker.rating': { $exists: true },
-    }).select('reviewByWorker').lean();
+    if (ownerType === 'business' && shift.businessId) {
+      shift = await ShiftPost.findById(req.params.id)
+        .populate('businessId', 'businessName slug logo coverImage description businessType address whatsappNumber')
+        .lean();
+    } else if (ownerType === 'crew_employer' && shift.employerId) {
+      shift = await ShiftPost.findById(req.params.id)
+        .populate('employerId', 'name photo coverImage description businessType address whatsappNumber kind verifiedAt')
+        .lean();
+    }
+
+    // Reviews: para business buscamos por businessId; para crew_employer por employerId.
+    const reviewFilter = ownerType === 'business'
+      ? { businessId: shift.businessId?._id, 'reviewByWorker.rating': { $exists: true } }
+      : { employerId: shift.employerId?._id, 'reviewByWorker.rating': { $exists: true } };
+
+    const [recentReviews, allReviews] = await Promise.all([
+      ShiftBooking.find(reviewFilter)
+        .sort({ 'reviewByWorker.reviewedAt': -1 })
+        .limit(5)
+        .select('reviewByWorker')
+        .lean(),
+      ShiftBooking.find(reviewFilter).select('reviewByWorker').lean(),
+    ]);
 
     const scores = {
       reviewCount: allReviews.length,
@@ -696,28 +845,29 @@ router.get('/shifts/:id', requireWorker, async (req, res) => {
         : null,
     };
 
-    // Menú del negocio para que el worker se haga una idea del lugar (solo lectura)
-    const [categories, products] = await Promise.all([
-      Category.find({ businessId: shift.businessId._id }).sort({ displayOrder: 1, name: 1 }).lean(),
-      Product.find({ businessId: shift.businessId._id, active: true })
-        .sort({ displayOrder: 1, name: 1 })
-        .select('name description price image category displayOrder')
-        .lean(),
-    ]);
-
-    // Agrupar productos por categoría para render directo
-    const byCategory = {};
-    for (const p of products) {
-      const k = String(p.category || 'sin_categoria');
-      if (!byCategory[k]) byCategory[k] = [];
-      byCategory[k].push(p);
-    }
-    const menu = categories.map((c) => ({
-      _id: c._id, name: c.name, displayOrder: c.displayOrder || 0,
-      products: byCategory[String(c._id)] || [],
-    })).filter((c) => c.products.length > 0);
-    if (byCategory.sin_categoria?.length) {
-      menu.push({ _id: 'sin_categoria', name: 'Otros', displayOrder: 999, products: byCategory.sin_categoria });
+    // Menú: solo aplica para negocios MenuBy (los empleadores Crew no tienen catálogo).
+    let menu = [];
+    if (ownerType === 'business' && shift.businessId?._id) {
+      const [categories, products] = await Promise.all([
+        Category.find({ businessId: shift.businessId._id }).sort({ displayOrder: 1, name: 1 }).lean(),
+        Product.find({ businessId: shift.businessId._id, active: true })
+          .sort({ displayOrder: 1, name: 1 })
+          .select('name description price image category displayOrder')
+          .lean(),
+      ]);
+      const byCategory = {};
+      for (const p of products) {
+        const k = String(p.category || 'sin_categoria');
+        if (!byCategory[k]) byCategory[k] = [];
+        byCategory[k].push(p);
+      }
+      menu = categories.map((c) => ({
+        _id: c._id, name: c.name, displayOrder: c.displayOrder || 0,
+        products: byCategory[String(c._id)] || [],
+      })).filter((c) => c.products.length > 0);
+      if (byCategory.sin_categoria?.length) {
+        menu.push({ _id: 'sin_categoria', name: 'Otros', displayOrder: 999, products: byCategory.sin_categoria });
+      }
     }
 
     res.json({
@@ -969,8 +1119,16 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
     }
 
     const shift = new ShiftPost({
+      ownerType: 'business',
       businessId,
       postedBy: req.user.id,
+      ownerDisplay: {
+        name: biz.businessName || '',
+        logo: biz.logo || null,
+        coverImage: biz.coverImage || null,
+        businessType: biz.businessType || '',
+        verified: true, // los negocios MenuBy son verificados por default
+      },
       title, description: description || '', role,
       skillsBonus: (skillsBonus || []).filter(s => VALID_SKILLS.includes(s)),
       date: new Date(date), startTime, endTime, hoursTotal,
@@ -1198,7 +1356,10 @@ router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) 
     let booking;
     try {
       booking = await ShiftBooking.create({
-        shiftId: claimedShift._id, workerId: app.workerId, businessId: claimedShift.businessId,
+        shiftId: claimedShift._id, workerId: app.workerId,
+        ownerType: claimedShift.ownerType || 'business',
+        businessId: claimedShift.businessId || null,
+        employerId: claimedShift.employerId || null,
         agreedRate: claimedShift.hourlyRate, agreedHours: claimedShift.hoursTotal,
         agreedTotal: claimedShift.totalPay,
         agreedCommission: claimedShift.commissionAmount,
@@ -1821,6 +1982,464 @@ router.get('/workers/me/wallet/withdrawals', requireWorker, async (req, res) => 
     .limit(50)
     .lean();
   res.json({ success: true, withdrawals });
+});
+
+/* ─────────────────────────────────────────────
+ *  CREW EMPLOYER — shifts y wallet (espejo de /businesses/*)
+ *  Mismo modelo de negocio, mismo escrow, misma comisión.
+ *  Auth: requireEmployer (status: approved).
+ * ───────────────────────────────────────────── */
+
+// POST /crew/employers/shifts — publicar shift (mismo flujo que /businesses/shifts)
+router.post('/employers/shifts', requireEmployer, async (req, res) => {
+  try {
+    const employer = req.employer;
+    const {
+      title, description, role, skillsBonus, date, startTime, endTime, hoursTotal,
+      workersNeeded, hourlyRate, requirements, perks, visibility, matchMode, isSOS,
+    } = req.body || {};
+
+    const missing = [];
+    if (!title) missing.push('título');
+    if (!role) missing.push('rol');
+    if (!date) missing.push('fecha');
+    if (!startTime) missing.push('hora de inicio');
+    if (!endTime) missing.push('hora de fin');
+    if (!hoursTotal) missing.push('horas');
+    if (!hourlyRate) missing.push('tarifa por hora');
+    if (missing.length) {
+      return res.status(400).json({ message: `Faltan campos: ${missing.join(', ')}` });
+    }
+    if (!VALID_SKILLS.includes(role)) {
+      return res.status(400).json({ message: `Rol no válido: ${role}` });
+    }
+
+    const totalPay = Math.round(Number(hoursTotal) * Number(hourlyRate));
+    const wn = Number(workersNeeded || 1);
+    const quote = crewLedger.quoteShiftEscrow({ totalPay, workersNeeded: wn, isSOS: !!isSOS });
+
+    const available = employer.crewWallet?.balance || 0;
+    if (available < quote.totalReserveNeeded) {
+      return res.status(402).json({
+        message: `Saldo Crew insuficiente. Necesitas ${quote.totalReserveNeeded.toLocaleString('es-CO')} COP y tienes ${available.toLocaleString('es-CO')} COP.`,
+        code: 'INSUFFICIENT_FUNDS',
+        required: quote.totalReserveNeeded,
+        available,
+        quote,
+      });
+    }
+
+    const shift = new ShiftPost({
+      ownerType: 'crew_employer',
+      employerId: employer._id,
+      ownerDisplay: {
+        name: employer.name,
+        logo: employer.photo || null,
+        coverImage: employer.coverImage || null,
+        businessType: employer.kind === 'business' ? (employer.businessType || '') : 'individual',
+        verified: !!employer.verifiedAt,
+      },
+      title, description: description || '', role,
+      skillsBonus: (skillsBonus || []).filter(s => VALID_SKILLS.includes(s)),
+      date: new Date(date), startTime, endTime, hoursTotal,
+      workersNeeded: wn,
+      hourlyRate,
+      totalPay,
+      requirements: requirements || {},
+      perks: perks || [],
+      visibility: visibility || 'public',
+      matchMode: matchMode || 'open',
+      isSOS: !!isSOS,
+      commissionRate: quote.commissionRate,
+      commissionAmount: quote.commissionPerWorker,
+      reservedAmount: quote.totalReserveNeeded,
+      location: {
+        city: employer.address?.city || '',
+        neighborhood: employer.address?.neighborhood || '',
+        lat: employer.location?.lat || null,
+        lng: employer.location?.lng || null,
+        address: employer.address?.full || '',
+      },
+      expiresAt: (() => {
+        const exp = new Date(date);
+        if (startTime) {
+          const [hh, mm] = String(startTime).split(':');
+          if (!Number.isNaN(Number(hh))) exp.setHours(Number(hh) || 0, Number(mm) || 0, 0, 0);
+        }
+        return exp;
+      })(),
+    });
+    await shift.save();
+
+    try {
+      const result = await crewLedger.reserveShiftEscrow({
+        shift, performedBy: { kind: 'crew_employer', id: employer._id },
+      });
+      res.status(201).json({ success: true, shift, escrow: result.quote, wallet: result.wallet });
+    } catch (reserveErr) {
+      await ShiftPost.deleteOne({ _id: shift._id }).catch(() => {});
+      if (reserveErr.code === 'INSUFFICIENT_FUNDS') {
+        return res.status(402).json({
+          message: reserveErr.message, code: 'INSUFFICIENT_FUNDS',
+          required: reserveErr.required, available: reserveErr.available,
+        });
+      }
+      throw reserveErr;
+    }
+  } catch (e) {
+    logger.error('crew employer post shift error', e);
+    res.status(500).json({ message: e.message || 'Error al publicar shift' });
+  }
+});
+
+// GET /crew/employers/shifts — mis shifts
+router.get('/employers/shifts', requireEmployer, async (req, res) => {
+  try {
+    const { status } = req.query;
+    const q = { employerId: req.employer._id, ownerType: 'crew_employer' };
+    if (status) q.status = status;
+    const shifts = await ShiftPost.find(q).sort({ date: -1 }).limit(50).lean();
+    res.json({ success: true, shifts });
+  } catch (e) {
+    logger.error('crew employer shifts list error', e);
+    res.status(500).json({ message: 'Error al cargar shifts' });
+  }
+});
+
+// GET /crew/employers/shifts/:id/applicants
+router.get('/employers/shifts/:id/applicants', requireEmployer, async (req, res) => {
+  try {
+    const shift = await ShiftPost.findOne({
+      _id: req.params.id, employerId: req.employer._id,
+    });
+    if (!shift) return res.status(404).json({ message: 'Shift no encontrado' });
+    const applications = await ShiftApplication.find({ shiftId: shift._id })
+      .sort({ matchScore: -1, appliedAt: 1 })
+      .populate('workerId', 'name photo level xp rating stats badgesEarned skills languages university bio kyc.status acceptsSOS')
+      .lean();
+    res.json({ success: true, applications });
+  } catch (e) {
+    logger.error('crew employer applicants error', e);
+    res.status(500).json({ message: 'Error al cargar postulantes' });
+  }
+});
+
+// GET /crew/employers/shifts/:id/bookings — bookings con checkInCode visible
+router.get('/employers/shifts/:id/bookings', requireEmployer, async (req, res) => {
+  try {
+    const shift = await ShiftPost.findOne({ _id: req.params.id, employerId: req.employer._id });
+    if (!shift) return res.status(404).json({ message: 'Shift no encontrado' });
+    const bookings = await ShiftBooking.find({ shiftId: shift._id })
+      .populate('workerId', 'name photo phone level rating')
+      .sort({ createdAt: -1 })
+      .lean();
+    res.json({ success: true, bookings });
+  } catch (e) {
+    logger.error('crew employer bookings list error', e);
+    res.status(500).json({ message: 'Error al cargar bookings' });
+  }
+});
+
+// POST /crew/employers/applications/:id/accept
+router.post('/employers/applications/:id/accept', requireEmployer, async (req, res) => {
+  try {
+    const app = await ShiftApplication.findById(req.params.id);
+    if (!app) return res.status(404).json({ message: 'Application no encontrada' });
+    const shift = await ShiftPost.findById(app.shiftId);
+    if (!shift || String(shift.employerId) !== String(req.employer._id)) {
+      return res.status(403).json({ message: 'No es tu shift' });
+    }
+    if (app.status !== 'pending') {
+      return res.status(400).json({ message: `Application está ${app.status}` });
+    }
+
+    const start = new Date(shift.date);
+    if (shift.startTime) {
+      const [hh, mm] = String(shift.startTime).split(':');
+      if (!Number.isNaN(Number(hh))) start.setHours(Number(hh) || 0, Number(mm) || 0, 0, 0);
+    }
+    if (start.getTime() < Date.now()) {
+      return res.status(400).json({ message: 'Este turno ya pasó.', code: 'SHIFT_PAST_DATE' });
+    }
+
+    const claimedShift = await ShiftPost.findOneAndUpdate(
+      {
+        _id: app.shiftId,
+        status: { $in: ['open', 'partially_filled'] },
+        $expr: { $lt: ['$workersBooked', '$workersNeeded'] },
+      },
+      { $inc: { workersBooked: 1 } },
+      { new: true },
+    );
+    if (!claimedShift) {
+      return res.status(409).json({ message: 'Este turno ya está lleno.', code: 'SHIFT_FULL_OR_CLOSED' });
+    }
+    if (claimedShift.workersBooked >= claimedShift.workersNeeded && claimedShift.status !== 'filled') {
+      claimedShift.status = 'filled';
+      await claimedShift.save();
+    } else if (claimedShift.status === 'open' && claimedShift.workersBooked > 0) {
+      claimedShift.status = 'partially_filled';
+      await claimedShift.save();
+    }
+
+    const checkInCode = generateCheckInCode();
+    let booking;
+    try {
+      booking = await ShiftBooking.create({
+        shiftId: claimedShift._id, workerId: app.workerId,
+        ownerType: 'crew_employer',
+        employerId: claimedShift.employerId,
+        agreedRate: claimedShift.hourlyRate, agreedHours: claimedShift.hoursTotal,
+        agreedTotal: claimedShift.totalPay,
+        agreedCommission: claimedShift.commissionAmount,
+        payoutStatus: 'held',
+        status: 'confirmed',
+        checkInCode,
+      });
+    } catch (bookingErr) {
+      await ShiftPost.findByIdAndUpdate(claimedShift._id, { $inc: { workersBooked: -1 } });
+      throw bookingErr;
+    }
+
+    app.status = 'accepted';
+    app.respondedAt = new Date();
+    await app.save();
+
+    let expiredApps = 0;
+    if (claimedShift.status === 'filled') {
+      const r = await ShiftApplication.updateMany(
+        { shiftId: claimedShift._id, status: 'pending', _id: { $ne: app._id } },
+        { $set: { status: 'expired', respondedAt: new Date() } },
+      );
+      expiredApps = r.modifiedCount || 0;
+    }
+
+    res.json({ success: true, booking, shiftStatus: claimedShift.status, expiredApps });
+  } catch (e) {
+    logger.error('crew employer accept error', e);
+    res.status(500).json({ message: e.message || 'Error al aceptar' });
+  }
+});
+
+// POST /crew/employers/applications/:id/reject
+router.post('/employers/applications/:id/reject', requireEmployer, async (req, res) => {
+  try {
+    const app = await ShiftApplication.findById(req.params.id);
+    if (!app) return res.status(404).json({ message: 'Application no encontrada' });
+    const shift = await ShiftPost.findById(app.shiftId).select('employerId');
+    if (!shift || String(shift.employerId) !== String(req.employer._id)) {
+      return res.status(403).json({ message: 'No es tu shift' });
+    }
+    app.status = 'rejected';
+    app.respondedAt = new Date();
+    await app.save();
+    res.json({ success: true });
+  } catch (e) {
+    logger.error('crew employer reject error', e);
+    res.status(500).json({ message: 'Error al rechazar' });
+  }
+});
+
+// POST /crew/employers/bookings/:id/complete
+router.post('/employers/bookings/:id/complete', requireEmployer, async (req, res) => {
+  try {
+    const force = !!req.body?.force;
+    const booking = await ShiftBooking.findById(req.params.id);
+    if (!booking || String(booking.employerId) !== String(req.employer._id)) {
+      return res.status(404).json({ message: 'Booking no encontrado' });
+    }
+    const isStuckCompleted = booking.status === 'completed' && booking.payoutStatus !== 'released';
+    if (!isStuckCompleted && booking.status !== 'checked_in' && !force) {
+      return res.status(400).json({
+        message: booking.status === 'confirmed'
+          ? 'El trabajador aún no ha hecho check-in. Pide que ingrese el código antes de completar el turno.'
+          : `No puedes completar un booking en estado ${booking.status}`,
+        code: 'CHECKIN_REQUIRED',
+        currentStatus: booking.status,
+      });
+    }
+    if (booking.status === 'completed' && !isStuckCompleted) {
+      return res.status(400).json({ message: 'Ya completado' });
+    }
+
+    const release = await crewLedger.releaseBookingFunds({
+      bookingId: booking._id,
+      performedBy: { kind: 'crew_employer', id: req.employer._id },
+    });
+
+    if (booking.status !== 'completed') {
+      booking.status = 'completed';
+      booking.completedAt = new Date();
+      booking.confirmedByBusinessAt = new Date(); // mismo campo de "negocio confirmó"
+    }
+
+    let xpGained = 0;
+    let leveledUp = false;
+    if (!booking.xpAwarded || booking.xpAwarded === 0) {
+      xpGained = Math.round(booking.agreedHours * 25);
+      const result = await Worker.addXP(booking.workerId, xpGained);
+      leveledUp = result.leveledUp;
+      const worker = result.worker;
+      worker.stats.shiftsCompleted += 1;
+      worker.stats.hoursWorked += booking.agreedHours;
+      worker.lastShiftAt = new Date();
+      if (worker.stats.shiftsCompleted === 1 && !worker.badgesEarned.some(b => b.key === 'first_shift')) {
+        worker.badgesEarned.push({ key: 'first_shift' });
+        booking.badgesAwarded.push('first_shift');
+      }
+      if (worker.stats.shiftsCompleted === 10 && !worker.badgesEarned.some(b => b.key === '10_shifts')) {
+        worker.badgesEarned.push({ key: '10_shifts' });
+        booking.badgesAwarded.push('10_shifts');
+      }
+      booking.xpAwarded = xpGained;
+      await worker.save();
+    }
+    await booking.save();
+
+    res.json({
+      success: true, booking, leveledUp, xpGained,
+      payout: release.payout, commission: release.commission,
+      legacy: release.legacy || false,
+    });
+  } catch (e) {
+    logger.error('crew employer complete booking error', e);
+    res.status(500).json({ message: e.message || 'Error al completar booking' });
+  }
+});
+
+// POST /crew/employers/bookings/:id/regenerate-checkin-code
+router.post('/employers/bookings/:id/regenerate-checkin-code', requireEmployer, async (req, res) => {
+  try {
+    const booking = await ShiftBooking.findById(req.params.id);
+    if (!booking || String(booking.employerId) !== String(req.employer._id)) {
+      return res.status(404).json({ message: 'Booking no encontrado' });
+    }
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ message: 'Solo turnos confirmados pueden regenerar código' });
+    }
+    booking.checkInCode = generateCheckInCode();
+    booking.checkInAttempts = 0;
+    await booking.save();
+    res.json({ success: true, checkInCode: booking.checkInCode });
+  } catch (e) {
+    logger.error('crew employer regenerate code error', e);
+    res.status(500).json({ message: 'Error al regenerar' });
+  }
+});
+
+// POST /crew/employers/shifts/:id/cancel
+router.post('/employers/shifts/:id/cancel', requireEmployer, async (req, res) => {
+  try {
+    const shift = await ShiftPost.findById(req.params.id);
+    if (!shift || String(shift.employerId) !== String(req.employer._id)) {
+      return res.status(404).json({ message: 'Turno no encontrado' });
+    }
+    const result = await crewLedger.cancelShiftPost({
+      shiftId: shift._id,
+      reason: req.body?.reason,
+      performedBy: { kind: 'crew_employer', id: req.employer._id },
+    });
+    res.json({ success: true, ...result });
+  } catch (e) {
+    if (e.code === 'INVALID_STATE') return res.status(400).json({ message: e.message });
+    logger.error('crew employer cancel shift error', e);
+    res.status(500).json({ message: e.message || 'Error al cancelar' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  CREW EMPLOYER — wallet
+ * ───────────────────────────────────────────── */
+
+// GET /crew/employers/wallet
+router.get('/employers/wallet', requireEmployerAny, async (req, res) => {
+  res.json({
+    success: true,
+    wallet: req.employer.crewWallet || {
+      balance: 0, pendingBalance: 0, totalReserved: 0, totalSpent: 0, totalCommissionPaid: 0, currency: 'COP',
+    },
+    employer: { name: req.employer.name, status: req.employer.status, kind: req.employer.kind },
+    rates: {
+      standardCommission: crewLedger.STANDARD_COMMISSION,
+      sosCommission: crewLedger.SOS_COMMISSION,
+      minRecharge: crewLedger.MIN_RECHARGE,
+    },
+  });
+});
+
+// POST /crew/employers/wallet/quote-shift
+router.post('/employers/wallet/quote-shift', requireEmployer, async (req, res) => {
+  const { totalPay, hoursTotal, hourlyRate, workersNeeded = 1, isSOS = false } = req.body || {};
+  const computedTotal = Number(totalPay) || (Number(hoursTotal) * Number(hourlyRate));
+  if (!computedTotal) return res.status(400).json({ message: 'Faltan datos de pago' });
+  const quote = crewLedger.quoteShiftEscrow({
+    totalPay: Math.round(computedTotal),
+    workersNeeded: Number(workersNeeded),
+    isSOS: !!isSOS,
+  });
+  res.json({ success: true, quote });
+});
+
+// POST /crew/employers/wallet/recharge-requests — subir comprobante a Llave Breve/Nequi
+router.post(
+  '/employers/wallet/recharge-requests',
+  requireEmployer,
+  memUpload.single('proof'),
+  async (req, res) => {
+    try {
+      const { amount, paymentMethod } = req.body || {};
+      const amt = Number(amount);
+      if (!Number.isFinite(amt) || amt < crewLedger.MIN_RECHARGE) {
+        return res.status(400).json({ message: `Monto mínimo: ${crewLedger.MIN_RECHARGE.toLocaleString('es-CO')} COP` });
+      }
+      if (!['Nequi', 'Daviplata', 'Breve', 'Transferencia', 'OTHER'].includes(paymentMethod)) {
+        return res.status(400).json({ message: 'Método de pago inválido' });
+      }
+      if (!req.file) return res.status(400).json({ message: 'Falta el comprobante (imagen)' });
+      if (!isSpacesConfigured()) return res.status(503).json({ message: 'Storage no configurado' });
+
+      const upload = await uploadImage(req.file.buffer, `crew/recharges/employer-${req.employer._id}`, {
+        maxWidth: 1600, quality: 88,
+      });
+
+      const request = await CrewRechargeRequest.create({
+        ownerType: 'crew_employer',
+        employerId: req.employer._id,
+        amount: Math.round(amt),
+        paymentMethod,
+        proofUrl: upload.url,
+        notes: (req.body.notes || '').slice(0, 200),
+      });
+
+      const io = req.app.get('io');
+      if (io) io.to('superadmin-channel').emit('crew-recharge-pending', { request });
+
+      res.status(201).json({ success: true, request });
+    } catch (e) {
+      logger.error('crew employer recharge request error', e);
+      res.status(500).json({ message: e.message || 'Error al crear solicitud' });
+    }
+  }
+);
+
+// GET /crew/employers/wallet/recharge-requests
+router.get('/employers/wallet/recharge-requests', requireEmployerAny, async (req, res) => {
+  const requests = await CrewRechargeRequest.find({ employerId: req.employer._id })
+    .sort({ createdAt: -1 }).limit(50).lean();
+  res.json({ success: true, requests });
+});
+
+// GET /crew/employers/wallet/transactions
+router.get('/employers/wallet/transactions', requireEmployerAny, async (req, res) => {
+  const { limit = 50, kind } = req.query;
+  const q = { actorType: 'crew_employer', actorId: req.employer._id };
+  if (kind) q.kind = kind;
+  const txns = await CrewWalletTxn.find(q)
+    .sort({ createdAt: -1 })
+    .limit(Math.min(Number(limit), 200))
+    .populate('shiftId', 'title date')
+    .lean();
+  res.json({ success: true, transactions: txns });
 });
 
 module.exports = router;

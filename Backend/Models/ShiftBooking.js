@@ -17,7 +17,13 @@ const reviewSchema = new mongoose.Schema({
 const shiftBookingSchema = new mongoose.Schema({
   shiftId: { type: mongoose.Schema.Types.ObjectId, ref: 'ShiftPost', required: true, index: true },
   workerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Worker', required: true, index: true },
-  businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', required: true, index: true },
+
+  // Owner polimórfico — snapshot del shift al crear el booking. Toda la lógica
+  // de wallet/escrow usa ownerType+ownerId vía crewLedger.resolveOwner.
+  // `businessId` queda non-required para no romper bookings legacy.
+  ownerType: { type: String, enum: ['business', 'crew_employer'], default: 'business', index: true },
+  businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', default: null, index: true },
+  employerId: { type: mongoose.Schema.Types.ObjectId, ref: 'CrewEmployer', default: null, index: true },
 
   // Detalles pactados (snapshot del shift en el momento de aceptar)
   agreedRate: { type: Number, required: true },

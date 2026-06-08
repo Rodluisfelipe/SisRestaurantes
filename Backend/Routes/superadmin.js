@@ -13,6 +13,7 @@ const { Worker } = require('../Models/Worker');
 const CrewWalletTxn = require('../Models/CrewWalletTxn');
 const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
 const CrewRechargeRequest = require('../Models/CrewRechargeRequest');
+const CrewEmployer = require('../Models/CrewEmployer');
 const crewLedger = require('../services/crewLedger');
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
@@ -488,24 +489,35 @@ router.post('/crew/withdrawals/:id/reject', requireRole('admin'), async (req, re
   }
 });
 
-// GET /api/superadmin/crew/recharges?status=pending — cola de recargas con comprobante
+// GET /api/superadmin/crew/recharges?status=pending&ownerType=business|crew_employer
 router.get('/crew/recharges', async (req, res) => {
   try {
-    const { status = 'pending', limit = 100 } = req.query;
+    const { status = 'pending', ownerType, limit = 100 } = req.query;
     const q = {};
     if (['pending', 'approved', 'rejected'].includes(status)) q.status = status;
+    if (['business', 'crew_employer'].includes(ownerType)) q.ownerType = ownerType;
+
     const [requests, counts] = await Promise.all([
       CrewRechargeRequest.find(q)
         .sort({ createdAt: -1 })
         .limit(Math.min(Number(limit), 200))
-        .populate('businessId', 'businessName slug crewWallet')
+        .populate('businessId', 'businessName slug crewWallet logo')
+        .populate('employerId', 'name kind crewWallet photo')
         .populate('reviewedBy', 'email name')
         .lean(),
       CrewRechargeRequest.aggregate([
-        { $group: { _id: '$status', count: { $sum: 1 }, total: { $sum: '$amount' } } },
+        { $group: { _id: { status: '$status', ownerType: '$ownerType' }, count: { $sum: 1 }, total: { $sum: '$amount' } } },
       ]),
     ]);
-    const countsByStatus = counts.reduce((acc, c) => ({ ...acc, [c._id]: { count: c.count, total: c.total } }), {});
+    // Agregamos por status (total) y desglose por ownerType
+    const countsByStatus = {};
+    for (const c of counts) {
+      const s = c._id.status;
+      if (!countsByStatus[s]) countsByStatus[s] = { count: 0, total: 0, business: 0, crew_employer: 0 };
+      countsByStatus[s].count += c.count;
+      countsByStatus[s].total += c.total;
+      countsByStatus[s][c._id.ownerType || 'business'] += c.count;
+    }
     res.json({ success: true, requests, counts: countsByStatus });
   } catch (error) {
     logger.error('Error listing crew recharges', error, req);
@@ -513,7 +525,8 @@ router.get('/crew/recharges', async (req, res) => {
   }
 });
 
-// POST /api/superadmin/crew/recharges/:id/approve — acredita y deja trace en ledger
+// POST /api/superadmin/crew/recharges/:id/approve — acredita y deja trace en ledger.
+// Funciona para BusinessConfig y CrewEmployer (polimórfico vía ownerType).
 router.post('/crew/recharges/:id/approve', requireRole('admin'), async (req, res) => {
   try {
     const reqDoc = await CrewRechargeRequest.findById(req.params.id);
@@ -522,9 +535,14 @@ router.post('/crew/recharges/:id/approve', requireRole('admin'), async (req, res
       return res.status(400).json({ message: `Solicitud en estado ${reqDoc.status}` });
     }
 
-    // Idempotencia: si se hace doble click, no duplicamos el crédito.
-    const result = await crewLedger.depositBusinessWallet({
-      businessId: reqDoc.businessId,
+    const ownerType = reqDoc.ownerType || 'business';
+    const ownerId = ownerType === 'business' ? reqDoc.businessId : reqDoc.employerId;
+    if (!ownerId) {
+      return res.status(400).json({ message: 'Recarga sin owner identificable' });
+    }
+
+    const result = await crewLedger.depositOwnerWallet({
+      ownerType, ownerId,
       amount: reqDoc.amount,
       idempotencyKey: `crew_recharge:${reqDoc._id}`,
       note: `Recarga aprobada (${reqDoc.paymentMethod})`,
@@ -539,7 +557,7 @@ router.post('/crew/recharges/:id/approve', requireRole('admin'), async (req, res
 
     const io = req.app.get('io');
     if (io) {
-      io.to(String(reqDoc.businessId)).emit('crew-wallet-updated', { wallet: result.wallet });
+      io.to(String(ownerId)).emit('crew-wallet-updated', { wallet: result.wallet, ownerType });
     }
 
     res.json({ success: true, request: reqDoc, wallet: result.wallet, duplicated: result.duplicated });
@@ -693,6 +711,127 @@ router.get('/crew/treasury', async (req, res) => {
   } catch (error) {
     logger.error('Error fetching crew treasury', error, req);
     res.status(500).json({ message: 'Error al cargar treasury' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  CREW — cola de aprobación de empleadores externos
+ *  Empleadores con cuenta self-signup llegan en `pending_approval`. Acá los
+ *  revisamos uno por uno antes de dejarlos publicar/cargar saldo.
+ * ───────────────────────────────────────────── */
+
+// GET /api/superadmin/crew/employers?status=pending_approval
+router.get('/crew/employers', async (req, res) => {
+  try {
+    const { status = 'pending_approval', kind, limit = 100 } = req.query;
+    const q = {};
+    if (['pending_approval', 'approved', 'rejected', 'suspended', 'banned'].includes(status)) {
+      q.status = status;
+    }
+    if (['individual', 'business'].includes(kind)) q.kind = kind;
+
+    const [employers, counts] = await Promise.all([
+      CrewEmployer.find(q)
+        .sort({ createdAt: -1 })
+        .limit(Math.min(Number(limit), 200))
+        .select('-password -refreshToken -verificationDocs')
+        .populate('approvedBy', 'email name')
+        .lean(),
+      CrewEmployer.aggregate([
+        { $group: { _id: { status: '$status', kind: '$kind' }, count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const countsByStatus = {};
+    for (const c of counts) {
+      const s = c._id.status;
+      if (!countsByStatus[s]) countsByStatus[s] = { total: 0, individual: 0, business: 0 };
+      countsByStatus[s].total += c.count;
+      countsByStatus[s][c._id.kind] = (countsByStatus[s][c._id.kind] || 0) + c.count;
+    }
+
+    res.json({ success: true, employers, counts: countsByStatus });
+  } catch (error) {
+    logger.error('Error listing crew employers', error, req);
+    res.status(500).json({ message: 'Error al cargar empleadores' });
+  }
+});
+
+// POST /api/superadmin/crew/employers/:id/approve
+router.post('/crew/employers/:id/approve', requireRole('admin'), async (req, res) => {
+  try {
+    const employer = await CrewEmployer.findById(req.params.id);
+    if (!employer) return res.status(404).json({ message: 'Empleador no encontrado' });
+    if (employer.status === 'approved') {
+      return res.status(400).json({ message: 'Ya está aprobado' });
+    }
+    employer.status = 'approved';
+    employer.approvedAt = new Date();
+    employer.approvedBy = req.user.id;
+    employer.rejectionReason = null;
+    await employer.save();
+    res.json({ success: true, employer: { id: employer._id, status: employer.status } });
+  } catch (e) {
+    logger.error('Error approving crew employer', e, req);
+    res.status(500).json({ message: e.message || 'Error al aprobar' });
+  }
+});
+
+// POST /api/superadmin/crew/employers/:id/reject
+router.post('/crew/employers/:id/reject', requireRole('admin'), async (req, res) => {
+  try {
+    const { reason } = req.body || {};
+    if (!reason?.trim()) return res.status(400).json({ message: 'El motivo es obligatorio' });
+    const employer = await CrewEmployer.findById(req.params.id);
+    if (!employer) return res.status(404).json({ message: 'Empleador no encontrado' });
+    if (employer.status === 'rejected') {
+      return res.status(400).json({ message: 'Ya está rechazado' });
+    }
+    employer.status = 'rejected';
+    employer.rejectionReason = reason.trim().slice(0, 300);
+    employer.approvedAt = null;
+    employer.approvedBy = null;
+    await employer.save();
+    res.json({ success: true, employer: { id: employer._id, status: employer.status } });
+  } catch (e) {
+    logger.error('Error rejecting crew employer', e, req);
+    res.status(500).json({ message: e.message || 'Error al rechazar' });
+  }
+});
+
+// POST /api/superadmin/crew/employers/:id/suspend
+router.post('/crew/employers/:id/suspend', requireRole('admin'), async (req, res) => {
+  try {
+    const { reason, until } = req.body || {};
+    const employer = await CrewEmployer.findById(req.params.id);
+    if (!employer) return res.status(404).json({ message: 'Empleador no encontrado' });
+    employer.status = 'suspended';
+    employer.suspendedUntil = until ? new Date(until) : null;
+    employer.rejectionReason = reason ? String(reason).slice(0, 300) : employer.rejectionReason;
+    await employer.save();
+    res.json({ success: true, employer: { id: employer._id, status: employer.status } });
+  } catch (e) {
+    logger.error('Error suspending crew employer', e, req);
+    res.status(500).json({ message: e.message || 'Error al suspender' });
+  }
+});
+
+// POST /api/superadmin/crew/employers/:id/restore — vuelve a approved
+router.post('/crew/employers/:id/restore', requireRole('admin'), async (req, res) => {
+  try {
+    const employer = await CrewEmployer.findById(req.params.id);
+    if (!employer) return res.status(404).json({ message: 'Empleador no encontrado' });
+    employer.status = 'approved';
+    employer.suspendedUntil = null;
+    employer.banReason = null;
+    employer.rejectionReason = null;
+    employer.approvedAt = employer.approvedAt || new Date();
+    employer.approvedBy = employer.approvedBy || req.user.id;
+    await employer.save();
+    res.json({ success: true, employer: { id: employer._id, status: employer.status } });
+  } catch (e) {
+    logger.error('Error restoring crew employer', e, req);
+    res.status(500).json({ message: e.message || 'Error al restaurar' });
   }
 });
 

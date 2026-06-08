@@ -9,8 +9,29 @@ const { VALID_SKILLS } = require('./Worker');
 const POST_STATUS = ['open', 'partially_filled', 'filled', 'in_progress', 'completed', 'cancelled'];
 
 const shiftPostSchema = new mongoose.Schema({
-  businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', required: true, index: true },
-  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', required: true },
+  // ─── Owner polimórfico ───
+  // El shift puede ser publicado por:
+  //   - un negocio MenuBy (ownerType: 'business', businessId set)
+  //   - un empleador Crew externo (ownerType: 'crew_employer', employerId set)
+  // Mantenemos `businessId` indexado por compatibilidad con todos los queries
+  // existentes. Para empleadores externos también guardamos un snapshot
+  // denormalizado en `ownerDisplay` para que el feed del worker no necesite
+  // populate polimórfico.
+  ownerType: { type: String, enum: ['business', 'crew_employer'], default: 'business', index: true },
+  businessId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', default: null, index: true },
+  employerId: { type: mongoose.Schema.Types.ObjectId, ref: 'CrewEmployer', default: null, index: true },
+  postedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin', default: null },
+
+  // Snapshot del owner al momento de publicar, para que el feed del worker
+  // funcione sin populate ni joins polimórficos. Si el owner edita después
+  // su perfil, el shift sigue mostrando lo que se publicó.
+  ownerDisplay: {
+    name: { type: String, default: '' },
+    logo: { type: String, default: null },
+    coverImage: { type: String, default: null },
+    businessType: { type: String, default: '' },
+    verified: { type: Boolean, default: false },
+  },
 
   title: { type: String, required: true, maxlength: 80, trim: true },
   description: { type: String, maxlength: 600, default: '' },
@@ -85,6 +106,17 @@ const shiftPostSchema = new mongoose.Schema({
 
 shiftPostSchema.index({ status: 1, date: 1, 'location.city': 1 });
 shiftPostSchema.index({ businessId: 1, status: 1, date: -1 });
+
+// Validar que al menos uno de businessId/employerId esté presente y consistente con ownerType.
+shiftPostSchema.pre('validate', function (next) {
+  if (this.ownerType === 'business' && !this.businessId) {
+    return next(new Error('ownerType=business requiere businessId'));
+  }
+  if (this.ownerType === 'crew_employer' && !this.employerId) {
+    return next(new Error('ownerType=crew_employer requiere employerId'));
+  }
+  next();
+});
 
 // Auto-calcular totalPay si no viene
 shiftPostSchema.pre('save', function(next) {

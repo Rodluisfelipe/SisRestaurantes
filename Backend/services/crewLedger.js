@@ -18,14 +18,56 @@
  *   - Si se cancela < 24h antes: refund 50%, el resto queda como penalización.
  *   - Si se cancela < 2h antes (no_show del negocio): refund 0%, penalización total.
  */
-const mongoose = require('mongoose');
 const BusinessConfig = require('../Models/BusinessConfig');
 const { Worker } = require('../Models/Worker');
 const ShiftPost = require('../Models/ShiftPost');
 const ShiftBooking = require('../Models/ShiftBooking');
 const CrewWalletTxn = require('../Models/CrewWalletTxn');
 const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
+const CrewEmployer = require('../Models/CrewEmployer');
 const logger = require('../utils/logger');
+
+/* ─────────────────────────────────────────────
+ *  Owner resolver — abstrae si el dueño del wallet es BusinessConfig o CrewEmployer.
+ *  Toda la lógica de plata pasa por acá, así nunca repetimos "if business / else employer".
+ * ───────────────────────────────────────────── */
+
+/**
+ * Devuelve el Model que tiene crewWallet para un ownerType dado.
+ */
+function ownerModel(ownerType) {
+  if (ownerType === 'business') return BusinessConfig;
+  if (ownerType === 'crew_employer') return CrewEmployer;
+  throw new Error(`ownerType inválido: ${ownerType}`);
+}
+
+/**
+ * Normaliza inputs heredados a { ownerType, ownerId }.
+ * Acepta:
+ *   - { ownerType, ownerId }
+ *   - { businessId }  → { ownerType: 'business', ownerId: businessId }
+ *   - { employerId }  → { ownerType: 'crew_employer', ownerId: employerId }
+ */
+function normalizeOwner(input) {
+  if (input?.ownerType && input?.ownerId) {
+    return { ownerType: input.ownerType, ownerId: input.ownerId };
+  }
+  if (input?.businessId) return { ownerType: 'business', ownerId: input.businessId };
+  if (input?.employerId) return { ownerType: 'crew_employer', ownerId: input.employerId };
+  throw new Error('Falta owner (ownerType+ownerId o businessId o employerId)');
+}
+
+/**
+ * Resuelve el owner de un ShiftPost o ShiftBooking — para los ledger entries
+ * generados a partir de un shift/booking sin que el caller tenga que saber el tipo.
+ */
+function ownerFromDoc(doc) {
+  if (!doc) throw new Error('Doc sin owner');
+  if (doc.ownerType === 'crew_employer' || doc.employerId) {
+    return { ownerType: 'crew_employer', ownerId: doc.employerId };
+  }
+  return { ownerType: 'business', ownerId: doc.businessId };
+}
 
 // ─── Constantes del modelo de negocio ───
 const STANDARD_COMMISSION = 0.10;
@@ -67,24 +109,26 @@ function quoteShiftEscrow({ totalPay, workersNeeded, isSOS }) {
  * Recarga la billetera Crew del negocio.
  * idempotencyKey debería venir del provider de pagos para evitar dobles cargos.
  */
-async function depositBusinessWallet({ businessId, amount, idempotencyKey, note, performedBy }) {
+async function depositOwnerWallet(input) {
+  const { ownerType, ownerId } = normalizeOwner(input);
+  const { amount, idempotencyKey, note, performedBy } = input;
+
   if (!amount || amount < MIN_RECHARGE) {
     const err = new Error(`Recarga mínima: ${MIN_RECHARGE} COP`);
     err.code = 'AMOUNT_BELOW_MIN'; throw err;
   }
 
+  const Model = ownerModel(ownerType);
+
   // Idempotencia robusta: insertamos PRIMERO el ledger (con índice único sparse
   // en idempotencyKey). Dos requests simultáneos con la misma key generarán
   // duplicate-key en la segunda — solo el ganador hace el $inc al wallet.
-  // Sin clave, no hay protección de idempotencia (best-effort para llamadas internas).
   let txn;
   if (idempotencyKey) {
     try {
       txn = await CrewWalletTxn.create({
-        actorType: 'business', actorId: businessId,
+        actorType: ownerType, actorId: ownerId,
         kind: 'deposit', direction: 'in', amount,
-        // balanceAfter/pendingAfter se completan tras el $inc — los dejamos null
-        // por ahora y los actualizamos al final.
         balanceAfter: null, pendingAfter: null,
         idempotencyKey,
         note: note || 'Recarga de billetera Crew',
@@ -92,7 +136,6 @@ async function depositBusinessWallet({ businessId, amount, idempotencyKey, note,
       });
     } catch (e) {
       if (e.code === 11000) {
-        // Otro request ganó la carrera y ya procesó esta recarga.
         const existing = await CrewWalletTxn.findOne({ idempotencyKey });
         return { duplicated: true, txn: existing };
       }
@@ -100,7 +143,7 @@ async function depositBusinessWallet({ businessId, amount, idempotencyKey, note,
     }
   } else {
     txn = await CrewWalletTxn.create({
-      actorType: 'business', actorId: businessId,
+      actorType: ownerType, actorId: ownerId,
       kind: 'deposit', direction: 'in', amount,
       balanceAfter: null, pendingAfter: null,
       idempotencyKey: null,
@@ -109,8 +152,8 @@ async function depositBusinessWallet({ businessId, amount, idempotencyKey, note,
     });
   }
 
-  const updated = await BusinessConfig.findByIdAndUpdate(
-    businessId,
+  const updated = await Model.findByIdAndUpdate(
+    ownerId,
     {
       $inc: { 'crewWallet.balance': amount },
       $set: { 'crewWallet.lastRechargeAt': new Date() },
@@ -118,19 +161,21 @@ async function depositBusinessWallet({ businessId, amount, idempotencyKey, note,
     { new: true, select: 'crewWallet' },
   );
   if (!updated) {
-    // Rollback del ledger si el negocio no existe — sin esto quedaría un txn
-    // huérfano que mostraría una recarga que nunca acreditamos.
+    // Rollback del ledger si el owner no existe.
     await CrewWalletTxn.deleteOne({ _id: txn._id }).catch(() => {});
-    const err = new Error('Negocio no encontrado'); err.code = 'BIZ_NOT_FOUND'; throw err;
+    const err = new Error(`${ownerType === 'business' ? 'Negocio' : 'Empleador'} no encontrado`);
+    err.code = 'OWNER_NOT_FOUND'; throw err;
   }
 
-  // Completar snapshot del balance en el ledger
   txn.balanceAfter = updated.crewWallet.balance;
   txn.pendingAfter = updated.crewWallet.pendingBalance;
   await txn.save();
 
   return { duplicated: false, txn, wallet: updated.crewWallet };
 }
+
+// Alias retrocompat: el código viejo llama depositBusinessWallet({ businessId }).
+const depositBusinessWallet = depositOwnerWallet;
 
 /**
  * Reserva el escrow al publicar un turno.
@@ -142,16 +187,25 @@ async function depositBusinessWallet({ businessId, amount, idempotencyKey, note,
  * la race condition clásica "leer-checkear-escribir" — Mongo nos da atomicidad
  * a nivel de documento sin necesidad de transacción.
  */
-async function reserveShiftEscrow({ businessId, shift, performedBy }) {
+async function reserveShiftEscrow({ shift, performedBy, ...legacyOwner }) {
+  // Resuelve owner del shift. Si el caller pasó businessId explícito (path viejo)
+  // y el shift NO tiene businessId, lo seteamos en el shift para consistencia.
+  let owner;
+  if (shift.ownerType || shift.businessId || shift.employerId) {
+    owner = ownerFromDoc(shift);
+  } else {
+    owner = normalizeOwner(legacyOwner);
+  }
+
   const quote = quoteShiftEscrow({
     totalPay: shift.totalPay,
     workersNeeded: shift.workersNeeded,
     isSOS: shift.isSOS,
   });
 
-  // Reserva atómica: solo descuenta si hay saldo suficiente
-  const updated = await BusinessConfig.findOneAndUpdate(
-    { _id: businessId, 'crewWallet.balance': { $gte: quote.totalReserveNeeded } },
+  const Model = ownerModel(owner.ownerType);
+  const updated = await Model.findOneAndUpdate(
+    { _id: owner.ownerId, 'crewWallet.balance': { $gte: quote.totalReserveNeeded } },
     {
       $inc: {
         'crewWallet.balance': -quote.totalReserveNeeded,
@@ -163,8 +217,8 @@ async function reserveShiftEscrow({ businessId, shift, performedBy }) {
   );
 
   if (!updated) {
-    const biz = await BusinessConfig.findById(businessId).select('crewWallet').lean();
-    const have = biz?.crewWallet?.balance || 0;
+    const current = await Model.findById(owner.ownerId).select('crewWallet').lean();
+    const have = current?.crewWallet?.balance || 0;
     const err = new Error(`Saldo insuficiente: necesitas ${quote.totalReserveNeeded} COP, tienes ${have} COP`);
     err.code = 'INSUFFICIENT_FUNDS';
     err.required = quote.totalReserveNeeded;
@@ -173,7 +227,7 @@ async function reserveShiftEscrow({ businessId, shift, performedBy }) {
   }
 
   await CrewWalletTxn.create({
-    actorType: 'business', actorId: businessId,
+    actorType: owner.ownerType, actorId: owner.ownerId,
     kind: 'shift_reserve', direction: 'out', amount: quote.totalReserveNeeded,
     balanceAfter: updated.crewWallet.balance,
     pendingAfter: updated.crewWallet.pendingBalance,
@@ -184,7 +238,7 @@ async function reserveShiftEscrow({ businessId, shift, performedBy }) {
     performedBy: performedBy || { kind: 'system' },
   });
 
-  return { quote, wallet: updated.crewWallet };
+  return { quote, wallet: updated.crewWallet, owner };
 }
 
 /**
@@ -227,13 +281,16 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
   const commission = booking.agreedCommission || 0;
   const totalOut = payout + commission;
 
-  // 1. Intentar sacar del pending del negocio.
+  // Resolver el owner del booking (puede ser business legacy o crew_employer nuevo).
+  const owner = ownerFromDoc(booking);
+  const Model = ownerModel(owner.ownerType);
+
+  // 1. Intentar sacar del pending del owner.
   // Si no hay saldo en pending (booking legacy publicado antes del escrow),
   // entramos en modo "legacy release": pagamos al worker igual y registramos
-  // todo con `metadata.legacy = true`. Crew asume la pérdida de la comisión
-  // en estos casos — la auditoría queda clara en el ledger.
-  let biz = await BusinessConfig.findOneAndUpdate(
-    { _id: booking.businessId, 'crewWallet.pendingBalance': { $gte: totalOut } },
+  // todo con `metadata.legacy = true`. Crew asume la pérdida de la comisión.
+  let ownerDoc = await Model.findOneAndUpdate(
+    { _id: owner.ownerId, 'crewWallet.pendingBalance': { $gte: totalOut } },
     {
       $inc: {
         'crewWallet.pendingBalance': -totalOut,
@@ -245,17 +302,17 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
   );
 
   let legacy = false;
-  if (!biz) {
+  if (!ownerDoc) {
     legacy = true;
-    // No tocamos crewWallet del negocio (no había escrow). Solo leemos el
-    // estado actual para el ledger snapshot.
-    biz = await BusinessConfig.findById(booking.businessId).select('crewWallet').lean();
-    if (!biz) {
-      const err = new Error('Negocio no encontrado'); err.code = 'BIZ_NOT_FOUND'; throw err;
+    ownerDoc = await Model.findById(owner.ownerId).select('crewWallet').lean();
+    if (!ownerDoc) {
+      const err = new Error(`${owner.ownerType === 'business' ? 'Negocio' : 'Empleador'} no encontrado`);
+      err.code = 'OWNER_NOT_FOUND'; throw err;
     }
     logger.warn('Releasing legacy booking without escrow', {
       bookingId: String(booking._id),
-      businessId: String(booking.businessId),
+      ownerType: owner.ownerType,
+      ownerId: String(owner.ownerId),
       workerId: String(booking.workerId),
       payout, commission,
     });
@@ -282,11 +339,11 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
   // 4. Ledger — entradas con metadata de legacy si aplica
   const entries = [
     {
-      actorType: 'business', actorId: booking.businessId,
+      actorType: owner.ownerType, actorId: owner.ownerId,
       counterpartType: 'worker', counterpartId: booking.workerId,
       kind: 'shift_release', direction: 'out', amount: payout,
-      balanceAfter: biz.crewWallet?.balance ?? null,
-      pendingAfter: biz.crewWallet?.pendingBalance ?? null,
+      balanceAfter: ownerDoc.crewWallet?.balance ?? null,
+      pendingAfter: ownerDoc.crewWallet?.pendingBalance ?? null,
       shiftId: booking.shiftId, bookingId: booking._id,
       idempotencyKey: `shift_release:${booking._id}`,
       note: legacy ? 'Pago liberado (turno previo al sistema de escrow)' : 'Pago liberado al trabajador',
@@ -295,7 +352,7 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
     },
     {
       actorType: 'worker', actorId: booking.workerId,
-      counterpartType: 'business', counterpartId: booking.businessId,
+      counterpartType: owner.ownerType, counterpartId: owner.ownerId,
       kind: 'shift_release', direction: 'in', amount: payout,
       balanceAfter: worker.wallet.balance, pendingAfter: worker.wallet.pendingBalance,
       shiftId: booking.shiftId, bookingId: booking._id,
@@ -305,14 +362,13 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
       performedBy: performedBy || { kind: 'system' },
     },
   ];
-  // Solo registramos la comisión si efectivamente hubo escrow (turnos nuevos)
   if (!legacy && commission > 0) {
     entries.splice(1, 0, {
-      actorType: 'business', actorId: booking.businessId,
+      actorType: owner.ownerType, actorId: owner.ownerId,
       counterpartType: 'platform',
       kind: 'shift_commission', direction: 'out', amount: commission,
-      balanceAfter: biz.crewWallet?.balance ?? null,
-      pendingAfter: biz.crewWallet?.pendingBalance ?? null,
+      balanceAfter: ownerDoc.crewWallet?.balance ?? null,
+      pendingAfter: ownerDoc.crewWallet?.pendingBalance ?? null,
       shiftId: booking.shiftId, bookingId: booking._id,
       idempotencyKey: `shift_commission:${booking._id}`,
       note: 'Comisión Crew',
@@ -323,7 +379,9 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
 
   return {
     booking,
-    businessWallet: biz.crewWallet,
+    businessWallet: ownerDoc.crewWallet, // mantenemos clave por retrocompat
+    ownerWallet: ownerDoc.crewWallet,
+    owner,
     workerWallet: worker.wallet,
     payout, commission,
     legacy,
@@ -387,16 +445,19 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
     amountToReturn: freeReserve,
   });
 
-  let biz = await BusinessConfig.findById(shift.businessId).select('crewWallet').lean();
-  if (!biz) {
-    const err = new Error('Negocio no encontrado'); err.code = 'BIZ_NOT_FOUND'; throw err;
+  const owner = ownerFromDoc(shift);
+  const OwnerModel = ownerModel(owner.ownerType);
+  let ownerDoc = await OwnerModel.findById(owner.ownerId).select('crewWallet').lean();
+  if (!ownerDoc) {
+    const err = new Error(`${owner.ownerType === 'business' ? 'Negocio' : 'Empleador'} no encontrado`);
+    err.code = 'OWNER_NOT_FOUND'; throw err;
   }
 
   // 1) Mover dinero de los cupos libres
   if (freeReserve > 0) {
     const update = { $inc: { 'crewWallet.pendingBalance': -freeReserve } };
     if (refund > 0) update.$inc['crewWallet.balance'] = refund;
-    biz = await BusinessConfig.findByIdAndUpdate(shift.businessId, update, {
+    ownerDoc = await OwnerModel.findByIdAndUpdate(owner.ownerId, update, {
       new: true, select: 'crewWallet',
     });
   }
@@ -404,9 +465,9 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
   const ledgerEntries = [];
   if (refund > 0) {
     ledgerEntries.push({
-      actorType: 'business', actorId: shift.businessId,
+      actorType: owner.ownerType, actorId: owner.ownerId,
       kind: 'shift_refund', direction: 'in', amount: refund,
-      balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
+      balanceAfter: ownerDoc.crewWallet.balance, pendingAfter: ownerDoc.crewWallet.pendingBalance,
       shiftId: shift._id,
       idempotencyKey: `shift_refund_free:${shift._id}`,
       note: `Devolución de cupos libres (${Math.round(refundRate * 100)}%)`,
@@ -416,10 +477,10 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
   }
   if (penalty > 0) {
     ledgerEntries.push({
-      actorType: 'business', actorId: shift.businessId,
+      actorType: owner.ownerType, actorId: owner.ownerId,
       counterpartType: 'platform',
       kind: 'cancellation_penalty', direction: 'out', amount: penalty,
-      balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
+      balanceAfter: ownerDoc.crewWallet.balance, pendingAfter: ownerDoc.crewWallet.pendingBalance,
       shiftId: shift._id,
       idempotencyKey: `shift_penalty_free:${shift._id}`,
       note: `Penalización por cancelación tardía (${Math.round((1 - refundRate) * 100)}%)`,
@@ -474,15 +535,15 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
       },
     );
 
-    // Mover plata: del pending del business → balance del business (refund)
+    // Mover plata: del pending del owner → balance del owner (refund)
     // y/o → wallet.balance del worker (compensación).
     const deltaPending = -bookingTotal;
-    const deltaBizBalance = toBusiness;
-    biz = await BusinessConfig.findByIdAndUpdate(
-      shift.businessId,
+    const deltaOwnerBalance = toBusiness;
+    ownerDoc = await OwnerModel.findByIdAndUpdate(
+      owner.ownerId,
       { $inc: {
         'crewWallet.pendingBalance': deltaPending,
-        'crewWallet.balance': deltaBizBalance,
+        'crewWallet.balance': deltaOwnerBalance,
       } },
       { new: true, select: 'crewWallet' },
     );
@@ -494,23 +555,23 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
       );
       ledgerEntries.push({
         actorType: 'worker', actorId: bk.workerId,
-        counterpartType: 'business', counterpartId: shift.businessId,
+        counterpartType: owner.ownerType, counterpartId: owner.ownerId,
         kind: 'shift_release', direction: 'in', amount: toWorker,
         balanceAfter: w.wallet.balance, pendingAfter: w.wallet.pendingBalance,
         shiftId: shift._id, bookingId: bk._id,
         idempotencyKey: `shift_compensation:${bk._id}`,
         note: bk.status === 'checked_in'
           ? 'Compensación por cancelación tras tu check-in'
-          : 'Compensación por cancelación tardía del negocio',
+          : 'Compensación por cancelación tardía del empleador',
         metadata: { cancelledBookingId: String(bk._id), hoursToShift },
         performedBy: performedBy || { kind: 'system' },
       });
     }
     if (toBusiness > 0) {
       ledgerEntries.push({
-        actorType: 'business', actorId: shift.businessId,
+        actorType: owner.ownerType, actorId: owner.ownerId,
         kind: 'shift_refund', direction: 'in', amount: toBusiness,
-        balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
+        balanceAfter: ownerDoc.crewWallet.balance, pendingAfter: ownerDoc.crewWallet.pendingBalance,
         shiftId: shift._id, bookingId: bk._id,
         idempotencyKey: `shift_refund_booking:${bk._id}`,
         note: 'Devolución por cancelación (cupo asignado)',
@@ -521,10 +582,10 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
     const bookingPenalty = bookingTotal - toWorker - toBusiness;
     if (bookingPenalty > 0) {
       ledgerEntries.push({
-        actorType: 'business', actorId: shift.businessId,
+        actorType: owner.ownerType, actorId: owner.ownerId,
         counterpartType: 'platform',
         kind: 'cancellation_penalty', direction: 'out', amount: bookingPenalty,
-        balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
+        balanceAfter: ownerDoc.crewWallet.balance, pendingAfter: ownerDoc.crewWallet.pendingBalance,
         shiftId: shift._id, bookingId: bk._id,
         idempotencyKey: `shift_penalty_booking:${bk._id}`,
         note: 'Penalización por cancelación tardía (cupo asignado)',
@@ -554,7 +615,8 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
     refundRate, hoursToShift,
     cancelledBookings: activeBookings.length,
     affectedBookings: activeBookings.length,
-    wallet: biz.crewWallet,
+    owner,
+    wallet: ownerDoc.crewWallet,
   };
 }
 
@@ -779,8 +841,10 @@ module.exports = {
   CANCEL_FULL_REFUND_HOURS, CANCEL_PARTIAL_REFUND_HOURS, CANCEL_PARTIAL_REFUND_RATE,
   // helpers
   quoteShiftEscrow, computeCancellationRefund,
+  ownerModel, normalizeOwner, ownerFromDoc,
   // ops
-  depositBusinessWallet,
+  depositOwnerWallet,
+  depositBusinessWallet, // alias retrocompat
   reserveShiftEscrow,
   releaseBookingFunds,
   cancelShiftPost,

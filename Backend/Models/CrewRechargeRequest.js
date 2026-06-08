@@ -15,10 +15,20 @@
 const mongoose = require('mongoose');
 
 const crewRechargeRequestSchema = new mongoose.Schema({
+  // Owner polimórfico — un negocio MenuBy O un empleador Crew externo.
+  // Para retrocompatibilidad businessId queda no requerido (default null) y
+  // ownerType default 'business' aplica al caso legacy.
+  ownerType: { type: String, enum: ['business', 'crew_employer'], default: 'business', index: true },
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',
-    required: true,
+    default: null,
+    index: true,
+  },
+  employerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CrewEmployer',
+    default: null,
     index: true,
   },
   amount: { type: Number, required: true, min: 0 },
@@ -48,8 +58,19 @@ const crewRechargeRequestSchema = new mongoose.Schema({
   notes: { type: String, default: '' },
 }, { timestamps: true });
 
+crewRechargeRequestSchema.pre('validate', function (next) {
+  if (this.ownerType === 'business' && !this.businessId) {
+    return next(new Error('ownerType=business requiere businessId'));
+  }
+  if (this.ownerType === 'crew_employer' && !this.employerId) {
+    return next(new Error('ownerType=crew_employer requiere employerId'));
+  }
+  next();
+});
+
 crewRechargeRequestSchema.index({ status: 1, createdAt: -1 });
 crewRechargeRequestSchema.index({ businessId: 1, status: 1 });
+crewRechargeRequestSchema.index({ employerId: 1, status: 1 });
 
 module.exports = mongoose.models.CrewRechargeRequest
   || mongoose.model('CrewRechargeRequest', crewRechargeRequestSchema);

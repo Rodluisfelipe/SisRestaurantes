@@ -12,6 +12,7 @@ const POS = lazy(() => import("./Pages/POS"));
 const Waiter = lazy(() => import("./Pages/Waiter"));
 const SuperAdminDashboard = lazy(() => import("./Pages/SuperAdmin/SuperAdminDashboard"));
 const CrewApp = lazy(() => import("./Pages/Crew/CrewApp"));
+const CrewEmployerApp = lazy(() => import("./Pages/CrewEmployer/CrewEmployerApp"));
 const DomiPage = lazy(() => import("./Components/Delivery/DomiPage"));
 const DeliveryTracker = lazy(() => import("./Components/Delivery/DeliveryTracker"));
 const DeliveryQRPage = lazy(() => import("./Components/Delivery/DeliveryQRPage"));
@@ -152,6 +153,9 @@ function App() {
         {/* Crew — marketplace de turnos para estudiantes/casuales */}
         <Route path="/crew" element={<Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0A0A14]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B2FFF]"></div></div>}><CrewApp /></Suspense>} />
         <Route path="/trabajar" element={<Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0A0A14]"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#7B2FFF]"></div></div>}><CrewApp /></Suspense>} />
+
+        {/* Crew Employer — panel para empleadores externos */}
+        <Route path="/empleador" element={<Suspense fallback={<div className="flex items-center justify-center h-screen bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}><CrewEmployerApp /></Suspense>} />
         
         {/* Rutas del Catálogo MenuBy */}
         <Route element={<CatalogLayout />}>
