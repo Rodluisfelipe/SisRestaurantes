@@ -12,6 +12,7 @@ const AuditLog = require('../Models/AuditLog');
 const { Worker } = require('../Models/Worker');
 const CrewWalletTxn = require('../Models/CrewWalletTxn');
 const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
+const CrewRechargeRequest = require('../Models/CrewRechargeRequest');
 const crewLedger = require('../services/crewLedger');
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
@@ -483,6 +484,89 @@ router.post('/crew/withdrawals/:id/reject', requireRole('admin'), async (req, re
       return res.status(400).json({ message: e.message, code: e.code });
     }
     logger.error('Error rejecting crew withdrawal', e, req);
+    res.status(500).json({ message: e.message || 'Error al rechazar' });
+  }
+});
+
+// GET /api/superadmin/crew/recharges?status=pending — cola de recargas con comprobante
+router.get('/crew/recharges', async (req, res) => {
+  try {
+    const { status = 'pending', limit = 100 } = req.query;
+    const q = {};
+    if (['pending', 'approved', 'rejected'].includes(status)) q.status = status;
+    const [requests, counts] = await Promise.all([
+      CrewRechargeRequest.find(q)
+        .sort({ createdAt: -1 })
+        .limit(Math.min(Number(limit), 200))
+        .populate('businessId', 'businessName slug crewWallet')
+        .populate('reviewedBy', 'email name')
+        .lean(),
+      CrewRechargeRequest.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 }, total: { $sum: '$amount' } } },
+      ]),
+    ]);
+    const countsByStatus = counts.reduce((acc, c) => ({ ...acc, [c._id]: { count: c.count, total: c.total } }), {});
+    res.json({ success: true, requests, counts: countsByStatus });
+  } catch (error) {
+    logger.error('Error listing crew recharges', error, req);
+    res.status(500).json({ message: 'Error al cargar recargas' });
+  }
+});
+
+// POST /api/superadmin/crew/recharges/:id/approve — acredita y deja trace en ledger
+router.post('/crew/recharges/:id/approve', requireRole('admin'), async (req, res) => {
+  try {
+    const reqDoc = await CrewRechargeRequest.findById(req.params.id);
+    if (!reqDoc) return res.status(404).json({ message: 'Solicitud no encontrada' });
+    if (reqDoc.status !== 'pending') {
+      return res.status(400).json({ message: `Solicitud en estado ${reqDoc.status}` });
+    }
+
+    // Idempotencia: si se hace doble click, no duplicamos el crédito.
+    const result = await crewLedger.depositBusinessWallet({
+      businessId: reqDoc.businessId,
+      amount: reqDoc.amount,
+      idempotencyKey: `crew_recharge:${reqDoc._id}`,
+      note: `Recarga aprobada (${reqDoc.paymentMethod})`,
+      performedBy: { kind: 'superadmin', id: req.user.id },
+    });
+
+    reqDoc.status = 'approved';
+    reqDoc.reviewedAt = new Date();
+    reqDoc.reviewedBy = req.user.id;
+    reqDoc.walletTxnId = result.txn._id;
+    await reqDoc.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(String(reqDoc.businessId)).emit('crew-wallet-updated', { wallet: result.wallet });
+    }
+
+    res.json({ success: true, request: reqDoc, wallet: result.wallet, duplicated: result.duplicated });
+  } catch (e) {
+    logger.error('Error approving crew recharge', e, req);
+    res.status(500).json({ message: e.message || 'Error al aprobar' });
+  }
+});
+
+// POST /api/superadmin/crew/recharges/:id/reject
+router.post('/crew/recharges/:id/reject', requireRole('admin'), async (req, res) => {
+  try {
+    const { reason } = req.body || {};
+    if (!reason?.trim()) return res.status(400).json({ message: 'El motivo es obligatorio' });
+    const reqDoc = await CrewRechargeRequest.findById(req.params.id);
+    if (!reqDoc) return res.status(404).json({ message: 'Solicitud no encontrada' });
+    if (reqDoc.status !== 'pending') {
+      return res.status(400).json({ message: `Solicitud en estado ${reqDoc.status}` });
+    }
+    reqDoc.status = 'rejected';
+    reqDoc.rejectionReason = reason.trim().slice(0, 300);
+    reqDoc.reviewedAt = new Date();
+    reqDoc.reviewedBy = req.user.id;
+    await reqDoc.save();
+    res.json({ success: true, request: reqDoc });
+  } catch (e) {
+    logger.error('Error rejecting crew recharge', e, req);
     res.status(500).json({ message: e.message || 'Error al rechazar' });
   }
 });

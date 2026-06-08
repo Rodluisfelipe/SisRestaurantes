@@ -1,12 +1,21 @@
 /**
- * CrewPanel — vista del lado business para publicar turnos y revisar postulantes.
- * Estilo MenuBy formal: blanco, slate, accent rojo.
+ * CrewPanel — panel del negocio para el marketplace Crew.
+ *
+ * Estética cosmic (consistente con la app del worker): fondo deep navy con
+ * aurora, cards rounded-3xl, glow rojo/naranja en los CTAs.
+ *
+ * Estructura:
+ *   - Hero: CrewWalletCard (saldo, recargar)
+ *   - Stats row: contadores rápidos (turnos abiertos, postulantes, filled)
+ *   - Tabs: Mis turnos · Publicar · Recargas
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
 import CrewWorkerProfileModal from './CrewWorkerProfileModal';
 import BusinessCrewChatModal from './BusinessCrewChatModal';
+import CrewWalletCard from './CrewWalletCard';
+import CrewRechargeModal from './CrewRechargeModal';
 
 function makeApi(businessId) {
   return {
@@ -16,9 +25,7 @@ function makeApi(businessId) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
     }),
-    // Para GET: añade ?businessId= a la URL
     withBiz: (path) => `${path}${path.includes('?') ? '&' : '?'}businessId=${businessId}`,
-    // Para POST/PATCH/DELETE: mezcla businessId en el body
     body: (obj = {}) => JSON.stringify({ ...obj, businessId }),
   };
 }
@@ -28,193 +35,339 @@ function formatCOP(n) {
 }
 
 const SKILLS = [
-  { key: 'mesero', label: 'Mesero' },
-  { key: 'cocinero', label: 'Cocinero' },
-  { key: 'barista', label: 'Barista' },
-  { key: 'bartender', label: 'Bartender' },
-  { key: 'cajero', label: 'Cajero' },
-  { key: 'runner', label: 'Auxiliar' },
-  { key: 'host', label: 'Anfitrión' },
-  { key: 'lavaplatos', label: 'Lavaplatos' },
-  { key: 'parrillero', label: 'Parrillero' },
-  { key: 'eventos', label: 'Eventos' },
+  { key: 'mesero', label: 'Mesero', emoji: '🍽️' },
+  { key: 'cocinero', label: 'Cocinero', emoji: '👨‍🍳' },
+  { key: 'barista', label: 'Barista', emoji: '☕' },
+  { key: 'bartender', label: 'Bartender', emoji: '🍸' },
+  { key: 'cajero', label: 'Cajero', emoji: '💳' },
+  { key: 'runner', label: 'Auxiliar', emoji: '🏃' },
+  { key: 'host', label: 'Anfitrión', emoji: '🤝' },
+  { key: 'lavaplatos', label: 'Lavaplatos', emoji: '🧽' },
+  { key: 'parrillero', label: 'Parrillero', emoji: '🔥' },
+  { key: 'eventos', label: 'Eventos', emoji: '🎉' },
 ];
 
 const PERKS = [
-  { key: 'cena_incluida', label: 'Comida incluida' },
-  { key: 'transporte_final', label: 'Transporte al cierre' },
-  { key: 'propinas_garantizadas', label: 'Propinas garantizadas' },
-  { key: 'flexibilidad_horario', label: 'Horario flexible' },
-  { key: 'ambiente_juvenil', label: 'Ambiente juvenil' },
-  { key: 'pago_inmediato', label: 'Pago inmediato' },
+  { key: 'cena_incluida', label: 'Comida incluida', emoji: '🍔' },
+  { key: 'transporte_final', label: 'Transporte al cierre', emoji: '🚕' },
+  { key: 'propinas_garantizadas', label: 'Propinas garantizadas', emoji: '💵' },
+  { key: 'flexibilidad_horario', label: 'Horario flexible', emoji: '⏰' },
+  { key: 'ambiente_juvenil', label: 'Ambiente juvenil', emoji: '✨' },
+  { key: 'pago_inmediato', label: 'Pago inmediato', emoji: '⚡' },
+];
+
+const TABS = [
+  { id: 'mine', label: 'Mis turnos', icon: '📋' },
+  { id: 'new', label: 'Publicar', icon: '✨' },
+  { id: 'recharges', label: 'Recargas', icon: '💳' },
 ];
 
 export default function CrewPanel({ businessId }) {
   const [view, setView] = useState('mine');
   const [shifts, setShifts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingShifts, setLoadingShifts] = useState(true);
   const [selectedShift, setSelectedShift] = useState(null);
+  const [wallet, setWallet] = useState(null);
+  const [loadingWallet, setLoadingWallet] = useState(true);
+  const [rechargeOpen, setRechargeOpen] = useState(false);
 
   const api = makeApi(businessId);
 
+  const loadWallet = useCallback(async () => {
+    if (!businessId) return;
+    setLoadingWallet(true);
+    try {
+      const r = await fetch(api.withBiz(`${api.base}/businesses/wallet`), { headers: api.headers() });
+      const data = await r.json();
+      if (r.ok) setWallet(data.wallet);
+    } catch (e) { console.error(e); }
+    finally { setLoadingWallet(false); }
+  }, [businessId]);
+
   const loadShifts = useCallback(async () => {
     if (!businessId) return;
-    setLoading(true);
+    setLoadingShifts(true);
     try {
       const r = await fetch(api.withBiz(`${api.base}/businesses/shifts`), { headers: api.headers() });
       const data = await r.json();
       setShifts(data.shifts || []);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    } catch (e) { console.error(e); }
+    finally { setLoadingShifts(false); }
   }, [businessId]);
 
-  useEffect(() => { loadShifts(); }, [loadShifts]);
+  useEffect(() => { loadShifts(); loadWallet(); }, [loadShifts, loadWallet]);
+
+  const stats = useMemo(() => ({
+    total: shifts.length,
+    open: shifts.filter(s => ['open', 'partially_filled'].includes(s.status)).length,
+    filled: shifts.filter(s => s.status === 'filled').length,
+    completed: shifts.filter(s => s.status === 'completed').length,
+  }), [shifts]);
 
   if (!businessId) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center">
-        <p className="text-sm text-slate-600">Cargando información del negocio…</p>
+      <div className="rounded-3xl border border-white/[0.08] bg-[#0a0a14] p-8 text-center">
+        <p className="text-sm text-white/60">Cargando información del negocio…</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-[20px] font-extrabold text-slate-900 leading-tight flex items-center gap-2">
-              Personal por turnos
-              <span className="px-1.5 py-0.5 text-[9px] font-extrabold bg-red-50 text-red-700 border border-red-200 rounded">BETA</span>
-            </h1>
-            <p className="text-[13px] text-slate-500 mt-1">
-              Publica turnos puntuales y recibe postulaciones de trabajadores verificados de tu ciudad.
-            </p>
-          </div>
-          <div className="flex gap-1 p-1 bg-slate-100 rounded-xl shrink-0">
-            <button
-              onClick={() => { setView('mine'); setSelectedShift(null); }}
-              className={`px-3.5 py-1.5 rounded-lg text-[12px] font-bold transition ${
-                view === 'mine' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Mis turnos
-            </button>
-            <button
-              onClick={() => { setView('new'); setSelectedShift(null); }}
-              className={`px-3.5 py-1.5 rounded-lg text-[12px] font-bold transition ${
-                view === 'new' ? 'bg-red-600 text-white shadow' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              Publicar turno
-            </button>
-          </div>
-        </div>
+    <div className="relative min-h-[100vh] -mx-4 sm:-mx-6 -my-4 sm:-my-6 px-4 sm:px-6 py-4 sm:py-6 font-geist text-white overflow-x-hidden" style={{ background: '#0a0a14' }}>
+      {/* Aurora background fija */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+        <motion.div
+          animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -top-32 -right-20 w-[500px] h-[500px] bg-red-500/15 rounded-full blur-[120px]"
+        />
+        <motion.div
+          animate={{ x: [0, -25, 0], y: [0, 30, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-1/2 -left-32 w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[120px]"
+        />
       </div>
 
-      {/* Body */}
-      <AnimatePresence mode="wait">
-        {view === 'mine' && !selectedShift && (
-          <motion.div key="mine" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            {loading && (
-              <div className="space-y-2.5 animate-pulse">
-                {[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-white border border-slate-200 rounded-2xl" />)}
-              </div>
-            )}
-            {!loading && shifts.length === 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-                <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-3">
-                  <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/></svg>
+      <div className="relative space-y-5 max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/40 mb-1">Marketplace de turnos</p>
+            <h1 className="text-[28px] sm:text-[34px] font-black tracking-tight leading-none flex items-center gap-3">
+              Crew
+              <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 bg-amber-400/15 text-amber-300 border border-amber-400/30 rounded-full uppercase">
+                Beta
+              </span>
+            </h1>
+            <p className="text-[13px] text-white/50 mt-1.5 max-w-md">
+              Publica turnos puntuales. Tu saldo Crew protege el pago hasta que el trabajador termine.
+            </p>
+          </div>
+
+          {/* Mini-stats */}
+          <div className="hidden sm:flex items-center gap-2">
+            <MiniStat label="Abiertos" value={stats.open} tone="amber" />
+            <MiniStat label="Cubiertos" value={stats.filled} tone="emerald" />
+            <MiniStat label="Total" value={stats.total} tone="slate" />
+          </div>
+        </div>
+
+        {/* Wallet hero */}
+        <CrewWalletCard wallet={wallet} loading={loadingWallet} onRecharge={() => setRechargeOpen(true)} />
+
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 rounded-2xl bg-black/40 border border-white/[0.06] w-fit">
+          {TABS.map((t) => {
+            const active = view === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => { setView(t.id); setSelectedShift(null); }}
+                className={`relative px-4 py-2 rounded-xl text-[12px] font-extrabold uppercase tracking-wider transition-colors flex items-center gap-2 ${
+                  active ? 'text-white' : 'text-white/40 hover:text-white/70'
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="crew-panel-tab"
+                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 shadow-[0_4px_16px_-4px_rgba(239,68,68,0.5)]"
+                  />
+                )}
+                <span className="relative text-base leading-none">{t.icon}</span>
+                <span className="relative">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Body */}
+        <AnimatePresence mode="wait">
+          {view === 'mine' && !selectedShift && (
+            <motion.div key="mine" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              {loadingShifts && (
+                <div className="space-y-3 animate-pulse">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="h-32 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
+                  ))}
                 </div>
-                <p className="text-[14px] font-bold text-slate-700">Aún no has publicado turnos</p>
-                <p className="text-[12px] text-slate-500 mt-1 mb-4">Publica el primer turno para empezar a recibir postulantes</p>
-                <button
-                  onClick={() => setView('new')}
-                  className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[13px] transition"
-                >
-                  Publicar turno
-                </button>
-              </div>
-            )}
-            {!loading && shifts.length > 0 && (
-              <div className="space-y-2.5">
-                {shifts.map((s) => <ShiftRow key={s._id} shift={s} onClick={() => setSelectedShift(s)} />)}
-              </div>
-            )}
-          </motion.div>
-        )}
+              )}
+              {!loadingShifts && shifts.length === 0 && (
+                <EmptyState
+                  title="Aún no has publicado turnos"
+                  body="Cuando publiques tu primer turno verás los postulantes acá. Tu saldo Crew te protege: solo pagas cuando confirmas que el turno se completó."
+                  cta={{ label: 'Publicar mi primer turno', onClick: () => setView('new') }}
+                />
+              )}
+              {!loadingShifts && shifts.length > 0 && (
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {shifts.map((s, i) => (
+                    <ShiftCard key={s._id} shift={s} index={i} onClick={() => setSelectedShift(s)} />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
 
-        {view === 'mine' && selectedShift && (
-          <motion.div key="applicants" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
-            <ApplicantsView api={api} shift={selectedShift} onBack={() => { setSelectedShift(null); loadShifts(); }} />
-          </motion.div>
-        )}
+          {view === 'mine' && selectedShift && (
+            <motion.div key="applicants" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }}>
+              <ApplicantsView
+                api={api}
+                shift={selectedShift}
+                onBack={() => { setSelectedShift(null); loadShifts(); loadWallet(); }}
+              />
+            </motion.div>
+          )}
 
-        {view === 'new' && (
-          <motion.div key="new" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <NewShiftForm
-              api={api}
-              onCreated={() => { setView('mine'); loadShifts(); }}
-              onCancel={() => setView('mine')}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          {view === 'new' && (
+            <motion.div key="new" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <NewShiftForm
+                api={api}
+                wallet={wallet}
+                onCreated={() => { setView('mine'); loadShifts(); loadWallet(); }}
+                onCancel={() => setView('mine')}
+                onNeedRecharge={() => setRechargeOpen(true)}
+              />
+            </motion.div>
+          )}
+
+          {view === 'recharges' && (
+            <motion.div key="recharges" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <RechargesHistory api={api} onRecharge={() => setRechargeOpen(true)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <CrewRechargeModal
+        open={rechargeOpen}
+        businessId={businessId}
+        onClose={() => setRechargeOpen(false)}
+        onSuccess={() => { setRechargeOpen(false); loadWallet(); }}
+      />
     </div>
   );
 }
 
-function ShiftRow({ shift, onClick }) {
+/* ─────────── helpers ─────────── */
+
+function MiniStat({ label, value, tone }) {
   const tones = {
-    open: 'bg-blue-50 text-blue-700 border-blue-200',
-    partially_filled: 'bg-amber-50 text-amber-700 border-amber-200',
-    filled: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    completed: 'bg-slate-50 text-slate-600 border-slate-200',
-    cancelled: 'bg-red-50 text-red-700 border-red-200',
-  };
-  const labels = {
-    open: 'Abierto', partially_filled: 'Parcial', filled: 'Completo',
-    completed: 'Finalizado', cancelled: 'Cancelado',
+    amber: 'from-amber-500/20 to-amber-500/[0.04] text-amber-200 border-amber-400/20',
+    emerald: 'from-emerald-500/20 to-emerald-500/[0.04] text-emerald-200 border-emerald-400/20',
+    slate: 'from-white/[0.08] to-white/[0.02] text-white/80 border-white/[0.08]',
   };
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left p-4 bg-white border border-slate-200 rounded-2xl hover:border-slate-300 hover:shadow-sm transition shadow-sm"
-    >
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-extrabold text-slate-900 truncate">{shift.title}</p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            {new Date(shift.date).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' })}
-            {' · '}{shift.startTime} a {shift.endTime}
-            {' · '}{shift.hoursTotal} horas
-          </p>
-        </div>
-        <span className={`shrink-0 px-2 py-0.5 text-[10px] font-bold border rounded-full ${tones[shift.status] || tones.open}`}>
-          {labels[shift.status] || shift.status}
-        </span>
-      </div>
-      <div className="flex items-center justify-between text-[12px] pt-2 border-t border-slate-100">
-        <span className="text-slate-600">
-          <strong className="font-extrabold text-slate-900">{shift.workersBooked}</strong>
-          <span className="text-slate-400"> de </span>
-          <strong className="font-extrabold text-slate-900">{shift.workersNeeded}</strong> postulantes aceptados
-        </span>
-        <span className="font-extrabold text-emerald-600 tabular-nums">{formatCOP(shift.totalPay)}</span>
-      </div>
-    </button>
+    <div className={`px-3 py-2 rounded-xl border bg-gradient-to-br ${tones[tone]}`}>
+      <p className="text-[18px] font-black leading-none tabular-nums">{value}</p>
+      <p className="text-[9px] font-extrabold uppercase tracking-wider opacity-80 mt-0.5">{label}</p>
+    </div>
   );
 }
+
+function EmptyState({ title, body, cta }) {
+  return (
+    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-10 text-center backdrop-blur-sm">
+      <motion.div
+        animate={{ y: [0, -4, 0] }}
+        transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+        className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-red-500/30 to-orange-500/20 border border-red-400/20 flex items-center justify-center mb-3"
+      >
+        <svg className="w-7 h-7 text-red-300" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
+        </svg>
+      </motion.div>
+      <p className="text-[15px] font-black text-white">{title}</p>
+      <p className="text-[12px] text-white/50 mt-1.5 max-w-sm mx-auto leading-relaxed">{body}</p>
+      {cta && (
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={cta.onClick}
+          className="mt-5 group relative overflow-hidden px-6 py-3 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-extrabold text-[13px] shadow-lg shadow-red-500/40"
+        >
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
+            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
+          <span className="relative">{cta.label}</span>
+        </motion.button>
+      )}
+    </div>
+  );
+}
+
+function ShiftCard({ shift, index, onClick }) {
+  const statusInfo = {
+    open: { label: 'Abierto', color: 'from-sky-500/30 to-sky-500/10 text-sky-200 border-sky-400/30' },
+    partially_filled: { label: 'Parcial', color: 'from-amber-500/30 to-amber-500/10 text-amber-200 border-amber-400/30' },
+    filled: { label: 'Cubierto', color: 'from-emerald-500/30 to-emerald-500/10 text-emerald-200 border-emerald-400/30' },
+    completed: { label: 'Finalizado', color: 'from-white/10 to-white/[0.04] text-white/60 border-white/[0.08]' },
+    cancelled: { label: 'Cancelado', color: 'from-red-500/30 to-red-500/10 text-red-200 border-red-400/30' },
+  };
+  const s = statusInfo[shift.status] || statusInfo.open;
+  return (
+    <motion.button
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.04 }}
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.99 }}
+      onClick={onClick}
+      className="group relative overflow-hidden text-left rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm p-4 hover:border-white/[0.18] transition-all"
+    >
+      {/* Glow hover */}
+      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+        style={{ background: 'radial-gradient(120% 60% at 50% 0%, rgba(239,68,68,0.10), transparent 60%)' }} />
+
+      <div className="relative">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] font-black text-white truncate">{shift.title}</p>
+            <p className="text-[10.5px] text-white/50 mt-0.5">
+              {new Date(shift.date).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' })}
+              {' · '}{shift.startTime}–{shift.endTime}
+            </p>
+          </div>
+          <span className={`shrink-0 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider rounded-full border bg-gradient-to-r ${s.color}`}>
+            {s.label}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5 mb-3">
+          <MiniBox label="Personas" value={`${shift.workersBooked}/${shift.workersNeeded}`} />
+          <MiniBox label="Horas" value={`${shift.hoursTotal}h`} />
+          <MiniBox label="Pago" value={formatCOP(shift.totalPay)} accent />
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+          <span className="text-[10px] text-white/40">
+            Reservado: <span className="text-white/70 font-bold tabular-nums">{formatCOP(shift.reservedAmount)}</span>
+          </span>
+          <span className="text-[10px] font-extrabold text-red-300 flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
+            Ver postulantes
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </span>
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
+function MiniBox({ label, value, accent }) {
+  return (
+    <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-2 py-1.5">
+      <p className="text-[8px] font-extrabold uppercase tracking-wider text-white/30">{label}</p>
+      <p className={`text-[11.5px] font-black tabular-nums truncate ${accent ? 'text-emerald-300' : 'text-white/90'}`}>{value}</p>
+    </div>
+  );
+}
+
+/* ─────────── applicants ─────────── */
 
 function ApplicantsView({ api, shift, onBack }) {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [openApp, setOpenApp] = useState(null); // application abierta en el modal
-  const [chatApp, setChatApp] = useState(null); // application con chat abierto
+  const [openApp, setOpenApp] = useState(null);
+  const [chatApp, setChatApp] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -233,35 +386,56 @@ function ApplicantsView({ api, shift, onBack }) {
       const r = await fetch(`${api.base}/businesses/applications/${appId}/${action}`, {
         method: 'POST', headers: api.headers(), body: api.body({}),
       });
-      if (!r.ok) {
-        const e = await r.json().catch(() => ({}));
-        alert(e.message || 'No se pudo procesar la respuesta');
-        return;
-      }
+      if (!r.ok) { const e = await r.json().catch(() => ({})); alert(e.message || 'No se pudo procesar'); return; }
       load();
-    } catch { alert('No se pudo procesar la respuesta'); }
+    } catch { alert('No se pudo procesar'); }
+  };
+
+  const cancelShift = async () => {
+    const reason = prompt('Motivo de la cancelación:');
+    if (!reason?.trim()) return;
+    setCancelling(true);
+    try {
+      const r = await fetch(`${api.base}/businesses/shifts/${shift._id}/cancel`, {
+        method: 'POST', headers: api.headers(),
+        body: api.body({ reason }),
+      });
+      const data = await r.json();
+      if (!r.ok) { alert(data.message || 'Error al cancelar'); return; }
+      alert(`Cancelado. Devolución: ${formatCOP(data.refund)} · Penalización: ${formatCOP(data.penalty)}`);
+      onBack();
+    } finally { setCancelling(false); }
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-      <button onClick={onBack} className="mb-3 text-[12px] font-semibold text-slate-500 hover:text-slate-900 flex items-center gap-1 transition">
-        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
-        Volver al listado
+    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5">
+      <button onClick={onBack} className="mb-3 text-[12px] font-bold text-white/40 hover:text-white flex items-center gap-1 transition">
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        Volver
       </button>
-      <h2 className="text-[16px] font-extrabold text-slate-900">{shift.title}</h2>
-      <p className="text-[12px] text-slate-500 mb-4">
-        {apps.length} {apps.length === 1 ? 'postulante' : 'postulantes'} · Toca una tarjeta para ver el perfil completo
-      </p>
-
-      {loading && <p className="text-sm text-slate-500">Cargando postulantes…</p>}
-      {!loading && apps.length === 0 && (
-        <div className="text-center py-10">
-          <p className="text-[14px] font-bold text-slate-700">Aún no hay postulantes</p>
-          <p className="text-[12px] text-slate-500 mt-1">Considera agregar beneficios al turno para atraer más interesados</p>
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-1">
+        <div>
+          <h2 className="text-[18px] font-black text-white">{shift.title}</h2>
+          <p className="text-[11.5px] text-white/50 mt-1">
+            {apps.length} {apps.length === 1 ? 'postulante' : 'postulantes'} · Toca una tarjeta para ver el perfil
+          </p>
         </div>
-      )}
+        {!['cancelled', 'completed'].includes(shift.status) && (
+          <button
+            onClick={cancelShift}
+            disabled={cancelling}
+            className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-400/30 transition disabled:opacity-50"
+          >
+            {cancelling ? 'Cancelando…' : 'Cancelar turno'}
+          </button>
+        )}
+      </div>
 
-      <div className="space-y-2.5">
+      <div className="mt-4 space-y-2.5">
+        {loading && <p className="text-[12px] text-white/40 text-center py-6">Cargando postulantes…</p>}
+        {!loading && apps.length === 0 && (
+          <p className="text-[12px] text-white/40 text-center py-6">Aún no hay postulantes. Agrega beneficios al turno para atraer más.</p>
+        )}
         {apps.map((a) => (
           <ApplicantCard
             key={a._id}
@@ -302,120 +476,87 @@ function ApplicantsView({ api, shift, onBack }) {
 
 function ApplicantCard({ app, onAccept, onReject, onOpenProfile, onChat }) {
   const w = app.workerId || {};
-  const matchTone = app.matchScore >= 75 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
-                   app.matchScore >= 50 ? 'text-amber-700 bg-amber-50 border-amber-200' :
-                   'text-slate-600 bg-slate-50 border-slate-200';
-
-  const kycStatus = w.kyc?.status;
-  const expCount = (w.experiences || []).length;
-  const eduCount = (w.education || []).length;
+  const matchTone = app.matchScore >= 75 ? 'from-emerald-500/30 to-emerald-500/10 text-emerald-200 border-emerald-400/30'
+    : app.matchScore >= 50 ? 'from-amber-500/30 to-amber-500/10 text-amber-200 border-amber-400/30'
+    : 'from-white/10 to-white/[0.04] text-white/60 border-white/[0.08]';
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:border-slate-300 hover:shadow-md transition-shadow">
-      {/* Header clickeable abre el perfil completo */}
-      <button onClick={onOpenProfile} className="w-full text-left p-4 hover:bg-slate-50 transition">
-        <div className="flex items-start gap-3 mb-3">
-          {/* Avatar con foto real */}
+    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] transition overflow-hidden">
+      <button onClick={onOpenProfile} className="w-full text-left p-3.5">
+        <div className="flex items-start gap-3 mb-2">
           {w.photo ? (
-            <img src={w.photo} alt={w.name} className="w-14 h-14 rounded-xl object-cover border border-slate-200 shrink-0" />
+            <img src={w.photo} alt={w.name} className="w-14 h-14 rounded-2xl object-cover border border-white/[0.10] shrink-0" />
           ) : (
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-slate-200 to-slate-300 border border-slate-200 flex items-center justify-center text-[18px] font-extrabold text-slate-600 shrink-0">
-              {(w.name || '?').slice(0,1).toUpperCase()}
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500/40 to-orange-500/30 border border-white/[0.10] flex items-center justify-center text-[18px] font-black text-white shrink-0">
+              {(w.name || '?').slice(0, 1).toUpperCase()}
             </div>
           )}
-
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[14px] font-extrabold text-slate-900 truncate">{w.name || 'Postulante'}</p>
-              {kycStatus === 'approved' && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full">
-                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-                  Verificado
+              <p className="text-[14px] font-black text-white truncate">{w.name || 'Postulante'}</p>
+              {w.kyc?.status === 'approved' && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 rounded-full">
+                  ✓ Verificado
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5 flex-wrap">
-              <span className="font-bold text-red-600">Nivel {w.level || 1}</span>
+            <div className="flex items-center gap-2 text-[10.5px] text-white/50 mt-0.5 flex-wrap">
+              <span className="font-bold text-red-300">Nivel {w.level || 1}</span>
               <span>·</span>
               <span>{(w.rating?.avg || 0).toFixed(1)}★ ({w.rating?.count || 0})</span>
               <span>·</span>
               <span>{w.stats?.shiftsCompleted || 0} turnos</span>
-              {w.university && <><span>·</span><span className="truncate">{w.university}</span></>}
             </div>
-            {/* Bio preview */}
             {w.bio && (
-              <p className="text-[12px] text-slate-700 mt-1.5 line-clamp-2 leading-snug">{w.bio}</p>
+              <p className="text-[11.5px] text-white/70 mt-1.5 line-clamp-2 leading-snug">{w.bio}</p>
             )}
           </div>
-
-          <span className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold border rounded-full tabular-nums ${matchTone}`}>
+          <span className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold border rounded-full tabular-nums bg-gradient-to-r ${matchTone}`}>
             {app.matchScore}%
           </span>
         </div>
 
-        {/* Resumen rápido del CV */}
-        <div className="flex items-center gap-3 text-[11px] text-slate-600 mb-2 flex-wrap">
-          {expCount > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-              {expCount} {expCount === 1 ? 'experiencia' : 'experiencias'}
-            </span>
-          )}
-          {eduCount > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5 9 5z"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/></svg>
-              {eduCount} {eduCount === 1 ? 'estudio' : 'estudios'}
-            </span>
-          )}
-          {(w.references || []).length > 0 && (
-            <span className="inline-flex items-center gap-1">
-              <svg className="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-              {w.references.length} {w.references.length === 1 ? 'referencia' : 'referencias'}
-            </span>
-          )}
-        </div>
-
         {w.skills?.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {w.skills.slice(0, 5).map((s) => (
-              <span key={s.key} className="px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200 rounded-full">
+            {w.skills.slice(0, 4).map((s) => (
+              <span key={s.key} className="px-2 py-0.5 text-[9.5px] font-bold bg-white/[0.04] text-white/60 border border-white/[0.06] rounded-full">
                 {s.key} · {s.level}
               </span>
             ))}
           </div>
         )}
-
-        <p className="text-[10px] font-bold text-red-600 mt-2 text-right hover:underline">Ver perfil completo →</p>
       </button>
 
-      {/* Acciones */}
-      <div className="px-4 pb-3 pt-3 border-t border-slate-100">
+      <div className="px-3.5 pb-3 pt-2 border-t border-white/[0.04]">
         {app.status === 'pending' ? (
           <div className="flex gap-2">
             <button
               onClick={onReject}
-              className="flex-1 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[12px] font-bold transition"
+              className="flex-1 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/70 text-[12px] font-bold transition"
             >Rechazar</button>
             <button
               onClick={onAccept}
-              className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[12px] font-extrabold transition shadow-sm"
-            >Aceptar</button>
+              className="group relative overflow-hidden flex-1 py-2 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white text-[12px] font-extrabold transition shadow-md shadow-red-500/30"
+            >
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
+                style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
+              <span className="relative">Aceptar</span>
+            </button>
           </div>
         ) : app.status === 'accepted' ? (
           <div className="flex items-center gap-2">
-            <p className="flex-1 text-[11px] font-bold text-center py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Aceptado
+            <p className="flex-1 text-[11px] font-extrabold text-center py-1.5 rounded-xl bg-emerald-500/[0.12] text-emerald-300 border border-emerald-400/30">
+              Aceptado ✓
             </p>
             <button
               onClick={onChat}
-              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-extrabold transition shadow-sm"
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] font-extrabold border border-white/[0.08]"
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-              Mensaje
+              💬 Mensaje
             </button>
           </div>
         ) : (
-          <p className="text-[11px] font-bold text-center py-2 rounded-lg border bg-slate-50 text-slate-500 border-slate-200">
+          <p className="text-[11px] font-bold text-center py-1.5 rounded-xl bg-white/[0.02] text-white/40 border border-white/[0.06]">
             {app.status === 'rejected' ? 'Rechazado' : app.status}
           </p>
         )}
@@ -424,7 +565,9 @@ function ApplicantCard({ app, onAccept, onReject, onOpenProfile, onChat }) {
   );
 }
 
-function NewShiftForm({ api, onCreated, onCancel }) {
+/* ─────────── publish form ─────────── */
+
+function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -439,150 +582,320 @@ function NewShiftForm({ api, onCreated, onCancel }) {
     isSOS: false,
   });
   const [saving, setSaving] = useState(false);
+  const [quote, setQuote] = useState(null);
 
   const togglePerk = (p) =>
     setForm((f) => ({ ...f, perks: f.perks.includes(p) ? f.perks.filter((x) => x !== p) : [...f.perks, p] }));
 
+  // Quote en vivo
+  useEffect(() => {
+    const totalPay = (form.hoursTotal || 0) * (form.hourlyRate || 0);
+    if (!totalPay) return;
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`${api.base}/businesses/wallet/quote-shift?businessId=${api.bizId}`, {
+          method: 'POST', headers: api.headers(),
+          body: api.body({ totalPay, workersNeeded: form.workersNeeded, isSOS: form.isSOS }),
+        });
+        const data = await r.json();
+        if (r.ok) setQuote(data.quote);
+      } catch {}
+    }, 250);
+    return () => clearTimeout(t);
+  }, [form.hoursTotal, form.hourlyRate, form.workersNeeded, form.isSOS]);
+
   const submit = async () => {
-    if (!form.title.trim()) return alert('Por favor ingresa un título descriptivo');
+    if (!form.title.trim()) return alert('Ingresa un título descriptivo');
     setSaving(true);
     try {
       const r = await fetch(`${api.base}/businesses/shifts`, {
         method: 'POST', headers: api.headers(),
         body: api.body(form),
       });
+      const data = await r.json();
       if (!r.ok) {
-        const e = await r.json().catch(() => ({}));
-        alert(e.message || 'No se pudo publicar el turno');
+        if (data.code === 'INSUFFICIENT_FUNDS') {
+          if (confirm(`${data.message}\n\n¿Quieres recargar ahora?`)) onNeedRecharge();
+        } else {
+          alert(data.message || 'No se pudo publicar');
+        }
         setSaving(false);
         return;
       }
       onCreated?.();
-    } catch {
-      alert('Error de conexión. Intenta nuevamente.');
-    } finally { setSaving(false); }
+    } catch { alert('Error de conexión'); }
+    finally { setSaving(false); }
   };
 
-  const total = (form.hoursTotal || 0) * (form.hourlyRate || 0);
-  const commission = Math.round(total * 0.10);
+  const available = wallet?.balance || 0;
+  const needed = quote?.totalReserveNeeded || 0;
+  const enough = available >= needed;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5 space-y-5">
+      {/* Title */}
       <div>
-        <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Título del turno</label>
+        <Label>Título del turno</Label>
         <input
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           placeholder="Ej: Mesero sábado en la noche"
-          className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[14px] focus:outline-none focus:border-red-500 focus:bg-white transition"
+          className="w-full px-4 py-3 rounded-2xl bg-black/40 border border-white/[0.08] text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-red-500 transition"
         />
       </div>
 
+      {/* Role chips */}
       <div>
-        <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Cargo requerido</label>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+        <Label>Cargo requerido</Label>
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
           {SKILLS.map((s) => (
             <button
               key={s.key}
               type="button"
               onClick={() => setForm({ ...form, role: s.key })}
-              className={`py-2 rounded-lg text-[11px] font-semibold transition ${
+              className={`relative overflow-hidden py-2 rounded-xl text-[11px] font-extrabold transition flex items-center justify-center gap-1.5 ${
                 form.role === s.key
-                  ? 'bg-red-50 text-red-700 border border-red-300'
-                  : 'bg-slate-50 text-slate-600 border border-slate-200 hover:border-slate-300'
+                  ? 'bg-gradient-to-r from-red-500/30 to-orange-500/20 text-red-200 border border-red-400/40'
+                  : 'bg-white/[0.03] text-white/50 border border-white/[0.06] hover:border-white/[0.18]'
               }`}
             >
+              <span>{s.emoji}</span>
               {s.label}
             </button>
           ))}
         </div>
       </div>
 
+      {/* Date / times */}
       <div className="grid grid-cols-3 gap-2">
         <Field label="Fecha">
-          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:border-red-500"/>
+          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500" />
         </Field>
-        <Field label="Hora inicio">
-          <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:border-red-500"/>
+        <Field label="Inicio">
+          <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500" />
         </Field>
-        <Field label="Hora fin">
-          <input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:border-red-500"/>
+        <Field label="Fin">
+          <input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500" />
         </Field>
       </div>
 
+      {/* Pay */}
       <div className="grid grid-cols-3 gap-2">
         <Field label="Horas">
-          <input type="number" min={1} max={16} value={form.hoursTotal} onChange={(e) => setForm({ ...form, hoursTotal: Number(e.target.value) })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:border-red-500"/>
+          <input type="number" min={1} max={16} value={form.hoursTotal} onChange={(e) => setForm({ ...form, hoursTotal: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500 tabular-nums" />
         </Field>
-        <Field label="Cantidad personas">
-          <input type="number" min={1} max={20} value={form.workersNeeded} onChange={(e) => setForm({ ...form, workersNeeded: Number(e.target.value) })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:border-red-500"/>
+        <Field label="Personas">
+          <input type="number" min={1} max={20} value={form.workersNeeded} onChange={(e) => setForm({ ...form, workersNeeded: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500 tabular-nums" />
         </Field>
-        <Field label="Pago por hora (COP)">
-          <input type="number" min={5000} step={500} value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: Number(e.target.value) })} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] focus:outline-none focus:border-red-500"/>
+        <Field label="Pago / hora">
+          <input type="number" min={5000} step={500} value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500 tabular-nums" />
         </Field>
       </div>
 
+      {/* Perks */}
       <div>
-        <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Beneficios adicionales (opcional)</label>
+        <Label>Beneficios (opcional)</Label>
         <div className="flex flex-wrap gap-1.5">
           {PERKS.map((p) => (
             <button
               key={p.key}
               type="button"
               onClick={() => togglePerk(p.key)}
-              className={`px-3 py-1 rounded-full text-[11px] font-semibold transition ${
+              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 ${
                 form.perks.includes(p.key)
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
-                  : 'bg-slate-50 text-slate-600 border border-slate-200 hover:border-slate-300'
+                  ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/30'
+                  : 'bg-white/[0.03] text-white/50 border border-white/[0.06] hover:border-white/[0.18]'
               }`}
             >
+              <span>{p.emoji}</span>
               {p.label}
             </button>
           ))}
         </div>
       </div>
 
-      <label className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer">
-        <input type="checkbox" checked={form.isSOS} onChange={(e) => setForm({ ...form, isSOS: e.target.checked })} className="mt-0.5 w-4 h-4 accent-red-600"/>
+      {/* SOS toggle */}
+      <label className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/[0.06] border border-amber-400/20 cursor-pointer">
+        <input type="checkbox" checked={form.isSOS} onChange={(e) => setForm({ ...form, isSOS: e.target.checked })} className="mt-1 w-4 h-4 accent-amber-500" />
         <div>
-          <p className="text-[12px] font-bold text-amber-900">Marcar como urgente</p>
-          <p className="text-[11px] text-amber-800 mt-0.5">El turno aparece destacado y se notifica a trabajadores cercanos con prioridad.</p>
+          <p className="text-[13px] font-extrabold text-amber-200">Marcar como urgente (SOS)</p>
+          <p className="text-[11px] text-amber-100/60 mt-0.5 leading-relaxed">
+            Aparece destacado y se notifica con prioridad. Comisión Crew sube al <strong className="text-amber-200">15%</strong>.
+          </p>
         </div>
       </label>
 
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Inversión total</p>
-          <p className="text-[20px] font-extrabold text-slate-900 tabular-nums">{formatCOP(total)}</p>
+      {/* Quote summary */}
+      {quote && (
+        <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] p-4"
+          style={{ background: 'radial-gradient(140% 100% at 0% 0%, rgba(239,68,68,0.18) 0%, rgba(10,10,20,0.6) 60%)' }}
+        >
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">Resumen de escrow</p>
+          <div className="grid grid-cols-3 gap-2">
+            <ResumeBox label="Pago / trabajador" value={formatCOP(quote.payoutPerWorker)} />
+            <ResumeBox label={`Comisión Crew (${Math.round(quote.commissionRate * 100)}%)`} value={formatCOP(quote.commissionPerWorker)} />
+            <ResumeBox label="Total / trabajador" value={formatCOP(quote.perWorkerTotal)} accent />
+          </div>
+          <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between">
+            <span className="text-[11px] text-white/50">Se reservarán de tu billetera</span>
+            <span className="text-[20px] font-black tabular-nums text-emerald-300">{formatCOP(quote.totalReserveNeeded)}</span>
+          </div>
+          {!enough && (
+            <div className="mt-3 px-3 py-2 rounded-xl bg-red-500/10 border border-red-400/30 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-red-200">
+                Te faltan <strong className="tabular-nums">{formatCOP(needed - available)}</strong> para publicar.
+              </span>
+              <button onClick={onNeedRecharge} className="shrink-0 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-red-500 hover:bg-red-400 text-white transition">
+                Recargar
+              </button>
+            </div>
+          )}
         </div>
-        <div className="text-right">
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Comisión MenuBy (10%)</p>
-          <p className="text-[14px] font-extrabold text-slate-700 tabular-nums">{formatCOP(commission)}</p>
-        </div>
-      </div>
+      )}
 
       <div className="flex gap-2 pt-2">
         <button
           onClick={onCancel}
-          className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[13px] transition"
+          className="px-5 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/70 hover:text-white font-bold text-[13px] transition"
         >Cancelar</button>
-        <button
+        <motion.button
+          whileTap={{ scale: 0.97 }}
           onClick={submit}
-          disabled={saving}
-          className="flex-[2] py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-[13px] shadow-md shadow-red-500/20 disabled:opacity-50 transition"
+          disabled={saving || !enough}
+          className="group relative flex-1 overflow-hidden py-3 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-extrabold text-[13px] shadow-lg shadow-red-500/40 disabled:opacity-40"
         >
-          {saving ? 'Publicando…' : 'Publicar turno'}
-        </button>
+          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
+            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
+          <span className="relative">{saving ? 'Publicando…' : enough ? 'Publicar y reservar saldo' : 'Saldo insuficiente'}</span>
+        </motion.button>
       </div>
     </div>
   );
 }
 
+function Label({ children }) {
+  return <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">{children}</label>;
+}
+
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">{label}</label>
+      <Label>{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function ResumeBox({ label, value, accent }) {
+  return (
+    <div className="px-2 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+      <p className="text-[9px] font-extrabold uppercase tracking-wider text-white/40">{label}</p>
+      <p className={`text-[12.5px] font-black tabular-nums truncate mt-0.5 ${accent ? 'text-emerald-300' : 'text-white/90'}`}>{value}</p>
+    </div>
+  );
+}
+
+/* ─────────── recharges history ─────────── */
+
+function RechargesHistory({ api, onRecharge }) {
+  const [reqs, setReqs] = useState([]);
+  const [txns, setTxns] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [r1, r2] = await Promise.all([
+          fetch(api.withBiz(`${api.base}/businesses/wallet/recharge-requests`), { headers: api.headers() }),
+          fetch(api.withBiz(`${api.base}/businesses/wallet/transactions`), { headers: api.headers() }),
+        ]);
+        const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+        setReqs(d1.requests || []);
+        setTxns(d2.transactions || []);
+      } finally { setLoading(false); }
+    };
+    load();
+  }, []);
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="text-[15px] font-black">Mis solicitudes de recarga</h3>
+          <button onClick={onRecharge} className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-md shadow-red-500/30">
+            + Nueva recarga
+          </button>
+        </div>
+        {loading && <p className="text-[12px] text-white/40">Cargando…</p>}
+        {!loading && reqs.length === 0 && (
+          <p className="text-[12px] text-white/40 text-center py-6">Aún no tienes solicitudes de recarga.</p>
+        )}
+        <div className="space-y-2">
+          {reqs.map((r) => (
+            <div key={r._id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+              <div className="flex items-center gap-3">
+                <a href={r.proofUrl} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] overflow-hidden block">
+                  <img src={r.proofUrl} alt="" className="w-full h-full object-cover" />
+                </a>
+                <div>
+                  <p className="text-[13px] font-extrabold text-white tabular-nums">{formatCOP(r.amount)}</p>
+                  <p className="text-[10px] text-white/40">{r.paymentMethod} · {new Date(r.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</p>
+                </div>
+              </div>
+              <StatusChip status={r.status} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5">
+        <h3 className="text-[15px] font-black mb-3">Movimientos recientes</h3>
+        {txns.length === 0 ? (
+          <p className="text-[12px] text-white/40 text-center py-6">Aún no hay movimientos.</p>
+        ) : (
+          <div className="space-y-1">
+            {txns.slice(0, 12).map((t) => (
+              <TxnRow key={t._id} txn={t} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StatusChip({ status }) {
+  const info = {
+    pending: { label: 'En revisión', cls: 'bg-amber-500/15 text-amber-300 border-amber-400/30' },
+    approved: { label: 'Aprobada', cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30' },
+    rejected: { label: 'Rechazada', cls: 'bg-red-500/15 text-red-300 border-red-400/30' },
+  };
+  const i = info[status] || info.pending;
+  return <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full border ${i.cls}`}>{i.label}</span>;
+}
+
+function TxnRow({ txn }) {
+  const labels = {
+    deposit: { label: 'Recarga', emoji: '💰', tone: 'text-emerald-300' },
+    shift_reserve: { label: 'Reserva turno', emoji: '🔒', tone: 'text-amber-300' },
+    shift_release: { label: 'Pago liberado', emoji: '✅', tone: 'text-emerald-300' },
+    shift_commission: { label: 'Comisión Crew', emoji: '⚙️', tone: 'text-violet-300' },
+    shift_refund: { label: 'Devolución', emoji: '↩️', tone: 'text-sky-300' },
+    cancellation_penalty: { label: 'Penalización', emoji: '⚠️', tone: 'text-red-300' },
+  };
+  const info = labels[txn.kind] || { label: txn.kind, emoji: '•', tone: 'text-white/70' };
+  const sign = txn.direction === 'in' ? '+' : '-';
+  return (
+    <div className="flex items-center justify-between gap-2 py-2 border-b border-white/[0.03] last:border-0">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-base">{info.emoji}</span>
+        <div className="min-w-0">
+          <p className="text-[12px] font-bold text-white truncate">{info.label}</p>
+          <p className="text-[10px] text-white/40 truncate">{txn.note || new Date(txn.createdAt).toLocaleDateString('es-CO')}</p>
+        </div>
+      </div>
+      <span className={`text-[12.5px] font-black tabular-nums ${info.tone}`}>{sign}{formatCOP(txn.amount)}</span>
     </div>
   );
 }

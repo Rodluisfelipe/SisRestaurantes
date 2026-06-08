@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"process.env.JWT_SECRET='x'; process.env.JWT_REFRESH_SECRET='x'; require\\('./Routes/superadmin.js'\\); require\\('./Routes/crew.js'\\); console.log\\('OK'\\);\")"
+    ]
+  }
+}

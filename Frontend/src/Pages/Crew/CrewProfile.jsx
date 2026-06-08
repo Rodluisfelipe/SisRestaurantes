@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useCrew } from './useCrew';
 import AnimatedCounter from './components/AnimatedCounter';
 import StreakFlame from './components/StreakFlame';
 import BadgeReveal from './components/BadgeReveal';
 import GradientText from './components/GradientText';
+import CrewWithdrawModal from './components/CrewWithdrawModal';
+import crewApi from '../../services/crewApi';
 
 const BADGE_LABEL = {
   first_shift: 'Primer turno',
@@ -32,8 +34,28 @@ function levelTier(level) {
 }
 
 export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }) {
-  const { worker, logout } = useCrew();
+  const { worker, logout, refreshMe } = useCrew();
   const [revealBadge, setRevealBadge] = useState(null);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [txns, setTxns] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [loadingFin, setLoadingFin] = useState(true);
+
+  const loadFinance = useCallback(async () => {
+    setLoadingFin(true);
+    try {
+      const [t, w] = await Promise.all([
+        crewApi.get('/workers/me/wallet/transactions?limit=20'),
+        crewApi.get('/workers/me/wallet/withdrawals'),
+      ]);
+      setTxns(t.data.transactions || []);
+      setWithdrawals(w.data.withdrawals || []);
+    } catch (e) { console.error(e); }
+    finally { setLoadingFin(false); }
+  }, []);
+
+  useEffect(() => { loadFinance(); }, [loadFinance]);
+
   if (!worker) return null;
 
   const xpForLevel = (n) => Math.pow(n - 1, 2) * 50;
@@ -240,27 +262,73 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
           </section>
         )}
 
-        {/* Wallet */}
+        {/* Wallet — saldo, escrow, retiro y movimientos */}
         <section>
-          <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Saldo</h2>
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onWallet}
-            className="w-full rounded-[22px] border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm text-left"
+          <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Billetera Crew</h2>
+
+          <div className="relative overflow-hidden rounded-[24px] border border-white/[0.08] p-5"
+            style={{ background: 'radial-gradient(140% 100% at 0% 0%, rgba(16,185,129,0.18) 0%, rgba(10,10,20,0.6) 60%)' }}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[11px] text-white/40 font-medium">Wallet MenuBy</p>
-                <p className="text-[24px] font-black tabular-nums text-white mt-0.5">
-                  <GradientText variant="sunrise">{formatCOP(worker.wallet?.balance || 0)}</GradientText>
+            <motion.div
+              animate={{ x: [0, 20, 0], y: [0, -10, 0] }}
+              transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+              className="absolute -top-20 -right-10 w-72 h-72 bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"
+            />
+            <div className="relative">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">Disponible para retirar</p>
+              <p className="text-[34px] font-black tabular-nums leading-none mt-1">
+                <GradientText variant="sunrise">{formatCOP(worker.wallet?.balance || 0)}</GradientText>
+              </p>
+
+              {(worker.wallet?.pendingBalance || 0) > 0 && (
+                <p className="text-[11px] text-amber-200/70 mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/[0.12] border border-amber-400/30">
+                  🔒 <span className="tabular-nums">{formatCOP(worker.wallet.pendingBalance)}</span> en proceso de retiro
                 </p>
+              )}
+
+              <div className="mt-4 flex gap-2">
+                <motion.button
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => setWithdrawOpen(true)}
+                  disabled={(worker.wallet?.balance || 0) < 20000}
+                  className="group relative flex-1 overflow-hidden rounded-2xl px-5 py-3 font-extrabold text-white bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/40 disabled:opacity-40"
+                >
+                  <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
+                    style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
+                  <span className="relative text-[13px] flex items-center justify-center gap-2">
+                    🏦 Retirar
+                  </span>
+                </motion.button>
+                {onWallet && (
+                  <button
+                    onClick={onWallet}
+                    className="px-4 py-3 rounded-2xl bg-white/[0.06] border border-white/[0.08] text-white/70 hover:text-white text-[12px] font-bold transition"
+                  >
+                    Más
+                  </button>
+                )}
               </div>
-              <svg className="w-5 h-5 text-white/20" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+              <p className="text-[10px] text-white/30 mt-3 leading-relaxed">
+                Retiro mínimo $20.000. Llega a Nequi, Daviplata o tu cuenta bancaria en menos de 24h.
+              </p>
             </div>
-            <p className="text-[11px] text-white/30 mt-3 leading-relaxed">
-              Usa tu saldo en restaurantes de la red MenuBy con 5% de bonificación.
-            </p>
-          </motion.button>
+          </div>
+
+          {/* Movimientos */}
+          {(txns.length > 0 || withdrawals.length > 0) && (
+            <div className="mt-3 rounded-[22px] border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm">
+              <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-white/40">Movimientos recientes</p>
+                {loadingFin && <span className="text-[10px] text-white/30">Cargando…</span>}
+              </div>
+              <div className="px-3 pb-2">
+                {withdrawals.filter(w => w.status === 'pending').slice(0, 2).map((w) => (
+                  <WithdrawalRow key={w._id} req={w} />
+                ))}
+                {txns.slice(0, 8).map((t) => <WorkerTxnRow key={t._id} txn={t} />)}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Quick access menu */}
@@ -298,6 +366,57 @@ export default function CrewProfile({ onEdit, onWallet, onFavorites, onHistory }
       </div>
 
       {revealBadge && <BadgeReveal badgeKey={revealBadge} onClose={() => setRevealBadge(null)} />}
+
+      <CrewWithdrawModal
+        open={withdrawOpen}
+        wallet={worker.wallet}
+        defaultPayoutMethod={worker.payoutMethod}
+        onClose={() => setWithdrawOpen(false)}
+        onSuccess={() => { setWithdrawOpen(false); refreshMe(); loadFinance(); }}
+      />
+    </div>
+  );
+}
+
+function WorkerTxnRow({ txn }) {
+  const labels = {
+    shift_release: { label: 'Pago de turno', emoji: '✅', tone: 'text-emerald-300' },
+    withdrawal_request: { label: 'Retiro solicitado', emoji: '🔒', tone: 'text-amber-300' },
+    withdrawal_paid: { label: 'Retiro pagado', emoji: '🏦', tone: 'text-emerald-300' },
+    withdrawal_rejected: { label: 'Retiro devuelto', emoji: '↩️', tone: 'text-sky-300' },
+    adjustment: { label: 'Ajuste', emoji: '⚙️', tone: 'text-white/70' },
+  };
+  const info = labels[txn.kind] || { label: txn.kind, emoji: '•', tone: 'text-white/70' };
+  const sign = txn.direction === 'in' ? '+' : '-';
+  const date = new Date(txn.createdAt);
+  const counterpart = txn.counterpartId?.businessName || txn.shiftId?.title;
+  return (
+    <div className="flex items-center justify-between gap-2 py-2 px-1 border-b border-white/[0.04] last:border-0">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-base">{info.emoji}</span>
+        <div className="min-w-0">
+          <p className="text-[12px] font-bold text-white truncate">{info.label}</p>
+          <p className="text-[10px] text-white/40 truncate">
+            {counterpart ? counterpart : date.toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+          </p>
+        </div>
+      </div>
+      <span className={`text-[12.5px] font-black tabular-nums ${info.tone}`}>{sign}{formatCOP(txn.amount)}</span>
+    </div>
+  );
+}
+
+function WithdrawalRow({ req }) {
+  return (
+    <div className="flex items-center justify-between gap-2 py-2 px-1 border-b border-white/[0.04]">
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="text-base">⏳</span>
+        <div className="min-w-0">
+          <p className="text-[12px] font-bold text-white truncate">Retiro en revisión</p>
+          <p className="text-[10px] text-white/40 truncate capitalize">{req.payoutMethod?.type} · {req.payoutMethod?.accountInfo}</p>
+        </div>
+      </div>
+      <span className="text-[12.5px] font-black tabular-nums text-amber-300">{formatCOP(req.amount)}</span>
     </div>
   );
 }

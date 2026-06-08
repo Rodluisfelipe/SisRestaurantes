@@ -33,6 +33,7 @@ const Message = require('../Models/Message');
 const CrewFavorite = require('../Models/CrewFavorite');
 const CrewWalletTxn = require('../Models/CrewWalletTxn');
 const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
+const CrewRechargeRequest = require('../Models/CrewRechargeRequest');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const { uploadImage, isSpacesConfigured } = require('../services/imageUploadService');
 const crewLedger = require('../services/crewLedger');
@@ -1409,6 +1410,63 @@ router.post('/businesses/wallet/recharge', tenantAuth, async (req, res) => {
     }
     logger.error('crew biz wallet recharge error', e);
     res.status(500).json({ message: e.message || 'Error al recargar' });
+  }
+});
+
+// POST /crew/businesses/wallet/recharge-requests — el negocio sube comprobante para que SuperAdmin apruebe
+router.post(
+  '/businesses/wallet/recharge-requests',
+  tenantAuth,
+  memUpload.single('proof'),
+  async (req, res) => {
+    try {
+      const businessId = req.resolvedBusinessId || req.user?.businessId || req.body.businessId;
+      if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+      const { amount, paymentMethod } = req.body || {};
+      const amt = Number(amount);
+      if (!Number.isFinite(amt) || amt < crewLedger.MIN_RECHARGE) {
+        return res.status(400).json({ message: `Monto mínimo: ${crewLedger.MIN_RECHARGE.toLocaleString('es-CO')} COP` });
+      }
+      if (!['Nequi', 'Daviplata', 'Breve', 'Transferencia', 'OTHER'].includes(paymentMethod)) {
+        return res.status(400).json({ message: 'Método de pago inválido' });
+      }
+      if (!req.file) return res.status(400).json({ message: 'Falta el comprobante (imagen)' });
+      if (!isSpacesConfigured()) return res.status(503).json({ message: 'Storage no configurado' });
+
+      // Sube el comprobante a Spaces
+      const upload = await uploadImage(req.file.buffer, `crew/recharges/${businessId}`, {
+        maxWidth: 1600, quality: 88,
+      });
+
+      const request = await CrewRechargeRequest.create({
+        businessId, amount: Math.round(amt), paymentMethod, proofUrl: upload.url,
+        notes: (req.body.notes || '').slice(0, 200),
+      });
+
+      const io = req.app.get('io');
+      if (io) io.to('superadmin-channel').emit('crew-recharge-pending', { request });
+
+      res.status(201).json({ success: true, request });
+    } catch (e) {
+      logger.error('crew recharge request error', e);
+      res.status(500).json({ message: e.message || 'Error al crear solicitud' });
+    }
+  }
+);
+
+// GET /crew/businesses/wallet/recharge-requests — historial del negocio
+router.get('/businesses/wallet/recharge-requests', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+    const requests = await CrewRechargeRequest.find({ businessId })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    res.json({ success: true, requests });
+  } catch (e) {
+    logger.error('crew recharge list error', e);
+    res.status(500).json({ message: e.message || 'Error al listar solicitudes' });
   }
 });
 
