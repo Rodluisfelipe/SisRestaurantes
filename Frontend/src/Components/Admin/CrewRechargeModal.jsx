@@ -7,7 +7,7 @@
  *   3. Sube comprobante y envía.
  *   4. SuperAdmin aprueba → saldo acreditado.
  *
- * Mismo patrón que SubscriptionPayment pero con identidad Crew cosmic.
+ * Mismo patrón que SubscriptionPayment pero con identidad clara MenuBy.
  */
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -137,26 +137,22 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
           initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 280 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full sm:max-w-[480px] max-h-[92vh] bg-[#0a0a14] border border-white/[0.08] sm:rounded-[28px] rounded-t-[28px] shadow-2xl text-white overflow-hidden flex flex-col"
+          className="relative w-full sm:max-w-[480px] max-h-[92vh] bg-white border border-slate-200 sm:rounded-[28px] rounded-t-[28px] shadow-2xl text-slate-800 overflow-hidden flex flex-col"
         >
-          {/* Aurora bg */}
-          <div className="absolute -top-20 -right-10 w-72 h-72 bg-red-500/30 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute -bottom-24 -left-12 w-72 h-72 bg-orange-500/20 rounded-full blur-[100px] pointer-events-none" />
-
           {/* Header */}
-          <div className="relative flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-lg shadow-red-500/30">
+              <div className="w-9 h-9 rounded-2xl bg-red-500 flex items-center justify-center shadow-md shadow-red-500/25">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
               </div>
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/40">Crew · Recarga</p>
-                <p className="text-[14px] font-black">{step === 3 ? '¡Listo!' : `Paso ${step} de 2`}</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400">Crew · Recarga</p>
+                <p className="text-[14px] font-black text-slate-800">{step === 3 ? '¡Listo!' : `Paso ${step} de 2`}</p>
               </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-white/[0.06] flex items-center justify-center text-white/40 hover:text-white transition" aria-label="Cerrar">
+            <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition" aria-label="Cerrar">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -164,12 +160,12 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
           </div>
 
           {/* Body */}
-          <div className="relative flex-1 overflow-y-auto px-5 py-5">
+          <div className="flex-1 overflow-y-auto px-5 py-5">
             <AnimatePresence mode="wait">
               {step === 1 && (
                 <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                  <h2 className="text-[22px] font-black tracking-tight mb-1">¿Cuánto quieres recargar?</h2>
-                  <p className="text-[12px] text-white/50 mb-4">Tu saldo Crew se usa para reservar el pago de cada turno que publiques.</p>
+                  <h2 className="text-[22px] font-black tracking-tight mb-1 text-slate-800">¿Cuánto quieres recargar?</h2>
+                  <p className="text-[12px] text-slate-500 mb-4">Tu saldo Crew se usa para reservar el pago de cada turno que publiques.</p>
 
                   {/* Presets */}
                   <div className="grid grid-cols-2 gap-2 mb-4">
@@ -182,8 +178,8 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                           onClick={() => { setAmount(p.amount); setCustomAmount(''); }}
                           className={`relative p-3 rounded-2xl border text-left transition-all ${
                             active
-                              ? 'border-red-500/60 bg-gradient-to-br from-red-500/[0.18] to-orange-500/[0.10]'
-                              : 'border-white/[0.08] bg-white/[0.02] hover:border-white/[0.18]'
+                              ? 'border-red-300 bg-red-50'
+                              : 'border-slate-200 bg-slate-50 hover:border-slate-300'
                           }`}
                         >
                           {p.popular && (
@@ -191,22 +187,22 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                               Popular
                             </span>
                           )}
-                          <p className={`text-[20px] font-black leading-none ${active ? 'text-white' : 'text-white/85'}`}>
+                          <p className={`text-[20px] font-black leading-none ${active ? 'text-red-600' : 'text-slate-700'}`}>
                             ${p.label}
                           </p>
-                          <p className="text-[10px] text-white/40 mt-1.5">{p.hint}</p>
+                          <p className="text-[10px] text-slate-500 mt-1.5">{p.hint}</p>
                         </motion.button>
                       );
                     })}
                   </div>
 
                   {/* Custom */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-3.5">
-                    <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-1.5">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
+                    <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">
                       O ingresa un monto personalizado
                     </label>
                     <div className="flex items-center gap-2">
-                      <span className="text-white/60 font-bold">$</span>
+                      <span className="text-slate-500 font-bold">$</span>
                       <input
                         type="number"
                         min={MIN_AMOUNT}
@@ -214,15 +210,15 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                         value={customAmount}
                         onChange={(e) => setCustomAmount(e.target.value)}
                         placeholder="Mínimo 50.000"
-                        className="flex-1 bg-transparent text-[18px] font-bold text-white placeholder-white/25 focus:outline-none tabular-nums"
+                        className="flex-1 bg-transparent text-[18px] font-bold text-slate-800 placeholder-slate-300 focus:outline-none tabular-nums"
                       />
                     </div>
                   </div>
 
-                  <div className="mt-5 p-3.5 rounded-2xl bg-emerald-500/[0.08] border border-emerald-400/20">
+                  <div className="mt-5 p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-emerald-200/80 uppercase tracking-wider">Vas a recargar</span>
-                      <span className="text-[22px] font-black text-emerald-200 tabular-nums">{formatCOP(finalAmount)}</span>
+                      <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Vas a recargar</span>
+                      <span className="text-[22px] font-black text-emerald-600 tabular-nums">{formatCOP(finalAmount)}</span>
                     </div>
                   </div>
 
@@ -230,13 +226,11 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setStep(2)}
                     disabled={finalAmount < MIN_AMOUNT}
-                    className="group relative w-full mt-4 overflow-hidden rounded-2xl px-5 py-3.5 font-extrabold text-white bg-gradient-to-r from-red-500 to-orange-500 shadow-lg shadow-red-500/40 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full mt-4 rounded-2xl px-5 py-3.5 font-extrabold text-white bg-red-500 hover:bg-red-600 shadow-md shadow-red-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition"
                   >
-                    <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
-                      style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
-                    <span className="relative flex items-center justify-center gap-2">
+                    <span className="flex items-center justify-center gap-2">
                       Continuar al pago
-                      <svg className="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
                       </svg>
                     </span>
@@ -247,12 +241,12 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
               {step === 2 && (
                 <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                   <div className="mb-4">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">Total a pagar</p>
-                    <p className="text-[32px] font-black tabular-nums leading-tight">{formatCOP(finalAmount)}</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">Total a pagar</p>
+                    <p className="text-[32px] font-black tabular-nums leading-tight text-slate-900">{formatCOP(finalAmount)}</p>
                   </div>
 
                   {/* Method tabs */}
-                  <div className="flex gap-1 p-1 mb-3 rounded-2xl bg-black/40 border border-white/[0.06]">
+                  <div className="flex gap-1 p-1 mb-3 rounded-2xl bg-slate-100 border border-slate-200">
                     {PAYMENT_METHODS.map((m) => {
                       const active = method === m.id;
                       return (
@@ -260,14 +254,14 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                           key={m.id}
                           onClick={() => setMethod(m.id)}
                           className={`relative flex-1 py-2 rounded-xl text-[11px] font-extrabold uppercase tracking-wider transition ${
-                            active ? 'text-white' : 'text-white/40 hover:text-white/70'
+                            active ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                           }`}
                         >
                           {active && (
                             <motion.span
                               layoutId="crew-pay-tab"
                               transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                              className={`absolute inset-0 rounded-xl bg-gradient-to-r ${m.color}/30 border border-white/10`}
+                              className="absolute inset-0 rounded-xl bg-red-500 shadow-md shadow-red-500/25"
                             />
                           )}
                           <span className="relative">{m.label}</span>
@@ -281,53 +275,53 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                     key={method}
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`relative overflow-hidden rounded-2xl border border-white/[0.08] p-4 mb-3 bg-gradient-to-br ${selectedMethod.color}/[0.10]`}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4 mb-3"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <span className="text-2xl">{selectedMethod.icon}</span>
-                        <span className="text-[13px] font-bold text-white/80">{selectedMethod.label}</span>
+                        <span className="text-[13px] font-bold text-slate-700">{selectedMethod.label}</span>
                       </div>
                       <button
                         onClick={() => copyValue(selectedMethod.value, selectedMethod.id)}
-                        className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-white/10 hover:bg-white/20 text-white/80 uppercase tracking-wider"
+                        className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-white hover:bg-slate-100 text-slate-600 uppercase tracking-wider border border-slate-200"
                       >
                         {copied === selectedMethod.id ? '✓ Copiado' : 'Copiar'}
                       </button>
                     </div>
-                    <p className="text-[24px] font-black text-white tabular-nums tracking-tight">{selectedMethod.value}</p>
-                    <p className="text-[11px] text-white/50 mt-1.5 leading-relaxed">{selectedMethod.note}</p>
+                    <p className="text-[24px] font-black text-slate-900 tabular-nums tracking-tight">{selectedMethod.value}</p>
+                    <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">{selectedMethod.note}</p>
                   </motion.div>
 
                   {/* Instrucciones */}
-                  <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3.5 mb-3">
-                    <p className="text-[11px] font-extrabold text-white/80 mb-2 uppercase tracking-wider">Cómo funciona</p>
-                    <ol className="space-y-1.5 text-[12px] text-white/60">
-                      <li className="flex gap-2"><span className="text-red-300 font-extrabold">1.</span> Paga <span className="font-bold text-white/80">{formatCOP(finalAmount)}</span> a {selectedMethod.label}.</li>
-                      <li className="flex gap-2"><span className="text-red-300 font-extrabold">2.</span> Toma captura del comprobante.</li>
-                      <li className="flex gap-2"><span className="text-red-300 font-extrabold">3.</span> Súbela acá abajo y envía.</li>
-                      <li className="flex gap-2"><span className="text-red-300 font-extrabold">4.</span> En máx 30 min vemos el pago y acreditamos tu saldo.</li>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 mb-3">
+                    <p className="text-[11px] font-extrabold text-slate-700 mb-2 uppercase tracking-wider">Cómo funciona</p>
+                    <ol className="space-y-1.5 text-[12px] text-slate-600">
+                      <li className="flex gap-2"><span className="text-red-500 font-extrabold">1.</span> Paga <span className="font-bold text-slate-800">{formatCOP(finalAmount)}</span> a {selectedMethod.label}.</li>
+                      <li className="flex gap-2"><span className="text-red-500 font-extrabold">2.</span> Toma captura del comprobante.</li>
+                      <li className="flex gap-2"><span className="text-red-500 font-extrabold">3.</span> Súbela acá abajo y envía.</li>
+                      <li className="flex gap-2"><span className="text-red-500 font-extrabold">4.</span> En máx 30 min vemos el pago y acreditamos tu saldo.</li>
                     </ol>
                   </div>
 
                   {/* Comprobante */}
                   <div className="mb-3">
-                    <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-1.5">Comprobante de pago</label>
+                    <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-1.5">Comprobante de pago</label>
                     {!preview ? (
-                      <label className="flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-white/[0.12] bg-white/[0.02] hover:border-red-400/50 hover:bg-red-500/[0.04] transition cursor-pointer">
-                        <svg className="w-7 h-7 text-white/30" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
+                      <label className="flex flex-col items-center justify-center gap-2 py-6 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 hover:border-red-300 hover:bg-red-50/50 transition cursor-pointer">
+                        <svg className="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
                         </svg>
-                        <span className="text-[12px] font-bold text-white/70">Toca para subir la imagen</span>
-                        <span className="text-[10px] text-white/30">JPG, PNG, WebP · máx 8MB</span>
+                        <span className="text-[12px] font-bold text-slate-600">Toca para subir la imagen</span>
+                        <span className="text-[10px] text-slate-400">JPG, PNG, WebP · máx 8MB</span>
                         <input type="file" accept="image/*" onChange={onFile} className="hidden" />
                       </label>
                     ) : (
-                      <div className="relative rounded-2xl overflow-hidden border border-white/[0.08]">
-                        <img src={preview} alt="Comprobante" className="w-full max-h-[200px] object-contain bg-black/40" />
+                      <div className="relative rounded-2xl overflow-hidden border border-slate-200">
+                        <img src={preview} alt="Comprobante" className="w-full max-h-[200px] object-contain bg-slate-50" />
                         <button
                           onClick={() => { setFile(null); setPreview(null); }}
-                          className="absolute top-2 right-2 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-black/70 backdrop-blur-sm text-white border border-white/20 hover:bg-red-500"
+                          className="absolute top-2 right-2 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-white text-slate-700 border border-slate-200 hover:bg-red-50 hover:text-red-600 transition"
                         >
                           Cambiar
                         </button>
@@ -336,7 +330,7 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                   </div>
 
                   {error && (
-                    <div className="mb-3 px-3.5 py-2.5 rounded-xl bg-red-500/[0.10] border border-red-400/30 text-[12px] text-red-200">
+                    <div className="mb-3 px-3.5 py-2.5 rounded-xl bg-red-50 border border-red-200 text-[12px] text-red-700">
                       {error}
                     </div>
                   )}
@@ -345,7 +339,7 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                     <button
                       onClick={() => setStep(1)}
                       disabled={submitting}
-                      className="px-4 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/70 hover:text-white text-[12px] font-bold transition"
+                      className="px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-800 text-[12px] font-bold transition"
                     >
                       Atrás
                     </button>
@@ -353,11 +347,9 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                       whileTap={{ scale: 0.97 }}
                       onClick={submit}
                       disabled={submitting || !file}
-                      className="group relative flex-1 overflow-hidden rounded-2xl px-5 py-3 font-extrabold text-white bg-gradient-to-r from-red-500 to-orange-500 shadow-lg shadow-red-500/40 disabled:opacity-40"
+                      className="flex-1 rounded-2xl px-5 py-3 font-extrabold text-white bg-red-500 hover:bg-red-600 shadow-md shadow-red-500/25 disabled:opacity-40 transition"
                     >
-                      <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
-                        style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
-                      <span className="relative flex items-center justify-center gap-2">
+                      <span className="flex items-center justify-center gap-2">
                         {submitting ? (
                           <>
                             <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -379,20 +371,20 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 14, delay: 0.1 }}
-                    className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-2xl shadow-emerald-500/40 mb-4"
+                    className="w-20 h-20 mx-auto rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-4"
                   >
                     <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   </motion.div>
-                  <h2 className="text-[24px] font-black mb-2">Solicitud enviada</h2>
-                  <p className="text-[13px] text-white/60 leading-relaxed max-w-[280px] mx-auto">
+                  <h2 className="text-[24px] font-black text-slate-800 mb-2">Solicitud enviada</h2>
+                  <p className="text-[13px] text-slate-500 leading-relaxed max-w-[280px] mx-auto">
                     Estamos verificando tu comprobante. En máximo 30 minutos vas a ver
-                    <span className="font-bold text-emerald-300"> {formatCOP(finalAmount)}</span> en tu billetera Crew.
+                    <span className="font-bold text-emerald-600"> {formatCOP(finalAmount)}</span> en tu billetera Crew.
                   </p>
                   <button
                     onClick={onClose}
-                    className="mt-6 px-6 py-3 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-extrabold shadow-lg shadow-red-500/40"
+                    className="mt-6 px-6 py-3 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-extrabold shadow-md shadow-red-500/25 transition"
                   >
                     Volver al panel
                   </button>

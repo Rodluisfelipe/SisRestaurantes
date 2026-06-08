@@ -2,7 +2,7 @@
  * CrewWalletCard — la card hero del panel del negocio.
  *
  * Muestra el saldo, lo que está reservado en escrow, lo gastado histórico y
- * un botón gigantesco para recargar. Estética cosmic, gradient rojo, glow.
+ * un botón gigantesco para recargar. Estética clara, consistente con MenuBy admin.
  */
 import { motion } from 'framer-motion';
 
@@ -32,56 +32,28 @@ export default function CrewWalletCard({ wallet, onRecharge, loading }) {
   const lowBalance = balance < 50000;
 
   return (
-    <div className="relative overflow-hidden rounded-[28px] border border-white/[0.08]"
-      style={{
-        background: 'radial-gradient(140% 100% at 0% 0%, #1a0b18 0%, #0a0a14 60%, #0a0a14 100%)',
-      }}
-    >
-      {/* Aurora blobs */}
-      <motion.div
-        animate={{ x: [0, 20, 0], y: [0, -10, 0] }}
-        transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute -top-20 -right-10 w-80 h-80 bg-red-500/30 rounded-full blur-[100px] pointer-events-none"
-      />
-      <motion.div
-        animate={{ x: [0, -15, 0], y: [0, 15, 0] }}
-        transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute -bottom-24 -left-12 w-72 h-72 bg-orange-500/20 rounded-full blur-[100px] pointer-events-none"
-      />
-
-      {/* Grid sutil */}
-      <div
-        className="absolute inset-0 opacity-[0.06] pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
-          maskImage: 'radial-gradient(ellipse 60% 50% at 50% 50%, black 30%, transparent 80%)',
-          WebkitMaskImage: 'radial-gradient(ellipse 60% 50% at 50% 50%, black 30%, transparent 80%)',
-        }}
-      />
-
-      <div className="relative p-6 sm:p-7">
+    <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="p-6 sm:p-7">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-5">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400">
               Billetera Crew
             </p>
             <div className="flex items-center gap-2 mt-1">
-              <h2 className="text-[15px] font-black text-white">Saldo disponible</h2>
+              <h2 className="text-[15px] font-black text-slate-800">Saldo disponible</h2>
               {lowBalance && (
                 <motion.span
                   animate={{ scale: [1, 1.04, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-500/15 text-amber-300 border border-amber-400/30 rounded-full uppercase tracking-wider"
+                  className="px-2 py-0.5 text-[9px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 rounded-full uppercase tracking-wider"
                 >
                   Saldo bajo
                 </motion.span>
               )}
             </div>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-[0_8px_24px_-6px_rgba(239,68,68,0.6)]">
+          <div className="w-10 h-10 rounded-2xl bg-red-500 flex items-center justify-center shadow-md shadow-red-500/25">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" />
             </svg>
@@ -91,9 +63,9 @@ export default function CrewWalletCard({ wallet, onRecharge, loading }) {
         {/* Saldo gigante */}
         <div className="mb-5">
           {loading ? (
-            <div className="h-12 w-48 bg-white/[0.06] rounded-xl animate-pulse" />
+            <div className="h-12 w-48 bg-slate-100 rounded-xl animate-pulse" />
           ) : (
-            <p className="text-[40px] sm:text-[48px] font-black leading-none text-white">
+            <p className="text-[40px] sm:text-[48px] font-black leading-none text-slate-900">
               <AnimatedNumber value={balance} />
             </p>
           )}
@@ -104,14 +76,9 @@ export default function CrewWalletCard({ wallet, onRecharge, loading }) {
           whileHover={{ y: -1 }}
           whileTap={{ scale: 0.97 }}
           onClick={onRecharge}
-          className="group relative w-full overflow-hidden rounded-2xl px-5 py-3.5 font-extrabold text-[14px] text-white bg-gradient-to-r from-red-500 via-red-500 to-orange-500 shadow-[0_12px_32px_-8px_rgba(239,68,68,0.55)] hover:shadow-[0_16px_40px_-8px_rgba(239,68,68,0.7)] transition-shadow"
+          className="w-full rounded-2xl px-5 py-3.5 font-extrabold text-[14px] text-white bg-red-500 hover:bg-red-600 shadow-md shadow-red-500/25 transition"
         >
-          {/* Highlight superior */}
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2 rounded-t-[inherit]"
-            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
-          {/* Shine */}
-          <span aria-hidden className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-white/0 via-white/40 to-white/0 transition-transform duration-700 ease-out group-hover:translate-x-[400%]" />
-          <span className="relative flex items-center justify-center gap-2">
+          <span className="flex items-center justify-center gap-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.6} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
@@ -173,24 +140,24 @@ export default function CrewWalletCard({ wallet, onRecharge, loading }) {
 
 function StatBlock({ label, value, hint, icon, tone }) {
   const tones = {
-    amber: { text: 'text-amber-300', bg: 'bg-amber-500/[0.08]', border: 'border-amber-400/20' },
-    emerald: { text: 'text-emerald-300', bg: 'bg-emerald-500/[0.08]', border: 'border-emerald-400/20' },
-    sky: { text: 'text-sky-300', bg: 'bg-sky-500/[0.08]', border: 'border-sky-400/20' },
-    violet: { text: 'text-violet-300', bg: 'bg-violet-500/[0.08]', border: 'border-violet-400/20' },
+    amber: { text: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
+    emerald: { text: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+    sky: { text: 'text-sky-600', bg: 'bg-sky-50', border: 'border-sky-200' },
+    violet: { text: 'text-violet-600', bg: 'bg-violet-50', border: 'border-violet-200' },
   };
   const t = tones[tone] || tones.sky;
   return (
-    <div className={`relative rounded-2xl p-3 border ${t.border} ${t.bg} backdrop-blur-sm`}>
+    <div className={`rounded-2xl p-3 border ${t.border} ${t.bg}`}>
       <div className="flex items-center justify-between mb-1">
         <span className={`flex items-center gap-1 text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
           {icon}
           {label}
         </span>
       </div>
-      <p className="text-[15px] font-black text-white tabular-nums leading-tight">
+      <p className="text-[15px] font-black text-slate-800 tabular-nums leading-tight">
         {formatCOP(value)}
       </p>
-      {hint && <p className="text-[9.5px] text-white/40 mt-0.5">{hint}</p>}
+      {hint && <p className="text-[9.5px] text-slate-400 mt-0.5">{hint}</p>}
     </div>
   );
 }

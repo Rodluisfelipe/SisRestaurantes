@@ -1,8 +1,9 @@
 /**
  * CrewPanel — panel del negocio para el marketplace Crew.
  *
- * Estética cosmic (consistente con la app del worker): fondo deep navy con
- * aurora, cards rounded-3xl, glow rojo/naranja en los CTAs.
+ * Estética CLARA consistente con el panel admin de MenuBy:
+ * fondo blanco/slate-50, cards redondeadas con bordes sutiles,
+ * acentos con el branding rojo de Crew.
  *
  * Estructura:
  *   - Hero: CrewWalletCard (saldo, recargar)
@@ -107,40 +108,26 @@ export default function CrewPanel({ businessId }) {
 
   if (!businessId) {
     return (
-      <div className="rounded-3xl border border-white/[0.08] bg-[#0a0a14] p-8 text-center">
-        <p className="text-sm text-white/60">Cargando información del negocio…</p>
+      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
+        <p className="text-sm text-slate-500">Cargando información del negocio…</p>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-[100vh] -mx-4 sm:-mx-6 -my-4 sm:-my-6 px-4 sm:px-6 py-4 sm:py-6 font-geist text-white overflow-x-hidden" style={{ background: '#0a0a14' }}>
-      {/* Aurora background fija */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-        <motion.div
-          animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-32 -right-20 w-[500px] h-[500px] bg-red-500/15 rounded-full blur-[120px]"
-        />
-        <motion.div
-          animate={{ x: [0, -25, 0], y: [0, 30, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/2 -left-32 w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[120px]"
-        />
-      </div>
-
-      <div className="relative space-y-5 max-w-5xl mx-auto">
+    <div className="relative font-geist text-slate-800 overflow-x-hidden">
+      <div className="space-y-5 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/40 mb-1">Marketplace de turnos</p>
-            <h1 className="text-[28px] sm:text-[34px] font-black tracking-tight leading-none flex items-center gap-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-slate-400 mb-1">Marketplace de turnos</p>
+            <h1 className="text-[24px] sm:text-[28px] font-black tracking-tight leading-none flex items-center gap-3">
               Crew
-              <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 bg-amber-400/15 text-amber-300 border border-amber-400/30 rounded-full uppercase">
+              <span className="text-[10px] font-extrabold tracking-wider px-2 py-0.5 bg-red-50 text-red-500 border border-red-200 rounded-full uppercase">
                 Beta
               </span>
             </h1>
-            <p className="text-[13px] text-white/50 mt-1.5 max-w-md">
+            <p className="text-[13px] text-slate-500 mt-1.5 max-w-md">
               Publica turnos puntuales. Tu saldo Crew protege el pago hasta que el trabajador termine.
             </p>
           </div>
@@ -157,7 +144,7 @@ export default function CrewPanel({ businessId }) {
         <CrewWalletCard wallet={wallet} loading={loadingWallet} onRecharge={() => setRechargeOpen(true)} />
 
         {/* Tabs */}
-        <div className="flex gap-1 p-1 rounded-2xl bg-black/40 border border-white/[0.06] w-fit">
+        <div className="flex gap-1 p-1 rounded-2xl bg-slate-100 border border-slate-200 w-fit">
           {TABS.map((t) => {
             const active = view === t.id;
             return (
@@ -165,14 +152,14 @@ export default function CrewPanel({ businessId }) {
                 key={t.id}
                 onClick={() => { setView(t.id); setSelectedShift(null); }}
                 className={`relative px-4 py-2 rounded-xl text-[12px] font-extrabold uppercase tracking-wider transition-colors flex items-center gap-2 ${
-                  active ? 'text-white' : 'text-white/40 hover:text-white/70'
+                  active ? 'text-white' : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
                 {active && (
                   <motion.span
                     layoutId="crew-panel-tab"
                     transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                    className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 shadow-[0_4px_16px_-4px_rgba(239,68,68,0.5)]"
+                    className="absolute inset-0 rounded-xl bg-red-500 shadow-md shadow-red-500/25"
                   />
                 )}
                 <span className="relative text-base leading-none">{t.icon}</span>
@@ -189,7 +176,7 @@ export default function CrewPanel({ businessId }) {
               {loadingShifts && (
                 <div className="space-y-3 animate-pulse">
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="h-32 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
+                    <div key={i} className="h-32 rounded-2xl border border-slate-200 bg-slate-50" />
                   ))}
                 </div>
               )}
@@ -254,41 +241,39 @@ export default function CrewPanel({ businessId }) {
 
 function MiniStat({ label, value, tone }) {
   const tones = {
-    amber: 'from-amber-500/20 to-amber-500/[0.04] text-amber-200 border-amber-400/20',
-    emerald: 'from-emerald-500/20 to-emerald-500/[0.04] text-emerald-200 border-emerald-400/20',
-    slate: 'from-white/[0.08] to-white/[0.02] text-white/80 border-white/[0.08]',
+    amber: 'bg-amber-50 text-amber-700 border-amber-200',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    slate: 'bg-slate-50 text-slate-700 border-slate-200',
   };
   return (
-    <div className={`px-3 py-2 rounded-xl border bg-gradient-to-br ${tones[tone]}`}>
+    <div className={`px-3 py-2 rounded-xl border ${tones[tone]}`}>
       <p className="text-[18px] font-black leading-none tabular-nums">{value}</p>
-      <p className="text-[9px] font-extrabold uppercase tracking-wider opacity-80 mt-0.5">{label}</p>
+      <p className="text-[9px] font-extrabold uppercase tracking-wider opacity-70 mt-0.5">{label}</p>
     </div>
   );
 }
 
 function EmptyState({ title, body, cta }) {
   return (
-    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] p-10 text-center backdrop-blur-sm">
+    <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
       <motion.div
         animate={{ y: [0, -4, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-        className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-br from-red-500/30 to-orange-500/20 border border-red-400/20 flex items-center justify-center mb-3"
+        className="w-14 h-14 mx-auto rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center mb-3"
       >
-        <svg className="w-7 h-7 text-red-300" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
+        <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" />
         </svg>
       </motion.div>
-      <p className="text-[15px] font-black text-white">{title}</p>
-      <p className="text-[12px] text-white/50 mt-1.5 max-w-sm mx-auto leading-relaxed">{body}</p>
+      <p className="text-[15px] font-black text-slate-800">{title}</p>
+      <p className="text-[12px] text-slate-500 mt-1.5 max-w-sm mx-auto leading-relaxed">{body}</p>
       {cta && (
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={cta.onClick}
-          className="mt-5 group relative overflow-hidden px-6 py-3 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-extrabold text-[13px] shadow-lg shadow-red-500/40"
+          className="mt-5 px-6 py-3 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-extrabold text-[13px] shadow-md shadow-red-500/25 transition"
         >
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
-            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
-          <span className="relative">{cta.label}</span>
+          {cta.label}
         </motion.button>
       )}
     </div>
@@ -297,11 +282,11 @@ function EmptyState({ title, body, cta }) {
 
 function ShiftCard({ shift, index, onClick }) {
   const statusInfo = {
-    open: { label: 'Abierto', color: 'from-sky-500/30 to-sky-500/10 text-sky-200 border-sky-400/30' },
-    partially_filled: { label: 'Parcial', color: 'from-amber-500/30 to-amber-500/10 text-amber-200 border-amber-400/30' },
-    filled: { label: 'Cubierto', color: 'from-emerald-500/30 to-emerald-500/10 text-emerald-200 border-emerald-400/30' },
-    completed: { label: 'Finalizado', color: 'from-white/10 to-white/[0.04] text-white/60 border-white/[0.08]' },
-    cancelled: { label: 'Cancelado', color: 'from-red-500/30 to-red-500/10 text-red-200 border-red-400/30' },
+    open: { label: 'Abierto', color: 'bg-sky-50 text-sky-700 border-sky-200' },
+    partially_filled: { label: 'Parcial', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+    filled: { label: 'Cubierto', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    completed: { label: 'Finalizado', color: 'bg-slate-50 text-slate-600 border-slate-200' },
+    cancelled: { label: 'Cancelado', color: 'bg-red-50 text-red-600 border-red-200' },
   };
   const s = statusInfo[shift.status] || statusInfo.open;
   return (
@@ -312,41 +297,35 @@ function ShiftCard({ shift, index, onClick }) {
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className="group relative overflow-hidden text-left rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm p-4 hover:border-white/[0.18] transition-all"
+      className="group text-left rounded-2xl border border-slate-200 bg-white p-4 hover:border-slate-300 hover:shadow-md transition-all"
     >
-      {/* Glow hover */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-        style={{ background: 'radial-gradient(120% 60% at 50% 0%, rgba(239,68,68,0.10), transparent 60%)' }} />
-
-      <div className="relative">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-black text-white truncate">{shift.title}</p>
-            <p className="text-[10.5px] text-white/50 mt-0.5">
-              {new Date(shift.date).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' })}
-              {' · '}{shift.startTime}–{shift.endTime}
-            </p>
-          </div>
-          <span className={`shrink-0 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider rounded-full border bg-gradient-to-r ${s.color}`}>
-            {s.label}
-          </span>
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-black text-slate-800 truncate">{shift.title}</p>
+          <p className="text-[10.5px] text-slate-500 mt-0.5">
+            {new Date(shift.date).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'short' })}
+            {' · '}{shift.startTime}–{shift.endTime}
+          </p>
         </div>
+        <span className={`shrink-0 px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider rounded-full border ${s.color}`}>
+          {s.label}
+        </span>
+      </div>
 
-        <div className="grid grid-cols-3 gap-1.5 mb-3">
-          <MiniBox label="Personas" value={`${shift.workersBooked}/${shift.workersNeeded}`} />
-          <MiniBox label="Horas" value={`${shift.hoursTotal}h`} />
-          <MiniBox label="Pago" value={formatCOP(shift.totalPay)} accent />
-        </div>
+      <div className="grid grid-cols-3 gap-1.5 mb-3">
+        <MiniBox label="Personas" value={`${shift.workersBooked}/${shift.workersNeeded}`} />
+        <MiniBox label="Horas" value={`${shift.hoursTotal}h`} />
+        <MiniBox label="Pago" value={formatCOP(shift.totalPay)} accent />
+      </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
-          <span className="text-[10px] text-white/40">
-            Reservado: <span className="text-white/70 font-bold tabular-nums">{formatCOP(shift.reservedAmount)}</span>
-          </span>
-          <span className="text-[10px] font-extrabold text-red-300 flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
-            Ver postulantes
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-          </span>
-        </div>
+      <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+        <span className="text-[10px] text-slate-400">
+          Reservado: <span className="text-slate-600 font-bold tabular-nums">{formatCOP(shift.reservedAmount)}</span>
+        </span>
+        <span className="text-[10px] font-extrabold text-red-500 flex items-center gap-0.5 group-hover:gap-1.5 transition-all">
+          Ver postulantes
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+        </span>
       </div>
     </motion.button>
   );
@@ -354,9 +333,9 @@ function ShiftCard({ shift, index, onClick }) {
 
 function MiniBox({ label, value, accent }) {
   return (
-    <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-2 py-1.5">
-      <p className="text-[8px] font-extrabold uppercase tracking-wider text-white/30">{label}</p>
-      <p className={`text-[11.5px] font-black tabular-nums truncate ${accent ? 'text-emerald-300' : 'text-white/90'}`}>{value}</p>
+    <div className="rounded-xl border border-slate-100 bg-slate-50 px-2 py-1.5">
+      <p className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className={`text-[11.5px] font-black tabular-nums truncate ${accent ? 'text-emerald-600' : 'text-slate-700'}`}>{value}</p>
     </div>
   );
 }
@@ -424,15 +403,15 @@ function ApplicantsView({ api, shift, onBack }) {
   };
 
   return (
-    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5">
-      <button onClick={onBack} className="mb-3 text-[12px] font-bold text-white/40 hover:text-white flex items-center gap-1 transition">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <button onClick={onBack} className="mb-3 text-[12px] font-bold text-slate-400 hover:text-slate-700 flex items-center gap-1 transition">
         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         Volver
       </button>
       <div className="flex items-start justify-between gap-3 flex-wrap mb-1">
         <div>
-          <h2 className="text-[18px] font-black text-white">{shift.title}</h2>
-          <p className="text-[11.5px] text-white/50 mt-1">
+          <h2 className="text-[18px] font-black text-slate-800">{shift.title}</h2>
+          <p className="text-[11.5px] text-slate-500 mt-1">
             {apps.length} {apps.length === 1 ? 'postulante' : 'postulantes'} · Toca una tarjeta para ver el perfil
           </p>
         </div>
@@ -440,7 +419,7 @@ function ApplicantsView({ api, shift, onBack }) {
           <button
             onClick={cancelShift}
             disabled={cancelling}
-            className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-400/30 transition disabled:opacity-50"
+            className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition disabled:opacity-50"
           >
             {cancelling ? 'Cancelando…' : 'Cancelar turno'}
           </button>
@@ -448,9 +427,9 @@ function ApplicantsView({ api, shift, onBack }) {
       </div>
 
       <div className="mt-4 space-y-2.5">
-        {loading && <p className="text-[12px] text-white/40 text-center py-6">Cargando postulantes…</p>}
+        {loading && <p className="text-[12px] text-slate-400 text-center py-6">Cargando postulantes…</p>}
         {!loading && apps.length === 0 && (
-          <p className="text-[12px] text-white/40 text-center py-6">Aún no hay postulantes. Agrega beneficios al turno para atraer más.</p>
+          <p className="text-[12px] text-slate-400 text-center py-6">Aún no hay postulantes. Agrega beneficios al turno para atraer más.</p>
         )}
         {apps.map((a) => {
           const wId = String(a.workerId?._id || a.workerId);
@@ -499,42 +478,42 @@ function ApplicantsView({ api, shift, onBack }) {
 
 function ApplicantCard({ app, booking, businessId, onAccept, onReject, onOpenProfile, onChat, onCodeRegenerated }) {
   const w = app.workerId || {};
-  const matchTone = app.matchScore >= 75 ? 'from-emerald-500/30 to-emerald-500/10 text-emerald-200 border-emerald-400/30'
-    : app.matchScore >= 50 ? 'from-amber-500/30 to-amber-500/10 text-amber-200 border-amber-400/30'
-    : 'from-white/10 to-white/[0.04] text-white/60 border-white/[0.08]';
+  const matchTone = app.matchScore >= 75 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    : app.matchScore >= 50 ? 'bg-amber-50 text-amber-700 border-amber-200'
+    : 'bg-slate-50 text-slate-600 border-slate-200';
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.04] transition overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 bg-white hover:border-slate-300 transition overflow-hidden">
       <button onClick={onOpenProfile} className="w-full text-left p-3.5">
         <div className="flex items-start gap-3 mb-2">
           {w.photo ? (
-            <img src={w.photo} alt={w.name} className="w-14 h-14 rounded-2xl object-cover border border-white/[0.10] shrink-0" />
+            <img src={w.photo} alt={w.name} className="w-14 h-14 rounded-2xl object-cover border border-slate-200 shrink-0" />
           ) : (
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500/40 to-orange-500/30 border border-white/[0.10] flex items-center justify-center text-[18px] font-black text-white shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-[18px] font-black text-red-500 shrink-0">
               {(w.name || '?').slice(0, 1).toUpperCase()}
             </div>
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-[14px] font-black text-white truncate">{w.name || 'Postulante'}</p>
+              <p className="text-[14px] font-black text-slate-800 truncate">{w.name || 'Postulante'}</p>
               {w.kyc?.status === 'approved' && (
-                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 rounded-full">
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full">
                   ✓ Verificado
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 text-[10.5px] text-white/50 mt-0.5 flex-wrap">
-              <span className="font-bold text-red-300">Nivel {w.level || 1}</span>
+            <div className="flex items-center gap-2 text-[10.5px] text-slate-500 mt-0.5 flex-wrap">
+              <span className="font-bold text-red-500">Nivel {w.level || 1}</span>
               <span>·</span>
               <span>{(w.rating?.avg || 0).toFixed(1)}★ ({w.rating?.count || 0})</span>
               <span>·</span>
               <span>{w.stats?.shiftsCompleted || 0} turnos</span>
             </div>
             {w.bio && (
-              <p className="text-[11.5px] text-white/70 mt-1.5 line-clamp-2 leading-snug">{w.bio}</p>
+              <p className="text-[11.5px] text-slate-600 mt-1.5 line-clamp-2 leading-snug">{w.bio}</p>
             )}
           </div>
-          <span className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold border rounded-full tabular-nums bg-gradient-to-r ${matchTone}`}>
+          <span className={`shrink-0 px-2 py-0.5 text-[10px] font-extrabold border rounded-full tabular-nums ${matchTone}`}>
             {app.matchScore}%
           </span>
         </div>
@@ -542,7 +521,7 @@ function ApplicantCard({ app, booking, businessId, onAccept, onReject, onOpenPro
         {w.skills?.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {w.skills.slice(0, 4).map((s) => (
-              <span key={s.key} className="px-2 py-0.5 text-[9.5px] font-bold bg-white/[0.04] text-white/60 border border-white/[0.06] rounded-full">
+              <span key={s.key} className="px-2 py-0.5 text-[9.5px] font-bold bg-slate-50 text-slate-600 border border-slate-200 rounded-full">
                 {s.key} · {s.level}
               </span>
             ))}
@@ -550,31 +529,29 @@ function ApplicantCard({ app, booking, businessId, onAccept, onReject, onOpenPro
         )}
       </button>
 
-      <div className="px-3.5 pb-3 pt-2 border-t border-white/[0.04]">
+      <div className="px-3.5 pb-3 pt-2 border-t border-slate-100">
         {app.status === 'pending' ? (
           <div className="flex gap-2">
             <button
               onClick={onReject}
-              className="flex-1 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-white/70 text-[12px] font-bold transition"
+              className="flex-1 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 text-[12px] font-bold border border-slate-200 transition"
             >Rechazar</button>
             <button
               onClick={onAccept}
-              className="group relative overflow-hidden flex-1 py-2 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 text-white text-[12px] font-extrabold transition shadow-md shadow-red-500/30"
+              className="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-[12px] font-extrabold transition shadow-md shadow-red-500/25"
             >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
-                style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
-              <span className="relative">Aceptar</span>
+              Aceptar
             </button>
           </div>
         ) : app.status === 'accepted' ? (
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <p className="flex-1 text-[11px] font-extrabold text-center py-1.5 rounded-xl bg-emerald-500/[0.12] text-emerald-300 border border-emerald-400/30">
+              <p className="flex-1 text-[11px] font-extrabold text-center py-1.5 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
                 Aceptado ✓
               </p>
               <button
                 onClick={onChat}
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] text-white text-[11px] font-extrabold border border-white/[0.08]"
+                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-extrabold border border-slate-200"
               >
                 💬 Mensaje
               </button>
@@ -589,13 +566,13 @@ function ApplicantCard({ app, booking, businessId, onAccept, onReject, onOpenPro
               />
             )}
             {booking?.status === 'checked_in' && (
-              <p className="text-[11px] text-center py-2 rounded-xl bg-sky-500/10 text-sky-200 border border-sky-400/30 font-extrabold">
+              <p className="text-[11px] text-center py-2 rounded-xl bg-sky-50 text-sky-700 border border-sky-200 font-extrabold">
                 🟢 Check-in registrado — {new Date(booking.checkInAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
               </p>
             )}
           </div>
         ) : (
-          <p className="text-[11px] font-bold text-center py-1.5 rounded-xl bg-white/[0.02] text-white/40 border border-white/[0.06]">
+          <p className="text-[11px] font-bold text-center py-1.5 rounded-xl bg-slate-50 text-slate-400 border border-slate-200">
             {app.status === 'rejected' ? 'Rechazado' : app.status}
           </p>
         )}
@@ -671,7 +648,7 @@ function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
   const enough = available >= needed;
 
   return (
-    <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5 space-y-5">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-5">
       {/* Title */}
       <div>
         <Label>Título del turno</Label>
@@ -679,7 +656,7 @@ function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           placeholder="Ej: Mesero sábado en la noche"
-          className="w-full px-4 py-3 rounded-2xl bg-black/40 border border-white/[0.08] text-[14px] text-white placeholder-white/30 focus:outline-none focus:border-red-500 transition"
+          className="w-full px-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-[14px] text-slate-800 placeholder-slate-400 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 transition"
         />
       </div>
 
@@ -692,10 +669,10 @@ function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
               key={s.key}
               type="button"
               onClick={() => setForm({ ...form, role: s.key })}
-              className={`relative overflow-hidden py-2 rounded-xl text-[11px] font-extrabold transition flex items-center justify-center gap-1.5 ${
+              className={`py-2 rounded-xl text-[11px] font-extrabold transition flex items-center justify-center gap-1.5 ${
                 form.role === s.key
-                  ? 'bg-gradient-to-r from-red-500/30 to-orange-500/20 text-red-200 border border-red-400/40'
-                  : 'bg-white/[0.03] text-white/50 border border-white/[0.06] hover:border-white/[0.18]'
+                  ? 'bg-red-50 text-red-600 border border-red-300'
+                  : 'bg-slate-50 text-slate-600 border border-slate-200 hover:border-slate-300'
               }`}
             >
               <span>{s.emoji}</span>
@@ -708,26 +685,26 @@ function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
       {/* Date / times */}
       <div className="grid grid-cols-3 gap-2">
         <Field label="Fecha">
-          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500" />
+          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] text-slate-800 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
         </Field>
         <Field label="Inicio">
-          <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500" />
+          <input type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] text-slate-800 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
         </Field>
         <Field label="Fin">
-          <input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500" />
+          <input type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] text-slate-800 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
         </Field>
       </div>
 
       {/* Pay */}
       <div className="grid grid-cols-3 gap-2">
         <Field label="Horas">
-          <input type="number" min={1} max={16} value={form.hoursTotal} onChange={(e) => setForm({ ...form, hoursTotal: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500 tabular-nums" />
+          <input type="number" min={1} max={16} value={form.hoursTotal} onChange={(e) => setForm({ ...form, hoursTotal: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] text-slate-800 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 tabular-nums" />
         </Field>
         <Field label="Personas">
-          <input type="number" min={1} max={20} value={form.workersNeeded} onChange={(e) => setForm({ ...form, workersNeeded: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500 tabular-nums" />
+          <input type="number" min={1} max={20} value={form.workersNeeded} onChange={(e) => setForm({ ...form, workersNeeded: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] text-slate-800 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 tabular-nums" />
         </Field>
         <Field label="Pago / hora">
-          <input type="number" min={5000} step={500} value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/[0.08] text-[13px] text-white focus:outline-none focus:border-red-500 tabular-nums" />
+          <input type="number" min={5000} step={500} value={form.hourlyRate} onChange={(e) => setForm({ ...form, hourlyRate: Number(e.target.value) })} className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[13px] text-slate-800 focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 tabular-nums" />
         </Field>
       </div>
 
@@ -742,8 +719,8 @@ function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
               onClick={() => togglePerk(p.key)}
               className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition flex items-center gap-1.5 ${
                 form.perks.includes(p.key)
-                  ? 'bg-emerald-500/15 text-emerald-200 border border-emerald-400/30'
-                  : 'bg-white/[0.03] text-white/50 border border-white/[0.06] hover:border-white/[0.18]'
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+                  : 'bg-slate-50 text-slate-500 border border-slate-200 hover:border-slate-300'
               }`}
             >
               <span>{p.emoji}</span>
@@ -754,37 +731,35 @@ function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
       </div>
 
       {/* SOS toggle */}
-      <label className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/[0.06] border border-amber-400/20 cursor-pointer">
+      <label className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 cursor-pointer">
         <input type="checkbox" checked={form.isSOS} onChange={(e) => setForm({ ...form, isSOS: e.target.checked })} className="mt-1 w-4 h-4 accent-amber-500" />
         <div>
-          <p className="text-[13px] font-extrabold text-amber-200">Marcar como urgente (SOS)</p>
-          <p className="text-[11px] text-amber-100/60 mt-0.5 leading-relaxed">
-            Aparece destacado y se notifica con prioridad. Comisión Crew sube al <strong className="text-amber-200">15%</strong>.
+          <p className="text-[13px] font-extrabold text-amber-800">Marcar como urgente (SOS)</p>
+          <p className="text-[11px] text-amber-700/70 mt-0.5 leading-relaxed">
+            Aparece destacado y se notifica con prioridad. Comisión Crew sube al <strong className="text-amber-800">15%</strong>.
           </p>
         </div>
       </label>
 
       {/* Quote summary */}
       {quote && (
-        <div className="relative overflow-hidden rounded-3xl border border-white/[0.08] p-4"
-          style={{ background: 'radial-gradient(140% 100% at 0% 0%, rgba(239,68,68,0.18) 0%, rgba(10,10,20,0.6) 60%)' }}
-        >
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">Resumen de escrow</p>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-2">Resumen de escrow</p>
           <div className="grid grid-cols-3 gap-2">
             <ResumeBox label="Pago / trabajador" value={formatCOP(quote.payoutPerWorker)} />
             <ResumeBox label={`Comisión Crew (${Math.round(quote.commissionRate * 100)}%)`} value={formatCOP(quote.commissionPerWorker)} />
             <ResumeBox label="Total / trabajador" value={formatCOP(quote.perWorkerTotal)} accent />
           </div>
-          <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between">
-            <span className="text-[11px] text-white/50">Se reservarán de tu billetera</span>
-            <span className="text-[20px] font-black tabular-nums text-emerald-300">{formatCOP(quote.totalReserveNeeded)}</span>
+          <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between">
+            <span className="text-[11px] text-slate-500">Se reservarán de tu billetera</span>
+            <span className="text-[20px] font-black tabular-nums text-emerald-600">{formatCOP(quote.totalReserveNeeded)}</span>
           </div>
           {!enough && (
-            <div className="mt-3 px-3 py-2 rounded-xl bg-red-500/10 border border-red-400/30 flex items-center justify-between gap-2">
-              <span className="text-[11px] text-red-200">
+            <div className="mt-3 px-3 py-2 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between gap-2">
+              <span className="text-[11px] text-red-700">
                 Te faltan <strong className="tabular-nums">{formatCOP(needed - available)}</strong> para publicar.
               </span>
-              <button onClick={onNeedRecharge} className="shrink-0 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-red-500 hover:bg-red-400 text-white transition">
+              <button onClick={onNeedRecharge} className="shrink-0 text-[10px] font-extrabold uppercase tracking-wider px-3 py-1 rounded-full bg-red-500 hover:bg-red-600 text-white transition">
                 Recargar
               </button>
             </div>
@@ -795,17 +770,15 @@ function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
       <div className="flex gap-2 pt-2">
         <button
           onClick={onCancel}
-          className="px-5 py-3 rounded-2xl bg-white/[0.04] border border-white/[0.08] text-white/70 hover:text-white font-bold text-[13px] transition"
+          className="px-5 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-800 font-bold text-[13px] transition"
         >Cancelar</button>
         <motion.button
           whileTap={{ scale: 0.97 }}
           onClick={submit}
           disabled={saving || !enough}
-          className="group relative flex-1 overflow-hidden py-3 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-extrabold text-[13px] shadow-lg shadow-red-500/40 disabled:opacity-40"
+          className="flex-1 py-3 rounded-2xl bg-red-500 hover:bg-red-600 text-white font-extrabold text-[13px] shadow-md shadow-red-500/25 disabled:opacity-40 transition"
         >
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2"
-            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
-          <span className="relative">{saving ? 'Publicando…' : enough ? 'Publicar y reservar saldo' : 'Saldo insuficiente'}</span>
+          {saving ? 'Publicando…' : enough ? 'Publicar y reservar saldo' : 'Saldo insuficiente'}
         </motion.button>
       </div>
     </div>
@@ -813,7 +786,7 @@ function NewShiftForm({ api, wallet, onCreated, onCancel, onNeedRecharge }) {
 }
 
 function Label({ children }) {
-  return <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/40 mb-2">{children}</label>;
+  return <label className="block text-[10px] font-extrabold uppercase tracking-[0.18em] text-slate-400 mb-2">{children}</label>;
 }
 
 function Field({ label, children }) {
@@ -827,9 +800,9 @@ function Field({ label, children }) {
 
 function ResumeBox({ label, value, accent }) {
   return (
-    <div className="px-2 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]">
-      <p className="text-[9px] font-extrabold uppercase tracking-wider text-white/40">{label}</p>
-      <p className={`text-[12.5px] font-black tabular-nums truncate mt-0.5 ${accent ? 'text-emerald-300' : 'text-white/90'}`}>{value}</p>
+    <div className="px-2 py-2 rounded-xl bg-white border border-slate-200">
+      <p className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
+      <p className={`text-[12.5px] font-black tabular-nums truncate mt-0.5 ${accent ? 'text-emerald-600' : 'text-slate-700'}`}>{value}</p>
     </div>
   );
 }
@@ -859,27 +832,27 @@ function RechargesHistory({ api, onRecharge }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="text-[15px] font-black">Mis solicitudes de recarga</h3>
-          <button onClick={onRecharge} className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-md shadow-red-500/30">
+          <h3 className="text-[15px] font-black text-slate-800">Mis solicitudes de recarga</h3>
+          <button onClick={onRecharge} className="text-[11px] font-extrabold uppercase tracking-wider px-3 py-1.5 rounded-full bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/25 transition">
             + Nueva recarga
           </button>
         </div>
-        {loading && <p className="text-[12px] text-white/40">Cargando…</p>}
+        {loading && <p className="text-[12px] text-slate-400">Cargando…</p>}
         {!loading && reqs.length === 0 && (
-          <p className="text-[12px] text-white/40 text-center py-6">Aún no tienes solicitudes de recarga.</p>
+          <p className="text-[12px] text-slate-400 text-center py-6">Aún no tienes solicitudes de recarga.</p>
         )}
         <div className="space-y-2">
           {reqs.map((r) => (
-            <div key={r._id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+            <div key={r._id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
               <div className="flex items-center gap-3">
-                <a href={r.proofUrl} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.08] overflow-hidden block">
+                <a href={r.proofUrl} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden block">
                   <img src={r.proofUrl} alt="" className="w-full h-full object-cover" />
                 </a>
                 <div>
-                  <p className="text-[13px] font-extrabold text-white tabular-nums">{formatCOP(r.amount)}</p>
-                  <p className="text-[10px] text-white/40">{r.paymentMethod} · {new Date(r.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</p>
+                  <p className="text-[13px] font-extrabold text-slate-800 tabular-nums">{formatCOP(r.amount)}</p>
+                  <p className="text-[10px] text-slate-500">{r.paymentMethod} · {new Date(r.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</p>
                 </div>
               </div>
               <StatusChip status={r.status} />
@@ -888,10 +861,10 @@ function RechargesHistory({ api, onRecharge }) {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-5">
-        <h3 className="text-[15px] font-black mb-3">Movimientos recientes</h3>
+      <div className="rounded-2xl border border-slate-200 bg-white p-5">
+        <h3 className="text-[15px] font-black text-slate-800 mb-3">Movimientos recientes</h3>
         {txns.length === 0 ? (
-          <p className="text-[12px] text-white/40 text-center py-6">Aún no hay movimientos.</p>
+          <p className="text-[12px] text-slate-400 text-center py-6">Aún no hay movimientos.</p>
         ) : (
           <div className="space-y-1">
             {txns.slice(0, 12).map((t) => (
@@ -906,9 +879,9 @@ function RechargesHistory({ api, onRecharge }) {
 
 function StatusChip({ status }) {
   const info = {
-    pending: { label: 'En revisión', cls: 'bg-amber-500/15 text-amber-300 border-amber-400/30' },
-    approved: { label: 'Aprobada', cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30' },
-    rejected: { label: 'Rechazada', cls: 'bg-red-500/15 text-red-300 border-red-400/30' },
+    pending: { label: 'En revisión', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+    approved: { label: 'Aprobada', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    rejected: { label: 'Rechazada', cls: 'bg-red-50 text-red-700 border-red-200' },
   };
   const i = info[status] || info.pending;
   return <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded-full border ${i.cls}`}>{i.label}</span>;
@@ -916,22 +889,22 @@ function StatusChip({ status }) {
 
 function TxnRow({ txn }) {
   const labels = {
-    deposit: { label: 'Recarga', emoji: '💰', tone: 'text-emerald-300' },
-    shift_reserve: { label: 'Reserva turno', emoji: '🔒', tone: 'text-amber-300' },
-    shift_release: { label: 'Pago liberado', emoji: '✅', tone: 'text-emerald-300' },
-    shift_commission: { label: 'Comisión Crew', emoji: '⚙️', tone: 'text-violet-300' },
-    shift_refund: { label: 'Devolución', emoji: '↩️', tone: 'text-sky-300' },
-    cancellation_penalty: { label: 'Penalización', emoji: '⚠️', tone: 'text-red-300' },
+    deposit: { label: 'Recarga', emoji: '💰', tone: 'text-emerald-600' },
+    shift_reserve: { label: 'Reserva turno', emoji: '🔒', tone: 'text-amber-600' },
+    shift_release: { label: 'Pago liberado', emoji: '✅', tone: 'text-emerald-600' },
+    shift_commission: { label: 'Comisión Crew', emoji: '⚙️', tone: 'text-violet-600' },
+    shift_refund: { label: 'Devolución', emoji: '↩️', tone: 'text-sky-600' },
+    cancellation_penalty: { label: 'Penalización', emoji: '⚠️', tone: 'text-red-600' },
   };
-  const info = labels[txn.kind] || { label: txn.kind, emoji: '•', tone: 'text-white/70' };
+  const info = labels[txn.kind] || { label: txn.kind, emoji: '•', tone: 'text-slate-600' };
   const sign = txn.direction === 'in' ? '+' : '-';
   return (
-    <div className="flex items-center justify-between gap-2 py-2 border-b border-white/[0.03] last:border-0">
+    <div className="flex items-center justify-between gap-2 py-2 border-b border-slate-100 last:border-0">
       <div className="flex items-center gap-2.5 min-w-0">
         <span className="text-base">{info.emoji}</span>
         <div className="min-w-0">
-          <p className="text-[12px] font-bold text-white truncate">{info.label}</p>
-          <p className="text-[10px] text-white/40 truncate">{txn.note || new Date(txn.createdAt).toLocaleDateString('es-CO')}</p>
+          <p className="text-[12px] font-bold text-slate-700 truncate">{info.label}</p>
+          <p className="text-[10px] text-slate-400 truncate">{txn.note || new Date(txn.createdAt).toLocaleDateString('es-CO')}</p>
         </div>
       </div>
       <span className={`text-[12.5px] font-black tabular-nums ${info.tone}`}>{sign}{formatCOP(txn.amount)}</span>
