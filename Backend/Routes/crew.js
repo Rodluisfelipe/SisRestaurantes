@@ -813,7 +813,7 @@ router.post('/bookings/:id/checkin', requireWorker, async (req, res) => {
   try {
     const { code, lat, lng, photo } = req.body || {};
     if (!code || typeof code !== 'string') {
-      return res.status(400).json({ message: 'Falta el código de check-in', code: 'MISSING_CODE' });
+      return res.status(400).json({ message: 'Falta el código de check-in', errorCode: 'MISSING_CODE' });
     }
     const booking = await ShiftBooking.findById(req.params.id);
     if (!booking) return res.status(404).json({ message: 'Booking no encontrado' });
@@ -828,28 +828,47 @@ router.post('/bookings/:id/checkin', requireWorker, async (req, res) => {
     if ((booking.checkInAttempts || 0) >= 8) {
       return res.status(429).json({
         message: 'Demasiados intentos. Pide al empleador que regenere el código.',
-        code: 'TOO_MANY_ATTEMPTS',
+        errorCode: 'TOO_MANY_ATTEMPTS',
       });
     }
 
     const normalized = code.trim().toUpperCase().replace(/[\s-]/g, '');
     if (!booking.checkInCode || normalized !== booking.checkInCode) {
-      booking.checkInAttempts = (booking.checkInAttempts || 0) + 1;
-      await booking.save();
+      // $inc atómico para que dos intentos simultáneos cuenten ambos.
+      const updated = await ShiftBooking.findByIdAndUpdate(
+        booking._id,
+        { $inc: { checkInAttempts: 1 } },
+        { new: true, select: 'checkInAttempts' },
+      );
+      const attempts = updated?.checkInAttempts || booking.checkInAttempts + 1;
       return res.status(400).json({
         message: 'Código incorrecto. Verifícalo con el empleador.',
-        code: 'INVALID_CODE',
-        attemptsRemaining: Math.max(0, 8 - booking.checkInAttempts),
+        errorCode: 'INVALID_CODE',
+        attemptsRemaining: Math.max(0, 8 - attempts),
       });
     }
 
-    booking.status = 'checked_in';
-    booking.checkInAt = new Date();
-    booking.checkInLat = lat || null;
-    booking.checkInLng = lng || null;
-    booking.checkInPhoto = photo || null;
-    await booking.save();
-    res.json({ success: true, booking });
+    // Check-in atómico: solo si sigue en `confirmed`. Bloquea check-in duplicado.
+    const checkedIn = await ShiftBooking.findOneAndUpdate(
+      { _id: booking._id, status: 'confirmed' },
+      {
+        $set: {
+          status: 'checked_in',
+          checkInAt: new Date(),
+          checkInLat: lat || null,
+          checkInLng: lng || null,
+          checkInPhoto: photo || null,
+        },
+      },
+      { new: true },
+    );
+    if (!checkedIn) {
+      return res.status(400).json({
+        message: 'Este check-in ya fue registrado.',
+        errorCode: 'ALREADY_CHECKED_IN',
+      });
+    }
+    res.json({ success: true, booking: checkedIn });
   } catch (e) {
     logger.error('crew checkin error', e);
     res.status(500).json({ message: 'Error al hacer check-in' });
@@ -973,8 +992,17 @@ router.post('/businesses/shifts', tenantAuth, async (req, res) => {
         lng: biz.location?.lng || null,
         address: biz.address?.full || biz.address || '',
       },
-      // Auto-expira a la hora de inicio del shift
-      expiresAt: new Date(new Date(date).getTime() + 24 * 60 * 60 * 1000),
+      // Auto-expira en la hora exacta de inicio del shift. Antes era +24h
+      // fijo desde medianoche de la fecha, lo que dejaba shifts "abiertos"
+      // mucho después de empezar.
+      expiresAt: (() => {
+        const exp = new Date(date);
+        if (startTime) {
+          const [hh, mm] = String(startTime).split(':');
+          if (!Number.isNaN(Number(hh))) exp.setHours(Number(hh) || 0, Number(mm) || 0, 0, 0);
+        }
+        return exp;
+      })(),
     });
     await shift.save();
 
@@ -1104,6 +1132,10 @@ router.get('/businesses/shifts/:id/applicants', tenantAuth, async (req, res) => 
 });
 
 // POST /crew/businesses/applications/:id/accept
+// Reservar el cupo es ATÓMICO: $inc condicionado a workersBooked < workersNeeded.
+// Esto previene la race "dos accepts simultáneos para el último cupo" que crearía
+// dos bookings cuando solo había uno disponible. Si la reserva falla, no creamos
+// booking ni cambiamos la application.
 router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) => {
   try {
     const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
@@ -1116,38 +1148,88 @@ router.post('/businesses/applications/:id/accept', tenantAuth, async (req, res) 
       return res.status(400).json({ message: `Application está ${app.status}` });
     }
 
-    const shift = await ShiftPost.findById(app.shiftId);
-    if (!shift || (shift.status !== 'open' && shift.status !== 'partially_filled')) {
-      return res.status(400).json({ message: 'Shift no aceptable' });
+    // No aceptar a un turno cuya fecha ya pasó
+    const shiftPreview = await ShiftPost.findById(app.shiftId).select('date startTime').lean();
+    if (shiftPreview?.date) {
+      const shiftStart = new Date(shiftPreview.date);
+      if (shiftPreview.startTime) {
+        const [hh, mm] = String(shiftPreview.startTime).split(':');
+        if (!Number.isNaN(Number(hh))) {
+          shiftStart.setHours(Number(hh) || 0, Number(mm) || 0, 0, 0);
+        }
+      }
+      if (shiftStart.getTime() < Date.now()) {
+        return res.status(400).json({
+          message: 'Este turno ya pasó. No puedes aceptar postulantes.',
+          code: 'SHIFT_PAST_DATE',
+        });
+      }
     }
 
-    // Crear booking — snapshot del pago y la comisión vigente al momento del accept,
-    // para que cambios posteriores en tasas no muevan lo ya pactado.
-    // Genera el `checkInCode`: 6 caracteres alfanuméricos sin ambigüedad
-    // (sin 0/O/I/1) para evitar confusiones en pantalla. Solo el negocio lo ve.
+    // Reserva atómica del cupo. El filtro condicional garantiza que dos accepts
+    // simultáneos para el último cupo solo dejan pasar uno. Mongo arbitra.
+    const claimedShift = await ShiftPost.findOneAndUpdate(
+      {
+        _id: app.shiftId,
+        status: { $in: ['open', 'partially_filled'] },
+        $expr: { $lt: ['$workersBooked', '$workersNeeded'] },
+      },
+      { $inc: { workersBooked: 1 } },
+      { new: true },
+    );
+    if (!claimedShift) {
+      return res.status(409).json({
+        message: 'Este turno ya está lleno o no acepta más postulantes.',
+        code: 'SHIFT_FULL_OR_CLOSED',
+      });
+    }
+    // Status final del shift según el contador post-inc
+    if (claimedShift.workersBooked >= claimedShift.workersNeeded && claimedShift.status !== 'filled') {
+      claimedShift.status = 'filled';
+      await claimedShift.save();
+    } else if (claimedShift.status === 'open' && claimedShift.workersBooked > 0) {
+      claimedShift.status = 'partially_filled';
+      await claimedShift.save();
+    }
+
+    // Crear booking — snapshot del pago y la comisión vigente al momento del accept.
+    // `checkInCode`: 6 caracteres alfanuméricos sin ambigüedad (sin 0/O/I/1).
     const checkInCode = generateCheckInCode();
-    const booking = await ShiftBooking.create({
-      shiftId: shift._id, workerId: app.workerId, businessId: shift.businessId,
-      agreedRate: shift.hourlyRate, agreedHours: shift.hoursTotal,
-      agreedTotal: shift.totalPay,
-      agreedCommission: shift.commissionAmount,
-      payoutStatus: 'held',
-      status: 'confirmed',
-      checkInCode,
-    });
+    let booking;
+    try {
+      booking = await ShiftBooking.create({
+        shiftId: claimedShift._id, workerId: app.workerId, businessId: claimedShift.businessId,
+        agreedRate: claimedShift.hourlyRate, agreedHours: claimedShift.hoursTotal,
+        agreedTotal: claimedShift.totalPay,
+        agreedCommission: claimedShift.commissionAmount,
+        payoutStatus: 'held',
+        status: 'confirmed',
+        checkInCode,
+      });
+    } catch (bookingErr) {
+      // Rollback del cupo si no pudimos crear el booking — devolvemos la reserva.
+      await ShiftPost.findByIdAndUpdate(claimedShift._id, { $inc: { workersBooked: -1 } });
+      throw bookingErr;
+    }
 
     // Marcar app aceptada
     app.status = 'accepted';
     app.respondedAt = new Date();
     await app.save();
 
-    // Actualizar shift
-    shift.workersBooked += 1;
-    if (shift.workersBooked >= shift.workersNeeded) shift.status = 'filled';
-    else shift.status = 'partially_filled';
-    await shift.save();
+    // Si el shift quedó lleno con este accept, expirar el resto de applications
+    // pending para que los otros workers vean su estado actualizado en su UI.
+    // No bloqueamos la respuesta — el bulk corre y respondemos igual.
+    let expiredApps = 0;
+    if (claimedShift.status === 'filled') {
+      const expireRes = await ShiftApplication.updateMany(
+        { shiftId: claimedShift._id, status: 'pending', _id: { $ne: app._id } },
+        { $set: { status: 'expired', respondedAt: new Date() } },
+      );
+      expiredApps = expireRes.modifiedCount || 0;
+    }
 
-    res.json({ success: true, booking });
+    res.json({ success: true, booking, shiftStatus: claimedShift.status, expiredApps });
   } catch (e) {
     logger.error('crew accept app error', e);
     res.status(500).json({ message: e.message || 'Error al aceptar', error: e.name });
@@ -1176,23 +1258,45 @@ router.post('/businesses/applications/:id/reject', tenantAuth, async (req, res) 
 });
 
 // POST /crew/businesses/bookings/:id/complete — confirma fin de turno
+// Reglas:
+//  - El booking DEBE haber pasado por check-in (status: checked_in o completed-stuck)
+//    para que el negocio pueda liberar el pago. Esto cierra el agujero por el cual un
+//    negocio podía pagar a un worker que nunca llegó.
+//  - El admin puede saltarse el check-in en casos excepcionales con `force: true` en el body.
+//    Queda registrado en metadata del ledger para auditoría.
 router.post('/businesses/bookings/:id/complete', tenantAuth, async (req, res) => {
   try {
     const businessId = req.resolvedBusinessId || req.user?.businessId || req.query.businessId || req.body.businessId;
+    const force = !!req.body?.force;
     const booking = await ShiftBooking.findById(req.params.id);
     if (!booking || String(booking.businessId) !== String(businessId)) {
       return res.status(404).json({ message: 'Booking no encontrado' });
     }
-    // Si ya está completed PERO el payout no se liberó (caso de los bookings
-    // que quedaron rotos por el bug del release con escrow vacío), no devolvemos
-    // 400 — seguimos para liberar el pago y otorgar XP. Solo bloqueamos cuando
-    // realmente ya está todo procesado.
+    // Bloqueo de status: solo `checked_in` o `completed-stuck` pueden completarse.
+    // Sin esto, un negocio podría completar un booking sin check-in del worker.
     const isStuckCompleted = booking.status === 'completed' && booking.payoutStatus !== 'released';
+    if (!isStuckCompleted && booking.status !== 'checked_in' && !force) {
+      return res.status(400).json({
+        message: booking.status === 'confirmed'
+          ? 'El trabajador aún no ha hecho check-in. Pide que ingrese el código antes de completar el turno.'
+          : `No puedes completar un booking en estado ${booking.status}`,
+        code: 'CHECKIN_REQUIRED',
+        currentStatus: booking.status,
+      });
+    }
     if (booking.status === 'completed' && !isStuckCompleted) {
       return res.status(400).json({ message: 'Ya completado' });
     }
     if (isStuckCompleted) {
       logger.warn('Reprocessing stuck completed booking', { bookingId: String(booking._id) });
+    }
+    if (force && booking.status !== 'checked_in' && !isStuckCompleted) {
+      logger.warn('Force-completing booking without check-in', {
+        bookingId: String(booking._id),
+        businessId: String(businessId),
+        adminId: String(req.user?.id || ''),
+        originalStatus: booking.status,
+      });
     }
 
     // 1) Liberar el dinero PRIMERO (si falla, no marcamos completed para que
@@ -1334,14 +1438,19 @@ router.delete('/workers/me/favorites/:businessId', requireWorker, async (req, re
  *  WORKER — Wallet (historial y retiro)
  * ───────────────────────────────────────────── */
 
-// GET /crew/workers/me/wallet — balance + historial de movimientos
+// GET /crew/workers/me/wallet — balance + historial (compat: la UI nueva usa
+// `/wallet/transactions` que lee del ledger real).
+//
+// Para no mostrar "ingresos fantasma" cuando un booking quedó marcado como
+// completed pero el release nunca terminó, solo incluimos bookings cuyo
+// payoutStatus es `released` (i.e. el worker SÍ recibió la plata).
 router.get('/workers/me/wallet', requireWorker, async (req, res) => {
   try {
     const w = req.worker;
-    // Construimos historial a partir de bookings completados
     const completedBookings = await ShiftBooking.find({
       workerId: w._id,
       status: 'completed',
+      payoutStatus: 'released',
     })
       .sort({ completedAt: -1 })
       .limit(30)
@@ -1356,7 +1465,7 @@ router.get('/workers/me/wallet', requireWorker, async (req, res) => {
       description: b.shiftId?.title || 'Turno completado',
       businessName: b.businessId?.businessName || 'Negocio',
       businessLogo: b.businessId?.logo || null,
-      date: b.completedAt || b.updatedAt,
+      date: b.releasedAt || b.completedAt || b.updatedAt,
     }));
 
     res.json({
@@ -1380,23 +1489,39 @@ router.get('/workers/me/wallet', requireWorker, async (req, res) => {
  *  WORKER — Check-out (finalizar turno desde su lado)
  * ───────────────────────────────────────────── */
 
-// POST /crew/bookings/:id/checkout
+// POST /crew/bookings/:id/checkout — worker marca fin de turno
+// IMPORTANTE: el worker NO marca `status: completed`. El status sigue siendo
+// `checked_in` con `workerCheckoutAt` setteado. La autoridad de cerrar el booking
+// (y liberar pago) es del negocio (POST /businesses/bookings/:id/complete).
+// Si el negocio no confirma en 24h tras el checkout del worker, el cron
+// `auto-release-stale-bookings` libera automáticamente — ningún worker
+// queda sin pago por inacción del negocio.
 router.post('/bookings/:id/checkout', requireWorker, async (req, res) => {
   try {
-    const booking = await ShiftBooking.findById(req.params.id);
-    if (!booking) return res.status(404).json({ message: 'Booking no encontrado' });
-    if (String(booking.workerId) !== String(req.worker._id)) {
-      return res.status(403).json({ message: 'No es tu booking' });
+    const booking = await ShiftBooking.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        workerId: req.worker._id,
+        status: 'checked_in',
+        workerCheckoutAt: null,
+      },
+      { $set: { workerCheckoutAt: new Date() } },
+      { new: true },
+    );
+    if (!booking) {
+      const existing = await ShiftBooking.findById(req.params.id).lean();
+      if (!existing) return res.status(404).json({ message: 'Booking no encontrado' });
+      if (String(existing.workerId) !== String(req.worker._id)) {
+        return res.status(403).json({ message: 'No es tu booking' });
+      }
+      if (existing.workerCheckoutAt) {
+        return res.status(400).json({ message: 'Ya hiciste check-out de este turno' });
+      }
+      return res.status(400).json({
+        message: 'Solo puedes hacer check-out de un turno activo (debes haber hecho check-in primero)',
+        currentStatus: existing.status,
+      });
     }
-    if (booking.status !== 'checked_in') {
-      return res.status(400).json({ message: 'Solo puedes hacer check-out en turnos activos (checked_in)' });
-    }
-    // Worker marca fin — el business aún debe confirmar para liberar pago
-    booking.completedAt = new Date();
-    booking.status = 'completed';
-    booking.payoutStatus = 'held'; // pendiente de confirmación del business
-    await booking.save();
-
     res.json({ success: true, booking });
   } catch (e) {
     logger.error('crew checkout error', e);
@@ -1665,13 +1790,19 @@ router.get('/workers/me/wallet/transactions', requireWorker, async (req, res) =>
 });
 
 // POST /crew/workers/me/wallet/withdraw — solicitar retiro
+// El frontend puede mandar `Idempotency-Key` (recomendado) o `idempotencyKey`
+// en body para que doble-clicks no creen dos retiros con el saldo bloqueado.
 router.post('/workers/me/wallet/withdraw', requireWorker, async (req, res) => {
   try {
-    const { amount, payoutMethod } = req.body || {};
+    const { amount, payoutMethod, idempotencyKey: bodyKey } = req.body || {};
+    const headerKey = req.get('Idempotency-Key');
+    const clientIdempotencyKey = headerKey || bodyKey || null;
+
     const result = await crewLedger.requestWithdrawal({
       workerId: req.worker._id,
       amount: Math.round(Number(amount)),
       payoutMethod,
+      clientIdempotencyKey,
     });
     res.status(201).json({ success: true, ...result });
   } catch (e) {

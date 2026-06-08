@@ -44,6 +44,9 @@ const shiftBookingSchema = new mongoose.Schema({
   checkInAttempts: { type: Number, default: 0 }, // anti brute-force
 
   // Check-out / completion
+  // workerCheckoutAt: el worker marcó fin de turno (no libera pago aún).
+  // Si el negocio no confirma con `complete` en ~24h, un cron auto-libera.
+  workerCheckoutAt: { type: Date, default: null, index: true },
   completedAt: { type: Date, default: null },
   confirmedByBusinessAt: { type: Date, default: null },
 

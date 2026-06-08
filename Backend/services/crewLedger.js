@@ -44,14 +44,18 @@ const CANCEL_PARTIAL_REFUND_RATE = 0.5;
  */
 function quoteShiftEscrow({ totalPay, workersNeeded, isSOS }) {
   const rate = isSOS ? SOS_COMMISSION : STANDARD_COMMISSION;
-  const commissionPerWorker = Math.round(totalPay * rate);
-  const perWorker = totalPay + commissionPerWorker;
+  // Redondeo round-half-up para que la comisión nunca quede por debajo
+  // del cálculo nominal (preferimos que Crew gane 1 peso por shift, no que pierda).
+  const payoutPerWorker = Math.round(totalPay);
+  const commissionPerWorker = Math.round(payoutPerWorker * rate);
+  const perWorker = payoutPerWorker + commissionPerWorker;
+  const wn = Number(workersNeeded) || 1;
   return {
     commissionRate: rate,
     commissionPerWorker,
-    payoutPerWorker: totalPay,
+    payoutPerWorker,
     perWorkerTotal: perWorker,
-    totalReserveNeeded: perWorker * workersNeeded,
+    totalReserveNeeded: perWorker * wn,
   };
 }
 
@@ -69,10 +73,40 @@ async function depositBusinessWallet({ businessId, amount, idempotencyKey, note,
     err.code = 'AMOUNT_BELOW_MIN'; throw err;
   }
 
-  // Idempotencia: si ya existe una txn con esa key, devolverla (no duplicar)
+  // Idempotencia robusta: insertamos PRIMERO el ledger (con índice único sparse
+  // en idempotencyKey). Dos requests simultáneos con la misma key generarán
+  // duplicate-key en la segunda — solo el ganador hace el $inc al wallet.
+  // Sin clave, no hay protección de idempotencia (best-effort para llamadas internas).
+  let txn;
   if (idempotencyKey) {
-    const existing = await CrewWalletTxn.findOne({ idempotencyKey });
-    if (existing) return { duplicated: true, txn: existing };
+    try {
+      txn = await CrewWalletTxn.create({
+        actorType: 'business', actorId: businessId,
+        kind: 'deposit', direction: 'in', amount,
+        // balanceAfter/pendingAfter se completan tras el $inc — los dejamos null
+        // por ahora y los actualizamos al final.
+        balanceAfter: null, pendingAfter: null,
+        idempotencyKey,
+        note: note || 'Recarga de billetera Crew',
+        performedBy: performedBy || { kind: 'system' },
+      });
+    } catch (e) {
+      if (e.code === 11000) {
+        // Otro request ganó la carrera y ya procesó esta recarga.
+        const existing = await CrewWalletTxn.findOne({ idempotencyKey });
+        return { duplicated: true, txn: existing };
+      }
+      throw e;
+    }
+  } else {
+    txn = await CrewWalletTxn.create({
+      actorType: 'business', actorId: businessId,
+      kind: 'deposit', direction: 'in', amount,
+      balanceAfter: null, pendingAfter: null,
+      idempotencyKey: null,
+      note: note || 'Recarga de billetera Crew',
+      performedBy: performedBy || { kind: 'system' },
+    });
   }
 
   const updated = await BusinessConfig.findByIdAndUpdate(
@@ -84,18 +118,16 @@ async function depositBusinessWallet({ businessId, amount, idempotencyKey, note,
     { new: true, select: 'crewWallet' },
   );
   if (!updated) {
+    // Rollback del ledger si el negocio no existe — sin esto quedaría un txn
+    // huérfano que mostraría una recarga que nunca acreditamos.
+    await CrewWalletTxn.deleteOne({ _id: txn._id }).catch(() => {});
     const err = new Error('Negocio no encontrado'); err.code = 'BIZ_NOT_FOUND'; throw err;
   }
 
-  const txn = await CrewWalletTxn.create({
-    actorType: 'business', actorId: businessId,
-    kind: 'deposit', direction: 'in', amount,
-    balanceAfter: updated.crewWallet.balance,
-    pendingAfter: updated.crewWallet.pendingBalance,
-    idempotencyKey: idempotencyKey || null,
-    note: note || 'Recarga de billetera Crew',
-    performedBy: performedBy || { kind: 'system' },
-  });
+  // Completar snapshot del balance en el ledger
+  txn.balanceAfter = updated.crewWallet.balance;
+  txn.pendingAfter = updated.crewWallet.pendingBalance;
+  await txn.save();
 
   return { duplicated: false, txn, wallet: updated.crewWallet };
 }
@@ -168,18 +200,26 @@ async function reserveShiftEscrow({ businessId, shift, performedBy }) {
  *     y la entrada espejo para el worker.
  */
 async function releaseBookingFunds({ bookingId, performedBy }) {
-  const booking = await ShiftBooking.findById(bookingId);
+  // Transición atómica de `payoutStatus`: `held|pending → released`.
+  // Solo el cliente que gana esta carrera continúa; los demás reciben
+  // `alreadyReleased`. Esto bloquea la race "complete + backfill simultáneos"
+  // que antes pagaba al worker dos veces.
+  const booking = await ShiftBooking.findOneAndUpdate(
+    { _id: bookingId, payoutStatus: { $in: ['held', 'pending'] } },
+    { $set: { payoutStatus: 'released', releasedAt: new Date() } },
+    { new: true },
+  );
+
   if (!booking) {
-    const err = new Error('Booking no encontrado'); err.code = 'BOOKING_NOT_FOUND'; throw err;
-  }
-  if (booking.payoutStatus === 'released') {
-    return { alreadyReleased: true, booking };
-  }
-  // Aceptamos 'held' (flujo nuevo con escrow) y 'pending' (default viejo de
-  // bookings creados antes del sistema de escrow). Cualquier otro estado
-  // (refunded, p.ej.) sí es un error.
-  if (!['held', 'pending'].includes(booking.payoutStatus)) {
-    const err = new Error(`Booking en estado ${booking.payoutStatus}, no se puede liberar`);
+    // No matcheó: o no existe, o ya estaba en `released`/otro estado.
+    const existing = await ShiftBooking.findById(bookingId).lean();
+    if (!existing) {
+      const err = new Error('Booking no encontrado'); err.code = 'BOOKING_NOT_FOUND'; throw err;
+    }
+    if (existing.payoutStatus === 'released') {
+      return { alreadyReleased: true, booking: existing };
+    }
+    const err = new Error(`Booking en estado ${existing.payoutStatus}, no se puede liberar`);
     err.code = 'INVALID_STATE'; throw err;
   }
 
@@ -233,11 +273,8 @@ async function releaseBookingFunds({ bookingId, performedBy }) {
     { new: true, select: 'wallet stats' },
   );
 
-  // 3. Actualizar booking + shift
-  booking.payoutStatus = 'released';
-  booking.releasedAt = new Date();
-  await booking.save();
-
+  // 3. Actualizar shift (payoutStatus del booking ya quedó en released en el
+  // findOneAndUpdate inicial — no lo tocamos de nuevo)
   await ShiftPost.findByIdAndUpdate(booking.shiftId, {
     $inc: { releasedAmount: totalOut, reservedAmount: legacy ? 0 : -totalOut },
   });
@@ -320,19 +357,24 @@ function computeCancellationRefund({ hoursToShift, amountToReturn }) {
  * Para los con booking, ese flujo va por cancelBooking() aparte.
  */
 async function cancelShiftPost({ shiftId, reason, performedBy }) {
-  const shift = await ShiftPost.findById(shiftId);
+  // Transición atómica: solo el primer caller que matchea pasa el shift a cancelled.
+  // Esto evita el caso "dos cancelaciones simultáneas" que liberarían escrow dos veces.
+  const shift = await ShiftPost.findOneAndUpdate(
+    { _id: shiftId, status: { $nin: ['cancelled', 'completed'] } },
+    { $set: { status: 'cancelled', cancelReason: reason || 'Cancelado por el negocio' } },
+    { new: true },
+  );
   if (!shift) {
-    const err = new Error('Turno no encontrado'); err.code = 'SHIFT_NOT_FOUND'; throw err;
-  }
-  if (['cancelled', 'completed'].includes(shift.status)) {
-    const err = new Error(`Turno ya está ${shift.status}`); err.code = 'INVALID_STATE'; throw err;
+    const existing = await ShiftPost.findById(shiftId).lean();
+    if (!existing) { const err = new Error('Turno no encontrado'); err.code = 'SHIFT_NOT_FOUND'; throw err; }
+    const err = new Error(`Turno ya está ${existing.status}`); err.code = 'INVALID_STATE'; throw err;
   }
 
   const start = new Date(shift.date);
   const hoursToShift = (start.getTime() - Date.now()) / (1000 * 60 * 60);
 
-  // Cupos sin booking aún (libres) — esos sí devolvemos
-  const freeSlots = shift.workersNeeded - shift.workersBooked;
+  // Cupos libres (sin booking) — los devolvemos según política.
+  const freeSlots = Math.max(0, shift.workersNeeded - shift.workersBooked);
   const quote = quoteShiftEscrow({
     totalPay: shift.totalPay,
     workersNeeded: 1,
@@ -345,14 +387,20 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
     amountToReturn: freeReserve,
   });
 
-  // Mover dinero
-  const update = { $inc: { 'crewWallet.pendingBalance': -freeReserve } };
-  if (refund > 0) update.$inc['crewWallet.balance'] = refund;
-  const biz = await BusinessConfig.findByIdAndUpdate(shift.businessId, update, {
-    new: true, select: 'crewWallet',
-  });
+  let biz = await BusinessConfig.findById(shift.businessId).select('crewWallet').lean();
+  if (!biz) {
+    const err = new Error('Negocio no encontrado'); err.code = 'BIZ_NOT_FOUND'; throw err;
+  }
 
-  // Ledger: refund + penalty
+  // 1) Mover dinero de los cupos libres
+  if (freeReserve > 0) {
+    const update = { $inc: { 'crewWallet.pendingBalance': -freeReserve } };
+    if (refund > 0) update.$inc['crewWallet.balance'] = refund;
+    biz = await BusinessConfig.findByIdAndUpdate(shift.businessId, update, {
+      new: true, select: 'crewWallet',
+    });
+  }
+
   const ledgerEntries = [];
   if (refund > 0) {
     ledgerEntries.push({
@@ -360,9 +408,9 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
       kind: 'shift_refund', direction: 'in', amount: refund,
       balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
       shiftId: shift._id,
-      idempotencyKey: `shift_refund:${shift._id}`,
-      note: `Devolución por cancelación (${Math.round(refundRate * 100)}%)`,
-      metadata: { hoursToShift, refundRate, freeSlots },
+      idempotencyKey: `shift_refund_free:${shift._id}`,
+      note: `Devolución de cupos libres (${Math.round(refundRate * 100)}%)`,
+      metadata: { hoursToShift, refundRate, freeSlots, scope: 'free_slots' },
       performedBy: performedBy || { kind: 'system' },
     });
   }
@@ -373,25 +421,185 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
       kind: 'cancellation_penalty', direction: 'out', amount: penalty,
       balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
       shiftId: shift._id,
-      idempotencyKey: `shift_penalty:${shift._id}`,
+      idempotencyKey: `shift_penalty_free:${shift._id}`,
       note: `Penalización por cancelación tardía (${Math.round((1 - refundRate) * 100)}%)`,
-      metadata: { hoursToShift, refundRate, freeSlots },
+      metadata: { hoursToShift, refundRate, freeSlots, scope: 'free_slots' },
       performedBy: performedBy || { kind: 'system' },
     });
   }
+
+  // 2) Cancelar bookings ACTIVOS del shift y refundar/compensar:
+  //    - Si la cancelación es <2h o el booking ya hizo check-in: pagamos al worker
+  //      como compensación (no le robamos el día). El escrow se libera al worker.
+  //    - Si la cancelación es ≥24h y el booking no hizo check-in: refund 100% al negocio.
+  //    - Entre medias (2h-24h): refund parcial 50% + 50% compensa al worker.
+  const activeBookings = await ShiftBooking.find({
+    shiftId: shift._id,
+    status: { $in: ['confirmed', 'checked_in'] },
+    payoutStatus: { $in: ['held', 'pending'] },
+  });
+
+  let workerCompensations = 0;
+  let bookingRefunds = 0;
+  for (const bk of activeBookings) {
+    const bookingTotal = (bk.agreedTotal || 0) + (bk.agreedCommission || 0);
+    let toWorker = 0;
+    let toBusiness = 0;
+    if (bk.status === 'checked_in' || hoursToShift < CANCEL_PARTIAL_REFUND_HOURS) {
+      // El worker estaba/iba con todo — le pagamos completo.
+      toWorker = bk.agreedTotal || 0;
+      toBusiness = 0; // perdió el escrow + comisión como penalización
+    } else if (hoursToShift >= CANCEL_FULL_REFUND_HOURS) {
+      toWorker = 0;
+      toBusiness = bookingTotal;
+    } else {
+      // Partial: 50% compensa al worker, 50% refund al negocio.
+      toWorker = Math.round((bk.agreedTotal || 0) * 0.5);
+      toBusiness = Math.round(bookingTotal * 0.5);
+    }
+    workerCompensations += toWorker;
+    bookingRefunds += toBusiness;
+
+    // Marcar booking como cancelled_by_business + payoutStatus refunded/released
+    await ShiftBooking.findOneAndUpdate(
+      { _id: bk._id, payoutStatus: { $in: ['held', 'pending'] } },
+      {
+        $set: {
+          status: 'cancelled_by_business',
+          payoutStatus: toWorker > 0 ? 'released' : 'refunded',
+          cancelledAt: new Date(),
+          cancelReason: reason || 'Shift cancelado por el negocio',
+          releasedAt: toWorker > 0 ? new Date() : null,
+        },
+      },
+    );
+
+    // Mover plata: del pending del business → balance del business (refund)
+    // y/o → wallet.balance del worker (compensación).
+    const deltaPending = -bookingTotal;
+    const deltaBizBalance = toBusiness;
+    biz = await BusinessConfig.findByIdAndUpdate(
+      shift.businessId,
+      { $inc: {
+        'crewWallet.pendingBalance': deltaPending,
+        'crewWallet.balance': deltaBizBalance,
+      } },
+      { new: true, select: 'crewWallet' },
+    );
+    if (toWorker > 0) {
+      const w = await Worker.findByIdAndUpdate(
+        bk.workerId,
+        { $inc: { 'wallet.balance': toWorker, 'stats.totalEarned': toWorker } },
+        { new: true, select: 'wallet' },
+      );
+      ledgerEntries.push({
+        actorType: 'worker', actorId: bk.workerId,
+        counterpartType: 'business', counterpartId: shift.businessId,
+        kind: 'shift_release', direction: 'in', amount: toWorker,
+        balanceAfter: w.wallet.balance, pendingAfter: w.wallet.pendingBalance,
+        shiftId: shift._id, bookingId: bk._id,
+        idempotencyKey: `shift_compensation:${bk._id}`,
+        note: bk.status === 'checked_in'
+          ? 'Compensación por cancelación tras tu check-in'
+          : 'Compensación por cancelación tardía del negocio',
+        metadata: { cancelledBookingId: String(bk._id), hoursToShift },
+        performedBy: performedBy || { kind: 'system' },
+      });
+    }
+    if (toBusiness > 0) {
+      ledgerEntries.push({
+        actorType: 'business', actorId: shift.businessId,
+        kind: 'shift_refund', direction: 'in', amount: toBusiness,
+        balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
+        shiftId: shift._id, bookingId: bk._id,
+        idempotencyKey: `shift_refund_booking:${bk._id}`,
+        note: 'Devolución por cancelación (cupo asignado)',
+        metadata: { hoursToShift },
+        performedBy: performedBy || { kind: 'system' },
+      });
+    }
+    const bookingPenalty = bookingTotal - toWorker - toBusiness;
+    if (bookingPenalty > 0) {
+      ledgerEntries.push({
+        actorType: 'business', actorId: shift.businessId,
+        counterpartType: 'platform',
+        kind: 'cancellation_penalty', direction: 'out', amount: bookingPenalty,
+        balanceAfter: biz.crewWallet.balance, pendingAfter: biz.crewWallet.pendingBalance,
+        shiftId: shift._id, bookingId: bk._id,
+        idempotencyKey: `shift_penalty_booking:${bk._id}`,
+        note: 'Penalización por cancelación tardía (cupo asignado)',
+        metadata: { hoursToShift },
+        performedBy: performedBy || { kind: 'system' },
+      });
+    }
+  }
+
   if (ledgerEntries.length) await CrewWalletTxn.insertMany(ledgerEntries);
 
-  shift.status = 'cancelled';
-  shift.cancelReason = reason || 'Cancelado por el negocio';
-  shift.reservedAmount = Math.max(0, shift.reservedAmount - freeReserve);
-  shift.refundedAmount = (shift.refundedAmount || 0) + refund;
-  await shift.save();
+  // Actualizar totales del shift
+  const totalReleased = activeBookings.reduce((s, bk) => s + (bk.agreedTotal + (bk.agreedCommission || 0)), 0);
+  await ShiftPost.findByIdAndUpdate(shift._id, {
+    $inc: {
+      reservedAmount: -(freeReserve + totalReleased),
+      refundedAmount: refund + bookingRefunds,
+      releasedAmount: workerCompensations,
+    },
+  });
 
   return {
-    shift, refund, penalty, refundRate, hoursToShift,
-    affectedBookings: shift.workersBooked,
+    shift,
+    refund: refund + bookingRefunds,
+    penalty: penalty + (totalReleased - workerCompensations - bookingRefunds),
+    workerCompensations,
+    refundRate, hoursToShift,
+    cancelledBookings: activeBookings.length,
+    affectedBookings: activeBookings.length,
     wallet: biz.crewWallet,
   };
+}
+
+/**
+ * Auto-libera bookings que el worker terminó (hizo checkout) pero el negocio
+ * nunca confirmó. Cierra el agujero por el cual un negocio podía dejar al
+ * worker sin pago simplemente no pulsando "completar".
+ *
+ * @param {number} maxAgeHours - horas desde el workerCheckoutAt antes de auto-liberar (default 24)
+ * @param {number} limit - tope de bookings por corrida para no saturar la DB
+ * @returns {Promise<{processed:number, released:number, failed:Array}>}
+ */
+async function autoReleaseStaleBookings({ maxAgeHours = 24, limit = 200, performedBy } = {}) {
+  const cutoff = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000);
+  const stale = await ShiftBooking.find({
+    status: 'checked_in',
+    workerCheckoutAt: { $ne: null, $lte: cutoff },
+    payoutStatus: { $in: ['held', 'pending'] },
+  }).limit(limit).select('_id').lean();
+
+  const results = { processed: 0, released: 0, failed: [] };
+  for (const stub of stale) {
+    try {
+      const r = await releaseBookingFunds({
+        bookingId: stub._id,
+        performedBy: performedBy || { kind: 'system' },
+      });
+      // También pasar el booking a `completed` (no se quedó en `checked_in` zombie)
+      await ShiftBooking.findOneAndUpdate(
+        { _id: stub._id, status: 'checked_in' },
+        {
+          $set: {
+            status: 'completed',
+            completedAt: new Date(),
+            confirmedByBusinessAt: null, // explícito: no fue confirmación manual
+          },
+        },
+      );
+      if (!r.alreadyReleased) results.released++;
+    } catch (e) {
+      results.failed.push({ bookingId: String(stub._id), error: e.message, code: e.code });
+    }
+    results.processed++;
+  }
+  return results;
 }
 
 /* ─────────────────────────────────────────────
@@ -401,7 +609,7 @@ async function cancelShiftPost({ shiftId, reason, performedBy }) {
 /**
  * Solicita un retiro: bloquea saldo en pendingBalance del worker.
  */
-async function requestWithdrawal({ workerId, amount, payoutMethod }) {
+async function requestWithdrawal({ workerId, amount, payoutMethod, clientIdempotencyKey }) {
   if (!amount || amount < MIN_WITHDRAWAL) {
     const err = new Error(`Retiro mínimo: ${MIN_WITHDRAWAL} COP`);
     err.code = 'AMOUNT_BELOW_MIN'; throw err;
@@ -410,6 +618,19 @@ async function requestWithdrawal({ workerId, amount, payoutMethod }) {
     const err = new Error('Faltan datos del método de pago'); err.code = 'MISSING_PAYOUT'; throw err;
   }
 
+  // Anti doble-click: si el frontend manda un clientIdempotencyKey y ya existe
+  // un request con esa key, devolvemos el existente (no creamos otro retiro).
+  if (clientIdempotencyKey) {
+    const existingTxn = await CrewWalletTxn.findOne({
+      idempotencyKey: `withdrawal_request_client:${clientIdempotencyKey}`,
+    }).populate('withdrawalId').lean();
+    if (existingTxn?.withdrawalId) {
+      return { duplicated: true, request: existingTxn.withdrawalId };
+    }
+  }
+
+  // Reservamos saldo atómicamente. Si no alcanza el $gte filtra fuera y
+  // findOneAndUpdate devuelve null.
   const worker = await Worker.findOneAndUpdate(
     { _id: workerId, 'wallet.balance': { $gte: amount } },
     {
@@ -430,15 +651,36 @@ async function requestWithdrawal({ workerId, amount, payoutMethod }) {
     workerId, amount, payoutMethod,
   });
 
-  await CrewWalletTxn.create({
-    actorType: 'worker', actorId: workerId,
-    kind: 'withdrawal_request', direction: 'out', amount,
-    balanceAfter: worker.wallet.balance, pendingAfter: worker.wallet.pendingBalance,
-    withdrawalId: request._id,
-    idempotencyKey: `withdrawal_request:${request._id}`,
-    note: 'Retiro solicitado',
-    performedBy: { kind: 'worker', id: workerId },
-  });
+  try {
+    await CrewWalletTxn.create({
+      actorType: 'worker', actorId: workerId,
+      kind: 'withdrawal_request', direction: 'out', amount,
+      balanceAfter: worker.wallet.balance, pendingAfter: worker.wallet.pendingBalance,
+      withdrawalId: request._id,
+      // Key dual: por request (siempre única) + opcional la del cliente
+      idempotencyKey: clientIdempotencyKey
+        ? `withdrawal_request_client:${clientIdempotencyKey}`
+        : `withdrawal_request:${request._id}`,
+      note: 'Retiro solicitado',
+      performedBy: { kind: 'worker', id: workerId },
+    });
+  } catch (e) {
+    if (e.code === 11000 && clientIdempotencyKey) {
+      // Otro request idéntico ya creó el ledger entry — revertimos lo nuestro.
+      await CrewWithdrawalRequest.deleteOne({ _id: request._id }).catch(() => {});
+      await Worker.updateOne(
+        { _id: workerId },
+        { $inc: { 'wallet.balance': amount, 'wallet.pendingBalance': -amount } },
+      ).catch(() => {});
+      const existingTxn = await CrewWalletTxn.findOne({
+        idempotencyKey: `withdrawal_request_client:${clientIdempotencyKey}`,
+      }).populate('withdrawalId').lean();
+      if (existingTxn?.withdrawalId) {
+        return { duplicated: true, request: existingTxn.withdrawalId };
+      }
+    }
+    throw e;
+  }
 
   return { request, wallet: worker.wallet };
 }
@@ -447,11 +689,27 @@ async function requestWithdrawal({ workerId, amount, payoutMethod }) {
  * SuperAdmin marca un retiro como pagado.
  */
 async function markWithdrawalPaid({ withdrawalId, externalReference, paidBy }) {
-  const req = await CrewWithdrawalRequest.findById(withdrawalId);
-  if (!req) { const e = new Error('Retiro no encontrado'); e.code = 'NOT_FOUND'; throw e; }
-  if (req.status === 'paid') return { alreadyPaid: true, request: req };
-  if (req.status !== 'pending' && req.status !== 'processing') {
-    const e = new Error(`Retiro en estado ${req.status}`); e.code = 'INVALID_STATE'; throw e;
+  // Transición atómica del status: solo el primer caller que matchea
+  // (pending|processing) pasa a paid. Esto bloquea el doble-click del SuperAdmin
+  // que antes podía debitar pendingBalance dos veces.
+  const req = await CrewWithdrawalRequest.findOneAndUpdate(
+    { _id: withdrawalId, status: { $in: ['pending', 'processing'] } },
+    {
+      $set: {
+        status: 'paid',
+        paidAt: new Date(),
+        paidBy: paidBy || null,
+        externalReference: externalReference || null,
+      },
+    },
+    { new: true },
+  );
+
+  if (!req) {
+    const existing = await CrewWithdrawalRequest.findById(withdrawalId).lean();
+    if (!existing) { const e = new Error('Retiro no encontrado'); e.code = 'NOT_FOUND'; throw e; }
+    if (existing.status === 'paid') return { alreadyPaid: true, request: existing };
+    const e = new Error(`Retiro en estado ${existing.status}`); e.code = 'INVALID_STATE'; throw e;
   }
 
   const worker = await Worker.findByIdAndUpdate(
@@ -459,12 +717,6 @@ async function markWithdrawalPaid({ withdrawalId, externalReference, paidBy }) {
     { $inc: { 'wallet.pendingBalance': -req.amount } },
     { new: true, select: 'wallet' },
   );
-
-  req.status = 'paid';
-  req.paidAt = new Date();
-  req.paidBy = paidBy || null;
-  req.externalReference = externalReference || null;
-  await req.save();
 
   await CrewWalletTxn.create({
     actorType: 'worker', actorId: req.workerId,
@@ -532,6 +784,7 @@ module.exports = {
   reserveShiftEscrow,
   releaseBookingFunds,
   cancelShiftPost,
+  autoReleaseStaleBookings,
   requestWithdrawal,
   markWithdrawalPaid,
   rejectWithdrawal,

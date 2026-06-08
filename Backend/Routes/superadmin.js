@@ -625,6 +625,26 @@ router.post('/crew/backfill-payouts', requireRole('admin'), async (req, res) => 
   }
 });
 
+// POST /api/superadmin/crew/auto-release-stale — auto-libera bookings que el
+// worker terminó (checked_in con workerCheckoutAt) pero el negocio nunca confirmó.
+// Pensado para ejecutarse cada N minutos desde un cron / scheduled task.
+// Query params: ?maxAgeHours=24 (default), ?limit=200 (default).
+router.post('/crew/auto-release-stale', requireRole('admin'), async (req, res) => {
+  try {
+    const maxAgeHours = Number(req.query.maxAgeHours || req.body?.maxAgeHours || 24);
+    const limit = Number(req.query.limit || req.body?.limit || 200);
+    const result = await crewLedger.autoReleaseStaleBookings({
+      maxAgeHours,
+      limit,
+      performedBy: { kind: 'superadmin', id: req.user.id },
+    });
+    res.json({ success: true, ...result, maxAgeHours, limit });
+  } catch (e) {
+    logger.error('Error in auto-release-stale', e, req);
+    res.status(500).json({ message: e.message || 'Error al auto-liberar' });
+  }
+});
+
 // GET /api/superadmin/crew/treasury — visión global de plata en Crew
 router.get('/crew/treasury', async (req, res) => {
   try {

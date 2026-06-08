@@ -58,7 +58,7 @@ function tenantAuth(req, res, next) {
 
       // Verify the authenticated user belongs to this business
       const userBusinessId = req.user.businessId;
-      if (userBusinessId && resolvedBusinessId && 
+      if (userBusinessId && resolvedBusinessId &&
           userBusinessId.toString() !== resolvedBusinessId.toString()) {
         logger.warn('Tenant isolation violation attempt', {
           userId: req.user.id,
@@ -67,6 +67,11 @@ function tenantAuth(req, res, next) {
         }, req);
         return res.status(403).json({ message: 'No tienes acceso a este negocio' });
       }
+
+      // Exponer siempre el businessId resuelto y validado a downstream handlers.
+      // Antes solo se seteaba en algunos paths, lo que forzaba a cada handler a
+      // hacer `req.resolvedBusinessId || req.user?.businessId || req.body.businessId`.
+      req.resolvedBusinessId = resolvedBusinessId || userBusinessId;
 
       next();
     } catch (error) {
