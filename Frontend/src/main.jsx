@@ -75,6 +75,75 @@ import { ThemeProvider } from "./Context/ThemeContext";
 import ErrorBoundary from "./Components/ErrorBoundary";
 import App from "./App.jsx";
 
+// ─────────────────────────────────────────────
+// Auto-recovery cuando el HTML quedó cacheado apuntando a un chunk JS/CSS
+// viejo que ya no existe tras un deploy. Síntomas típicos:
+//   - "Failed to fetch dynamically imported module: .../assets/XXX-<hash>.js"
+//   - "Refused to apply style ... MIME type ('text/html') is not a supported
+//      stylesheet MIME type" (cuando el server hace SPA fallback al asset)
+//
+// Para no entrar en loop si el problema es real, solo recargamos UNA vez por
+// sesión y dejamos un flag en sessionStorage. Tras 5s OK, reseteamos el flag.
+// ─────────────────────────────────────────────
+if (typeof window !== 'undefined') {
+  const RELOAD_FLAG = '__crew_chunk_reload_attempted';
+
+  const isChunkLoadError = (err) => {
+    const msg = String(err?.message || err || '');
+    return (
+      msg.includes('Failed to fetch dynamically imported module') ||
+      msg.includes('Importing a module script failed') ||
+      msg.includes('Loading chunk') ||
+      err?.name === 'ChunkLoadError'
+    );
+  };
+
+  // Para CSS/JS cargados por <link>/<script>: el navegador NO bubble-ea el
+  // error y NO dispara unhandledrejection. Hay que usar el listener en fase
+  // de captura ({ capture: true }) y mirar e.target.
+  const isAssetTagFailure = (event) => {
+    const t = event.target;
+    if (!t || !t.tagName) return null;
+    const tag = t.tagName.toLowerCase();
+    if (tag === 'link' && t.href && /\/assets\//.test(t.href)) return t.href;
+    if (tag === 'script' && t.src && /\/assets\//.test(t.src)) return t.src;
+    return null;
+  };
+
+  const reload = (why) => {
+    if (sessionStorage.getItem(RELOAD_FLAG)) return; // ya intentamos
+    sessionStorage.setItem(RELOAD_FLAG, why || '1');
+    if ('caches' in window) {
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).finally(() => {
+        window.location.reload();
+      });
+    } else {
+      window.location.reload();
+    }
+  };
+
+  // 1) Dynamic imports rechazados — lazy() de React lo emite por acá
+  window.addEventListener('unhandledrejection', (event) => {
+    if (isChunkLoadError(event.reason)) reload('dynimport');
+  });
+
+  // 2) Errores JS síncronos
+  window.addEventListener('error', (event) => {
+    if (isChunkLoadError(event.error || event.message)) {
+      reload('jserror');
+      return;
+    }
+    // 3) <link>/<script> que fallaron al cargar (CSS roto incluido).
+    // Solo se captura en fase capture y el evento NO bubble-ea.
+    const url = isAssetTagFailure(event);
+    if (url) reload('asset:' + url.slice(-40));
+  }, true);
+
+  // Borra el flag tras 5s OK — así, si más tarde hay otro deploy en la misma
+  // sesión, volvemos a poder intentar el auto-reload.
+  setTimeout(() => sessionStorage.removeItem(RELOAD_FLAG), 5000);
+}
+
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
 // Spinner MenuBy - Liviano y Profesional

@@ -1,27 +1,33 @@
+# index.html nunca debe cachearse — siempre necesitamos la versión más nueva
+# para que el navegador resuelva los hashes de assets correctos.
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
 # Landing pages - allow indexing
+# Cache muy corto (60s) para que un deploy se propague rápido.
 /
   X-Robots-Tag: index, follow
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=60, must-revalidate
 
 /features
   X-Robots-Tag: index, follow
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=60, must-revalidate
 
 /pricing
   X-Robots-Tag: index, follow
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=60, must-revalidate
 
 /demo
   X-Robots-Tag: index, follow
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=60, must-revalidate
 
 /contact
   X-Robots-Tag: index, follow
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=60, must-revalidate
 
 /register
   X-Robots-Tag: index, follow
-  Cache-Control: public, max-age=3600
+  Cache-Control: public, max-age=60, must-revalidate
 
 /blog/*
   X-Robots-Tag: index, follow
