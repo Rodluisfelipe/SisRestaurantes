@@ -134,7 +134,7 @@ export default function CrewApp() {
                     <motion.span
                       layoutId="crew-nav-dot"
                       transition={{ type: 'spring', stiffness: 450, damping: 28 }}
-                      className="absolute -top-1 w-5 h-[3px] rounded-full bg-gradient-to-r from-red-500 to-orange-400"
+                      className="absolute -top-1 w-5 h-[3px] rounded-full bg-gradient-to-r from-red-500 to-red-400"
                       style={{ boxShadow: '0 0 10px rgba(239,68,68,0.7)' }}
                     />
                   )}

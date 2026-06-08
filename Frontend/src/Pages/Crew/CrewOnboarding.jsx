@@ -153,7 +153,7 @@ export default function CrewOnboarding({ onDone }) {
           {/* Progress bar glow */}
           <div className="relative h-1 bg-white/[0.08] rounded-full overflow-hidden">
             <motion.div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 via-orange-500 to-amber-400 rounded-full"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-600 via-red-500 to-red-400 rounded-full"
               initial={{ width: 0 }}
               animate={{ width: `${((step + 1) / 3) * 100}%` }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
@@ -213,7 +213,7 @@ export default function CrewOnboarding({ onDone }) {
                           <motion.span
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            className="w-5 h-5 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-md"
+                            className="w-5 h-5 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-md"
                           >
                             <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
                           </motion.span>
@@ -263,7 +263,7 @@ export default function CrewOnboarding({ onDone }) {
                               onClick={() => toggleAvail(d.i, p.key)}
                               className={`py-2 rounded-xl text-center transition-all ${
                                 on
-                                  ? 'bg-gradient-to-br from-red-500/30 to-orange-500/20 border border-red-500/50 text-white shadow-[0_0_12px_-4px_rgba(239,68,68,0.3)]'
+                                  ? 'bg-red-500/20 border border-red-500/50 text-white shadow-[0_0_12px_-4px_rgba(239,68,68,0.3)]'
                                   : 'bg-white/[0.04] border border-white/[0.08] text-white/40 hover:text-white/60 hover:border-white/[0.15]'
                               }`}
                               title={p.range}
@@ -283,17 +283,17 @@ export default function CrewOnboarding({ onDone }) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="mt-5 flex items-start gap-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] cursor-pointer backdrop-blur-sm"
+                className="mt-5 flex items-start gap-3 p-4 rounded-2xl border border-red-500/30 bg-red-500/[0.08] cursor-pointer backdrop-blur-sm"
               >
                 <input
                   type="checkbox"
                   checked={acceptsSOS}
                   onChange={(e) => setAcceptsSOS(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-amber-500 rounded"
+                  className="mt-0.5 w-4 h-4 accent-red-500 rounded"
                 />
                 <div className="flex-1">
-                  <p className="text-[13px] font-bold text-amber-200">Acepto turnos de último minuto</p>
-                  <p className="text-[11px] text-amber-300/60 mt-0.5 leading-relaxed">
+                  <p className="text-[13px] font-bold text-white/90">Acepto turnos de último minuto</p>
+                  <p className="text-[11px] text-white/50 mt-0.5 leading-relaxed">
                     Turnos con bonificación extra. Te llegarán con prioridad.
                   </p>
                 </div>
@@ -316,7 +316,7 @@ export default function CrewOnboarding({ onDone }) {
                         onClick={() => setCity(c)}
                         className={`py-3 rounded-2xl text-[13px] font-bold transition-all ${
                           city === c
-                            ? 'bg-gradient-to-br from-red-500/20 to-orange-500/15 border border-red-500/50 text-white shadow-[0_0_20px_-6px_rgba(239,68,68,0.35)]'
+                            ? 'bg-red-500/15 border border-red-500/50 text-white shadow-[0_0_20px_-6px_rgba(239,68,68,0.35)]'
                             : 'bg-white/[0.04] text-white/60 border border-white/[0.10] hover:border-white/[0.20] hover:text-white'
                         }`}
                       >
@@ -341,13 +341,13 @@ export default function CrewOnboarding({ onDone }) {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
-                className="mt-6 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.08] backdrop-blur-sm"
+                className="mt-6 p-4 rounded-2xl border border-white/[0.12] bg-white/[0.05] backdrop-blur-sm"
               >
                 <div className="flex items-start gap-3">
                   <span className="text-[20px]">🚀</span>
                   <div>
-                    <p className="text-[13px] font-bold text-emerald-300">Casi listo para empezar</p>
-                    <p className="text-[12px] text-emerald-300/60 mt-1 leading-relaxed">
+                    <p className="text-[13px] font-bold text-white/90">Casi listo para empezar</p>
+                    <p className="text-[12px] text-white/50 mt-1 leading-relaxed">
                       Cada turno completado suma a tu historial profesional y sube tu nivel.
                     </p>
                   </div>

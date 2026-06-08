@@ -11,20 +11,20 @@ function formatDate(d) {
 }
 
 const APP_STATUS = {
-  pending: { label: 'En revisión', tone: 'amber' },
-  accepted: { label: 'Aceptada', tone: 'emerald' },
-  rejected: { label: 'No seleccionado', tone: 'slate' },
-  cancelled_by_worker: { label: 'Cancelada', tone: 'slate' },
-  expired: { label: 'Expirada', tone: 'slate' },
+  pending: { label: 'En revisión', tone: 'pending' },
+  accepted: { label: 'Aceptada', tone: 'active' },
+  rejected: { label: 'No seleccionado', tone: 'muted' },
+  cancelled_by_worker: { label: 'Cancelada', tone: 'muted' },
+  expired: { label: 'Expirada', tone: 'muted' },
 };
 
 const BOOK_STATUS = {
-  confirmed: { label: 'Confirmado', tone: 'blue' },
-  checked_in: { label: 'En curso', tone: 'emerald' },
-  completed: { label: 'Completado', tone: 'cyan' },
-  no_show: { label: 'Inasistencia', tone: 'red' },
-  cancelled_by_worker: { label: 'Cancelado por ti', tone: 'slate' },
-  cancelled_by_business: { label: 'Cancelado por el negocio', tone: 'slate' },
+  confirmed: { label: 'Confirmado', tone: 'active' },
+  checked_in: { label: 'En curso', tone: 'active' },
+  completed: { label: 'Completado', tone: 'done' },
+  no_show: { label: 'Inasistencia', tone: 'danger' },
+  cancelled_by_worker: { label: 'Cancelado por ti', tone: 'muted' },
+  cancelled_by_business: { label: 'Cancelado por el negocio', tone: 'muted' },
 };
 
 export default function CrewMyShifts() {
@@ -56,11 +56,11 @@ export default function CrewMyShifts() {
   const historyBookings = bookings.filter((b) => ['completed', 'no_show', 'cancelled_by_worker', 'cancelled_by_business'].includes(b.status));
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-geist pb-24">
-      <header className="bg-white border-b border-slate-200">
+    <div className="min-h-screen bg-[#0a0a14] text-white font-geist pb-24">
+      <header className="sticky top-0 z-30 bg-[#0a0a14]/80 backdrop-blur-2xl border-b border-white/[0.06]">
         <div className="max-w-md mx-auto px-5 pt-5 pb-3">
-          <h1 className="text-[20px] font-extrabold text-slate-900">Mis turnos</h1>
-          <p className="text-[12px] text-slate-500 mt-0.5">Revisa el estado de tus postulaciones y turnos asignados</p>
+          <h1 className="text-[20px] font-extrabold text-white">Mis turnos</h1>
+          <p className="text-[12px] text-white/40 mt-0.5">Revisa el estado de tus postulaciones y turnos asignados</p>
         </div>
         <div className="max-w-md mx-auto px-5 pb-3 flex gap-1.5 overflow-x-auto">
           {[
@@ -73,14 +73,14 @@ export default function CrewMyShifts() {
               onClick={() => setTab(t.id)}
               className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition whitespace-nowrap ${
                 tab === t.id
-                  ? 'bg-red-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-red-500 text-white shadow-[0_4px_16px_-4px_rgba(239,68,68,0.4)]'
+                  : 'bg-white/[0.06] text-white/50 hover:bg-white/[0.10] border border-white/[0.08]'
               }`}
             >
               {t.label}
               {t.count > 0 && (
                 <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full tabular-nums ${
-                  tab === t.id ? 'bg-white/25' : 'bg-white border border-slate-200'
+                  tab === t.id ? 'bg-white/25' : 'bg-white/[0.10] border border-white/[0.08]'
                 }`}>{t.count}</span>
               )}
             </button>
@@ -92,7 +92,7 @@ export default function CrewMyShifts() {
         {loading && (
           <div className="space-y-3 animate-pulse">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-32 bg-white border border-slate-200 rounded-2xl" />
+              <div key={i} className="h-32 rounded-2xl border border-white/[0.06] bg-white/[0.02]" />
             ))}
           </div>
         )}
@@ -139,15 +139,15 @@ export default function CrewMyShifts() {
 
 function EmptyState({ title, subtitle }) {
   return (
-    <div className="text-center py-12 px-6 bg-white border border-slate-200 rounded-2xl">
-      <div className="w-12 h-12 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-3">
-        <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+    <div className="text-center py-12 px-6 rounded-[22px] border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm">
+      <div className="w-12 h-12 mx-auto rounded-full bg-white/[0.06] border border-white/[0.08] flex items-center justify-center mb-3">
+        <svg className="w-6 h-6 text-white/25" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
           <rect x="9" y="3" width="6" height="4" rx="1"/>
         </svg>
       </div>
-      <p className="text-[14px] font-bold text-slate-700">{title}</p>
-      <p className="text-[12px] text-slate-500 mt-1">{subtitle}</p>
+      <p className="text-[14px] font-bold text-white/80">{title}</p>
+      <p className="text-[12px] text-white/35 mt-1">{subtitle}</p>
     </div>
   );
 }
@@ -160,21 +160,21 @@ function AppCard({ app }) {
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm"
+      className="rounded-[22px] border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm"
     >
       <div className="flex items-start justify-between mb-2 gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-extrabold text-slate-900 leading-tight">{shift.title || 'Turno'}</p>
-          <p className="text-[12px] text-slate-500 mt-0.5 truncate">{biz.businessName || 'Negocio'}</p>
+          <p className="text-[14px] font-extrabold text-white leading-tight">{shift.title || 'Turno'}</p>
+          <p className="text-[12px] text-white/40 mt-0.5 truncate">{biz.businessName || 'Negocio'}</p>
         </div>
         <StatusPill info={info} />
       </div>
-      <div className="flex items-center gap-3 text-[11px] text-slate-500">
+      <div className="flex items-center gap-3 text-[11px] text-white/40">
         <span>{formatDate(shift.date)}</span>
         <span>·</span>
         <span>{shift.hoursTotal || 0} horas</span>
         <span>·</span>
-        <span className="font-bold text-emerald-600">{formatCOP(shift.totalPay)}</span>
+        <span className="font-bold text-red-400">{formatCOP(shift.totalPay)}</span>
       </div>
     </motion.div>
   );
@@ -188,27 +188,27 @@ function BookingCard({ booking, active, onCheckIn }) {
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`bg-white border rounded-2xl p-4 shadow-sm ${active ? 'border-red-300 shadow-red-500/10' : 'border-slate-200'}`}
+      className={`rounded-[22px] border p-4 backdrop-blur-sm ${active ? 'border-red-500/30 bg-red-500/[0.05] shadow-[0_4px_20px_-8px_rgba(239,68,68,0.2)]' : 'border-white/[0.08] bg-white/[0.03]'}`}
     >
       <div className="flex items-start justify-between mb-2 gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-extrabold text-slate-900 leading-tight">{shift.title || 'Turno'}</p>
-          <p className="text-[12px] text-slate-500 mt-0.5 truncate">{biz.businessName || 'Negocio'}</p>
+          <p className="text-[14px] font-extrabold text-white leading-tight">{shift.title || 'Turno'}</p>
+          <p className="text-[12px] text-white/40 mt-0.5 truncate">{biz.businessName || 'Negocio'}</p>
         </div>
         <StatusPill info={info} />
       </div>
 
-      <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-3">
+      <div className="flex items-center gap-3 text-[11px] text-white/40 mb-3">
         <span>{formatDate(shift.date)}</span>
         <span>·</span>
         <span>{booking.agreedHours} horas</span>
         <span>·</span>
-        <span className="font-bold text-emerald-600">{formatCOP(booking.agreedTotal)}</span>
+        <span className="font-bold text-red-400">{formatCOP(booking.agreedTotal)}</span>
       </div>
 
       {booking.businessId?.address && (
-        <div className="text-[11px] text-slate-500 mb-3 flex items-start gap-1.5">
-          <svg className="w-3.5 h-3.5 mt-0.5 shrink-0 text-slate-400" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
+        <div className="text-[11px] text-white/40 mb-3 flex items-start gap-1.5">
+          <svg className="w-3.5 h-3.5 mt-0.5 shrink-0 text-white/25" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
           <span className="line-clamp-2">{booking.businessId.address}</span>
         </div>
       )}
@@ -222,13 +222,13 @@ function BookingCard({ booking, active, onCheckIn }) {
         </button>
       )}
       {active && booking.status === 'checked_in' && (
-        <div className="text-center py-2 px-3 bg-emerald-50 border border-emerald-200 rounded-lg text-[12px] font-bold text-emerald-700">
+        <div className="text-center py-2 px-3 bg-red-500/10 border border-red-500/20 rounded-lg text-[12px] font-bold text-white/80">
           En turno · check-in registrado a las {new Date(booking.checkInAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
         </div>
       )}
 
       {booking.status === 'completed' && booking.xpAwarded > 0 && (
-        <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-[11px] font-semibold text-center text-slate-700">
+        <div className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-lg text-[11px] font-semibold text-center text-white/60">
           +{booking.xpAwarded} puntos de experiencia ganados
         </div>
       )}
@@ -238,15 +238,14 @@ function BookingCard({ booking, active, onCheckIn }) {
 
 function StatusPill({ info }) {
   const tones = {
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    red: 'bg-red-50 text-red-700 border-red-200',
-    blue: 'bg-blue-50 text-blue-700 border-blue-200',
-    cyan: 'bg-cyan-50 text-cyan-700 border-cyan-200',
-    slate: 'bg-slate-50 text-slate-600 border-slate-200',
+    pending: 'bg-white/[0.08] text-white/60 border-white/[0.12]',
+    active: 'bg-red-500/15 text-red-400 border-red-500/30',
+    done: 'bg-white/[0.06] text-white/50 border-white/[0.10]',
+    danger: 'bg-red-500/20 text-red-300 border-red-500/30',
+    muted: 'bg-white/[0.04] text-white/30 border-white/[0.06]',
   };
   return (
-    <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${tones[info.tone] || tones.slate}`}>
+    <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full border text-[10px] font-bold ${tones[info.tone] || tones.muted}`}>
       {info.label}
     </span>
   );

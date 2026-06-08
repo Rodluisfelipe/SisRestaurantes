@@ -15,8 +15,8 @@
 import { motion } from 'framer-motion';
 
 const VARIANTS = {
-  primary: 'from-red-500 via-red-500 to-orange-500 shadow-red-500/40 hover:shadow-red-500/60',
-  accent: 'from-violet-500 via-fuchsia-500 to-pink-500 shadow-fuchsia-500/40 hover:shadow-fuchsia-500/60',
+  primary: 'from-red-600 via-red-500 to-red-500 shadow-red-500/40 hover:shadow-red-500/60',
+  accent: 'from-red-400 via-red-500 to-red-700 shadow-red-500/40 hover:shadow-red-500/60',
   ghost: 'from-white/10 to-white/5 shadow-black/20',
 };
 

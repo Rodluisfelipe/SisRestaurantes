@@ -9,9 +9,9 @@
  *   - aurora: cyan → emerald → amber (más extraño, usar con moderación)
  */
 const VARIANTS = {
-  sunrise: 'bg-[linear-gradient(120deg,#ef4444_0%,#f97316_40%,#fbbf24_60%,#ef4444_100%)]',
-  cosmic: 'bg-[linear-gradient(120deg,#8b5cf6_0%,#d946ef_40%,#ec4899_60%,#8b5cf6_100%)]',
-  aurora: 'bg-[linear-gradient(120deg,#06b6d4_0%,#10b981_40%,#fbbf24_60%,#06b6d4_100%)]',
+  sunrise: 'bg-[linear-gradient(120deg,#dc2626_0%,#ef4444_40%,#ffffff_60%,#dc2626_100%)]',
+  cosmic: 'bg-[linear-gradient(120deg,#ffffff_0%,#ef4444_40%,#dc2626_60%,#ffffff_100%)]',
+  aurora: 'bg-[linear-gradient(120deg,#ef4444_0%,#f87171_40%,#fca5a5_60%,#ef4444_100%)]',
 };
 
 export default function GradientText({ children, variant = 'sunrise', className = '', as: Tag = 'span', animate = true }) {

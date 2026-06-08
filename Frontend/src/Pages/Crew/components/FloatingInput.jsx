@@ -33,7 +33,7 @@ export default function FloatingInput({
         className={`
           relative flex items-center w-full rounded-2xl border transition-all duration-200
           ${error
-            ? 'border-rose-400/60 bg-rose-500/[0.06]'
+            ? 'border-red-400/60 bg-red-500/[0.06]'
             : focused
               ? 'border-red-500/70 bg-white/[0.08] shadow-[0_0_0_4px_rgba(239,68,68,0.12)]'
               : 'border-white/[0.10] bg-white/[0.04] hover:border-white/[0.18]'}
@@ -90,7 +90,7 @@ export default function FloatingInput({
           </button>
         )}
       </div>
-      {error && <p className="mt-1.5 text-[11px] font-medium text-rose-300 pl-1">{error}</p>}
+      {error && <p className="mt-1.5 text-[11px] font-medium text-red-300 pl-1">{error}</p>}
     </div>
   );
 }

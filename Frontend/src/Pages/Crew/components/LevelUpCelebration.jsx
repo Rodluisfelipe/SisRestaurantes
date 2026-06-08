@@ -22,7 +22,7 @@ export default function LevelUpCelebration({ open, fromLevel, toLevel, onClose }
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-white/95 backdrop-blur-2xl"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-[#0a0a14]/95 backdrop-blur-2xl"
           onClick={onClose}
         >
           {/* Background animated mesh */}
@@ -33,7 +33,7 @@ export default function LevelUpCelebration({ open, fromLevel, toLevel, onClose }
             className="absolute inset-0 pointer-events-none"
           >
             <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-red-300/40 rounded-full blur-[100px]" />
-            <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-amber-300/40 rounded-full blur-[100px]" />
+            <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-400/20 rounded-full blur-[100px]" />
           </motion.div>
 
           <motion.div
@@ -89,7 +89,7 @@ export default function LevelUpCelebration({ open, fromLevel, toLevel, onClose }
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="text-[18px] font-extrabold text-slate-900"
+              className="text-[18px] font-extrabold text-white"
             >
               Nivel {toLevel} alcanzado
             </motion.p>
@@ -97,7 +97,7 @@ export default function LevelUpCelebration({ open, fromLevel, toLevel, onClose }
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8 }}
-              className="text-[13px] text-slate-500 mt-1"
+              className="text-[13px] text-white/50 mt-1"
             >
               Sigue completando turnos para subir aún más rápido
             </motion.p>

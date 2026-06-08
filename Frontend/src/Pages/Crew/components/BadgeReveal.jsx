@@ -3,22 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { burstConfetti } from './confettiBurst';
 
 const BADGE_INFO = {
-  first_shift: { label: 'Primer turno', desc: 'Tu primer turno completado con éxito', color: 'from-red-500 to-rose-600' },
-  '10_shifts': { label: '10 turnos', desc: 'Has completado 10 turnos', color: 'from-amber-500 to-orange-600' },
-  '100_hours': { label: '100 horas', desc: 'Acumulaste 100 horas de trabajo', color: 'from-emerald-500 to-teal-600' },
-  perfect_week: { label: 'Semana perfecta', desc: '5 turnos sin faltas en una semana', color: 'from-violet-500 to-purple-600' },
-  night_owl: { label: 'Búho nocturno', desc: '5 turnos nocturnos completados', color: 'from-indigo-600 to-blue-700' },
-  early_bird: { label: 'Madrugador', desc: '5 turnos matutinos completados', color: 'from-orange-400 to-amber-500' },
-  punctual: { label: 'Puntualidad', desc: '10 check-ins puntuales', color: 'from-cyan-500 to-blue-600' },
-  team_player: { label: 'Buen equipo', desc: 'Reconocido por colaborar', color: 'from-pink-500 to-rose-600' },
+  first_shift: { label: 'Primer turno', desc: 'Tu primer turno completado con éxito', color: 'from-red-500 to-red-700' },
+  '10_shifts': { label: '10 turnos', desc: 'Has completado 10 turnos', color: 'from-red-600 to-red-800' },
+  '100_hours': { label: '100 horas', desc: 'Acumulaste 100 horas de trabajo', color: 'from-red-400 to-red-600' },
+  perfect_week: { label: 'Semana perfecta', desc: '5 turnos sin faltas en una semana', color: 'from-red-500 to-red-700' },
+  night_owl: { label: 'Búho nocturno', desc: '5 turnos nocturnos completados', color: 'from-red-700 to-red-900' },
+  early_bird: { label: 'Madrugador', desc: '5 turnos matutinos completados', color: 'from-red-400 to-red-500' },
+  punctual: { label: 'Puntualidad', desc: '10 check-ins puntuales', color: 'from-red-500 to-red-600' },
+  team_player: { label: 'Buen equipo', desc: 'Reconocido por colaborar', color: 'from-red-500 to-red-700' },
   sos_hero: { label: 'Disponibilidad inmediata', desc: '3 turnos urgentes aceptados', color: 'from-red-600 to-red-800' },
-  explorer: { label: 'Explorador', desc: 'Trabajaste en 10 negocios distintos', color: 'from-emerald-400 to-green-600' },
-  loyal: { label: 'Cliente recurrente', desc: 'Volviste 20 veces al mismo negocio', color: 'from-amber-600 to-yellow-700' },
+  explorer: { label: 'Explorador', desc: 'Trabajaste en 10 negocios distintos', color: 'from-red-400 to-red-600' },
+  loyal: { label: 'Cliente recurrente', desc: 'Volviste 20 veces al mismo negocio', color: 'from-red-600 to-red-800' },
 };
 
 export default function BadgeReveal({ badgeKey, onClose }) {
   const [flipped, setFlipped] = useState(false);
-  const info = BADGE_INFO[badgeKey] || { label: badgeKey, desc: 'Reconocimiento desbloqueado', color: 'from-slate-500 to-slate-700' };
+  const info = BADGE_INFO[badgeKey] || { label: badgeKey, desc: 'Reconocimiento desbloqueado', color: 'from-red-500 to-red-700' };
 
   useEffect(() => {
     const t1 = setTimeout(() => setFlipped(true), 600);
@@ -32,7 +32,7 @@ export default function BadgeReveal({ badgeKey, onClose }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-md"
+        className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-[#0a0a14]/80 backdrop-blur-md"
         onClick={onClose}
       >
         <motion.div
@@ -43,7 +43,7 @@ export default function BadgeReveal({ badgeKey, onClose }) {
           className="text-center w-full max-w-xs"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-amber-400 mb-3">Reconocimiento</p>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.25em] text-red-400 mb-3">Reconocimiento</p>
 
           {/* 3D flip card */}
           <div className="perspective-[1000px] mb-5">
@@ -55,7 +55,7 @@ export default function BadgeReveal({ badgeKey, onClose }) {
             >
               {/* Back face (sealed) */}
               <div
-                className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center shadow-2xl"
+                className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#1a1a2e] to-[#0a0a14] flex items-center justify-center shadow-2xl"
                 style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
               >
                 <span className="text-[60px]">?</span>
@@ -109,7 +109,7 @@ export default function BadgeReveal({ badgeKey, onClose }) {
             transition={{ delay: 0.8 }}
             whileTap={{ scale: 0.95 }}
             onClick={onClose}
-            className="mt-6 px-7 py-2.5 rounded-xl bg-white text-slate-900 font-bold text-[13px] shadow-2xl"
+            className="mt-6 px-7 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-[13px] shadow-2xl shadow-red-500/30"
           >
             Continuar
           </motion.button>

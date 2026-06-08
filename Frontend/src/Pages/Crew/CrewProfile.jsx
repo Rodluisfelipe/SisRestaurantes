@@ -48,7 +48,7 @@ export default function CrewProfile({ onEdit }) {
       <div className="relative overflow-hidden">
         {/* Aurora blobs */}
         <div className="absolute -top-24 -left-16 w-64 h-64 bg-red-500/25 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute -top-12 right-0 w-48 h-48 bg-violet-500/20 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute -top-12 right-0 w-48 h-48 bg-red-400/15 rounded-full blur-[80px] pointer-events-none" />
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
 
         <div className="relative max-w-md mx-auto px-5 pt-8 pb-6">
@@ -79,8 +79,8 @@ export default function CrewProfile({ onEdit }) {
                 <defs>
                   <linearGradient id="crew-profile-ring" x1="0" y1="0" x2="1" y2="1">
                     <stop offset="0%" stopColor="#EF4444"/>
-                    <stop offset="50%" stopColor="#F97316"/>
-                    <stop offset="100%" stopColor="#FBBF24"/>
+                    <stop offset="50%" stopColor="#DC2626"/>
+                    <stop offset="100%" stopColor="#FFFFFF"/>
                   </linearGradient>
                 </defs>
               </svg>
@@ -101,7 +101,7 @@ export default function CrewProfile({ onEdit }) {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.3 }}
-                className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-[10px] font-black text-white shadow-[0_4px_12px_-2px_rgba(239,68,68,0.5)] border-2 border-[#0a0a14]"
+                className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-[10px] font-black text-white shadow-[0_4px_12px_-2px_rgba(239,68,68,0.5)] border-2 border-[#0a0a14]"
               >
                 {worker.level}
               </motion.div>
@@ -111,7 +111,7 @@ export default function CrewProfile({ onEdit }) {
             <p className="text-[12px] text-white/40 mt-0.5">{worker.phone}</p>
 
             <div className="mt-3 flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-red-500/15 to-orange-500/10 border border-red-500/30 text-[10px] font-extrabold text-white/80 uppercase tracking-wider">
+              <span className="px-3 py-1 rounded-full bg-gradient-to-r from-red-500/15 to-red-600/10 border border-red-500/30 text-[10px] font-extrabold text-white/80 uppercase tracking-wider">
                 {levelTier(worker.level)}
               </span>
               {worker.streakDays > 0 && <StreakFlame days={worker.streakDays} size="sm" />}
@@ -131,7 +131,7 @@ export default function CrewProfile({ onEdit }) {
                 initial={{ width: 0 }}
                 animate={{ width: `${pct}%` }}
                 transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 via-orange-500 to-amber-400 rounded-full"
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-600 via-red-500 to-red-400 rounded-full"
                 style={{ boxShadow: '0 0 12px rgba(239,68,68,0.5)' }}
               />
               <motion.div
@@ -192,8 +192,8 @@ export default function CrewProfile({ onEdit }) {
                   <motion.div
                     whileHover={{ rotate: [0, -5, 5, 0] }}
                     transition={{ duration: 0.4 }}
-                    className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shrink-0"
-                    style={{ boxShadow: '0 4px 16px -4px rgba(251,191,36,0.4)' }}
+                    className="w-10 h-10 rounded-2xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shrink-0"
+                    style={{ boxShadow: '0 4px 16px -4px rgba(239,68,68,0.4)' }}
                   >
                     <svg className="w-4.5 h-4.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>
                   </motion.div>

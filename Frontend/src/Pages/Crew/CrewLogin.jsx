@@ -78,7 +78,7 @@ export default function CrewLogin({ onAuthed }) {
             <motion.div
               animate={{ scale: [1, 1.08, 1], rotate: [0, 4, 0] }}
               transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-500 via-orange-500 to-amber-400 shadow-[0_8px_32px_-4px_rgba(239,68,68,0.6)]"
+              className="absolute inset-0 rounded-2xl bg-gradient-to-br from-red-600 via-red-500 to-red-400 shadow-[0_8px_32px_-4px_rgba(239,68,68,0.6)]"
             />
             <div className="relative w-full h-full rounded-2xl flex items-center justify-center">
               <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
@@ -88,7 +88,7 @@ export default function CrewLogin({ onAuthed }) {
                 <path d="M16 3.13a4 4 0 010 7.75"/>
               </svg>
             </div>
-            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,0.9)] animate-pulse" />
+            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-400 shadow-[0_0_12px_rgba(239,68,68,0.9)] animate-pulse" />
           </div>
 
           <span className="inline-block px-2.5 py-1 mb-3 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.12] text-[10px] font-extrabold uppercase tracking-[0.2em] text-white/70">
@@ -130,7 +130,7 @@ export default function CrewLogin({ onAuthed }) {
                     <motion.span
                       layoutId="crew-login-tab"
                       transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-500/90 via-orange-500/90 to-amber-500/90 shadow-[0_4px_20px_-4px_rgba(239,68,68,0.6)]"
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-red-600/90 via-red-500/90 to-red-500/90 shadow-[0_4px_20px_-4px_rgba(239,68,68,0.6)]"
                     />
                   )}
                   <span className="relative">{m.label}</span>
@@ -147,9 +147,9 @@ export default function CrewLogin({ onAuthed }) {
                 exit={{ opacity: 0, y: -6, height: 0 }}
                 className="mb-4 overflow-hidden"
               >
-                <div className="px-4 py-3 rounded-xl bg-rose-500/[0.10] border border-rose-400/30 flex items-start gap-2.5">
-                  <span className="shrink-0 w-5 h-5 rounded-full bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-rose-300 text-[11px]">!</span>
-                  <p className="text-[12.5px] text-rose-200 leading-relaxed">{error}</p>
+                <div className="px-4 py-3 rounded-xl bg-red-500/[0.10] border border-red-400/30 flex items-start gap-2.5">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-red-500/20 border border-red-400/30 flex items-center justify-center text-red-300 text-[11px]">!</span>
+                  <p className="text-[12.5px] text-red-200 leading-relaxed">{error}</p>
                 </div>
               </motion.div>
             )}
@@ -217,10 +217,10 @@ export default function CrewLogin({ onAuthed }) {
           <motion.div variants={STAGGER} className="mt-6 pt-5 border-t border-white/[0.06] flex items-center justify-between gap-3">
             <div className="flex items-center -space-x-2">
               {[
-                'from-pink-400 to-rose-500',
-                'from-amber-300 to-orange-500',
-                'from-emerald-400 to-teal-500',
-                'from-sky-400 to-violet-500',
+                'from-red-400 to-red-600',
+                'from-red-300 to-red-500',
+                'from-white/60 to-white/30',
+                'from-red-500 to-red-700',
               ].map((g, i) => (
                 <div
                   key={i}
@@ -232,7 +232,7 @@ export default function CrewLogin({ onAuthed }) {
               <p className="text-[11px] font-extrabold text-white/90">+1.200 trabajando ya</p>
               <p className="text-[10px] text-white/40">Bogotá · Medellín · Cali · Barranquilla</p>
             </div>
-            <div className="flex items-center gap-1 text-amber-300">
+            <div className="flex items-center gap-1 text-red-400">
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l2.4 7.2H22l-6 4.4 2.3 7.2L12 16.4 5.7 20.8 8 13.6 2 9.2h7.6L12 2z"/></svg>
               <span className="text-[11px] font-extrabold tabular-nums">4.8</span>
             </div>

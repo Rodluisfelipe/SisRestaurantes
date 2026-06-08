@@ -50,8 +50,8 @@ export default function DailyQuests({ onRewardClaimed }) {
   if (loading && quests.length === 0) {
     return (
       <section>
-        <h2 className="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">Misiones de hoy</h2>
-        <div className="h-32 bg-white border border-slate-200 rounded-2xl animate-pulse" />
+        <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em] mb-2.5">Misiones de hoy</h2>
+        <div className="h-32 rounded-2xl border border-white/[0.06] bg-white/[0.02] animate-pulse" />
       </section>
     );
   }
@@ -63,18 +63,18 @@ export default function DailyQuests({ onRewardClaimed }) {
   return (
     <section>
       <div className="flex items-center justify-between mb-2.5">
-        <h2 className="text-[12px] font-bold text-slate-500 uppercase tracking-wider">Misiones de hoy</h2>
+        <h2 className="text-[10px] font-extrabold text-white/30 uppercase tracking-[0.15em]">Misiones de hoy</h2>
         {allDone && (
           <motion.span
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="px-2 py-0.5 text-[10px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-full"
+            className="px-2 py-0.5 text-[10px] font-extrabold bg-red-500/15 text-red-400 border border-red-500/30 rounded-full"
           >
             ¡Completaste todas!
           </motion.span>
         )}
       </div>
-      <div className="bg-white border border-slate-200 rounded-2xl p-1 shadow-sm">
+      <div className="rounded-[22px] border border-white/[0.08] bg-white/[0.03] p-1 backdrop-blur-sm">
         {quests.map((m, i) => (
           <QuestRow
             key={m.key}
@@ -98,14 +98,14 @@ function QuestRow({ mission, index, last, claiming, onClaim }) {
       initial={{ opacity: 0, x: -8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.06 }}
-      className={`flex items-center gap-3 px-3 py-3 ${!last ? 'border-b border-slate-100' : ''}`}
+      className={`flex items-center gap-3 px-3 py-3 ${!last ? 'border-b border-white/[0.06]' : ''}`}
     >
       <div className={`shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
         claimed
-          ? 'bg-emerald-500 shadow-md shadow-emerald-500/30'
+          ? 'bg-red-500 shadow-md shadow-red-500/30'
           : done
-          ? 'bg-amber-500 shadow-md shadow-amber-500/30'
-          : 'bg-slate-100 border border-slate-200'
+          ? 'bg-red-500/80 shadow-md shadow-red-500/20'
+          : 'bg-white/[0.06] border border-white/[0.10]'
       }`}>
         {claimed ? (
           <motion.svg
@@ -118,7 +118,7 @@ function QuestRow({ mission, index, last, claiming, onClaim }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
           </motion.svg>
         ) : (
-          <svg className={`w-4 h-4 ${done ? 'text-white' : 'text-slate-500'}`} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 ${done ? 'text-white' : 'text-white/40'}`} fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
             {ICONS[mission.icon]}
           </svg>
         )}
@@ -126,18 +126,18 @@ function QuestRow({ mission, index, last, claiming, onClaim }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
-          <p className={`text-[13px] font-bold ${claimed ? 'text-emerald-700' : done ? 'text-amber-700' : 'text-slate-800'}`}>{mission.title}</p>
-          <span className={`text-[11px] font-extrabold ${claimed ? 'text-emerald-700' : 'text-slate-500'}`}>
+          <p className={`text-[13px] font-bold ${claimed ? 'text-white/60' : done ? 'text-white' : 'text-white/90'}`}>{mission.title}</p>
+          <span className={`text-[11px] font-extrabold ${claimed ? 'text-red-400' : 'text-white/40'}`}>
             +{mission.reward} XP
           </span>
         </div>
-        <p className="text-[11px] text-slate-500">{mission.desc}</p>
-        <div className="mt-1.5 h-1 bg-slate-100 rounded-full overflow-hidden">
+        <p className="text-[11px] text-white/40">{mission.desc}</p>
+        <div className="mt-1.5 h-1 bg-white/[0.08] rounded-full overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${Math.round(mission.progress * 100)}%` }}
             transition={{ duration: 0.8, ease: 'easeOut', delay: 0.15 + index * 0.06 }}
-            className={`h-full rounded-full ${claimed ? 'bg-emerald-500' : done ? 'bg-amber-500' : 'bg-gradient-to-r from-red-500 to-red-600'}`}
+            className={`h-full rounded-full ${claimed ? 'bg-red-500/50' : done ? 'bg-red-500' : 'bg-gradient-to-r from-red-500 to-red-600'}`}
           />
         </div>
       </div>
@@ -146,7 +146,7 @@ function QuestRow({ mission, index, last, claiming, onClaim }) {
         <button
           onClick={onClaim}
           disabled={claiming}
-          className="shrink-0 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[11px] font-extrabold shadow-md shadow-amber-500/30 disabled:opacity-50 active:scale-95 transition"
+          className="shrink-0 px-3 py-1.5 rounded-full bg-gradient-to-r from-red-500 to-red-600 text-white text-[11px] font-extrabold shadow-md shadow-red-500/30 disabled:opacity-50 active:scale-95 transition"
         >
           {claiming ? '…' : 'Reclamar'}
         </button>
