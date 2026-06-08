@@ -1252,6 +1252,8 @@ router.get('/workers/me/wallet', requireWorker, async (req, res) => {
         pendingBalance: w.wallet?.pendingBalance || 0,
         currency: 'COP',
       },
+      payoutMethod: w.payoutMethod || null,
+      rates: { minWithdrawal: crewLedger.MIN_WITHDRAWAL },
       movements,
     });
   } catch (e) {
@@ -1529,17 +1531,10 @@ router.post('/businesses/shifts/:id/cancel', tenantAuth, async (req, res) => {
 
 /* ─────────────────────────────────────────────
  *  WORKER — billetera (extracto + retiros)
+ *  Nota: GET /workers/me/wallet está definido más arriba con `movements`
+ *  pre-construidos para la UI vieja. Mantenemos ese y exponemos solo
+ *  los endpoints nuevos acá abajo.
  * ───────────────────────────────────────────── */
-
-// GET /crew/workers/me/wallet — saldo + summary
-router.get('/workers/me/wallet', requireWorker, async (req, res) => {
-  res.json({
-    success: true,
-    wallet: req.worker.wallet,
-    payoutMethod: req.worker.payoutMethod,
-    rates: { minWithdrawal: crewLedger.MIN_WITHDRAWAL },
-  });
-});
 
 // GET /crew/workers/me/wallet/transactions
 router.get('/workers/me/wallet/transactions', requireWorker, async (req, res) => {
