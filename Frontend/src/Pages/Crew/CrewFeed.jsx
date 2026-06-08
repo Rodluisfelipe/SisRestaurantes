@@ -135,7 +135,7 @@ export default function CrewFeed() {
       </header>
 
       <main className="max-w-md mx-auto px-5 pt-5 space-y-5">
-        <DailyQuests worker={worker} />
+        <DailyQuests onRewardClaimed={refreshMe} />
 
         <div className="flex items-center justify-between">
           <h2 className="text-[16px] font-extrabold text-slate-900">Turnos disponibles</h2>

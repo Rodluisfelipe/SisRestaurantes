@@ -17,10 +17,20 @@ type Config struct {
 	TestMode    bool   `json:"testMode"`
 }
 
+// CurrentAPIUrl es el endpoint actual de producción. Si cambia el server,
+// se actualiza acá y la migración en LoadConfig se encarga de los clientes viejos.
+const CurrentAPIUrl = "https://159-203-136-199.nip.io"
+
+// LegacyAPIUrls contiene URLs antiguas que deben migrarse automáticamente
+// al CurrentAPIUrl al cargar el config.
+var LegacyAPIUrls = []string{
+	"https://157-245-125-216.nip.io",
+}
+
 // DefaultConfig returns factory defaults
 func DefaultConfig() *Config {
 	return &Config{
-		APIUrl:      "https://157-245-125-216.nip.io",
+		APIUrl:      CurrentAPIUrl,
 		PrintKey:    "",
 		PrinterName: "",
 		PaperWidth:  80,
@@ -59,6 +69,20 @@ func LoadConfig() (*Config, error) {
 	// Apply defaults for missing fields
 	if cfg.PaperWidth == 0 {
 		cfg.PaperWidth = 80
+	}
+
+	// Auto-migración: si el apiUrl apunta a un server retirado, actualizarlo
+	// transparentemente al actual. El cliente conserva su printKey/printerName.
+	migrated := false
+	for _, legacy := range LegacyAPIUrls {
+		if cfg.APIUrl == legacy {
+			cfg.APIUrl = CurrentAPIUrl
+			migrated = true
+			break
+		}
+	}
+	if migrated {
+		_ = cfg.Save()
 	}
 
 	return &cfg, nil

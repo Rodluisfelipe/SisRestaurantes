@@ -9,6 +9,7 @@ const Banner = require('../Models/Banner');
 const PaymentRequest = require('../Models/PaymentRequest');
 const Subscription = require('../Models/Subscription');
 const AuditLog = require('../Models/AuditLog');
+const { Worker } = require('../Models/Worker');
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
@@ -325,6 +326,93 @@ router.patch('/orders/:id/status', requireRole('support'), async (req, res) => {
   } catch (error) {
     logger.error('Error updating order status (superadmin)', error, req);
     res.status(500).json({ message: 'Error al actualizar pedido' });
+  }
+});
+
+/* ─────────────────────────────────────────────
+ *  CREW — cola de verificación KYC (workers)
+ *  Permisos: lectura = support+, decisión = admin+.
+ * ───────────────────────────────────────────── */
+
+const KYC_STATUSES = ['pending', 'approved', 'rejected', 'expired', 'none'];
+
+// GET /api/superadmin/crew/kyc?status=pending — cola de KYCs
+router.get('/crew/kyc', async (req, res) => {
+  try {
+    const { status = 'pending', limit = 100 } = req.query;
+    const q = {};
+    if (status === 'any') {
+      q['kyc.status'] = { $in: KYC_STATUSES.filter(s => s !== 'none') };
+    } else if (KYC_STATUSES.includes(status)) {
+      q['kyc.status'] = status;
+    }
+
+    const [workers, counts] = await Promise.all([
+      Worker.find(q)
+        .sort({ 'kyc.submittedAt': -1, createdAt: -1 })
+        .limit(Math.min(Number(limit), 200))
+        .select('name phone email photo cedula kyc university level rating stats createdAt')
+        .populate('kyc.reviewedBy', 'email name')
+        .lean(),
+      Worker.aggregate([
+        { $match: { 'kyc.status': { $in: ['pending', 'approved', 'rejected'] } } },
+        { $group: { _id: '$kyc.status', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    const countsByStatus = counts.reduce((acc, c) => ({ ...acc, [c._id]: c.count }), {});
+    res.json({ success: true, workers, counts: countsByStatus });
+  } catch (error) {
+    logger.error('Error listing crew KYC queue', error, req);
+    res.status(500).json({ message: 'Error al cargar la cola de KYC' });
+  }
+});
+
+// POST /api/superadmin/crew/kyc/:workerId/approve
+router.post('/crew/kyc/:workerId/approve', requireRole('admin'), async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    if (!mongoose.isValidObjectId(workerId)) return res.status(400).json({ message: 'workerId inválido' });
+    const worker = await Worker.findById(workerId);
+    if (!worker) return res.status(404).json({ message: 'Trabajador no encontrado' });
+    if (worker.kyc?.status !== 'pending') {
+      return res.status(400).json({ message: `KYC en estado "${worker.kyc?.status || 'none'}", no se puede aprobar` });
+    }
+    worker.kyc.status = 'approved';
+    worker.kyc.reviewedAt = new Date();
+    worker.kyc.reviewedBy = req.user?.id || null;
+    worker.kyc.rejectionReason = null;
+    worker.idVerified = true;
+    await worker.save();
+    res.json({ success: true, worker: { id: worker._id, kyc: worker.kyc, idVerified: worker.idVerified } });
+  } catch (error) {
+    logger.error('Error approving crew KYC', error, req);
+    res.status(500).json({ message: 'Error al aprobar' });
+  }
+});
+
+// POST /api/superadmin/crew/kyc/:workerId/reject
+router.post('/crew/kyc/:workerId/reject', requireRole('admin'), async (req, res) => {
+  try {
+    const { workerId } = req.params;
+    const { reason } = req.body || {};
+    if (!mongoose.isValidObjectId(workerId)) return res.status(400).json({ message: 'workerId inválido' });
+    if (!reason || !String(reason).trim()) return res.status(400).json({ message: 'La razón del rechazo es obligatoria' });
+    const worker = await Worker.findById(workerId);
+    if (!worker) return res.status(404).json({ message: 'Trabajador no encontrado' });
+    if (worker.kyc?.status !== 'pending') {
+      return res.status(400).json({ message: `KYC en estado "${worker.kyc?.status || 'none'}", no se puede rechazar` });
+    }
+    worker.kyc.status = 'rejected';
+    worker.kyc.reviewedAt = new Date();
+    worker.kyc.reviewedBy = req.user?.id || null;
+    worker.kyc.rejectionReason = String(reason).trim().slice(0, 300);
+    worker.idVerified = false;
+    await worker.save();
+    res.json({ success: true, worker: { id: worker._id, kyc: worker.kyc } });
+  } catch (error) {
+    logger.error('Error rejecting crew KYC', error, req);
+    res.status(500).json({ message: 'Error al rechazar' });
   }
 });
 

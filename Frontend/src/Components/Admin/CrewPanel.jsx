@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
 import CrewWorkerProfileModal from './CrewWorkerProfileModal';
+import BusinessCrewChatModal from './BusinessCrewChatModal';
 
 function makeApi(businessId) {
   return {
@@ -213,6 +214,7 @@ function ApplicantsView({ api, shift, onBack }) {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openApp, setOpenApp] = useState(null); // application abierta en el modal
+  const [chatApp, setChatApp] = useState(null); // application con chat abierto
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -267,6 +269,7 @@ function ApplicantsView({ api, shift, onBack }) {
             onOpenProfile={() => setOpenApp(a)}
             onAccept={() => respond(a._id, 'accept')}
             onReject={() => respond(a._id, 'reject')}
+            onChat={() => setChatApp(a)}
           />
         ))}
       </div>
@@ -276,16 +279,28 @@ function ApplicantsView({ api, shift, onBack }) {
           workerId={openApp.workerId?._id || openApp.workerId}
           businessId={api.bizId}
           matchScore={openApp.matchScore}
+          canChat={openApp.status === 'accepted'}
           onClose={() => setOpenApp(null)}
+          onChat={openApp.status === 'accepted' ? () => { setChatApp(openApp); setOpenApp(null); } : undefined}
           onAccept={openApp.status === 'pending' ? () => { respond(openApp._id, 'accept'); setOpenApp(null); } : undefined}
           onReject={openApp.status === 'pending' ? () => { respond(openApp._id, 'reject'); setOpenApp(null); } : undefined}
+        />
+      )}
+
+      {chatApp && (
+        <BusinessCrewChatModal
+          workerId={chatApp.workerId?._id || chatApp.workerId}
+          businessId={api.bizId}
+          workerName={chatApp.workerId?.name}
+          workerPhoto={chatApp.workerId?.photo}
+          onClose={() => setChatApp(null)}
         />
       )}
     </div>
   );
 }
 
-function ApplicantCard({ app, onAccept, onReject, onOpenProfile }) {
+function ApplicantCard({ app, onAccept, onReject, onOpenProfile, onChat }) {
   const w = app.workerId || {};
   const matchTone = app.matchScore >= 75 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' :
                    app.matchScore >= 50 ? 'text-amber-700 bg-amber-50 border-amber-200' :
@@ -386,13 +401,22 @@ function ApplicantCard({ app, onAccept, onReject, onOpenProfile }) {
               className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[12px] font-extrabold transition shadow-sm"
             >Aceptar</button>
           </div>
+        ) : app.status === 'accepted' ? (
+          <div className="flex items-center gap-2">
+            <p className="flex-1 text-[11px] font-bold text-center py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+              Aceptado
+            </p>
+            <button
+              onClick={onChat}
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-extrabold transition shadow-sm"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+              Mensaje
+            </button>
+          </div>
         ) : (
-          <p className={`text-[11px] font-bold text-center py-2 rounded-lg border ${
-            app.status === 'accepted'
-              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              : 'bg-slate-50 text-slate-500 border-slate-200'
-          }`}>
-            {app.status === 'accepted' ? 'Aceptado' : app.status === 'rejected' ? 'Rechazado' : app.status}
+          <p className="text-[11px] font-bold text-center py-2 rounded-lg border bg-slate-50 text-slate-500 border-slate-200">
+            {app.status === 'rejected' ? 'Rechazado' : app.status}
           </p>
         )}
       </div>

@@ -14,6 +14,7 @@ import OrderManagement from "./OrderManagement";
 import ReferralManagement from "../../Components/SuperAdmin/ReferralManagement";
 import AuditLogsPanel from "../../Components/SuperAdmin/AuditLogsPanel";
 import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
+import CrewKYCManagement from "../../Components/SuperAdmin/CrewKYCManagement";
 import Home from "./Home";
 import { SAButton } from "../../Components/SuperAdmin/ui";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
@@ -69,6 +70,16 @@ const NAV_SECTIONS = [
       { id: 'referrals', label: 'Referidos', desc: 'Programa de referidos', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+        </svg>
+      )},
+    ]
+  },
+  {
+    title: 'Crew',
+    items: [
+      { id: 'crew_kyc', label: 'Verificación KYC', desc: 'Aprobar o rechazar cédulas de trabajadores', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
         </svg>
       )},
     ]
@@ -438,6 +449,12 @@ function SuperAdminDashboard() {
             {currentView === 'referrals' && (
               <motion.div key="referrals" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <ReferralManagement />
+              </motion.div>
+            )}
+
+            {currentView === 'crew_kyc' && (
+              <motion.div key="crew_kyc" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <CrewKYCManagement />
               </motion.div>
             )}
 

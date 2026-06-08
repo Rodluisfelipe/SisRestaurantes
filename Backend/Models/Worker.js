@@ -137,6 +137,14 @@ const workerSchema = new mongoose.Schema({
     color: { type: String, default: 'brown' },
   },
 
+  // Estado de misiones diarias.
+  // - date: 'YYYY-MM-DD' en hora Bogotá. Al cambiar el día, reseteamos `claimed`.
+  // - claimed: keys de misiones ya reclamadas hoy (no se puede reclamar dos veces).
+  dailyQuestsState: {
+    date: { type: String, default: null },
+    claimed: { type: [String], default: [] },
+  },
+
   // Stats agregadas
   stats: {
     shiftsCompleted: { type: Number, default: 0 },

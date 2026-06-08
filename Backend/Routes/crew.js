@@ -324,6 +324,128 @@ router.get('/workers/me/kyc', requireWorker, async (req, res) => {
 });
 
 /* ─────────────────────────────────────────────
+ *  WORKER — misiones diarias (daily quests)
+ *  Las misiones se computan server-side a partir del estado real del worker:
+ *  postulaciones de hoy, completitud del perfil, racha, KYC enviado, etc.
+ *  El worker reclama el XP via /claim cuando una misión está al 100%.
+ *  Se reinicia el contador `claimed` al cambiar el día (Bogotá).
+ * ───────────────────────────────────────────── */
+
+function bogotaToday() {
+  // 'YYYY-MM-DD' en hora Colombia (sin DST → -05:00 fijo).
+  const now = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  return now.toISOString().slice(0, 10);
+}
+
+const QUEST_DEFS = [
+  {
+    key: 'apply_today',
+    title: 'Postúlate a un turno',
+    desc: 'Envía al menos una postulación hoy',
+    reward: 30,
+    icon: 'send',
+    requires: 1,
+  },
+  {
+    key: 'profile_complete',
+    title: 'Perfil completo',
+    desc: 'Agrega universidad, bio, foto y al menos una habilidad',
+    reward: 50,
+    icon: 'user',
+  },
+  {
+    key: 'week_streak',
+    title: 'Racha de 3 días',
+    desc: 'Trabaja 3 días consecutivos esta semana',
+    reward: 100,
+    icon: 'fire',
+    requires: 3,
+  },
+  {
+    key: 'submit_kyc',
+    title: 'Verifica tu identidad',
+    desc: 'Sube tu cédula y selfie para activar tu perfil',
+    reward: 80,
+    icon: 'shield',
+  },
+];
+
+async function computeQuestState(worker) {
+  // Resetear claimed si cambió el día
+  const today = bogotaToday();
+  if (worker.dailyQuestsState?.date !== today) {
+    worker.dailyQuestsState = { date: today, claimed: [] };
+  }
+
+  const startOfBogotaDay = new Date(`${today}T00:00:00-05:00`);
+  const appliedToday = await ShiftApplication.countDocuments({
+    workerId: worker._id,
+    appliedAt: { $gte: startOfBogotaDay },
+  });
+
+  // Progress por misión (0..1)
+  const profileScore = [
+    !!worker.university,
+    !!(worker.bio && worker.bio.trim().length >= 20),
+    !!worker.photo,
+    (worker.skills || []).length > 0,
+  ].filter(Boolean).length / 4;
+
+  const kycSubmitted = ['pending', 'approved'].includes(worker.kyc?.status);
+  const claimedSet = new Set(worker.dailyQuestsState.claimed || []);
+
+  return QUEST_DEFS.map((def) => {
+    let progress = 0;
+    if (def.key === 'apply_today') progress = Math.min(1, appliedToday / def.requires);
+    else if (def.key === 'profile_complete') progress = profileScore;
+    else if (def.key === 'week_streak') progress = Math.min(1, (worker.streakDays || 0) / def.requires);
+    else if (def.key === 'submit_kyc') progress = kycSubmitted ? 1 : 0;
+    return { ...def, progress, claimed: claimedSet.has(def.key) };
+  });
+}
+
+// GET /crew/workers/me/quests — lista de misiones del día
+router.get('/workers/me/quests', requireWorker, async (req, res) => {
+  try {
+    const quests = await computeQuestState(req.worker);
+    await req.worker.save(); // persiste el reset diario si tocó
+    res.json({ success: true, date: bogotaToday(), quests });
+  } catch (e) {
+    logger.error('crew quests list error', e);
+    res.status(500).json({ message: e.message || 'Error al cargar misiones' });
+  }
+});
+
+// POST /crew/workers/me/quests/:key/claim — reclamar XP de una misión completada
+router.post('/workers/me/quests/:key/claim', requireWorker, async (req, res) => {
+  try {
+    const { key } = req.params;
+    const def = QUEST_DEFS.find((q) => q.key === key);
+    if (!def) return res.status(404).json({ message: 'Misión no encontrada' });
+
+    const quests = await computeQuestState(req.worker);
+    const target = quests.find((q) => q.key === key);
+    if (target.claimed) return res.status(400).json({ message: 'Ya reclamaste esta misión hoy' });
+    if (target.progress < 1) return res.status(400).json({ message: 'Aún no completas la misión' });
+
+    req.worker.dailyQuestsState.claimed.push(key);
+    await req.worker.save();
+    const result = await Worker.addXP(req.worker._id, def.reward);
+
+    res.json({
+      success: true,
+      reward: def.reward,
+      worker: result.worker,
+      leveledUp: result.leveledUp,
+      quests: quests.map((q) => (q.key === key ? { ...q, claimed: true } : q)),
+    });
+  } catch (e) {
+    logger.error('crew quest claim error', e);
+    res.status(500).json({ message: e.message || 'Error al reclamar la misión' });
+  }
+});
+
+/* ─────────────────────────────────────────────
  *  CHAT — conversaciones (worker side y business side)
  * ───────────────────────────────────────────── */
 

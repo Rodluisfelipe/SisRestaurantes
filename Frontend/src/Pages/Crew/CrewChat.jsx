@@ -11,6 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import crewApi from '../../services/crewApi';
+import { subscribeCrewConversation } from '../../services/crewSocket';
 
 function formatRelative(iso) {
   if (!iso) return '';
@@ -114,12 +115,25 @@ function ChatThread({ conversation, onBack }) {
   useEffect(() => { load(); }, [load]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
+  // Realtime: escucha mensajes nuevos enviados por la contraparte.
+  // El servidor emite a `crew-conv-<id>` cada vez que llega un mensaje POST.
+  useEffect(() => {
+    const unsubscribe = subscribeCrewConversation(conversation._id, (msg) => {
+      setMessages((prev) => {
+        // Evita duplicar el eco de nuestros propios envíos (ya los insertamos en send()).
+        if (prev.some((m) => String(m._id) === String(msg._id))) return prev;
+        return [...prev, msg];
+      });
+    });
+    return unsubscribe;
+  }, [conversation._id]);
+
   const send = async () => {
     if (!text.trim()) return;
     setSending(true);
     try {
       const { data } = await crewApi.post(`/conversations/${conversation._id}/messages`, { body: text.trim() });
-      setMessages((m) => [...m, data.message]);
+      setMessages((m) => (m.some((x) => String(x._id) === String(data.message._id)) ? m : [...m, data.message]));
       setText('');
     } catch (e) {
       console.error(e);

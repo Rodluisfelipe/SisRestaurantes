@@ -18,7 +18,7 @@ import (
 )
 
 // AppVersion is the current application version (semver)
-const AppVersion = "2.2.0"
+const AppVersion = "2.2.1"
 
 // App struct — the Wails application bridge
 type App struct {

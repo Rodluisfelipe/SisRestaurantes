@@ -46,10 +46,10 @@ export const ROLE_INFO = {
  * Tabs visibles por rol. El sidebar oculta los no permitidos.
  */
 export const NAV_BY_ROLE = {
-  owner:   ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'team', 'audit'],
-  admin:   ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'audit'],
-  support: ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'audit'],
-  auditor: ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'audit'],
+  owner:   ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_kyc', 'team', 'audit'],
+  admin:   ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_kyc', 'audit'],
+  support: ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_kyc', 'audit'],
+  auditor: ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_kyc', 'audit'],
 };
 
 /**

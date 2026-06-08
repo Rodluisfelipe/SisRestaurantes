@@ -196,11 +196,19 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 						continue
 					}
 					subName := getString(subMap, "optionName")
+					// Preferir el subGroupTitle real ("Salsas", "Adicion de helado").
+					// Fallback: groupName del padre. Último recurso: "Adicion de topping".
+					subTitle := getString(subMap, "subGroupTitle")
+					if subTitle == "" {
+						subTitle = groupName
+					}
+					if subTitle == "" {
+						subTitle = "Adicion de topping"
+					}
+					// Limpiar emojis y forzar MAYÚSCULAS en la categoría
+					subTitle = cleanCategoryLabel(subTitle)
 					if subName != "" {
-						label := subName
-						if groupName != "" {
-							label = groupName + ": " + subName
-						}
+						label := subTitle + ": " + subName
 						buf = appendLine(buf, "  >> "+truncate(label, itemCols-5))
 					}
 				}
@@ -208,8 +216,10 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 				tName := getString(toppingMap, "optionName")
 				if tName != "" {
 					label := tName
-					if groupName != "" {
-						label = groupName + ": " + tName
+					// Categoría en MAYÚSCULAS y sin emojis
+					gn := cleanCategoryLabel(groupName)
+					if gn != "" {
+						label = gn + ": " + tName
 					}
 					buf = appendLine(buf, "  >> "+truncate(label, itemCols-5))
 				}
@@ -499,11 +509,16 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 					}
 					subName := getString(subMap, "optionName")
 					subPrice := getFloat(subMap, "price")
+					// Preferir subGroupTitle (categoría real) sobre groupName del padre
+					subTitle := getString(subMap, "subGroupTitle")
+					if subTitle == "" {
+						subTitle = groupName
+					}
+					if subTitle == "" {
+						subTitle = "Adicion de topping"
+					}
 					if subName != "" {
-						label := subName
-						if groupName != "" {
-							label = groupName + ": " + subName
-						}
+						label := subTitle + ": " + subName
 						if isCompact {
 							buf = appendLine(buf, " +"+truncate(label, itemCols-2))
 						} else {
@@ -651,31 +666,88 @@ func wrapText(s string, maxLen int) string {
 	return truncate(s, maxLen)
 }
 
-// appendWrapped writes text that may span multiple lines
+// appendWrapped writes text that may span multiple lines.
+// NUNCA parte palabras a la mitad: si una palabra no cabe en lo que queda
+// de línea, salta a la siguiente línea completa. Si una sola palabra es
+// más larga que `cols` (raro), recién ahí la corta.
 func appendWrapped(buf []byte, text string, cols int) []byte {
-	runes := []rune(text)
-	if len(runes) <= cols {
+	if cols < 4 {
 		return appendLine(buf, text)
 	}
-	// Split into lines that fit
-	for len(runes) > 0 {
-		lineLen := cols
-		if lineLen > len(runes) {
-			lineLen = len(runes)
-		}
-		// Try to break at a space
-		lineStr := string(runes[:lineLen])
-		if lineLen < len(runes) {
-			lastSpace := strings.LastIndex(lineStr, " ")
-			if lastSpace > cols/3 {
-				lineLen = lastSpace + 1
-				lineStr = string(runes[:lineLen])
+	words := strings.Fields(text) // split en cualquier whitespace y elimina vacíos
+	if len(words) == 0 {
+		return buf
+	}
+	var line string
+	for _, w := range words {
+		wRunes := []rune(w)
+		// Si la palabra sola es más larga que cols, la cortamos en chunks
+		if len(wRunes) > cols {
+			// Primero emitir lo acumulado
+			if line != "" {
+				buf = appendLine(buf, line)
+				line = ""
 			}
+			for len(wRunes) > 0 {
+				take := cols
+				if take > len(wRunes) {
+					take = len(wRunes)
+				}
+				buf = appendLine(buf, string(wRunes[:take]))
+				wRunes = wRunes[take:]
+			}
+			continue
 		}
-		buf = appendLine(buf, strings.TrimRight(lineStr, " "))
-		runes = runes[lineLen:]
+		// Intento agregar la palabra a la línea actual
+		var candidate string
+		if line == "" {
+			candidate = w
+		} else {
+			candidate = line + " " + w
+		}
+		if len([]rune(candidate)) <= cols {
+			line = candidate
+		} else {
+			// No cabe → cierro la línea actual y arranco una nueva con esta palabra
+			buf = appendLine(buf, line)
+			line = w
+		}
+	}
+	if line != "" {
+		buf = appendLine(buf, line)
 	}
 	return buf
+}
+
+// cleanCategoryLabel limpia un nombre de categoría/topping para impresión en
+// comanda: elimina emojis y cualquier caracter no imprimible en CP850,
+// colapsa espacios, recorta y devuelve en MAYÚSCULAS.
+//
+//	"Salsas 🫙"            → "SALSAS"
+//	"Adicion de helado 🍨" → "ADICION DE HELADO"
+//	"Toppings"            → "TOPPINGS"
+func cleanCategoryLabel(s string) string {
+	if s == "" {
+		return s
+	}
+	var out []rune
+	for _, r := range s {
+		// ASCII imprimible
+		if r >= 32 && r < 127 {
+			out = append(out, r)
+			continue
+		}
+		// Caracter Latino conocido en CP850 → conservar
+		if _, ok := utf8ToCP850[r]; ok {
+			out = append(out, r)
+			continue
+		}
+		// Cualquier otra cosa (emojis, símbolos exóticos) → espacio
+		out = append(out, ' ')
+	}
+	// Colapsar espacios múltiples y trim
+	cleaned := strings.Join(strings.Fields(string(out)), " ")
+	return strings.ToUpper(cleaned)
 }
 
 func truncate(s string, maxLen int) string {

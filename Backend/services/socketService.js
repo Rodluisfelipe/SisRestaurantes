@@ -190,6 +190,59 @@ function initSocket(io) {
       logger.debug('Socket salió del canal de superadmin', { socketId: socket.id });
     });
 
+    // === CREW CHAT — realtime 1:1 worker ↔ business ===
+    // Únicos rooms permitidos: crew-conv-<conversationId>.
+    // Validamos que el JWT (worker o business) sea parte de la conversación
+    // antes de unirlo. Sin esto, cualquier cliente podría leer mensajes de
+    // otros pares simplemente conociendo el ID.
+    socket.on('crew:joinConversation', async ({ conversationId, token } = {}) => {
+      try {
+        if (!conversationId) return socket.emit('crew:joined', { success: false, error: 'missing-id' });
+
+        // Permite auth inline si el handshake no autenticó (caso worker con crew_token
+        // que no se pasó al crear el socket).
+        if (!socket.user && token) {
+          try {
+            const decoded = verifyToken(token);
+            if (decoded) socket.user = decoded;
+          } catch {}
+        }
+        if (!socket.user) {
+          return socket.emit('crew:joined', { conversationId, success: false, error: 'unauthorized' });
+        }
+
+        const Conversation = require('../Models/Conversation');
+        const conv = await Conversation.findById(conversationId).lean();
+        if (!conv) return socket.emit('crew:joined', { conversationId, success: false, error: 'not-found' });
+
+        const userId = String(socket.user.id || '');
+        const isWorker = socket.user.kind === 'worker';
+        const isParticipant = isWorker
+          ? String(conv.workerId) === userId
+          : String(conv.businessId) === String(socket.user.businessId || '');
+        if (!isParticipant) {
+          return socket.emit('crew:joined', { conversationId, success: false, error: 'forbidden' });
+        }
+
+        const room = `crew-conv-${conversationId}`;
+        socket.join(room);
+        socket._crewConvId = conversationId;
+        logger.debug('Socket joined crew conv', { socketId: socket.id, conversationId, isWorker });
+        socket.emit('crew:joined', { conversationId, success: true });
+      } catch (e) {
+        logger.error('crew:joinConversation error', e);
+        socket.emit('crew:joined', { conversationId, success: false, error: 'server-error' });
+      }
+    });
+
+    socket.on('crew:leaveConversation', ({ conversationId } = {}) => {
+      const id = conversationId || socket._crewConvId;
+      if (id) {
+        socket.leave(`crew-conv-${id}`);
+        if (socket._crewConvId === id) socket._crewConvId = null;
+      }
+    });
+
     // Test connection endpoint
     socket.on('ping', () => {
       logger.debug('Ping received', { socketId: socket.id });
