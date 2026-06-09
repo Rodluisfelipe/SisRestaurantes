@@ -1,353 +1,242 @@
 /**
- * CrewLanding — pantalla pre-login que explica qué es Crew para el trabajador.
+ * CrewLanding — pre-login pitch para el trabajador.
  *
- * Estilo cosmic (oscuro con aurora animada), coherente con el resto de la app
- * del worker. Mobile-first, scroll fluido.
- *
- * Props:
- *   onEnter → ir al login del worker (sea para entrar o crear cuenta)
+ * Decisiones de diseño:
+ *   - Logo real (CrewLogo) como ancla visual del hero, no un placeholder
+ *   - Layout asimétrico tipo bento, no grids 3-col repetidos
+ *   - Ticker en vivo de turnos (mock con autorotación) para dar señal de actividad
+ *   - Calculadora interactiva (no estática) para que el visitante "juegue" con su ingreso
+ *   - Testimonio integrado en el flujo, no como sección separada
+ *   - Camino de progresión visual con niveles reales (Level 1→20)
+ *   - Una sola CTA dominante; sin trust strips ni FAQ que diluyen
  */
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import CrewLogo from './CrewLogo';
 
-const STEPS = [
-  {
-    n: '1',
-    emoji: '📱',
-    title: 'Crea tu perfil',
-    body: 'Foto, experiencia, áreas en las que sabes trabajar. Más completo, más turnos te llegan.',
-  },
-  {
-    n: '2',
-    emoji: '🔍',
-    title: 'Explora turnos',
-    body: 'Restaurantes, eventos, hoteles. Ves la fecha, las horas, el pago total. Cero sorpresas.',
-  },
-  {
-    n: '3',
-    emoji: '🚀',
-    title: 'Postúlate',
-    body: 'Tap, postulación enviada. El empleador ve tu perfil con tu nivel y calificación.',
-  },
-  {
-    n: '4',
-    emoji: '✅',
-    title: 'Confirmas tu llegada',
-    body: 'Al llegar al sitio, el empleador te da un código. Lo escribes en la app — eso es tu check-in oficial.',
-  },
-  {
-    n: '5',
-    emoji: '💰',
-    title: 'Cobras al instante',
-    body: 'Cuando el empleador confirma que terminaste, el dinero llega a tu billetera Crew en segundos.',
-  },
-  {
-    n: '6',
-    emoji: '🏦',
-    title: 'Retira a Nequi',
-    body: 'Saca tu plata a Nequi, Daviplata o cuenta bancaria cuando quieras. Mínimo $20.000.',
-  },
-];
-
-const BENEFITS = [
-  {
-    emoji: '🛡',
-    title: 'Pago garantizado',
-    body: 'El empleador deja la plata reservada antes de publicar. Si llegaste y cumpliste, cobras sí o sí.',
-  },
-  {
-    emoji: '⚡',
-    title: 'Trabajas cuando quieras',
-    body: 'Sin contratos. Sin horarios fijos. Eliges los turnos que se ajusten a tu vida.',
-  },
-  {
-    emoji: '⭐',
-    title: 'Sube de nivel',
-    body: 'Cada turno completado te da XP, mejor calificación, badges y prioridad en el feed.',
-  },
-  {
-    emoji: '💬',
-    title: 'Chat directo',
-    body: 'Coordina la llegada con el empleador desde la app. Sin tener que compartir tu número personal.',
-  },
-  {
-    emoji: '🏆',
-    title: 'Construye tu historial',
-    body: 'Tu reputación se queda contigo. Cada turno suma a tu hoja de vida verificable.',
-  },
-  {
-    emoji: '🎯',
-    title: 'Misiones diarias',
-    body: 'Postúlate, completa tu perfil, mantén una racha. Cada misión te da XP extra.',
-  },
-];
-
-const EARNINGS = [
-  { hours: 4, rate: 13000, label: 'Turno corto', emoji: '☕' },
-  { hours: 6, rate: 15000, label: 'Turno medio', emoji: '🍽' },
-  { hours: 8, rate: 16000, label: 'Turno completo', emoji: '🏨' },
-];
-
-const FAQ = [
-  {
-    q: '¿Cuánto cobran ustedes?',
-    a: 'Nada. Cero. Tú recibes el 100% del valor del turno que publica el empleador. La comisión la paga el empleador, no tú.',
-  },
-  {
-    q: '¿Cuándo me pagan?',
-    a: 'En cuanto el empleador marca "terminado" en su app, el dinero llega a tu billetera Crew. Desde ahí puedes retirarlo a Nequi, Daviplata o cuenta bancaria en menos de 24h.',
-  },
-  {
-    q: '¿Y si el empleador no quiere pagar después?',
-    a: 'No puede. La plata ya estaba reservada desde que publicó el turno — Crew la tiene en escrow. Si cumpliste con el check-in, la plata se libera. Esa es la garantía.',
-  },
-  {
-    q: '¿Qué pasa si llego y no me dejan trabajar?',
-    a: 'Si el empleador cancela cuando ya hiciste check-in, te paga compensación completa igual. Si cancela menos de 2 horas antes, también. Estás protegido.',
-  },
-  {
-    q: '¿Necesito experiencia previa?',
-    a: 'No. Hay turnos para todos los niveles. Cuanta más experiencia y calificación tengas, más turnos premium te llegarán.',
-  },
-  {
-    q: '¿En qué ciudades hay turnos?',
-    a: 'Arrancamos en Bogotá, Medellín y Cali. Si tu ciudad no tiene actividad aún, regístrate igual — te avisamos cuando llegue.',
-  },
+const TICKER_FEED = [
+  { who: 'Andrés', role: 'Mesero', biz: 'Andrés Carne de Res', pay: 85000, when: 'hace 3 min', city: 'Bogotá' },
+  { who: 'Catalina', role: 'Barista', biz: 'Café San Alberto', pay: 72000, when: 'hace 7 min', city: 'Medellín' },
+  { who: 'Diego', role: 'Auxiliar evento', biz: 'Boda Andrea & Luis', pay: 110000, when: 'hace 14 min', city: 'Cali' },
+  { who: 'Mariana', role: 'Cajera', biz: 'Pizzería La Otra', pay: 64000, when: 'hace 22 min', city: 'Bogotá' },
+  { who: 'Sebastián', role: 'Bartender', biz: 'Hotel Casa Quero', pay: 130000, when: 'hace 31 min', city: 'Cartagena' },
 ];
 
 export default function CrewLanding({ onEnter }) {
   return (
-    <div className="relative min-h-[100dvh] bg-[#0a0a14] text-white font-geist overflow-x-hidden">
-      {/* Aurora background fija */}
+    <div className="relative bg-[#08080f] text-white font-geist overflow-x-hidden">
+      {/* Capa global de glow rojo que se mueve con el scroll */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
         <motion.div
-          animate={{ x: [0, 30, 0], y: [0, -20, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute -top-32 -right-20 w-[500px] h-[500px] bg-red-500/15 rounded-full blur-[120px]"
+          animate={{ x: [0, 60, 0], y: [0, -30, 0] }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute -top-20 right-[-15%] w-[640px] h-[640px] bg-red-600/25 rounded-full blur-[140px]"
         />
         <motion.div
-          animate={{ x: [0, -25, 0], y: [0, 30, 0] }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' }}
-          className="absolute top-1/3 -left-32 w-[400px] h-[400px] bg-orange-500/10 rounded-full blur-[120px]"
+          animate={{ x: [0, -40, 0], y: [0, 40, 0] }}
+          transition={{ duration: 28, repeat: Infinity, ease: 'easeInOut' }}
+          className="absolute top-[40%] left-[-15%] w-[520px] h-[520px] bg-orange-600/15 rounded-full blur-[140px]"
         />
+        {/* Grid sutil tipo blueprint */}
+        <div className="absolute inset-0 opacity-[0.04]" style={{
+          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
+          backgroundSize: '64px 64px',
+          maskImage: 'radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 80% 60% at 50% 30%, black 30%, transparent 80%)',
+        }} />
       </div>
 
-      {/* Nav */}
-      <header className="sticky top-0 z-40 bg-[#0a0a14]/85 backdrop-blur-md border-b border-white/[0.06]">
-        <div className="max-w-5xl mx-auto px-5 h-14 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center shadow-md shadow-red-500/30">
-              <span className="text-[14px] font-black text-white">C</span>
-            </div>
-            <span className="text-[14px] font-black">Crew</span>
-          </div>
-          <button
-            onClick={onEnter}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-red-500 to-orange-500 hover:brightness-110 text-white text-[12px] font-extrabold shadow-md shadow-red-500/30 transition"
-          >
-            Entrar
-          </button>
+      {/* Top bar — minimal */}
+      <header className="relative px-5 sm:px-8 pt-[max(1.25rem,env(safe-area-inset-top,0px))] pb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <CrewLogo size={36} showText={false} />
+          <span className="text-[15px] font-black tracking-tight">crew</span>
         </div>
+        <button
+          onClick={onEnter}
+          className="text-[12px] font-extrabold uppercase tracking-[0.12em] text-white/60 hover:text-white px-3 py-1.5 transition"
+        >
+          Iniciar sesión →
+        </button>
       </header>
 
-      {/* Hero */}
-      <section className="relative px-5 pt-12 pb-14 sm:pt-20 sm:pb-20">
-        <div className="relative max-w-3xl mx-auto text-center">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/[0.10] border border-amber-400/30 text-[10px] font-extrabold uppercase tracking-wider text-amber-300 mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              Trabaja por turnos · Cobra el mismo día
-            </span>
-            <h1 className="text-[34px] sm:text-[52px] font-black leading-[1.05] tracking-tight">
-              Tu próximo turno
-              <br />
-              <span className="bg-gradient-to-r from-red-400 via-orange-400 to-amber-400 bg-clip-text text-transparent">
-                empieza acá.
-              </span>
-            </h1>
-            <p className="text-[14.5px] sm:text-[16px] text-white/60 mt-5 max-w-xl mx-auto leading-relaxed">
-              Restaurantes, hoteles, eventos. Postúlate desde tu celular y cobra al instante cuando terminas.
-            </p>
-
-            <motion.button
-              whileTap={{ scale: 0.97 }}
-              onClick={onEnter}
-              className="group relative mt-8 inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-gradient-to-r from-red-500 to-orange-500 text-white font-extrabold text-[15px] shadow-xl shadow-red-500/40 overflow-hidden"
+      {/* HERO — asimétrico, logo gigante a la izquierda, copy a la derecha */}
+      <section className="relative px-5 sm:px-8 pt-6 pb-16 sm:pt-12 sm:pb-24">
+        <div className="relative max-w-6xl mx-auto grid lg:grid-cols-[1fr_1fr] gap-10 lg:gap-16 items-center">
+          {/* Logo + glow visual */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="relative flex items-center justify-center order-2 lg:order-1"
+          >
+            <motion.div
+              animate={{ scale: [1, 1.06, 1], rotate: [0, -2, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+              className="relative"
             >
-              <span className="pointer-events-none absolute inset-x-0 top-0 h-1/2" style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 100%)' }} />
-              <span className="relative">Empezar gratis</span>
-              <svg className="relative w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
-              </svg>
-            </motion.button>
-            <p className="text-[11px] text-white/35 mt-4">Crear cuenta toma 2 minutos · 100% gratis siempre</p>
+              <div className="absolute inset-0 bg-red-500/40 blur-[80px] -z-10 rounded-full" />
+              <CrewLogo size={260} showText={false} className="sm:hidden" />
+              <CrewLogo size={360} showText={false} className="hidden sm:block" />
+            </motion.div>
+            {/* Orbiting badges */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+              className="absolute inset-0 pointer-events-none"
+            >
+              <OrbitBadge angle={0} label="+85K" />
+              <OrbitBadge angle={90} label="Nivel 7" />
+              <OrbitBadge angle={180} label="🔥 racha 5d" />
+              <OrbitBadge angle={270} label="4.9★" />
+            </motion.div>
           </motion.div>
 
-          {/* Trust strip */}
-          <div className="mt-12 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] font-bold text-white/35 uppercase tracking-wider">
-            <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-              Pago garantizado
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-              0% comisión para ti
-            </span>
-            <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" /></svg>
-              Retiro a Nequi
-            </span>
+          {/* Copy */}
+          <div className="order-1 lg:order-2">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+            >
+              <p className="text-[11px] sm:text-[12px] font-black uppercase tracking-[0.3em] text-red-400 mb-4">
+                Trabaja por turnos
+              </p>
+              <h1 className="text-[40px] sm:text-[58px] lg:text-[68px] font-black leading-[0.95] tracking-tight">
+                Tu trabajo.
+                <br />
+                Tu plata.
+                <br />
+                <span className="bg-gradient-to-r from-red-400 via-orange-400 to-amber-300 bg-clip-text text-transparent">
+                  Tu juego.
+                </span>
+              </h1>
+              <p className="text-[15px] sm:text-[17px] text-white/55 mt-6 max-w-md leading-relaxed">
+                Postúlate a turnos en restaurantes, eventos, hoteles. Cobras el mismo día. Subes de nivel. Sin contratos.
+              </p>
+
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={onEnter}
+                className="group relative mt-8 inline-flex items-center gap-3 px-7 py-4 rounded-full bg-white text-black font-black text-[15px] shadow-[0_12px_40px_-8px_rgba(255,255,255,0.4)] overflow-hidden"
+              >
+                <span>Empezar gratis</span>
+                <span className="relative w-6 h-6 rounded-full bg-black flex items-center justify-center transition-transform group-hover:translate-x-1">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
+                  </svg>
+                </span>
+              </motion.button>
+              <p className="text-[11px] text-white/30 mt-3 ml-1">Crear cuenta · 2 min · 0 pesos para ti, siempre.</p>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Earnings example */}
-      <section className="relative px-5 py-12 sm:py-16 border-y border-white/[0.06] bg-white/[0.015]">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/35 mb-1.5">Lo que puedes ganar</p>
-          <h2 className="text-center text-[24px] sm:text-[32px] font-black leading-tight">
-            Tu plata, sin descuentos.
+      {/* TICKER EN VIVO de turnos publicados — da señal de actividad real */}
+      <LiveTicker />
+
+      {/* CALCULADORA — interactiva, no estática */}
+      <Calculator onEnter={onEnter} />
+
+      {/* TRATO CLARO — dos columnas con contraste fuerte */}
+      <section className="relative px-5 sm:px-8 py-20 sm:py-28">
+        <div className="max-w-6xl mx-auto">
+          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400 mb-3">El trato</p>
+          <h2 className="text-[34px] sm:text-[50px] font-black leading-[0.95] tracking-tight max-w-2xl">
+            Tú recibes el 100%.<br />
+            Crew le cobra al negocio.
           </h2>
-          <p className="text-center text-[13.5px] text-white/55 mt-2 max-w-xl mx-auto">
-            El 100% de lo que ofrece el empleador llega a tu billetera. Nosotros le cobramos a él, no a ti.
+          <p className="text-[14px] text-white/50 mt-5 max-w-xl leading-relaxed">
+            Cada peso que el empleador ofrece, llega a tu billetera. No descontamos comisión, propina, ni servicio. Esa es la regla.
           </p>
 
-          <div className="mt-8 grid sm:grid-cols-3 gap-3">
-            {EARNINGS.map((e, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 8 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-                className="rounded-3xl border border-white/[0.08] bg-white/[0.03] p-5 backdrop-blur-sm"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-2xl">{e.emoji}</span>
-                  <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-white/40">{e.label}</span>
-                </div>
-                <p className="text-[12px] text-white/50">{e.hours}h × {formatCOP(e.rate)}/h</p>
-                <p className="text-[28px] sm:text-[34px] font-black mt-1 tabular-nums bg-gradient-to-r from-emerald-300 to-emerald-400 bg-clip-text text-transparent">
-                  {formatCOP(e.hours * e.rate)}
-                </p>
-                <p className="text-[11px] text-white/40 mt-1">Llegan completos a tu billetera</p>
-              </motion.div>
-            ))}
+          <div className="mt-12 grid sm:grid-cols-2 gap-3">
+            {/* Tu lado */}
+            <div className="relative rounded-[28px] border border-emerald-400/30 bg-gradient-to-br from-emerald-500/[0.12] via-emerald-500/[0.04] to-transparent p-7 overflow-hidden">
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-300">Tu lado</span>
+              <p className="text-[28px] sm:text-[40px] font-black leading-[1.05] mt-2">
+                $80.000<span className="text-[16px] text-white/50">/turno</span>
+              </p>
+              <p className="text-[13px] text-emerald-200/80 mt-1">Llegan completos a tu billetera</p>
+              <ul className="mt-5 space-y-2">
+                <DealItem ok>0% de comisión</DealItem>
+                <DealItem ok>Retiro a Nequi/Daviplata</DealItem>
+                <DealItem ok>Pago el mismo día</DealItem>
+                <DealItem ok>Tus reseñas y XP son tuyos</DealItem>
+              </ul>
+            </div>
+
+            {/* Lado empleador */}
+            <div className="relative rounded-[28px] border border-white/[0.08] bg-white/[0.02] p-7">
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/40">Lado empleador</span>
+              <p className="text-[28px] sm:text-[40px] font-black leading-[1.05] mt-2 text-white/50">
+                $88.000<span className="text-[16px] text-white/30">/turno</span>
+              </p>
+              <p className="text-[13px] text-white/40 mt-1">Lo que paga el empleador (incluye 10% comisión Crew)</p>
+              <ul className="mt-5 space-y-2">
+                <DealItem>Tu pago: $80.000</DealItem>
+                <DealItem>Comisión Crew: $8.000</DealItem>
+                <DealItem>Plata bloqueada en escrow</DealItem>
+                <DealItem>Solo se libera si llegas</DealItem>
+              </ul>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="relative px-5 py-12 sm:py-16">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/35 mb-1.5">Cómo funciona</p>
-          <h2 className="text-center text-[24px] sm:text-[32px] font-black leading-tight">
-            De crear cuenta a cobrar, en 6 pasos
-          </h2>
+      {/* TESTIMONIO — uno solo, grande, integrado */}
+      <Testimonial />
 
-          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {STEPS.map((s) => (
-              <div key={s.n} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 hover:border-white/[0.15] transition backdrop-blur-sm">
-                <div className="flex items-start gap-3 mb-2">
-                  <div className="w-10 h-10 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center text-xl shrink-0">
-                    {s.emoji}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-red-400">Paso {s.n}</span>
-                    <p className="text-[15px] font-black leading-tight">{s.title}</p>
-                  </div>
-                </div>
-                <p className="text-[12.5px] text-white/55 leading-relaxed">{s.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* EVOLUCIÓN — visual del progreso por niveles */}
+      <Evolution />
 
-      {/* Benefits */}
-      <section className="relative px-5 py-12 sm:py-16 border-y border-white/[0.06] bg-white/[0.015]">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/35 mb-1.5">Por qué Crew</p>
-          <h2 className="text-center text-[24px] sm:text-[32px] font-black leading-tight">
-            Hecho para que el trabajo sea justo.
-          </h2>
-
-          <div className="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {BENEFITS.map((b, i) => (
-              <div key={i} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 backdrop-blur-sm">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-red-500/20 to-orange-500/10 border border-red-400/20 flex items-center justify-center text-xl mb-3">
-                  {b.emoji}
-                </div>
-                <p className="text-[14px] font-black">{b.title}</p>
-                <p className="text-[12.5px] text-white/55 mt-1.5 leading-relaxed">{b.body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="relative px-5 py-12 sm:py-16">
-        <div className="max-w-3xl mx-auto">
-          <p className="text-center text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/35 mb-1.5">Preguntas frecuentes</p>
-          <h2 className="text-center text-[24px] sm:text-[32px] font-black leading-tight mb-8">
-            Lo que más nos preguntan
-          </h2>
-          <div className="space-y-2.5">
-            {FAQ.map((f, i) => <FaqItem key={i} q={f.q} a={f.a} />)}
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="relative px-5 py-12 sm:py-16">
-        <div className="relative max-w-3xl mx-auto rounded-3xl overflow-hidden border border-white/[0.10] p-8 sm:p-12 text-center bg-gradient-to-br from-red-500/[0.15] via-orange-500/[0.08] to-transparent">
+      {/* CTA FINAL — corto y directo */}
+      <section className="relative px-5 sm:px-8 py-20 sm:py-28">
+        <div className="max-w-3xl mx-auto text-center">
           <motion.div
-            animate={{ x: [0, 30, 0], y: [0, -10, 0] }}
-            transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute -top-20 -right-10 w-72 h-72 bg-red-500/30 rounded-full blur-[100px] pointer-events-none"
-          />
-          <div className="relative">
-            <h2 className="text-[24px] sm:text-[32px] font-black leading-tight">
-              Crea tu cuenta hoy.
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="inline-block relative mb-6">
+              <div className="absolute inset-0 bg-red-500/40 blur-[60px] -z-10 rounded-full" />
+              <CrewLogo size={100} showText={false} />
+            </div>
+            <h2 className="text-[36px] sm:text-[56px] font-black leading-[0.95] tracking-tight">
+              Tu primer turno
               <br />
-              <span className="bg-gradient-to-r from-red-400 via-orange-400 to-amber-400 bg-clip-text text-transparent">
-                Trabaja esta semana.
+              <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">
+                está esperando.
               </span>
             </h2>
-            <p className="text-[13.5px] text-white/65 mt-3 max-w-lg mx-auto leading-relaxed">
-              Gratis siempre. Sin contratos. Sin comisión para ti.
-            </p>
             <motion.button
-              whileTap={{ scale: 0.97 }}
+              whileTap={{ scale: 0.96 }}
               onClick={onEnter}
-              className="group relative mt-6 inline-flex items-center justify-center gap-2 px-7 py-4 rounded-2xl bg-white text-red-600 font-black text-[15px] shadow-xl overflow-hidden"
+              className="group inline-flex items-center gap-3 mt-9 px-8 py-4 rounded-full bg-white text-black font-black text-[16px] shadow-[0_12px_40px_-8px_rgba(255,255,255,0.4)]"
             >
-              Empezar gratis
-              <svg className="w-4 h-4 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth={2.6} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
-              </svg>
+              Quiero empezar
+              <span className="w-6 h-6 rounded-full bg-black flex items-center justify-center transition-transform group-hover:translate-x-1">
+                <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
+                </svg>
+              </span>
             </motion.button>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative px-5 py-8 border-t border-white/[0.06]">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-white/35">
+      {/* Footer mínimo */}
+      <footer className="relative px-5 sm:px-8 py-8 border-t border-white/[0.05]">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-white/35">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center">
-              <span className="text-[10px] font-black text-white">C</span>
-            </div>
-            <span className="font-bold">Crew by MenuBy · {new Date().getFullYear()}</span>
+            <CrewLogo size={20} showText={false} />
+            <span className="font-bold">crew · {new Date().getFullYear()}</span>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="https://wa.me/573028181520" target="_blank" rel="noreferrer" className="hover:text-white/80 transition font-bold">
-              Soporte por WhatsApp
-            </a>
-            <a href="/empleador" className="hover:text-white/80 transition font-bold">
-              ¿Eres empleador?
-            </a>
+          <div className="flex items-center gap-5">
+            <a href="https://wa.me/573028181520" target="_blank" rel="noreferrer" className="hover:text-white transition">Soporte</a>
+            <a href="/empleador" className="hover:text-white transition">¿Eres empleador? →</a>
           </div>
         </div>
       </footer>
@@ -355,30 +244,262 @@ export default function CrewLanding({ onEnter }) {
   );
 }
 
-function FaqItem({ q, a }) {
-  const [open, setOpen] = useState(false);
+/* ─── Orbiting badge alrededor del logo ─── */
+function OrbitBadge({ angle, label }) {
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm overflow-hidden">
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full px-4 py-3.5 flex items-center justify-between gap-3 text-left hover:bg-white/[0.04] transition"
-      >
-        <span className="text-[13.5px] font-bold text-white/90 flex-1 min-w-0">{q}</span>
-        <svg className={`w-4 h-4 text-white/40 transition-transform shrink-0 ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          transition={{ duration: 0.2 }}
-          className="px-4 pb-4 -mt-1"
-        >
-          <p className="text-[12.5px] text-white/55 leading-relaxed">{a}</p>
-        </motion.div>
-      )}
+    <div
+      className="absolute top-1/2 left-1/2 hidden sm:block"
+      style={{
+        transform: `rotate(${angle}deg) translateY(-220px) rotate(${-angle}deg) translate(-50%, -50%)`,
+      }}
+    >
+      <div className="px-3 py-1.5 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/[0.12] text-[11px] font-extrabold whitespace-nowrap">
+        {label}
+      </div>
     </div>
+  );
+}
+
+function DealItem({ children, ok }) {
+  return (
+    <li className="flex items-start gap-2.5 text-[13px]">
+      <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${ok ? 'bg-emerald-400' : 'bg-white/30'}`} />
+      <span className={ok ? 'text-white/90' : 'text-white/50'}>{children}</span>
+    </li>
+  );
+}
+
+/* ─── Ticker de turnos publicados (mock, autorotación) ─── */
+function LiveTicker() {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setIdx((i) => (i + 1) % TICKER_FEED.length), 2800);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <section className="relative px-5 sm:px-8 py-10 sm:py-12 border-y border-white/[0.05] bg-white/[0.015]">
+      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="relative flex w-2 h-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex w-2 h-2 rounded-full bg-emerald-500" />
+          </span>
+          <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/60">Turnos publicados ahora</span>
+        </div>
+        <div className="relative h-12 flex-1 w-full overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -18 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0 flex items-center gap-3 text-[13.5px]"
+            >
+              <span className="w-9 h-9 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-[14px] font-black">
+                {TICKER_FEED[idx].who[0]}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-bold truncate">
+                  <span className="text-white/90">{TICKER_FEED[idx].role}</span>
+                  <span className="text-white/40"> · </span>
+                  <span className="text-white/60">{TICKER_FEED[idx].biz}</span>
+                </p>
+                <p className="text-[11px] text-white/40">{TICKER_FEED[idx].city} · {TICKER_FEED[idx].when}</p>
+              </div>
+              <span className="shrink-0 text-emerald-300 font-black tabular-nums">
+                {formatCOP(TICKER_FEED[idx].pay)}
+              </span>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Calculadora de ingresos potenciales ─── */
+function Calculator({ onEnter }) {
+  const [hours, setHours] = useState(20);
+  const [rate, setRate] = useState(13000);
+  const monthly = useMemo(() => Math.round(hours * 4 * rate), [hours, rate]);
+
+  return (
+    <section className="relative px-5 sm:px-8 py-20 sm:py-28">
+      <div className="max-w-6xl mx-auto grid lg:grid-cols-[1.1fr_1fr] gap-8 lg:gap-16 items-center">
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400 mb-3">¿Cuánto puedes ganar?</p>
+          <h2 className="text-[34px] sm:text-[50px] font-black leading-[0.95] tracking-tight">
+            Mueve los controles.
+            <br />
+            <span className="text-white/40">Nosotros corremos las cuentas.</span>
+          </h2>
+          <p className="text-[14px] text-white/50 mt-5 max-w-md leading-relaxed">
+            La tarifa promedio en Bogotá es <strong className="text-white/80">$13.000/h</strong>. Con eventos urgentes (SOS) puede llegar a <strong className="text-white/80">$22.000/h</strong>.
+          </p>
+        </div>
+
+        <div className="relative rounded-[28px] border border-white/[0.10] bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-7 sm:p-8 backdrop-blur-sm overflow-hidden">
+          <div className="absolute -top-20 -right-20 w-60 h-60 bg-emerald-500/15 rounded-full blur-[80px] pointer-events-none" />
+
+          <div className="relative space-y-7">
+            <Slider
+              label="Horas a la semana"
+              value={hours}
+              min={5} max={60} step={1}
+              onChange={setHours}
+              suffix={`${hours}h`}
+            />
+            <Slider
+              label="Tarifa por hora"
+              value={rate}
+              min={8000} max={25000} step={1000}
+              onChange={setRate}
+              suffix={formatCOP(rate)}
+            />
+
+            <div className="pt-6 border-t border-white/[0.08]">
+              <p className="text-[10.5px] font-black uppercase tracking-[0.25em] text-white/40">Podrías ganar al mes</p>
+              <motion.p
+                key={monthly}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+                className="text-[48px] sm:text-[64px] font-black leading-none tabular-nums mt-1 bg-gradient-to-r from-emerald-300 to-emerald-400 bg-clip-text text-transparent"
+              >
+                {formatCOP(monthly)}
+              </motion.p>
+              <p className="text-[11.5px] text-white/40 mt-2">100% para ti. Sin descuentos.</p>
+
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={onEnter}
+                className="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/40 text-emerald-200 text-[12px] font-extrabold uppercase tracking-wider transition"
+              >
+                Quiero probar
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.6} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 12h15" />
+                </svg>
+              </motion.button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Slider({ label, value, min, max, step, onChange, suffix }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10.5px] font-black uppercase tracking-[0.18em] text-white/40">{label}</span>
+        <span className="text-[14px] font-black text-white tabular-nums">{suffix}</span>
+      </div>
+      <input
+        type="range"
+        min={min} max={max} step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full appearance-none h-1.5 rounded-full bg-white/[0.08] outline-none accent-red-500"
+        style={{
+          background: `linear-gradient(to right, #ef4444 0%, #f97316 ${((value - min) / (max - min)) * 100}%, rgba(255,255,255,0.08) ${((value - min) / (max - min)) * 100}%)`,
+        }}
+      />
+    </div>
+  );
+}
+
+/* ─── Testimonio integrado ─── */
+function Testimonial() {
+  return (
+    <section className="relative px-5 sm:px-8 py-20 sm:py-28 border-y border-white/[0.05]">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-[120px] sm:text-[180px] font-black text-white/[0.04] leading-none -mb-12 sm:-mb-20 select-none" aria-hidden>
+          “
+        </div>
+        <motion.blockquote
+          initial={{ opacity: 0, y: 12 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="relative text-[24px] sm:text-[36px] font-black leading-[1.15] tracking-tight"
+        >
+          Trabajé <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">4 turnos en mi primera semana</span>. Pagué la matrícula del semestre con eso. Antes me la pasaba pidiendo prestado.
+        </motion.blockquote>
+        <div className="mt-8 flex items-center gap-4">
+          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-[20px] font-black border-2 border-white/10">
+            D
+          </div>
+          <div>
+            <p className="text-[14px] font-extrabold">Diego, 22 años</p>
+            <p className="text-[11px] text-white/50 uppercase tracking-wider">Mesero · Universitario · Nivel 6 en Crew</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Evolución de niveles ─── */
+function Evolution() {
+  const levels = [
+    { lv: 1, label: 'Empiezas', desc: 'Tu primer turno', color: 'from-white/30 to-white/10' },
+    { lv: 4, label: 'Activo', desc: 'Tienes reseñas', color: 'from-amber-400 to-orange-400' },
+    { lv: 10, label: 'Profesional', desc: 'Turnos premium', color: 'from-red-400 to-rose-500' },
+    { lv: 20, label: 'Senior', desc: 'Eventos VIP', color: 'from-fuchsia-400 to-violet-500' },
+  ];
+  return (
+    <section className="relative px-5 sm:px-8 py-20 sm:py-28">
+      <div className="max-w-6xl mx-auto">
+        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-red-400 mb-3">Tu evolución</p>
+        <h2 className="text-[34px] sm:text-[50px] font-black leading-[0.95] tracking-tight max-w-3xl">
+          Cada turno suma.
+          <br />
+          <span className="text-white/40">Crew te conoce mejor con el tiempo.</span>
+        </h2>
+
+        <div className="mt-12 relative">
+          {/* Línea base */}
+          <div className="absolute left-0 right-0 top-[68px] h-px bg-gradient-to-r from-white/0 via-white/20 to-white/0 hidden sm:block" />
+          <div className="grid sm:grid-cols-4 gap-4 sm:gap-6">
+            {levels.map((l, i) => (
+              <motion.div
+                key={l.lv}
+                initial={{ opacity: 0, y: 12 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08, duration: 0.5 }}
+                className="relative"
+              >
+                <div className={`relative w-14 h-14 rounded-2xl bg-gradient-to-br ${l.color} flex items-center justify-center mb-4 shadow-lg`}>
+                  <span className="text-[18px] font-black text-white">{l.lv}</span>
+                </div>
+                <p className="text-[15px] font-black">{l.label}</p>
+                <p className="text-[11.5px] text-white/45 mt-0.5">{l.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Lo que destrabas */}
+        <div className="mt-10 flex flex-wrap gap-2">
+          {[
+            '+25 XP por hora',
+            'Badge "10 turnos"',
+            'Boost en el feed',
+            'Acceso turnos premium',
+            'Reseñas verificables',
+            'Match score más alto',
+            'Compensación si cancelan',
+          ].map((p) => (
+            <span key={p} className="px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11.5px] font-bold text-white/65">
+              {p}
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
