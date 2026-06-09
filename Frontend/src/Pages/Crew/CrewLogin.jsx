@@ -24,7 +24,7 @@ const STAGGER = {
   transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
 };
 
-export default function CrewLogin({ onAuthed }) {
+export default function CrewLogin({ onAuthed, onBack }) {
   const { signup, login, loading } = useCrew();
   const [mode, setMode] = useState('signup');
   const [form, setForm] = useState({ phone: '', name: '', password: '' });
@@ -57,6 +57,20 @@ export default function CrewLogin({ onAuthed }) {
     <div className="relative min-h-[100dvh] flex items-center justify-center px-4 py-[max(2.5rem,env(safe-area-inset-top,0px))] font-geist overflow-hidden text-white">
       <Aurora variant="hero" />
       <Sparkles count={26} />
+
+      {/* Botón "atrás" a la landing — flotante, no rompe el layout central */}
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="absolute top-[max(1rem,env(safe-area-inset-top,0px))] left-4 z-20 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/[0.06] backdrop-blur-sm border border-white/[0.10] text-white/70 hover:text-white hover:bg-white/[0.10] text-[11px] font-extrabold uppercase tracking-wider transition"
+          aria-label="Volver"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Atrás
+        </button>
+      )}
 
       {/* Glow del logo en la parte superior */}
       <motion.div

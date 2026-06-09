@@ -32,7 +32,7 @@ const BUSINESS_TYPES = [
   { key: 'other', label: 'Otro', emoji: '✨' },
 ];
 
-export default function CrewEmployerSignup({ onSwitch }) {
+export default function CrewEmployerSignup({ onSwitch, onBack }) {
   const { signup, loading } = useCrewEmployer();
   const [step, setStep] = useState(0);
   const [kind, setKind] = useState(null); // 'individual' | 'business'
@@ -67,6 +67,13 @@ export default function CrewEmployerSignup({ onSwitch }) {
     <div className="min-h-[100dvh] bg-slate-50 text-slate-800 font-geist">
       <header className="max-w-md mx-auto px-5 pt-[max(1.5rem,env(safe-area-inset-top,0px))] pb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
+          {step === 0 && onBack && (
+            <button onClick={onBack} className="w-8 h-8 -ml-1 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition" aria-label="Volver">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
           <div className="w-9 h-9 rounded-2xl bg-red-500 flex items-center justify-center shadow-md shadow-red-500/25">
             <span className="text-base font-black text-white">C</span>
           </div>

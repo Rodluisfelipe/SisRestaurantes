@@ -1,8 +1,14 @@
 /**
  * CrewEmployerApp — shell principal para empleadores Crew.
- * Rutea entre login/signup/pending/dashboard según estado de auth.
+ *
+ * Rutea entre landing/login/signup/pending/dashboard:
+ *   - bootstrap → spinner
+ *   - !isAuthed → 'landing' (default) | 'login' | 'signup'
+ *   - isAuthed && !isApproved → pantalla de estado (pending/rejected/etc)
+ *   - isAuthed && isApproved → dashboard completo
  */
 import { useCrewEmployer, CrewEmployerProvider } from './useCrewEmployer';
+import CrewEmployerLanding from './CrewEmployerLanding';
 import CrewEmployerLogin from './CrewEmployerLogin';
 import CrewEmployerSignup from './CrewEmployerSignup';
 import CrewEmployerPending from './CrewEmployerPending';
@@ -19,7 +25,8 @@ export default function CrewEmployerApp() {
 
 function CrewEmployerRouter() {
   const { bootstrapped, isAuthed, isApproved } = useCrewEmployer();
-  const [screen, setScreen] = useState('login'); // login | signup
+  // Empezamos en la landing — primero el valor, después el formulario.
+  const [screen, setScreen] = useState('landing'); // 'landing' | 'login' | 'signup'
 
   if (!bootstrapped) {
     return (
@@ -32,9 +39,22 @@ function CrewEmployerRouter() {
   // No autenticado
   if (!isAuthed) {
     if (screen === 'signup') {
-      return <CrewEmployerSignup onSwitch={() => setScreen('login')} />;
+      return (
+        <CrewEmployerSignup
+          onSwitch={() => setScreen('login')}
+          onBack={() => setScreen('landing')}
+        />
+      );
     }
-    return <CrewEmployerLogin onSwitch={() => setScreen('signup')} />;
+    if (screen === 'login') {
+      return (
+        <CrewEmployerLogin
+          onSwitch={() => setScreen('signup')}
+          onBack={() => setScreen('landing')}
+        />
+      );
+    }
+    return <CrewEmployerLanding onLogin={() => setScreen('login')} onSignup={() => setScreen('signup')} />;
   }
 
   // Autenticado pero pendiente/rechazado/suspendido

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCrew } from './useCrew';
+import CrewLanding from './CrewLanding';
 import CrewLogin from './CrewLogin';
 import CrewOnboarding from './CrewOnboarding';
 import CrewFeed from './CrewFeed';
@@ -60,6 +61,9 @@ export default function CrewApp() {
   const [chatOpen, setChatOpen] = useState(false);
   const [shiftDetailOpen, setShiftDetailOpen] = useState(false);
   const [levelUp, setLevelUp] = useState(null);
+  // Antes de autenticarse, mostramos la landing con la propuesta de valor.
+  // Solo saltamos directo al login si el visitante toca "Entrar".
+  const [showLandingIntro, setShowLandingIntro] = useState(true);
   const prevLevelRef = useRef(null);
 
   // Onboarding incompleto = sin skills configurados
@@ -81,7 +85,10 @@ export default function CrewApp() {
     prevLevelRef.current = worker.level;
   }, [worker?.level]);
 
-  if (!isAuthed) return <CrewLogin onAuthed={refreshMe} />;
+  if (!isAuthed) {
+    if (showLandingIntro) return <CrewLanding onEnter={() => setShowLandingIntro(false)} />;
+    return <CrewLogin onAuthed={refreshMe} onBack={() => setShowLandingIntro(true)} />;
+  }
   if (needsOnboarding) return <CrewOnboarding onDone={refreshMe} />;
 
   return (
