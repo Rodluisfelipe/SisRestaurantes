@@ -26,6 +26,8 @@ const TXN_KINDS = [
   'shift_commission',     // pendingBalance del negocio → plataforma (comisión Crew)
   'shift_refund',         // pendingBalance del negocio → balance del negocio (cancelación con devolución)
   'cancellation_penalty', // pendingBalance del negocio → plataforma (no se devuelve nada)
+  'vacancy_post',         // negocio paga fee fijo por publicar una vacante (balance → plataforma)
+  'vacancy_refund',       // se devuelve el fee de vacante (caso especial: republicar fallida, refund manual)
   'withdrawal_request',   // worker pide retirar — bloquea saldo (balance → pendingBalance)
   'withdrawal_paid',      // pago efectivo a worker fuera del sistema (pendingBalance → 0)
   'withdrawal_rejected',  // retiro rechazado, regresa a balance

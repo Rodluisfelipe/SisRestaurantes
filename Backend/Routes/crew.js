@@ -35,6 +35,8 @@ const CrewWalletTxn = require('../Models/CrewWalletTxn');
 const CrewWithdrawalRequest = require('../Models/CrewWithdrawalRequest');
 const CrewRechargeRequest = require('../Models/CrewRechargeRequest');
 const CrewEmployer = require('../Models/CrewEmployer');
+const Vacancy = require('../Models/Vacancy');
+const VacancyApplication = require('../Models/VacancyApplication');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const { requireEmployer, requireEmployerAny } = require('../middleware/crewEmployerAuth');
 const { uploadImage, isSpacesConfigured } = require('../services/imageUploadService');
@@ -2440,6 +2442,427 @@ router.get('/employers/wallet/transactions', requireEmployerAny, async (req, res
     .populate('shiftId', 'title date')
     .lean();
   res.json({ success: true, transactions: txns });
+});
+
+/* ═════════════════════════════════════════════════════════════════════════
+ *  VACANTES — feature paralela a turnos
+ *  Fee fijo $10.000 COP por publicar. Postulaciones ilimitadas.
+ *  Coexisten con turnos en el feed del worker.
+ *  Polimórfico: business MenuBy y crew_employer pueden publicar.
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+// Snapshot del owner para denormalizar en la vacante (igual que en shifts)
+async function buildOwnerSnapshot(ownerType, ownerId) {
+  if (ownerType === 'business') {
+    const b = await BusinessConfig.findById(ownerId).select('businessName logo coverImage businessType address').lean();
+    if (!b) throw new Error('Negocio no encontrado');
+    return {
+      ownerDisplay: {
+        name: b.businessName || '',
+        logo: b.logo || null,
+        coverImage: b.coverImage || null,
+        businessType: b.businessType || '',
+        verified: true,
+      },
+      location: {
+        city: b.address?.city || '',
+        neighborhood: b.address?.neighborhood || '',
+        address: b.address?.full || '',
+      },
+    };
+  }
+  const e = await CrewEmployer.findById(ownerId).select('name photo coverImage businessType kind address location verifiedAt').lean();
+  if (!e) throw new Error('Empleador no encontrado');
+  return {
+    ownerDisplay: {
+      name: e.name,
+      logo: e.photo || null,
+      coverImage: e.coverImage || null,
+      businessType: e.kind === 'business' ? (e.businessType || '') : 'individual',
+      verified: !!e.verifiedAt,
+    },
+    location: {
+      city: e.address?.city || '',
+      neighborhood: e.address?.neighborhood || '',
+      address: e.address?.full || '',
+      lat: e.location?.lat || null,
+      lng: e.location?.lng || null,
+    },
+  };
+}
+
+// Crea la vacante + cobra el fee. Maneja insufficient funds. Si el cobro falla,
+// borra la vacante para no dejarla huérfana.
+async function createAndChargeVacancy({ ownerType, ownerId, postedById, body }) {
+  const {
+    title, role, description, responsibilities, benefits,
+    requirements, schedule, hoursPerWeek, salary, location: locOverride,
+    customQuestions, requireCv, applicationDeadline, expiresAt,
+  } = body || {};
+
+  if (!title?.trim()) { const e = new Error('Título es requerido'); e.code = 'BAD_INPUT'; throw e; }
+  if (!VALID_SKILLS.includes(role)) { const e = new Error('Rol inválido'); e.code = 'BAD_INPUT'; throw e; }
+
+  const snap = await buildOwnerSnapshot(ownerType, ownerId);
+
+  // Default: expira en 30 días
+  const finalExpiresAt = expiresAt
+    ? new Date(expiresAt)
+    : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+  const vacancy = await Vacancy.create({
+    ownerType,
+    businessId: ownerType === 'business' ? ownerId : null,
+    employerId: ownerType === 'crew_employer' ? ownerId : null,
+    postedBy: postedById || null,
+    ownerDisplay: snap.ownerDisplay,
+    title: title.trim(),
+    role,
+    description: (description || '').slice(0, 4000),
+    responsibilities: Array.isArray(responsibilities) ? responsibilities.slice(0, 20) : [],
+    benefits: Array.isArray(benefits) ? benefits.slice(0, 15) : [],
+    requirements: requirements || {},
+    schedule: schedule || 'full_time',
+    hoursPerWeek: hoursPerWeek || null,
+    salary: salary || {},
+    location: { ...snap.location, ...(locOverride || {}) },
+    customQuestions: Array.isArray(customQuestions) ? customQuestions.slice(0, 15) : [],
+    requireCv: !!requireCv,
+    applicationDeadline: applicationDeadline ? new Date(applicationDeadline) : null,
+    expiresAt: finalExpiresAt,
+    status: 'draft', // arranca en draft, se publica con el cobro
+  });
+
+  // Cobrar fee al publicar
+  try {
+    const charge = await crewLedger.chargeVacancyFee({
+      ownerType, ownerId,
+      vacancyId: vacancy._id,
+      performedBy: { kind: ownerType === 'business' ? 'admin' : 'crew_employer', id: postedById || ownerId },
+    });
+
+    vacancy.status = 'published';
+    vacancy.publishedAt = new Date();
+    vacancy.pricePaid = charge.charged;
+    vacancy.paymentTxnId = charge.txn._id;
+    await vacancy.save();
+
+    return { vacancy, charge };
+  } catch (chargeErr) {
+    await Vacancy.deleteOne({ _id: vacancy._id }).catch(() => {});
+    throw chargeErr;
+  }
+}
+
+/* ─────────── WORKER ─────────── */
+
+// GET /crew/vacancies/feed — descubrimiento
+router.get('/vacancies/feed', requireWorker, async (req, res) => {
+  try {
+    const { city, role, schedule, isRemote, limit = 30 } = req.query;
+    const q = { status: 'published', expiresAt: { $gt: new Date() } };
+    if (city) q['location.city'] = city;
+    if (role) q.role = role;
+    if (schedule) q.schedule = schedule;
+    if (isRemote === 'true') q['location.isRemote'] = true;
+
+    // Excluir vacantes a las que ya aplicó
+    const appliedIds = await VacancyApplication.find({ workerId: req.worker._id }).distinct('vacancyId');
+    if (appliedIds.length) q._id = { $nin: appliedIds };
+
+    const vacancies = await Vacancy.find(q)
+      .sort({ featured: -1, publishedAt: -1 })
+      .limit(Math.min(Number(limit), 60))
+      .select('title role ownerDisplay location salary schedule benefits applicationCount publishedAt expiresAt requireCv')
+      .lean();
+
+    res.json({ success: true, vacancies });
+  } catch (e) {
+    logger.error('crew vacancy feed error', e);
+    res.status(500).json({ message: e.message || 'Error al cargar vacantes' });
+  }
+});
+
+// GET /crew/vacancies/:id — detalle (incluye customQuestions para el form)
+router.get('/vacancies/:id', requireWorker, async (req, res) => {
+  try {
+    const vacancy = await Vacancy.findById(req.params.id).lean();
+    if (!vacancy) return res.status(404).json({ message: 'Vacante no encontrada' });
+    if (vacancy.status !== 'published') {
+      return res.status(403).json({ message: 'Esta vacante ya no está disponible' });
+    }
+    // Incrementar viewCount best-effort
+    Vacancy.updateOne({ _id: vacancy._id }, { $inc: { viewCount: 1 } }).catch(() => {});
+
+    // Si ya aplicó, indicarlo (para que UI muestre el estado en vez de "postularme")
+    const myApp = await VacancyApplication.findOne({
+      vacancyId: vacancy._id, workerId: req.worker._id,
+    }).select('status appliedAt').lean();
+
+    res.json({ success: true, vacancy, myApplication: myApp });
+  } catch (e) {
+    logger.error('crew vacancy detail error', e);
+    res.status(500).json({ message: e.message || 'Error' });
+  }
+});
+
+// POST /crew/vacancies/:id/apply
+router.post('/vacancies/:id/apply', requireWorker, async (req, res) => {
+  try {
+    const { coverLetter, answers, cvUrl } = req.body || {};
+    const vacancy = await Vacancy.findById(req.params.id);
+    if (!vacancy) return res.status(404).json({ message: 'Vacante no encontrada' });
+    if (vacancy.status !== 'published') {
+      return res.status(400).json({ message: 'Esta vacante ya no recibe postulaciones' });
+    }
+    if (vacancy.expiresAt && vacancy.expiresAt.getTime() < Date.now()) {
+      return res.status(400).json({ message: 'Esta vacante expiró' });
+    }
+    if (vacancy.requireCv && !cvUrl) {
+      return res.status(400).json({ message: 'Esta vacante requiere subir tu hoja de vida (PDF)' });
+    }
+
+    // Validar respuestas: las preguntas required deben venir contestadas
+    const answersMap = new Map();
+    if (Array.isArray(answers)) {
+      for (const a of answers) {
+        if (a?.questionId && a?.value != null) answersMap.set(String(a.questionId), a.value);
+      }
+    }
+    const snapshotAnswers = [];
+    for (const q of vacancy.customQuestions || []) {
+      const v = answersMap.get(String(q._id));
+      if (q.required && (v == null || v === '' || (Array.isArray(v) && v.length === 0))) {
+        return res.status(400).json({
+          message: `Falta responder: "${q.question}"`,
+          questionId: String(q._id),
+        });
+      }
+      if (v != null) {
+        snapshotAnswers.push({ questionId: q._id, question: q.question, value: v });
+      }
+    }
+
+    try {
+      const app = await VacancyApplication.create({
+        vacancyId: vacancy._id,
+        workerId: req.worker._id,
+        ownerType: vacancy.ownerType,
+        businessId: vacancy.businessId || null,
+        employerId: vacancy.employerId || null,
+        coverLetter: (coverLetter || '').slice(0, 2000),
+        answers: snapshotAnswers,
+        cvUrl: cvUrl || null,
+      });
+
+      // Increment counter denormalizado
+      await Vacancy.updateOne({ _id: vacancy._id }, { $inc: { applicationCount: 1 } });
+
+      res.status(201).json({ success: true, application: app });
+    } catch (dupErr) {
+      if (dupErr.code === 11000) {
+        return res.status(409).json({ message: 'Ya te postulaste a esta vacante' });
+      }
+      throw dupErr;
+    }
+  } catch (e) {
+    logger.error('crew vacancy apply error', e);
+    res.status(500).json({ message: e.message || 'Error al postular' });
+  }
+});
+
+// GET /crew/workers/me/vacancy-applications
+router.get('/workers/me/vacancy-applications', requireWorker, async (req, res) => {
+  const apps = await VacancyApplication.find({ workerId: req.worker._id })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .populate({ path: 'vacancyId', select: 'title role ownerDisplay location salary status' })
+    .lean();
+  res.json({ success: true, applications: apps });
+});
+
+// POST /crew/workers/me/vacancy-applications/:id/withdraw
+router.post('/workers/me/vacancy-applications/:id/withdraw', requireWorker, async (req, res) => {
+  const app = await VacancyApplication.findOne({ _id: req.params.id, workerId: req.worker._id });
+  if (!app) return res.status(404).json({ message: 'Postulación no encontrada' });
+  if (!['pending', 'shortlisted', 'interviewing'].includes(app.status)) {
+    return res.status(400).json({ message: `No se puede retirar desde estado ${app.status}` });
+  }
+  app.status = 'withdrawn';
+  app.withdrawnAt = new Date();
+  await app.save();
+  res.json({ success: true });
+});
+
+/* ─────────── OWNER (business + employer) ─────────── */
+
+// Helper polimórfico: handler genérico para list / detail / lifecycle / applicants
+async function listOwnerVacancies(ownerType, ownerId, status) {
+  const q = ownerType === 'business' ? { businessId: ownerId } : { employerId: ownerId };
+  if (status) q.status = status;
+  return Vacancy.find(q).sort({ createdAt: -1 }).limit(60).lean();
+}
+
+async function getOwnerVacancy(vacancyId, ownerType, ownerId) {
+  const v = await Vacancy.findById(vacancyId);
+  if (!v) return null;
+  const ownerIdField = ownerType === 'business' ? v.businessId : v.employerId;
+  if (String(ownerIdField) !== String(ownerId)) return null;
+  return v;
+}
+
+// ── Business: publish vacancy ──
+router.post('/businesses/vacancies', tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.resolvedBusinessId || req.user?.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+    const result = await createAndChargeVacancy({
+      ownerType: 'business',
+      ownerId: businessId,
+      postedById: req.user?.id,
+      body: req.body,
+    });
+    res.status(201).json({ success: true, vacancy: result.vacancy, charged: result.charge.charged });
+  } catch (e) {
+    if (e.code === 'INSUFFICIENT_FUNDS') {
+      return res.status(402).json({
+        message: e.message, code: 'INSUFFICIENT_FUNDS',
+        required: e.required, available: e.available,
+      });
+    }
+    if (e.code === 'BAD_INPUT') return res.status(400).json({ message: e.message });
+    logger.error('crew biz post vacancy error', e);
+    res.status(500).json({ message: e.message || 'Error al publicar vacante' });
+  }
+});
+
+// ── Employer: publish vacancy ──
+router.post('/employers/vacancies', requireEmployer, async (req, res) => {
+  try {
+    const result = await createAndChargeVacancy({
+      ownerType: 'crew_employer',
+      ownerId: req.employer._id,
+      postedById: req.employer._id,
+      body: req.body,
+    });
+    res.status(201).json({ success: true, vacancy: result.vacancy, charged: result.charge.charged });
+  } catch (e) {
+    if (e.code === 'INSUFFICIENT_FUNDS') {
+      return res.status(402).json({
+        message: e.message, code: 'INSUFFICIENT_FUNDS',
+        required: e.required, available: e.available,
+      });
+    }
+    if (e.code === 'BAD_INPUT') return res.status(400).json({ message: e.message });
+    logger.error('crew employer post vacancy error', e);
+    res.status(500).json({ message: e.message || 'Error al publicar vacante' });
+  }
+});
+
+// ── List mine ──
+router.get('/businesses/vacancies', tenantAuth, async (req, res) => {
+  const businessId = req.resolvedBusinessId || req.user?.businessId;
+  if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+  const vacancies = await listOwnerVacancies('business', businessId, req.query.status);
+  res.json({ success: true, vacancies });
+});
+
+router.get('/employers/vacancies', requireEmployer, async (req, res) => {
+  const vacancies = await listOwnerVacancies('crew_employer', req.employer._id, req.query.status);
+  res.json({ success: true, vacancies });
+});
+
+// ── Vacancy detail (owner side, con applications inline) ──
+async function vacancyDetailHandler(ownerType, ownerId, vacancyId, res) {
+  const vacancy = await getOwnerVacancy(vacancyId, ownerType, ownerId);
+  if (!vacancy) return res.status(404).json({ message: 'Vacante no encontrada' });
+  const applicationCounts = await VacancyApplication.aggregate([
+    { $match: { vacancyId: vacancy._id } },
+    { $group: { _id: '$status', count: { $sum: 1 } } },
+  ]);
+  const counts = applicationCounts.reduce((acc, c) => ({ ...acc, [c._id]: c.count }), {});
+  res.json({ success: true, vacancy, applicationCounts: counts });
+}
+
+router.get('/businesses/vacancies/:id', tenantAuth, (req, res) =>
+  vacancyDetailHandler('business', req.resolvedBusinessId || req.user?.businessId, req.params.id, res));
+router.get('/employers/vacancies/:id', requireEmployer, (req, res) =>
+  vacancyDetailHandler('crew_employer', req.employer._id, req.params.id, res));
+
+// ── List applications ──
+async function listApplicationsHandler(ownerType, ownerId, vacancyId, query, res) {
+  const vacancy = await getOwnerVacancy(vacancyId, ownerType, ownerId);
+  if (!vacancy) return res.status(404).json({ message: 'Vacante no encontrada' });
+  const q = { vacancyId: vacancy._id };
+  if (query.status) q.status = query.status;
+  const apps = await VacancyApplication.find(q)
+    .sort({ matchScore: -1, appliedAt: 1 })
+    .populate('workerId', 'name photo phone email level xp rating stats badgesEarned skills languages university bio kyc.status experiences education')
+    .lean();
+  res.json({ success: true, applications: apps });
+}
+
+router.get('/businesses/vacancies/:id/applications', tenantAuth, (req, res) =>
+  listApplicationsHandler('business', req.resolvedBusinessId || req.user?.businessId, req.params.id, req.query, res));
+router.get('/employers/vacancies/:id/applications', requireEmployer, (req, res) =>
+  listApplicationsHandler('crew_employer', req.employer._id, req.params.id, req.query, res));
+
+// ── Decide on application (shortlist / reject / hire / interviewing) ──
+const VALID_DECISIONS = ['shortlisted', 'interviewing', 'rejected', 'hired'];
+async function decideApplicationHandler(ownerType, ownerId, applicationId, action, note, res) {
+  if (!VALID_DECISIONS.includes(action)) {
+    return res.status(400).json({ message: 'Acción inválida', valid: VALID_DECISIONS });
+  }
+  const app = await VacancyApplication.findById(applicationId);
+  if (!app) return res.status(404).json({ message: 'Postulación no encontrada' });
+  const ownerIdField = ownerType === 'business' ? app.businessId : app.employerId;
+  if (String(ownerIdField) !== String(ownerId)) {
+    return res.status(403).json({ message: 'No es tu vacante' });
+  }
+  app.status = action;
+  app.respondedAt = new Date();
+  if (note) app.internalNote = String(note).slice(0, 500);
+  await app.save();
+  res.json({ success: true, application: app });
+}
+
+router.post('/businesses/vacancy-applications/:id/:action', tenantAuth, (req, res) =>
+  decideApplicationHandler('business', req.resolvedBusinessId || req.user?.businessId, req.params.id, req.params.action, req.body?.note, res));
+router.post('/employers/vacancy-applications/:id/:action', requireEmployer, (req, res) =>
+  decideApplicationHandler('crew_employer', req.employer._id, req.params.id, req.params.action, req.body?.note, res));
+
+// ── Lifecycle: pause / resume / close ──
+const LIFECYCLE_MAP = { pause: 'paused', resume: 'published', close: 'closed' };
+async function lifecycleHandler(ownerType, ownerId, vacancyId, action, res) {
+  const targetStatus = LIFECYCLE_MAP[action];
+  if (!targetStatus) return res.status(400).json({ message: 'Acción inválida' });
+  const vacancy = await getOwnerVacancy(vacancyId, ownerType, ownerId);
+  if (!vacancy) return res.status(404).json({ message: 'Vacante no encontrada' });
+
+  if (action === 'resume' && vacancy.status !== 'paused') {
+    return res.status(400).json({ message: 'Solo se pueden reactivar vacantes pausadas' });
+  }
+  if (action === 'pause' && vacancy.status !== 'published') {
+    return res.status(400).json({ message: 'Solo se pueden pausar vacantes publicadas' });
+  }
+  if (action === 'close' && vacancy.status === 'closed') {
+    return res.status(400).json({ message: 'Ya está cerrada' });
+  }
+
+  vacancy.status = targetStatus;
+  if (action === 'close') vacancy.closedAt = new Date();
+  await vacancy.save();
+  res.json({ success: true, vacancy });
+}
+
+router.post('/businesses/vacancies/:id/:action', tenantAuth, (req, res) =>
+  lifecycleHandler('business', req.resolvedBusinessId || req.user?.businessId, req.params.id, req.params.action, res));
+router.post('/employers/vacancies/:id/:action', requireEmployer, (req, res) =>
+  lifecycleHandler('crew_employer', req.employer._id, req.params.id, req.params.action, res));
+
+// ── Quote: cuánto cuesta publicar (para preview en UI) ──
+router.get('/vacancies/quote', (req, res) => {
+  res.json({ success: true, fee: crewLedger.VACANCY_POST_FEE });
 });
 
 module.exports = router;

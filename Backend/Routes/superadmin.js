@@ -847,6 +847,80 @@ router.post('/crew/employers/:id/restore', requireRole('admin'), async (req, res
  *    search=texto (busca en nombre/teléfono/email)
  * ───────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────
+ *  CREW — Vacantes (moderación SuperAdmin)
+ *  Listado de todas las vacantes con filtros por status y ownerType.
+ *  Permite cerrar manualmente vacantes que infringen políticas.
+ * ───────────────────────────────────────────── */
+
+router.get('/crew/vacancies', async (req, res) => {
+  try {
+    const Vacancy = require('../Models/Vacancy');
+    const VacancyApplication = require('../Models/VacancyApplication');
+    const { status = 'published', ownerType, limit = 80 } = req.query;
+    const q = {};
+    if (['draft', 'published', 'paused', 'closed', 'expired', 'all'].includes(status) && status !== 'all') {
+      q.status = status;
+    }
+    if (['business', 'crew_employer'].includes(ownerType)) q.ownerType = ownerType;
+
+    const [vacancies, counts, feesAgg] = await Promise.all([
+      Vacancy.find(q)
+        .sort({ publishedAt: -1, createdAt: -1 })
+        .limit(Math.min(Number(limit), 200))
+        .populate('businessId', 'businessName slug logo')
+        .populate('employerId', 'name kind photo')
+        .lean(),
+      Vacancy.aggregate([
+        { $group: { _id: { status: '$status', ownerType: '$ownerType' }, count: { $sum: 1 } } },
+      ]),
+      Vacancy.aggregate([
+        { $match: { status: { $in: ['published', 'paused', 'closed', 'expired'] } } },
+        { $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$publishedAt' } },
+          total: { $sum: '$pricePaid' },
+          count: { $sum: 1 },
+        } },
+        { $sort: { _id: -1 } },
+        { $limit: 12 },
+      ]),
+    ]);
+
+    const countsByStatus = {};
+    for (const c of counts) {
+      const s = c._id.status;
+      if (!countsByStatus[s]) countsByStatus[s] = { total: 0, business: 0, crew_employer: 0 };
+      countsByStatus[s].total += c.count;
+      countsByStatus[s][c._id.ownerType || 'business'] += c.count;
+    }
+
+    res.json({ success: true, vacancies, counts: countsByStatus, feesByMonth: feesAgg });
+  } catch (error) {
+    logger.error('Error listing crew vacancies', error, req);
+    res.status(500).json({ message: 'Error al cargar vacantes' });
+  }
+});
+
+// POST /api/superadmin/crew/vacancies/:id/close — SuperAdmin cierra manualmente
+router.post('/crew/vacancies/:id/close', requireRole('admin'), async (req, res) => {
+  try {
+    const Vacancy = require('../Models/Vacancy');
+    const { reason } = req.body || {};
+    if (!reason?.trim()) return res.status(400).json({ message: 'Motivo obligatorio' });
+    const vacancy = await Vacancy.findById(req.params.id);
+    if (!vacancy) return res.status(404).json({ message: 'Vacante no encontrada' });
+    if (vacancy.status === 'closed') return res.status(400).json({ message: 'Ya está cerrada' });
+    vacancy.status = 'closed';
+    vacancy.closedAt = new Date();
+    vacancy.closeReason = `[SuperAdmin] ${reason.trim().slice(0, 280)}`;
+    await vacancy.save();
+    res.json({ success: true, vacancy });
+  } catch (e) {
+    logger.error('Error closing vacancy', e, req);
+    res.status(500).json({ message: e.message || 'Error al cerrar' });
+  }
+});
+
 router.get('/crew/people', async (req, res) => {
   try {
     const { type = 'all', source = 'all', search = '', limit = 60 } = req.query;

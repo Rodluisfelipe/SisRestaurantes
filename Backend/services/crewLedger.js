@@ -74,6 +74,7 @@ const STANDARD_COMMISSION = 0.10;
 const SOS_COMMISSION = 0.15;
 const MIN_RECHARGE = 50000;       // COP mínimos por recarga
 const MIN_WITHDRAWAL = 20000;     // COP mínimos para retirar
+const VACANCY_POST_FEE = 10000;   // COP fijos por publicar una vacante
 
 // Política de cancelación (horas antes del inicio del turno)
 const CANCEL_FULL_REFUND_HOURS = 24;
@@ -665,6 +666,66 @@ async function autoReleaseStaleBookings({ maxAgeHours = 24, limit = 200, perform
 }
 
 /* ─────────────────────────────────────────────
+ *  VACANCY FEE — fee fijo por publicar vacante
+ *  Se cobra UNA VEZ al publicar. No hay escrow, no hay comisión por contratación.
+ *  Idempotente vía idempotencyKey `vacancy_post:<vacancyId>`.
+ * ───────────────────────────────────────────── */
+
+/**
+ * Cobra el fee fijo de publicación de vacante al owner.
+ *
+ * @param ownerType 'business' | 'crew_employer'
+ * @param ownerId
+ * @param vacancyId — para idempotencia + auditoría
+ * @param amount — opcional, default VACANCY_POST_FEE
+ * @returns { txn, wallet, charged }
+ */
+async function chargeVacancyFee({ ownerType, ownerId, vacancyId, amount, performedBy }) {
+  const charge = amount || VACANCY_POST_FEE;
+  const Model = ownerModel(ownerType);
+
+  // Idempotente: si ya cobramos para esta vacante, no cobramos otra vez.
+  const existing = await CrewWalletTxn.findOne({
+    idempotencyKey: `vacancy_post:${vacancyId}`,
+  });
+  if (existing) {
+    const ownerDoc = await Model.findById(ownerId).select('crewWallet').lean();
+    return { duplicated: true, txn: existing, wallet: ownerDoc?.crewWallet, charged: charge };
+  }
+
+  // Reserva atómica: solo descuenta si hay saldo suficiente
+  const updated = await Model.findOneAndUpdate(
+    { _id: ownerId, 'crewWallet.balance': { $gte: charge } },
+    { $inc: { 'crewWallet.balance': -charge, 'crewWallet.totalCommissionPaid': charge } },
+    { new: true, select: 'crewWallet' },
+  );
+
+  if (!updated) {
+    const current = await Model.findById(ownerId).select('crewWallet').lean();
+    const have = current?.crewWallet?.balance || 0;
+    const err = new Error(`Saldo insuficiente para publicar vacante: necesitas ${charge} COP, tienes ${have} COP`);
+    err.code = 'INSUFFICIENT_FUNDS';
+    err.required = charge;
+    err.available = have;
+    throw err;
+  }
+
+  const txn = await CrewWalletTxn.create({
+    actorType: ownerType, actorId: ownerId,
+    counterpartType: 'platform',
+    kind: 'vacancy_post', direction: 'out', amount: charge,
+    balanceAfter: updated.crewWallet.balance,
+    pendingAfter: updated.crewWallet.pendingBalance,
+    idempotencyKey: `vacancy_post:${vacancyId}`,
+    note: 'Publicación de vacante',
+    metadata: { vacancyId: String(vacancyId) },
+    performedBy: performedBy || { kind: 'system' },
+  });
+
+  return { duplicated: false, txn, wallet: updated.crewWallet, charged: charge };
+}
+
+/* ─────────────────────────────────────────────
  *  WORKER WALLET (retiros)
  * ───────────────────────────────────────────── */
 
@@ -843,8 +904,10 @@ module.exports = {
   quoteShiftEscrow, computeCancellationRefund,
   ownerModel, normalizeOwner, ownerFromDoc,
   // ops
+  VACANCY_POST_FEE,
   depositOwnerWallet,
   depositBusinessWallet, // alias retrocompat
+  chargeVacancyFee,
   reserveShiftEscrow,
   releaseBookingFunds,
   cancelShiftPost,

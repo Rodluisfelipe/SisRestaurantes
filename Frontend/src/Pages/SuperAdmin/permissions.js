@@ -46,10 +46,10 @@ export const ROLE_INFO = {
  * Tabs visibles por rol. El sidebar oculta los no permitidos.
  */
 export const NAV_BY_ROLE = {
-  owner:   ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_finance', 'team', 'audit'],
-  admin:   ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_finance', 'audit'],
-  support: ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_finance', 'audit'],
-  auditor: ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_finance', 'audit'],
+  owner:   ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'team', 'audit'],
+  admin:   ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit'],
+  support: ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit'],
+  auditor: ['home', 'businesses', 'orders', 'banners', 'announcements', 'subscriptions', 'referrals', 'crew_people', 'crew_kyc', 'crew_employers', 'crew_vacancies', 'crew_finance', 'audit'],
 };
 
 /**

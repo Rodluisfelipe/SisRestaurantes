@@ -18,6 +18,7 @@ import BusinessCrewChatModal from './BusinessCrewChatModal';
 import CrewWalletCard from './CrewWalletCard';
 import CrewRechargeModal from './CrewRechargeModal';
 import CrewCheckInCodeCard from './CrewCheckInCodeCard';
+import VacancyManager from './VacancyManager';
 
 function makeApi(businessId) {
   return {
@@ -61,6 +62,7 @@ const PERKS = [
 const TABS = [
   { id: 'mine', label: 'Mis turnos', icon: '📋' },
   { id: 'new', label: 'Publicar', icon: '✨' },
+  { id: 'vacancies', label: 'Vacantes', icon: '💼' },
   { id: 'recharges', label: 'Recargas', icon: '💳' },
 ];
 
@@ -215,6 +217,17 @@ export default function CrewPanel({ businessId }) {
                 onCreated={() => { setView('mine'); loadShifts(); loadWallet(); }}
                 onCancel={() => setView('mine')}
                 onNeedRecharge={() => setRechargeOpen(true)}
+              />
+            </motion.div>
+          )}
+
+          {view === 'vacancies' && (
+            <motion.div key="vacancies" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <VacancyManager
+                apiBase={`${api.base}/businesses`}
+                authHeaders={api.headers}
+                bizQueryParam={`businessId=${businessId}`}
+                onBalanceChange={loadWallet}
               />
             </motion.div>
           )}

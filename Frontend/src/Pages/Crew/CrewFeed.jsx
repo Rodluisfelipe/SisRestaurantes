@@ -12,6 +12,7 @@ import MissionsDial from './components/MissionsDial';
 import GradientText from './components/GradientText';
 import GlowButton from './components/GlowButton';
 import CrewShiftDetail from './CrewShiftDetail';
+import CrewVacanciesFeed from './CrewVacanciesFeed';
 
 function formatCOP(n) {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -31,6 +32,15 @@ const ROLE_LABEL = {
 };
 
 export default function CrewFeed({ onDetailOpen }) {
+  // Toggle entre Turnos puntuales y Vacantes de largo plazo.
+  // Persiste en sessionStorage para volver al modo seleccionado al recargar.
+  const [feedMode, setFeedMode] = useState(() => {
+    try { return sessionStorage.getItem('crew-feed-mode') || 'shifts'; }
+    catch { return 'shifts'; }
+  });
+  useEffect(() => {
+    try { sessionStorage.setItem('crew-feed-mode', feedMode); } catch {}
+  }, [feedMode]);
   const { worker, refreshMe } = useCrew();
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -145,6 +155,13 @@ export default function CrewFeed({ onDetailOpen }) {
 
       <main className="max-w-md mx-auto px-5 pt-5 space-y-5">
 
+        {/* Toggle Turnos / Vacantes */}
+        <FeedModeToggle mode={feedMode} onChange={setFeedMode} />
+
+        {feedMode === 'vacancies' ? (
+          <CrewVacanciesFeed />
+        ) : (
+        <>
         <div className="flex items-center justify-between">
           <h2 className="text-[16px] font-black text-white">
             Turnos <GradientText variant="sunrise">disponibles</GradientText>
@@ -192,6 +209,8 @@ export default function CrewFeed({ onDetailOpen }) {
               ))}
             </AnimatePresence>
           </div>
+        )}
+        </>
         )}
       </main>
 
@@ -322,6 +341,43 @@ function Stat({ label, value, accent }) {
     <div className="px-2.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]">
       <p className="text-[9px] font-extrabold text-white/30 uppercase tracking-wider">{label}</p>
       <p className={`text-[12px] font-extrabold tabular-nums leading-tight mt-0.5 ${accent ? 'text-red-400' : 'text-white/90'}`}>{value}</p>
+    </div>
+  );
+}
+
+function FeedModeToggle({ mode, onChange }) {
+  const tabs = [
+    { id: 'shifts', label: 'Turnos', emoji: '⚡' },
+    { id: 'vacancies', label: 'Vacantes', emoji: '💼' },
+  ];
+  return (
+    <div className="flex gap-1 p-1 rounded-2xl bg-black/40 border border-white/[0.06]">
+      {tabs.map((t) => {
+        const active = mode === t.id;
+        return (
+          <button
+            key={t.id}
+            onClick={() => onChange(t.id)}
+            className={`relative flex-1 py-2.5 rounded-xl text-[12px] font-extrabold uppercase tracking-wider transition-colors flex items-center justify-center gap-2 ${
+              active ? 'text-white' : 'text-white/40 hover:text-white/70'
+            }`}
+          >
+            {active && (
+              <motion.span
+                layoutId="crew-feed-mode-pill"
+                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                className={`absolute inset-0 rounded-xl ${
+                  t.id === 'shifts'
+                    ? 'bg-gradient-to-r from-red-500 to-orange-500 shadow-[0_4px_20px_-4px_rgba(239,68,68,0.5)]'
+                    : 'bg-gradient-to-r from-violet-500 to-fuchsia-500 shadow-[0_4px_20px_-4px_rgba(168,85,247,0.5)]'
+                }`}
+              />
+            )}
+            <span className="relative text-sm leading-none">{t.emoji}</span>
+            <span className="relative">{t.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

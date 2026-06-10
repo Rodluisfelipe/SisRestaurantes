@@ -15,6 +15,8 @@ import crewEmployerApi from '../../services/crewEmployerApi';
 import { useCrewEmployer } from './useCrewEmployer';
 import EmployerWalletHero from './EmployerWalletHero';
 import EmployerRechargeModal from './EmployerRechargeModal';
+import VacancyManager from '../../Components/Admin/VacancyManager';
+import { BACKEND_URL } from '../../config';
 
 function formatCOP(n) {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0);
@@ -46,6 +48,7 @@ const PERKS = [
 const TABS = [
   { id: 'mine', label: 'Mis turnos', emoji: '📋' },
   { id: 'new', label: 'Publicar', emoji: '✨' },
+  { id: 'vacancies', label: 'Vacantes', emoji: '💼' },
   { id: 'recharges', label: 'Recargas', emoji: '💳' },
 ];
 
@@ -187,6 +190,19 @@ export default function CrewEmployerDashboard() {
                 onCreated={() => { setView('mine'); loadShifts(); loadWallet(); }}
                 onCancel={() => setView('mine')}
                 onNeedRecharge={() => setRechargeOpen(true)}
+              />
+            </motion.div>
+          )}
+
+          {view === 'vacancies' && (
+            <motion.div key="vacancies" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <VacancyManager
+                apiBase={`${BACKEND_URL}/api/crew/employers`}
+                authHeaders={() => ({
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem('crew_employer_token')}`,
+                })}
+                onBalanceChange={loadWallet}
               />
             </motion.div>
           )}
