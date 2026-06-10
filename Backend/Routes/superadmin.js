@@ -835,4 +835,233 @@ router.post('/crew/employers/:id/restore', requireRole('admin'), async (req, res
   }
 });
 
+/* ─────────────────────────────────────────────
+ *  CREW — Roster unificado de personas registradas
+ *  Une trabajadores + empleadores externos + negocios MenuBy con actividad Crew
+ *  en una sola lista, marcando type y source para que SuperAdmin tenga una
+ *  vista panorámica de todo el ecosistema.
+ *
+ *  Filtros:
+ *    type=all|worker|crew_employer|menuby_business
+ *    source=all|menuby|external
+ *    search=texto (busca en nombre/teléfono/email)
+ * ───────────────────────────────────────────── */
+
+router.get('/crew/people', async (req, res) => {
+  try {
+    const { type = 'all', source = 'all', search = '', limit = 60 } = req.query;
+    const lim = Math.min(Number(limit) || 60, 200);
+    const ShiftPost = require('../Models/ShiftPost');
+    const ShiftBooking = require('../Models/ShiftBooking');
+
+    const wantWorkers = type === 'all' || type === 'worker';
+    const wantExternal = (type === 'all' || type === 'crew_employer') && source !== 'menuby';
+    const wantMenuBy = (type === 'all' || type === 'menuby_business') && source !== 'external';
+
+    const searchRe = search?.trim()
+      ? new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+      : null;
+
+    // ─── Workers ───
+    // Determinamos su "source" según con quién hayan trabajado:
+    //   - Tienen algún booking con BusinessConfig MenuBy → 'menuby'
+    //   - Solo tienen bookings con CrewEmployer externo  → 'external'
+    //   - Sin bookings aún → 'new'
+    let workers = [];
+    if (wantWorkers) {
+      const q = {};
+      if (searchRe) q.$or = [{ name: searchRe }, { phone: searchRe }, { email: searchRe }];
+
+      const list = await Worker.find(q)
+        .sort({ createdAt: -1 })
+        .limit(lim)
+        .select('name phone email photo level xp rating stats status kyc.status createdAt lastLoginAt lastShiftAt university')
+        .lean();
+
+      const ids = list.map((w) => w._id);
+      // Buscamos qué workers tienen booking con un BusinessConfig MenuBy
+      // (businessId no nulo, ownerType=business o ausente para legacy).
+      const menubyBookings = await ShiftBooking.aggregate([
+        { $match: { workerId: { $in: ids }, businessId: { $ne: null } } },
+        { $group: { _id: '$workerId' } },
+      ]);
+      const externalBookings = await ShiftBooking.aggregate([
+        { $match: { workerId: { $in: ids }, employerId: { $ne: null } } },
+        { $group: { _id: '$workerId' } },
+      ]);
+      const menubySet = new Set(menubyBookings.map((b) => String(b._id)));
+      const externalSet = new Set(externalBookings.map((b) => String(b._id)));
+
+      workers = list
+        .map((w) => {
+          const k = String(w._id);
+          const hasMenuBy = menubySet.has(k);
+          const hasExternal = externalSet.has(k);
+          let workerSource;
+          if (hasMenuBy && hasExternal) workerSource = 'mixed';
+          else if (hasMenuBy) workerSource = 'menuby';
+          else if (hasExternal) workerSource = 'external';
+          else workerSource = 'new';
+          return {
+            id: String(w._id),
+            type: 'worker',
+            source: workerSource,
+            name: w.name,
+            phone: w.phone,
+            email: w.email || null,
+            photo: w.photo || null,
+            subtitle: w.university || null,
+            status: w.status || 'active',
+            kycStatus: w.kyc?.status || 'none',
+            level: w.level || 1,
+            xp: w.xp || 0,
+            rating: { avg: w.rating?.avg || 0, count: w.rating?.count || 0 },
+            stats: {
+              shiftsCompleted: w.stats?.shiftsCompleted || 0,
+              hoursWorked: w.stats?.hoursWorked || 0,
+              totalEarned: w.stats?.totalEarned || 0,
+            },
+            createdAt: w.createdAt,
+            lastActiveAt: w.lastLoginAt || w.lastShiftAt || w.createdAt,
+          };
+        })
+        .filter((p) => {
+          if (source === 'menuby') return p.source === 'menuby' || p.source === 'mixed';
+          if (source === 'external') return p.source === 'external' || p.source === 'new';
+          return true;
+        });
+    }
+
+    // ─── Empleadores externos (CrewEmployer) — siempre source: 'external' ───
+    let externalEmployers = [];
+    if (wantExternal) {
+      const q = {};
+      if (searchRe) q.$or = [{ name: searchRe }, { phone: searchRe }, { email: searchRe }];
+      const list = await CrewEmployer.find(q)
+        .sort({ createdAt: -1 })
+        .limit(lim)
+        .select('kind name phone email photo businessType address status createdAt lastLoginAt crewWallet stats')
+        .lean();
+
+      externalEmployers = list.map((e) => ({
+        id: String(e._id),
+        type: 'crew_employer',
+        kind: e.kind, // 'individual' | 'business'
+        source: 'external',
+        name: e.name,
+        phone: e.phone,
+        email: e.email || null,
+        photo: e.photo || null,
+        subtitle: e.kind === 'business' ? (e.businessType || 'Negocio') : 'Persona',
+        city: e.address?.city || null,
+        status: e.status,
+        stats: {
+          shiftsPublished: e.stats?.shiftsPublished || 0,
+          shiftsCompleted: e.stats?.shiftsCompleted || 0,
+          workersHired: e.stats?.workersHired || 0,
+          totalSpent: e.crewWallet?.totalSpent || 0,
+        },
+        createdAt: e.createdAt,
+        lastActiveAt: e.lastLoginAt || e.createdAt,
+      }));
+    }
+
+    // ─── Negocios MenuBy con actividad Crew — source: 'menuby' ───
+    // Definición: tiene crewWallet con saldo/movimientos O ha publicado algún shift.
+    let menubyEmployers = [];
+    if (wantMenuBy) {
+      // Negocios que han publicado al menos 1 shift como ownerType=business
+      const businessIdsWithShifts = await ShiftPost.distinct('businessId', {
+        ownerType: { $in: ['business', null] },
+        businessId: { $ne: null },
+      });
+      const businessIdsWithWallet = await BusinessConfig.distinct('_id', {
+        $or: [
+          { 'crewWallet.balance': { $gt: 0 } },
+          { 'crewWallet.pendingBalance': { $gt: 0 } },
+          { 'crewWallet.totalSpent': { $gt: 0 } },
+          { 'crewWallet.lastRechargeAt': { $ne: null } },
+        ],
+      });
+      const activeIds = Array.from(new Set([
+        ...businessIdsWithShifts.map(String),
+        ...businessIdsWithWallet.map(String),
+      ]));
+
+      if (activeIds.length) {
+        const q = { _id: { $in: activeIds.map((id) => new mongoose.Types.ObjectId(id)) } };
+        if (searchRe) q.$or = [{ businessName: searchRe }, { slug: searchRe }];
+        const list = await BusinessConfig.find(q)
+          .sort({ 'crewWallet.lastRechargeAt': -1, createdAt: -1 })
+          .limit(lim)
+          .select('businessName slug logo coverImage businessType address contactPhone contactEmail crewWallet createdAt isActive')
+          .lean();
+
+        // Conteo de shifts publicados por cada uno
+        const shiftCounts = await ShiftPost.aggregate([
+          { $match: { businessId: { $in: list.map((b) => b._id) } } },
+          { $group: { _id: '$businessId', published: { $sum: 1 } } },
+        ]);
+        const countsMap = shiftCounts.reduce((acc, c) => ({ ...acc, [String(c._id)]: c.published }), {});
+
+        menubyEmployers = list.map((b) => ({
+          id: String(b._id),
+          type: 'menuby_business',
+          kind: 'business',
+          source: 'menuby',
+          name: b.businessName || b.slug || '—',
+          phone: b.contactPhone || null,
+          email: b.contactEmail || null,
+          photo: b.logo || null,
+          subtitle: b.businessType || 'Negocio MenuBy',
+          city: b.address?.city || null,
+          slug: b.slug || null,
+          status: b.isActive === false ? 'suspended' : 'approved',
+          stats: {
+            shiftsPublished: countsMap[String(b._id)] || 0,
+            shiftsCompleted: 0,
+            totalSpent: b.crewWallet?.totalSpent || 0,
+          },
+          createdAt: b.createdAt,
+          lastActiveAt: b.crewWallet?.lastRechargeAt || b.createdAt,
+        }));
+      }
+    }
+
+    // ─── Combinar y ordenar por createdAt desc ───
+    const people = [...workers, ...externalEmployers, ...menubyEmployers]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, lim);
+
+    // Totales para los chips del filtro
+    const [
+      totalWorkers,
+      totalExternalEmployers,
+      totalMenuByActive,
+    ] = await Promise.all([
+      Worker.estimatedDocumentCount(),
+      CrewEmployer.estimatedDocumentCount(),
+      ShiftPost.distinct('businessId', {
+        ownerType: { $in: ['business', null] },
+        businessId: { $ne: null },
+      }).then((ids) => ids.length),
+    ]);
+
+    res.json({
+      success: true,
+      people,
+      counts: {
+        worker: totalWorkers,
+        crew_employer: totalExternalEmployers,
+        menuby_business: totalMenuByActive,
+        all: totalWorkers + totalExternalEmployers + totalMenuByActive,
+      },
+      shown: people.length,
+    });
+  } catch (error) {
+    logger.error('Error listing crew people', error, req);
+    res.status(500).json({ message: error.message || 'Error al cargar personas' });
+  }
+});
+
 module.exports = router; 
