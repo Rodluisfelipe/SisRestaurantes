@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Customer = require('../Models/Customer');
 const BusinessConfig = require('../Models/BusinessConfig');
-const tenantAuth = require('../middleware/tenantAuth');
+const { tenantAuth } = require('../middleware/tenantAuth');
 const logger = require('../utils/logger');
 
 const COOLDOWN_HOURS = 24;
