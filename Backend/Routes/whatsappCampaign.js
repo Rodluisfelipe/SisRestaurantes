@@ -79,10 +79,11 @@ router.post('/send', authMiddleware, async (req, res) => {
       });
     }
 
-    const customers = await Customer.find(
-      { businessId, whatsappOptOut: { $ne: true }, phone: { $exists: true, $ne: '' } },
-      'phone name'
-    ).lean();
+    const { selectedIds } = req.body;
+    const baseFilter = { businessId, whatsappOptOut: { $ne: true }, phone: { $exists: true, $ne: '' } };
+    if (selectedIds?.length) baseFilter._id = { $in: selectedIds };
+
+    const customers = await Customer.find(baseFilter, 'phone name').lean();
 
     if (customers.length === 0) {
       return res.status(400).json({ message: 'No hay clientes con teléfono registrado para enviar' });
@@ -118,6 +119,23 @@ router.post('/send', authMiddleware, async (req, res) => {
     });
   } catch (err) {
     logger.error('Error sending WhatsApp campaign', err, req);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET /api/whatsapp-campaign/customers — lista de clientes elegibles con info básica
+router.get('/customers', authMiddleware, async (req, res) => {
+  try {
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) return res.status(400).json({ message: 'No se pudo determinar el negocio' });
+
+    const customers = await Customer.find(
+      { businessId, whatsappOptOut: { $ne: true }, phone: { $exists: true, $ne: '' } },
+      'name phone status totalOrders totalSpent lastOrderDate tags'
+    ).sort({ lastOrderDate: -1 }).lean();
+
+    res.json({ customers });
+  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
