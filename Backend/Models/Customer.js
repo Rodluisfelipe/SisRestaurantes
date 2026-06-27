@@ -55,6 +55,10 @@ const customerSchema = new mongoose.Schema({
     trim: true,
     maxlength: 50
   }],
+  whatsappOptOut: {
+    type: Boolean,
+    default: false
+  },
   notes: [{
     text: { type: String, required: true, maxlength: 1000 },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Admin' },

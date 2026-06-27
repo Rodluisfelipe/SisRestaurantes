@@ -197,10 +197,16 @@ function sendBookingReminder(booking, businessName, windowKey) {
   enqueue(phone, text);
 }
 
+// Raw enqueue used by campaign route (phone already stored as-is in Customer)
+function enqueueRaw(rawPhone, text) {
+  enqueue(rawPhone, text);
+}
+
 module.exports = {
   initWhatsApp,
   sendOrderStatusNotification,
   sendBookingReminder,
   getStatus,
   getRawQR,
+  enqueueRaw,
 };

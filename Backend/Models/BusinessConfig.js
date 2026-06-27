@@ -330,11 +330,12 @@ const businessConfigSchema = new mongoose.Schema({
     default: false
   },
   supplierInfo: {
-    categories: [{ type: String }], // 'ingredients', 'beverages', 'equipment', 'packaging', 'other'
+    categories: [{ type: String }],
     description: { type: String, default: '' },
     approvedAt: { type: Date, default: null },
     approvedBy: { type: String, default: null }
-  }
+  },
+  lastWhatsappCampaign: { type: Date, default: null }
 }, { timestamps: true }); // Agregar timestamps para debugging
 
 // Método para obtener la configuración
