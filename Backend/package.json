@@ -40,7 +40,10 @@
     "sharp": "^0.34.5",
     "socket.io": "^4.6.1",
     "uuid": "^13.0.0",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "@whiskeysockets/baileys": "^6.7.18",
+    "qrcode": "^1.5.4",
+    "pino": "^9.6.0"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

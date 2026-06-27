@@ -1,32 +1,104 @@
-const axios = require('axios');
+const path = require('path');
 const logger = require('../utils/logger');
 
-const BASE_URL = process.env.EVOLUTION_API_URL || '';
-const API_KEY = process.env.EVOLUTION_API_KEY || '';
-const INSTANCE = process.env.EVOLUTION_INSTANCE || 'menuby';
+// Session files persist in the uploads volume (already mounted on server)
+const SESSION_DIR = path.join(__dirname, '../../uploads/whatsapp-session');
 
-// --- Phone normalization (Colombian-first) ---
-function normalizePhone(raw) {
-  if (!raw) return null;
-  let phone = String(raw).replace(/[\s\-\(\)\+]/g, '');
-  // Colombian mobile starting with 3 → add country code
-  if (/^3\d{9}$/.test(phone)) phone = '57' + phone;
-  // Already has country code but starts with 0
-  if (phone.startsWith('0')) phone = '57' + phone.slice(1);
-  if (phone.length < 10) return null;
-  return phone;
-}
+let sock = null;
+let qrCode = null;       // raw QR string from Baileys
+let state = 'disabled';  // 'disabled' | 'connecting' | 'qr' | 'open' | 'closed'
 
-// --- Rate-limited queue (max 20 msg/min, 1-3s delay between sends) ---
+// Rate-limited send queue (max 20 msg/min, random 1-3s delay)
 const queue = [];
 let processing = false;
 
-function enqueue(number, text) {
-  if (!BASE_URL || !API_KEY) return; // disabled if not configured
-  const phone = normalizePhone(number);
-  if (!phone) return;
-  queue.push({ phone, text });
-  if (!processing) _processQueue();
+// ─── Phone normalization ───────────────────────────────────────
+function normalizeJid(raw) {
+  if (!raw) return null;
+  let phone = String(raw).replace(/[\s\-\(\)\+]/g, '');
+  if (/^3\d{9}$/.test(phone)) phone = '57' + phone;   // Colombian mobile without CC
+  if (phone.startsWith('0')) phone = '57' + phone.slice(1);
+  if (phone.length < 10) return null;
+  return phone + '@s.whatsapp.net';
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+async function initWhatsApp() {
+  if (process.env.WHATSAPP_ENABLED !== 'true') return;
+
+  try {
+    const fs = require('fs');
+    if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
+
+    const {
+      default: makeWASocket,
+      useMultiFileAuthState,
+      DisconnectReason,
+      fetchLatestBaileysVersion,
+      makeCacheableSignalKeyStore,
+    } = require('@whiskeysockets/baileys');
+    const { Boom } = require('@hapi/boom');
+    const P = require('pino')({ level: 'silent' });
+
+    const { state: authState, saveCreds } = await useMultiFileAuthState(SESSION_DIR);
+    const { version } = await fetchLatestBaileysVersion();
+
+    state = 'connecting';
+
+    sock = makeWASocket({
+      version,
+      auth: {
+        creds: authState.creds,
+        keys: makeCacheableSignalKeyStore(authState.keys, P),
+      },
+      printQRInTerminal: false,
+      logger: P,
+      generateHighQualityLinkPreview: false,
+      browser: ['MenuBy', 'Chrome', '112.0'],
+    });
+
+    sock.ev.on('connection.update', ({ connection, lastDisconnect, qr }) => {
+      if (qr) {
+        qrCode = qr;
+        state = 'qr';
+        logger.info('[WhatsApp] QR listo — escanear desde SuperAdmin > WhatsApp');
+      }
+      if (connection === 'close') {
+        qrCode = null;
+        const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
+        if (reason === DisconnectReason.loggedOut) {
+          state = 'closed';
+          logger.warn('[WhatsApp] Sesión cerrada. Borrar /uploads/whatsapp-session y reiniciar.');
+        } else {
+          state = 'connecting';
+          logger.info('[WhatsApp] Reconectando en 5s...');
+          setTimeout(initWhatsApp, 5000);
+        }
+      }
+      if (connection === 'open') {
+        qrCode = null;
+        state = 'open';
+        logger.info('[WhatsApp] Conectado correctamente');
+        if (queue.length > 0 && !processing) _processQueue();
+      }
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+
+  } catch (err) {
+    state = 'closed';
+    logger.error('[WhatsApp] Error al iniciar Baileys:', err.message);
+    setTimeout(initWhatsApp, 30000);
+  }
+}
+
+// ─── Queue processor ──────────────────────────────────────────
+function enqueue(rawPhone, text) {
+  if (process.env.WHATSAPP_ENABLED !== 'true') return;
+  const jid = normalizeJid(rawPhone);
+  if (!jid) return;
+  queue.push({ jid, text });
+  if (!processing && state === 'open') _processQueue();
 }
 
 async function _processQueue() {
@@ -35,6 +107,8 @@ async function _processQueue() {
   let windowStart = Date.now();
 
   while (queue.length > 0) {
+    if (state !== 'open') break;
+
     if (count >= 20) {
       const wait = 60000 - (Date.now() - windowStart);
       if (wait > 0) await _sleep(wait + 200);
@@ -42,15 +116,11 @@ async function _processQueue() {
       windowStart = Date.now();
     }
 
-    const { phone, text } = queue.shift();
+    const { jid, text } = queue.shift();
     try {
-      await axios.post(
-        `${BASE_URL}/message/sendText/${INSTANCE}`,
-        { number: phone, text, delay: 0 },
-        { headers: { apikey: API_KEY }, timeout: 12000 }
-      );
+      await sock.sendMessage(jid, { text });
     } catch (err) {
-      logger.warn('[WhatsApp] Send failed', { phone: phone.slice(0, -4) + '****', error: err.message });
+      logger.warn('[WhatsApp] Envío fallido', { jid: jid.slice(0, 8) + '***', err: err.message });
     }
 
     await _sleep(1000 + Math.random() * 2000);
@@ -60,11 +130,13 @@ async function _processQueue() {
   processing = false;
 }
 
-function _sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
+function _sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-// --- Order status messages ---
+// ─── Status / QR for SuperAdmin ───────────────────────────────
+function getStatus() { return state; }
+function getRawQR() { return qrCode; }
+
+// ─── Message templates ────────────────────────────────────────
 const STATUS_MAP = {
   confirmed:  { emoji: '✅', msg: 'Tu pedido fue *confirmado* y comenzaremos a prepararlo pronto.' },
   preparing:  { emoji: '👨‍🍳', msg: 'Estamos *preparando* tu pedido. ¡Ya casi está listo!' },
@@ -72,15 +144,15 @@ const STATUS_MAP = {
   inProgress: { emoji: '🚴', msg: 'Tu pedido está *en camino*. ¡Pronto llegará!' },
   delivered:  { emoji: '🎉', msg: '¡Tu pedido fue *entregado*! Gracias por elegirnos.' },
   completed:  { emoji: '✅', msg: '¡Tu pedido fue completado! Gracias por tu visita.' },
-  cancelled:  { emoji: '❌', msg: 'Tu pedido fue *cancelado*. Si tienes preguntas, contáctanos.' }
+  cancelled:  { emoji: '❌', msg: 'Tu pedido fue *cancelado*. Si tienes preguntas, contáctanos.' },
 };
 
 function sendOrderStatusNotification(order, status, businessName) {
   const entry = STATUS_MAP[status];
-  if (!entry) return;
+  if (!entry || !order.phone) return;
 
-  const name = (order.customerName || 'Cliente').split(' ')[0];
-  const biz  = businessName || 'el restaurante';
+  const name  = (order.customerName || 'Cliente').split(' ')[0];
+  const biz   = businessName || 'el restaurante';
   const total = (order.finalAmount || order.totalAmount || 0).toLocaleString('es-CO');
 
   const text = [
@@ -91,46 +163,43 @@ function sendOrderStatusNotification(order, status, businessName) {
     `📦 Pedido #${order.orderNumber}`,
     `💰 Total: $${total}`,
     '',
-    `_Notificación de MenuBy_`
+    `_Notificación de MenuBy_`,
   ].join('\n');
 
   enqueue(order.phone, text);
 }
 
-// --- Booking reminder ---
 function sendBookingReminder(booking, businessName, windowKey) {
   const phone = booking.phone || booking.customerPhone;
   if (!phone) return;
 
-  const name = (booking.customerName || 'Cliente').split(' ')[0];
-  const biz  = businessName || 'el restaurante';
-  const d    = new Date(booking.bookingDate);
+  const name    = (booking.customerName || 'Cliente').split(' ')[0];
+  const biz     = businessName || 'el restaurante';
+  const d       = new Date(booking.bookingDate);
   const dateStr = d.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
   const timeStr = d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
   const service = booking.items?.map(i => i.name).join(', ') || 'tu cita';
-  const timeNote = windowKey === '1h' ? '⏰ ¡Falta solo 1 hora!' : '⏰ ¡Mañana a esta hora!';
 
   const text = [
-    `🗓️ *${biz}* — Recordatorio de reserva`,
+    `🗓️ *${biz}* — Recordatorio`,
     '',
     `Hola ${name}, te recordamos tu cita:`,
     `📅 *${service}*`,
     `🕐 ${dateStr} a las ${timeStr}`,
-    timeNote,
+    windowKey === '1h' ? '⏰ ¡Falta solo 1 hora!' : '⏰ ¡Mañana a esta hora!',
     '',
     `Si necesitas cancelar, por favor contáctanos con anticipación.`,
     '',
-    `_Notificación de MenuBy_`
+    `_Notificación de MenuBy_`,
   ].join('\n');
 
   enqueue(phone, text);
 }
 
-// --- Supplier order notification (to buyer: order created) ---
-function sendSupplierOrderConfirmation(order) {
-  // Notify buyer that their B2B order was received and is pending approval
-  // buyer phone not stored in SupplierOrder yet — extend when supplier phone added to BusinessConfig
-  // For now, this is a no-op placeholder
-}
-
-module.exports = { sendOrderStatusNotification, sendBookingReminder, sendSupplierOrderConfirmation };
+module.exports = {
+  initWhatsApp,
+  sendOrderStatusNotification,
+  sendBookingReminder,
+  getStatus,
+  getRawQR,
+};

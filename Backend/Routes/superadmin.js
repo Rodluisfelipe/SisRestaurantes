@@ -1163,4 +1163,37 @@ router.get('/crew/people', async (req, res) => {
   }
 });
 
+// ── WhatsApp status & QR ─────────────────────────────────────
+router.get('/whatsapp/status', requireRole('admin'), async (req, res) => {
+  try {
+    const { getStatus, getRawQR } = require('../services/whatsappService');
+    const currentState = getStatus();
+    const rawQR = getRawQR();
+
+    let qrDataUrl = null;
+    if (rawQR) {
+      const QRCode = require('qrcode');
+      qrDataUrl = await QRCode.toDataURL(rawQR, { width: 300, margin: 2 });
+    }
+
+    res.json({ state: currentState, qrDataUrl });
+  } catch (err) {
+    res.json({ state: 'disabled', qrDataUrl: null });
+  }
+});
+
+router.post('/whatsapp/logout', requireRole('admin'), async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const sessionDir = path.join(__dirname, '../../uploads/whatsapp-session');
+    if (fs.existsSync(sessionDir)) {
+      fs.rmSync(sessionDir, { recursive: true, force: true });
+    }
+    res.json({ success: true, message: 'Sesión eliminada. Reinicia el servidor para reconectar.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router; 

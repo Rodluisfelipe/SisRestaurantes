@@ -339,6 +339,14 @@ mongoose.connect(MONGO_URI, {
     } catch (error) {
       logger.warn('Error iniciando cron de expiración de puntos:', error.message);
     }
+
+    // WhatsApp vía Baileys (solo si WHATSAPP_ENABLED=true)
+    try {
+      const { initWhatsApp } = require('./services/whatsappService');
+      initWhatsApp();
+    } catch (error) {
+      logger.warn('WhatsApp no disponible:', error.message);
+    }
     
     const port = process.env.PORT || 5000;
     server.listen(port, () =>
