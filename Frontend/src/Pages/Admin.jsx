@@ -47,6 +47,8 @@ import StaffManager from "../Components/Admin/StaffManager";
 import BookingsManager from "../Components/Admin/BookingsManager";
 import CashClosings from "../Components/Admin/CashClosings";import ReferralsPanel from '../Components/Admin/ReferralsPanel';import CrewPanel from "../Components/Admin/CrewPanel";import MobileBottomNav from "../Components/Admin/MobileBottomNav";
 import MobileHeader from "../Components/Admin/MobileHeader";
+import Marketplace from "../Components/Admin/Marketplace";
+import SupplierOrders from "../Components/Admin/SupplierOrders";
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -559,6 +561,20 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Crew" onGoBack={() => setActiveTab('dashboard')}>
                       <CrewPanel businessId={businessId} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'marketplace' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Marketplace" onGoBack={() => setActiveTab('dashboard')}>
+                      <Marketplace businessId={businessId} businessName={businessConfig?.businessName} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'supplier-orders' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Pedidos Proveedor" onGoBack={() => setActiveTab('dashboard')}>
+                      <SupplierOrders businessId={businessId} isSupplier={!!businessConfig?.isSupplier} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

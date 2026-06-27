@@ -323,6 +323,17 @@ const businessConfigSchema = new mongoose.Schema({
     type: Number,
     default: 0,
     min: 0
+  },
+  // Marketplace de proveedores — activado por SuperAdmin
+  isSupplier: {
+    type: Boolean,
+    default: false
+  },
+  supplierInfo: {
+    categories: [{ type: String }], // 'ingredients', 'beverages', 'equipment', 'packaging', 'other'
+    description: { type: String, default: '' },
+    approvedAt: { type: Date, default: null },
+    approvedBy: { type: String, default: null }
   }
 }, { timestamps: true }); // Agregar timestamps para debugging
 

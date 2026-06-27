@@ -55,6 +55,31 @@ router.patch('/business/:id/pos-beta', requireRole('admin'), async (req, res) =>
 // Eliminar negocio — solo admin+ (destructivo)
 router.delete('/business/:id', requireRole('admin'), superadmin.eliminarNegocio);
 
+// Toggle proveedor marketplace — admin+
+router.patch('/business/:id/supplier', requireRole('admin'), async (req, res) => {
+  try {
+    const { enabled, categories, description } = req.body;
+    const update = {
+      isSupplier: !!enabled,
+      'supplierInfo.categories': categories || [],
+      'supplierInfo.description': description || ''
+    };
+    if (enabled) {
+      update['supplierInfo.approvedAt'] = new Date();
+      update['supplierInfo.approvedBy'] = req.user?.email || 'superadmin';
+    } else {
+      update['supplierInfo.approvedAt'] = null;
+      update['supplierInfo.approvedBy'] = null;
+    }
+    const negocio = await BusinessConfig.findByIdAndUpdate(req.params.id, update, { new: true });
+    if (!negocio) return res.status(404).json({ message: 'Negocio no encontrado' });
+    res.json({ success: true, business: negocio });
+  } catch (error) {
+    logger.error('Error toggling supplier status', error, req);
+    res.status(500).json({ message: 'Error al actualizar proveedor' });
+  }
+});
+
 // ========== GESTIÓN DE PEDIDOS (SuperAdmin) ==========
 
 const VALID_ORDER_STATUSES = ['pending', 'pending_payment', 'payment_uploaded', 'payment_confirmed', 'confirmed', 'preparing', 'ready', 'inProgress', 'completed', 'cancelled', 'delivered'];

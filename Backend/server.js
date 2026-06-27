@@ -250,6 +250,8 @@ app.use("/api/loyalty", require("./Routes/loyalty")); // Programa de fidelidad
 app.use("/api/epayco", require("./Routes/epaycoPayments")); // Pagos automáticos ePayco
 app.use("/api/dlocal", require("./Routes/dlocalPayments")); // Pagos automáticos dLocal Go
 app.use("/api/print-agent", require("./Routes/printAgent")); // Print Agent SSE para auto-impresión
+app.use("/api/marketplace", require("./Routes/marketplace")); // Marketplace de proveedores B2B
+app.use("/api/supplier-orders", require("./Routes/supplierOrders")); // Órdenes B2B entre negocios y proveedores
 
 // Ruta específica para SSE
 app.use("/events", require("./Routes/events"));
