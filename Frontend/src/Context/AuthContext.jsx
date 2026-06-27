@@ -343,6 +343,19 @@ export function AuthProvider({ children }) {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [isAuthenticated]);
 
+  // Redirigir a login cuando el refresh token también expira
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      clearTokens();
+      setIsAuthenticated(false);
+      setUser(null);
+      const slug = localStorage.getItem('businessSlug');
+      navigate(slug ? `/${slug}/login` : '/login', { replace: true });
+    };
+    window.addEventListener('auth:session-expired', handleSessionExpired);
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired);
+  }, [navigate]);
+
   // Función para limpiar sesiones antiguas
   const cleanupOldSessions = () => {
     const currentSessionId = sessionStorage.getItem('sessionId');

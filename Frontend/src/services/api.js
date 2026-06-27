@@ -101,11 +101,11 @@ api.interceptors.response.use(
       } catch (refreshError) {
         // If refresh fails, reject all queued requests, clean up and redirect to login
         onRefreshFailed(refreshError);
-        console.error('Error al refrescar el token:', refreshError);
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         sessionStorage.removeItem('accessToken');
         sessionStorage.removeItem('refreshToken');
+        window.dispatchEvent(new CustomEvent('auth:session-expired'));
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
