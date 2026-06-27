@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta } from "../../services/superadminApi";
+import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleSupplier } from "../../services/superadminApi";
 import { socket } from "../../services/socket";
 import { motion } from "framer-motion";
 import { SAToast } from "../../Components/SuperAdmin/ui";
@@ -63,6 +63,17 @@ export default function BusinessTable({ refreshTrigger }) {
       loadBusinesses();
     } catch (err) {
       showMessage("Error al cambiar POS beta", "error");
+    }
+  };
+
+  const handleToggleSupplier = async (b) => {
+    const current = b.isSupplier || false;
+    try {
+      await toggleSupplier(b._id, !current);
+      showMessage(`${b.businessName} ${current ? 'eliminado del' : 'agregado al'} marketplace de proveedores`);
+      loadBusinesses();
+    } catch (err) {
+      showMessage("Error al cambiar estado de proveedor", "error");
     }
   };
 
@@ -212,6 +223,7 @@ export default function BusinessTable({ refreshTrigger }) {
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-white/30 uppercase tracking-wider">WhatsApp</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-white/30 uppercase tracking-wider">Estado</th>
                 <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-white/30 uppercase tracking-wider">POS</th>
+                <th className="text-left py-3 px-4 text-xs font-medium text-slate-500 dark:text-white/30 uppercase tracking-wider">Proveedor</th>
                 <th className="text-right py-3 px-4 text-xs font-medium text-slate-500 dark:text-white/30 uppercase tracking-wider">Acciones</th>
               </tr>
             </thead>
@@ -267,6 +279,20 @@ export default function BusinessTable({ refreshTrigger }) {
                     >
                       <span className={`w-1.5 h-1.5 rounded-full ${b.features?.posBetaEnabled ? 'bg-purple-400' : 'bg-white/20'}`} />
                       {b.features?.posBetaEnabled ? 'POS ✓' : 'POS'}
+                    </button>
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <button
+                      onClick={() => handleToggleSupplier(b)}
+                      title={b.isSupplier ? 'Quitar de marketplace' : 'Activar como proveedor'}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                        b.isSupplier
+                          ? 'bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-500/20 hover:bg-orange-200 dark:hover:bg-orange-500/25'
+                          : 'bg-slate-100 dark:bg-white/[0.04] text-slate-400 dark:text-white/25 border border-slate-200 dark:border-white/[0.06] hover:text-slate-900 dark:hover:text-slate-500 dark:text-white/40 hover:border-white/10'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${b.isSupplier ? 'bg-orange-400' : 'bg-white/20'}`} />
+                      {b.isSupplier ? '🏭 Proveedor ✓' : 'Proveedor'}
                     </button>
                   </td>
                   <td className="py-3.5 px-4">
@@ -384,6 +410,17 @@ export default function BusinessTable({ refreshTrigger }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
                   </svg>
                   POS
+                </button>
+                <button
+                  onClick={() => handleToggleSupplier(b)}
+                  className={`flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                    b.isSupplier
+                      ? 'bg-orange-100 dark:bg-orange-500/15 text-orange-600 dark:text-orange-400/90 border border-orange-200 dark:border-orange-500/15'
+                      : 'bg-slate-50 dark:bg-white/[0.03] text-slate-400 dark:text-white/25 border border-slate-200 dark:border-white/[0.06]'
+                  }`}
+                  title={b.isSupplier ? 'Quitar de marketplace' : 'Activar como proveedor'}
+                >
+                  🏭
                 </button>
                 <button
                   onClick={() => handleActivate(b)}
