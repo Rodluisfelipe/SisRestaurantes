@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Customer = require('../Models/Customer');
 const BusinessConfig = require('../Models/BusinessConfig');
-const { tenantAuth } = require('../middleware/tenantAuth');
+const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../utils/logger');
 
 const COOLDOWN_HOURS = 24;
@@ -10,7 +10,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://menuby.tech';
 
 // GET /api/whatsapp-campaign/stats
 // Returns: eligible customer count, last campaign time, cooldown status
-router.get('/stats', tenantAuth, async (req, res) => {
+router.get('/stats', authMiddleware, async (req, res) => {
   try {
     const businessId = req.user.businessId;
 
@@ -40,7 +40,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
 });
 
 // POST /api/whatsapp-campaign/send
-router.post('/send', tenantAuth, async (req, res) => {
+router.post('/send', authMiddleware, async (req, res) => {
   try {
     const businessId = req.user.businessId;
     const { message } = req.body;
@@ -117,7 +117,7 @@ router.post('/send', tenantAuth, async (req, res) => {
 });
 
 // POST /api/whatsapp-campaign/optout/:customerId
-router.post('/optout/:customerId', tenantAuth, async (req, res) => {
+router.post('/optout/:customerId', authMiddleware, async (req, res) => {
   try {
     const customer = await Customer.findOneAndUpdate(
       { _id: req.params.customerId, businessId: req.user.businessId },
