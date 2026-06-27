@@ -64,6 +64,14 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       ]
     },
     {
+      id: 'suppliers',
+      label: 'Proveedores',
+      items: [
+        { id: 'marketplace', label: 'Marketplace', Icon: FaShoppingBag, badge: null },
+        { id: 'supplier-orders', label: businessConfig?.isSupplier ? 'Pedidos B2B' : 'Mis pedidos', Icon: FaClipboardList, badge: null },
+      ]
+    },
+    {
       id: 'settings',
       label: 'Configuración',
       items: [
