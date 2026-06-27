@@ -114,6 +114,12 @@ async function checkBookingReminders() {
             await sendBookingReminderEmail(booking.businessId.toString(), booking, hoursUntil);
           } catch (e) { logger.error('Error sending booking reminder email', e); }
 
+          // WhatsApp reminder to customer (best-effort, queued)
+          try {
+            const { sendBookingReminder } = require('./whatsappService');
+            sendBookingReminder(booking, config.businessName, window.key);
+          } catch (e) { logger.warn('[BookingReminder] WhatsApp reminder failed', e.message); }
+
           // Mark reminder as sent
           await Booking.findByIdAndUpdate(booking._id, {
             $push: { remindersSent: { type: window.key, sentAt: new Date() } }

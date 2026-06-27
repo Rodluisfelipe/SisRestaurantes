@@ -966,6 +966,18 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
     } catch (pushErr) {
       logger.warn('Failed to send customer push for status change', { error: pushErr.message });
     }
+
+    // Send WhatsApp notification to customer (best-effort, queued with rate limit)
+    try {
+      if (updatedOrder.phone) {
+        const BusinessConfig = require('../Models/BusinessConfig');
+        const biz = await BusinessConfig.findById(updatedOrder.businessId, 'businessName').lean();
+        const { sendOrderStatusNotification } = require('../services/whatsappService');
+        sendOrderStatusNotification(updatedOrder, status, biz?.businessName);
+      }
+    } catch (waErr) {
+      logger.warn('Failed to enqueue WhatsApp notification', { error: waErr.message });
+    }
     
     // If order is completed or delivered, move it to CompletedOrders collection
     if (status === "completed" || status === "delivered") {
