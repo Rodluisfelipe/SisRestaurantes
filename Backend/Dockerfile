@@ -10,8 +10,8 @@ COPY package*.json ./
 # Build tools for native modules (sharp, Baileys libsignal) + git for npm git-deps
 RUN apk add --no-cache python3 make g++ git
 
-# Instalar dependencias
-RUN npm ci --only=production
+# Instalar dependencias (npm install en lugar de ci para no requerir lock sync)
+RUN npm install --omit=dev
 
 # Copiar el código fuente
 COPY . .
