@@ -17,7 +17,7 @@ RUN npm install --omit=dev
 COPY . .
 
 # Crear directorios de uploads con permisos correctos
-RUN mkdir -p /app/uploads/order-proofs /app/uploads/announcements /app/uploads/banners
+RUN mkdir -p /app/uploads/order-proofs /app/uploads/announcements /app/uploads/banners /app/uploads/whatsapp-session
 
 # Crear usuario no root
 RUN addgroup -g 1001 -S nodejs

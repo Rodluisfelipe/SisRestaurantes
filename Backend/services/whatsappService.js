@@ -2,7 +2,8 @@ const path = require('path');
 const logger = require('../utils/logger');
 
 // Session files persist in the uploads volume (already mounted on server)
-const SESSION_DIR = path.join(__dirname, '../../uploads/whatsapp-session');
+// __dirname = /app/services → one level up gives /app/uploads
+const SESSION_DIR = path.join(__dirname, '../uploads/whatsapp-session');
 
 let sock = null;
 let qrCode = null;       // raw QR string from Baileys
