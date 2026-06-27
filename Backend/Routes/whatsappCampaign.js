@@ -2,17 +2,27 @@ const express = require('express');
 const router = express.Router();
 const Customer = require('../Models/Customer');
 const BusinessConfig = require('../Models/BusinessConfig');
+const Admin = require('../Models/Admin');
 const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../utils/logger');
 
 const COOLDOWN_HOURS = 24;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://menuby.tech';
 
+// Resolve businessId: query param (works for SuperAdmin too) → JWT → Admin doc
+async function resolveBusinessId(req) {
+  if (req.query.businessId) return req.query.businessId;
+  if (req.body.businessId) return req.body.businessId;
+  if (req.user.businessId) return req.user.businessId;
+  const admin = await Admin.findById(req.user.id, 'businessId').lean();
+  return admin?.businessId || null;
+}
+
 // GET /api/whatsapp-campaign/stats
-// Returns: eligible customer count, last campaign time, cooldown status
 router.get('/stats', authMiddleware, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) return res.status(400).json({ message: 'No se pudo determinar el negocio' });
 
     const [count, config] = await Promise.all([
       Customer.countDocuments({ businessId, whatsappOptOut: { $ne: true }, phone: { $exists: true, $ne: '' } }),
@@ -42,7 +52,9 @@ router.get('/stats', authMiddleware, async (req, res) => {
 // POST /api/whatsapp-campaign/send
 router.post('/send', authMiddleware, async (req, res) => {
   try {
-    const businessId = req.user.businessId;
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) return res.status(400).json({ message: 'No se pudo determinar el negocio' });
+
     const { message } = req.body;
 
     if (!message || String(message).trim().length < 10) {
@@ -52,7 +64,6 @@ router.post('/send', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'El mensaje no puede superar 1000 caracteres' });
     }
 
-    // WhatsApp must be enabled
     if (process.env.WHATSAPP_ENABLED !== 'true') {
       return res.status(503).json({ message: 'WhatsApp no está activado en el servidor. Contacta al administrador de MenuBy.' });
     }
@@ -60,7 +71,6 @@ router.post('/send', authMiddleware, async (req, res) => {
     const config = await BusinessConfig.findById(businessId, 'lastWhatsappCampaign businessName slug').lean();
     if (!config) return res.status(404).json({ message: 'Negocio no encontrado' });
 
-    // Cooldown check
     const cooldownMs = COOLDOWN_HOURS * 60 * 60 * 1000;
     if (config.lastWhatsappCampaign && (new Date() - new Date(config.lastWhatsappCampaign)) < cooldownMs) {
       const next = new Date(new Date(config.lastWhatsappCampaign).getTime() + cooldownMs);
@@ -69,7 +79,6 @@ router.post('/send', authMiddleware, async (req, res) => {
       });
     }
 
-    // Fetch eligible customers
     const customers = await Customer.find(
       { businessId, whatsappOptOut: { $ne: true }, phone: { $exists: true, $ne: '' } },
       'phone name'
@@ -90,7 +99,6 @@ router.post('/send', authMiddleware, async (req, res) => {
       `_Para no recibir más mensajes, responde "STOP"_`
     ].join('\n');
 
-    // Enqueue all messages (rate-limited by whatsappService)
     const { enqueueRaw } = require('../services/whatsappService');
     if (typeof enqueueRaw === 'function') {
       for (const customer of customers) {
@@ -98,17 +106,15 @@ router.post('/send', authMiddleware, async (req, res) => {
       }
     }
 
-    // Save last campaign date
     await BusinessConfig.findByIdAndUpdate(businessId, { lastWhatsappCampaign: new Date() });
 
     logger.info(`[WhatsApp Campaign] ${config.businessName} → ${customers.length} destinatarios`, null, req);
 
-    const estimatedMinutes = Math.ceil(customers.length / 15);
     res.json({
       success: true,
       sent: customers.length,
-      estimatedMinutes,
-      message: `Campaña encolada para ${customers.length} clientes. Tiempo estimado: ~${estimatedMinutes} min`
+      estimatedMinutes: Math.ceil(customers.length / 15),
+      message: `Campaña encolada para ${customers.length} clientes. Tiempo estimado: ~${Math.ceil(customers.length / 15)} min`
     });
   } catch (err) {
     logger.error('Error sending WhatsApp campaign', err, req);
@@ -119,8 +125,9 @@ router.post('/send', authMiddleware, async (req, res) => {
 // POST /api/whatsapp-campaign/optout/:customerId
 router.post('/optout/:customerId', authMiddleware, async (req, res) => {
   try {
+    const businessId = await resolveBusinessId(req);
     const customer = await Customer.findOneAndUpdate(
-      { _id: req.params.customerId, businessId: req.user.businessId },
+      { _id: req.params.customerId, businessId },
       { whatsappOptOut: true },
       { new: true }
     );

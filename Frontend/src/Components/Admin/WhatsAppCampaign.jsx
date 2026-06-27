@@ -33,7 +33,7 @@ export default function WhatsAppCampaign({ businessId }) {
   async function fetchStats() {
     try {
       setLoadingStats(true);
-      const res = await api.get('/whatsapp-campaign/stats');
+      const res = await api.get('/whatsapp-campaign/stats', { params: { businessId } });
       setStats(res.data);
     } catch (e) {
       setError(e.response?.data?.message || 'Error al cargar estadísticas');
@@ -51,7 +51,7 @@ export default function WhatsAppCampaign({ businessId }) {
     setError('');
     setResult(null);
     try {
-      const res = await api.post('/whatsapp-campaign/send', { message });
+      const res = await api.post('/whatsapp-campaign/send', { message, businessId });
       setResult(res.data);
       setMessage('');
       fetchStats();
