@@ -7,8 +7,8 @@ WORKDIR /app
 # Copiar package.json y package-lock.json
 COPY package*.json ./
 
-# Build tools for native modules (sharp, Baileys libsignal)
-RUN apk add --no-cache python3 make g++
+# Build tools for native modules (sharp, Baileys libsignal) + git for npm git-deps
+RUN apk add --no-cache python3 make g++ git
 
 # Instalar dependencias
 RUN npm ci --only=production
