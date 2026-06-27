@@ -978,7 +978,37 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
     } catch (waErr) {
       logger.warn('Failed to enqueue WhatsApp notification', { error: waErr.message });
     }
-    
+
+    // Schedule WhatsApp review request 30 min after delivery (best-effort)
+    try {
+      if (status === 'delivered' && updatedOrder.phone) {
+        const Review = require('../Models/Review');
+        const alreadyReviewed = await Review.exists({ orderId: updatedOrder._id });
+        if (!alreadyReviewed) {
+          const BusinessConfig = require('../Models/BusinessConfig');
+          const bizForReview = await BusinessConfig.findById(updatedOrder.businessId, 'businessName slug').lean();
+          if (bizForReview?.slug) {
+            const FRONTEND_URL = process.env.FRONTEND_URL || 'https://menuby.tech';
+            const reviewLink = `${FRONTEND_URL}/${bizForReview.slug}?review=${updatedOrder._id}`;
+            const reviewMsg = [
+              `⭐ *${bizForReview.businessName}*`,
+              '',
+              '¡Gracias por tu pedido! ¿Cómo fue tu experiencia?',
+              '',
+              'Déjanos tu reseña (solo toma 1 min):',
+              reviewLink
+            ].join('\n');
+            const { enqueueRaw } = require('../services/whatsappService');
+            setTimeout(() => {
+              try { enqueueRaw(updatedOrder.phone, reviewMsg); } catch {}
+            }, 30 * 60 * 1000);
+          }
+        }
+      }
+    } catch (reviewWaErr) {
+      logger.warn('Failed to schedule WhatsApp review request', { error: reviewWaErr.message });
+    }
+
     // If order is completed or delivered, move it to CompletedOrders collection
     if (status === "completed" || status === "delivered") {
       // Register MenuBy orders in cash register if one is open — atomic $push

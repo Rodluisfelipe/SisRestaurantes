@@ -116,7 +116,30 @@ export default function Menu() {
   const [showReviewsSheet, setShowReviewsSheet] = useState(false);
   const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
   const [pendingReviewTopProduct, setPendingReviewTopProduct] = useState(null);
+  const [waReviewName, setWaReviewName] = useState(null);
+  const [waReviewPhone, setWaReviewPhone] = useState(null);
   
+  // WhatsApp deeplink review: ?review=orderId opens ReviewModal automatically
+  useEffect(() => {
+    if (!businessId) return;
+    const params = new URLSearchParams(window.location.search);
+    const reviewOrderId = params.get('review');
+    if (!reviewOrderId) return;
+    // Clean URL so refresh doesn't reopen the modal
+    const cleanUrl = window.location.pathname;
+    window.history.replaceState(null, '', cleanUrl);
+    if (localStorage.getItem(`dismissed_review_${reviewOrderId}`)) return;
+    api.get(`/reviews/context/${reviewOrderId}`)
+      .then(res => {
+        if (res.data.alreadyReviewed) return;
+        setWaReviewName(res.data.customerName || '');
+        setWaReviewPhone(res.data.phone || '');
+        setPendingReviewOrder(reviewOrderId);
+        setShowReviewModal(true);
+      })
+      .catch(() => {});
+  }, [businessId]);
+
   // In-app ordering states
   const [showOrderTracker, setShowOrderTracker] = useState(false);
   const [showPaymentUpload, setShowPaymentUpload] = useState(false);
@@ -1790,11 +1813,13 @@ export default function Menu() {
               setShowReviewModal(false);
               setPendingReviewOrder(null);
               setPendingReviewTopProduct(null);
+              setWaReviewName(null);
+              setWaReviewPhone(null);
             }}
             businessId={businessId}
             orderId={pendingReviewOrder}
-            customerName={orderInfo.customerName}
-            customerPhone={orderInfo.phone}
+            customerName={waReviewName || orderInfo.customerName}
+            customerPhone={waReviewPhone || orderInfo.phone}
             theme={businessConfig?.theme}
             topProduct={pendingReviewTopProduct}
           />

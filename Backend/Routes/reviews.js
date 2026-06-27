@@ -593,4 +593,31 @@ router.post('/recalculate', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/reviews/context/:orderId — public, for WhatsApp deeplink review flow
+ * Returns minimal info needed to open ReviewModal (no auth required; orderId is unguessable ObjectId)
+ */
+router.get('/context/:orderId', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    if (!isValidObjectId(orderId)) return res.status(400).json({ message: 'orderId inválido' });
+
+    const alreadyReviewed = await Review.exists({ orderId });
+    if (alreadyReviewed) return res.json({ alreadyReviewed: true });
+
+    let order = await CompletedOrder.findById(orderId, 'customerName phone businessId').lean();
+    if (!order) order = await Order.findById(orderId, 'customerName phone businessId').lean();
+    if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
+
+    res.json({
+      alreadyReviewed: false,
+      customerName: order.customerName,
+      phone: order.phone,
+      businessId: String(order.businessId)
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;
