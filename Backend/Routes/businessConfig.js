@@ -7,6 +7,7 @@ const { resolveBusiness, resolveBusinessId } = require("../utils/businessResolve
 const logger = require("../utils/logger");
 const { formatHttpError } = require("../utils/errorFormatter");
 const { tenantAuth } = require("../middleware/tenantAuth");
+const { audit } = require("../utils/auditLog");
 const {
   validateUpdateConfig,
   validateUpdateStatus,
@@ -88,12 +89,31 @@ router.put("/", tenantAuth, validateUpdateConfig, async (req, res) => {
       
       // Actualizar usando el _id encontrado
       logger.debug('updateData being saved', { fields: Object.keys(updateData), paymentMethods: updateData.paymentMethods }, req);
+      const AUDIT_FIELDS = ['businessName','theme','orderingMode','paymentMethods','whatsappNumber','address','businessHours','isOpen','menuStatus','businessType','socialMedia','extraLink','slug'];
+      const beforeSnap = {};
+      AUDIT_FIELDS.forEach(k => { if (business[k] !== undefined) beforeSnap[k] = business[k]; });
+
       const config = await BusinessConfig.findByIdAndUpdate(
         business._id,
         { $set: updateData },
         { new: true }
       );
-      
+
+      const afterSnap = {};
+      AUDIT_FIELDS.forEach(k => { if (updateData[k] !== undefined) afterSnap[k] = updateData[k]; });
+
+      audit({
+        action: 'update',
+        resource: 'businessConfig',
+        resourceId: business._id,
+        resourceName: business.businessName,
+        businessId: business._id,
+        businessName: business.businessName,
+        before: beforeSnap,
+        after: afterSnap,
+        req,
+      });
+
       logger.info('Configuración actualizada', { businessId: config._id }, req);
       res.json(config);
     } catch (error) {
@@ -127,7 +147,19 @@ router.put("/status", tenantAuth, validateUpdateStatus, async (req, res) => {
       { isOpen },
       { new: true }
     );
-    
+
+    audit({
+      action: 'toggle',
+      resource: 'businessConfig',
+      resourceId: business._id,
+      resourceName: business.businessName,
+      businessId: business._id,
+      businessName: business.businessName,
+      before: { isOpen: business.isOpen },
+      after: { isOpen },
+      req,
+    });
+
     res.json(config);
   } catch (error) {
     logger.error("Error actualizando estado del negocio", error, req);
@@ -227,7 +259,19 @@ router.put("/active", tenantAuth, validateUpdateActive, async (req, res) => {
       
       // Emitir evento de WebSocket a los clientes del negocio
       emitToBusiness(business._id.toString(), "business_status_update", { isActive });
-      
+
+      audit({
+        action: 'toggle',
+        resource: 'businessConfig',
+        resourceId: business._id,
+        resourceName: business.businessName,
+        businessId: business._id,
+        businessName: business.businessName,
+        before: { isActive: business.isActive },
+        after: { isActive },
+        req,
+      });
+
       res.json(config);
     } catch (error) {
       logger.error('Error actualizando estado activo del negocio', error, req);
@@ -321,7 +365,19 @@ router.put("/hours", tenantAuth, validateUpdateHours, async (req, res) => {
     
     // Emitir evento de WebSocket
     emitToBusiness(business._id.toString(), "business_hours_update", { businessHours: validatedHours });
-    
+
+    audit({
+      action: 'update',
+      resource: 'businessConfig',
+      resourceId: business._id,
+      resourceName: business.businessName,
+      businessId: business._id,
+      businessName: business.businessName,
+      before: { businessHours: business.businessHours },
+      after: { businessHours: validatedHours },
+      req,
+    });
+
     logger.info('Business hours updated', { businessId }, req);
     res.json(config);
   } catch (error) {
@@ -357,7 +413,19 @@ router.put("/menu-status", tenantAuth, validateUpdateMenuStatus, async (req, res
     
     // Emitir evento de WebSocket
     emitToBusiness(business._id.toString(), "menu_status_update", { menuStatus });
-    
+
+    audit({
+      action: 'toggle',
+      resource: 'businessConfig',
+      resourceId: business._id,
+      resourceName: business.businessName,
+      businessId: business._id,
+      businessName: business.businessName,
+      before: { menuStatus: business.menuStatus },
+      after: { menuStatus },
+      req,
+    });
+
     logger.info('Menu status updated', { businessId, menuStatus }, req);
     res.json(config);
   } catch (error) {
@@ -403,13 +471,32 @@ router.put("/:businessId", tenantAuth, validateUpdateConfigById, async (req, res
         return res.status(404).json(formatHttpError(req, 'Negocio no encontrado', 404, { detail: error.message }));
       }
       
+      const AUDIT_FIELDS = ['businessName','theme','orderingMode','paymentMethods','whatsappNumber','address','businessHours','isOpen','menuStatus','businessType','socialMedia','extraLink'];
+      const beforeSnap = {};
+      AUDIT_FIELDS.forEach(k => { if (business[k] !== undefined) beforeSnap[k] = business[k]; });
+
       // Actualizar usando el _id encontrado
       const config = await BusinessConfig.findByIdAndUpdate(
         business._id,
         updateData,
         { new: true, runValidators: true }
       );
-      
+
+      const afterSnap = {};
+      AUDIT_FIELDS.forEach(k => { if (updateData[k] !== undefined) afterSnap[k] = updateData[k]; });
+
+      audit({
+        action: 'update',
+        resource: 'businessConfig',
+        resourceId: business._id,
+        resourceName: business.businessName,
+        businessId: business._id,
+        businessName: business.businessName,
+        before: beforeSnap,
+        after: afterSnap,
+        req,
+      });
+
       logger.info('Configuración actualizada (URL param)', { businessId: config._id }, req);
       res.json(config);
     } catch (error) {
