@@ -1,25 +1,11 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import DashboardMetrics from './DashboardMetrics';
-import ModoOperacion from './ModoOperacion';
 import AnnouncementInlineBar from './AnnouncementInlineBar';
-
-/**
- * AdminDashboard v4 — Ultra-professional mobile-first dashboard.
- *
- * Design principles:
- * - Clean SVG-style icon system (no raw emojis on cards)
- * - Professional muted color palette
- * - Horizontal card layout on tablet+
- * - Live activity indicators
- * - Refined typography hierarchy
- * - 48px+ touch targets
- * - Smooth stagger animations
- */
+import api from '../../services/api';
 
 /* ═══ Icon System ═══ */
-/* Mini SVG icon components for a polished look. Each returns a small JSX element. */
 const I = {
   orders:    (c) => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>,
   completed: (c) => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>,
@@ -42,7 +28,7 @@ const I = {
   password:  (c) => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
 };
 
-/* Color tokens for each section */
+/* Color tokens */
 const COLORS = {
   blue:    { bg: 'bg-blue-50',    text: 'text-blue-600',    icon: 'bg-blue-100 text-blue-600',    ring: 'ring-blue-500/20' },
   emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', icon: 'bg-emerald-100 text-emerald-600', ring: 'ring-emerald-500/20' },
@@ -63,7 +49,7 @@ const COLORS = {
   gray:    { bg: 'bg-gray-50',    text: 'text-gray-600',    icon: 'bg-gray-100 text-gray-600',    ring: 'ring-gray-500/20' },
 };
 
-/* ═══ Section Data ═══ */
+/* ═══ Section Data (desktop) ═══ */
 const getSections = (isService, isHotel) => [
   {
     id: 'ops',
@@ -121,10 +107,10 @@ const getSections = (isService, isHotel) => [
 /* ═══ Onboarding Steps ═══ */
 const getOnboarding = (isService, isHotel) => [
   { level: 1, label: 'Crear tu cuenta',  desc: '¡Listo! Ya tienes acceso', svgKey: 'completed' },
-  { level: 2, label: isService ? 'Agrega servicios' : 'Agrega productos', desc: isService ? 'Crea tu primer servicio' : isHotel ? 'Crea tu menú de Room Service' : 'Crea tu primer plato',     svgKey: 'products', tab: 'products' },
+  { level: 2, label: isService ? 'Agrega servicios' : 'Agrega productos', desc: isService ? 'Crea tu primer servicio' : isHotel ? 'Crea tu menú de Room Service' : 'Crea tu primer plato', svgKey: 'products', tab: 'products' },
   { level: 3, label: 'Modo de pedidos',  desc: 'WhatsApp, app o ambos',    svgKey: 'business', tab: 'business' },
   { level: 4, label: isService ? 'Primeras citas' : 'Primeros pedidos', desc: isService ? 'Comparte y agenda' : isHotel ? 'Comparte el QR en habitaciones' : 'Comparte y empieza a vender', svgKey: 'orders', tab: 'orders' },
-  { level: 5, label: 'Personaliza tema', desc: isService ? 'Dale estilo a tu página' : isHotel ? 'Personaliza tu Room Service' : 'Dale estilo a tu menú',    svgKey: 'theme',   tab: 'theme' },
+  { level: 5, label: 'Personaliza tema', desc: isService ? 'Dale estilo a tu página' : isHotel ? 'Personaliza tu Room Service' : 'Dale estilo a tu menú', svgKey: 'theme', tab: 'theme' },
   { level: 6, label: 'Herramientas pro', desc: isHotel ? 'Cupones, QR por habitación y más' : 'Cupones, zonas, QR y más', svgKey: 'coupons' },
 ];
 
@@ -137,48 +123,39 @@ function getGreeting() {
   return 'Buenas noches';
 }
 
-/* ═══ Sub-components ═══ */
+const fmtRevenue = (n) => {
+  if (!n && n !== 0) return '—';
+  if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `$${(n / 1000).toFixed(0)}k`;
+  return `$${n}`;
+};
 
-/* Professional card with SVG icon */
+/* ═══ Desktop sub-components (unchanged) ═══ */
+
 function DashCard({ item, onClick, pendingOrdersCount }) {
   const clr = COLORS[item.color] || COLORS.slate;
   const SvgIcon = I[item.svgKey];
-
   return (
     <motion.button
       whileTap={{ scale: 0.96 }}
       onClick={onClick}
       className="relative flex items-center gap-3 sm:flex-col sm:items-center sm:text-center
-                 p-3 sm:p-4 rounded-2xl bg-white
-                 border border-slate-100
+                 p-3 sm:p-4 rounded-2xl bg-white border border-slate-100
                  shadow-[0_1px_2px_rgba(0,0,0,0.04),0_1px_3px_rgba(0,0,0,0.03)]
-                 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]
-                 hover:border-slate-200/80 hover:-translate-y-px
-                 active:scale-[0.97] active:shadow-sm
-                 transition-all duration-200
+                 hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)] hover:border-slate-200/80 hover:-translate-y-px
+                 active:scale-[0.97] active:shadow-sm transition-all duration-200
                  text-left sm:min-h-[108px] group w-full"
     >
-      {/* Icon */}
-      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${clr.icon} flex items-center justify-center flex-shrink-0
-                       group-hover:scale-105 group-hover:shadow-sm transition-all duration-200`}>
+      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${clr.icon} flex items-center justify-center flex-shrink-0 group-hover:scale-105 group-hover:shadow-sm transition-all duration-200`}>
         {SvgIcon && SvgIcon('w-5 h-5 sm:w-[22px] sm:h-[22px]')}
       </div>
-
-      {/* Text */}
       <div className="flex-1 min-w-0 sm:flex-initial">
         <p className="text-[13px] sm:text-xs font-bold text-slate-800 leading-tight truncate sm:whitespace-normal">{item.title}</p>
         <p className="text-xs text-slate-400 font-medium mt-0.5 leading-tight truncate sm:whitespace-normal">{item.desc}</p>
       </div>
-
-      {/* Chevron (mobile only) */}
       <svg className="w-4 h-4 text-slate-300 flex-shrink-0 sm:hidden" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
-
-      {/* Badge */}
       {item.hasBadge && pendingOrdersCount > 0 && (
-        <span className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 min-w-[20px] h-5 px-1.5
-                         bg-red-500 text-white text-xs font-extrabold
-                         rounded-full flex items-center justify-center
-                         shadow-lg shadow-red-500/25 ring-2 ring-white">
+        <span className="absolute -top-1 -right-1 sm:-top-1.5 sm:-right-1.5 min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-xs font-extrabold rounded-full flex items-center justify-center shadow-lg shadow-red-500/25 ring-2 ring-white">
           {pendingOrdersCount > 99 ? '99+' : pendingOrdersCount}
         </span>
       )}
@@ -186,20 +163,16 @@ function DashCard({ item, onClick, pendingOrdersCount }) {
   );
 }
 
-/* Hero feature card — large, prominent */
 function HeroCard({ svgKey, title, subtitle, onClick, count, colorClass }) {
   const SvgIcon = I[svgKey];
   return (
     <motion.button
       whileTap={{ scale: 0.97 }}
       onClick={onClick}
-      className={`relative flex-1 min-w-0 p-4 sm:p-5 rounded-2xl ${colorClass} text-white
-                  shadow-lg overflow-hidden group active:opacity-90 transition-opacity`}
+      className={`relative flex-1 min-w-0 p-4 sm:p-5 rounded-2xl ${colorClass} text-white shadow-lg overflow-hidden group active:opacity-90 transition-opacity`}
     >
-      {/* Decorative circles */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-white/[0.07] rounded-full blur-2xl translate-x-8 -translate-y-8" />
       <div className="absolute bottom-0 left-0 w-16 h-16 bg-black/[0.04] rounded-full blur-xl -translate-x-4 translate-y-4" />
-
       <div className="relative flex items-start justify-between">
         <div>
           <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
@@ -215,8 +188,6 @@ function HeroCard({ svgKey, title, subtitle, onClick, count, colorClass }) {
           </div>
         )}
       </div>
-
-      {/* Arrow */}
       <div className="absolute bottom-3 right-3 w-7 h-7 bg-white/10 rounded-full flex items-center justify-center group-hover:bg-white/20 transition-colors">
         <svg className="w-3.5 h-3.5 text-white/70" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
       </div>
@@ -224,67 +195,80 @@ function HeroCard({ svgKey, title, subtitle, onClick, count, colorClass }) {
   );
 }
 
-/* Share link bar */
-function ShareBar({ businessConfig }) {
-  const [copied, setCopied] = useState(false);
-  const slug = businessConfig?.slug || businessConfig?.businessName?.toLowerCase().replace(/\s+/g, '-') || '';
-  const url = slug ? `menuby.tech/${slug}` : '';
-  const isSvc = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
-  if (!url) return null;
-
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(`https://${url}`); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch {}
-  };
-
-  return (
-    <button onClick={copy}
-      className="w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-all active:scale-[0.98] group">
-      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center flex-shrink-0 shadow-sm shadow-red-500/20">
-        <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
-          <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
-        </svg>
-      </div>
-      <div className="flex-1 min-w-0 text-left">
-        <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">{isSvc ? 'Tu página de servicios' : 'Tu menú digital'}</p>
-        <p className="text-[14px] font-bold text-slate-800 truncate">{url}</p>
-      </div>
-      <span className={`text-[12px] font-bold px-3 py-1.5 rounded-xl flex-shrink-0 transition-all ${
-        copied ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white shadow-sm shadow-red-500/20'
-      }`}>
-        {copied ? '✓' : 'Copiar'}
-      </span>
-    </button>
-  );
-}
-
-/* Status badge for ordering mode */
 function StatusBadge({ businessConfig }) {
   const isOpen = businessConfig?.isOpen !== false;
   return (
-    <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${
-      isOpen ? 'bg-emerald-400/15 text-emerald-400' : 'bg-red-400/15 text-red-400'
-    }`}>
+    <div className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full ${isOpen ? 'bg-emerald-400/15 text-emerald-400' : 'bg-red-400/15 text-red-400'}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${isOpen ? 'bg-emerald-400' : 'bg-red-400'}`} />
       {isOpen ? 'Abierto' : 'Cerrado'}
     </div>
   );
 }
 
+/* ═══ Mobile Quick Action Card ═══ */
+function MobileActionCard({ tab, gradient, icon, label, sublabel, badge, onClick }) {
+  return (
+    <motion.button
+      whileTap={{ scale: 0.92 }}
+      onClick={onClick}
+      className="relative flex flex-col items-center gap-2 py-4 px-1 bg-white rounded-2xl border border-slate-100 shadow-[0_1px_4px_rgba(0,0,0,0.06)]"
+    >
+      {badge > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-sm ring-2 ring-white z-10">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+      <div className={`w-[52px] h-[52px] bg-gradient-to-br ${gradient} rounded-[16px] flex items-center justify-center shadow-sm`}>
+        {icon}
+      </div>
+      <div className="text-center px-0.5">
+        <p className="text-[12.5px] font-bold text-slate-800 leading-tight">{label}</p>
+        <p className="text-[10px] text-slate-400 font-medium mt-0.5 leading-tight">{sublabel}</p>
+      </div>
+    </motion.button>
+  );
+}
+
 /* ═══ MAIN COMPONENT ═══ */
-export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, onboarding }) {
-  const { businessConfig } = useBusinessConfig();
+export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, onboarding, onOpenModoOp }) {
+  const { businessConfig, updateConfig } = useBusinessConfig();
   const [search, setSearch] = useState('');
+  const [toggling, setToggling] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [copied, setCopied] = useState(false);
+
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
-
-  const [showModoOp, setShowModoOp] = useState(false);
+  const isOpen = businessConfig?.isOpen !== false;
   const isNewUser = onboarding && !onboarding.isLegacy && onboarding.level < 6;
-  const progressPercent = onboarding ? (onboarding.progress || 0) : 100;
-  const nextStep = onboarding?.nextStep;
   const greeting = useMemo(() => getGreeting(), []);
+  const slug = businessConfig?.slug;
 
-  /* Search logic */
+  /* Fetch today's stats for mobile header bar */
+  useEffect(() => {
+    if (!businessConfig?._id) return;
+    api.get(`/dashboard/stats?businessId=${businessConfig._id}`)
+      .then(r => setStats(r.data))
+      .catch(() => {});
+  }, [businessConfig?._id]);
+
+  const handleToggle = async () => {
+    if (toggling) return;
+    setToggling(true);
+    try { await updateConfig({ isOpen: !isOpen }); } catch {}
+    finally { setToggling(false); }
+  };
+
+  const copyLink = async () => {
+    if (!slug) return;
+    try {
+      await navigator.clipboard.writeText(`https://menuby.tech/${slug}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {}
+  };
+
+  /* Desktop search */
   const q = search.trim().toLowerCase();
   const posBetaOn = businessConfig?.features?.posBetaEnabled;
   const SECTIONS = useMemo(() => getSections(isService, isHotel), [isService, isHotel]);
@@ -300,155 +284,212 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
 
   const handleNav = useCallback((tab) => setActiveTab(tab), [setActiveTab]);
 
-  /* Animation variants */
+  /* Desktop animation variants */
   const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.035 } } };
   const fadeUp = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] } } };
 
+  /* Onboarding next step for mobile */
+  const STEPS = [
+    { level: 2, label: isService ? 'Agrega servicios' : 'Agrega productos', desc: isService ? 'Crea tu primer servicio' : 'Crea tu primer plato', tab: 'products' },
+    { level: 3, label: 'Modo de pedidos', desc: 'WhatsApp, app o ambos', tab: 'business' },
+    { level: 4, label: isService ? 'Primeras citas' : 'Primeros pedidos', desc: 'Comparte y empieza a vender', tab: 'orders' },
+    { level: 5, label: 'Personaliza tema', desc: 'Dale estilo a tu menú', tab: 'theme' },
+    { level: 6, label: 'Herramientas pro', desc: 'Cupones, zonas, QR y más', tab: null },
+  ];
+  const nextStep = STEPS.find(s => s.level > (onboarding?.level || 0));
+
+  /* Mobile quick actions */
+  const mobileActions = [
+    {
+      tab: 'orders', label: isService ? 'Citas' : 'Pedidos', sublabel: pendingOrdersCount > 0 ? `${pendingOrdersCount} nueva${pendingOrdersCount !== 1 ? 's' : ''}` : 'Ver todos',
+      gradient: 'from-blue-500 to-blue-600', badge: pendingOrdersCount,
+      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>,
+    },
+    {
+      tab: 'products', label: isService ? 'Servicios' : 'Menú', sublabel: 'Tu carta',
+      gradient: 'from-orange-500 to-orange-600',
+      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg>,
+    },
+    {
+      tab: 'completed_orders', label: 'Completados', sublabel: 'Historial',
+      gradient: 'from-emerald-500 to-emerald-600',
+      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>,
+    },
+    {
+      tab: 'reviews', label: 'Reseñas', sublabel: 'Calificaciones',
+      gradient: 'from-amber-500 to-amber-600',
+      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+    },
+    {
+      tab: 'customers', label: 'Clientes', sublabel: 'Base de datos',
+      gradient: 'from-cyan-500 to-cyan-600',
+      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
+    },
+    {
+      tab: 'whatsapp', label: 'WhatsApp', sublabel: 'Mensajería',
+      gradient: 'from-green-500 to-green-600',
+      icon: <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>,
+    },
+  ];
+
   return (
-    <div className="space-y-5 pb-6">
-
-      {/* ═══ GREETING — iOS large title style (mobile) ═══ */}
-      <div className="lg:hidden">
-        <p className="text-[28px] font-extrabold text-slate-900 leading-tight tracking-tight">{greeting}</p>
-        <p className="text-[15px] text-slate-400 font-medium mt-1">
-          Aquí está el resumen de {businessConfig?.businessName || 'tu negocio'}
-        </p>
-      </div>
-      {/* Desktop greeting */}
-      <div className="hidden lg:flex items-center justify-between px-1">
-        <p className="text-sm font-bold text-slate-700">{greeting}</p>
-        <StatusBadge businessConfig={businessConfig} />
-      </div>
-
-      {/* ═══ ANNOUNCEMENT INLINE BAR — SuperAdmin messages (ML style) ═══ */}
+    <div className="pb-6">
+      {/* ═══ ANNOUNCEMENT ═══ */}
       <AnnouncementInlineBar />
 
-      {/* ═══ LIVE ORDERS BANNER — Prominent (mobile only) ═══ */}
-      {!q && pendingOrdersCount > 0 && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          whileTap={{ scale: 0.97 }}
-          onClick={() => handleNav('orders')}
-          className="w-full lg:hidden relative overflow-hidden flex items-center gap-4 px-5 py-4 bg-gradient-to-r from-red-500 to-red-600 rounded-2xl shadow-lg shadow-red-500/20"
-        >
-          {/* Decorative circles */}
-          <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full" />
-          <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-white/[0.06] rounded-full" />
-          
-          <div className="relative flex items-center gap-4 flex-1">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+      {/* ════════════════════════════════════════
+          MOBILE SECTION (lg:hidden)
+          ════════════════════════════════════════ */}
+      <div className="lg:hidden space-y-3.5 mt-1">
+
+        {/* Header: name + open/close toggle */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{greeting}</p>
+            <h1 className="text-[21px] font-black text-slate-900 leading-tight truncate">
+              {businessConfig?.businessName || 'Tu negocio'}
+            </h1>
+          </div>
+          <button
+            onClick={handleToggle}
+            disabled={toggling}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-bold text-[13px] shrink-0 transition-all active:scale-95 ${
+              isOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-600 border border-red-200'
+            } ${toggling ? 'opacity-60' : ''}`}
+          >
+            <span className={`w-2 h-2 rounded-full shrink-0 ${isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-400'}`} />
+            {toggling ? '...' : isOpen ? 'Abierto' : 'Cerrado'}
+          </button>
+        </div>
+
+        {/* Stats bar */}
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'Ventas hoy', value: fmtRevenue(stats?.today?.revenue), color: 'text-emerald-600' },
+            { label: 'Pedidos', value: stats?.today?.orders !== undefined ? String(stats.today.orders) : '—', color: 'text-blue-600' },
+            {
+              label: 'Calificación',
+              value: businessConfig?.reviewStats?.averageRating
+                ? businessConfig.reviewStats.averageRating.toFixed(1) + ' ★'
+                : '—',
+              color: 'text-amber-500',
+            },
+          ].map(s => (
+            <div key={s.label} className="bg-white rounded-2xl px-3 py-3 border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.05)]">
+              <p className={`text-[18px] font-black ${s.color} leading-none truncate`}>{s.value}</p>
+              <p className="text-[10px] text-slate-400 font-semibold mt-1 uppercase tracking-wide leading-tight">{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Hero: pending orders CTA or all-clear */}
+        <AnimatePresence mode="wait">
+          {pendingOrdersCount > 0 ? (
+            <motion.button
+              key="pending"
+              initial={{ opacity: 0, scale: 0.97 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={onOpenModoOp}
+              className="w-full relative overflow-hidden flex items-center gap-4 px-5 py-5 bg-gradient-to-r from-red-500 to-rose-600 rounded-2xl shadow-lg shadow-red-500/25"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/[0.07] rounded-full blur-2xl translate-x-12 -translate-y-12 pointer-events-none" />
               <motion.div
-                animate={{ rotate: [0, -10, 10, -10, 0] }}
-                transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0 backdrop-blur-sm"
               >
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                 </svg>
               </motion.div>
-            </div>
-            <div className="text-left">
-              <p className="text-white text-[18px] font-bold leading-tight">
-                {pendingOrdersCount} {pendingOrdersCount === 1 ? (isService ? 'cita pendiente' : 'pedido pendiente') : (isService ? 'citas pendientes' : 'pedidos pendientes')}
-              </p>
-              <p className="text-white/70 text-[13px] font-medium mt-0.5">Toca para ver</p>
-            </div>
-          </div>
-          <svg className="w-5 h-5 text-white/60 flex-shrink-0 relative" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-          </svg>
-        </motion.button>
-      )}
+              <div className="flex-1 text-left relative">
+                <p className="text-white text-[22px] font-black leading-tight">
+                  {pendingOrdersCount} {pendingOrdersCount === 1
+                    ? (isService ? 'cita nueva' : 'pedido nuevo')
+                    : (isService ? 'citas nuevas' : 'pedidos nuevos')}
+                </p>
+                <p className="text-white/70 text-[13px] font-semibold mt-0.5">Toca para gestionar en modo servicio</p>
+              </div>
+              <svg className="w-5 h-5 text-white/50 shrink-0 relative" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+              </svg>
+            </motion.button>
+          ) : (
+            <motion.div
+              key="clear"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-3 px-4 py-4 bg-emerald-50 rounded-2xl border border-emerald-100"
+            >
+              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-emerald-800 font-bold text-[14px]">Todo al día</p>
+                <p className="text-emerald-600 text-[12px] font-medium">Los nuevos pedidos aparecerán aquí</p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-      {/* ═══ SHARE BAR — Glass card (mobile) ═══ */}
-      {!q && (
-        <div className="lg:hidden">
-          <ShareBar businessConfig={businessConfig} />
-        </div>
-      )}
-
-      {/* ═══ QUICK ACCESS — Grid layout (mobile) ═══ */}
-      {!q && (
-        <div className="lg:hidden">
-          <p className="text-[13px] font-bold text-slate-400 uppercase tracking-wider mb-3 ml-1">Acceso rápido</p>
-          <div className="grid grid-cols-4 gap-2.5">
-            {[
-              { tab: 'orders', icon: I.orders, label: isService ? 'Citas' : 'Pedidos', bg: 'from-blue-500 to-blue-600', count: pendingOrdersCount },
-              { tab: 'products', icon: I.products, label: isService ? 'Servicios' : 'Menú', bg: 'from-orange-500 to-orange-600' },
-              { tab: 'completed_orders', icon: I.completed, label: 'Listos', bg: 'from-emerald-500 to-emerald-600' },
-              { tab: 'customers', icon: I.customers, label: 'Clientes', bg: 'from-cyan-500 to-cyan-600' },
-              ...(posBetaOn ? [{ tab: null, label: 'POS', bg: 'from-purple-500 to-purple-600', icon: I.reorder, isRoute: true, routePath: 'pos' }] : []),
-              { tab: null, label: 'Cocina', bg: 'from-rose-500 to-rose-600', icon: I.orders, isRoute: true, routePath: 'kitchen' },
-              { tab: null, label: 'Comanda', bg: 'from-amber-500 to-amber-600', icon: I.orders, isRoute: true, routePath: 'waiter' },
-            ].map((item, idx) => (
-              <motion.button
-                key={idx}
-                whileTap={{ scale: 0.92 }}
-                onClick={() => {
-                  if (item.isRoute) {
-                    window.location.href = `/${businessConfig?.slug || businessConfig?._id}/${item.routePath}`;
-                  } else if (item.tab) {
-                    handleNav(item.tab);
-                  }
-                }}
-                className="flex flex-col items-center gap-2 py-3 bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.06)] border border-slate-100"
-              >
-                <div className={`relative w-[44px] h-[44px] bg-gradient-to-br ${item.bg} rounded-[14px] flex items-center justify-center shadow-sm`}>
-                  {item.icon('w-[20px] h-[20px] text-white')}
-                  {item.count > 0 && (
-                    <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm ring-2 ring-white">
-                      {item.count > 99 ? '99+' : item.count}
-                    </span>
-                  )}
-                </div>
-                <span className="text-[11px] font-semibold text-slate-600 leading-tight text-center">
-                  {item.label}
-                </span>
-              </motion.button>
+        {/* Quick actions 3×2 grid */}
+        <div>
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Acciones rápidas</p>
+          <div className="grid grid-cols-3 gap-2.5">
+            {mobileActions.map(item => (
+              <MobileActionCard
+                key={item.tab}
+                tab={item.tab}
+                gradient={item.gradient}
+                icon={item.icon}
+                label={item.label}
+                sublabel={item.sublabel}
+                badge={item.badge}
+                onClick={() => handleNav(item.tab)}
+              />
             ))}
           </div>
         </div>
-      )}
 
-      {/* ═══ METRICS DASHBOARD ═══ */}
-      {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} businessConfig={businessConfig} />}
+        {/* Share link */}
+        {slug && (
+          <button
+            onClick={copyLink}
+            className="w-full flex items-center gap-3 px-4 py-3.5 bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.05)] active:scale-[0.98] transition-transform"
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-rose-500 flex items-center justify-center shrink-0 shadow-sm shadow-red-500/20">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">{isService ? 'Tu página de servicios' : 'Tu menú digital'}</p>
+              <p className="text-[13px] font-bold text-slate-800 truncate">menuby.tech/{slug}</p>
+            </div>
+            <span className={`text-[12px] font-bold px-3 py-1.5 rounded-xl shrink-0 transition-all ${
+              copied ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white shadow-sm shadow-red-500/20'
+            }`}>
+              {copied ? '✓' : 'Copiar'}
+            </span>
+          </button>
+        )}
 
-      {/* ═══ HERO CARDS (desktop only — mobile uses quick access) ═══ */}
-      {!q && (
-        <div className="hidden lg:flex gap-3">
-          <HeroCard
-            svgKey="orders"
-            title={isService ? 'Citas' : 'Pedidos'}
-            subtitle={isService ? 'Gestión de citas' : 'Gestión en tiempo real'}
-            onClick={() => handleNav('orders')}
-            count={pendingOrdersCount}
-            colorClass="bg-gradient-to-br from-blue-600 to-blue-700"
-          />
-          <HeroCard
-            svgKey="products"
-            title={isService ? 'Servicios' : 'Productos'}
-            subtitle={isService ? 'Administra tus servicios' : 'Administra tu carta'}
-            onClick={() => handleNav('products')}
-            count={0}
-            colorClass="bg-gradient-to-br from-orange-500 to-orange-600"
-          />
-        </div>
-      )}
-
-      {/* ═══ ONBOARDING (new users, mobile — iOS widget style) ═══ */}
-      {isNewUser && !q && (
-        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden lg:hidden">
-          <div className="px-4 pt-4 pb-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-[15px] font-semibold text-slate-900 flex items-center gap-2">
-                Primeros pasos
-              </h2>
+        {/* Onboarding progress (new users) */}
+        {isNewUser && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <p className="text-[14px] font-bold text-slate-800">Primeros pasos</p>
               <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                 {onboarding?.level || 0}/6
               </span>
             </div>
-            {/* Progress bar */}
-            <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+            <div className="mx-4 mb-3 h-1 bg-slate-100 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full"
                 initial={{ width: 0 }}
@@ -456,147 +497,179 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
                 transition={{ duration: 0.8, ease: 'easeOut' }}
               />
             </div>
-          </div>
-
-          <div className="px-4 pb-4">
-            <div className="relative">
-              <div className="absolute left-[15px] top-4 bottom-4 w-px bg-slate-100" />
-              <div className="space-y-1">
-                {getOnboarding(isService, isHotel).map((step) => {
-                  const done = (onboarding?.level || 0) >= step.level;
-                  const isNext = (onboarding?.level || 0) === step.level - 1;
-                  const SvgIcon = I[step.svgKey];
-                  return (
-                    <motion.button
-                      key={step.level}
-                      whileTap={step.tab ? { scale: 0.98 } : {}}
-                      onClick={() => step.tab && handleNav(step.tab)}
-                      className={`w-full flex items-center gap-3 px-2 py-2.5 rounded-xl transition-all text-left ${
-                        done ? '' : isNext ? 'bg-red-50/60' : ''
-                      }`}
-                    >
-                      <div className={`relative z-10 w-[28px] h-[28px] rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-                        done ? 'bg-emerald-500' : isNext ? 'bg-red-500' : 'bg-slate-200'
-                      }`}>
-                        {done ? (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                        ) : SvgIcon ? (
-                          SvgIcon(`w-3 h-3 ${isNext ? 'text-white' : 'text-slate-400'}`)
-                        ) : (
-                          <span className={`text-[10px] font-bold ${isNext ? 'text-white' : 'text-slate-400'}`}>{step.level}</span>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[13px] font-semibold leading-tight ${
-                          done ? 'text-emerald-600 line-through' : isNext ? 'text-slate-900' : 'text-slate-400'
-                        }`}>
-                          {step.label}
-                        </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{step.desc}</p>
-                      </div>
-                      {isNext && step.tab && (
-                        <span className="text-[11px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full flex-shrink-0">
-                          Ir →
-                        </span>
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══ MODO OPERACIÓN — Prominent card (mobile) ═══ */}
-      {!q && (
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={() => setShowModoOp(true)}
-          className="w-full lg:hidden relative overflow-hidden flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl shadow-lg shadow-indigo-500/15"
-        >
-          <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
-          <div className="w-11 h-11 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          </div>
-          <div className="flex-1 text-left relative">
-            <p className="text-[15px] font-bold text-white">Modo Operación</p>
-            <p className="text-[12px] text-white/60 font-medium">Vista rápida para el servicio</p>
-          </div>
-          {pendingOrdersCount > 0 && (
-            <span className="min-w-[26px] h-[26px] px-1.5 bg-white text-indigo-600 text-[12px] font-bold rounded-full flex items-center justify-center shadow-sm">
-              {pendingOrdersCount}
-            </span>
-          )}
-          <svg className="w-4 h-4 text-white/50 flex-shrink-0 relative" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-          </svg>
-        </motion.button>
-      )}
-
-      {/* ═══ SECTION GRIDS (desktop only — mobile uses bottom nav + quick access) ═══ */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={q || 'all'}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
-          className="space-y-5 sm:space-y-6 hidden lg:block"
-        >
-          {filteredSections.map((section) => {
-            if (!section.items.length) return null;
-            return (
-              <motion.div key={section.id} variants={stagger} initial="hidden" animate="show">
-                <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
-                  <h2 className="text-xs font-extrabold text-slate-400 uppercase tracking-[0.1em]">
-                    {section.label}
-                  </h2>
-                  <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent" />
-                  <span className="text-xs text-slate-300 font-bold bg-slate-50 px-2 py-0.5 rounded-full">
-                    {section.items.length}
-                  </span>
+            {nextStep && (
+              <button
+                onClick={() => nextStep.tab && handleNav(nextStep.tab)}
+                className="w-full flex items-center gap-3 px-4 pb-4 text-left"
+              >
+                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                  </svg>
                 </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-slate-900">{nextStep.label}</p>
+                  <p className="text-[11px] text-slate-400">{nextStep.desc}</p>
+                </div>
+                {nextStep.tab && (
+                  <span className="text-[11px] font-bold text-red-500 bg-red-50 px-2.5 py-1 rounded-full shrink-0">Ir →</span>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
-                <motion.div className="grid grid-cols-4 xl:grid-cols-5 gap-2.5">
-                  {section.items.map((item) => (
-                    <motion.div key={item.tab} variants={fadeUp}>
-                      <DashCard
-                        item={item}
-                        onClick={() => {
-                          if (item.isRoute) {
-                            window.location.href = `/${businessConfig?.slug || businessConfig?._id}/${item.routePath || 'pos'}`;
-                          } else {
-                            handleNav(item.tab);
-                          }
-                        }}
-                        pendingOrdersCount={pendingOrdersCount}
-                      />
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </motion.div>
-            );
-          })}
+      {/* ════════════════════════════════════════
+          DESKTOP SECTION (hidden lg:block)
+          ════════════════════════════════════════ */}
+      <div className="hidden lg:block space-y-5">
 
-          {q && filteredSections[0]?.items.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center">
-                <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+        {/* Desktop greeting + status */}
+        <div className="flex items-center justify-between px-1">
+          <p className="text-sm font-bold text-slate-700">{greeting}</p>
+          <StatusBadge businessConfig={businessConfig} />
+        </div>
+
+        {/* Desktop metrics */}
+        {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} businessConfig={businessConfig} />}
+
+        {/* Desktop hero cards */}
+        {!q && (
+          <div className="flex gap-3">
+            <HeroCard
+              svgKey="orders"
+              title={isService ? 'Citas' : 'Pedidos'}
+              subtitle={isService ? 'Gestión de citas' : 'Gestión en tiempo real'}
+              onClick={() => handleNav('orders')}
+              count={pendingOrdersCount}
+              colorClass="bg-gradient-to-br from-blue-600 to-blue-700"
+            />
+            <HeroCard
+              svgKey="products"
+              title={isService ? 'Servicios' : 'Productos'}
+              subtitle={isService ? 'Administra tus servicios' : 'Administra tu carta'}
+              onClick={() => handleNav('products')}
+              count={0}
+              colorClass="bg-gradient-to-br from-orange-500 to-orange-600"
+            />
+          </div>
+        )}
+
+        {/* Desktop onboarding */}
+        {isNewUser && !q && (
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] overflow-hidden">
+            <div className="px-4 pt-4 pb-2">
+              <div className="flex items-center justify-between">
+                <h2 className="text-[15px] font-semibold text-slate-900">Primeros pasos</h2>
+                <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                  {onboarding?.level || 0}/6
+                </span>
               </div>
-              <p className="text-sm font-bold text-slate-400">Sin resultados</p>
-              <p className="text-xs text-slate-300 mt-1">Intenta con “pedidos”, “productos” o “pagos”</p>
+              <div className="mt-2 h-1 bg-slate-100 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${((onboarding?.level || 0) / 6) * 100}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                />
+              </div>
             </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
+            <div className="px-4 pb-4">
+              <div className="relative">
+                <div className="absolute left-[15px] top-4 bottom-4 w-px bg-slate-100" />
+                <div className="space-y-1">
+                  {getOnboarding(isService, isHotel).map((step) => {
+                    const done = (onboarding?.level || 0) >= step.level;
+                    const isNext = (onboarding?.level || 0) === step.level - 1;
+                    const SvgIcon = I[step.svgKey];
+                    return (
+                      <motion.button
+                        key={step.level}
+                        whileTap={step.tab ? { scale: 0.98 } : {}}
+                        onClick={() => step.tab && handleNav(step.tab)}
+                        className={`w-full flex items-center gap-3 px-2 py-2.5 rounded-xl transition-all text-left ${done ? '' : isNext ? 'bg-red-50/60' : ''}`}
+                      >
+                        <div className={`relative z-10 w-[28px] h-[28px] rounded-full flex items-center justify-center flex-shrink-0 transition-all ${done ? 'bg-emerald-500' : isNext ? 'bg-red-500' : 'bg-slate-200'}`}>
+                          {done ? (
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                          ) : SvgIcon ? (
+                            SvgIcon(`w-3 h-3 ${isNext ? 'text-white' : 'text-slate-400'}`)
+                          ) : (
+                            <span className={`text-[10px] font-bold ${isNext ? 'text-white' : 'text-slate-400'}`}>{step.level}</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[13px] font-semibold leading-tight ${done ? 'text-emerald-600 line-through' : isNext ? 'text-slate-900' : 'text-slate-400'}`}>
+                            {step.label}
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">{step.desc}</p>
+                        </div>
+                        {isNext && step.tab && (
+                          <span className="text-[11px] font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full flex-shrink-0">Ir →</span>
+                        )}
+                      </motion.button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* Modo Operación full-screen overlay */}
-      <ModoOperacion isOpen={showModoOp} onClose={() => setShowModoOp(false)} />
+        {/* Desktop section grids */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={q || 'all'}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-5 sm:space-y-6"
+          >
+            {filteredSections.map((section) => {
+              if (!section.items.length) return null;
+              return (
+                <motion.div key={section.id} variants={stagger} initial="hidden" animate="show">
+                  <div className="flex items-center gap-2.5 mb-2.5 sm:mb-3">
+                    <h2 className="text-xs font-extrabold text-slate-400 uppercase tracking-[0.1em]">{section.label}</h2>
+                    <div className="flex-1 h-px bg-gradient-to-r from-slate-100 to-transparent" />
+                    <span className="text-xs text-slate-300 font-bold bg-slate-50 px-2 py-0.5 rounded-full">{section.items.length}</span>
+                  </div>
+                  <motion.div className="grid grid-cols-4 xl:grid-cols-5 gap-2.5">
+                    {section.items.map((item) => (
+                      <motion.div key={item.tab} variants={fadeUp}>
+                        <DashCard
+                          item={item}
+                          onClick={() => {
+                            if (item.isRoute) {
+                              window.location.href = `/${businessConfig?.slug || businessConfig?._id}/${item.routePath || 'pos'}`;
+                            } else {
+                              handleNav(item.tab);
+                            }
+                          }}
+                          pendingOrdersCount={pendingOrdersCount}
+                        />
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </motion.div>
+              );
+            })}
+            {q && filteredSections[0]?.items.length === 0 && (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center">
+                  <svg className="w-7 h-7 text-slate-300" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <p className="text-sm font-bold text-slate-400">Sin resultados</p>
+                <p className="text-xs text-slate-300 mt-1">Intenta con "pedidos", "productos" o "pagos"</p>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

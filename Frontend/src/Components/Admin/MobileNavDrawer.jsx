@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-/* ═══ iOS-style section icon components — colored backgrounds ═══ */
+/* ═══ iOS-style section icon components ═══ */
 const SectionIcon = ({ bg, children }) => (
   <div className={`w-[29px] h-[29px] rounded-[7px] ${bg} flex items-center justify-center flex-shrink-0`}>
     {children}
@@ -25,7 +26,13 @@ const LogoutIcon = () => (
   </svg>
 );
 
-/* Mini icon SVGs for each item */
+const SearchIcon = () => (
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400">
+    <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+  </svg>
+);
+
+/* Mini icon SVGs */
 const I = {
   orders:     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>,
   completed:  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>,
@@ -53,23 +60,30 @@ const I = {
   password:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>,
   calendar:   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>,
   cash:       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>,
+  reports:    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>,
 };
 
 /**
- * MobileNavDrawer v2 — iOS Settings-style bottom sheet.
- * Grouped sections with rows: icon + label + chevron.
- * Glassmorphism, spring animation, drag handle.
+ * MobileNavDrawer v3 — iOS Settings-style bottom sheet with search.
+ * Added: search bar to filter all 25+ items; "Clientes" item; "Analítica" item.
  */
 export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveTab, businessConfig, handleLogout, userRole, pinnedIds }) {
+  const [search, setSearch] = useState('');
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const isHotel = businessConfig?.businessType === 'hotel';
   const isStaff = userRole === 'staff';
+
+  /* Reset search whenever sheet closes */
+  useEffect(() => {
+    if (!isOpen) setSearch('');
+  }, [isOpen]);
 
   const sections = [
     {
       title: 'Operaciones',
       items: [
-        { id: 'completed_orders', label: 'Completados', icon: I.completed, bg: 'bg-emerald-500' },
+        { id: 'reports',        label: 'Analítica',           icon: I.reports,    bg: 'bg-indigo-500' },
+        { id: 'completed_orders', label: 'Completados',       icon: I.completed,  bg: 'bg-emerald-500' },
         ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de caja', icon: I.cash, bg: 'bg-amber-500' }] : []),
         ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda de citas', icon: I.calendar, bg: 'bg-indigo-500' }] : []),
         ...(!isService && !isHotel ? [{ id: 'delivery', label: 'Domicilios', icon: I.delivery, bg: 'bg-cyan-500' }] : []),
@@ -78,42 +92,44 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
     {
       title: isService ? 'Servicios' : 'Menú',
       items: [
-        { id: 'product-order', label: 'Orden de productos', icon: I.reorder, bg: 'bg-purple-500' },
-        { id: 'categories', label: 'Categorías', icon: I.categories, bg: 'bg-yellow-500' },
-        { id: 'toppings', label: isService ? 'Opciones' : 'Extras y toppings', icon: I.toppings, bg: 'bg-orange-500' },
+        { id: 'product-order', label: 'Orden de productos', icon: I.reorder,    bg: 'bg-purple-500' },
+        { id: 'categories',    label: 'Categorías',         icon: I.categories, bg: 'bg-yellow-500' },
+        { id: 'toppings',      label: isService ? 'Opciones' : 'Extras y toppings', icon: I.toppings, bg: 'bg-orange-500' },
       ],
     },
     {
       title: 'Clientes y Marketing',
       items: [
-        { id: 'coupons', label: 'Cupones', icon: I.coupons, bg: 'bg-pink-500' },
-        { id: 'loyalty', label: 'Programa de fidelidad', icon: I.loyalty, bg: 'bg-rose-500' },
-        { id: 'reviews', label: 'Reseñas', icon: I.reviews, bg: 'bg-amber-500' },
+        { id: 'customers',      label: 'Clientes',             icon: I.customers, bg: 'bg-cyan-500' },
+        { id: 'coupons',        label: 'Cupones',              icon: I.coupons,   bg: 'bg-pink-500' },
+        { id: 'loyalty',        label: 'Programa de fidelidad',icon: I.loyalty,   bg: 'bg-rose-500' },
+        { id: 'reviews',        label: 'Reseñas',              icon: I.reviews,   bg: 'bg-amber-500' },
         ...(!isService ? [{ id: 'tables', label: isHotel ? 'Habitaciones' : 'Mesas y pisos', icon: I.tables, bg: 'bg-indigo-500' }] : []),
         ...(!isService && !isHotel ? [{ id: 'delivery-zones', label: 'Zonas de entrega', icon: I.zones, bg: 'bg-green-500' }] : []),
-        { id: 'catalog', label: 'Banners y catálogo', icon: I.catalog, bg: 'bg-violet-500' },
-        { id: 'whatsapp', label: 'WhatsApp', icon: I.whatsapp, bg: 'bg-green-600' },
-        { id: 'payment-config', label: 'Métodos de pago', icon: I.payment, bg: 'bg-teal-500' },
-        { id: 'referrals', label: 'Referidos', icon: I.referrals, bg: 'bg-blue-500' },
+        { id: 'catalog',        label: 'Banners y catálogo',   icon: I.catalog,   bg: 'bg-violet-500' },
+        { id: 'whatsapp',       label: 'WhatsApp',             icon: I.whatsapp,  bg: 'bg-green-600' },
+        { id: 'payment-config', label: 'Métodos de pago',      icon: I.payment,   bg: 'bg-teal-500' },
+        { id: 'referrals',      label: 'Referidos',            icon: I.referrals, bg: 'bg-blue-500' },
       ],
     },
     {
       title: 'Configuración',
       items: [
-        { id: 'subscription', label: 'Suscripción', icon: I.sub, bg: 'bg-blue-600' },
-        { id: 'team', label: 'Equipo', icon: I.team, bg: 'bg-slate-600' },
-        { id: 'business', label: 'Info del negocio', icon: I.business, bg: 'bg-slate-500' },
-        { id: 'printer', label: 'Impresoras', icon: I.printer, bg: 'bg-slate-600' },
-        { id: 'theme', label: 'Tema y colores', icon: I.theme, bg: 'bg-fuchsia-500' },
-        { id: 'location', label: 'Ubicación', icon: I.location, bg: 'bg-red-500' },
-        { id: 'change-password', label: 'Contraseña', icon: I.password, bg: 'bg-slate-500' },
+        { id: 'subscription',   label: 'Suscripción',    icon: I.sub,      bg: 'bg-blue-600' },
+        { id: 'team',           label: 'Equipo',         icon: I.team,     bg: 'bg-slate-600' },
+        { id: 'business',       label: 'Info del negocio',icon: I.business, bg: 'bg-slate-500' },
+        { id: 'printer',        label: 'Impresoras',     icon: I.printer,  bg: 'bg-slate-600' },
+        { id: 'theme',          label: 'Tema y colores', icon: I.theme,    bg: 'bg-fuchsia-500' },
+        { id: 'location',       label: 'Ubicación',      icon: I.location, bg: 'bg-red-500' },
+        { id: 'change-password',label: 'Contraseña',     icon: I.password, bg: 'bg-slate-500' },
       ],
     },
   ];
 
-  // Filter out pinned items and apply staff restrictions
   const STAFF_ALLOWED = new Set(['orders', 'completed_orders', 'cash-closings', 'change-password']);
-  const filteredSections = sections
+
+  /* Filter out pinned items and apply staff restrictions */
+  const baseSections = sections
     .map(section => ({
       ...section,
       items: section.items
@@ -121,6 +137,17 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
         .filter(item => !isStaff || STAFF_ALLOWED.has(item.id)),
     }))
     .filter(section => section.items.length > 0);
+
+  /* Apply search filter */
+  const searchQ = search.toLowerCase().trim();
+  const allItems = baseSections.flatMap(s => s.items);
+  const searchResults = searchQ
+    ? allItems.filter(i => i.label.toLowerCase().includes(searchQ))
+    : null;
+
+  const displaySections = searchResults
+    ? searchResults.length > 0 ? [{ title: 'Resultados', items: searchResults }] : []
+    : baseSections;
 
   return (
     <AnimatePresence>
@@ -144,13 +171,13 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed inset-x-0 bottom-0 z-[56] lg:hidden bg-[#f2f2f7] rounded-t-[14px] shadow-2xl max-h-[80vh] flex flex-col"
+            className="fixed inset-x-0 bottom-0 z-[56] lg:hidden bg-[#f2f2f7] rounded-t-[14px] shadow-2xl max-h-[85vh] flex flex-col"
             style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
           >
             {/* Handle + header */}
             <div className="flex flex-col items-center pt-2 pb-2 px-4 shrink-0">
               <div className="w-9 h-[5px] rounded-full bg-slate-300/80 mb-3" />
-              <div className="flex items-center justify-between w-full">
+              <div className="flex items-center justify-between w-full mb-2.5">
                 <h3 className="text-[15px] font-semibold text-slate-900">Más opciones</h3>
                 <button
                   onClick={onClose}
@@ -160,17 +187,45 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
                   <CloseIcon />
                 </button>
               </div>
+
+              {/* Search bar */}
+              <div className="w-full relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <SearchIcon />
+                </div>
+                <input
+                  type="search"
+                  placeholder="Buscar..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-white rounded-xl text-[14px] text-slate-800 placeholder-slate-400 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-300 flex items-center justify-center"
+                  >
+                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Sections */}
             <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4 space-y-5">
-              {filteredSections.map((section) => (
+              {/* Empty search state */}
+              {searchQ && displaySections.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-[14px] font-semibold text-slate-400">Sin resultados</p>
+                  <p className="text-[12px] text-slate-300 mt-1">Intenta con otro término</p>
+                </div>
+              )}
+
+              {displaySections.map((section) => (
                 <div key={section.title}>
-                  {/* Section title */}
                   <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1 mb-1.5">
                     {section.title}
                   </p>
-                  {/* Grouped rows */}
                   <div className="bg-white rounded-xl overflow-hidden">
                     {section.items.map((item, idx) => {
                       const isActive = activeTab === item.id;
@@ -179,16 +234,12 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
                         <button
                           key={item.id}
                           onClick={() => setActiveTab(item.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-[10px] active:bg-slate-50 transition-colors ${
-                            !isLast ? 'border-b border-slate-100' : ''
-                          }`}
+                          className={`w-full flex items-center gap-3 px-3 py-[11px] active:bg-slate-50 transition-colors ${!isLast ? 'border-b border-slate-100' : ''}`}
                         >
                           <SectionIcon bg={item.bg}>
                             {item.icon}
                           </SectionIcon>
-                          <span className={`flex-1 text-left text-[15px] ${
-                            isActive ? 'font-semibold text-red-500' : 'font-normal text-slate-900'
-                          }`}>
+                          <span className={`flex-1 text-left text-[15px] ${isActive ? 'font-semibold text-red-500' : 'font-normal text-slate-900'}`}>
                             {item.label}
                           </span>
                           <Chevron />
@@ -200,15 +251,17 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
               ))}
 
               {/* Logout */}
-              <div className="bg-white rounded-xl overflow-hidden">
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-3 active:bg-red-50 transition-colors"
-                >
-                  <LogoutIcon />
-                  <span className="text-[15px] font-normal text-red-500">Cerrar Sesión</span>
-                </button>
-              </div>
+              {!searchQ && (
+                <div className="bg-white rounded-xl overflow-hidden">
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-3 active:bg-red-50 transition-colors"
+                  >
+                    <LogoutIcon />
+                    <span className="text-[15px] font-normal text-red-500">Cerrar Sesión</span>
+                  </button>
+                </div>
+              )}
             </div>
           </motion.div>
         </>

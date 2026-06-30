@@ -46,6 +46,8 @@ import AdminReviews from "../Components/Admin/AdminReviews";
 import StaffManager from "../Components/Admin/StaffManager";
 import BookingsManager from "../Components/Admin/BookingsManager";
 import CashClosings from "../Components/Admin/CashClosings";import ReferralsPanel from '../Components/Admin/ReferralsPanel';import CrewPanel from "../Components/Admin/CrewPanel";import MobileBottomNav from "../Components/Admin/MobileBottomNav";
+import ModoOperacion from "../Components/Admin/ModoOperacion";
+import DashboardMetrics from "../Components/Admin/DashboardMetrics";
 import MobileHeader from "../Components/Admin/MobileHeader";
 import Marketplace from "../Components/Admin/Marketplace";
 import SupplierOrders from "../Components/Admin/SupplierOrders";
@@ -133,6 +135,7 @@ function Admin() {
   }, []);
   const [activeCatalogTab, setActiveCatalogTab] = useState('upload');
   const [showWelcome, setShowWelcome] = useState(false);
+  const [modoOpOpen, setModoOpOpen] = useState(false);
 
   // Limpiar params de URL después de leerlos (no mostrar ?tab=... en la barra)
   useEffect(() => {
@@ -364,7 +367,7 @@ function Admin() {
                 className="w-full"
               >
                 {activeTab === 'dashboard' && (
-                  <AdminDashboard setActiveTab={setActiveTab} pendingOrdersCount={pendingOrdersCount} onboarding={onboardingData} />
+                  <AdminDashboard setActiveTab={setActiveTab} pendingOrdersCount={pendingOrdersCount} onboarding={onboardingData} onOpenModoOp={() => setModoOpOpen(true)} />
                 )}
                 {activeTab === 'business' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
@@ -553,6 +556,13 @@ function Admin() {
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
+                {activeTab === 'reports' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Analítica" onGoBack={() => setActiveTab('dashboard')}>
+                      <DashboardMetrics setActiveTab={setActiveTab} businessId={businessConfig?._id} businessConfig={businessConfig} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
                 {activeTab === 'team' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Equipo" onGoBack={() => setActiveTab('dashboard')}>
@@ -634,6 +644,9 @@ function Admin() {
       {/* Floating AI Help Chat — temporalmente deshabilitado */}
       {/* <FloatingHelpChat /> */}
 
+      {/* Modo Operación full-screen overlay */}
+      <ModoOperacion isOpen={modoOpOpen} onClose={() => setModoOpOpen(false)} />
+
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav
         activeTab={activeTab}
@@ -642,6 +655,7 @@ function Admin() {
         businessConfig={businessConfig}
         handleLogout={logout}
         userRole={user?.role}
+        onOpenModoOp={() => setModoOpOpen(true)}
       />
     </div>
   );
