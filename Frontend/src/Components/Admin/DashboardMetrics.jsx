@@ -940,7 +940,7 @@ function PendingBanner({ pending, onViewOrders, isService }) {
 /* ═══ MAIN COMPONENT ═══ */
 export default function DashboardMetrics({ setActiveTab, businessId, businessConfig }) {
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
-  const fmt = (n) => fmt(n, businessConfig?.currency || 'COP');
+  const fmt = (n) => COP(n, businessConfig?.currency || 'COP');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
