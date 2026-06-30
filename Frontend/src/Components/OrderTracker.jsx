@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { formatCurrency } from '../utils/currency';
 import { API_URL } from '../config';
 import { socket } from '../services/socket';
 import logger from '../utils/logger';
@@ -307,7 +308,7 @@ const OrderTracker = ({
 
   const formatBookingDate = (d) => d ? new Date(d).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
   const formatBookingTime = (d) => d ? new Date(d).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '';
-  const formatPrice = (a) => (!a && a !== 0) ? '$0' : a.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+  const formatPrice = (a) => (!a && a !== 0) ? (formatCurrency(0, businessConfig?.currency)) : formatCurrency(a, businessConfig?.currency);
   const formatTime = (ts) => new Date(ts).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
 
   const isTerminal = ['completed', 'delivered', 'cancelled'].includes(order?.status);

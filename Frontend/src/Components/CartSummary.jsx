@@ -5,6 +5,7 @@ import * as SessionManager from '../utils/sessionManager';
 import CouponInput from './CouponInput';
 import { logSystem } from '../utils/systemLogger';
 import useCartPricing, { calculateItemTotal } from '../hooks/useCartPricing';
+import { formatCurrency } from '../utils/currency';
 
 import BusinessClosedModal from './BusinessClosedModal';
 import api from '../services/api';
@@ -531,7 +532,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                           if (topping.optionName) {
                             tags.push(
                               <span key={`${item.uniqueId || item._id}-t-${idx}`} className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded-md leading-tight">
-                                {topping.optionName}{topping.price > 0 ? ` +$${Number(topping.price).toLocaleString('es-CO')}` : ''}
+                                {topping.optionName}{topping.price > 0 ? ` +${formatCurrency(Number(topping.price), businessConfig?.currency)}` : ''}
                               </span>
                             );
                           }
@@ -539,7 +540,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                             topping.subGroups.forEach((sub, subIdx) => {
                               tags.push(
                                 <span key={`${item.uniqueId || item._id}-s-${idx}-${subIdx}`} className="text-[10px] px-1.5 py-0.5 bg-orange-50 text-orange-700 rounded-md leading-tight">
-                                  {sub.optionName}{sub.price > 0 ? ` +$${Number(sub.price).toLocaleString('es-CO')}` : ''}
+                                  {sub.optionName}{sub.price > 0 ? ` +${formatCurrency(Number(sub.price), businessConfig?.currency)}` : ''}
                                 </span>
                               );
                             });
@@ -552,7 +553,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
                   {/* Price + quantity row */}
                   <div className="flex items-center justify-between mt-2">
-                    <p className="text-sm font-bold text-slate-800">${calculateItemTotal(item).toLocaleString('es-CO')}</p>
+                    <p className="text-sm font-bold text-slate-800">{formatCurrency(calculateItemTotal(item), businessConfig?.currency)}</p>
                     <div className="flex items-center gap-0 rounded-full" style={{ backgroundColor: `${themeColor}10` }}>
                       <button
                         onClick={() => updateQuantity(item.uniqueId || item._id, (item.quantity || 0) - 1)}
@@ -954,7 +955,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                             <span className="text-green-600">{CI.check('w-3.5 h-3.5')}</span>
                             <span className="text-[11px] text-green-800 font-medium">{deliveryZoneInfo.zoneName}</span>
                           </div>
-                          <span className="text-xs font-bold text-green-800">${deliveryFee.toLocaleString()}</span>
+                          <span className="text-xs font-bold text-green-800">{formatCurrency(deliveryFee, businessConfig?.currency)}</span>
                         </div>
                       ) : (
                         <DeliveryZoneSelector
@@ -1045,30 +1046,30 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               <div className="space-y-1 mb-2">
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>Subtotal</span>
-                  <span>${totalAmount.toLocaleString('es-CO')}</span>
+                  <span>{formatCurrency(totalAmount, businessConfig?.currency)}</span>
                 </div>
                 {deliveryFee > 0 && (
                   <div className="flex justify-between text-xs text-slate-400">
                     <span>Envío</span>
-                    <span>{loyaltyReward?.reward?.type === 'free_delivery' ? <span className="line-through">${deliveryFee.toLocaleString('es-CO')}</span> : `$${deliveryFee.toLocaleString('es-CO')}`}</span>
+                    <span>{loyaltyReward?.reward?.type === 'free_delivery' ? <span className="line-through">{formatCurrency(deliveryFee, businessConfig?.currency)}</span> : formatCurrency(deliveryFee, businessConfig?.currency)}</span>
                   </div>
                 )}
                 {loyaltyReward?.reward?.type === 'free_delivery' && deliveryFee > 0 && (
                   <div className="flex justify-between text-xs text-amber-500">
                     <span>🎁 Envío gratis</span>
-                    <span>-${deliveryFee.toLocaleString('es-CO')}</span>
+                    <span>-{formatCurrency(deliveryFee, businessConfig?.currency)}</span>
                   </div>
                 )}
                 {appliedCoupon && (
                   <div className="flex justify-between text-xs text-green-500">
                     <span>Descuento cupón</span>
-                    <span>-${appliedCoupon.discountAmount.toLocaleString('es-CO')}</span>
+                    <span>-{formatCurrency(appliedCoupon.discountAmount, businessConfig?.currency)}</span>
                   </div>
                 )}
                 {loyaltyDiscountAmount > 0 && (
                   <div className="flex justify-between text-xs text-amber-500">
                     <span>🎁 {loyaltyReward.reward.name}</span>
-                    <span>-${loyaltyDiscountAmount.toLocaleString('es-CO')}</span>
+                    <span>-{formatCurrency(loyaltyDiscountAmount, businessConfig?.currency)}</span>
                   </div>
                 )}
                 <div className="border-t border-dashed border-slate-200" />
@@ -1080,10 +1081,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               <span className="text-sm font-semibold text-slate-500">Total</span>
               <div className="flex items-baseline gap-2">
                 {(appliedCoupon || loyaltyDiscountAmount > 0 || loyaltyReward?.reward?.type === 'free_delivery') && (
-                  <span className="text-xs line-through text-slate-300">${((deliveryFee || 0) + totalAmount).toLocaleString('es-CO')}</span>
+                  <span className="text-xs line-through text-slate-300">{formatCurrency((deliveryFee || 0) + totalAmount, businessConfig?.currency)}</span>
                 )}
                 <span className="text-2xl font-extrabold text-slate-900">
-                  ${(finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0)).toLocaleString('es-CO')}
+                  {formatCurrency(finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0), businessConfig?.currency)}
                 </span>
               </div>
             </div>
@@ -1218,7 +1219,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     <>
                       <span>{buttonLabel}</span>
                       <span className="w-px h-5 bg-current opacity-20" />
-                      <span className="font-extrabold tabular-nums">${displayTotal.toLocaleString('es-CO')}</span>
+                      <span className="font-extrabold tabular-nums">{formatCurrency(displayTotal, businessConfig?.currency)}</span>
                     </>
                   )}
                 </button>

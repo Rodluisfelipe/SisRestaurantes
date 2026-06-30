@@ -5,12 +5,14 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
 import BusinessHoursSettings from './BusinessHoursSettings';
 import ImageUploader from './Admin/ImageUploader';
-import { 
+import {
   FaCog, FaStore, FaImage, FaWhatsapp, FaMapMarkerAlt, FaMap,
   FaInfoCircle, FaShareAlt, FaFacebook, FaInstagram, FaMusic, FaLink,
   FaEye, FaEyeSlash, FaWrench, FaSave, FaSyncAlt, FaCheckCircle,
-  FaExclamationCircle, FaFileAlt, FaBell, FaCalendarAlt, FaEnvelope
+  FaExclamationCircle, FaFileAlt, FaBell, FaCalendarAlt, FaEnvelope,
+  FaChevronDown
 } from 'react-icons/fa';
+import { COUNTRY_CODES, CURRENCIES, getCurrencyForDialCode } from '../utils/currency';
 
 const BusinessSettings = () => {
   const initialSettings = {
@@ -20,6 +22,8 @@ const BusinessSettings = () => {
     coverImage: '',
     isOpen: true,
     whatsappNumber: '',
+    phoneCountryCode: '+57',
+    currency: 'COP',
     address: '',
     nit: '',
     googleMapsUrl: '',
@@ -61,6 +65,8 @@ const BusinessSettings = () => {
           coverImage: response.data.coverImage || '',
           isOpen: response.data.isOpen !== undefined ? response.data.isOpen : true,
           whatsappNumber: response.data.whatsappNumber || '',
+          phoneCountryCode: response.data.phoneCountryCode || '+57',
+          currency: response.data.currency || 'COP',
           address: response.data.address || '',
           nit: response.data.nit || '',
           googleMapsUrl: response.data.googleMapsUrl || '',
@@ -192,6 +198,8 @@ const BusinessSettings = () => {
         coverImage: settings.coverImage || "",
         isOpen: settings.isOpen !== undefined ? settings.isOpen : true,
         whatsappNumber: settings.whatsappNumber || "",
+        phoneCountryCode: settings.phoneCountryCode || '+57',
+        currency: settings.currency || 'COP',
         address: settings.address || "",
         nit: settings.nit || "",
         googleMapsUrl: settings.googleMapsUrl || "",
@@ -439,19 +447,72 @@ const BusinessSettings = () => {
 
             {/* Right Column */}
             <div className="space-y-3">
+              {/* WhatsApp number with country code selector */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Número de WhatsApp
                 </label>
-                <input
-                  type="text"
-                  inputMode="tel"
-                  name="whatsappNumber"
-                  value={settings.whatsappNumber}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
-                  placeholder="Ej: +1234567890"
-                />
+                <div className="flex gap-1.5">
+                  <div className="relative">
+                    <select
+                      value={settings.phoneCountryCode}
+                      onChange={e => {
+                        const code = e.target.value;
+                        const suggestedCurrency = getCurrencyForDialCode(code);
+                        setSettings(prev => ({
+                          ...prev,
+                          phoneCountryCode: code,
+                          currency: suggestedCurrency,
+                        }));
+                      }}
+                      className="appearance-none pl-2 pr-6 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 bg-white cursor-pointer"
+                      style={{ minWidth: '72px' }}
+                    >
+                      {COUNTRY_CODES.map((c, i) => (
+                        <option key={`${c.code}-${i}`} value={c.code}>
+                          {c.flag} {c.code}
+                        </option>
+                      ))}
+                    </select>
+                    <FaChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none" />
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="tel"
+                    name="whatsappNumber"
+                    value={settings.whatsappNumber}
+                    onChange={handleChange}
+                    className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 focus:border-slate-300"
+                    placeholder="3001234567"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  El número completo sería: {settings.phoneCountryCode}{settings.whatsappNumber}
+                </p>
+              </div>
+
+              {/* Currency */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                  Moneda
+                </label>
+                <div className="relative">
+                  <select
+                    value={settings.currency}
+                    onChange={e => setSettings(prev => ({ ...prev, currency: e.target.value }))}
+                    className="w-full appearance-none pl-3 pr-8 py-2 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-slate-300 bg-white cursor-pointer"
+                  >
+                    {Object.entries(CURRENCIES).map(([code, cfg]) => (
+                      <option key={code} value={code}>
+                        {cfg.flag} {code} — {cfg.label}
+                      </option>
+                    ))}
+                  </select>
+                  <FaChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none" />
+                </div>
+                <p className="mt-1 text-xs text-slate-400">
+                  Los precios se mostrarán como: {CURRENCIES[settings.currency]?.symbol || '$'}1.000
+                </p>
               </div>
 
               <div>

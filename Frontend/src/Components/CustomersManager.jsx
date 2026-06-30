@@ -6,6 +6,7 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import AI from './Admin/AdminIcons';
 import { getBusinessSlug } from '../utils/getBusinessId';
 import { logSystem } from '../utils/systemLogger';
+import { formatCurrency as fmtCurrency } from '../utils/currency';
 
 const CustomersManager = () => {
   const { businessConfig } = useBusinessConfig();
@@ -100,14 +101,7 @@ const CustomersManager = () => {
     }
   }, [businessConfig?.businessId, currentPage, searchTerm, statusFilter, sortBy, sortOrder]);
 
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  const formatCurrency = (amount) => fmtCurrency(amount, businessConfig?.currency || 'COP');
 
   // Format date
   const formatDate = (date) => {

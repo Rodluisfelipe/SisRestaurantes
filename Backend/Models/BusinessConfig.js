@@ -130,6 +130,14 @@ const businessConfigSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  phoneCountryCode: {
+    type: String,
+    default: "+57"
+  },
+  currency: {
+    type: String,
+    default: "COP"
+  },
   address: {
     type: String,
     default: ""

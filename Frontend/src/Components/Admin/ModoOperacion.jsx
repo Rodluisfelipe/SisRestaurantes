@@ -6,6 +6,7 @@ import {
 } from 'react-icons/fa';
 import useOrdersDashboard from '../../hooks/useOrdersDashboard';
 import { ORDER_STATUS } from '../../utils/constants';
+import { formatCurrency } from '../../utils/currency';
 
 /**
  * Modo Operación v2 — Mobile-first full-screen service overlay.
@@ -77,7 +78,7 @@ function statusLabel(status) {
 }
 
 /* ─── Order Card ─── */
-function OrderCard({ order, onAction, onPayment, isHotel }) {
+function OrderCard({ order, onAction, onPayment, isHotel, currency = 'COP' }) {
   const action = getAction(order.status);
   const TypeIcon = TYPE_ICONS[order.orderType] || FaUtensils;
   const typeLabel = order.orderType === 'inSite'
@@ -86,7 +87,7 @@ function OrderCard({ order, onAction, onPayment, isHotel }) {
 
   const elapsed = timeAgo(order.createdAt);
   const isUrgent = (Date.now() - new Date(order.createdAt).getTime()) > 600000;
-  const total = ((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString('es-CO');
+  const total = formatCurrency((order.totalAmount || 0) + (order.deliveryFee || 0), currency);
   const badge = statusLabel(order.status);
 
   const handleAction = () => {
@@ -366,6 +367,7 @@ export default function ModoOperacion({ isOpen, onClose }) {
                           onAction={updateOrderStatus}
                           onPayment={confirmPayment}
                           isHotel={isHotel}
+                          currency={businessConfig?.currency || 'COP'}
                         />
                       ))}
                     </AnimatePresence>
@@ -391,6 +393,7 @@ export default function ModoOperacion({ isOpen, onClose }) {
                           onAction={updateOrderStatus}
                           onPayment={confirmPayment}
                           isHotel={isHotel}
+                          currency={businessConfig?.currency || 'COP'}
                         />
                       ))}
                     </AnimatePresence>

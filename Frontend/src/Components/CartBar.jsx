@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import { FaShoppingBag, FaArrowRight } from 'react-icons/fa';
+import { formatCurrency } from '../utils/currency';
 
 const CartBar = ({ 
   cart, 
@@ -120,7 +121,7 @@ const CartBar = ({
               animate={priceControls}
               className="font-extrabold text-base tabular-nums"
             >
-              ${totalAmount.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              {formatCurrency(totalAmount, businessConfig?.currency)}
             </motion.span>
             <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
               <FaArrowRight className="text-[10px] text-white/70" />

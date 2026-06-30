@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { socket } from '../services/socket';
 import logger from '../utils/logger';
+import { formatCurrency } from '../utils/currency';
 
 const STATUS_LABELS = {
   pending: { label: 'Recibido', icon: '📋', bg: 'bg-blue-100', text: 'text-blue-700' },
@@ -64,8 +65,8 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
   }, [fetchOrders]);
 
   const formatPrice = (amount) => {
-    if (!amount && amount !== 0) return '$0';
-    return amount.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+    if (!amount && amount !== 0) return formatCurrency(0, businessConfig?.currency);
+    return formatCurrency(amount, businessConfig?.currency);
   };
 
   const formatTime = (date) => {

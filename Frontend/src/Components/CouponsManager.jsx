@@ -4,6 +4,7 @@ import { FaTicketAlt, FaCheckCircle, FaChartBar, FaDollarSign, FaSearch, FaPlus,
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { getBusinessSlug } from '../utils/getBusinessId';
+import { formatCurrency as fmtCurrency } from '../utils/currency';
 
 const CouponsManager = () => {
   const { businessConfig } = useBusinessConfig();
@@ -184,14 +185,8 @@ const CouponsManager = () => {
     }
   };
 
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
+  const currency = businessConfig?.currency || 'COP';
+  const formatCurrency = (amount) => fmtCurrency(amount, currency);
 
   // Format date
   const formatDate = (date) => {

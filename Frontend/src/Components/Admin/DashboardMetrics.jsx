@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "../../config";
 import { socket } from "../../services/socket";
+import { formatCurrency } from "../../utils/currency";
 
 const EMPTY_ARRAY = [];
 
@@ -20,13 +21,7 @@ const EMPTY_ARRAY = [];
  */
 
 /* ═══ Helpers ═══ */
-const COP = (n) =>
-  new Intl.NumberFormat("es-CO", {
-    style: "currency",
-    currency: "COP",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(n || 0);
+const COP = (n, currency = 'COP') => formatCurrency(n || 0, currency);
 
 const pct = (a, b) => {
   if (!b) return a > 0 ? 100 : 0;
@@ -258,7 +253,7 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0 }) {
           {withCart.length > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
               {ViewerIcons.cart("w-2.5 h-2.5")}
-              {withCart.length} · {COP(totalCartValue)}
+              {withCart.length} · {fmt(totalCartValue)}
             </span>
           )}
           <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
@@ -307,7 +302,7 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0 }) {
               <div className="flex flex-col items-end gap-0.5 shrink-0">
                 <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
                   {ViewerIcons.cart("w-2.5 h-2.5")}
-                  {v.cartItems} · {COP(v.cartTotal)}
+                  {v.cartItems} · {fmt(v.cartTotal)}
                 </span>
                 {v.cartProducts?.length > 0 && (
                   <div className="text-[8px] text-slate-400 text-right leading-tight max-w-[140px]">
@@ -348,8 +343,8 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0 }) {
     const products = (cart.cartProducts || []).map(p => 
       `${p.qty > 1 ? p.qty + 'x ' : ''}${p.name}`
     ).join(', ');
-    const total = (cart.cartTotal || 0).toLocaleString('es-CO');
-    const msg = `Hola ${name}, vimos que estabas interesado en ${products || 'nuestros productos'} (${total} COP). ¿Te ayudamos a completar tu pedido? 😊`;
+    const total = fmt(cart.cartTotal || 0);
+    const msg = `Hola ${name}, vimos que estabas interesado en ${products || 'nuestros productos'} (${total}). ¿Te ayudamos a completar tu pedido? 😊`;
     return `https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`;
   };
 
@@ -371,7 +366,7 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0 }) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
-            {carts.length} · {COP(totalLost)}
+            {carts.length} · {fmt(totalLost)}
           </span>
         </div>
       </div>
@@ -396,7 +391,7 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0 }) {
             <div className="flex items-center gap-1.5 shrink-0">
               <div className="flex flex-col items-end gap-0.5">
                 <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
-                  {COP(c.cartTotal)}
+                  {fmt(c.cartTotal)}
                 </span>
                 {c.cartProducts?.length > 0 && (
                   <div className="text-[8px] text-slate-400 text-right leading-tight max-w-[120px]">
@@ -551,7 +546,7 @@ function WeeklyChart({ data, loading, isService }) {
         <div className="flex items-center gap-3 text-[10px] font-semibold">
           <span className="flex items-center gap-1 text-blue-500">
             <span className="w-2 h-2 rounded-sm bg-blue-400" />
-            {COP(totalRev)}
+            {fmt(totalRev)}
           </span>
           <span className="flex items-center gap-1 text-slate-400">
             <span className="w-2 h-2 rounded-sm bg-slate-300" />
@@ -575,7 +570,7 @@ function WeeklyChart({ data, loading, isService }) {
               {/* Revenue value on hover */}
               {!isEmpty && (
                 <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/bar:opacity-100 transition-opacity truncate max-w-full h-3">
-                  {day.orders > 0 ? COP(day.revenue) : ""}
+                  {day.orders > 0 ? fmt(day.revenue) : ""}
                 </div>
               )}
 
@@ -754,7 +749,7 @@ function TopProducts({ products, loading, isService }) {
             {/* Stats */}
             <div className="text-right flex-shrink-0">
               <p className="text-[11px] font-bold text-slate-700">{p.quantity} uds</p>
-              <p className="text-[9px] font-medium text-slate-400">{COP(p.revenue)}</p>
+              <p className="text-[9px] font-medium text-slate-400">{fmt(p.revenue)}</p>
             </div>
           </div>
         ))}
@@ -892,7 +887,7 @@ function RecentOrders({ orders, loading, onViewOrders, isService }) {
 
               {/* Amount */}
               <span className="text-xs font-bold text-slate-700 flex-shrink-0">
-                {COP(order.totalAmount)}
+                {fmt(order.totalAmount)}
               </span>
             </div>
           );
@@ -945,6 +940,7 @@ function PendingBanner({ pending, onViewOrders, isService }) {
 /* ═══ MAIN COMPONENT ═══ */
 export default function DashboardMetrics({ setActiveTab, businessId, businessConfig }) {
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
+  const fmt = (n) => fmt(n, businessConfig?.currency || 'COP');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -1098,10 +1094,10 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
           <KPICard
             icon={Icons.revenue}
             label={isService ? 'Ingresos' : 'Ventas'}
-            value={COP(data?.today?.revenue)}
+            value={fmt(data?.today?.revenue)}
             delta={<DeltaBadge current={data?.today?.revenue} previous={data?.comparison?.revenue} isRevenue />}
             color="bg-emerald-500"
-            subtitle={data?.today?.maxOrder > 0 ? `Máx ${COP(data.today.maxOrder)}` : ""}
+            subtitle={data?.today?.maxOrder > 0 ? `Máx ${fmt(data.today.maxOrder)}` : ""}
           />
           <KPICard
             icon={Icons.orders}
@@ -1113,7 +1109,7 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
           <KPICard
             icon={Icons.ticket}
             label={isService ? 'Cita prom.' : 'Ticket prom.'}
-            value={COP(data?.today?.avgTicket)}
+            value={fmt(data?.today?.avgTicket)}
             color="bg-violet-500"
             subtitle={data?.today?.orders > 0 ? `${data.today.orders} ${isService ? 'citas' : 'ventas'}` : ""}
           />

@@ -4,6 +4,7 @@ import { useBusinessConfig } from '../../Context/BusinessContext';
 import DashboardMetrics from './DashboardMetrics';
 import AnnouncementInlineBar from './AnnouncementInlineBar';
 import api from '../../services/api';
+import { getCurrencySymbol } from '../../utils/currency';
 
 /* ═══ Icon System ═══ */
 const I = {
@@ -123,11 +124,11 @@ function getGreeting() {
   return 'Buenas noches';
 }
 
-const fmtRevenue = (n) => {
+const fmtRevenue = (n, sym = '$') => {
   if (!n && n !== 0) return '—';
-  if (n >= 1000000) return `$${(n / 1000000).toFixed(1)}M`;
-  if (n >= 1000) return `$${(n / 1000).toFixed(0)}k`;
-  return `$${n}`;
+  if (n >= 1000000) return `${sym}${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${sym}${(n / 1000).toFixed(0)}k`;
+  return `${sym}${n}`;
 };
 
 /* ═══ Desktop sub-components (unchanged) ═══ */
@@ -365,7 +366,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
         {/* Stats bar */}
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Ventas hoy', value: fmtRevenue(stats?.today?.revenue), color: 'text-emerald-600' },
+            { label: 'Ventas hoy', value: fmtRevenue(stats?.today?.revenue, getCurrencySymbol(businessConfig?.currency)), color: 'text-emerald-600' },
             { label: 'Pedidos', value: stats?.today?.orders !== undefined ? String(stats.today.orders) : '—', color: 'text-blue-600' },
             {
               label: 'Calificación',
