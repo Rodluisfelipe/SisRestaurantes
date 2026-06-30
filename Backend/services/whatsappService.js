@@ -202,11 +202,26 @@ function enqueueRaw(rawPhone, text) {
   enqueue(rawPhone, text);
 }
 
+// Reconnect: clear session files and re-initialize (called from SuperAdmin panel)
+async function reconnect() {
+  const fs = require('fs');
+  sock = null;
+  qrCode = null;
+  state = 'connecting';
+  if (fs.existsSync(SESSION_DIR)) {
+    fs.rmSync(SESSION_DIR, { recursive: true, force: true });
+  }
+  fs.mkdirSync(SESSION_DIR, { recursive: true });
+  await initWhatsApp();
+}
+
 module.exports = {
   initWhatsApp,
+  reconnect,
   sendOrderStatusNotification,
   sendBookingReminder,
   getStatus,
   getRawQR,
   enqueueRaw,
+  SESSION_DIR,
 };

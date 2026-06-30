@@ -48,9 +48,11 @@ const adminSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'manager', 'staff'],
+    enum: ['admin', 'manager', 'staff', 'brand_admin'],
     default: 'admin'
   },
+  brandId: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', default: null },
+  accessibleBusinessIds: [{ type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig' }],
   // ── Professional profile fields ──
   phone: {
     type: String,

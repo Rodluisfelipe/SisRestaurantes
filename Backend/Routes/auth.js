@@ -489,11 +489,20 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
     // Actualizar último login
     admin.lastLogin = new Date();
 
-    // Generar tokens
-    const token = generateToken(admin._id, admin.businessId, admin.role);
+    // Generar tokens (incluye brandId para brand_admin)
+    const token = generateToken(admin._id, admin.businessId, admin.role, admin.brandId);
     const refreshToken = generateRefreshToken(admin._id);
     admin.addRefreshToken(refreshToken);
     await admin.save();
+
+    // Cargar sucursales para brand_admin
+    let branches = null;
+    if (admin.role === 'brand_admin' && admin.accessibleBusinessIds?.length) {
+      branches = await BusinessConfig.find(
+        { _id: { $in: admin.accessibleBusinessIds } },
+        'businessName branchLabel slug isMainBranch'
+      ).lean();
+    }
 
     res.json({
       token,
@@ -507,7 +516,9 @@ router.post('/login', loginLimiter, validateLogin, async (req, res) => {
         lastLogin: admin.lastLogin,
         mustChangePassword: admin.mustChangePassword,
         businessId: admin.businessId,
-        role: admin.role
+        role: admin.role,
+        brandId: admin.brandId || null,
+        branches,
       }
     });
   } catch (error) {
@@ -562,7 +573,7 @@ router.post('/refresh', refreshLimiter, async (req, res) => {
     // Try Admin first
     const admin = await Admin.findByRefreshToken(decoded.id, refreshToken);
     if (admin) {
-      const token = generateToken(admin._id, admin.businessId, admin.role);
+      const token = generateToken(admin._id, admin.businessId, admin.role, admin.brandId);
       return res.json({ token });
     }
 
@@ -691,7 +702,15 @@ router.get('/me', authMiddleware, async (req, res) => {
       return res.status(401).json({ message: 'Usuario no encontrado' });
     }
     
-    // Asegurarse de incluir todos los campos necesarios
+    // Cargar sucursales para brand_admin
+    let branches = null;
+    if (admin.role === 'brand_admin' && admin.accessibleBusinessIds?.length) {
+      branches = await BusinessConfig.find(
+        { _id: { $in: admin.accessibleBusinessIds } },
+        'businessName branchLabel slug isMainBranch'
+      ).lean();
+    }
+
     const userData = {
       id: admin._id,
       username: admin.username,
@@ -702,10 +721,12 @@ router.get('/me', authMiddleware, async (req, res) => {
       mustChangePassword: admin.mustChangePassword,
       businessId: admin.businessId,
       role: admin.role,
+      brandId: admin.brandId || null,
+      branches,
       createdAt: admin.createdAt,
       updatedAt: admin.updatedAt
     };
-    
+
     res.json({ user: userData });
   } catch (error) {
     res.status(401).json({ message: 'Token inválido' });
@@ -764,7 +785,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
       }
 
       admin.lastLogin = new Date();
-      const token = generateToken(admin._id, admin.businessId, admin.role);
+      const token = generateToken(admin._id, admin.businessId, admin.role, admin.brandId);
       const refreshToken = generateRefreshToken(admin._id);
       admin.addRefreshToken(refreshToken);
       await admin.save();
@@ -1151,7 +1172,7 @@ const { validateUpdateStaff } = require('../middleware/validators/staffValidator
 const { getPlanLimitStatus } = require('../utils/subscriptionHelper');
 
 // GET /auth/staff — list staff users for this business
-router.get('/staff', authMiddleware, requireRole('admin', 'superadmin'), async (req, res) => {
+router.get('/staff', authMiddleware, requireRole('admin', 'brand_admin', 'superadmin'), async (req, res) => {
   try {
     const bId = req.user.businessId || req.query.businessId;
     if (!bId) return res.status(400).json({ message: 'businessId requerido' });
@@ -1167,7 +1188,7 @@ router.get('/staff', authMiddleware, requireRole('admin', 'superadmin'), async (
 });
 
 // POST /auth/staff — create a staff user
-router.post('/staff', authMiddleware, requireRole('admin', 'superadmin'), async (req, res) => {
+router.post('/staff', authMiddleware, requireRole('admin', 'brand_admin', 'superadmin'), async (req, res) => {
   try {
     const { username, password, name, role, businessId: bodyBizId } = req.body;
     const bId = req.user.businessId || bodyBizId;
@@ -1236,7 +1257,7 @@ router.post('/staff', authMiddleware, requireRole('admin', 'superadmin'), async 
 });
 
 // PATCH /auth/staff/:id — update staff profile
-router.patch('/staff/:id', authMiddleware, requireRole('admin', 'superadmin'), validateUpdateStaff, async (req, res) => {
+router.patch('/staff/:id', authMiddleware, requireRole('admin', 'brand_admin', 'superadmin'), validateUpdateStaff, async (req, res) => {
   try {
     const staffId = req.params.id;
     const bId = req.user.businessId || req.body.businessId;
@@ -1292,7 +1313,7 @@ router.patch('/staff/:id', authMiddleware, requireRole('admin', 'superadmin'), v
 });
 
 // DELETE /auth/staff/:id — delete a staff user
-router.delete('/staff/:id', authMiddleware, requireRole('admin', 'superadmin'), async (req, res) => {
+router.delete('/staff/:id', authMiddleware, requireRole('admin', 'brand_admin', 'superadmin'), async (req, res) => {
   try {
     const staffId = req.params.id;
     const bId = req.user.businessId || req.query.businessId;
@@ -1312,6 +1333,44 @@ router.delete('/staff/:id', authMiddleware, requireRole('admin', 'superadmin'), 
   } catch (error) {
     logger.error('Error deleting staff user', error);
     res.status(500).json({ message: 'Error al eliminar el usuario' });
+  }
+});
+
+// ==================== BRAND ADMIN — BRANCH SWITCHING ====================
+
+// GET /auth/my-branches — returns branches accessible to brand_admin
+router.get('/my-branches', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'brand_admin') return res.status(403).json({ message: 'Solo para brand_admin' });
+    const admin = await Admin.findById(req.user.id, 'accessibleBusinessIds brandId').lean();
+    if (!admin) return res.status(404).json({ message: 'Admin no encontrado' });
+    const branches = await BusinessConfig.find(
+      { _id: { $in: admin.accessibleBusinessIds } },
+      'businessName branchLabel slug isMainBranch isActive'
+    ).lean();
+    res.json({ branches });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// POST /auth/switch-branch — brand_admin switches active branch (returns new JWT)
+router.post('/switch-branch', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'brand_admin') return res.status(403).json({ message: 'Solo para brand_admin' });
+    const { targetBusinessId } = req.body;
+    if (!targetBusinessId) return res.status(400).json({ message: 'targetBusinessId requerido' });
+
+    const admin = await Admin.findById(req.user.id, 'brandId accessibleBusinessIds').lean();
+    if (!admin) return res.status(404).json({ message: 'Admin no encontrado' });
+
+    const hasAccess = (admin.accessibleBusinessIds || []).some(id => id.toString() === String(targetBusinessId));
+    if (!hasAccess) return res.status(403).json({ message: 'Sin acceso a esta sucursal' });
+
+    const token = generateToken(admin._id, targetBusinessId, 'brand_admin', admin.brandId);
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

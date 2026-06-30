@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SubscriptionStatus from './SubscriptionStatus';
 import GuideOverlay from './Admin/GuideOverlay';
+import BranchSwitcher from './Admin/BranchSwitcher';
 import { 
   FaClipboardList, FaHamburger, FaSortAmountDown, FaFolderOpen, 
   FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, FaMotorcycle,
@@ -9,7 +10,7 @@ import {
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister,
-  FaCalendarAlt, FaShareAlt
+  FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding, userRole }) => {
@@ -77,6 +78,8 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       label: 'Configuración',
       items: [
         { id: 'subscription', label: 'Suscripción', Icon: FaCreditCard, badge: null },
+        ...(!isStaff ? [{ id: 'branches', label: 'Sucursales', Icon: FaCodeBranch, badge: null }] : []),
+        ...(!isStaff ? [{ id: 'milink', label: 'Mi Link', Icon: FaLink, badge: null }] : []),
         { id: 'team', label: 'Equipo', Icon: FaUsers, badge: null },
         { id: 'business', label: 'Negocio', Icon: FaStore, badge: null },
         { id: 'printer', label: 'Impresoras', Icon: FaPrint, badge: null },
@@ -158,6 +161,9 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
           </div>
         </div>
       </div>
+
+      {/* Branch Switcher (brand_admin only) */}
+      <BranchSwitcher />
 
       {/* Subscription Status */}
       {businessConfig && businessConfig._id && subscriptionData && !isStaff && (

@@ -69,7 +69,16 @@ const emitProductsUpdate = async (req) => {
 router.get("/", publicProductLimiter, async (req, res) => {
   try {
     let { businessId } = req.query;
-    
+
+    // useSharedMenu: redirect public menu queries to main branch's products
+    try {
+      const rawId = businessId && await resolveBusinessId(businessId);
+      if (rawId) {
+        const bizMeta = await BusinessConfig.findById(rawId, 'useSharedMenu mainBranchId').lean();
+        if (bizMeta?.useSharedMenu && bizMeta?.mainBranchId) businessId = String(bizMeta.mainBranchId);
+      }
+    } catch (_) {}
+
     // Crear filtro basado en businessId o slug
     const filter = await createBusinessFilter(businessId);
     

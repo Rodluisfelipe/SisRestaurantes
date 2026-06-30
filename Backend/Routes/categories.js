@@ -29,7 +29,16 @@ const getAllCategories = async (businessId = null) => {
 router.get("/", async (req, res) => {
   try {
     let { businessId } = req.query;
-    
+
+    // useSharedMenu: redirect public menu queries to main branch's categories
+    try {
+      const rawId = businessId && await resolveBusinessId(businessId);
+      if (rawId) {
+        const bizMeta = await BusinessConfig.findById(rawId, 'useSharedMenu mainBranchId').lean();
+        if (bizMeta?.useSharedMenu && bizMeta?.mainBranchId) businessId = String(bizMeta.mainBranchId);
+      }
+    } catch (_) {}
+
     // Crear filtro basado en businessId o slug
     const filter = await createBusinessFilter(businessId);
     const categories = await Category.find(filter).sort({ displayOrder: 1, createdAt: 1 }).lean();

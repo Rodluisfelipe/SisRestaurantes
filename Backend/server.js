@@ -230,6 +230,13 @@ if (process.env.NODE_ENV !== 'production') {
   app.use("/api/debug", require("./Routes/debug"));
 }
 
+// MenuBy Link — public brand/business link page data
+app.use("/api/link", require("./Routes/link"));
+// Branches — self-service branch management for brand_admin
+app.use("/api/branches", require("./Routes/branches"));
+// Brands (multi-sucursal) — SuperAdmin
+app.use("/api/superadmin/brands", require("./Routes/brands"));
+
 // Rutas específicas para superadmin (integradas desde BackendSA)
 app.use("/api/superadmin/auth", require("./Routes/authSuperAdmin"));
 app.use("/api/superadmin/team", require("./Routes/superadminTeam"));

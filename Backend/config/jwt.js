@@ -10,17 +10,12 @@ if (!JWT_SECRET || !JWT_REFRESH_SECRET) {
   throw new Error('JWT secrets missing: set JWT_SECRET and JWT_REFRESH_SECRET in environment variables.');
 }
 
-const generateToken = (userId, businessId = null, role = 'admin') => {
+const generateToken = (userId, businessId = null, role = 'admin', brandId = null) => {
   const payload = { id: userId };
-  if (businessId) {
-    payload.businessId = businessId;
-  }
-  if (role) {
-    payload.role = role;
-  }
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRE
-  });
+  if (businessId) payload.businessId = businessId;
+  if (role) payload.role = role;
+  if (brandId) payload.brandId = brandId;
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRE });
 };
 
 const verifyToken = (token) => {

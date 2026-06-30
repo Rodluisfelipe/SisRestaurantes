@@ -65,6 +65,11 @@ const businessConfigSchema = new mongoose.Schema({
     default: "Deliciosa comida casera con ingredientes frescos y servicio de calidad.",
     maxlength: 300
   },
+  tagline: {
+    type: String,
+    default: "",
+    maxlength: 80
+  },
   logo: {
     type: String,
     default: ""
@@ -335,7 +340,13 @@ const businessConfigSchema = new mongoose.Schema({
     approvedAt: { type: Date, default: null },
     approvedBy: { type: String, default: null }
   },
-  lastWhatsappCampaign: { type: Date, default: null }
+  lastWhatsappCampaign: { type: Date, default: null },
+  // Multi-branch / brand
+  brandId: { type: mongoose.Schema.Types.ObjectId, ref: 'Brand', default: null },
+  isMainBranch: { type: Boolean, default: false },
+  branchLabel: { type: String, default: null, trim: true },
+  useSharedMenu: { type: Boolean, default: false },
+  mainBranchId: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessConfig', default: null },
 }, { timestamps: true }); // Agregar timestamps para debugging
 
 // Método para obtener la configuración

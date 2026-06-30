@@ -50,6 +50,8 @@ import MobileHeader from "../Components/Admin/MobileHeader";
 import Marketplace from "../Components/Admin/Marketplace";
 import SupplierOrders from "../Components/Admin/SupplierOrders";
 import WhatsAppCampaign from "../Components/Admin/WhatsAppCampaign";
+import BranchManager from "../Components/Admin/BranchManager";
+import LinkPageSettings from "../Components/Admin/LinkPageSettings";
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -534,6 +536,20 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Reseñas" onGoBack={() => setActiveTab('dashboard')}>
                       <AdminReviews />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'branches' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Sucursales" onGoBack={() => setActiveTab('dashboard')}>
+                      <BranchManager businessId={businessId} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'milink' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Mi Link" onGoBack={() => setActiveTab('dashboard')}>
+                      <LinkPageSettings businessId={businessId} />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

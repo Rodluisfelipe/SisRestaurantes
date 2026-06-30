@@ -20,6 +20,7 @@ const MenuByCatalog = lazy(() => import("./Pages/Catalog/MenuByCatalog"));
 const RestaurantDetail = lazy(() => import("./Pages/Catalog/RestaurantDetail"));
 const LeadCapturePage = lazy(() => import("./Pages/LeadCapturePage"));
 const PaymentResult = lazy(() => import("./Pages/PaymentResult"));
+const MenuByLink = lazy(() => import("./Pages/MenuByLink"));
 
 // Lazy load landing pages (solo se usan en la landing, no en app de restaurante)
 const LandingHome = lazy(() => import("./Pages/Landing/Home"));
@@ -134,7 +135,7 @@ function BusinessProviderWrapper({ children }) {
 }
 
 // Lista de rutas reservadas que no deben tratarse como IDs de negocio
-const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pricing', 'about', 'terms', 'blog',
+const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pricing', 'about', 'terms', 'blog', 'menubylink',
   'menu-digital-restaurante', 'menu-digital-bar', 'menu-digital-cafeteria', 'menu-digital-pizzeria',
   'menu-digital-hamburgueseria', 'menu-digital-hotel', 'menu-digital-food-truck', 'menu-digital-panaderia',
   'menu-digital-comida-rapida', 'menu-digital-sushi', 'menu-digital-asadero', 'menu-digital-heladeria',
@@ -318,6 +319,16 @@ function App() {
           element={
             <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}>
               <DeliveryQRPage />
+            </Suspense>
+          }
+        />
+
+        {/* MenuByLink — public brand/business link page */}
+        <Route
+          path="/menubylink/:slug"
+          element={
+            <Suspense fallback={<div className="flex items-center justify-center h-screen bg-slate-50"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-slate-400"></div></div>}>
+              <MenuByLink />
             </Suspense>
           }
         />
