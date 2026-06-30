@@ -1,29 +1,27 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FaTimes, FaChair, FaShoppingBag, FaTruck, FaUtensils,
-  FaCheck, FaClock, FaMotorcycle, FaBell
+  FaChair, FaShoppingBag, FaTruck, FaUtensils,
+  FaCheck, FaClock, FaBell, FaSync
 } from 'react-icons/fa';
 import useOrdersDashboard from '../../hooks/useOrdersDashboard';
 import { ORDER_STATUS } from '../../utils/constants';
 
 /**
- * Modo Operación — Full-screen optimized view for active service.
- * Two-panel layout: active orders (top 60%) + ready orders (bottom 40%).
- * Single-tap workflow: Pending → Confirmed → Preparing → Ready → Delivered.
+ * Modo Operación v2 — Mobile-first full-screen service overlay.
+ *
+ * Key improvements over v1:
+ * - Single scroll list (no split panes) — eliminates double-scroll nightmare
+ * - Sticky section headers scroll with content
+ * - Bigger order numbers (24px bold) for instant recognition
+ * - Items shown as readable inline list (not truncated to 4)
+ * - 64px action buttons (proper thumb targets)
+ * - Slide-up animation (native feel)
+ * - Fixed AnimatePresence exit animation
  */
 
 const TYPE_ICONS = { inSite: FaChair, takeaway: FaShoppingBag, delivery: FaTruck };
 const TYPE_LABELS = { inSite: 'Mesa', takeaway: 'Llevar', delivery: 'Delivery' };
-
-function formatItems(items) {
-  if (!items?.length) return '';
-  return items
-    .slice(0, 4)
-    .map(i => `${i.quantity}x ${i.name}`)
-    .join(', ')
-    + (items.length > 4 ? ` +${items.length - 4} más` : '');
-}
 
 function timeAgo(createdAt) {
   const ms = Date.now() - new Date(createdAt).getTime();
@@ -33,108 +31,149 @@ function timeAgo(createdAt) {
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
 
-/* ─── Primary action config per status ─── */
 function getAction(status) {
   switch (status) {
     case ORDER_STATUS.PENDING:
-      return { label: 'CONFIRMAR', next: ORDER_STATUS.IN_PROGRESS, bg: 'bg-emerald-500 active:bg-emerald-600', ring: 'ring-emerald-500/30' };
+      return { label: 'CONFIRMAR', next: ORDER_STATUS.IN_PROGRESS, bg: 'from-emerald-500 to-emerald-600', ring: 'ring-emerald-400/40', icon: 'check' };
     case ORDER_STATUS.PAYMENT_UPLOADED:
-      return { label: 'CONFIRMAR PAGO', next: null, bg: 'bg-purple-500 active:bg-purple-600', ring: 'ring-purple-500/30', isPayment: true };
+      return { label: 'CONFIRMAR PAGO', next: null, bg: 'from-purple-500 to-purple-600', ring: 'ring-purple-400/40', icon: 'check', isPayment: true };
     case ORDER_STATUS.PAYMENT_CONFIRMED:
     case ORDER_STATUS.CONFIRMED:
-      return { label: 'PREPARAR', next: ORDER_STATUS.PREPARING, bg: 'bg-blue-500 active:bg-blue-600', ring: 'ring-blue-500/30' };
+      return { label: 'PREPARAR', next: ORDER_STATUS.PREPARING, bg: 'from-blue-500 to-blue-600', ring: 'ring-blue-400/40', icon: 'clock' };
     case ORDER_STATUS.IN_PROGRESS:
     case ORDER_STATUS.PREPARING:
-      return { label: 'LISTO', next: ORDER_STATUS.READY, bg: 'bg-amber-500 active:bg-amber-600', ring: 'ring-amber-500/30' };
+      return { label: 'LISTO ✓', next: ORDER_STATUS.READY, bg: 'from-amber-500 to-amber-600', ring: 'ring-amber-400/40', icon: 'bell' };
     case ORDER_STATUS.READY:
-      return { label: 'ENTREGADO', next: ORDER_STATUS.COMPLETED, bg: 'bg-teal-500 active:bg-teal-600', ring: 'ring-teal-500/30' };
+      return { label: 'ENTREGADO', next: ORDER_STATUS.COMPLETED, bg: 'from-teal-500 to-teal-600', ring: 'ring-teal-400/40', icon: 'check' };
     default:
       return null;
   }
 }
 
-/* ─── Status color bar ─── */
-function statusColor(status) {
+function statusBorderColor(status) {
   switch (status) {
-    case ORDER_STATUS.PENDING: return 'border-l-yellow-400';
-    case ORDER_STATUS.PAYMENT_UPLOADED: return 'border-l-purple-400';
+    case ORDER_STATUS.PENDING:              return 'border-l-yellow-400';
+    case ORDER_STATUS.PAYMENT_UPLOADED:    return 'border-l-purple-400';
     case ORDER_STATUS.PAYMENT_CONFIRMED:
-    case ORDER_STATUS.CONFIRMED: return 'border-l-blue-400';
+    case ORDER_STATUS.CONFIRMED:           return 'border-l-blue-400';
     case ORDER_STATUS.IN_PROGRESS:
-    case ORDER_STATUS.PREPARING: return 'border-l-amber-400';
-    case ORDER_STATUS.READY: return 'border-l-emerald-400';
-    default: return 'border-l-slate-300';
+    case ORDER_STATUS.PREPARING:           return 'border-l-amber-400';
+    case ORDER_STATUS.READY:               return 'border-l-emerald-400';
+    default:                               return 'border-l-slate-500';
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   OrderMiniCard — Compact card with single primary action
-   ═══════════════════════════════════════════════════════════ */
-function OrderMiniCard({ order, onAction, onPayment, isHotel }) {
+function statusLabel(status) {
+  switch (status) {
+    case ORDER_STATUS.PENDING:             return { text: 'Nuevo', color: 'bg-yellow-500' };
+    case ORDER_STATUS.PAYMENT_UPLOADED:    return { text: 'Pago', color: 'bg-purple-500' };
+    case ORDER_STATUS.PAYMENT_CONFIRMED:
+    case ORDER_STATUS.CONFIRMED:           return { text: 'Confirmado', color: 'bg-blue-500' };
+    case ORDER_STATUS.IN_PROGRESS:
+    case ORDER_STATUS.PREPARING:           return { text: 'Preparando', color: 'bg-amber-500' };
+    case ORDER_STATUS.READY:               return { text: 'Listo', color: 'bg-emerald-500' };
+    default:                               return null;
+  }
+}
+
+/* ─── Order Card ─── */
+function OrderCard({ order, onAction, onPayment, isHotel }) {
   const action = getAction(order.status);
   const TypeIcon = TYPE_ICONS[order.orderType] || FaUtensils;
   const typeLabel = order.orderType === 'inSite'
-    ? (isHotel ? `Hab ${order.tableNumber || ''}` : `Mesa ${order.tableNumber || ''}`)
+    ? (isHotel ? `Hab. ${order.tableNumber || '—'}` : `Mesa ${order.tableNumber || '—'}`)
     : (TYPE_LABELS[order.orderType] || '');
-  const elapsed = timeAgo(order.createdAt);
-  const isUrgent = (Date.now() - new Date(order.createdAt).getTime()) > 600000; // 10+ min
 
-  const handleClick = () => {
+  const elapsed = timeAgo(order.createdAt);
+  const isUrgent = (Date.now() - new Date(order.createdAt).getTime()) > 600000;
+  const total = ((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString('es-CO');
+  const badge = statusLabel(order.status);
+
+  const handleAction = () => {
     if (!action) return;
-    if (action.isPayment) {
-      onPayment(order._id);
-    } else {
-      onAction(order._id, action.next);
-    }
+    action.isPayment ? onPayment(order._id) : onAction(order._id, action.next);
   };
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -60, transition: { duration: 0.2 } }}
-      className={`bg-white rounded-xl border-l-4 ${statusColor(order.status)} shadow-sm overflow-hidden`}
+      exit={{ opacity: 0, x: -48, transition: { duration: 0.18 } }}
+      className={`bg-white rounded-2xl overflow-hidden border-l-[5px] ${statusBorderColor(order.status)} shadow-sm`}
     >
-      {/* Info row */}
-      <div className="px-3 py-2.5 flex items-center gap-2.5">
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-          order.status === ORDER_STATUS.PENDING ? 'bg-yellow-100 text-yellow-600' :
-          order.status === ORDER_STATUS.PREPARING || order.status === ORDER_STATUS.IN_PROGRESS ? 'bg-amber-100 text-amber-600' :
-          'bg-slate-100 text-slate-500'
-        }`}>
-          <TypeIcon className="text-sm" />
-        </div>
-
-        <div className="flex-1 min-w-0">
+      {/* Info section */}
+      <div className="px-4 pt-3.5 pb-3">
+        {/* Row 1: order number + status badge + timer */}
+        <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-extrabold text-slate-800">#{order.orderNumber}</span>
-            <span className="text-xs text-slate-400 font-medium">{typeLabel}</span>
-            {order.customerName && (
-              <span className="text-xs text-slate-500 truncate">· {order.customerName}</span>
+            <span className="text-[22px] font-black text-slate-900 leading-none">#{order.orderNumber}</span>
+            {badge && (
+              <span className={`${badge.color} text-white text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide`}>
+                {badge.text}
+              </span>
             )}
           </div>
-          <p className="text-xs text-slate-400 truncate mt-0.5">{formatItems(order.items)}</p>
-        </div>
-
-        <div className={`text-right shrink-0 ${isUrgent ? 'text-red-500' : 'text-slate-400'}`}>
-          <div className="flex items-center gap-1 text-xs font-bold">
+          <span className={`flex items-center gap-1.5 text-[12px] font-bold ${isUrgent ? 'text-red-400' : 'text-slate-400'}`}>
+            {isUrgent && <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />}
             <FaClock className="text-[9px]" />
             {elapsed}
-          </div>
-          <p className="text-xs font-bold text-slate-700 mt-0.5">
-            ${((order.totalAmount || 0) + (order.deliveryFee || 0)).toLocaleString()}
-          </p>
+          </span>
         </div>
+
+        {/* Row 2: type + customer + total */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <TypeIcon className="text-[11px] text-slate-400 shrink-0" />
+            <span className="text-[13px] font-semibold text-slate-600 shrink-0">{typeLabel}</span>
+            {order.customerName && (
+              <span className="text-[13px] text-slate-400 truncate">· {order.customerName}</span>
+            )}
+          </div>
+          <span className="text-[14px] font-black text-slate-900 shrink-0 ml-2">${total}</span>
+        </div>
+
+        {/* Row 3: items list */}
+        <div className="text-[12px] text-slate-500 leading-relaxed">
+          {order.items?.slice(0, 6).map((item, idx) => (
+            <span key={idx}>
+              {idx > 0 && <span className="text-slate-300 mx-1">·</span>}
+              <span className="font-bold text-slate-700">{item.quantity}×</span>
+              {' '}{item.name}
+            </span>
+          ))}
+          {(order.items?.length || 0) > 6 && (
+            <span className="text-slate-400"> +{order.items.length - 6} más</span>
+          )}
+        </div>
+
+        {/* Special instructions */}
+        {order.specialInstructions && (
+          <p className="mt-1.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1 leading-snug">
+            📝 {order.specialInstructions}
+          </p>
+        )}
       </div>
 
       {/* Action button */}
       {action && (
         <button
-          onClick={handleClick}
-          className={`w-full min-h-[56px] ${action.bg} text-white font-black text-base tracking-wide
-                      flex items-center justify-center gap-2 transition-all ring-0 active:ring-4 ${action.ring}`}
+          onClick={handleAction}
+          className={`w-full min-h-[64px] bg-gradient-to-r ${action.bg} text-white font-black text-[15px] tracking-wider
+                      flex items-center justify-center gap-2.5 transition-all
+                      active:brightness-90 active:ring-4 ring-inset ${action.ring}`}
         >
+          {action.icon === 'check' && (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+            </svg>
+          )}
+          {action.icon === 'clock' && (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10"/><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2"/>
+            </svg>
+          )}
+          {action.icon === 'bell' && <FaBell className="text-base" />}
           {action.label}
         </button>
       )}
@@ -142,9 +181,20 @@ function OrderMiniCard({ order, onAction, onPayment, isHotel }) {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════
-   ModoOperacion — Full-screen modal
-   ═══════════════════════════════════════════════════════════ */
+/* ─── Section sticky header ─── */
+function SectionHeader({ dot, label, count, color }) {
+  return (
+    <div className="sticky top-0 z-10 flex items-center gap-2.5 px-4 py-2.5 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800">
+      <span className={`w-2 h-2 rounded-full ${dot} shrink-0`} />
+      <span className={`text-[11px] font-black uppercase tracking-[0.12em] ${color}`}>{label}</span>
+      <span className={`ml-auto text-[13px] font-black ${color}`}>{count}</span>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
+   ModoOperacion v2 — main component
+   ═══════════════════════════════════════════════════════ */
 export default function ModoOperacion({ isOpen, onClose }) {
   const {
     orders,
@@ -157,26 +207,19 @@ export default function ModoOperacion({ isOpen, onClose }) {
   } = useOrdersDashboard();
 
   const [now, setNow] = useState(Date.now());
-  const activeScrollRef = useRef(null);
+  const isHotel = businessConfig?.businessType === 'hotel';
 
-  // Tick every 30s to update time displays
   useEffect(() => {
     if (!isOpen) return;
-    const interval = setInterval(() => setNow(Date.now()), 30000);
-    return () => clearInterval(interval);
+    const id = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(id);
   }, [isOpen]);
 
-  // Lock body scroll when open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = isOpen ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
-  // Split orders into active vs ready
   const ACTIVE_STATUSES = [
     ORDER_STATUS.PENDING,
     ORDER_STATUS.PENDING_PAYMENT,
@@ -188,138 +231,184 @@ export default function ModoOperacion({ isOpen, onClose }) {
   ];
 
   const activeOrders = useMemo(() =>
-    orders.filter(o => ACTIVE_STATUSES.includes(o.status))
+    orders
+      .filter(o => ACTIVE_STATUSES.includes(o.status))
       .sort((a, b) => {
-        // Pending first, then by creation time
         const priority = { [ORDER_STATUS.PENDING]: 0, [ORDER_STATUS.PAYMENT_UPLOADED]: 1 };
         const pa = priority[a.status] ?? 5;
         const pb = priority[b.status] ?? 5;
         if (pa !== pb) return pa - pb;
         return new Date(a.createdAt) - new Date(b.createdAt);
       }),
-    [orders]
+    [orders, now]
   );
 
   const readyOrders = useMemo(() =>
-    orders.filter(o => o.status === ORDER_STATUS.READY)
+    orders
+      .filter(o => o.status === ORDER_STATUS.READY)
       .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
     [orders]
   );
 
   const pendingCount = activeOrders.filter(o => o.status === ORDER_STATUS.PENDING).length;
-
-  if (!isOpen) return null;
+  const isEmpty = !loading && activeOrders.length === 0 && readyOrders.length === 0;
 
   return (
-    <AnimatePresence>
-      <motion.div
-        key="modo-operacion"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[60] bg-slate-900 flex flex-col"
-      >
-        {/* ─── Header ─── */}
-        <div className="flex items-center justify-between px-4 py-3 bg-slate-800 safe-area-top shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-            <h1 className="text-white font-black text-base tracking-tight">MODO OPERACIÓN</h1>
-            {pendingCount > 0 && (
-              <span className="bg-red-500 text-white text-xs font-black px-2 py-0.5 rounded-full animate-bounce">
-                {pendingCount} nuevo{pendingCount > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="w-11 h-11 flex items-center justify-center rounded-xl bg-slate-700 active:bg-slate-600 text-white transition-colors"
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="modo-op-v2"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 32, stiffness: 300 }}
+            className="fixed inset-0 z-[60] bg-slate-900 flex flex-col"
+            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
-            <FaTimes className="text-base" />
-          </button>
-        </div>
+            {/* ─── Header ─── */}
+            <div className="flex items-center justify-between px-4 py-3 bg-slate-800 shrink-0 border-b border-slate-700">
+              <button
+                onClick={onClose}
+                className="flex items-center gap-1.5 text-slate-400 active:text-white py-2 pr-2 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 5l-7 7 7 7"/>
+                </svg>
+                <span className="text-sm font-semibold">Cerrar</span>
+              </button>
 
-        {/* ─── Active Orders Section (top ~60%) ─── */}
-        <div className="flex-[3] min-h-0 flex flex-col">
-          <div className="px-4 py-2 bg-slate-800/50 flex items-center justify-between shrink-0">
-            <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Pedidos Activos · {activeOrders.length}
-            </h2>
-            <button
-              onClick={fetchOrders}
-              className="text-xs text-slate-500 font-bold px-2 py-1 rounded-md active:bg-slate-700 transition-colors"
-            >
-              Actualizar
-            </button>
-          </div>
+              <div className="flex items-center gap-2">
+                <motion.div
+                  animate={{ opacity: [1, 0.4, 1] }}
+                  transition={{ duration: 1.4, repeat: Infinity }}
+                  className="w-2 h-2 rounded-full bg-red-500"
+                />
+                <span className="text-white font-black text-[13px] tracking-tight">MODO SERVICIO</span>
+              </div>
 
-          <div ref={activeScrollRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-2 overscroll-contain">
-            {loading && activeOrders.length === 0 ? (
-              <div className="flex items-center justify-center h-32">
-                <div className="w-8 h-8 border-3 border-slate-600 border-t-white rounded-full animate-spin" />
-              </div>
-            ) : activeOrders.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-32 text-slate-500">
-                <FaCheck className="text-2xl mb-2 text-slate-600" />
-                <p className="text-sm font-bold">Sin pedidos activos</p>
-                <p className="text-xs text-slate-600 mt-0.5">Aparecerán aquí automáticamente</p>
-              </div>
-            ) : (
-              <AnimatePresence mode="popLayout">
-                {activeOrders.map(order => (
-                  <OrderMiniCard
-                    key={order._id}
-                    order={order}
-                    onAction={updateOrderStatus}
-                    onPayment={confirmPayment}
-                    isHotel={businessConfig?.businessType === 'hotel'}
+              <button
+                onClick={fetchOrders}
+                className="p-2 text-slate-400 active:text-white transition-colors"
+                aria-label="Actualizar"
+              >
+                <FaSync className="text-sm" />
+              </button>
+            </div>
+
+            {/* ─── Summary pills ─── */}
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-800/60 shrink-0">
+              <span className={`flex items-center gap-1.5 text-[12px] font-black px-2.5 py-1 rounded-full ${
+                activeOrders.length > 0 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-slate-700 text-slate-500'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${activeOrders.length > 0 ? 'bg-yellow-400' : 'bg-slate-600'}`} />
+                {activeOrders.length} en curso
+              </span>
+              <span className={`flex items-center gap-1.5 text-[12px] font-black px-2.5 py-1 rounded-full ${
+                readyOrders.length > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-500'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${readyOrders.length > 0 ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                {readyOrders.length} listos
+              </span>
+              {pendingCount > 0 && (
+                <motion.span
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  className="ml-auto text-[12px] font-black bg-red-500 text-white px-2.5 py-1 rounded-full"
+                >
+                  {pendingCount} nuevo{pendingCount > 1 ? 's' : ''}
+                </motion.span>
+              )}
+            </div>
+
+            {/* ─── Single scroll list ─── */}
+            <div className="flex-1 overflow-y-auto overscroll-contain min-h-0">
+
+              {/* Loading state */}
+              {loading && activeOrders.length === 0 && readyOrders.length === 0 && (
+                <div className="flex items-center justify-center h-48">
+                  <div className="w-8 h-8 border-[3px] border-slate-600 border-t-white rounded-full animate-spin" />
+                </div>
+              )}
+
+              {/* All clear */}
+              {isEmpty && (
+                <div className="flex flex-col items-center justify-center h-64 px-8 text-center">
+                  <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
+                    <FaCheck className="text-2xl text-slate-600" />
+                  </div>
+                  <p className="text-[16px] font-black text-slate-400">Sin pedidos activos</p>
+                  <p className="text-[13px] text-slate-600 mt-1">Los nuevos aparecerán aquí automáticamente</p>
+                  <button
+                    onClick={fetchOrders}
+                    className="mt-4 flex items-center gap-2 text-[13px] font-bold text-slate-500 active:text-slate-300 transition-colors"
+                  >
+                    <FaSync className="text-xs" /> Verificar ahora
+                  </button>
+                </div>
+              )}
+
+              {/* Active orders section */}
+              {activeOrders.length > 0 && (
+                <div>
+                  <SectionHeader
+                    dot="bg-yellow-400 animate-pulse"
+                    label="En curso"
+                    count={activeOrders.length}
+                    color="text-yellow-400"
                   />
-                ))}
-              </AnimatePresence>
-            )}
-          </div>
-        </div>
+                  <div className="px-3 pt-3 pb-2 space-y-3">
+                    <AnimatePresence mode="popLayout">
+                      {activeOrders.map(order => (
+                        <OrderCard
+                          key={order._id}
+                          order={order}
+                          onAction={updateOrderStatus}
+                          onPayment={confirmPayment}
+                          isHotel={isHotel}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              )}
 
-        {/* ─── Divider ─── */}
-        <div className="h-px bg-slate-700 shrink-0" />
-
-        {/* ─── Ready Orders Section (bottom ~40%) ─── */}
-        <div className="flex-[2] min-h-0 flex flex-col bg-slate-900/80">
-          <div className="px-4 py-2 flex items-center gap-2 shrink-0">
-            <div className="w-2 h-2 rounded-full bg-emerald-400" />
-            <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-widest">
-              Listos para Entregar · {readyOrders.length}
-            </h2>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-3 py-1 space-y-2 overscroll-contain">
-            {readyOrders.length === 0 ? (
-              <div className="flex items-center justify-center h-20 text-slate-600">
-                <p className="text-xs font-bold">Los pedidos listos aparecerán aquí</p>
-              </div>
-            ) : (
-              <AnimatePresence mode="popLayout">
-                {readyOrders.map(order => (
-                  <OrderMiniCard
-                    key={order._id}
-                    order={order}
-                    onAction={updateOrderStatus}
-                    onPayment={confirmPayment}
-                    isHotel={businessConfig?.businessType === 'hotel'}
+              {/* Ready orders section */}
+              {readyOrders.length > 0 && (
+                <div>
+                  <SectionHeader
+                    dot="bg-emerald-400"
+                    label="Listos para entregar"
+                    count={readyOrders.length}
+                    color="text-emerald-400"
                   />
-                ))}
-              </AnimatePresence>
-            )}
-          </div>
-        </div>
+                  <div className="px-3 pt-3 pb-4 space-y-3">
+                    <AnimatePresence mode="popLayout">
+                      {readyOrders.map(order => (
+                        <OrderCard
+                          key={order._id}
+                          order={order}
+                          onAction={updateOrderStatus}
+                          onPayment={confirmPayment}
+                          isHotel={isHotel}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              )}
 
-        {/* Safe area bottom */}
-        <div className="h-[env(safe-area-inset-bottom,0px)] bg-slate-900 shrink-0" />
+              {/* Bottom padding so last card isn't glued to safe area */}
+              <div style={{ height: 'env(safe-area-inset-bottom, 16px)' }} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        {/* Hidden audio element for notifications */}
-        <audio ref={notificationAudioRef} preload="auto">
-          <source src="/notification.mp3" type="audio/mpeg" />
-        </audio>
-      </motion.div>
-    </AnimatePresence>
+      {/* Audio outside AnimatePresence so it persists */}
+      <audio ref={notificationAudioRef} preload="auto">
+        <source src="/notification.mp3" type="audio/mpeg" />
+      </audio>
+    </>
   );
 }
