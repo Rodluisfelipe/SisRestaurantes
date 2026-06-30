@@ -1,6 +1,13 @@
-# index.html nunca debe cachearse — siempre necesitamos la versión más nueva
-# para que el navegador resuelva los hashes de assets correctos.
+# index.html y todas las rutas SPA nunca deben cachearse —
+# necesitamos siempre la versión más nueva para resolver los hashes de assets correctos.
 /index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Rutas SPA comunes: admin, menú, pedidos, etc.
+/:slug/admin*
+  Cache-Control: no-cache, no-store, must-revalidate
+
+/:slug/menu*
   Cache-Control: no-cache, no-store, must-revalidate
 
 # Landing pages - allow indexing

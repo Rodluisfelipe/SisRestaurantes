@@ -122,6 +122,10 @@ if (typeof window !== 'undefined') {
     }
   };
 
+  // 0) vite:preloadError — Vite lo emite aunque React/Suspense trague la promesa.
+  //    Es la forma más confiable de detectar chunk load failures en producción.
+  window.addEventListener('vite:preloadError', () => reload('vite-preload'));
+
   // 1) Dynamic imports rechazados — lazy() de React lo emite por acá
   window.addEventListener('unhandledrejection', (event) => {
     if (isChunkLoadError(event.reason)) reload('dynimport');
