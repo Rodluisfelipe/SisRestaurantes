@@ -210,7 +210,7 @@ const SOURCE_COLORS = {
   other: 'text-slate-400 bg-slate-50'
 };
 
-function LiveViewers({ viewers = EMPTY_ARRAY, count = 0 }) {
+function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
   if (count === 0) {
     return (
       <div className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3">
@@ -253,7 +253,7 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0 }) {
           {withCart.length > 0 && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
               {ViewerIcons.cart("w-2.5 h-2.5")}
-              {withCart.length} · {fmt(totalCartValue)}
+              {withCart.length} · {COP(totalCartValue, currency)}
             </span>
           )}
           <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
@@ -302,7 +302,7 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0 }) {
               <div className="flex flex-col items-end gap-0.5 shrink-0">
                 <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
                   {ViewerIcons.cart("w-2.5 h-2.5")}
-                  {v.cartItems} · {fmt(v.cartTotal)}
+                  {v.cartItems} · {COP(v.cartTotal, currency)}
                 </span>
                 {v.cartProducts?.length > 0 && (
                   <div className="text-[8px] text-slate-400 text-right leading-tight max-w-[140px]">
@@ -333,7 +333,7 @@ function formatDuration(seconds) {
 }
 
 /* ═══ Abandoned Carts Widget ═══ */
-function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0 }) {
+function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0, currency = 'COP' }) {
   if (carts.length === 0) return null;
 
   const buildWhatsAppUrl = (cart) => {
@@ -343,7 +343,7 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0 }) {
     const products = (cart.cartProducts || []).map(p => 
       `${p.qty > 1 ? p.qty + 'x ' : ''}${p.name}`
     ).join(', ');
-    const total = fmt(cart.cartTotal || 0);
+    const total = COP(cart.cartTotal || 0, currency);
     const msg = `Hola ${name}, vimos que estabas interesado en ${products || 'nuestros productos'} (${total}). ¿Te ayudamos a completar tu pedido? 😊`;
     return `https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`;
   };
@@ -366,7 +366,7 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0 }) {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-[10px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
-            {carts.length} · {fmt(totalLost)}
+            {carts.length} · {COP(totalLost, currency)}
           </span>
         </div>
       </div>
@@ -391,7 +391,7 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0 }) {
             <div className="flex items-center gap-1.5 shrink-0">
               <div className="flex flex-col items-end gap-0.5">
                 <span className="text-[9px] font-bold text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
-                  {fmt(c.cartTotal)}
+                  {COP(c.cartTotal, currency)}
                 </span>
                 {c.cartProducts?.length > 0 && (
                   <div className="text-[8px] text-slate-400 text-right leading-tight max-w-[120px]">
@@ -520,7 +520,7 @@ function KPICard({ icon, label, value, subtitle, delta, color, pulse }) {
 }
 
 /* ═══ Mini Bar Chart (CSS-only) ═══ */
-function WeeklyChart({ data, loading, isService }) {
+function WeeklyChart({ data, loading, isService, currency = 'COP' }) {
   if (loading) return <SkeletonChart />;
   if (!data || !data.length) return null;
 
@@ -546,7 +546,7 @@ function WeeklyChart({ data, loading, isService }) {
         <div className="flex items-center gap-3 text-[10px] font-semibold">
           <span className="flex items-center gap-1 text-blue-500">
             <span className="w-2 h-2 rounded-sm bg-blue-400" />
-            {fmt(totalRev)}
+            {COP(totalRev, currency)}
           </span>
           <span className="flex items-center gap-1 text-slate-400">
             <span className="w-2 h-2 rounded-sm bg-slate-300" />
@@ -570,7 +570,7 @@ function WeeklyChart({ data, loading, isService }) {
               {/* Revenue value on hover */}
               {!isEmpty && (
                 <div className="text-[9px] font-bold text-slate-400 opacity-0 group-hover/bar:opacity-100 transition-opacity truncate max-w-full h-3">
-                  {day.orders > 0 ? fmt(day.revenue) : ""}
+                  {day.orders > 0 ? COP(day.revenue, currency) : ""}
                 </div>
               )}
 
@@ -672,7 +672,7 @@ function BreakdownBar({ title, data, labels, colors, icon }) {
 }
 
 /* ═══ Top Products List ═══ */
-function TopProducts({ products, loading, isService }) {
+function TopProducts({ products, loading, isService, currency = 'COP' }) {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
@@ -749,7 +749,7 @@ function TopProducts({ products, loading, isService }) {
             {/* Stats */}
             <div className="text-right flex-shrink-0">
               <p className="text-[11px] font-bold text-slate-700">{p.quantity} uds</p>
-              <p className="text-[9px] font-medium text-slate-400">{fmt(p.revenue)}</p>
+              <p className="text-[9px] font-medium text-slate-400">{COP(p.revenue, currency)}</p>
             </div>
           </div>
         ))}
@@ -803,7 +803,7 @@ function CustomerSummary({ customers, loading }) {
 }
 
 /* ═══ Recent Orders Timeline ═══ */
-function RecentOrders({ orders, loading, onViewOrders, isService }) {
+function RecentOrders({ orders, loading, onViewOrders, isService, currency = 'COP' }) {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl border border-slate-100 p-4">
@@ -887,7 +887,7 @@ function RecentOrders({ orders, loading, onViewOrders, isService }) {
 
               {/* Amount */}
               <span className="text-xs font-bold text-slate-700 flex-shrink-0">
-                {fmt(order.totalAmount)}
+                {COP(order.totalAmount, currency)}
               </span>
             </div>
           );
@@ -1081,10 +1081,10 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
       </div>
 
       {/* ═══ Live Viewers ═══ */}
-      <LiveViewers count={liveViewers.count} viewers={liveViewers.viewers} />
+      <LiveViewers count={liveViewers.count} viewers={liveViewers.viewers} currency={businessConfig?.currency || 'COP'} />
 
       {/* ═══ Abandoned Carts ═══ */}
-      <AbandonedCarts carts={abandonedCarts.carts} totalLost={abandonedCarts.totalLost} />
+      <AbandonedCarts carts={abandonedCarts.carts} totalLost={abandonedCarts.totalLost} currency={businessConfig?.currency || 'COP'} />
 
       {/* ═══ KPI Cards ═══ */}
       {loading ? (
@@ -1128,10 +1128,10 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
       {!loading && <PendingBanner pending={data?.pending} onViewOrders={handleViewOrders} isService={isService} />}
 
       {/* ═══ Weekly Chart ═══ */}
-      <WeeklyChart data={data?.weeklyChart} loading={loading} isService={isService} />
+      <WeeklyChart data={data?.weeklyChart} loading={loading} isService={isService} currency={businessConfig?.currency || 'COP'} />
 
       {/* ═══ Top Products ═══ */}
-      <TopProducts products={data?.topProducts} loading={loading} isService={isService} />
+      <TopProducts products={data?.topProducts} loading={loading} isService={isService} currency={businessConfig?.currency || 'COP'} />
 
       {/* ═══ Breakdowns (grid of 2 or 3) ═══ */}
       {!loading && (
@@ -1164,7 +1164,7 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
       <CustomerSummary customers={data?.customers} loading={loading} />
 
       {/* ═══ Recent Activity ═══ */}
-      <RecentOrders orders={data?.recentOrders} loading={loading} onViewOrders={handleViewOrders} isService={isService} />
+      <RecentOrders orders={data?.recentOrders} loading={loading} onViewOrders={handleViewOrders} isService={isService} currency={businessConfig?.currency || 'COP'} />
     </div>
   );
 }
