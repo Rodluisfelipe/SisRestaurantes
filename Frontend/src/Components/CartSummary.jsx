@@ -273,8 +273,17 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               setCheckingLocation(false);
               restoreAddress();
               resolve({ fee, zoneInfo });
+            } else if (response.data.noZonesConfigured) {
+              // Negocio sin zonas configuradas — se permite el pedido con tarifa por definir
+              const zoneInfo = { zoneName: 'Por definir con el negocio', noZonesConfigured: true };
+              setDeliveryFee(0);
+              setDeliveryZoneInfo(zoneInfo);
+              setLocationChecked(true);
+              setCheckingLocation(false);
+              restoreAddress();
+              resolve({ fee: 0, zoneInfo });
             } else {
-              // Cliente FUERA de zonas
+              // Cliente FUERA de zonas configuradas
               setDeliveryFee(null);
               setDeliveryZoneInfo(null);
               setLocationChecked(true);
@@ -949,7 +958,15 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
                   {locationChecked && (
                     <>
-                      {deliveryFee && deliveryZoneInfo ? (
+                      {deliveryZoneInfo?.noZonesConfigured ? (
+                        <div className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-xl">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-amber-600">{CI.check('w-3.5 h-3.5')}</span>
+                            <span className="text-[11px] text-amber-800 font-medium">Envío por definir con el negocio</span>
+                          </div>
+                          <span className="text-xs font-bold text-amber-700">A convenir</span>
+                        </div>
+                      ) : deliveryFee !== null && deliveryZoneInfo ? (
                         <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-xl">
                           <div className="flex items-center gap-1.5">
                             <span className="text-green-600">{CI.check('w-3.5 h-3.5')}</span>
@@ -1042,13 +1059,18 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
             style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 1.25rem))' }}
           >
             {/* Price breakdown when there are extras */}
-            {(deliveryFee > 0 || appliedCoupon) && (
+            {(deliveryFee > 0 || deliveryZoneInfo?.noZonesConfigured || appliedCoupon) && (
               <div className="space-y-1 mb-2">
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>Subtotal</span>
                   <span>{formatCurrency(totalAmount, businessConfig?.currency)}</span>
                 </div>
-                {deliveryFee > 0 && (
+                {deliveryZoneInfo?.noZonesConfigured ? (
+                  <div className="flex justify-between text-xs text-amber-600">
+                    <span>Envío</span>
+                    <span className="font-medium">A convenir</span>
+                  </div>
+                ) : deliveryFee > 0 && (
                   <div className="flex justify-between text-xs text-slate-400">
                     <span>Envío</span>
                     <span>{loyaltyReward?.reward?.type === 'free_delivery' ? <span className="line-through">{formatCurrency(deliveryFee, businessConfig?.currency)}</span> : formatCurrency(deliveryFee, businessConfig?.currency)}</span>

@@ -146,14 +146,30 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
     );
   }
 
-  /* ── Error / No zones ── */
-  if (error || zones.length === 0) {
+  /* ── No zones configured — allow order, fee TBD ── */
+  if (!error && zones.length === 0) {
+    const noZoneInfo = { zoneName: 'Por definir con el negocio', noZonesConfigured: true };
+    if (onZoneSelect) onZoneSelect({ fee: 0, zoneInfo: noZoneInfo });
     return (
       <div className={compact ? "p-3 bg-amber-50/80 border border-amber-200/60 rounded-2xl" : "mt-3 p-4 bg-amber-50/80 border border-amber-200/60 rounded-2xl"}>
         <div className="flex items-center gap-2.5">
           <span className="text-amber-500">{ZI.alert('w-4 h-4')}</span>
           <p className={`${compact ? 'text-[11px]' : 'text-xs'} text-amber-800 font-medium leading-snug`}>
-            {error || 'No hay zonas configuradas. El costo de envío será confirmado por el negocio.'}
+            El costo de envío será confirmado por el negocio.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /* ── Error loading zones ── */
+  if (error) {
+    return (
+      <div className={compact ? "p-3 bg-amber-50/80 border border-amber-200/60 rounded-2xl" : "mt-3 p-4 bg-amber-50/80 border border-amber-200/60 rounded-2xl"}>
+        <div className="flex items-center gap-2.5">
+          <span className="text-amber-500">{ZI.alert('w-4 h-4')}</span>
+          <p className={`${compact ? 'text-[11px]' : 'text-xs'} text-amber-800 font-medium leading-snug`}>
+            {error}
           </p>
         </div>
       </div>

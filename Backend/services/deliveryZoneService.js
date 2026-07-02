@@ -123,6 +123,7 @@ async function findCoverageForPoint(businessId, point, options = {}) {
   if (zones.length === 0) {
     return {
       covered: false,
+      noZonesConfigured: true,
       message: 'Este negocio no tiene zonas de entrega configuradas'
     };
   }
@@ -197,6 +198,7 @@ async function validateDeliveryForOrder(businessId, point, orderTotal) {
   if (!coverage.covered) {
     return {
       valid: false,
+      noZonesConfigured: coverage.noZonesConfigured || false,
       error: coverage.message
     };
   }
