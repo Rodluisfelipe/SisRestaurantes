@@ -78,9 +78,9 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
   // ═══ COMPACT ═══
   if (variant === 'compact') {
     return (
-      <Link to={`/${restaurant.slug}`} onClick={handleClick} className="flex-shrink-0 w-[156px] snap-start group">
+      <Link to={`/${restaurant.slug}`} onClick={handleClick} className="flex-shrink-0 w-[160px] snap-start group">
         <div className={`${!isOpen ? 'opacity-50' : ''}`}>
-          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100">
+          <div className="relative aspect-[4/3] rounded-2xl overflow-hidden bg-gray-100 shadow-sm border border-gray-100/80">
             {/* Cover as background */}
             {restaurant.coverImage && !imgError ? (
               <img src={restaurant.coverImage} alt="" className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${imgLoaded ? '' : 'opacity-0'}`}
@@ -94,11 +94,11 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
             {/* Logo centered */}
             <div className="absolute inset-0 flex items-center justify-center">
               {restaurant.logo ? (
-                <div className="w-14 h-14 rounded-2xl overflow-hidden bg-white shadow-lg shadow-black/20 border-2 border-white/80">
+                <div className="w-[52px] h-[52px] rounded-xl overflow-hidden bg-white shadow-xl shadow-black/25 border-2 border-white ring-1 ring-black/5">
                   <img src={restaurant.logo} alt="" className="w-full h-full object-cover" loading="lazy" />
                 </div>
               ) : (
-                <div className="w-14 h-14 rounded-2xl bg-white shadow-lg shadow-black/20 border-2 border-white/80 flex items-center justify-center">
+                <div className="w-[52px] h-[52px] rounded-xl bg-white shadow-xl shadow-black/25 border-2 border-white ring-1 ring-black/5 flex items-center justify-center">
                   <span className="text-xl font-bold text-red-500">{restaurant.businessName.charAt(0)}</span>
                 </div>
               )}
@@ -131,7 +131,7 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
   // ═══ DEFAULT ═══
   return (
     <Link to={`/${restaurant.slug}`} onClick={handleClick} className="block group">
-      <div className={`bg-white rounded-2xl overflow-hidden transition-shadow duration-200 hover:shadow-lg hover:shadow-red-500/5 ${!isOpen ? 'opacity-60' : ''}`}>
+      <div className={`bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm transition-all duration-200 hover:shadow-lg hover:shadow-black/5 hover:-translate-y-0.5 ${!isOpen ? 'opacity-60' : ''}`}>
         {/* Image */}
         <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">
           {restaurant.coverImage && !imgError ? (
@@ -203,9 +203,12 @@ const RestaurantCard = ({ restaurant, userLocation, variant = 'default' }) => {
               </div>
 
               {/* Meta */}
-              <div className="flex items-center gap-1.5 mt-0.5 text-[13px] text-gray-500">
+              <div className="flex items-center gap-1 mt-0.5 text-[12px] text-gray-500 flex-wrap">
+                <span className="font-medium text-gray-700">{deliveryTime} min</span>
+                {(delivery || distanceText) && <span className="text-gray-300">·</span>}
                 {delivery && !delivery.free && <span>Envío {delivery.text}</span>}
-                {distanceText && <><span className="text-red-200">•</span><span>{distanceText}</span></>}
+                {delivery?.free && <span className="text-green-600 font-semibold">Envío gratis</span>}
+                {distanceText && <><span className="text-gray-300">·</span><span>{distanceText}</span></>}
               </div>
             </div>
           </div>

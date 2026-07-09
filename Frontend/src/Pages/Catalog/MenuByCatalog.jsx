@@ -9,16 +9,16 @@ import { useUserLocation } from '../../hooks/useUserLocation';
 
 // ─── Skeleton ──────────────────────────────────────
 const CardSkeleton = () => (
-  <div className="bg-white rounded-2xl overflow-hidden">
-    <div className="aspect-[16/9] bg-gray-100">
-      <div className="w-full h-full bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-white to-gray-100" />
+  <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+    <div className="aspect-[16/9] bg-gray-100 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[length:200%_100%] animate-[shimmer_1.5s_ease-in-out_infinite] bg-gradient-to-r from-gray-100 via-white to-gray-100" />
     </div>
     <div className="p-3.5">
       <div className="flex gap-3 items-start">
-        <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 -mt-8" />
+        <div className="w-11 h-11 rounded-xl bg-gray-100 flex-shrink-0 -mt-8 shadow-sm" />
         <div className="flex-1 space-y-2 pt-0.5">
-          <div className="h-4 bg-gray-100 rounded-lg w-3/4" />
-          <div className="h-3 bg-gray-50 rounded-lg w-1/2" />
+          <div className="h-4 bg-gray-100 rounded-lg w-3/4 animate-pulse" />
+          <div className="h-3 bg-gray-100 rounded-lg w-1/2 animate-pulse" />
         </div>
       </div>
     </div>
@@ -27,19 +27,19 @@ const CardSkeleton = () => (
 
 // ─── Horizontal Scroll Section ─────────────────────
 const HorizontalSection = ({ title, children, onSeeAll }) => (
-  <div className="mb-6">
-    <div className="flex items-center justify-between mb-3 px-0.5">
-      <h3 className="text-[16px] font-bold text-gray-900">{title}</h3>
+  <div className="mb-7">
+    <div className="flex items-center justify-between mb-3.5 px-0.5">
+      <h3 className="text-[17px] font-extrabold text-gray-900 tracking-tight">{title}</h3>
       {onSeeAll && (
-        <button onClick={onSeeAll} className="flex items-center gap-1 text-[12px] font-semibold text-red-500 hover:text-red-600 active:scale-95 transition-all">
+        <button onClick={onSeeAll} className="flex items-center gap-0.5 text-[12px] font-bold text-red-500 hover:text-red-600 active:scale-95 transition-all">
           Ver todos
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </button>
       )}
     </div>
-    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">{children}</div>
+    <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4">{children}</div>
   </div>
 );
 
@@ -503,28 +503,23 @@ const MenuByCatalog = () => {
       {/* ═══ CONTENT ═══ */}
       <main className="max-w-3xl mx-auto px-4 pb-10">
         {/* Banner */}
-        <div className="mb-5 -mx-4 px-4 pt-4">
+        <div className="mb-5 pt-4">
           <BannerCarousel />
         </div>
 
         {/* Categories */}
         {location.coordinates && categories.length > 0 && (
-          <div className="mb-6 -mx-4 px-4">
-            <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+          <div className="mb-5 -mx-4 px-4">
+            <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide">
               {categories.map(cat => (
-                <button key={cat} onClick={() => setSelectedCategory(cat)} className="flex flex-col items-center gap-1.5 flex-shrink-0 min-w-[60px]">
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl transition-all duration-200 ${
+                <button key={cat} onClick={() => setSelectedCategory(cat)}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-[13px] font-semibold whitespace-nowrap flex-shrink-0 transition-all duration-200 ${
                     selectedCategory === cat
-                      ? 'bg-red-500 shadow-lg shadow-red-500/25 scale-105'
-                      : 'bg-white shadow-sm hover:shadow-md'
+                      ? 'bg-red-500 text-white shadow-md shadow-red-500/30 scale-[1.02]'
+                      : 'bg-white text-gray-600 shadow-sm hover:shadow-md hover:text-gray-900'
                   }`}>
-                    <span className={selectedCategory === cat ? 'grayscale brightness-200' : ''}>{getCategoryIcon(cat)}</span>
-                  </div>
-                  <span className={`text-[11px] font-semibold whitespace-nowrap transition-colors ${
-                    selectedCategory === cat ? 'text-red-500' : 'text-gray-500'
-                  }`}>
-                    {getCategoryName(cat)}
-                  </span>
+                  <span className="text-[15px] leading-none">{getCategoryIcon(cat)}</span>
+                  <span>{getCategoryName(cat)}</span>
                 </button>
               ))}
             </div>
@@ -559,11 +554,14 @@ const MenuByCatalog = () => {
         {location.coordinates && recentRestaurants.length > 0 && (
           <HorizontalSection title="Pediste hace poco">
             {recentRestaurants.map(r => (
-              <Link key={`re-${r._id}`} to={`/${r.slug}`} className="flex-shrink-0 flex items-center gap-2.5 bg-white rounded-2xl pl-1.5 pr-4 py-1.5 shadow-sm hover:shadow-md transition-all">
-                <div className="w-9 h-9 rounded-xl overflow-hidden bg-red-50 flex-shrink-0">
-                  {r.logo ? <img src={r.logo} alt="" className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-[11px] text-red-300 font-bold">{r.businessName?.charAt(0)}</div>}
+              <Link key={`re-${r._id}`} to={`/${r.slug}`}
+                className="flex-shrink-0 flex items-center gap-2.5 bg-white rounded-2xl pl-2 pr-4 py-2 border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all">
+                <div className="w-10 h-10 rounded-xl overflow-hidden bg-red-50 flex-shrink-0 shadow-sm">
+                  {r.logo
+                    ? <img src={r.logo} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    : <div className="w-full h-full flex items-center justify-center text-[13px] text-red-400 font-bold">{r.businessName?.charAt(0)}</div>}
                 </div>
-                <span className="text-[13px] font-semibold text-gray-700 whitespace-nowrap">{r.businessName}</span>
+                <span className="text-[13px] font-semibold text-gray-800 whitespace-nowrap">{r.businessName}</span>
               </Link>
             ))}
           </HorizontalSection>
@@ -572,53 +570,36 @@ const MenuByCatalog = () => {
         {/* Divider + title */}
         {location.coordinates && (
           <div id="restaurants-list" className="flex items-center justify-between mt-2 mb-4">
-            <h2 className="text-[18px] font-bold text-gray-900">Restaurantes</h2>
-            <span className="text-[12px] font-medium text-red-400 bg-red-50 px-2.5 py-1 rounded-full">{filteredRestaurants.length} disponibles</span>
+            <h2 className="text-[18px] font-extrabold text-gray-900 tracking-tight">Restaurantes</h2>
+            <span className="text-[12px] font-bold text-red-500 bg-red-50 px-3 py-1 rounded-full">{filteredRestaurants.length} disponibles</span>
           </div>
         )}
 
         {/* Filter bar */}
         {location.coordinates && (
         <div className="mb-5 -mx-4 px-4">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <button onClick={() => setSortBy('popularity')}
-              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                sortBy === 'popularity' ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
-              }`}>
-              🔥 Populares
-            </button>
-            <button onClick={() => setOnlyOpen(!onlyOpen)}
-              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                onlyOpen ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
-              }`}>
-              Abierto ahora
-            </button>
-            <button onClick={() => setOnlyFreeDelivery(!onlyFreeDelivery)}
-              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                onlyFreeDelivery ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
-              }`}>
-              🛵 Envío gratis
-            </button>
-            {hasLocation && (
-              <button onClick={() => setSortBy('distance')}
-                className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                  sortBy === 'distance' ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
-                }`}>
-                📍 Cercanos
-              </button>
-            )}
-            <button onClick={() => setSortBy('delivery_time')}
-              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                sortBy === 'delivery_time' ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
-              }`}>
-              ⚡ Rápido
-            </button>
-            <button onClick={() => setSortBy('min_price')}
-              className={`px-4 py-2 rounded-xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
-                sortBy === 'min_price' ? 'bg-red-500 text-white shadow-md shadow-red-500/25' : 'bg-white text-gray-600 shadow-sm hover:shadow-md'
-              }`}>
-              💰 Precio ↓
-            </button>
+          <div className="flex gap-2 overflow-x-auto pb-1.5 scrollbar-hide">
+            {[
+              { id: 'popularity', label: '🔥 Populares', isSort: true },
+              { id: 'open', label: '🟢 Abierto', isToggle: true, active: onlyOpen, onClick: () => setOnlyOpen(!onlyOpen) },
+              { id: 'free', label: '🛵 Envío gratis', isToggle: true, active: onlyFreeDelivery, onClick: () => setOnlyFreeDelivery(!onlyFreeDelivery) },
+              ...(hasLocation ? [{ id: 'distance', label: '📍 Cercanos', isSort: true }] : []),
+              { id: 'delivery_time', label: '⚡ Rápido', isSort: true },
+              { id: 'min_price', label: '💰 Precio ↓', isSort: true },
+            ].map(f => {
+              const isActive = f.isSort ? sortBy === f.id : f.active;
+              return (
+                <button key={f.id}
+                  onClick={f.onClick || (() => setSortBy(f.id))}
+                  className={`px-3.5 py-2 rounded-2xl text-[13px] font-semibold whitespace-nowrap transition-all flex-shrink-0 ${
+                    isActive
+                      ? 'bg-red-500 text-white shadow-md shadow-red-500/30'
+                      : 'bg-white text-gray-600 shadow-sm hover:shadow-md hover:text-gray-900'
+                  }`}>
+                  {f.label}
+                </button>
+              );
+            })}
           </div>
         </div>
         )}
@@ -646,25 +627,31 @@ const MenuByCatalog = () => {
 
         {/* No-location state */}
         {!locationLoading && !location.coordinates && (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+          <div className="text-center py-16 px-4">
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center mx-auto mb-5 shadow-sm">
               <svg className="w-9 h-9 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
               </svg>
             </div>
-            <p className="text-[16px] font-bold text-gray-900 mb-1">Necesitamos tu ubicación</p>
-            <p className="text-[13px] text-gray-500 mb-6 max-w-[260px] mx-auto leading-relaxed">
-              Para mostrarte los restaurantes con cobertura en tu zona, activa tu ubicación
+            <p className="text-[17px] font-extrabold text-gray-900 mb-1.5 tracking-tight">¿Dónde te entregamos?</p>
+            <p className="text-[13px] text-gray-500 mb-6 max-w-[240px] mx-auto leading-relaxed">
+              Necesitamos tu ubicación para mostrarte los restaurantes disponibles en tu zona
             </p>
-            <button onClick={updateLocation}
-              className="px-6 py-3 bg-red-500 text-white text-[14px] font-bold rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-95 transition-all flex items-center gap-2 mx-auto">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-              </svg>
-              Activar ubicación
-            </button>
+            <div className="flex flex-col gap-2.5 items-center">
+              <button onClick={updateLocation}
+                className="px-6 py-3 bg-red-500 text-white text-[14px] font-bold rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-95 transition-all flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+                Usar mi GPS
+              </button>
+              <button onClick={() => setShowLocationPicker(true)}
+                className="text-[13px] font-semibold text-red-500 hover:text-red-600 transition-colors">
+                Ingresar dirección manualmente
+              </button>
+            </div>
           </div>
         )}
 
