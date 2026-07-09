@@ -11,7 +11,7 @@ const { ORDER_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
-const authSuperAdmin = require('../middleware/authSuperAdmin');
+const { protectSuperAdmin: authSuperAdmin } = require('../middleware/authSuperAdmin');
 
 // Rate limiter for public business listing/search endpoints (heavy aggregation)
 const businessesLimiter = rateLimit({

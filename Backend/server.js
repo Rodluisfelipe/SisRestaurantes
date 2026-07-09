@@ -58,7 +58,7 @@ const isProd = process.env.NODE_ENV === 'production';
 // CORS: prefer ALLOWED_ORIGINS env var. Fallback includes nip.io for backward compat.
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['http://menuby.tech', 'https://menuby.tech', 'https://www.menuby.tech', 'http://127.0.0.1:5173', 'http://localhost:5173', 'https://157-245-125-216.nip.io'];
+  : ['http://menuby.tech', 'https://menuby.tech', 'https://www.menuby.tech', 'http://127.0.0.1:5173', 'http://localhost:5173', 'https://157-245-125-216.nip.io', 'https://159-203-136-199.nip.io'];
 
 logger.info(`CORS allowed origins: ${ALLOWED_ORIGINS.join(', ')}`);
 if (isProd && !process.env.ALLOWED_ORIGINS) {
