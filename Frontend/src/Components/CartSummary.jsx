@@ -13,6 +13,7 @@ import DeliveryZoneSelector from './DeliveryZoneSelector';
 import SuggestedProducts from './SuggestedProducts';
 import LoyaltyWidget from './LoyaltyWidget';
 import TimeSlotPicker from './TimeSlotPicker';
+import LocationPicker from './Catalog/LocationPicker';
 
 /* ── Checkout SVG Icon System (admin-style, no emojis) ── */
 const CI = {
@@ -83,6 +84,10 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   });
   const deliveryAddressRef = useRef(null);
 
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  // { coords: { lat, lng, lon }, address: string, city: string }
+  const [deliverySelectedLocation, setDeliverySelectedLocation] = useState(null);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const { businessConfig, businessId, businessStatus, getStatusDisplay } = useBusinessConfig();
   const isHotel = businessConfig?.businessType === 'hotel';
@@ -118,6 +123,65 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     }, 150);
   }, []);
   
+  // Check delivery coverage using map-confirmed coordinates
+  const checkCoverageWithCoords = useCallback(async (lat, lon) => {
+    setCheckingLocation(true);
+    try {
+      const orderTotal = cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 0), 0);
+      const response = await api.post('/delivery-zones/check-coverage', { businessId, lat, lon, orderTotal });
+      const isValid = response.data.valid && response.data.coverage?.covered;
+      if (isValid) {
+        const { delivery, zone } = response.data.coverage;
+        setDeliveryFee(delivery.price);
+        setDeliveryZoneInfo({ zoneName: zone.name, estimatedTime: delivery.estimatedTime, distance: delivery.distance, coordinates: { lat, lon } });
+      } else if (response.data.noZonesConfigured) {
+        setDeliveryFee(0);
+        setDeliveryZoneInfo({ zoneName: 'Por definir con el negocio', noZonesConfigured: true });
+      } else {
+        setDeliveryFee(null);
+        setDeliveryZoneInfo(null);
+      }
+    } catch {
+      setDeliveryFee(null);
+      setDeliveryZoneInfo(null);
+    } finally {
+      setLocationChecked(true);
+      setCheckingLocation(false);
+    }
+  }, [businessId, cart]);
+
+  // Called when LocationPicker's GPS button is tapped
+  const handleGPSRequest = useCallback(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        let addr = `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+        let city = '';
+        try {
+          const res = await api.get(`/delivery-zones/reverse-geocode?lat=${lat}&lon=${lon}`);
+          if (res.data?.result?.displayName) addr = res.data.result.displayName;
+          city = res.data?.result?.address?.city || res.data?.result?.address?.town || '';
+        } catch {}
+        setDeliverySelectedLocation({ coords: { lat, lng: lon, lon }, address: addr, city });
+        if (deliveryAddressRef.current) deliveryAddressRef.current.value = addr;
+        checkCoverageWithCoords(lat, lon);
+      },
+      () => {} // GPS denied — user stays in picker
+    );
+  }, [checkCoverageWithCoords]);
+
+  // Called when LocationPicker → MapPicker confirms a location
+  const handleLocationSelected = useCallback((coords, addr, city) => {
+    setDeliverySelectedLocation({ coords, address: addr, city });
+    if (deliveryAddressRef.current) deliveryAddressRef.current.value = addr;
+    setLocationChecked(false);
+    setDeliveryFee(null);
+    setDeliveryZoneInfo(null);
+    checkCoverageWithCoords(coords.lat, coords.lon ?? coords.lng);
+  }, [checkCoverageWithCoords]);
+
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
   
@@ -666,7 +730,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                         <button
                           key={opt.id}
                           type="button"
-                          onClick={() => { setOrderType(opt.id); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); scrollToCheckout(); }}
+                          onClick={() => { setOrderType(opt.id); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); setDeliverySelectedLocation(null); scrollToCheckout(); }}
                           className={`relative flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] font-semibold transition-all duration-200 ${
                             isActive ? 'bg-white shadow-sm' : ''
                           }`}
@@ -927,38 +991,61 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 </div>
               )}
 
-              {/* ── Campo condicional: Dirección de entrega ── */}
+              {/* ── Dirección de entrega con mapa ── */}
               {orderType === 'delivery' && !initialOrderTypeSelected && (
-                <div className="space-y-1.5">
-                  <textarea
-                    ref={deliveryAddressRef}
-                    id="inline-delivery-address"
-                    name="address"
-                    defaultValue={orderInfo?.address || ''}
-                    className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                    placeholder="Dirección de entrega"
-                    rows="1"
-                    autoComplete="street-address"
-                  />
+                <div className="space-y-2">
+                  {/* Hidden ref for backward compat */}
+                  <input ref={deliveryAddressRef} type="hidden" value={deliverySelectedLocation?.address || ''} readOnly />
 
-                  {!locationChecked && (
+                  {!deliverySelectedLocation ? (
                     <button
                       type="button"
-                      onClick={detectLocationAndCalculateFee}
-                      disabled={checkingLocation}
-                      className="w-full px-3 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 font-medium disabled:bg-gray-400 text-sm"
+                      onClick={() => setShowLocationPicker(true)}
+                      className="w-full flex items-center gap-3 p-3.5 border-2 border-dashed border-slate-200 rounded-2xl hover:border-red-300 hover:bg-red-50 transition-all group active:scale-[0.99]"
                     >
-                      {checkingLocation ? (
-                        <><span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Verificando...</>
-                      ) : (
-                        <span className="inline-flex items-center gap-2">{CI.mapPin('w-4 h-4')} Verificar costo de domicilio</span>
-                      )}
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-red-100 flex items-center justify-center flex-shrink-0 transition-colors">
+                        {CI.mapPin('w-5 h-5 text-slate-400 group-hover:text-red-500')}
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-[13px] font-bold text-slate-700 group-hover:text-red-600 transition-colors">Seleccionar dirección</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Busca y confirma tu ubicación en el mapa</p>
+                      </div>
+                      <svg className="w-4 h-4 text-slate-300 group-hover:text-red-400 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
                     </button>
+                  ) : (
+                    <div className="flex items-start gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+                      <div className="w-9 h-9 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-green-800 leading-snug line-clamp-2">{deliverySelectedLocation.address}</p>
+                        <p className="text-[10px] text-green-600 font-mono mt-0.5">
+                          {deliverySelectedLocation.coords.lat.toFixed(5)}, {(deliverySelectedLocation.coords.lon ?? deliverySelectedLocation.coords.lng).toFixed(5)}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setDeliverySelectedLocation(null); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); setShowLocationPicker(true); }}
+                        className="text-[11px] font-bold text-green-700 hover:text-green-900 underline underline-offset-2 flex-shrink-0 transition-colors mt-0.5"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
                   )}
 
-                  {locationChecked && (
-                    <>
-                      {deliveryZoneInfo?.noZonesConfigured ? (
+                  {/* Coverage result (shown after location selected) */}
+                  {deliverySelectedLocation && (
+                    checkingLocation ? (
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        <span className="text-[12px] text-slate-500">Verificando zona de entrega...</span>
+                      </div>
+                    ) : locationChecked ? (
+                      deliveryZoneInfo?.noZonesConfigured ? (
                         <div className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-xl">
                           <div className="flex items-center gap-1.5">
                             <span className="text-amber-600">{CI.check('w-3.5 h-3.5')}</span>
@@ -977,7 +1064,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                       ) : (
                         <DeliveryZoneSelector
                           businessId={businessId}
-                          address={deliveryAddressRef.current?.value}
+                          address={deliverySelectedLocation.address}
                           cart={cart}
                           theme={businessConfig?.theme}
                           compact
@@ -986,14 +1073,15 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                             setDeliveryZoneInfo(zoneInfo);
                           }}
                           onRetryGPS={() => {
+                            setDeliverySelectedLocation(null);
                             setLocationChecked(false);
                             setDeliveryFee(null);
                             setDeliveryZoneInfo(null);
-                            detectLocationAndCalculateFee();
+                            setShowLocationPicker(true);
                           }}
                         />
-                      )}
-                    </>
+                      )
+                    ) : null
                   )}
                 </div>
               )}
@@ -1189,13 +1277,15 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 } else if (orderType === 'takeaway') {
                   submitWith({ orderType: 'takeaway', tableNumber: '' });
                 } else if (orderType === 'delivery') {
-                  const trimmedAddress = (deliveryAddressRef.current?.value || '').trim();
-                  if (!trimmedAddress) { alert('Por favor ingresa la dirección de entrega'); return; }
+                  const trimmedAddress = deliverySelectedLocation?.address || (deliveryAddressRef.current?.value || '').trim();
+                  if (!trimmedAddress) { alert('Por favor selecciona tu dirección de entrega'); return; }
                   if (isGift && !giftRecipientName.trim()) { alert('Ingresa el nombre del destinatario del regalo'); return; }
+                  const coords = deliverySelectedLocation?.coords;
                   submitWith({
                     orderType: 'delivery', address: trimmedAddress, tableNumber: '',
                     deliveryFee: deliveryFee ?? null, deliveryZoneName: deliveryZoneInfo?.zoneName || null,
                     deliveryZoneInfo: deliveryZoneInfo || null, deliveryCalculated: true, deliveryNeedsConfirmation: !deliveryFee,
+                    ...(coords && { deliveryCoordinates: { lat: coords.lat, lon: coords.lon ?? coords.lng } }),
                     ...(isGift && {
                       isGift: true,
                       gift: {
@@ -1256,6 +1346,16 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         isOpen={showClosedModal}
         onClose={() => setShowClosedModal(false)}
         businessStatus={businessStatus}
+      />
+
+      {/* Location picker — opens above the cart modal */}
+      <LocationPicker
+        open={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onSelect={handleLocationSelected}
+        onRequestGPS={handleGPSRequest}
+        currentAddress={deliverySelectedLocation?.address}
+        currentCoords={deliverySelectedLocation?.coords}
       />
     </motion.div>
   );
