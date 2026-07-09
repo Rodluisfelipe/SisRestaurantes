@@ -145,6 +145,24 @@ export const deleteBusiness = async (id) => {
   }
 };
 
+export const getBusinessCredentials = async (id) => {
+  try {
+    const response = await superadminApi.get(`/business/${id}/credentials`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const resetBusinessCredentials = async (id, data) => {
+  try {
+    const response = await superadminApi.patch(`/business/${id}/reset-credentials`, data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Crear instancia separada para suscripciones
 const subscriptionApi = axios.create({
   baseURL: `${BACKEND_URL}/api`,

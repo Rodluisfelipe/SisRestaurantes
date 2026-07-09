@@ -76,6 +76,61 @@ exports.listarNegocios = async (req, res) => {
   }
 };
 
+// Obtener credenciales (solo username) del admin de un negocio
+exports.getBusinessCredentials = async (req, res) => {
+  try {
+    const admin = await Admin.findOne({ businessId: req.params.id, role: 'admin' })
+      .select('username mustChangePassword authProvider');
+    if (!admin) return res.status(404).json({ message: 'No se encontró el administrador del negocio' });
+    res.json({ success: true, admin: { username: admin.username, mustChangePassword: admin.mustChangePassword, authProvider: admin.authProvider } });
+  } catch (error) {
+    logger.error('Error fetching business credentials', error);
+    res.status(500).json({ message: 'Error al obtener credenciales' });
+  }
+};
+
+// Resetear credenciales (email/usuario y/o contraseña) del admin de un negocio
+exports.resetBusinessCredentials = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newUsername, newPassword } = req.body;
+
+    if (!newUsername?.trim() && !newPassword?.trim()) {
+      return res.status(400).json({ message: 'Proporciona al menos un campo a actualizar' });
+    }
+
+    const admin = await Admin.findOne({ businessId: id, role: 'admin' });
+    if (!admin) return res.status(404).json({ message: 'No se encontró el administrador del negocio' });
+
+    if (newUsername?.trim()) {
+      const conflict = await Admin.findOne({ username: newUsername.trim(), _id: { $ne: admin._id } });
+      if (conflict) return res.status(400).json({ message: 'Ese correo/usuario ya está en uso por otro negocio' });
+      admin.username = newUsername.trim();
+    }
+
+    if (newPassword?.trim()) {
+      const salt = await bcrypt.genSalt(10);
+      admin.password = await bcrypt.hash(newPassword.trim(), salt);
+      admin.mustChangePassword = true;
+      admin.refreshTokens = [];
+      admin.authProvider = 'local';
+    }
+
+    await admin.save();
+    logger.info(`SuperAdmin reset credentials for business ${id}`, { changedUsername: !!newUsername, changedPassword: !!newPassword });
+
+    res.json({
+      success: true,
+      message: 'Credenciales actualizadas correctamente',
+      admin: { username: admin.username, mustChangePassword: admin.mustChangePassword }
+    });
+  } catch (error) {
+    logger.error('Error resetting business credentials', error);
+    if (error.code === 11000) return res.status(400).json({ message: 'Ese correo/usuario ya está en uso' });
+    res.status(500).json({ message: 'Error al resetear credenciales' });
+  }
+};
+
 // Activar/desactivar negocio
 exports.activarNegocio = async (req, res) => {
   try {

@@ -52,6 +52,12 @@ router.patch('/business/:id/pos-beta', requireRole('admin'), async (req, res) =>
   }
 });
 
+// Obtener credenciales del admin del negocio — solo admin+
+router.get('/business/:id/credentials', requireRole('admin'), superadmin.getBusinessCredentials);
+
+// Resetear credenciales (email/usuario y/o contraseña) — solo admin+
+router.patch('/business/:id/reset-credentials', requireRole('admin'), superadmin.resetBusinessCredentials);
+
 // Eliminar negocio — solo admin+ (destructivo)
 router.delete('/business/:id', requireRole('admin'), superadmin.eliminarNegocio);
 
