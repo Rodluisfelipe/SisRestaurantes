@@ -82,7 +82,7 @@ export default function ProductManager({
   const openCreate = () => {
     setShowProductModal(true);
     setEditingProduct(null);
-    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [], itemType: 'product', durationMinutes: '' });
+    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
     setTouchedFields({});
     setCurrentStep(1);
     setShowToppingsSection(false);
@@ -333,6 +333,76 @@ export default function ProductManager({
                           <p className="text-red-500 text-xs flex items-center gap-1"><FaExclamationTriangle className="text-[10px]" />Precio inválido</p>
                         )}
                       </div>
+                      {/* Control de inventario */}
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, trackStock: !prev.trackStock, stock: prev.trackStock ? '' : prev.stock }))}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                            form.trackStock ? 'border-emerald-300 bg-emerald-50/40' : 'border-slate-200 bg-slate-50/50'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${form.trackStock ? 'bg-emerald-100' : 'bg-slate-100'}`}>
+                            <svg className={`w-4 h-4 ${form.trackStock ? 'text-emerald-600' : 'text-slate-400'}`} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm font-semibold ${form.trackStock ? 'text-emerald-700' : 'text-slate-700'}`}>Controlar inventario</p>
+                            <p className="text-xs text-slate-400">{form.trackStock ? 'Se descuenta automáticamente al pedir' : 'Sin límite de unidades'}</p>
+                          </div>
+                          <div className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${form.trackStock ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                            <motion.div layout className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm" style={{ left: form.trackStock ? '22px' : '2px' }} />
+                          </div>
+                        </button>
+
+                        <AnimatePresence>
+                          {form.trackStock && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.18 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="grid grid-cols-2 gap-2 pt-1">
+                                <div className="space-y-1">
+                                  <label className="text-xs font-semibold text-slate-600">Unidades disponibles</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={form.stock}
+                                    onChange={e => setForm(prev => ({ ...prev, stock: e.target.value }))}
+                                    className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 text-slate-900 px-3 py-2 text-sm font-semibold transition-all"
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-semibold text-slate-600">Alerta en</label>
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={form.lowStockAlert}
+                                      onChange={e => setForm(prev => ({ ...prev, lowStockAlert: e.target.value }))}
+                                      className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-amber-500 focus:border-amber-500 text-slate-900 px-3 py-2 text-sm font-semibold transition-all"
+                                      placeholder="5"
+                                    />
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">uds.</span>
+                                  </div>
+                                </div>
+                              </div>
+                              {form.stock !== '' && parseInt(form.stock, 10) === 0 && (
+                                <p className="text-xs text-amber-600 font-medium mt-1.5 flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
+                                  El producto aparecerá como agotado
+                                </p>
+                              )}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
                           <FaImage className="text-slate-400 text-[10px]" />{isService ? 'Imagen del servicio' : 'Imagen del producto'}

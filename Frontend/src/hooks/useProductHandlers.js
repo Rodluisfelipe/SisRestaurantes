@@ -67,7 +67,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
   };
 
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [], itemType: 'product', durationMinutes: '' });
+    setForm({ name: '', description: '', price: '', category: '', image: '', toppingGroups: [], itemType: 'product', durationMinutes: '', trackStock: false, stock: '', lowStockAlert: '5' });
     setTouchedFields({});
     setEditingId(null);
     setEditingProduct(null);
@@ -90,6 +90,9 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       category: form.category,
       toppingGroups: extractToppingGroupIds(form.toppingGroups),
       businessId,
+      trackStock: !!form.trackStock,
+      stock: form.trackStock && form.stock !== '' ? parseInt(form.stock, 10) : null,
+      lowStockAlert: form.trackStock && form.lowStockAlert !== '' ? parseInt(form.lowStockAlert, 10) : 5,
     };
     if (form.image) payload.image = form.image;
     if (form.itemType) payload.itemType = form.itemType;
@@ -125,6 +128,9 @@ export default function useProductHandlers({ businessId, products, setProducts, 
         businessId,
         itemType: form.itemType || 'product',
         durationMinutes: form.itemType === 'service' ? (parseInt(form.durationMinutes, 10) || null) : null,
+        trackStock: !!form.trackStock,
+        stock: form.trackStock && form.stock !== '' ? parseInt(form.stock, 10) : null,
+        lowStockAlert: form.trackStock && form.lowStockAlert !== '' ? parseInt(form.lowStockAlert, 10) : 5,
       };
 
       const response = await api.put(`/products/${editingId}`, formToSend);
@@ -262,7 +268,10 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       image: product.image,
       toppingGroups: product.toppingGroups || [],
       itemType: product.itemType || 'product',
-      durationMinutes: product.durationMinutes ? product.durationMinutes.toString() : ''
+      durationMinutes: product.durationMinutes ? product.durationMinutes.toString() : '',
+      trackStock: product.trackStock || false,
+      stock: product.stock !== null && product.stock !== undefined ? product.stock.toString() : '',
+      lowStockAlert: product.lowStockAlert !== undefined ? product.lowStockAlert.toString() : '5',
     });
     setTouchedFields({});
     setShowProductModal(true);

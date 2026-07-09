@@ -65,6 +65,19 @@ const ProductSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Inventario por producto
+  trackStock: {
+    type: Boolean,
+    default: false
+  },
+  stock: {
+    type: Number,
+    default: null  // null = ilimitado
+  },
+  lowStockAlert: {
+    type: Number,
+    default: 5
+  },
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',

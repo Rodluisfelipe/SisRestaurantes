@@ -541,6 +541,23 @@ router.post("/", (req, res, next) => {
     
     const savedOrder = await newOrder.save();
 
+    // Descontar stock de productos con trackStock activado (fire-and-forget, no bloquea la respuesta)
+    try {
+      const Product = require('../Models/Product');
+      await Promise.all(
+        (items || [])
+          .filter(item => item.productId)
+          .map(item =>
+            Product.updateOne(
+              { _id: item.productId, trackStock: true, stock: { $gt: 0 } },
+              [{ $set: { stock: { $max: [0, { $subtract: ['$stock', item.quantity || 1] }] } } }]
+            )
+          )
+      );
+    } catch (stockErr) {
+      logger.warn('Failed to update product stock for order', { error: stockErr.message, orderId: savedOrder._id });
+    }
+
     // POS: Auto-register sale in open cash register (only for POS orders) — atomic $push
     if (orderChannel === 'pos') {
       try {

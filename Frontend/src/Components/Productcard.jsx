@@ -27,7 +27,9 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   const buttonColor = businessConfig?.theme?.buttonColor || '#f97316';
   const buttonTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
   const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
-  const isDisabled = subscriptionStatus === 'suspended' || !businessStatus?.isOpen;
+  const isOutOfStock = product.trackStock && product.stock !== null && product.stock !== undefined && product.stock <= 0;
+  const isLowStock = product.trackStock && product.stock !== null && product.stock !== undefined && product.stock > 0 && product.stock <= (product.lowStockAlert || 5);
+  const isDisabled = subscriptionStatus === 'suspended' || !businessStatus?.isOpen || isOutOfStock;
   const isFavorite = businessConfig?.reviewStats?.favoriteProductIds?.some(
     id => id === product._id || id?.toString() === product._id?.toString()
   );
@@ -141,6 +143,23 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </div>
           )}
 
+          {/* Badge agotado / últimas unidades */}
+          {isOutOfStock && (
+            <div className="absolute inset-0 z-[3] flex items-center justify-center bg-black/50 backdrop-blur-[1px]">
+              <span className="bg-slate-900/90 text-white text-[11px] font-bold px-3 py-1.5 rounded-full tracking-wide uppercase">
+                Agotado
+              </span>
+            </div>
+          )}
+          {isLowStock && !isOutOfStock && (
+            <div className="absolute top-2 left-2 z-[2]">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500 text-white shadow-sm">
+                <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
+                Últimas {product.stock}
+              </span>
+            </div>
+          )}
+
           {/* Price — overlaid on image bottom-left */}
           <div className="absolute bottom-2.5 left-3 z-[2]">
             <span className={`font-black text-white drop-shadow-lg ${isHero ? 'text-xl sm:text-2xl' : 'text-[15px] sm:text-lg'}`}>
@@ -177,7 +196,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
                 color: buttonTextColor,
                 boxShadow: isDisabled ? undefined : `0 4px 16px ${buttonColor}40`
               }}
-              aria-label={isDisabled ? "No disponible" : "Agregar al carrito"}
+              aria-label={isOutOfStock ? "Agotado" : isDisabled ? "No disponible" : "Agregar al carrito"}
               disabled={isDisabled}
             >
               {PCI.plus('w-4 h-4')}
