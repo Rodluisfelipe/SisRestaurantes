@@ -260,6 +260,8 @@ function SuperAdminDashboard() {
         lg:translate-x-0 lg:static lg:z-auto
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
+        {/* iOS safe area top spacer */}
+        <div className="shrink-0" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
         {/* Logo */}
         <div className="flex items-center gap-2.5 px-4 h-14 border-b border-slate-200 dark:border-white/[0.06] shrink-0">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
@@ -312,7 +314,7 @@ function SuperAdminDashboard() {
         </nav>
 
         {/* Sidebar footer */}
-        <div className="px-2.5 py-3 border-t border-slate-200 dark:border-white/[0.06] space-y-0.5 shrink-0">
+        <div className="px-2.5 pt-3 border-t border-slate-200 dark:border-white/[0.06] space-y-0.5 shrink-0" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}>
           {/* Logged user + role chip */}
           {perms.me && (
             <div className="flex items-center gap-2 px-2.5 py-2 mb-1 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.04]">
@@ -377,46 +379,51 @@ function SuperAdminDashboard() {
 
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
-        {/* Top bar */}
-        <header className="sticky top-0 z-30 flex items-center gap-3 px-4 sm:px-6 h-14 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/[0.06] transition-colors">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-1.5 -ml-1.5 text-slate-600 dark:text-white/40 hover:text-slate-900 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-lg transition-all"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-            </svg>
-          </button>
+        {/* Top bar — safe area aware */}
+        <header
+          className="sticky top-0 z-30 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/[0.06] transition-colors"
+          style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+        >
+          <div className="flex items-center gap-3 px-4 sm:px-6 h-14">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden p-1.5 -ml-1.5 text-slate-600 dark:text-white/40 hover:text-slate-900 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06] rounded-lg transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            </button>
 
-          <div className="flex items-center gap-2">
-            <h1 className="text-[15px] font-semibold text-slate-900 dark:text-white">{currentNavItem?.label}</h1>
-            {currentNavItem?.desc && (
-              <span className="hidden sm:inline text-xs text-slate-500 dark:text-white/25 font-normal">— {currentNavItem.desc}</span>
+            <div className="flex items-center gap-2">
+              <h1 className="text-[15px] font-semibold text-slate-900 dark:text-white">{currentNavItem?.label}</h1>
+              {currentNavItem?.desc && (
+                <span className="hidden sm:inline text-xs text-slate-500 dark:text-white/25 font-normal">— {currentNavItem.desc}</span>
+              )}
+            </div>
+
+            <div className="flex-1" />
+
+            {/* Create CTA */}
+            {currentView === 'businesses' && (
+              <SAButton
+                variant="filled"
+                size="sm"
+                onClick={() => setShowCreate(true)}
+                icon={
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                }
+              >
+                <span className="hidden sm:inline">Nuevo negocio</span>
+                <span className="sm:hidden">Nuevo</span>
+              </SAButton>
             )}
           </div>
-
-          <div className="flex-1" />
-
-          {/* Create CTA */}
-          {currentView === 'businesses' && (
-            <SAButton
-              variant="filled"
-              size="sm"
-              onClick={() => setShowCreate(true)}
-              icon={
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-              }
-            >
-              <span className="hidden sm:inline">Nuevo negocio</span>
-              <span className="sm:hidden">Nuevo</span>
-            </SAButton>
-          )}
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom, 0px))' }}>
           <AnimatePresence mode="wait">
             {currentView === 'home' && (
               <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
