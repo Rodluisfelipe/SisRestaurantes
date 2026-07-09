@@ -19,7 +19,7 @@ import LocationPicker from './Catalog/LocationPicker';
 const CI = {
   dineIn:    (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>,
   takeaway:  (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 01-8 0"/></svg>,
-  delivery:  (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M14 18V6h-4a1 1 0 00-1 1v10a1 1 0 001 1h1"/><path d="M14 8h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1"/><circle cx="7.5" cy="18.5" r="1.5"/><circle cx="17.5" cy="18.5" r="1.5"/><path d="M3 10h6"/></svg>,
+  delivery:  (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M7.5 18L10 11h5l3.5 4.5"/><path d="M10 11L8 14.5"/><path d="M15 11l2-3.5h3.5"/></svg>,
   card:      (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>,
   cash:      (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/></svg>,
   bank:      (c = 'w-4 h-4') => <svg className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>,
@@ -1049,22 +1049,30 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
               {/* ── Notas adicionales ── */}
               {(initialOrderTypeSelected || orderType) && (
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
-                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Comentarios <span className="text-slate-300 font-normal normal-case tracking-normal">(opcional)</span></p>
+                <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 overflow-hidden transition-all">
+                  <div className="flex items-center gap-2.5 px-3.5 pt-3 pb-2">
+                    <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[13px] font-bold text-slate-700">Comentarios del pedido</p>
+                      <p className="text-[11px] text-slate-400">Sin cebolla, alergias, instrucciones especiales…</p>
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-400 bg-slate-200 px-2 py-0.5 rounded-full">Opcional</span>
                   </div>
-                  <textarea
-                    value={customerNotes}
-                    onChange={(e) => setCustomerNotes(e.target.value.slice(0, 200))}
-                    placeholder="Ej: sin cebolla, alérgico al maní, tocar timbre..."
-                    maxLength={200}
-                    rows={2}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent resize-none transition-all"
-                  />
-                  {customerNotes.length > 0 && (
-                    <p className="text-[10px] text-slate-400 text-right">{customerNotes.length}/200</p>
-                  )}
+                  <div className="px-3.5 pb-3.5">
+                    <textarea
+                      value={customerNotes}
+                      onChange={(e) => setCustomerNotes(e.target.value.slice(0, 200))}
+                      placeholder="Ej: sin cebolla, alérgico al maní, tocar timbre..."
+                      maxLength={200}
+                      rows={2}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent resize-none transition-all"
+                    />
+                    {customerNotes.length > 0 && (
+                      <p className="text-[10px] text-slate-400 text-right mt-1">{customerNotes.length}/200</p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1096,51 +1104,67 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
               {/* ── Regalo: enviar a otra persona (solo domicilio) ── */}
               {(orderType === 'delivery' || orderInfo?.orderType === 'delivery') && (
-                <div className="space-y-2">
+                <div className="rounded-2xl border-2 overflow-hidden transition-all" style={{ borderColor: isGift ? themeColor : '#e2e8f0', backgroundColor: isGift ? `${themeColor}06` : '#fff' }}>
                   <button
                     type="button"
                     onClick={() => setIsGift(v => !v)}
-                    className="w-full flex items-center justify-between p-2.5 rounded-xl border transition-all"
-                    style={{ borderColor: isGift ? themeColor : '#e2e8f0', backgroundColor: isGift ? `${themeColor}10` : '#fff' }}
+                    className="w-full flex items-center gap-3 p-3.5 text-left transition-all"
                   >
-                    <span className="flex items-center gap-2 text-sm font-semibold" style={{ color: isGift ? themeColor : '#475569' }}>
-                      <span className="text-base">🎁</span> Enviar como regalo a otra persona
-                    </span>
-                    <span className="relative inline-block w-9 h-5 rounded-full transition-colors" style={{ backgroundColor: isGift ? themeColor : '#e2e8f0' }}>
-                      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${isGift ? 'left-[18px]' : 'left-0.5'}`} />
-                    </span>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl transition-colors" style={{ backgroundColor: isGift ? `${themeColor}15` : '#f8fafc' }}>
+                      🎁
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-bold transition-colors" style={{ color: isGift ? themeColor : '#374151' }}>Enviar como regalo</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">{isGift ? 'Completa los datos del destinatario' : 'Toca para enviar a otra persona'}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="relative inline-block w-10 h-6 rounded-full transition-colors flex-shrink-0" style={{ backgroundColor: isGift ? themeColor : '#e2e8f0' }}>
+                        <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${isGift ? 'left-[22px]' : 'left-1'}`} />
+                      </span>
+                    </div>
                   </button>
 
-                  {isGift && (
-                    <div className="space-y-2 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                      <p className="text-[11px] text-slate-500">El pedido se entrega en la dirección de arriba (la del destinatario). Tus datos quedan como comprador.</p>
-                      <input
-                        type="text"
-                        value={giftRecipientName}
-                        onChange={(e) => setGiftRecipientName(e.target.value.slice(0, 100))}
-                        placeholder="Nombre del destinatario *"
-                        className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                      />
-                      <input
-                        type="tel"
-                        value={giftRecipientPhone}
-                        onChange={(e) => setGiftRecipientPhone(e.target.value.slice(0, 30))}
-                        placeholder="Teléfono del destinatario"
-                        className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
-                      />
-                      <textarea
-                        value={giftMessage}
-                        onChange={(e) => setGiftMessage(e.target.value.slice(0, 300))}
-                        placeholder="Mensaje de regalo (ej: ¡Feliz cumpleaños! 🎉)"
-                        rows={2}
-                        className="w-full p-2 border border-slate-300 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 resize-none"
-                      />
-                      <label className="flex items-center gap-2 text-[12px] text-slate-600 cursor-pointer select-none">
-                        <input type="checkbox" checked={giftHidePrices} onChange={(e) => setGiftHidePrices(e.target.checked)} className="rounded" />
-                        Ocultar precios al destinatario
-                      </label>
-                    </div>
-                  )}
+                  <AnimatePresence>
+                    {isGift && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        className="overflow-hidden"
+                      >
+                        <div className="space-y-2.5 px-3.5 pb-3.5">
+                          <div className="h-px bg-slate-100" />
+                          <p className="text-[11px] text-slate-500 leading-relaxed">El pedido se entrega en la dirección indicada arriba. Tus datos quedan como comprador.</p>
+                          <input
+                            type="text"
+                            value={giftRecipientName}
+                            onChange={(e) => setGiftRecipientName(e.target.value.slice(0, 100))}
+                            placeholder="Nombre del destinatario *"
+                            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent bg-white"
+                          />
+                          <input
+                            type="tel"
+                            value={giftRecipientPhone}
+                            onChange={(e) => setGiftRecipientPhone(e.target.value.slice(0, 30))}
+                            placeholder="Teléfono del destinatario (opcional)"
+                            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent bg-white"
+                          />
+                          <textarea
+                            value={giftMessage}
+                            onChange={(e) => setGiftMessage(e.target.value.slice(0, 300))}
+                            placeholder="Mensaje de regalo (ej: ¡Feliz cumpleaños! 🎉)"
+                            rows={2}
+                            className="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent bg-white resize-none"
+                          />
+                          <label className="flex items-center gap-2.5 text-[12px] text-slate-600 cursor-pointer select-none">
+                            <input type="checkbox" checked={giftHidePrices} onChange={(e) => setGiftHidePrices(e.target.checked)} className="rounded w-4 h-4 accent-slate-600" />
+                            Ocultar precios al destinatario
+                          </label>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               )}
             </div>
