@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
 import { useSavedAddresses } from '../../hooks/useSavedAddresses';
+import MapPicker from './MapPicker';
 
 const LABEL_OPTIONS = ['Casa', 'Trabajo', 'Otro'];
 
-export default function LocationPicker({ open, onClose, onSelect, onRequestGPS, currentAddress }) {
+export default function LocationPicker({ open, onClose, onSelect, onRequestGPS, currentAddress, currentCoords }) {
   const { addresses, addAddress, removeAddress } = useSavedAddresses();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -14,6 +15,7 @@ export default function LocationPicker({ open, onClose, onSelect, onRequestGPS, 
   const [labelInput, setLabelInput] = useState('');
   const [savingLabel, setSavingLabel] = useState(false);
   const [gpsLoading, setGpsLoading] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const timerRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -24,6 +26,7 @@ export default function LocationPicker({ open, onClose, onSelect, onRequestGPS, 
       setSelected(null);
       setSavingLabel(false);
       setLabelInput('');
+      setShowMap(false);
       setTimeout(() => inputRef.current?.focus(), 350);
     }
   }, [open]);
@@ -77,6 +80,7 @@ export default function LocationPicker({ open, onClose, onSelect, onRequestGPS, 
   };
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <>
@@ -127,6 +131,23 @@ export default function LocationPicker({ open, onClose, onSelect, onRequestGPS, 
                   <p className="text-[14px] font-bold text-gray-900">Usar mi ubicación actual</p>
                   <p className="text-[12px] text-gray-500">Detectar automáticamente con GPS</p>
                 </div>
+              </button>
+
+              {/* Map picker button */}
+              <button onClick={() => setShowMap(true)}
+                className="w-full flex items-center gap-3.5 p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl hover:bg-gray-100 active:scale-[0.98] transition-all">
+                <div className="w-10 h-10 rounded-xl bg-gray-700 flex items-center justify-center flex-shrink-0 shadow-md shadow-black/10">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <p className="text-[14px] font-bold text-gray-900">Seleccionar en el mapa</p>
+                  <p className="text-[12px] text-gray-500">Mueve el mapa para ajustar con precisión</p>
+                </div>
+                <svg className="w-4 h-4 text-gray-400 ml-auto flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               </button>
 
               {/* Saved addresses */}
@@ -263,5 +284,18 @@ export default function LocationPicker({ open, onClose, onSelect, onRequestGPS, 
         </>
       )}
     </AnimatePresence>
+
+    {/* Map picker — full-screen slide-in layer */}
+    <MapPicker
+      open={showMap}
+      onClose={() => setShowMap(false)}
+      initialCoords={currentCoords}
+      onSelect={(coords, addr, cityName) => {
+        setSelected({ address: addr, coords, city: cityName });
+        setQuery(addr);
+        setShowMap(false);
+      }}
+    />
+    </>
   );
 }

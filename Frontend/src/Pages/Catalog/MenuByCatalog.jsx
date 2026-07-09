@@ -766,6 +766,7 @@ const MenuByCatalog = () => {
           setShowLocationPicker(false);
         }}
         currentAddress={location.address}
+        currentCoords={location.coordinates}
       />
     </div>
   );
