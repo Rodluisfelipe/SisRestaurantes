@@ -17,6 +17,7 @@ export const CURRENCIES = {
   GTQ: { label: 'Quetzal guatemalteco', symbol: 'Q', locale: 'es-GT', decimals: 2, flag: '🇬🇹' },
   CRC: { label: 'Colón costarricense', symbol: '₡', locale: 'es-CR', decimals: 0, flag: '🇨🇷' },
   DOP: { label: 'Peso dominicano',  symbol: 'RD$', locale: 'es-DO', decimals: 2, flag: '🇩🇴' },
+  EUR: { label: 'Euro',             symbol: '€',   locale: 'es-ES', decimals: 2, flag: '🇪🇺' },
 };
 
 export const COUNTRY_CODES = [
@@ -35,7 +36,7 @@ export const COUNTRY_CODES = [
   { code: '+503', country: 'El Salvador',         flag: '🇸🇻', currency: 'USD' },
   { code: '+504', country: 'Honduras',            flag: '🇭🇳', currency: 'USD' },
   { code: '+505', country: 'Nicaragua',           flag: '🇳🇮', currency: 'USD' },
-  { code: '+1',   country: 'República Dominicana',flag: '🇩🇴', currency: 'DOP' },
+  { code: '+1-809', country: 'República Dominicana',flag: '🇩🇴', currency: 'DOP' },
   { code: '+598', country: 'Uruguay',             flag: '🇺🇾', currency: 'UYU' },
   { code: '+595', country: 'Paraguay',            flag: '🇵🇾', currency: 'PYG' },
   { code: '+591', country: 'Bolivia',             flag: '🇧🇴', currency: 'BOB' },

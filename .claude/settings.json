@@ -1,7 +1,44 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node -e \"process.env.JWT_SECRET='x'; process.env.JWT_REFRESH_SECRET='x'; require\\('./Routes/superadmin.js'\\); require\\('./Routes/crew.js'\\); console.log\\('OK'\\);\")"
+      "Bash(node -e \"process.env.JWT_SECRET='x'; process.env.JWT_REFRESH_SECRET='x'; require\\('./Routes/superadmin.js'\\); require\\('./Routes/crew.js'\\); console.log\\('OK'\\);\")",
+      "Bash(grep -v \"^[0-9]*:.*//\\\\|logger\\\\|cache\\\\|invalidate\\\\|build\")",
+      "Bash(grep -v \"//\\\\|#\")",
+      "Bash(node --check Models/Brand.js)",
+      "Bash(node --check config/jwt.js)",
+      "Bash(node --check Routes/auth.js)",
+      "Bash(node --check Routes/products.js)",
+      "Bash(node --check Routes/categories.js)",
+      "Bash(node --check server.js)",
+      "Bash(node --check Models/Admin.js)",
+      "Bash(node --check Models/BusinessConfig.js)",
+      "Bash(node --check Routes/branches.js)",
+      "Bash(node --check Routes/brands.js)",
+      "Bash(grep -v \"superadmin\\\\|brand_admin\\\\|//\\\\|roles\\\\.\")",
+      "Bash(grep -v \"brand_admin\\\\|superadmin\\\\|//\\\\|staff\\\\|manager\")",
+      "Bash(grep -v \"brand_admin\\\\|superadmin\\\\|//\\\\|staff\\\\b\\\\|manager\\\\|isStaff\")",
+      "Bash(grep -v \"//\\\\|import\")",
+      "Bash(grep -A2 \"// Cargar sucursales\")",
+      "Bash(grep -v \"//\\\\|test\\\\|spec\")",
+      "Bash(grep -v \"brand_admin\\\\|superadmin\\\\|manager\\\\|staff\\\\|//\")",
+      "Bash(grep -v \"//\")",
+      "Bash(grep -v \"staff\\\\|superadmin\\\\|brand_admin\\\\|//\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(node --input-type=module --experimental-vm-modules)",
+      "Bash(grep -rn \"toLocaleString\\\\|formatPrice\\\\|format.*amount\\\\|\\\\$.*total\\\\|precio\\\\|price\\\\|Price\" \"c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/src/Components/CartSummary.jsx\" \"c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/src/Components/CartBar.jsx\")",
+      "Bash(grep -n \"toLocaleString\\\\|formatPrice\\\\|\\\\\\\\\\\\${\\\\|currency.*COP\" \"c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/src/Components/CartSummary.jsx\")",
+      "Read(//c/Users/PIPE/.claude/projects/c--Users-PIPE-Downloads-SisRestaurantes-SisRestaurantes/177f1115-48f2-4688-876a-72cde7d8f176/tool-results/**)",
+      "Skill(code-review)",
+      "Skill(code-review:*)",
+      "Read(//c/Users/PIPE/.claude/**)",
+      "Read(//c/Users/PIPE/**)",
+      "Skill(artifact-design)",
+      "Skill(artifact-design:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\PIPE\\.claude\\projects\\c--Users-PIPE-Downloads-SisRestaurantes-SisRestaurantes\\memory"
     ]
   }
 }

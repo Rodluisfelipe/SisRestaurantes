@@ -12,7 +12,7 @@ import {
   FaExclamationCircle, FaFileAlt, FaBell, FaCalendarAlt, FaEnvelope,
   FaChevronDown
 } from 'react-icons/fa';
-import { COUNTRY_CODES, CURRENCIES, getCurrencyForDialCode } from '../utils/currency';
+import { COUNTRY_CODES, CURRENCIES, getCurrencyForDialCode, formatCurrency } from '../utils/currency';
 
 const BusinessSettings = () => {
   const initialSettings = {
@@ -511,7 +511,7 @@ const BusinessSettings = () => {
                   <FaChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 pointer-events-none" />
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
-                  Los precios se mostrarán como: {CURRENCIES[settings.currency]?.symbol || '$'}1.000
+                  Los precios se mostrarán como: {formatCurrency(1000, settings.currency || 'COP')}
                 </p>
               </div>
 

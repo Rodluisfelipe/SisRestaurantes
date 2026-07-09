@@ -1100,7 +1100,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
             {/* Total row — prominent */}
             <div className="flex justify-between items-center mb-3">
-              <span className="text-sm font-semibold text-slate-500">Total</span>
+              <span className="text-sm font-semibold text-slate-500">{deliveryZoneInfo?.noZonesConfigured ? 'Subtotal' : 'Total'}</span>
               <div className="flex items-baseline gap-2">
                 {(appliedCoupon || loyaltyDiscountAmount > 0 || loyaltyReward?.reward?.type === 'free_delivery') && (
                   <span className="text-xs line-through text-slate-300">{formatCurrency((deliveryFee || 0) + totalAmount, businessConfig?.currency)}</span>
@@ -1194,7 +1194,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   if (isGift && !giftRecipientName.trim()) { alert('Ingresa el nombre del destinatario del regalo'); return; }
                   submitWith({
                     orderType: 'delivery', address: trimmedAddress, tableNumber: '',
-                    deliveryFee: deliveryFee || null, deliveryZoneName: deliveryZoneInfo?.zoneName || null,
+                    deliveryFee: deliveryFee ?? null, deliveryZoneName: deliveryZoneInfo?.zoneName || null,
                     deliveryZoneInfo: deliveryZoneInfo || null, deliveryCalculated: true, deliveryNeedsConfirmation: !deliveryFee,
                     ...(isGift && {
                       isGift: true,

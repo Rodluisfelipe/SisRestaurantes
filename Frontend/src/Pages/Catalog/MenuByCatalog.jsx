@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import RestaurantCard, { useFavorites } from '../../Components/Catalog/RestaurantCard';
 import BannerCarousel from '../../Components/Catalog/BannerCarousel';
+import LocationPicker from '../../Components/Catalog/LocationPicker';
 import { useUserLocation } from '../../hooks/useUserLocation';
 
 // ─── Skeleton ──────────────────────────────────────
@@ -25,13 +26,18 @@ const CardSkeleton = () => (
 );
 
 // ─── Horizontal Scroll Section ─────────────────────
-const HorizontalSection = ({ title, children }) => (
+const HorizontalSection = ({ title, children, onSeeAll }) => (
   <div className="mb-6">
     <div className="flex items-center justify-between mb-3 px-0.5">
       <h3 className="text-[16px] font-bold text-gray-900">{title}</h3>
-      <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-      </svg>
+      {onSeeAll && (
+        <button onClick={onSeeAll} className="flex items-center gap-1 text-[12px] font-semibold text-red-500 hover:text-red-600 active:scale-95 transition-all">
+          Ver todos
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      )}
     </div>
     <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">{children}</div>
   </div>
@@ -40,6 +46,7 @@ const HorizontalSection = ({ title, children }) => (
 const ITEMS_PER_PAGE = 12;
 
 const MenuByCatalog = () => {
+  const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState([]);
   const [filteredRestaurants, setFilteredRestaurants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,26 +65,30 @@ const MenuByCatalog = () => {
   const [searchSuggestions, setSearchSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [headerCompact, setHeaderCompact] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
   const searchTimeoutRef = useRef(null);
   const searchInputRef = useRef(null);
   const loadMoreRef = useRef(null);
   const { isFav } = useFavorites();
 
   // Hook de ubicación dinámica
-  const { location, updateLocation, hasLocation, isLoading: locationLoading } = useUserLocation();
+  const { location, updateLocation, setManualLocation, hasLocation, isLoading: locationLoading } = useUserLocation();
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
-  // Cargar restaurantes solo si tenemos coordenadas reales (cobertura)
+  // Usar primitivos como dependencias para evitar comparación por referencia de objeto
+  const coordLat = location.coordinates?.lat;
+  const coordLng = location.coordinates?.lng;
+
   useEffect(() => {
-    if (!locationLoading && location.coordinates) {
+    if (!locationLoading && coordLat && coordLng) {
       loadRestaurants();
       loadFeaturedSections();
-    } else if (!locationLoading && !location.coordinates) {
-      // Sin ubicación → no cargar restaurantes
+    } else if (!locationLoading && !coordLat) {
       setRestaurants([]);
       setCategories([]);
       setLoading(false);
     }
-  }, [location.coordinates, locationLoading]);
+  }, [coordLat, coordLng, locationLoading]);
 
   useEffect(() => {
     filterAndSortRestaurants();
@@ -212,8 +223,10 @@ const MenuByCatalog = () => {
       
       setCategories(finalCategories);
       setRestaurants(data);
+      setFetchError(false);
     } catch (error) {
       console.error('Error loading restaurants:', error);
+      setFetchError(true);
       setRestaurants([]);
       setCategories([]);
     } finally {
@@ -241,12 +254,11 @@ const MenuByCatalog = () => {
       filtered = filtered.filter(r => r.isCurrentlyOpen ?? r.isOpen);
     }
 
-    // Filtrar por "Envío gratis"
+    // Filtrar por "Envío gratis" — solo negocios con basePrice explícitamente en 0
     if (onlyFreeDelivery) {
       filtered = filtered.filter(r => {
         const pricing = r.deliveryZone?.pricing;
-        if (!pricing) return false;
-        return (pricing.basePrice === 0 || !pricing.basePrice);
+        return pricing != null && pricing.basePrice === 0;
       });
     }
 
@@ -401,14 +413,21 @@ const MenuByCatalog = () => {
               </div>
 
               {/* Center: Location */}
-              <button onClick={updateLocation} className="flex items-center gap-1.5 min-w-0 flex-1 justify-center">
+              <button onClick={() => setShowLocationPicker(true)} className="flex items-center gap-1.5 min-w-0 flex-1 justify-center group">
                 <svg className={`w-3.5 h-3.5 flex-shrink-0 transition-colors ${headerCompact ? 'text-red-500' : 'text-white/80'}`} fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
                 </svg>
-                <span className={`text-[13px] font-semibold truncate max-w-[200px] transition-colors ${headerCompact ? 'text-gray-900' : 'text-white'}`}>
-                  {locationLoading ? 'Ubicando...' : (location.address || 'Seleccionar dirección')}
-                </span>
-                <svg className={`w-3 h-3 flex-shrink-0 transition-colors ${headerCompact ? 'text-gray-400' : 'text-white/50'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                <div className="flex flex-col items-start min-w-0">
+                  {location.city && !locationLoading && (
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide leading-none mb-0.5 transition-colors ${headerCompact ? 'text-gray-400' : 'text-white/60'}`}>
+                      Entregando en
+                    </span>
+                  )}
+                  <span className={`text-[13px] font-bold truncate max-w-[180px] transition-colors leading-none ${headerCompact ? 'text-gray-900' : 'text-white'}`}>
+                    {locationLoading ? 'Ubicando...' : (location.city || location.address || 'Seleccionar dirección')}
+                  </span>
+                </div>
+                <svg className={`w-3.5 h-3.5 flex-shrink-0 transition-all group-hover:translate-y-0.5 ${headerCompact ? 'text-gray-400' : 'text-white/60'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -520,19 +539,19 @@ const MenuByCatalog = () => {
         )}
 
         {location.coordinates && featuredSections?.trending?.data?.length > 0 && (
-          <HorizontalSection title="Populares 🔥">
+          <HorizontalSection title="Populares 🔥" onSeeAll={() => { setSortBy('popularity'); document.getElementById('restaurants-list')?.scrollIntoView({ behavior: 'smooth' }); }}>
             {featuredSections.trending.data.map(r => <RestaurantCard key={`t-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
         {location.coordinates && !loading && restaurants.filter(r => r.isNew).length > 0 && (
-          <HorizontalSection title="Nuevos en MenuBy ✨">
+          <HorizontalSection title="Nuevos en MenuBy ✨" onSeeAll={() => document.getElementById('restaurants-list')?.scrollIntoView({ behavior: 'smooth' })}>
             {restaurants.filter(r => r.isNew).map(r => <RestaurantCard key={`n-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
 
         {location.coordinates && featuredSections?.cheapEats?.data?.length > 0 && (
-          <HorizontalSection title="Los más económicos 💰">
+          <HorizontalSection title="Los más económicos 💰" onSeeAll={() => { setSortBy('min_price'); document.getElementById('restaurants-list')?.scrollIntoView({ behavior: 'smooth' }); }}>
             {featuredSections.cheapEats.data.map(r => <RestaurantCard key={`c-${r._id}`} restaurant={r} userLocation={location.coordinates} variant="compact" />)}
           </HorizontalSection>
         )}
@@ -552,7 +571,7 @@ const MenuByCatalog = () => {
 
         {/* Divider + title */}
         {location.coordinates && (
-          <div className="flex items-center justify-between mt-2 mb-4">
+          <div id="restaurants-list" className="flex items-center justify-between mt-2 mb-4">
             <h2 className="text-[18px] font-bold text-gray-900">Restaurantes</h2>
             <span className="text-[12px] font-medium text-red-400 bg-red-50 px-2.5 py-1 rounded-full">{filteredRestaurants.length} disponibles</span>
           </div>
@@ -649,34 +668,67 @@ const MenuByCatalog = () => {
           </div>
         )}
 
+        {/* Error state */}
+        {location.coordinates && fetchError && !loading && (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-9 h-9 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </div>
+            <p className="text-[16px] font-bold text-gray-900 mb-1">Error al cargar restaurantes</p>
+            <p className="text-[13px] text-gray-500 mb-6 max-w-[260px] mx-auto">Verifica tu conexión a internet e inténtalo de nuevo.</p>
+            <button onClick={loadRestaurants}
+              className="px-6 py-2.5 bg-red-500 text-white text-[14px] font-bold rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-95 transition-all">
+              Reintentar
+            </button>
+          </div>
+        )}
+
         {/* Main list */}
         {location.coordinates && loading ? (
           <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)}
           </div>
-        ) : location.coordinates && filteredRestaurants.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">{searchTerm ? '🔍' : '📍'}</span>
+        ) : location.coordinates && !fetchError && filteredRestaurants.length === 0 ? (() => {
+          const isFiltered = onlyOpen || onlyFreeDelivery || selectedCategory !== 'todo' || !!searchTerm;
+          const emptyTitle = searchTerm
+            ? `Sin resultados para "${searchTerm}"`
+            : onlyOpen
+            ? 'No hay abiertos ahora'
+            : onlyFreeDelivery
+            ? 'Sin envío gratis disponible'
+            : selectedCategory !== 'todo'
+            ? `Sin restaurantes en "${getCategoryName(selectedCategory)}"`
+            : 'Sin cobertura en tu zona';
+          const emptyDesc = searchTerm
+            ? 'Intenta con otro nombre o revisa la ortografía.'
+            : onlyOpen || onlyFreeDelivery || selectedCategory !== 'todo'
+            ? 'Prueba quitando algún filtro para ver más opciones.'
+            : 'No hay restaurantes con cobertura en tu ubicación actual. Prueba otra dirección.';
+          return (
+            <div className="text-center py-20">
+              <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl">{searchTerm ? '🔍' : isFiltered ? '🔎' : '📍'}</span>
+              </div>
+              <p className="text-[16px] font-bold text-gray-900 mb-1">{emptyTitle}</p>
+              <p className="text-[13px] text-gray-500 mb-6 max-w-[260px] mx-auto">{emptyDesc}</p>
+              {isFiltered && (
+                <button onClick={() => { setSearchTerm(''); setSelectedCategory('todo'); setOnlyOpen(false); setOnlyFreeDelivery(false); }}
+                  className="px-6 py-2.5 bg-white text-gray-700 text-[14px] font-bold rounded-2xl shadow-sm border border-gray-200 hover:bg-gray-50 active:scale-95 transition-all mr-2">
+                  Limpiar filtros
+                </button>
+              )}
+              <button onClick={updateLocation}
+                className="px-6 py-2.5 bg-red-500 text-white text-[14px] font-bold rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-95 transition-all">
+                Cambiar ubicación
+              </button>
             </div>
-            <p className="text-[16px] font-bold text-gray-900 mb-1">Sin cobertura en tu zona</p>
-            <p className="text-[13px] text-gray-500 mb-6 max-w-[260px] mx-auto">
-              {searchTerm ? `No encontramos resultados para "${searchTerm}"` : 'No hay restaurantes con cobertura en tu ubicación actual. Prueba otra dirección.'}
-            </p>
-            <button onClick={() => { setSearchTerm(''); setSelectedCategory('todo'); setOnlyOpen(false); setOnlyFreeDelivery(false); }}
-              className="px-6 py-2.5 bg-white text-gray-700 text-[14px] font-bold rounded-2xl shadow-sm border border-gray-200 hover:bg-gray-50 active:scale-95 transition-all mr-2">
-              Limpiar filtros
-            </button>
-            <button onClick={updateLocation}
-              className="px-6 py-2.5 bg-red-500 text-white text-[14px] font-bold rounded-2xl shadow-lg shadow-red-500/25 hover:bg-red-600 active:scale-95 transition-all">
-              Cambiar ubicación
-            </button>
-          </div>
-        ) : (
+          );
+        })() : (
           <div className="space-y-4">
-            {visibleRestaurants.map((restaurant, i) => (
-              <motion.div key={restaurant._id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(i * 0.04, 0.2), duration: 0.3 }}>
+            {visibleRestaurants.map((restaurant) => (
+              <motion.div key={restaurant._id} layout transition={{ duration: 0.2 }}>
                 <RestaurantCard restaurant={restaurant} userLocation={location.coordinates} />
               </motion.div>
             ))}
@@ -714,6 +766,20 @@ const MenuByCatalog = () => {
           <span className="text-[12px] text-gray-400">{location.city || 'Colombia'}</span>
         </div>
       </footer>
+
+      {/* Location Picker Sheet */}
+      <LocationPicker
+        open={showLocationPicker}
+        onClose={() => setShowLocationPicker(false)}
+        onSelect={(coords, address, city) => {
+          setManualLocation(coords, address, city);
+        }}
+        onRequestGPS={() => {
+          updateLocation();
+          setShowLocationPicker(false);
+        }}
+        currentAddress={location.address}
+      />
     </div>
   );
 };

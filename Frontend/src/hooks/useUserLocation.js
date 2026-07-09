@@ -24,26 +24,16 @@ export const useUserLocation = () => {
         const now = Date.now();
         const fiveMinutes = 5 * 60 * 1000;
         
-        // Si tiene menos de 5 minutos, usar ubicación guardada
-        if (now - savedTime < fiveMinutes) {
-          // Si el cache tiene el valor genérico "Ciudad", forzar actualización
-          if (parsed.city === 'Ciudad') {
-            console.log('⚠️ Cache con ciudad genérica, actualizando...');
-            localStorage.removeItem('userLocation');
-            // Continuar para obtener nueva ubicación
-          } else {
-            console.log('💾 Cargando desde cache - Ciudad:', parsed.city, '| Dirección:', parsed.address);
-            setLocation({
-              coordinates: parsed.coordinates,
-              address: parsed.address,
-              city: parsed.city || 'tu zona', // Asegurar fallback
-              loading: false,
-              error: null
-            });
-            return;
-          }
-        } else {
-          console.log('⏰ Cache expirado, obteniendo nueva ubicación...');
+        const isValid = parsed.manual || (now - savedTime < fiveMinutes && parsed.city !== 'Ciudad');
+        if (isValid) {
+          setLocation({
+            coordinates: parsed.coordinates,
+            address: parsed.address,
+            city: parsed.city || 'tu zona',
+            loading: false,
+            error: null
+          });
+          return;
         }
       } catch (e) {
         console.log('Error parsing saved location:', e);
@@ -161,27 +151,27 @@ export const useUserLocation = () => {
   };
 
   const updateLocation = () => {
-    console.log('🔄 Actualizando ubicación...');
     localStorage.removeItem('userLocation');
     setLocation(prev => ({ ...prev, loading: true }));
     getCurrentLocation();
   };
 
+  // Set location manually (from address picker) — persists until user explicitly changes it
+  const setManualLocation = (coords, address, city) => {
+    const data = { coordinates: coords, address, city: city || 'tu zona', timestamp: Date.now(), manual: true };
+    localStorage.setItem('userLocation', JSON.stringify(data));
+    setLocation({ coordinates: coords, address, city: city || 'tu zona', loading: false, error: null });
+  };
+
   const clearLocation = () => {
-    console.log('🗑️ Limpiando ubicación...');
     localStorage.removeItem('userLocation');
-    setLocation({
-      coordinates: null,
-      address: 'Chía, Cundinamarca',
-      city: 'Chía',
-      loading: false,
-      error: null
-    });
+    setLocation({ coordinates: null, address: 'Chía, Cundinamarca', city: 'Chía', loading: false, error: null });
   };
 
   return {
     location,
     updateLocation,
+    setManualLocation,
     clearLocation,
     hasLocation: !!location.coordinates,
     isLoading: location.loading

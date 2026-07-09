@@ -91,11 +91,13 @@ const DeliveryCoverageChecker = ({ businessId, orderTotal, onCoverageResult }) =
       });
 
       const result = response.data;
-      setCoverageResult(result);
+      // When orderTotal is provided the backend wraps coverage under result.coverage;
+      // without it the fields are top-level. Normalize to a flat shape.
+      const normalized = result.coverage ? { ...result.coverage, valid: result.valid } : result;
+      setCoverageResult(normalized);
 
-      // Notificar al componente padre sobre el resultado
       if (onCoverageResult) {
-        onCoverageResult(result);
+        onCoverageResult(normalized);
       }
     } catch (error) {
       console.error('Error al verificar cobertura:', error);

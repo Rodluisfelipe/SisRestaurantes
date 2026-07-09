@@ -455,6 +455,25 @@ router.post("/", (req, res, next) => {
       finalAmount = couponResult.finalAmount;
     }
 
+    // Validate delivery fee server-side to prevent fee tampering
+    if (orderType === 'delivery' && deliveryCalculated && !deliveryNeedsConfirmation && deliveryZoneInfo?.coordinates) {
+      const { validateDeliveryForOrder } = require('../services/deliveryZoneService');
+      const coords = deliveryZoneInfo.coordinates;
+      const point = { type: 'Point', coordinates: [parseFloat(coords.lon ?? coords.lng), parseFloat(coords.lat)] };
+      try {
+        const validation = await validateDeliveryForOrder(businessObjectId, point, numericTotalAmount);
+        if (validation.valid && validation.coverage?.delivery?.price !== undefined) {
+          const expectedFee = validation.coverage.delivery.price;
+          const claimedFee = parseFloat(deliveryFee) || 0;
+          if (claimedFee < expectedFee) {
+            return res.status(400).json({ message: 'Tarifa de envío inválida. Por favor recarga la página e intenta de nuevo.' });
+          }
+        }
+      } catch (err) {
+        logger.warn('No se pudo re-validar tarifa de envío, continuando', { err: err.message });
+      }
+    }
+
     // Determine initial status based on ordering channel
     const isInApp = orderChannel === 'inapp';
     const isPOS = orderChannel === 'pos';
@@ -494,7 +513,7 @@ router.post("/", (req, res, next) => {
       } : undefined,
       statusHistory: [{ status: initialStatus, timestamp: new Date(), note: 'Pedido creado' }],
       // Datos de zona de entrega
-      deliveryFee: deliveryFee || null,
+      deliveryFee: deliveryFee ?? null,
       deliveryZoneName: deliveryZoneName || null,
       deliveryZoneInfo: deliveryZoneInfo || null,
       deliveryCalculated: deliveryCalculated || false,

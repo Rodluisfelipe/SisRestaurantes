@@ -11,15 +11,50 @@ const { ORDER_STATUS } = require('../utils/constants');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
+const authSuperAdmin = require('../middleware/authSuperAdmin');
 
 // Rate limiter for public business listing/search endpoints (heavy aggregation)
 const businessesLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 60,
+  max: 300,
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, error: 'Too many requests, try again later' }
 });
+
+/**
+ * Compute whether a business is currently open based on its hours schedule.
+ * Needed because .lean() strips Mongoose virtuals from documents.
+ */
+function computeIsCurrentlyOpen(business) {
+  if (!business?.isOpen) return false;
+  if (!business.businessHours) return business.isOpen;
+  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const todayHours = business.businessHours[dayNames[new Date().getDay()]];
+  if (!todayHours?.isOpen) return false;
+  if (!todayHours.open || !todayHours.close) return business.isOpen;
+  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
+  const now = new Date().getHours() * 60 + new Date().getMinutes();
+  const open = toMin(todayHours.open);
+  const close = toMin(todayHours.close);
+  return close < open ? (now >= open || now <= close) : (now >= open && now <= close);
+}
+
+// Simple in-memory cache for getBatchBusinessInfo (5-min TTL)
+const _batchCache = new Map();
+const BATCH_CACHE_TTL = 5 * 60 * 1000;
+function _getCached(key) {
+  const e = _batchCache.get(key);
+  if (!e || Date.now() - e.ts > BATCH_CACHE_TTL) { _batchCache.delete(key); return null; }
+  return e.data;
+}
+function _setCached(key, data) {
+  _batchCache.set(key, { data, ts: Date.now() });
+  if (_batchCache.size > 200) {
+    const oldest = [..._batchCache.entries()].sort((a, b) => a[1].ts - b[1].ts)[0];
+    _batchCache.delete(oldest[0]);
+  }
+}
 
 // Palabras clave para categorías genéricas del catálogo (estilo Rappi/DiDi)
 const categoryKeywords = {
@@ -41,6 +76,9 @@ const categoryKeywords = {
 const getBatchBusinessInfo = async (businessIds) => {
   try {
     if (!businessIds.length) return {};
+    const cacheKey = businessIds.map(id => id.toString()).sort().join(',');
+    const cached = _getCached(cacheKey);
+    if (cached) return cached;
 
     // Queries en paralelo: productos + órdenes recientes (30 días)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -130,6 +168,7 @@ const getBatchBusinessInfo = async (businessIds) => {
       }
     }
 
+    _setCached(cacheKey, byBusiness);
     return byBusiness;
   } catch (error) {
     logger.error('Error in getBatchBusinessInfo:', error);
@@ -212,25 +251,21 @@ router.get('/', businessesLimiter, async (req, res) => {
       businessesToShow = businessesWithCoverage.filter(b => b !== null);
     }
 
-    // Filtro "abierto ahora" — usa horarios reales
+    // Filtro "abierto ahora" — usa horarios reales calculados desde businessHours
     if (open === 'true') {
-      businessesToShow = businessesToShow.filter(b => {
-        if (!b.isOpen) return false;
-        if (typeof b.isCurrentlyOpen === 'function') return b.isCurrentlyOpen();
-        return b.isOpen;
-      });
+      businessesToShow = businessesToShow.filter(b => computeIsCurrentlyOpen(b));
     }
 
-    // Batch: obtener categorías + productCount en UN solo query (elimina N+1)
-    const businessIds = businessesToShow.map(b => b._id);
-    const batchInfo = await getBatchBusinessInfo(businessIds);
-
-    // Paginación
+    // Paginar PRIMERO, luego enriquecer solo la página actual (no todos los negocios)
     const total = businessesToShow.length;
     const paginatedBusinesses = businessesToShow.slice(
       parseInt(offset),
       parseInt(offset) + parseInt(limit)
     );
+
+    // Batch: obtener categorías + productCount solo para los negocios de esta página
+    const businessIds = paginatedBusinesses.map(b => b._id);
+    const batchInfo = await getBatchBusinessInfo(businessIds);
 
     // Formatear respuesta
     const now = new Date();
@@ -270,7 +305,7 @@ router.get('/', businessesLimiter, async (req, res) => {
         createdAt: business.createdAt,
         updatedAt: business.updatedAt,
         isOpen: business.isOpen,
-        isCurrentlyOpen: typeof business.isCurrentlyOpen === 'function' ? business.isCurrentlyOpen() : business.isOpen,
+        isCurrentlyOpen: computeIsCurrentlyOpen(business),
         businessHours: business.businessHours,
         todayHours,
         productCount: info.productCount,
@@ -281,7 +316,7 @@ router.get('/', businessesLimiter, async (req, res) => {
         orderCount: info.orderCount || 0,
         categories: info.categories,
         reviewStats: business.reviewStats || { averageRating: 0, totalReviews: 0 },
-        deliveryZone: business._doc?.deliveryZone || business.deliveryZone || null
+        deliveryZone: business.deliveryZone || null
       };
     });
 
@@ -336,6 +371,7 @@ router.get('/featured', businessesLimiter, async (req, res) => {
         coverImage: b.coverImage,
         description: b.description,
         isOpen: b.isOpen,
+        isCurrentlyOpen: computeIsCurrentlyOpen(b),
         todayHours: b.businessHours?.[todayKey] || null,
         coordinates,
         isNew: b.createdAt >= thirtyDaysAgo,
@@ -349,16 +385,24 @@ router.get('/featured', businessesLimiter, async (req, res) => {
       };
     });
 
+    // Threshold relativo para cheapEats: negocios cuyo precio mínimo está por debajo
+    // del promedio — funciona independientemente de la moneda del negocio.
+    const validPrices = allFormatted.filter(b => b.minPrice > 0).map(b => b.minPrice);
+    const avgPrice = validPrices.length > 0 ? validPrices.reduce((a, b) => a + b, 0) / validPrices.length : 0;
+    const cheapThreshold = avgPrice * 0.75;
+
     // Secciones
     const trending = [...allFormatted]
       .sort((a, b) => b.popularityScore - a.popularityScore)
       .filter(b => b.popularityScore > 0)
       .slice(0, 8);
 
-    const cheapEats = [...allFormatted]
-      .filter(b => b.minPrice > 0 && b.minPrice <= 15000)
-      .sort((a, b) => a.minPrice - b.minPrice)
-      .slice(0, 8);
+    const cheapEats = cheapThreshold > 0
+      ? [...allFormatted]
+          .filter(b => b.minPrice > 0 && b.minPrice <= cheapThreshold)
+          .sort((a, b) => a.minPrice - b.minPrice)
+          .slice(0, 8)
+      : [];
 
     const newOnes = allFormatted.filter(b => b.isNew).slice(0, 8);
 
@@ -487,12 +531,15 @@ router.get('/search', businessesLimiter, async (req, res) => {
       ];
     }
 
-    const businesses = await BusinessConfig.find(filters)
-      .select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt')
-      .limit(parseInt(limit))
-      .skip(parseInt(offset))
-      .sort({ createdAt: -1 })
-      .lean();
+    const [businesses, total] = await Promise.all([
+      BusinessConfig.find(filters)
+        .select('businessName slug logo coverImage description theme isOpen address whatsappNumber socialMedia department city location businessHours reviewStats createdAt')
+        .limit(parseInt(limit))
+        .skip(parseInt(offset))
+        .sort({ createdAt: -1 })
+        .lean(),
+      BusinessConfig.countDocuments(filters)
+    ]);
 
     const businessIds = businesses.map(b => b._id);
     const batchInfo = await getBatchBusinessInfo(businessIds);
@@ -520,15 +567,13 @@ router.get('/search', businessesLimiter, async (req, res) => {
         coordinates,
         createdAt: business.createdAt,
         isOpen: business.isOpen,
-        isCurrentlyOpen: typeof business.isCurrentlyOpen === 'function' ? business.isCurrentlyOpen() : business.isOpen,
+        isCurrentlyOpen: computeIsCurrentlyOpen(business),
         businessHours: business.businessHours,
         productCount: info.productCount,
         categories: info.categories,
         reviewStats: business.reviewStats || { averageRating: 0, totalReviews: 0 }
       };
     });
-
-    const total = await BusinessConfig.countDocuments(filters);
 
     res.json({
       success: true,
@@ -545,22 +590,20 @@ router.get('/search', businessesLimiter, async (req, res) => {
 
 /**
  * GET /api/businesses/debug/all
- * Solo disponible en desarrollo
+ * Requiere autenticación de superadmin
  */
-if (process.env.NODE_ENV !== 'production') {
-  router.get('/debug/all', async (req, res) => {
-    try {
-      const allBusinesses = await BusinessConfig.find({});
-      const businessesInfo = allBusinesses.map(b => ({
-        _id: b._id, businessName: b.businessName, slug: b.slug, isActive: b.isActive, createdAt: b.createdAt
-      }));
-      res.json({ success: true, total: allBusinesses.length, businesses: businessesInfo });
-    } catch (error) {
-      logger.error('GET /api/businesses/debug/all - Error', error, req);
-      res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
-    }
-  });
-}
+router.get('/debug/all', authSuperAdmin, async (req, res) => {
+  try {
+    const allBusinesses = await BusinessConfig.find({});
+    const businessesInfo = allBusinesses.map(b => ({
+      _id: b._id, businessName: b.businessName, slug: b.slug, isActive: b.isActive, createdAt: b.createdAt
+    }));
+    res.json({ success: true, total: allBusinesses.length, businesses: businessesInfo });
+  } catch (error) {
+    logger.error('GET /api/businesses/debug/all - Error', error, req);
+    res.status(500).json(formatHttpError(req, 'Error interno del servidor', 500));
+  }
+});
 
 /**
  * GET /api/businesses/:id

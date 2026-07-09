@@ -79,6 +79,13 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
     }
   }, [address]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // When zones finish loading and there are none, auto-confirm with TBD fee
+  useEffect(() => {
+    if (!loading && !error && zones.length === 0 && onZoneSelect) {
+      onZoneSelect({ fee: 0, zoneInfo: { zoneName: 'Por definir con el negocio', noZonesConfigured: true } });
+    }
+  }, [loading, error, zones.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const attemptGeocodeAddress = async (addr) => {
     if (!addr || addr.length < 5) return;
     setGeocoding(true);
@@ -93,6 +100,10 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
           businessId, lat, lon, orderTotal
         });
         
+        if (covRes.data?.noZonesConfigured) {
+          onZoneSelect({ fee: 0, zoneInfo: { zoneName: 'Por definir con el negocio', noZonesConfigured: true } });
+          return;
+        }
         const isValid = covRes.data?.valid && covRes.data?.coverage?.covered;
         if (isValid) {
           const { delivery, zone } = covRes.data.coverage;
@@ -148,8 +159,6 @@ function DeliveryZoneSelector({ businessId, address, cart, theme, onZoneSelect, 
 
   /* ── No zones configured — allow order, fee TBD ── */
   if (!error && zones.length === 0) {
-    const noZoneInfo = { zoneName: 'Por definir con el negocio', noZonesConfigured: true };
-    if (onZoneSelect) onZoneSelect({ fee: 0, zoneInfo: noZoneInfo });
     return (
       <div className={compact ? "p-3 bg-amber-50/80 border border-amber-200/60 rounded-2xl" : "mt-3 p-4 bg-amber-50/80 border border-amber-200/60 rounded-2xl"}>
         <div className="flex items-center gap-2.5">
