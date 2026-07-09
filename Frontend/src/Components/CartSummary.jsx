@@ -569,7 +569,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
         {/* Cart Items - Scrollable Content */}
         <div ref={scrollContainerRef} className="overflow-y-auto overscroll-contain px-4 sm:px-6 py-2 min-h-0 shrink" style={{ WebkitOverflowScrolling: 'touch' }}>
-          {cart.map((item, itemIndex) => (
+          {step === 1 && cart.map((item, itemIndex) => (
             <div key={item.uniqueId || item._id} className={`py-3 ${itemIndex < cart.length - 1 ? 'border-b border-slate-100' : ''}`}>
               <div className="flex items-start gap-3">
                 {/* Product image */}
@@ -841,7 +841,86 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 </div>
               )}
 
-              {/* ── Selector de método de pago (antes de datos de entrega) ── */}
+              {/* ── Dirección de entrega ── */}
+              {orderType === 'delivery' && !initialOrderTypeSelected && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400">{CI.mapPin('w-3.5 h-3.5')}</span>
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Dirección de entrega</p>
+                  </div>
+                  <input ref={deliveryAddressRef} type="hidden" value={deliverySelectedLocation?.address || ''} readOnly />
+                  {!deliverySelectedLocation ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowLocationPicker(true)}
+                      className="w-full flex items-center gap-3 p-3.5 border-2 border-dashed border-slate-200 rounded-2xl hover:border-red-300 hover:bg-red-50 transition-all group active:scale-[0.99]"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-red-100 flex items-center justify-center flex-shrink-0 transition-colors">
+                        {CI.mapPin('w-5 h-5 text-slate-400 group-hover:text-red-500')}
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-[13px] font-bold text-slate-700 group-hover:text-red-600 transition-colors">Seleccionar dirección</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Escribe y ubica tu dirección en el mapa</p>
+                      </div>
+                      <svg className="w-4 h-4 text-slate-300 group-hover:text-red-400 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
+                      <div className="w-8 h-8 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-semibold text-green-800 leading-snug">{deliverySelectedLocation.address}</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setDeliverySelectedLocation(null); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); setShowLocationPicker(true); }}
+                        className="text-[11px] font-bold text-green-700 hover:text-green-900 underline underline-offset-2 flex-shrink-0"
+                      >Cambiar</button>
+                    </div>
+                  )}
+                  {deliverySelectedLocation && (
+                    checkingLocation ? (
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        <span className="text-[12px] text-slate-500">Verificando zona de entrega...</span>
+                      </div>
+                    ) : locationChecked ? (
+                      deliveryZoneInfo?.noZonesConfigured ? (
+                        <div className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-xl">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-amber-600">{CI.check('w-3.5 h-3.5')}</span>
+                            <span className="text-[11px] text-amber-800 font-medium">Envío por definir con el negocio</span>
+                          </div>
+                          <span className="text-xs font-bold text-amber-700">A convenir</span>
+                        </div>
+                      ) : deliveryFee !== null && deliveryZoneInfo ? (
+                        <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-xl">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-green-600">{CI.check('w-3.5 h-3.5')}</span>
+                            <span className="text-[11px] text-green-800 font-medium">{deliveryZoneInfo.zoneName}</span>
+                          </div>
+                          <span className="text-xs font-bold text-green-800">{formatCurrency(deliveryFee, businessConfig?.currency)}</span>
+                        </div>
+                      ) : (
+                        <DeliveryZoneSelector
+                          businessId={businessId}
+                          address={deliverySelectedLocation.address}
+                          cart={cart}
+                          theme={businessConfig?.theme}
+                          compact
+                          onZoneSelect={({ fee, zoneInfo }) => { setDeliveryFee(fee); setDeliveryZoneInfo(zoneInfo); }}
+                          onRetryGPS={() => { setDeliverySelectedLocation(null); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); setShowLocationPicker(true); }}
+                        />
+                      )
+                    ) : null
+                  )}
+                </div>
+              )}
+
+              {/* ── Método de pago ── */}
               {(initialOrderTypeSelected || orderType || (hasServices && bookingSlot)) && (() => {
                 const pm = businessConfig?.paymentMethods;
                 const currentMode = isInAppMode ? 'inapp' : 'whatsapp';
@@ -858,13 +937,13 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 if (methods.length === 0) return null;
                 return (
                   <div>
-                    <p className={`text-[11px] font-semibold mb-1.5 ${!selectedPaymentMethod ? 'text-red-500' : 'text-slate-500'}`}>
-                      <span className="inline-flex items-center gap-1.5">
-                        <span className="text-slate-400">{CI.card('w-3.5 h-3.5')}</span>
-                        Método de pago {!selectedPaymentMethod && <span className="text-red-400">*</span>}
-                      </span>
-                    </p>
-                    <div className={`grid gap-1.5 ${methods.length <= 2 ? 'grid-cols-2' : methods.length === 3 ? 'grid-cols-3' : 'grid-cols-4'}`}>
+                    <div className={`flex items-center gap-2 mb-2 ${!selectedPaymentMethod ? 'text-red-500' : 'text-slate-500'}`}>
+                      <span className="text-slate-400">{CI.card('w-3.5 h-3.5')}</span>
+                      <p className="text-[11px] font-bold uppercase tracking-wide">
+                        Método de pago{!selectedPaymentMethod && <span className="text-red-400 ml-1">*</span>}
+                      </p>
+                    </div>
+                    <div className="grid gap-2 grid-cols-2">
                       {methods.map(m => {
                         const isSelected = selectedPaymentMethod === m.id;
                         return (
@@ -872,17 +951,17 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                             key={m.id}
                             type="button"
                             onClick={() => setSelectedPaymentMethod(isSelected ? null : m.id)}
-                            className={`flex flex-col items-center gap-0.5 py-2 rounded-xl border-2 transition-all text-center ${
-                              !selectedPaymentMethod && !isSelected ? 'border-red-200 bg-white' : !isSelected ? 'border-slate-200 bg-white' : ''
+                            className={`flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-2xl border-2 transition-all text-center active:scale-[0.97] ${
+                              isSelected ? '' : !selectedPaymentMethod ? 'border-red-100 bg-white' : 'border-slate-100 bg-white'
                             }`}
-                            style={isSelected ? { borderColor: themeColor, backgroundColor: `${themeColor}10` } : undefined}
+                            style={isSelected ? { borderColor: themeColor, backgroundColor: `${themeColor}08` } : undefined}
                           >
                             {m.logo ? (
-                              <img src={m.logo} alt={m.label} className="w-6 h-6 object-contain rounded" />
+                              <img src={m.logo} alt="" className="w-8 h-8 object-contain rounded-lg" />
                             ) : (
-                              <span style={{ color: isSelected ? themeColor : '#94a3b8' }}>{CI[m.iconKey]('w-5 h-5')}</span>
+                              <span style={{ color: isSelected ? themeColor : '#94a3b8' }}>{CI[m.iconKey]('w-7 h-7')}</span>
                             )}
-                            <span className="text-[10px] font-semibold" style={{ color: isSelected ? themeColor : '#64748b' }}>{m.label}</span>
+                            <span className="text-[12px] font-bold" style={{ color: isSelected ? themeColor : '#475569' }}>{m.label}</span>
                           </button>
                         );
                       })}
@@ -970,17 +1049,21 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
               {/* ── Notas adicionales ── */}
               {(initialOrderTypeSelected || orderType) && (
-                <div className="mb-3">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Comentarios <span className="text-slate-300 font-normal normal-case tracking-normal">(opcional)</span></p>
+                  </div>
                   <textarea
                     value={customerNotes}
                     onChange={(e) => setCustomerNotes(e.target.value.slice(0, 200))}
-                    placeholder="¿Algún comentario? Ej: sin cebolla, alergias..."
+                    placeholder="Ej: sin cebolla, alérgico al maní, tocar timbre..."
                     maxLength={200}
                     rows={2}
                     className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-transparent resize-none transition-all"
                   />
                   {customerNotes.length > 0 && (
-                    <p className="text-[10px] text-slate-400 text-right mt-0.5">{customerNotes.length}/200</p>
+                    <p className="text-[10px] text-slate-400 text-right">{customerNotes.length}/200</p>
                   )}
                 </div>
               )}
@@ -1008,101 +1091,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 <div className="flex items-center gap-1.5 p-2 bg-blue-50 border border-blue-200 rounded-xl">
                   <span className="text-blue-500">{CI.table('w-3.5 h-3.5')}</span>
                   <p className="text-blue-800 font-semibold text-[11px]">{isHotel ? 'Hab.' : 'Mesa'} {tableNumber} · En sitio</p>
-                </div>
-              )}
-
-              {/* ── Dirección de entrega con mapa ── */}
-              {orderType === 'delivery' && !initialOrderTypeSelected && (
-                <div className="space-y-2">
-                  {/* Hidden ref for backward compat */}
-                  <input ref={deliveryAddressRef} type="hidden" value={deliverySelectedLocation?.address || ''} readOnly />
-
-                  {!deliverySelectedLocation ? (
-                    <button
-                      type="button"
-                      onClick={() => setShowLocationPicker(true)}
-                      className="w-full flex items-center gap-3 p-3.5 border-2 border-dashed border-slate-200 rounded-2xl hover:border-red-300 hover:bg-red-50 transition-all group active:scale-[0.99]"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-red-100 flex items-center justify-center flex-shrink-0 transition-colors">
-                        {CI.mapPin('w-5 h-5 text-slate-400 group-hover:text-red-500')}
-                      </div>
-                      <div className="text-left flex-1">
-                        <p className="text-[13px] font-bold text-slate-700 group-hover:text-red-600 transition-colors">Seleccionar dirección</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Busca y confirma tu ubicación en el mapa</p>
-                      </div>
-                      <svg className="w-4 h-4 text-slate-300 group-hover:text-red-400 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <div className="flex items-start gap-3 p-3 rounded-xl bg-green-50 border border-green-200">
-                      <div className="w-9 h-9 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-sm">
-                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-semibold text-green-800 leading-snug line-clamp-2">{deliverySelectedLocation.address}</p>
-                        <p className="text-[10px] text-green-600 font-mono mt-0.5">
-                          {deliverySelectedLocation.coords.lat.toFixed(5)}, {(deliverySelectedLocation.coords.lon ?? deliverySelectedLocation.coords.lng).toFixed(5)}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => { setDeliverySelectedLocation(null); setLocationChecked(false); setDeliveryFee(null); setDeliveryZoneInfo(null); setShowLocationPicker(true); }}
-                        className="text-[11px] font-bold text-green-700 hover:text-green-900 underline underline-offset-2 flex-shrink-0 transition-colors mt-0.5"
-                      >
-                        Cambiar
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Coverage result (shown after location selected) */}
-                  {deliverySelectedLocation && (
-                    checkingLocation ? (
-                      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl">
-                        <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                        <span className="text-[12px] text-slate-500">Verificando zona de entrega...</span>
-                      </div>
-                    ) : locationChecked ? (
-                      deliveryZoneInfo?.noZonesConfigured ? (
-                        <div className="flex items-center justify-between p-2 bg-amber-50 border border-amber-200 rounded-xl">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-amber-600">{CI.check('w-3.5 h-3.5')}</span>
-                            <span className="text-[11px] text-amber-800 font-medium">Envío por definir con el negocio</span>
-                          </div>
-                          <span className="text-xs font-bold text-amber-700">A convenir</span>
-                        </div>
-                      ) : deliveryFee !== null && deliveryZoneInfo ? (
-                        <div className="flex items-center justify-between p-2 bg-green-50 border border-green-200 rounded-xl">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-green-600">{CI.check('w-3.5 h-3.5')}</span>
-                            <span className="text-[11px] text-green-800 font-medium">{deliveryZoneInfo.zoneName}</span>
-                          </div>
-                          <span className="text-xs font-bold text-green-800">{formatCurrency(deliveryFee, businessConfig?.currency)}</span>
-                        </div>
-                      ) : (
-                        <DeliveryZoneSelector
-                          businessId={businessId}
-                          address={deliverySelectedLocation.address}
-                          cart={cart}
-                          theme={businessConfig?.theme}
-                          compact
-                          onZoneSelect={({ fee, zoneInfo }) => {
-                            setDeliveryFee(fee);
-                            setDeliveryZoneInfo(zoneInfo);
-                          }}
-                          onRetryGPS={() => {
-                            setDeliverySelectedLocation(null);
-                            setLocationChecked(false);
-                            setDeliveryFee(null);
-                            setDeliveryZoneInfo(null);
-                            setShowLocationPicker(true);
-                          }}
-                        />
-                      )
-                    ) : null
-                  )}
                 </div>
               )}
 

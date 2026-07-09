@@ -32,6 +32,7 @@ export default function LocationPicker({ open, onClose, onSelect, currentAddress
     const finalAddress = query.trim();
     if (label) addAddress(finalAddress, coords, city, label);
     onSelect(coords, finalAddress, city);
+    setShowMap(false);
     onClose();
   };
 
