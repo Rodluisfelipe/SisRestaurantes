@@ -118,6 +118,18 @@ function OrderCard({
                   <FaHome className="text-[8px] text-slate-300 shrink-0" /> {order.address}
                 </span>
               )}
+              {order.orderType === 'delivery' && order.deliveryCoordinates?.lat && (
+                <a
+                  href={`https://maps.google.com/?q=${order.deliveryCoordinates.lat},${order.deliveryCoordinates.lon}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center gap-0.5 text-blue-500 hover:text-blue-600 font-semibold shrink-0"
+                  title="Abrir en Google Maps"
+                >
+                  <FaMapMarkerAlt className="text-[8px]" /> Maps
+                </a>
+              )}
               {order.orderType === 'delivery' && order.deliveryZoneName && (
                 <span className="flex items-center gap-1">
                   <FaMapMarkerAlt className="text-[8px] text-slate-300" /> {order.deliveryZoneName}

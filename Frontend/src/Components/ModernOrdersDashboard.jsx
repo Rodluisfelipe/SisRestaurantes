@@ -24,6 +24,7 @@ import AssignDeliveryModal from './Delivery/AssignDeliveryModal';
 import AddItemsModal from './AddItemsModal';
 import QuickOrderModal from './QuickOrderModal';
 import OrderCard from './OrderCard';
+import DeliveryLocationMap from './DeliveryLocationMap';
 import useOrdersDashboard from '../hooks/useOrdersDashboard';
 import api from '../services/api';
 
@@ -690,6 +691,16 @@ function ModernOrdersDashboard() {
                         <FaHome className="text-[9px] text-slate-300" /> {orderDetails.address}
                       </span>
                     )}
+                  {orderDetails.orderType === 'delivery' && orderDetails.deliveryCoordinates?.lat && (
+                      <a
+                        href={`https://maps.google.com/?q=${orderDetails.deliveryCoordinates.lat},${orderDetails.deliveryCoordinates.lon}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-blue-500 hover:text-blue-600 font-semibold"
+                      >
+                        <FaMapMarkerAlt className="text-[9px]" /> Ver en Maps
+                      </a>
+                    )}
                     {orderDetails.orderType === 'delivery' && orderDetails.deliveryZoneName && (
                       <span className="flex items-center gap-1">
                         <FaMapMarkerAlt className="text-[9px] text-slate-300" /> {orderDetails.deliveryZoneName}
@@ -735,6 +746,15 @@ function ModernOrdersDashboard() {
                     </div>
                   )}
                 </div>
+
+                {/* ── Delivery location map ── */}
+                {orderDetails.orderType === 'delivery' && orderDetails.deliveryCoordinates?.lat && (
+                  <DeliveryLocationMap
+                    lat={orderDetails.deliveryCoordinates.lat}
+                    lon={orderDetails.deliveryCoordinates.lon}
+                    address={orderDetails.address}
+                  />
+                )}
 
                 {/* ── Gift panel ── */}
                 {orderDetails.isGift && (
