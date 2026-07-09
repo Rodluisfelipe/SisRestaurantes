@@ -177,6 +177,43 @@ const getBatchBusinessInfo = async (businessIds) => {
 };
 
 /**
+ * Filtra una lista de negocios según cobertura de zona de entrega para un punto dado.
+ * Añade `deliveryZone` a cada negocio que cubre el punto.
+ * Devuelve solo los negocios con cobertura.
+ */
+async function filterByDeliveryCoverage(businesses, lat, lon) {
+  const userPoint = { lat: parseFloat(lat), lon: parseFloat(lon) };
+  const allBusinessIds = businesses.map(b => b._id);
+  const allZones = await DeliveryZone.find({ businessId: { $in: allBusinessIds }, isActive: true }).lean();
+
+  const zonesByBusiness = {};
+  for (const zone of allZones) {
+    const bid = zone.businessId.toString();
+    if (!zonesByBusiness[bid]) zonesByBusiness[bid] = [];
+    zonesByBusiness[bid].push(zone);
+  }
+
+  return businesses.filter(business => {
+    const zones = zonesByBusiness[business._id.toString()] || [];
+    if (zones.length === 0) return false;
+    for (const zone of zones.sort((a, b) => (b.priority || 0) - (a.priority || 0))) {
+      let inZone = false;
+      if (zone.type === 'polygon') {
+        inZone = pointInPolygon(userPoint, zone.geometry.coordinates[0]);
+      } else if (zone.type === 'circle') {
+        const center = { lat: zone.geometry.center.coordinates[1], lon: zone.geometry.center.coordinates[0] };
+        inZone = pointInRadius(userPoint, center, zone.geometry.radius);
+      }
+      if (inZone) {
+        business.deliveryZone = { name: zone.name, estimatedTime: zone.estimatedTime, pricing: zone.pricing };
+        return true;
+      }
+    }
+    return false;
+  });
+}
+
+/**
  * GET /api/businesses
  * Obtener todos los negocios activos para el catálogo
  * Query params: lat, lon, limit, offset, open (filtro abierto ahora)
@@ -195,60 +232,8 @@ router.get('/', businessesLimiter, async (req, res) => {
 
     // Si hay ubicación, filtrar por cobertura
     let businessesToShow = businesses;
-    
     if (hasLocation) {
-      const userPoint = {
-        lat: parseFloat(lat),
-        lon: parseFloat(lon)
-      };
-      
-      // Batch: fetch ALL delivery zones for all businesses in ONE query (eliminates N+1)
-      const allBusinessIds = businesses.map(b => b._id);
-      const allZones = await DeliveryZone.find({
-        businessId: { $in: allBusinessIds },
-        isActive: true
-      }).lean();
-      
-      // Group zones by businessId
-      const zonesByBusiness = {};
-      for (const zone of allZones) {
-        const bid = zone.businessId.toString();
-        if (!zonesByBusiness[bid]) zonesByBusiness[bid] = [];
-        zonesByBusiness[bid].push(zone);
-      }
-      
-      const businessesWithCoverage = businesses.map((business) => {
-        const zones = zonesByBusiness[business._id.toString()] || [];
-        if (zones.length === 0) return null;
-        
-        let matchedZone = null;
-        for (const zone of zones.sort((a, b) => b.priority - a.priority)) {
-          let isInZone = false;
-          if (zone.type === 'polygon') {
-            const polygonRing = zone.geometry.coordinates[0];
-            isInZone = pointInPolygon(userPoint, polygonRing);
-          } else if (zone.type === 'circle') {
-            const center = {
-              lat: zone.geometry.center.coordinates[1],
-              lon: zone.geometry.center.coordinates[0]
-            };
-            isInZone = pointInRadius(userPoint, center, zone.geometry.radius);
-          }
-          if (isInZone) { matchedZone = zone; break; }
-        }
-        
-        if (matchedZone) {
-          business.deliveryZone = {
-            name: matchedZone.name,
-            estimatedTime: matchedZone.estimatedTime,
-            pricing: matchedZone.pricing
-          };
-          return business;
-        }
-        return null;
-      });
-      
-      businessesToShow = businessesWithCoverage.filter(b => b !== null);
+      businessesToShow = await filterByDeliveryCoverage(businesses, lat, lon);
     }
 
     // Filtro "abierto ahora" — usa horarios reales calculados desde businessHours
@@ -343,9 +328,14 @@ router.get('/featured', businessesLimiter, async (req, res) => {
     const { lat, lon } = req.query;
     const hasLocation = lat && lon && !isNaN(lat) && !isNaN(lon);
 
-    const businesses = await BusinessConfig.find({ isActive: true })
+    const allBusinesses = await BusinessConfig.find({ isActive: true })
       .select('businessName slug logo coverImage description isOpen businessHours location department city reviewStats createdAt')
       .lean();
+
+    // Filtrar por cobertura de zona si hay ubicación
+    const businesses = hasLocation
+      ? await filterByDeliveryCoverage(allBusinesses, lat, lon)
+      : allBusinesses;
 
     const businessIds = businesses.map(b => b._id);
     const batchInfo = await getBatchBusinessInfo(businessIds);
