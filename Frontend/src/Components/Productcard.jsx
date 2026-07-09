@@ -16,7 +16,7 @@ const PCI = {
   image: (cls = 'w-8 h-8') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,
 };
 
-function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus, isHero = false }) {
+function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus, isHero = false, isViewOnly = false }) {
   const [showToppings, setShowToppings] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
@@ -55,19 +55,13 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   };
 
   const handleShowToppings = () => {
-    // Verificar si la suscripción está suspendida
-    if (subscriptionStatus === 'suspended') {
-      // Mensaje sutil - no mostrar alert, el botón ya está deshabilitado visualmente
-      return;
-    }
-    
-    // Verificar si el negocio está abierto
+    if (isViewOnly) return;
+    if (subscriptionStatus === 'suspended') return;
     if (!businessStatus?.isOpen) {
       setShowClosedModal(true);
       return;
     }
-    
-    setHasError(false); // Resetear error al abrir
+    setHasError(false);
     setShowToppings(true);
     onToppingsOpen();
     document.body.classList.add('modal-open');
@@ -87,9 +81,9 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
 
   return (
     <ProductPeekWrapper product={product} buttonColor={buttonColor} buttonTextColor={buttonTextColor}>
-      <motion.div 
+      <motion.div
         onClick={() => {
-          if (subscriptionStatus === 'suspended') return;
+          if (isViewOnly || subscriptionStatus === 'suspended') return;
           handleShowToppings();
         }}
         whileHover={!isDisabled ? { y: -3 } : {}}
@@ -157,36 +151,38 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </span>
           </div>
 
-          {/* Glassmorphism Add Button — floating on image */}
-          <motion.button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (flyToCart?.triggerFly && !hasToppings) {
-                const rect = e.currentTarget.getBoundingClientRect();
-                flyToCart.triggerFly({
-                  x: rect.left + rect.width / 2,
-                  y: rect.top + rect.height / 2,
-                  image: product.image,
-                  color: buttonColor
-                });
-              }
-              handleShowToppings();
-            }}
-            whileTap={!isDisabled ? { scale: 0.85 } : {}}
-            transition={{ type: "spring", stiffness: 400, damping: 15 }}
-            className={`absolute bottom-2 right-2.5 z-[2] w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-md transition-all duration-200 ${
-              isDisabled ? 'opacity-40 cursor-not-allowed' : 'active:shadow-xl'
-            }`}
-            style={{
-              backgroundColor: isDisabled ? 'rgba(226,232,240,0.8)' : `${buttonColor}e0`,
-              color: buttonTextColor,
-              boxShadow: isDisabled ? undefined : `0 4px 16px ${buttonColor}40`
-            }}
-            aria-label={isDisabled ? "No disponible" : "Agregar al carrito"}
-            disabled={isDisabled}
-          >
-            {PCI.plus('w-4 h-4')}
-          </motion.button>
+          {/* Glassmorphism Add Button — floating on image (oculto en modo solo-vista) */}
+          {!isViewOnly && (
+            <motion.button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (flyToCart?.triggerFly && !hasToppings) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  flyToCart.triggerFly({
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2,
+                    image: product.image,
+                    color: buttonColor
+                  });
+                }
+                handleShowToppings();
+              }}
+              whileTap={!isDisabled ? { scale: 0.85 } : {}}
+              transition={{ type: "spring", stiffness: 400, damping: 15 }}
+              className={`absolute bottom-2 right-2.5 z-[2] w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-md transition-all duration-200 ${
+                isDisabled ? 'opacity-40 cursor-not-allowed' : 'active:shadow-xl'
+              }`}
+              style={{
+                backgroundColor: isDisabled ? 'rgba(226,232,240,0.8)' : `${buttonColor}e0`,
+                color: buttonTextColor,
+                boxShadow: isDisabled ? undefined : `0 4px 16px ${buttonColor}40`
+              }}
+              aria-label={isDisabled ? "No disponible" : "Agregar al carrito"}
+              disabled={isDisabled}
+            >
+              {PCI.plus('w-4 h-4')}
+            </motion.button>
+          )}
 
           {/* "Added" feedback overlay */}
           <AnimatePresence>

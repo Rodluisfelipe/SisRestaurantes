@@ -180,11 +180,11 @@ const getCategoryIcon = (categoryName, cls = 'w-4 h-4') => {
  * A modern component for displaying products with category filtering, search capabilities,
  * and view toggle options with premium animations.
  */
-const FilterableMenu = ({ 
-  products, 
-  categories, 
-  addToCart, 
-  onToppingsOpen, 
+const FilterableMenu = ({
+  products,
+  categories,
+  addToCart,
+  onToppingsOpen,
   onToppingsClose,
   subscriptionStatus = null,
   businessId,
@@ -195,7 +195,8 @@ const FilterableMenu = ({
   onDismissCompletedOrder,
   customerPhone = null,
   onCategoryVisible,
-  onPendingReview
+  onPendingReview,
+  isViewOnly = false,
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -750,10 +751,11 @@ const FilterableMenu = ({
       {businessId && !searchTerm && (
         <PopularProducts
           businessId={businessId}
-          onAddToCart={addToCart}
+          onAddToCart={isViewOnly ? null : addToCart}
           theme={businessConfig?.theme}
           onToppingsOpen={onToppingsOpen}
           onToppingsClose={onToppingsClose}
+          isViewOnly={isViewOnly}
         />
       )}
 
@@ -761,10 +763,11 @@ const FilterableMenu = ({
       {businessId && (
         <FeaturedProducts
           businessId={businessId}
-          onAddToCart={addToCart}
+          onAddToCart={isViewOnly ? null : addToCart}
           theme={businessConfig?.theme}
           onToppingsOpen={onToppingsOpen}
           onToppingsClose={onToppingsClose}
+          isViewOnly={isViewOnly}
         />
       )}
 
@@ -893,6 +896,7 @@ const FilterableMenu = ({
                               onToppingsClose={onToppingsClose}
                               subscriptionStatus={subscriptionStatus}
                               isHero
+                              isViewOnly={isViewOnly}
                             />
                           </div>
                         ) : (
@@ -903,6 +907,7 @@ const FilterableMenu = ({
                             onToppingsOpen={onToppingsOpen}
                             onToppingsClose={onToppingsClose}
                             subscriptionStatus={subscriptionStatus}
+                            isViewOnly={isViewOnly}
                           />
                         );
                       })}
@@ -965,6 +970,7 @@ const FilterableMenu = ({
                           onToppingsClose={onToppingsClose}
                           subscriptionStatus={subscriptionStatus}
                           isHero
+                          isViewOnly={isViewOnly}
                         />
                       </div>
                     ) : (
@@ -975,6 +981,7 @@ const FilterableMenu = ({
                         onToppingsOpen={onToppingsOpen}
                         onToppingsClose={onToppingsClose}
                         subscriptionStatus={subscriptionStatus}
+                        isViewOnly={isViewOnly}
                       />
                     );
                   })}

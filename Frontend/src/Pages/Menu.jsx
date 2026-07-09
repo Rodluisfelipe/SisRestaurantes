@@ -151,6 +151,15 @@ export default function Menu() {
   // Check if business uses in-app ordering
   const isInAppMode = businessConfig?.orderingMode === 'inapp' || businessConfig?.orderingMode === 'both';
 
+  // Vista-only: todos los modos de pedido desactivados
+  const isViewOnly = !!(
+    businessConfig &&
+    businessConfig.orderTypes &&
+    businessConfig.orderTypes.inSite === false &&
+    businessConfig.orderTypes.takeaway === false &&
+    businessConfig.orderTypes.delivery === false
+  );
+
   // Poll active order status for banner display (socket + fallback)
   useEffect(() => {
     if (!activeOrderId || !activeCustomerToken || !isInAppMode) {
@@ -1496,7 +1505,7 @@ export default function Menu() {
     );
   }
 
-  if (showOrderTypeSelector) {
+  if (showOrderTypeSelector && !isViewOnly) {
     return <OrderTypeSelector onComplete={handleOrderTypeComplete} initialTableNumber={tableFromUrl} />;
   }
 
@@ -1525,6 +1534,21 @@ export default function Menu() {
         subscriptionCommercialPlan={subscriptionCommercialPlan}
       />
       
+      {/* Banner solo-vista: todos los tipos de pedido desactivados */}
+      {isViewOnly && (
+        <div className="bg-slate-900 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center justify-center gap-2.5">
+            <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <p className="text-[13px] font-semibold text-slate-300 tracking-wide uppercase">
+              Menú en modo consulta — pedidos no disponibles
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Aviso de datos en cache — sin conexión pero con datos guardados */}
       {(bizNetworkError || menuNetworkError) && products.length > 0 && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5">
@@ -1592,15 +1616,16 @@ export default function Menu() {
         />
       )}
       
-      <FilterableMenu 
+      <FilterableMenu
         products={products}
         categories={categories}
-        addToCart={addToCart}
+        addToCart={isViewOnly ? null : addToCart}
         businessId={businessId}
         businessConfig={businessConfig}
         onToppingsOpen={() => setIsSelectingToppings(true)}
         onToppingsClose={() => setIsSelectingToppings(false)}
         subscriptionStatus={subscriptionStatus}
+        isViewOnly={isViewOnly}
         hasActiveOrder={!!(isInAppMode && activeOrderId && activeCustomerToken && !showOrderTracker && !showPaymentUpload)}
         activeOrderStatus={activeOrderStatus}
         onViewActiveOrder={() => setShowOrderTracker(true)}
@@ -1614,22 +1639,21 @@ export default function Menu() {
         }}
       />
 
-      <CartBar 
-        cart={cart}
-        totalItems={totalItems}
-        totalAmount={totalAmount}
-        onShowCart={() => {
-          // No permitir abrir el carrito si está suspendido
-          if (subscriptionStatus === 'suspended') {
-            return;
-          }
-          setShowCartSummary(true);
-        }}
-        businessConfig={businessConfig}
-        isSelectingToppings={isSelectingToppings}
-        showCartSummary={showCartSummary}
-        subscriptionStatus={subscriptionStatus}
-      />
+      {!isViewOnly && (
+        <CartBar
+          cart={cart}
+          totalItems={totalItems}
+          totalAmount={totalAmount}
+          onShowCart={() => {
+            if (subscriptionStatus === 'suspended') return;
+            setShowCartSummary(true);
+          }}
+          businessConfig={businessConfig}
+          isSelectingToppings={isSelectingToppings}
+          showCartSummary={showCartSummary}
+          subscriptionStatus={subscriptionStatus}
+        />
+      )}
       
       <OrderConfirmationModal 
         show={showOrderConfirmationModal}
