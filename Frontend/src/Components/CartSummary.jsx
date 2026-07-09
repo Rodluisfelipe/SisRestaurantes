@@ -1393,7 +1393,6 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         open={showLocationPicker}
         onClose={() => setShowLocationPicker(false)}
         onSelect={handleLocationSelected}
-        onRequestGPS={handleGPSRequest}
         currentAddress={deliverySelectedLocation?.address}
         currentCoords={deliverySelectedLocation?.coords}
       />
