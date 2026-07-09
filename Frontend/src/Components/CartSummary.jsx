@@ -87,6 +87,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   // { coords: { lat, lng, lon }, address: string, city: string }
   const [deliverySelectedLocation, setDeliverySelectedLocation] = useState(null);
+  const [step, setStep] = useState(1);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const { businessConfig, businessId, businessStatus, getStatusDisplay } = useBusinessConfig();
@@ -181,6 +182,15 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
     setDeliveryZoneInfo(null);
     checkCoverageWithCoords(coords.lat, coords.lon ?? coords.lng);
   }, [checkCoverageWithCoords]);
+
+  const goToStep2 = () => {
+    setStep(2);
+    setTimeout(() => scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' }), 0);
+  };
+  const goToStep1 = () => {
+    setStep(1);
+    setTimeout(() => scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'instant' }), 0);
+  };
 
   // Determinar si el pedido viene de un QR de mesa basado en la URL
   const isFromTableQR = window.location.pathname.includes('/mesa/');
@@ -534,22 +544,27 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
         </div>
         {/* Header */}
         <div className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-slate-100 px-4 py-2.5 sm:px-6 sm:py-3 flex justify-between items-center z-10 rounded-t-[20px] flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-lg font-bold text-slate-800">Tu pedido</h2>
-            <span
-              className="text-[11px] font-bold px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: `${themeColor}15`, color: themeColor }}
-            >{totalItems}</span>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center"
-            aria-label="Cerrar carrito"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          {step === 1 ? (
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-lg font-bold text-slate-800">Tu pedido</h2>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: `${themeColor}15`, color: themeColor }}>{totalItems}</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <button onClick={goToStep1} className="flex items-center gap-1 text-sm font-bold px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors" style={{ color: themeColor }}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.8}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                Atrás
+              </button>
+              <h2 className="text-[15px] font-bold text-slate-800">Confirmar pedido</h2>
+            </div>
+          )}
+          {step === 1 ? (
+            <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors flex items-center justify-center" aria-label="Cerrar carrito">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          ) : (
+            <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">2 / 2</span>
+          )}
         </div>
 
         {/* Cart Items - Scrollable Content */}
@@ -672,8 +687,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
             </div>
           )}
 
-          {/* ── Suggested products (upsell) ── */}
-          {cart.length > 0 && allProducts && (
+          {/* ── Paso 1: Upsell + Cupón + Fidelidad ── */}
+          {step === 1 && cart.length > 0 && allProducts && (
             <SuggestedProducts
               allProducts={allProducts}
               cart={cart}
@@ -682,8 +697,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
             />
           )}
 
-          {/* ── Checkout section (inside scroll) ── */}
-          {cart.length > 0 && (
+          {step === 1 && cart.length > 0 && (
             <div ref={checkoutRef} className="mt-2 pt-2 border-t border-slate-100 space-y-2">
               {/* Coupon Input */}
               <CouponInput
@@ -710,6 +724,12 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   orderMode={orderInfo?.orderType}
                 />
               )}
+            </div>
+          )}
+
+          {/* ── Paso 2: Tipo, Pago, Dirección, Notas ── */}
+          {step === 2 && cart.length > 0 && (
+            <div ref={checkoutRef} className="space-y-3 pb-2">
 
               {/* ── Tipo de pedido inline ── */}
               {!initialOrderTypeSelected && !hasServices && (
@@ -1140,9 +1160,29 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
 
         </div>
 
-        {/* ── Sticky bottom: Total + Confirm button ── */}
-        {cart.length > 0 && (
-          <div 
+        {/* ── Paso 1: Footer simple con Subtotal + Continuar ── */}
+        {step === 1 && cart.length > 0 && (
+          <div className="border-t border-slate-200 bg-white px-4 pt-3 sm:px-6 flex-shrink-0 sm:rounded-b-2xl" style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 1.25rem))' }}>
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm font-semibold text-slate-500">Subtotal</span>
+              <span className="text-2xl font-extrabold text-slate-900">{formatCurrency(totalAmount, businessConfig?.currency)}</span>
+            </div>
+            <button
+              onClick={goToStep2}
+              style={{ backgroundColor: themeColor, color: themeTextColor, boxShadow: `0 8px 24px ${themeColor}40` }}
+              className="w-full py-4 rounded-full font-bold flex items-center justify-center gap-3 text-[15px] active:scale-[0.97] transition-all duration-200"
+            >
+              <span>Continuar</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
+              <span className="w-px h-5 bg-current opacity-20" />
+              <span className="font-extrabold tabular-nums">{formatCurrency(totalAmount, businessConfig?.currency)}</span>
+            </button>
+          </div>
+        )}
+
+        {/* ── Paso 2: Footer completo con desglose + Confirmar ── */}
+        {step === 2 && cart.length > 0 && (
+          <div
             className="border-t border-slate-200 bg-white px-4 pt-3 sm:px-6 flex-shrink-0 sm:rounded-b-2xl"
             style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 1.25rem))' }}
           >
