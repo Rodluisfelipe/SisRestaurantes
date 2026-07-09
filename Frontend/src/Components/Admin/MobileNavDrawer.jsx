@@ -113,6 +113,12 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
       ],
     },
     {
+      title: 'Herramientas',
+      items: [
+        { id: 'tools', label: 'Calculadoras', bg: 'bg-violet-500', icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 7h6M9 11h6M9 15h4"/></svg> },
+      ],
+    },
+    {
       title: 'Configuración',
       items: [
         { id: 'subscription',   label: 'Suscripción',    icon: I.sub,      bg: 'bg-blue-600' },

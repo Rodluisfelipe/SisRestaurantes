@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SubscriptionStatus from './SubscriptionStatus';
 import GuideOverlay from './Admin/GuideOverlay';
 import BranchSwitcher from './Admin/BranchSwitcher';
-import { 
-  FaClipboardList, FaHamburger, FaSortAmountDown, FaFolderOpen, 
+import {
+  FaClipboardList, FaHamburger, FaSortAmountDown, FaFolderOpen,
   FaCheese, FaUsers, FaTicketAlt, FaChair, FaMapMarkedAlt, FaMotorcycle,
   FaCheckCircle, FaBullhorn, FaWhatsapp, FaCreditCard,
   FaPalette, FaMapMarkerAlt, FaLock, FaSignOutAlt, FaChevronDown,
   FaShoppingBag, FaStore, FaTools, FaCog, FaMoneyBillWave, FaStar, FaGift,
   FaQuestionCircle, FaExternalLinkAlt, FaChartBar, FaPrint, FaCashRegister,
-  FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink
+  FaCalendarAlt, FaShareAlt, FaCodeBranch, FaLink, FaCalculator
 } from 'react-icons/fa';
 
 const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLogout, pendingOrdersCount, subscriptionData, onboarding, userRole }) => {
@@ -71,6 +71,13 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'marketplace', label: 'Marketplace', Icon: FaShoppingBag, badge: null },
         { id: 'supplier-orders', label: businessConfig?.isSupplier ? 'Pedidos B2B' : 'Mis pedidos', Icon: FaClipboardList, badge: null },
+      ]
+    },
+    {
+      id: 'tools-section',
+      label: 'Herramientas',
+      items: [
+        { id: 'tools', label: 'Calculadoras', Icon: FaCalculator, badge: null },
       ]
     },
     {

@@ -52,6 +52,7 @@ import MobileHeader from "../Components/Admin/MobileHeader";
 import Marketplace from "../Components/Admin/Marketplace";
 import SupplierOrders from "../Components/Admin/SupplierOrders";
 import WhatsAppCampaign from "../Components/Admin/WhatsAppCampaign";
+import ToolsPanel from "../Components/Admin/ToolsPanel";
 import BranchManager from "../Components/Admin/BranchManager";
 import LinkPageSettings from "../Components/Admin/LinkPageSettings";
 
@@ -609,6 +610,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Campaña WhatsApp" onGoBack={() => setActiveTab('dashboard')}>
                       <WhatsAppCampaign businessId={businessId} />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'tools' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Herramientas" onGoBack={() => setActiveTab('dashboard')}>
+                      <ToolsPanel />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
