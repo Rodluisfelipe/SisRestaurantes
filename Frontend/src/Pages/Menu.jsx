@@ -151,13 +151,17 @@ export default function Menu() {
   // Check if business uses in-app ordering
   const isInAppMode = businessConfig?.orderingMode === 'inapp' || businessConfig?.orderingMode === 'both';
 
-  // Vista-only: todos los modos de pedido desactivados
+  // Vista-only: toggle explícito activado O todos los modos desactivados (legacy)
   const isViewOnly = !!(
-    businessConfig &&
-    businessConfig.orderTypes &&
-    businessConfig.orderTypes.inSite === false &&
-    businessConfig.orderTypes.takeaway === false &&
-    businessConfig.orderTypes.delivery === false
+    businessConfig && (
+      businessConfig.orderTypes?.viewOnly === true ||
+      (
+        businessConfig.orderTypes &&
+        businessConfig.orderTypes.inSite === false &&
+        businessConfig.orderTypes.takeaway === false &&
+        businessConfig.orderTypes.delivery === false
+      )
+    )
   );
 
   // Poll active order status for banner display (socket + fallback)

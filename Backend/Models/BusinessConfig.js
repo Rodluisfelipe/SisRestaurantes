@@ -217,7 +217,8 @@ const businessConfigSchema = new mongoose.Schema({
   orderTypes: {
     inSite: { type: Boolean, default: true },
     takeaway: { type: Boolean, default: true },
-    delivery: { type: Boolean, default: true }
+    delivery: { type: Boolean, default: true },
+    viewOnly: { type: Boolean, default: false }
   },
   // Código de confirmación obligatorio para domiciliarios
   requireDeliveryCode: {

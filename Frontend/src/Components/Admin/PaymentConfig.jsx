@@ -32,7 +32,7 @@ const PaymentConfig = () => {
     accountHolder: '',
     instructions: ''
   });
-  const [orderTypes, setOrderTypes] = useState({ inSite: true, takeaway: true, delivery: true });
+  const [orderTypes, setOrderTypes] = useState({ inSite: true, takeaway: true, delivery: true, viewOnly: false });
   const [requireDeliveryCode, setRequireDeliveryCode] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -47,6 +47,7 @@ const PaymentConfig = () => {
         inSite: businessConfig.orderTypes?.inSite ?? true,
         takeaway: businessConfig.orderTypes?.takeaway ?? true,
         delivery: businessConfig.orderTypes?.delivery ?? true,
+        viewOnly: businessConfig.orderTypes?.viewOnly ?? false,
       });
       setRequireDeliveryCode(businessConfig.requireDeliveryCode ?? true);
       setPaymentInfo({
@@ -293,18 +294,24 @@ const PaymentConfig = () => {
                 { id: 'takeaway', label: 'Para Llevar', icon: AI.cube('w-5 h-5 text-slate-600'), desc: 'Clientes recogen su pedido' },
                 { id: 'delivery', label: 'Domicilio', icon: AI.truck('w-5 h-5 text-slate-600'), desc: 'Envío a la dirección del cliente' },
               ].map(ot => {
-                const isOn = orderTypes[ot.id];
+                const isOn = orderTypes[ot.id] && !orderTypes.viewOnly;
+                const isDisabled = orderTypes.viewOnly;
                 return (
                   <button
                     key={ot.id}
                     onClick={() => {
-                      const next = { ...orderTypes, [ot.id]: !isOn };
+                      if (isDisabled) return;
+                      const next = { ...orderTypes, [ot.id]: !orderTypes[ot.id] };
                       if (!next.inSite && !next.takeaway && !next.delivery) return;
                       setOrderTypes(next);
                       setHasChanges(true);
                     }}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-                      isOn ? 'border-green-300 bg-green-50/30' : 'border-gray-200 bg-gray-50/50'
+                      isDisabled
+                        ? 'border-gray-100 bg-gray-50/30 opacity-40 cursor-not-allowed'
+                        : isOn
+                          ? 'border-green-300 bg-green-50/30'
+                          : 'border-gray-200 bg-gray-50/50'
                     }`}
                   >
                     {ot.icon}
@@ -322,10 +329,48 @@ const PaymentConfig = () => {
                   </button>
                 );
               })}
+
+              {/* Divisor */}
+              <div className="flex items-center gap-2 pt-1 pb-0.5">
+                <div className="flex-1 h-px bg-gray-100" />
+                <span className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">o</span>
+                <div className="flex-1 h-px bg-gray-100" />
+              </div>
+
+              {/* Menú solo vista */}
+              {(() => {
+                const isOn = orderTypes.viewOnly;
+                return (
+                  <button
+                    onClick={() => {
+                      setOrderTypes(prev => ({ ...prev, viewOnly: !prev.viewOnly }));
+                      setHasChanges(true);
+                    }}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                      isOn ? 'border-slate-700 bg-slate-900' : 'border-slate-200 bg-slate-50/50'
+                    }`}
+                  >
+                    <svg className={`w-5 h-5 flex-shrink-0 ${isOn ? 'text-slate-300' : 'text-slate-500'}`} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.964-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <div className="flex-1 text-left">
+                      <span className={`font-semibold text-sm ${isOn ? 'text-white' : 'text-gray-900'}`}>Menú solo vista</span>
+                      <p className={`text-xs ${isOn ? 'text-slate-400' : 'text-gray-500'}`}>
+                        {isOn ? 'Los clientes pueden ver el menú pero no hacer pedidos' : 'Activa para mostrar el menú sin opción de pedir'}
+                      </p>
+                    </div>
+                    <div className={`relative w-11 h-6 rounded-full transition-colors ${isOn ? 'bg-slate-600' : 'bg-gray-300'}`}>
+                      <motion.div
+                        layout
+                        className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-sm"
+                        style={{ left: isOn ? '22px' : '2px' }}
+                      />
+                    </div>
+                  </button>
+                );
+              })()}
             </div>
-            {!orderTypes.inSite && !orderTypes.takeaway && !orderTypes.delivery && (
-              <p className="text-xs text-red-500 mt-2 flex items-center gap-1">{AI.exclamation('w-4 h-4')} Debes tener al menos un tipo de pedido activo</p>
-            )}
           </div>
 
           {/* Delivery confirmation code toggle */}
