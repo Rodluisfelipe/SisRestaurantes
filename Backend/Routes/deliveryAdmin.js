@@ -427,4 +427,23 @@ router.get('/restaurants/:slug/delivery-persons/:dpId/stats', tenantAuth, async 
   }
 });
 
+// ── Pending delivery orders (unassigned, for the admin queue) ─────────────────
+router.get('/restaurants/:slug/pending-delivery-orders', tenantAuth, async (req, res) => {
+  try {
+    const orders = await Order.find({
+      businessId: req.businessId,
+      orderType: 'delivery',
+      status: { $in: ['confirmed', 'preparing', 'ready'] },
+      $or: [{ deliveryPersonId: { $exists: false } }, { deliveryPersonId: null }]
+    })
+      .sort({ createdAt: 1 })
+      .limit(30)
+      .lean();
+    res.json(orders);
+  } catch (err) {
+    logger.error('Error fetching pending delivery orders', err);
+    res.status(500).json({ message: 'Error al obtener pedidos pendientes' });
+  }
+});
+
 module.exports = router;

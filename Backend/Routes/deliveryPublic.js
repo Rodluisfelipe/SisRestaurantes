@@ -614,4 +614,27 @@ router.get('/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
   }
 });
 
+// ── Background GPS relay (from Expo TaskManager when app is in background) ────
+// POST /:slug/domi/orders/:id/location  { lat, lng }
+router.post('/:slug/domi/orders/:id/location', domiAuth, async (req, res) => {
+  try {
+    const { lat, lng } = req.body;
+    if (typeof lat !== 'number' || typeof lng !== 'number') {
+      return res.status(400).json({ message: 'lat y lng son requeridos como número' });
+    }
+    const orderId = req.params.id;
+    // Relay to socket so restaurant dashboard gets live updates even when driver app is in background
+    socketService.emitToOrder(orderId, 'domi:location', { lat, lng, orderId });
+    // Also emit to the delivery room of the business
+    const business = await resolveSlug(req.params.slug).catch(() => null);
+    if (business) {
+      socketService.emitToDeliveryRoom(req.params.slug, 'domi:location', { lat, lng, orderId });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Error relaying domi location', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
 module.exports = router;
