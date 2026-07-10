@@ -8,6 +8,7 @@ import api from '../../services/api';
 import { BACKEND_URL } from '../../config';
 import AssignDeliveryModal from './AssignDeliveryModal';
 import DeliverySettingsModal from './DeliverySettingsModal';
+import DeliveryTimeline from './DeliveryTimeline';
 
 /* ── SVG Icons ── */
 const IC = {
@@ -126,6 +127,9 @@ export default function DomiStats() {
   const [showSettings, setShowSettings] = useState(false);
   const [assignMode, setAssignMode]     = useState('manual');
   const [autoAssigning, setAutoAssigning] = useState(null);
+
+  /* timeline */
+  const [timelineOrder, setTimelineOrder] = useState(null);
 
   /* create domi */
   const [showCreate, setShowCreate]     = useState(false);
@@ -368,7 +372,12 @@ export default function DomiStats() {
                         <div className="flex-1 min-w-0">
                           {/* Order number + time */}
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[11px] font-bold text-slate-400">#{order.orderNumber}</span>
+                            <button
+                              onClick={() => setTimelineOrder(order)}
+                              className="text-[11px] font-bold text-slate-400 hover:text-slate-700 underline decoration-dotted underline-offset-2 transition-colors"
+                            >
+                              #{order.orderNumber}
+                            </button>
                             <span className="text-[10px] text-slate-300">•</span>
                             <span className="text-[11px] text-slate-400 flex items-center gap-1">
                               {IC.clock('w-3 h-3')}{fmtTime(order.createdAt)}
@@ -617,6 +626,15 @@ export default function DomiStats() {
         slug={slug}
         isOpen={showSettings}
         onClose={(saved) => { setShowSettings(false); if (saved) fetchMode(); }}
+      />
+
+      {/* Delivery timeline */}
+      <DeliveryTimeline
+        slug={slug}
+        orderId={timelineOrder?._id}
+        orderNumber={timelineOrder?.orderNumber}
+        isOpen={!!timelineOrder}
+        onClose={() => setTimelineOrder(null)}
       />
     </div>
   );
