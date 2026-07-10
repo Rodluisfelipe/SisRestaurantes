@@ -135,6 +135,8 @@ export default function DomiStats() {
   const [showCreate, setShowCreate]     = useState(false);
   const [newName, setNewName]           = useState('');
   const [newCode, setNewCode]           = useState('');
+  const [newPhone, setNewPhone]         = useState('');
+  const [newPassword, setNewPassword]   = useState('');
 
   /* toggling active */
   const [togglingId, setTogglingId]     = useState(null);
@@ -267,10 +269,16 @@ export default function DomiStats() {
   const handleCreateDomi = async (e) => {
     e.preventDefault();
     if (newCode.length !== 4) return toast.error('El código debe ser de 4 dígitos');
+    if (newPassword && newPassword.length < 6) return toast.error('La contraseña debe tener al menos 6 caracteres');
+    if (newPassword && !newPhone) return toast.error('Para la contraseña, ingresa también el teléfono');
     try {
-      await api.post(`/delivery-admin/restaurants/${slug}/delivery-persons`, { name: newName, code: newCode });
+      await api.post(`/delivery-admin/restaurants/${slug}/delivery-persons`, {
+        name: newName, code: newCode,
+        phone: newPhone || undefined,
+        password: newPassword || undefined,
+      });
       toast.success('Perfil creado');
-      setNewName(''); setNewCode(''); setShowCreate(false);
+      setNewName(''); setNewCode(''); setNewPhone(''); setNewPassword(''); setShowCreate(false);
       fetchDomis();
     } catch (err) { toast.error(err.response?.data?.message || 'Error al crear perfil'); }
   };
@@ -510,6 +518,28 @@ export default function DomiStats() {
                       onChange={e => setNewCode(e.target.value.replace(/\D/g, ''))}
                       required
                     />
+
+                    {/* Cuenta con contraseña (opcional, recomendado) */}
+                    <div className="pt-1 border-t border-dashed border-slate-200">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 mb-2">Cuenta con contraseña · opcional</p>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        className="w-full text-[13px] px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors mb-2"
+                        placeholder="Teléfono (ingreso a la app)"
+                        value={newPhone}
+                        onChange={e => setNewPhone(e.target.value.replace(/\D/g, ''))}
+                      />
+                      <input
+                        type="password"
+                        className="w-full text-[13px] px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors"
+                        placeholder="Contraseña (mín. 6 caracteres)"
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1.5">Con teléfono y contraseña, el domi entra con su cuenta real. Sin ellos, usa solo el PIN.</p>
+                    </div>
+
                     <button
                       type="submit"
                       className="w-full bg-slate-900 text-white text-[12px] font-bold py-2.5 rounded-xl hover:bg-slate-700 transition-colors"
@@ -545,9 +575,14 @@ export default function DomiStats() {
                               <span className="w-2 h-2 rounded-full bg-slate-200" />
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${cls}`}>{label}</span>
                             <span className="text-[10px] text-slate-400">{d.totalDeliveries || 0} entregas</span>
+                            {d.hasAccount && (
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700 inline-flex items-center gap-1">
+                                {IC.key('w-2.5 h-2.5')} cuenta
+                              </span>
+                            )}
                           </div>
                         </div>
 

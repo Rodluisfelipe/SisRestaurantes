@@ -37,8 +37,11 @@ router.get('/restaurants/:slug/delivery-persons', tenantAuth, async (req, res) =
   try {
     const businessId = await resolveSlug(req.params.slug);
     const persons = await DeliveryPerson.find({ businessId }).sort({ createdAt: -1 }).lean();
-    // Never expose hashed code
-    const safe = persons.map(p => ({ ...p, code: undefined }));
+    // Never expose hashed code / password / refresh
+    const safe = persons.map(p => ({
+      ...p, code: undefined, passwordHash: undefined, refreshTokenHash: undefined,
+      hasAccount: !!p.passwordHash,
+    }));
     res.json(safe);
   } catch (error) {
     logger.error('Error fetching delivery persons', error);
@@ -50,7 +53,7 @@ router.get('/restaurants/:slug/delivery-persons', tenantAuth, async (req, res) =
 router.post('/restaurants/:slug/delivery-persons', tenantAuth, async (req, res) => {
   try {
     const businessId = await resolveSlug(req.params.slug);
-    const { name, code } = req.body;
+    const { name, code, phone, password } = req.body;
 
     if (!name || !code || code.length !== 4 || !/^\d{4}$/.test(code)) {
       return res.status(400).json({ message: 'Nombre requerido y código debe ser exactamente 4 dígitos numéricos' });
@@ -63,9 +66,23 @@ router.post('/restaurants/:slug/delivery-persons', tenantAuth, async (req, res) 
     }
 
     const person = new DeliveryPerson({ businessId, name: name.trim(), code });
+
+    // Optional real account: phone + password (Phase B)
+    if (phone) {
+      const norm = DeliveryPerson.normalizePhone(phone);
+      const dup = await DeliveryPerson.findOne({ phone: norm, passwordHash: { $ne: null } });
+      if (dup) return res.status(409).json({ message: 'Ya existe una cuenta con ese teléfono' });
+      person.phone = norm;
+    }
+    if (password) {
+      if (password.length < 6) return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+      if (!phone) return res.status(400).json({ message: 'Para asignar contraseña, ingresa también el teléfono' });
+      await person.setPassword(password);
+    }
+
     await person.save();
 
-    res.status(201).json({ _id: person._id, name: person.name, active: person.active, status: person.status, createdAt: person.createdAt });
+    res.status(201).json({ _id: person._id, name: person.name, active: person.active, status: person.status, phone: person.phone, hasAccount: !!person.passwordHash, createdAt: person.createdAt });
   } catch (error) {
     logger.error('Error creating delivery person', error);
     res.status(500).json({ message: 'Error al crear domiciliario' });
@@ -84,9 +101,23 @@ router.patch('/restaurants/:slug/delivery-persons/:dpId', tenantAuth, async (req
     if (req.body.code && /^\d{4}$/.test(req.body.code)) {
       person.code = req.body.code; // Will be hashed by pre-save hook
     }
+    if (req.body.phone !== undefined) {
+      const norm = DeliveryPerson.normalizePhone(req.body.phone);
+      if (norm) {
+        const dup = await DeliveryPerson.findOne({ phone: norm, passwordHash: { $ne: null }, _id: { $ne: person._id } });
+        if (dup) return res.status(409).json({ message: 'Ya existe una cuenta con ese teléfono' });
+      }
+      person.phone = norm || null;
+    }
+    if (req.body.password) {
+      if (req.body.password.length < 6) return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+      if (!person.phone) return res.status(400).json({ message: 'Asigna un teléfono antes de la contraseña' });
+      await person.setPassword(req.body.password);
+      person.refreshTokenHash = null; // invalidate existing sessions on password change
+    }
 
     await person.save();
-    res.json({ _id: person._id, name: person.name, active: person.active, status: person.status });
+    res.json({ _id: person._id, name: person.name, active: person.active, status: person.status, phone: person.phone, hasAccount: !!person.passwordHash });
   } catch (error) {
     logger.error('Error updating delivery person', error);
     res.status(500).json({ message: 'Error al actualizar domiciliario' });

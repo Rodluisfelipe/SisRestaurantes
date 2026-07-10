@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const Order = require('../Models/Order');
 const CompletedOrder = require('../Models/CompletedOrder');
@@ -363,6 +364,71 @@ router.post('/:slug/domi/auth', deliveryLimiter, async (req, res) => {
     return res.status(401).json({ message: 'Código inválido' });
   } catch (error) {
     logger.error('Error in domi auth', error);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// ── Phase B: password-based driver accounts ──────────────────────────────────
+function generateDomiRefresh(dpId) {
+  return jwt.sign({ dpId: dpId.toString(), type: 'refresh' }, process.env.JWT_SECRET, { expiresIn: '30d' });
+}
+
+// POST /api/delivery/domi/login — phone + password (no slug needed)
+router.post('/domi/login', deliveryLimiter, async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+    if (!phone || !password) return res.status(400).json({ message: 'Teléfono y contraseña requeridos' });
+
+    const norm = DeliveryPerson.normalizePhone(phone);
+    const person = await DeliveryPerson.findOne({ phone: norm, active: true, passwordHash: { $ne: null } });
+    if (!person) return res.status(401).json({ message: 'Teléfono o contraseña incorrectos' });
+
+    const ok = await person.verifyPassword(password);
+    if (!ok) return res.status(401).json({ message: 'Teléfono o contraseña incorrectos' });
+
+    const business = await BusinessConfig.findById(person.businessId).select('slug businessName').lean();
+    const token = generateDomiToken(person._id.toString(), person.businessId, 'profile');
+    const refreshToken = generateDomiRefresh(person._id);
+    person.refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    await person.save();
+
+    res.json({
+      mode: 'profile', token, refreshToken,
+      name: person.name, deliveryPersonId: person._id,
+      businessId: person.businessId, businessName: business?.businessName, slug: business?.slug,
+    });
+  } catch (err) {
+    logger.error('Error in domi login', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// POST /api/delivery/domi/refresh — rotate access token with a refresh token
+router.post('/domi/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(400).json({ message: 'refreshToken requerido' });
+
+    let dec;
+    try { dec = jwt.verify(refreshToken, process.env.JWT_SECRET); }
+    catch { return res.status(401).json({ message: 'Sesión expirada' }); }
+    if (dec.type !== 'refresh' || !dec.dpId) return res.status(401).json({ message: 'Token inválido' });
+
+    const person = await DeliveryPerson.findById(dec.dpId);
+    if (!person || !person.active) return res.status(401).json({ message: 'Cuenta inactiva' });
+
+    const hash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    if (person.refreshTokenHash !== hash) return res.status(401).json({ message: 'Sesión revocada' });
+
+    // Rotate refresh token
+    const newRefresh = generateDomiRefresh(person._id);
+    person.refreshTokenHash = crypto.createHash('sha256').update(newRefresh).digest('hex');
+    await person.save();
+
+    const token = generateDomiToken(person._id.toString(), person.businessId, 'profile');
+    res.json({ token, refreshToken: newRefresh });
+  } catch (err) {
+    logger.error('Error in domi refresh', err);
     res.status(500).json({ message: 'Error del servidor' });
   }
 });

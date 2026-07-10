@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 
 const deliveryPersonSchema = new mongoose.Schema({
   businessId: {
@@ -8,6 +9,23 @@ const deliveryPersonSchema = new mongoose.Schema({
     // Required for own-fleet drivers; partner drivers belong to a partner instead.
     required: function () { return !this.partnerId; },
     index: true
+  },
+  // ── Real account credentials (Phase B): phone + password login ──
+  // Optional — a driver can still use the legacy 4-digit PIN (`code`) as a fallback.
+  phone: {
+    type: String,
+    trim: true,
+    default: null,
+    index: true
+  },
+  passwordHash: {
+    type: String,
+    default: null
+  },
+  // Hashed refresh token (rotated on each refresh) for long-lived sessions
+  refreshTokenHash: {
+    type: String,
+    default: null
   },
   // If set, this driver belongs to an external delivery company (partner) and
   // can serve any restaurant that has enabled that partner.
@@ -87,6 +105,21 @@ deliveryPersonSchema.methods.verifyCode = function(plainCode) {
 deliveryPersonSchema.statics.findByCode = async function(businessId, plainCode) {
   const hashed = crypto.createHash('sha256').update(plainCode).digest('hex');
   return this.findOne({ businessId, code: hashed, active: true });
+};
+
+// ── Password auth (Phase B) ──
+deliveryPersonSchema.methods.setPassword = async function(plain) {
+  this.passwordHash = await bcrypt.hash(plain, 10);
+};
+
+deliveryPersonSchema.methods.verifyPassword = async function(plain) {
+  if (!this.passwordHash) return false;
+  return bcrypt.compare(plain, this.passwordHash);
+};
+
+// Normalize a phone to digits only for consistent lookup
+deliveryPersonSchema.statics.normalizePhone = function(phone) {
+  return (phone || '').replace(/\D/g, '');
 };
 
 deliveryPersonSchema.index({ businessId: 1, active: 1 });
