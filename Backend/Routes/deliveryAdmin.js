@@ -570,7 +570,11 @@ router.post('/restaurants/:slug/orders/:id/auto-assign', tenantAuth, async (req,
       return res.json({ ok: true, assigned: true, driverName: result.driver?.name, method: result.method, distanceKm: result.distanceKm });
     }
     if (result.offered) {
-      return res.json({ ok: true, assigned: false, offered: true, partnerName: result.partner?.name });
+      return res.json({
+        ok: true, assigned: false, offered: true,
+        driverName: result.driver?.name, partnerName: result.partner?.name,
+        distanceKm: result.distanceKm,
+      });
     }
     return res.json({ ok: false, assigned: false, reason: result.reason || 'no_driver_available' });
   } catch (err) {

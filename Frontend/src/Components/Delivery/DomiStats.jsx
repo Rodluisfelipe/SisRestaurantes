@@ -185,6 +185,7 @@ export default function DomiStats() {
     try {
       const res = await api.post(`/delivery-admin/restaurants/${slug}/orders/${order._id}/auto-assign`);
       if (res.data.assigned) toast.success(`Asignado a ${res.data.driverName}${res.data.distanceKm ? ` (${res.data.distanceKm.toFixed(1)} km)` : ''}`);
+      else if (res.data.offered && res.data.driverName) toast.success(`Ofrecido a ${res.data.driverName}${res.data.distanceKm ? ` (${res.data.distanceKm.toFixed(1)} km)` : ''} — esperando que acepte`);
       else if (res.data.offered) toast.success(`Ofrecido a ${res.data.partnerName}`);
       else toast.error('No hay domiciliarios disponibles cerca');
       fetchPending(); fetchDomis(); fetchStats();

@@ -222,7 +222,7 @@ const orderSchema = new mongoose.Schema({
   // How this order was assigned (audit): manual, auto_nearest, auto_scored, partner
   assignmentMethod: {
     type: String,
-    enum: ['manual', 'auto_nearest', 'auto_scored', 'partner', null],
+    enum: ['manual', 'auto_nearest', 'auto_scored', 'auto_offer', 'partner', null],
     default: null
   },
   confirmationCode: {

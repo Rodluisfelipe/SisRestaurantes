@@ -29,7 +29,7 @@ const deliverySchema = new mongoose.Schema({
   // Assignment
   driverId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPerson', default: null },
   partnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPartner', default: null },
-  assignmentMethod: { type: String, enum: ['manual', 'auto_nearest', 'auto_scored', 'partner', 'qr', 'fixed', null], default: null },
+  assignmentMethod: { type: String, enum: ['manual', 'auto_nearest', 'auto_scored', 'auto_offer', 'partner', 'qr', 'fixed', null], default: null },
 
   // Customer snapshot (so the delivery is self-contained for audit)
   customerName: { type: String },

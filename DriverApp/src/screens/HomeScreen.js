@@ -8,11 +8,12 @@ import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-import { fetchOrders, getSession, clearSession, setOnline as apiSetOnline, heartbeat } from '../services/api';
+import { fetchOrders, getSession, clearSession, setOnline as apiSetOnline, heartbeat, fetchOffers, acceptOffer, rejectOffer } from '../services/api';
 import { joinDomiRoom, disconnectSocket } from '../services/socket';
 import { C, mapDarkStyle, shadow } from '../theme';
 import AvailabilityToggle from '../components/AvailabilityToggle';
 import DraggableSheet from '../components/DraggableSheet';
+import OfferModal from '../components/OfferModal';
 
 const SCREEN_H = Dimensions.get('window').height;
 const DEFAULT_REGION = { latitude: 4.6533, longitude: -74.0836, latitudeDelta: 0.04, longitudeDelta: 0.04 };
@@ -27,6 +28,7 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
   const [connected, setConn]     = useState(false);
   const [refreshing, setRefresh] = useState(false);
   const [region, setRegion]      = useState(DEFAULT_REGION);
+  const [offer, setOffer]        = useState(null);
   const mapRef = useRef(null);
   const appState = useRef(AppState.currentState);
 
@@ -54,17 +56,28 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
     })();
   }, []);
 
+  // Pick up any offer already pending (e.g. arrived while app was closed)
+  const loadOffers = useCallback(async () => {
+    try {
+      const { slug } = await getSession();
+      const list = await fetchOffers(slug);
+      if (Array.isArray(list) && list.length > 0) setOffer(list[0]);
+    } catch { /* noop */ }
+  }, []);
+
   useEffect(() => {
     (async () => {
       const { token, slug } = await getSession();
       const socket = joinDomiRoom(token, domiInfo?.deliveryPersonId, slug, domiInfo?.mode);
       socket.on('connect', () => setConn(true));
       socket.on('disconnect', () => setConn(false));
-      socket.on('delivery:assigned', () => { Vibration.vibrate([0, 220, 120, 220]); load(); });
+      socket.on('delivery:offer', (o) => setOffer(o));
+      socket.on('delivery:assigned', () => { Vibration.vibrate([0, 220, 120, 220]); setOffer(null); load(); });
       socket.on('order:status', () => load());
     })();
+    loadOffers();
     return () => disconnectSocket();
-  }, [domiInfo, load]);
+  }, [domiInfo, load, loadOffers]);
 
   useEffect(() => {
     load();
@@ -109,6 +122,31 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
   }, [online]);
 
   const onRefresh = async () => { setRefresh(true); await load(); setRefresh(false); };
+
+  /* ── Offer handlers ── */
+  const handleAcceptOffer = useCallback(async () => {
+    if (!offer) return;
+    try {
+      const { slug } = await getSession();
+      await acceptOffer(slug, offer._id);
+      setOffer(null);
+      await load();
+    } catch (err) {
+      Alert.alert('No se pudo aceptar', err.data?.message || 'La oferta ya no está disponible.');
+      setOffer(null);
+    }
+  }, [offer, load]);
+
+  const handleRejectOffer = useCallback(async () => {
+    if (!offer) return;
+    try {
+      const { slug } = await getSession();
+      await rejectOffer(slug, offer._id);
+    } catch { /* noop */ }
+    setOffer(null);
+  }, [offer]);
+
+  const handleExpireOffer = useCallback(() => setOffer(null), []);
 
   const handleLogout = () => {
     Alert.alert('Cerrar sesión', '¿Salir de tu cuenta?', [
@@ -196,6 +234,14 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
           )}
         </ScrollView>
       </DraggableSheet>
+
+      {/* Incoming offer */}
+      <OfferModal
+        offer={offer}
+        onAccept={handleAcceptOffer}
+        onReject={handleRejectOffer}
+        onExpire={handleExpireOffer}
+      />
     </View>
   );
 }

@@ -468,6 +468,69 @@ router.get('/:slug/domi/orders', domiAuth, async (req, res) => {
   }
 });
 
+// ── Phase C: offer lifecycle (accept / reject) ───────────────────────────────
+// GET /api/restaurants/:slug/domi/offers — pending offers for this driver
+router.get('/:slug/domi/offers', domiAuth, async (req, res) => {
+  try {
+    const { dpId } = req.domi;
+    if (!dpId || String(dpId).startsWith('daily-')) return res.json([]);
+    const DeliveryOffer = require('../Models/DeliveryOffer');
+    const offers = await DeliveryOffer.find({ driverId: dpId, state: 'pending', expiresAt: { $gt: new Date() } })
+      .sort({ offeredAt: -1 }).lean();
+    const enriched = await Promise.all(offers.map(async (o) => {
+      const order = await Order.findById(o.orderId)
+        .select('orderNumber customerName address totalAmount items deliveryCoordinates').lean();
+      return { ...o, order };
+    }));
+    res.json(enriched);
+  } catch (err) {
+    logger.error('Error fetching domi offers', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// POST /api/restaurants/:slug/domi/offers/:id/accept
+router.post('/:slug/domi/offers/:id/accept', domiAuth, async (req, res) => {
+  try {
+    const { dpId } = req.domi;
+    const DeliveryOffer = require('../Models/DeliveryOffer');
+    const DeliveryPerson = require('../Models/DeliveryPerson');
+    const offer = await DeliveryOffer.findOne({ _id: req.params.id, driverId: dpId });
+    if (!offer) return res.status(404).json({ message: 'Oferta no encontrada' });
+    const driver = await DeliveryPerson.findById(dpId);
+    if (!driver) return res.status(404).json({ message: 'Domiciliario no encontrado' });
+
+    const assignmentService = require('../services/assignmentService');
+    const result = await assignmentService.acceptOffer(offer, driver);
+    if (!result.ok) {
+      const msg = result.reason === 'expired' ? 'La oferta expiró'
+        : result.reason === 'already_assigned' ? 'El pedido ya fue tomado'
+        : 'La oferta ya no está disponible';
+      return res.status(409).json({ message: msg, reason: result.reason });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Error accepting offer', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// POST /api/restaurants/:slug/domi/offers/:id/reject
+router.post('/:slug/domi/offers/:id/reject', domiAuth, async (req, res) => {
+  try {
+    const { dpId } = req.domi;
+    const DeliveryOffer = require('../Models/DeliveryOffer');
+    const offer = await DeliveryOffer.findOne({ _id: req.params.id, driverId: dpId });
+    if (!offer) return res.status(404).json({ message: 'Oferta no encontrada' });
+    const assignmentService = require('../services/assignmentService');
+    await assignmentService.rejectOffer(offer);
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Error rejecting offer', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
 // POST /api/restaurants/:slug/domi/orders/:id/confirm — Domi confirms with code
 router.post('/:slug/domi/orders/:id/confirm', confirmLimiter, domiAuth, async (req, res) => {
   try {

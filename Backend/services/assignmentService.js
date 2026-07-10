@@ -179,43 +179,209 @@ async function assignToDriver(order, driver, method) {
   return driver;
 }
 
-/**
- * Main entry: try to auto-assign an order.
- * Returns { assigned, method, driver?, partner?, reason }.
- */
-async function autoAssignOrder(order, business) {
+/* ════════════════ OFFER ENGINE (Phase C) ════════════════ */
+
+// Drivers who already rejected or let an offer expire for this delivery
+async function getExcludedDriverIds(deliveryId) {
+  const DeliveryOffer = require('../Models/DeliveryOffer');
+  const past = await DeliveryOffer.find({ deliveryId, state: { $in: ['rejected', 'expired'] } }).select('driverId').lean();
+  return past.map(o => String(o.driverId));
+}
+
+// Create an exclusive, time-boxed offer to one driver
+async function offerToDriver(order, business, driver, distanceKm, attempt = 1) {
+  const DeliveryOffer = require('../Models/DeliveryOffer');
+  const dsm = require('./deliveryStateMachine');
+  const socketService = require('./socketService');
+
+  const delivery = await dsm.ensureDeliveryForOrder(order, {});
+  const timeoutSec = (business.deliverySettings && business.deliverySettings.offerTimeoutSec) || 30;
+  const expiresAt = new Date(Date.now() + timeoutSec * 1000);
+
+  const offer = await DeliveryOffer.create({
+    deliveryId: delivery._id, orderId: order._id, businessId: order.businessId,
+    driverId: driver._id, distanceKm, attempt, expiresAt,
+  });
+
+  await dsm.transition(delivery, 'offer', {
+    actor: 'system', driverId: driver._id,
+    meta: { driverName: driver.name, distanceKm, attempt },
+  });
+
+  try {
+    socketService.emitToDeliveryPerson(String(driver._id), 'delivery:offer', {
+      offerId: String(offer._id), orderId: String(order._id), orderNumber: order.orderNumber,
+      customerName: order.customerName, address: order.address, totalAmount: order.totalAmount,
+      distanceKm, expiresAt: expiresAt.toISOString(), timeoutSec,
+    });
+    socketService.emitToBusiness(String(order.businessId), 'delivery:offered', {
+      orderId: String(order._id), driverId: String(driver._id), driverName: driver.name,
+    });
+  } catch { /* non-critical */ }
+
+  return { offer, driver, delivery };
+}
+
+// Pick the best remaining candidate and offer to them; fall back to partner, then no_courier
+async function pickAndOffer(order, business) {
   const settings = business.deliverySettings || {};
   const mode = settings.assignmentMode || 'manual';
-
-  if (mode === 'manual') {
-    return { assigned: false, reason: 'manual_mode' };
-  }
+  if (mode === 'manual') return { ok: false, reason: 'manual_mode' };
 
   const coords = order.deliveryCoordinates;
-  if (!coords?.lat || !coords?.lon) {
-    return { assigned: false, reason: 'no_coordinates' };
-  }
+  if (!coords?.lat || !coords?.lon) return { ok: false, reason: 'no_coordinates' };
 
-  // 1) Try own-fleet drivers
-  const drivers = await getAvailableDrivers(order.businessId);
+  const dsm = require('./deliveryStateMachine');
+  const delivery = await dsm.ensureDeliveryForOrder(order, {});
+  const excluded = await getExcludedDriverIds(delivery._id);
+
+  let drivers = await getAvailableDrivers(order.businessId);
+  drivers = drivers.filter(d => !excluded.includes(String(d._id)));
   const pick = pickDriver(drivers, coords.lat, coords.lon, mode, settings.maxAssignRadiusKm);
 
   if (pick) {
-    const driver = await assignToDriver(order, pick.driver, mode);
-    return { assigned: true, method: mode, driver, distanceKm: pick.distanceKm };
+    const attempt = excluded.length + 1;
+    const { offer, driver } = await offerToDriver(order, business, pick.driver, pick.distanceKm, attempt);
+    return { ok: true, offered: true, offer, driver, distanceKm: pick.distanceKm };
   }
 
-  // 2) Fallback to partner company
+  // No more own drivers → partner fallback
   if (settings.usePartners) {
     const partner = await offerToPartner(order, business);
-    if (partner) return { assigned: false, offered: true, method: 'partner', partner };
+    if (partner) return { ok: true, offered: true, partner };
   }
 
-  return { assigned: false, reason: 'no_driver_available' };
+  // Nobody available → no_courier (alert the restaurant)
+  try {
+    const socketService = require('./socketService');
+    await dsm.transition(delivery, 'no_courier', { actor: 'system' });
+    socketService.emitToBusiness(String(order.businessId), 'delivery:no_courier', { orderId: String(order._id) });
+  } catch { /* non-critical */ }
+  return { ok: false, reason: 'no_courier' };
+}
+
+// Driver accepts an offer → assign the order to them
+async function acceptOffer(offer, driver) {
+  const DeliveryOffer = require('../Models/DeliveryOffer');
+  const Order = require('../Models/Order');
+  const DeliveryPerson = require('../Models/DeliveryPerson');
+  const Delivery = require('../Models/Delivery');
+  const dsm = require('./deliveryStateMachine');
+  const socketService = require('./socketService');
+
+  if (offer.state !== 'pending') return { ok: false, reason: 'offer_not_pending' };
+  if (offer.expiresAt < new Date()) {
+    offer.state = 'expired'; offer.respondedAt = new Date(); await offer.save();
+    return { ok: false, reason: 'expired' };
+  }
+
+  const order = await Order.findById(offer.orderId);
+  if (!order) return { ok: false, reason: 'order_not_found' };
+  if (order.deliveryPersonId) return { ok: false, reason: 'already_assigned' };
+
+  offer.state = 'accepted'; offer.respondedAt = new Date(); await offer.save();
+  await DeliveryOffer.updateMany(
+    { deliveryId: offer.deliveryId, state: 'pending', _id: { $ne: offer._id } },
+    { $set: { state: 'superseded' } }
+  );
+
+  order.deliveryPersonId = driver._id;
+  order.deliveryAssignedAt = new Date();
+  order.assignmentMethod = 'auto_offer';
+  order.deliveryMode = 'profile';
+  if (!order.confirmationCode) order.confirmationCode = generateConfirmationCode();
+  order.status = 'inProgress';
+  order.statusHistory = order.statusHistory || [];
+  order.statusHistory.push({ status: 'inProgress', timestamp: new Date(), note: `Oferta aceptada por ${driver.name}` });
+  await order.save();
+
+  await DeliveryPerson.updateOne({ _id: driver._id }, { $set: { status: 'on_delivery' }, $inc: { activeDeliveries: 1 } });
+
+  const delivery = await Delivery.findOne({ orderId: order._id });
+  if (delivery) {
+    await dsm.transition(delivery, 'accept', { actor: 'driver', actorId: driver._id, actorName: driver.name, driverId: driver._id });
+  }
+
+  try {
+    const BusinessConfig = require('../Models/BusinessConfig');
+    const biz = await BusinessConfig.findById(order.businessId).select('slug').lean();
+    socketService.emitToBusiness(String(order.businessId), 'delivery:assigned', {
+      orderId: String(order._id), deliveryPersonId: String(driver._id), driverName: driver.name, method: 'auto_offer',
+    });
+    if (biz?.slug) socketService.emitToDeliveryRoom(biz.slug, 'delivery:assigned', { orderId: String(order._id) });
+  } catch { /* non-critical */ }
+
+  return { ok: true, order };
+}
+
+// Driver rejects an offer → re-offer to the next candidate
+async function rejectOffer(offer) {
+  const Order = require('../Models/Order');
+  const BusinessConfig = require('../Models/BusinessConfig');
+
+  if (offer.state !== 'pending') return { ok: false, reason: 'offer_not_pending' };
+  offer.state = 'rejected'; offer.respondedAt = new Date(); await offer.save();
+
+  const order = await Order.findById(offer.orderId);
+  const business = await BusinessConfig.findById(offer.businessId).lean();
+  if (order && !order.deliveryPersonId && business) return pickAndOffer(order, business);
+  return { ok: true, reoffered: false };
+}
+
+// Sweeper: expire stale pending offers and re-offer automatically
+async function expireStaleOffers() {
+  const DeliveryOffer = require('../Models/DeliveryOffer');
+  const Order = require('../Models/Order');
+  const BusinessConfig = require('../Models/BusinessConfig');
+
+  const now = new Date();
+  const stale = await DeliveryOffer.find({ state: 'pending', expiresAt: { $lt: now } }).limit(50);
+  for (const offer of stale) {
+    try {
+      offer.state = 'expired'; offer.respondedAt = now; await offer.save();
+      const order = await Order.findById(offer.orderId);
+      if (!order || order.deliveryPersonId) continue; // already handled
+      const business = await BusinessConfig.findById(offer.businessId).lean();
+      if (business) await pickAndOffer(order, business);
+    } catch (e) {
+      logger.warn('expireStaleOffers item failed', { offerId: String(offer._id), error: e.message });
+    }
+  }
+  return stale.length;
+}
+
+let sweeperStarted = false;
+function startOfferSweeper(intervalMs = 10000) {
+  if (sweeperStarted) return;
+  sweeperStarted = true;
+  setInterval(() => { expireStaleOffers().catch(() => {}); }, intervalMs);
+  logger.info('Delivery offer sweeper started', { intervalMs });
+}
+
+/**
+ * Main entry used by the admin "auto-assign" action. In auto modes this now
+ * OFFERS the order (Phase C) instead of assigning it directly.
+ * Returns a shape compatible with the existing admin endpoint.
+ */
+async function autoAssignOrder(order, business) {
+  const result = await pickAndOffer(order, business);
+  if (result.ok && result.offered && result.driver) {
+    return { assigned: false, offered: true, method: 'offer', driver: result.driver, distanceKm: result.distanceKm };
+  }
+  if (result.ok && result.offered && result.partner) {
+    return { assigned: false, offered: true, method: 'partner', partner: result.partner };
+  }
+  return { assigned: false, reason: result.reason || 'no_driver_available' };
 }
 
 module.exports = {
   autoAssignOrder,
+  pickAndOffer,
+  offerToDriver,
+  acceptOffer,
+  rejectOffer,
+  expireStaleOffers,
+  startOfferSweeper,
   offerToPartner,
   assignToDriver,
   getAvailableDrivers,

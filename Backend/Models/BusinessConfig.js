@@ -250,6 +250,11 @@ const businessConfigSchema = new mongoose.Schema({
     maxAssignRadiusKm: {
       type: Number,
       default: 8
+    },
+    // Segundos que un domi tiene para aceptar una oferta antes de que expire
+    offerTimeoutSec: {
+      type: Number,
+      default: 30
     }
   },
   // API key para Print Agent (auto-print de tiquetes)

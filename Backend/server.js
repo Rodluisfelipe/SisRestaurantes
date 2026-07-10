@@ -349,6 +349,14 @@ mongoose.connect(MONGO_URI, {
       logger.warn('Error iniciando cron de expiración de puntos:', error.message);
     }
 
+    // Sweeper de ofertas de domicilio (Fase C): expira ofertas vencidas y reofrece
+    try {
+      const { startOfferSweeper } = require('./services/assignmentService');
+      startOfferSweeper(10000);
+    } catch (error) {
+      logger.warn('Error iniciando sweeper de ofertas:', error.message);
+    }
+
     // WhatsApp vía Baileys (solo si WHATSAPP_ENABLED=true)
     try {
       const { initWhatsApp } = require('./services/whatsappService');

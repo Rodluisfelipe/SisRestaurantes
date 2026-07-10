@@ -99,6 +99,17 @@ export async function confirmDelivery(slug, orderId, code) {
   return api.post(`/restaurants/${slug}/domi/orders/${orderId}/confirm`, { code });
 }
 
+/* ── Offers (Phase C) ── */
+export async function fetchOffers(slug) {
+  return api.get(`/restaurants/${slug}/domi/offers`);
+}
+export async function acceptOffer(slug, offerId) {
+  return api.post(`/restaurants/${slug}/domi/offers/${offerId}/accept`);
+}
+export async function rejectOffer(slug, offerId) {
+  return api.post(`/restaurants/${slug}/domi/offers/${offerId}/reject`);
+}
+
 /* ── Availability / presence (for auto-assignment) ── */
 export async function setOnline(slug, online, lat, lng) {
   return api.post(`/restaurants/${slug}/domi/online`, { online, lat, lng });
