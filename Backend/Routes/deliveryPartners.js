@@ -168,6 +168,15 @@ router.post('/portal/orders/:id/accept', partnerAuth, async (req, res) => {
     if (!order.confirmationCode) order.confirmationCode = Math.floor(1000 + Math.random() * 9000).toString();
     await order.save();
 
+    // Shadow: delivery state machine → accepted (partner accepts)
+    try {
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'accept', {
+        actor: 'partner', actorId: req.partner._id, actorName: req.partner.name,
+        partnerId: req.partner._id, assignmentMethod: 'partner',
+      });
+    } catch (e) { /* shadow, non-fatal */ }
+
     // Notify restaurant
     socketService.emitToBusiness(String(order.businessId), 'delivery:assigned', {
       orderId: String(order._id), partnerId: String(req.partner._id), partnerName: req.partner.name,
@@ -225,6 +234,15 @@ router.post('/portal/orders/:id/deliver', partnerAuth, async (req, res) => {
     order.statusHistory = order.statusHistory || [];
     order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: `Entregado por partner ${req.partner.name}` });
     await order.save();
+
+    // Shadow: delivery state machine → delivered (partner delivers)
+    try {
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'deliver', {
+        actor: 'partner', actorId: req.partner._id, actorName: req.partner.name,
+        partnerId: req.partner._id, assignmentMethod: 'partner',
+      });
+    } catch (e) { /* shadow, non-fatal */ }
 
     await DeliveryPartner.updateOne({ _id: req.partner._id }, { $inc: { totalDeliveries: 1 } });
 

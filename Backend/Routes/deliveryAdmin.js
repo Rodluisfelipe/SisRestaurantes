@@ -162,6 +162,12 @@ router.post('/restaurants/:slug/orders/:id/assign-qr', tenantAuth, async (req, r
       order.status = 'inProgress';
       order.statusHistory.push({ status: 'inProgress', timestamp: new Date(), note: 'Domiciliario asignado (QR)' });
       await order.save();
+
+      // Shadow: delivery state machine → accepted (manual QR assign)
+      try {
+        const dsm = require('../services/deliveryStateMachine');
+        await dsm.recordForOrder(order, 'assign', { actor: 'admin', assignmentMethod: 'qr' });
+      } catch (e) { /* shadow, non-fatal */ }
     }
 
     // Notify dashboard
@@ -221,6 +227,15 @@ router.post('/restaurants/:slug/orders/:id/assign-delivery-person', tenantAuth, 
     }
 
     await order.save();
+
+    // Shadow: delivery state machine → accepted (manual assign to domi)
+    try {
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'assign', {
+        actor: 'admin', assignmentMethod: order.deliveryMode,
+        driverId: deliveryPersonId || undefined,
+      });
+    } catch (e) { /* shadow, non-fatal */ }
 
     // Get business slug for tracking URL
     const business = await BusinessConfig.findById(businessId).select('slug').lean();
@@ -530,6 +545,28 @@ router.post('/restaurants/:slug/orders/:id/auto-assign', tenantAuth, async (req,
   } catch (err) {
     logger.error('Error auto-assigning order', err);
     res.status(500).json({ message: 'Error en asignación automática' });
+  }
+});
+
+// ── Delivery timeline (state machine + immutable event log) for audit ────────
+router.get('/restaurants/:slug/orders/:id/timeline', tenantAuth, async (req, res) => {
+  try {
+    const Delivery = require('../Models/Delivery');
+    const DeliveryEvent = require('../Models/DeliveryEvent');
+
+    const delivery = await Delivery.findOne({ orderId: req.params.id, businessId: req.businessId }).lean();
+    if (!delivery) {
+      return res.json({ delivery: null, events: [] });
+    }
+
+    const events = await DeliveryEvent.find({ deliveryId: delivery._id })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    res.json({ delivery, events });
+  } catch (err) {
+    logger.error('Error fetching delivery timeline', err);
+    res.status(500).json({ message: 'Error al obtener la línea de tiempo' });
   }
 });
 

@@ -103,6 +103,15 @@ async function offerToPartner(order, business) {
     order.assignmentMethod = 'partner';
     await order.save();
 
+    // Shadow: record on the delivery state machine
+    try {
+      const dsm = require('./deliveryStateMachine');
+      await dsm.recordForOrder(order, 'offer', {
+        actor: 'system', partnerId: partner._id, assignmentMethod: 'partner',
+        meta: { partnerName: partner.name },
+      });
+    } catch (e) { /* shadow, non-fatal */ }
+
     try {
       socketService.emitToPartner(String(partner._id), 'partner:new_offer', {
         orderId: String(order._id),
@@ -137,6 +146,15 @@ async function assignToDriver(order, driver, method) {
     { _id: driver._id },
     { $set: { status: 'on_delivery' }, $inc: { activeDeliveries: 1 } }
   );
+
+  // Shadow: record on the delivery state machine (direct assign → accepted)
+  try {
+    const dsm = require('./deliveryStateMachine');
+    await dsm.recordForOrder(order, 'assign', {
+      actor: 'system', driverId: driver._id, assignmentMethod: method, actorName: driver.name,
+      meta: { auto: true },
+    });
+  } catch (e) { /* shadow, non-fatal */ }
 
   try {
     const business = await BusinessConfig.findById(order.businessId).select('slug').lean();

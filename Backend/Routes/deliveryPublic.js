@@ -179,6 +179,12 @@ router.post('/:token/confirm', confirmLimiter, async (req, res) => {
     order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: requireCode ? 'Entregado (código confirmado)' : 'Entregado (sin código)' });
     await order.save();
 
+    // Shadow: delivery state machine → delivered (Mode 1 / QR)
+    try {
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'deliver', { actor: 'driver', assignmentMethod: 'qr', meta: { codeUsed: requireCode } });
+    } catch (e) { /* shadow, non-fatal */ }
+
     // Update delivery person: increment totalDeliveries and set status back to available
     if (order.deliveryPersonId) {
       try {
@@ -287,6 +293,12 @@ router.post('/:token/picked', deliveryLimiter, async (req, res) => {
     order.deliveryPickedAt = new Date();
     order.trackingEnabled = true;
     await order.save();
+
+    // Shadow: delivery state machine → picked_up
+    try {
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'pickup', { actor: 'driver', assignmentMethod: 'qr' });
+    } catch (e) { /* shadow, non-fatal */ }
 
     socketService.emitToBusiness(order.businessId, 'orderUpdated', order.toObject());
     socketService.emitToOrder(order._id, 'order:status', { status: order.status, updatedAt: new Date(), pickedAt: order.deliveryPickedAt });
@@ -438,6 +450,15 @@ router.post('/:slug/domi/orders/:id/confirm', confirmLimiter, domiAuth, async (r
     order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: requireCode ? 'Entregado (código confirmado)' : 'Entregado (sin código)' });
     await order.save();
 
+    // Shadow: delivery state machine → delivered (Mode 2/3, authenticated)
+    try {
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'deliver', {
+        actor: 'driver', actorId: req.domi?.dpId && !String(req.domi.dpId).startsWith('daily-') ? req.domi.dpId : null,
+        assignmentMethod: req.domi?.mode, meta: { codeUsed: requireCode },
+      });
+    } catch (e) { /* shadow, non-fatal */ }
+
     // Update delivery person: increment totalDeliveries and set status back to available
     if (order.deliveryPersonId) {
       try {
@@ -549,6 +570,15 @@ router.post('/:slug/domi/orders/:id/picked', deliveryLimiter, domiAuth, async (r
     order.deliveryPickedAt = new Date();
     order.trackingEnabled = true;
     await order.save();
+
+    // Shadow: delivery state machine → picked_up
+    try {
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'pickup', {
+        actor: 'driver', actorId: req.domi.dpId && !String(req.domi.dpId).startsWith('daily-') ? req.domi.dpId : null,
+        assignmentMethod: req.domi.mode,
+      });
+    } catch (e) { /* shadow, non-fatal */ }
 
     socketService.emitToBusiness(order.businessId, 'orderUpdated', order.toObject());
     socketService.emitToOrder(order._id, 'order:status', { status: order.status, updatedAt: new Date(), pickedAt: order.deliveryPickedAt });
