@@ -5,7 +5,16 @@ const deliveryPersonSchema = new mongoose.Schema({
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',
-    required: true,
+    // Required for own-fleet drivers; partner drivers belong to a partner instead.
+    required: function () { return !this.partnerId; },
+    index: true
+  },
+  // If set, this driver belongs to an external delivery company (partner) and
+  // can serve any restaurant that has enabled that partner.
+  partnerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryPartner',
+    default: null,
     index: true
   },
   name: {
@@ -28,6 +37,32 @@ const deliveryPersonSchema = new mongoose.Schema({
     type: String,
     enum: ['available', 'on_delivery'],
     default: 'available'
+  },
+  // Whether the driver has toggled themselves online in the app (available to receive)
+  isOnline: {
+    type: Boolean,
+    default: false
+  },
+  // Last known GPS position (GeoJSON Point [lng, lat]) — used by the assignment algorithm
+  lastLocation: {
+    type: { type: String, enum: ['Point'], default: 'Point' },
+    coordinates: { type: [Number], default: undefined } // [lng, lat]
+  },
+  lastSeenAt: {
+    type: Date,
+    default: null
+  },
+  // Rolling average rating (1-5), used by the scoring algorithm
+  rating: {
+    type: Number,
+    default: 5,
+    min: 0,
+    max: 5
+  },
+  // Number of orders currently assigned & not yet delivered (load factor for scoring)
+  activeDeliveries: {
+    type: Number,
+    default: 0
   },
   totalDeliveries: {
     type: Number,
@@ -55,5 +90,6 @@ deliveryPersonSchema.statics.findByCode = async function(businessId, plainCode) 
 };
 
 deliveryPersonSchema.index({ businessId: 1, active: 1 });
+deliveryPersonSchema.index({ lastLocation: '2dsphere' });
 
 module.exports = mongoose.model('DeliveryPerson', deliveryPersonSchema);

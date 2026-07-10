@@ -446,4 +446,91 @@ router.get('/restaurants/:slug/pending-delivery-orders', tenantAuth, async (req,
   }
 });
 
+// ── Delivery settings (assignment mode + partners) ───────────────────────────
+router.get('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) => {
+  try {
+    const biz = await BusinessConfig.findById(req.businessId).select('deliverySettings').lean();
+    const settings = biz?.deliverySettings || { assignmentMode: 'manual', usePartners: false, partners: [], maxAssignRadiusKm: 8 };
+
+    // Enrich associated partners with their name/status
+    const DeliveryPartner = require('../Models/DeliveryPartner');
+    const ids = (settings.partners || []).map(p => p.partnerId).filter(Boolean);
+    const partnerDocs = ids.length ? await DeliveryPartner.find({ _id: { $in: ids } }).select('name active logo').lean() : [];
+    const pMap = Object.fromEntries(partnerDocs.map(p => [String(p._id), p]));
+
+    res.json({
+      ...settings,
+      partners: (settings.partners || []).map(p => ({
+        ...p,
+        name: pMap[String(p.partnerId)]?.name || 'Partner',
+        partnerActive: pMap[String(p.partnerId)]?.active ?? false,
+      })),
+    });
+  } catch (err) {
+    logger.error('Error fetching delivery settings', err);
+    res.status(500).json({ message: 'Error al obtener configuración' });
+  }
+});
+
+router.put('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) => {
+  try {
+    const { assignmentMode, usePartners, maxAssignRadiusKm, partners } = req.body;
+    const update = {};
+    if (assignmentMode !== undefined) {
+      if (!['manual', 'auto_nearest', 'auto_scored'].includes(assignmentMode)) {
+        return res.status(400).json({ message: 'Modo de asignación inválido' });
+      }
+      update['deliverySettings.assignmentMode'] = assignmentMode;
+    }
+    if (usePartners !== undefined) update['deliverySettings.usePartners'] = !!usePartners;
+    if (maxAssignRadiusKm !== undefined) update['deliverySettings.maxAssignRadiusKm'] = Math.max(1, Math.min(50, Number(maxAssignRadiusKm) || 8));
+    if (Array.isArray(partners)) {
+      update['deliverySettings.partners'] = partners
+        .filter(p => p.partnerId)
+        .map(p => ({ partnerId: p.partnerId, enabled: p.enabled !== false, priority: Number(p.priority) || 1 }));
+    }
+
+    await BusinessConfig.updateOne({ _id: req.businessId }, { $set: update });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Error updating delivery settings', err);
+    res.status(500).json({ message: 'Error al guardar configuración' });
+  }
+});
+
+// List all active partner companies available to associate
+router.get('/restaurants/:slug/available-partners', tenantAuth, async (req, res) => {
+  try {
+    const DeliveryPartner = require('../Models/DeliveryPartner');
+    const partners = await DeliveryPartner.find({ active: true }).select('name phone logo coverageAreas').sort({ name: 1 }).lean();
+    res.json(partners);
+  } catch (err) {
+    logger.error('Error listing available partners', err);
+    res.status(500).json({ message: 'Error al obtener partners' });
+  }
+});
+
+// Trigger auto-assignment for a specific order
+router.post('/restaurants/:slug/orders/:id/auto-assign', tenantAuth, async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.id, businessId: req.businessId });
+    if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
+
+    const business = await BusinessConfig.findById(req.businessId).lean();
+    const assignmentService = require('../services/assignmentService');
+    const result = await assignmentService.autoAssignOrder(order, business);
+
+    if (result.assigned) {
+      return res.json({ ok: true, assigned: true, driverName: result.driver?.name, method: result.method, distanceKm: result.distanceKm });
+    }
+    if (result.offered) {
+      return res.json({ ok: true, assigned: false, offered: true, partnerName: result.partner?.name });
+    }
+    return res.json({ ok: false, assigned: false, reason: result.reason || 'no_driver_available' });
+  } catch (err) {
+    logger.error('Error auto-assigning order', err);
+    res.status(500).json({ message: 'Error en asignación automática' });
+  }
+});
+
 module.exports = router;

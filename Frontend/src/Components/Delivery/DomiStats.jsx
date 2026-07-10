@@ -7,6 +7,7 @@ import { useBusinessConfig } from '../../Context/BusinessContext';
 import api from '../../services/api';
 import { BACKEND_URL } from '../../config';
 import AssignDeliveryModal from './AssignDeliveryModal';
+import DeliverySettingsModal from './DeliverySettingsModal';
 
 /* ── SVG Icons ── */
 const IC = {
@@ -71,6 +72,17 @@ const IC = {
       <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
     </svg>
   ),
+  gear: (cls = 'w-4 h-4') => (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+    </svg>
+  ),
+  bolt: (cls = 'w-3.5 h-3.5') => (
+    <svg className={cls} viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M13 2L4.5 12.5c-.4.5-.05 1.5.6 1.5H11l-1 8 8.5-10.5c.4-.5.05-1.5-.6-1.5H12l1-8z"/>
+    </svg>
+  ),
 };
 
 /* ── Helpers ── */
@@ -110,6 +122,11 @@ export default function DomiStats() {
   /* assign modal */
   const [assignOrder, setAssignOrder]   = useState(null);
 
+  /* settings + assignment mode */
+  const [showSettings, setShowSettings] = useState(false);
+  const [assignMode, setAssignMode]     = useState('manual');
+  const [autoAssigning, setAutoAssigning] = useState(null);
+
   /* create domi */
   const [showCreate, setShowCreate]     = useState(false);
   const [newName, setNewName]           = useState('');
@@ -148,6 +165,29 @@ export default function DomiStats() {
       if (res.data?.dailyCode) setDailyCode(res.data.dailyCode);
     } catch { /* 404 = no session today — normal */ }
   }, [slug]);
+
+  const fetchMode = useCallback(async () => {
+    if (!slug) return;
+    try {
+      const res = await api.get(`/delivery-admin/restaurants/${slug}/delivery-settings`);
+      setAssignMode(res.data.assignmentMode || 'manual');
+    } catch { /* default manual */ }
+  }, [slug]);
+
+  const handleAutoAssign = async (order) => {
+    setAutoAssigning(order._id);
+    try {
+      const res = await api.post(`/delivery-admin/restaurants/${slug}/orders/${order._id}/auto-assign`);
+      if (res.data.assigned) toast.success(`Asignado a ${res.data.driverName}${res.data.distanceKm ? ` (${res.data.distanceKm.toFixed(1)} km)` : ''}`);
+      else if (res.data.offered) toast.success(`Ofrecido a ${res.data.partnerName}`);
+      else toast.error('No hay domiciliarios disponibles cerca');
+      fetchPending(); fetchDomis(); fetchStats();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Error en asignación automática');
+    } finally {
+      setAutoAssigning(null);
+    }
+  };
 
   /* full refresh */
   const refresh = useCallback(async () => {
@@ -204,9 +244,10 @@ export default function DomiStats() {
     setLoading(true);
     refresh();
     fetchDailySession();
+    fetchMode();
     pollRef.current = setInterval(refresh, 15_000);
     return () => clearInterval(pollRef.current);
-  }, [slug, refresh, fetchDailySession]);
+  }, [slug, refresh, fetchDailySession, fetchMode]);
 
   /* ── handlers ── */
   const handleGenerateDaily = async () => {
@@ -271,9 +312,18 @@ export default function DomiStats() {
             <p className="text-[12px] text-slate-400 mt-0.5">Gestiona tu equipo y asigna pedidos en tiempo real</p>
           </div>
         </div>
-        <button onClick={refresh} className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
-          {IC.refresh('w-4 h-4')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowSettings(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 text-[12px] font-bold transition-colors">
+            {IC.gear('w-4 h-4')}
+            <span className="hidden sm:inline">
+              {assignMode === 'manual' ? 'Manual' : assignMode === 'auto_nearest' ? 'Auto: cercano' : 'Auto: inteligente'}
+            </span>
+          </button>
+          <button onClick={refresh} className="p-2 rounded-xl hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
+            {IC.refresh('w-4 h-4')}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -343,12 +393,23 @@ export default function DomiStats() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => setAssignOrder(order)}
-                          className="shrink-0 bg-slate-900 hover:bg-slate-700 text-white text-[12px] font-bold px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5"
-                        >
-                          {IC.moto('w-3.5 h-3.5')} Asignar
-                        </button>
+                        <div className="shrink-0 flex flex-col gap-1.5">
+                          {assignMode !== 'manual' && (
+                            <button
+                              onClick={() => handleAutoAssign(order)}
+                              disabled={autoAssigning === order._id}
+                              className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-[12px] font-bold px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5 disabled:opacity-60"
+                            >
+                              {IC.bolt('w-3.5 h-3.5')} {autoAssigning === order._id ? '...' : 'Auto'}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setAssignOrder(order)}
+                            className="bg-slate-900 hover:bg-slate-700 text-white text-[12px] font-bold px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5"
+                          >
+                            {IC.moto('w-3.5 h-3.5')} Asignar
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
@@ -549,6 +610,13 @@ export default function DomiStats() {
         order={assignOrder}
         onClose={() => setAssignOrder(null)}
         onAssigned={handleAssigned}
+      />
+
+      {/* Settings modal */}
+      <DeliverySettingsModal
+        slug={slug}
+        isOpen={showSettings}
+        onClose={(saved) => { setShowSettings(false); if (saved) fetchMode(); }}
       />
     </div>
   );

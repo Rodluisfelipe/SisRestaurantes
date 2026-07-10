@@ -16,6 +16,7 @@ const CrewEmployerApp = lazy(() => import("./Pages/CrewEmployer/CrewEmployerApp"
 const DomiPage = lazy(() => import("./Components/Delivery/DomiPage"));
 const DeliveryTracker = lazy(() => import("./Components/Delivery/DeliveryTracker"));
 const DeliveryQRPage = lazy(() => import("./Components/Delivery/DeliveryQRPage"));
+const PartnerPortal = lazy(() => import("./Components/Delivery/PartnerPortal"));
 const MenuByCatalog = lazy(() => import("./Pages/Catalog/MenuByCatalog"));
 const RestaurantDetail = lazy(() => import("./Pages/Catalog/RestaurantDetail"));
 const LeadCapturePage = lazy(() => import("./Pages/LeadCapturePage"));
@@ -319,6 +320,16 @@ function App() {
           element={
             <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}>
               <DeliveryQRPage />
+            </Suspense>
+          }
+        />
+
+        {/* Delivery: External partner company portal */}
+        <Route
+          path="/partner"
+          element={
+            <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500"></div></div>}>
+              <PartnerPortal />
             </Suspense>
           }
         />

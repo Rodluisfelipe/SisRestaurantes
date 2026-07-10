@@ -202,6 +202,29 @@ const orderSchema = new mongoose.Schema({
     ref: 'DeliveryPerson',
     default: null
   },
+  // External delivery company handling this order (if dispatched to a partner)
+  assignedPartnerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryPartner',
+    default: null,
+    index: true
+  },
+  // Lifecycle of the partner offer: offered → accepted / rejected
+  partnerStatus: {
+    type: String,
+    enum: ['none', 'offered', 'accepted', 'rejected'],
+    default: 'none'
+  },
+  partnerOfferedAt: {
+    type: Date,
+    default: null
+  },
+  // How this order was assigned (audit): manual, auto_nearest, auto_scored, partner
+  assignmentMethod: {
+    type: String,
+    enum: ['manual', 'auto_nearest', 'auto_scored', 'partner', null],
+    default: null
+  },
   confirmationCode: {
     type: String,
     default: null

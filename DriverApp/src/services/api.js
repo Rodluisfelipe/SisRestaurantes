@@ -57,3 +57,12 @@ export async function markPicked(slug, orderId) {
 export async function confirmDelivery(slug, orderId, code) {
   return api.post(`/restaurants/${slug}/domi/orders/${orderId}/confirm`, { code });
 }
+
+/* ── Availability / presence (for auto-assignment) ── */
+export async function setOnline(slug, online, lat, lng) {
+  return api.post(`/restaurants/${slug}/domi/online`, { online, lat, lng });
+}
+
+export async function heartbeat(slug, lat, lng) {
+  return api.post(`/restaurants/${slug}/domi/heartbeat`, { lat, lng });
+}

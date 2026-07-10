@@ -291,6 +291,14 @@ function initSocket(io) {
       emitToBusiness(businessId, 'domi:status', { deliveryPersonId, status: 'connected' });
     });
 
+    // External partner company portal joins its room to receive order offers
+    socket.on('partner:join', ({ partnerId }) => {
+      if (!partnerId) return;
+      socket.join(`partner:${partnerId}`);
+      socket._partnerId = partnerId;
+      logger.info('Partner joined room', { socketId: socket.id, partnerId });
+    });
+
     // Fixed domi joins the restaurant delivery room (Mode 2)
     socket.on('domi:joinFixed', ({ businessId }) => {
       if (!businessId) return;
@@ -595,13 +603,34 @@ function emitToDeliveryRoom(slug, event, data) {
   logger.debug(`Emitted ${event} to delivery room`, { room });
 }
 
+/**
+ * Emit to a specific own-fleet delivery person's room (`delivery:${id}`).
+ */
+function emitToDeliveryPerson(deliveryPersonId, event, data) {
+  if (!ioInstance || !deliveryPersonId) return;
+  ioInstance.to(`delivery:${deliveryPersonId.toString()}`).emit(event, data);
+}
+
+/**
+ * Emit to an external partner company's room (`partner:${partnerId}`).
+ * Partner portals join via the `partner:join` socket event.
+ */
+function emitToPartner(partnerId, event, data) {
+  if (!ioInstance || !partnerId) return;
+  const room = `partner:${partnerId.toString()}`;
+  ioInstance.to(room).emit(event, data);
+  logger.debug(`Emitted ${event} to partner room`, { room });
+}
+
 module.exports = {
   initSocket,
   emitToBusiness,
   emitToOrder,
   emitToDeliveryRoom,
+  emitToDeliveryPerson,
+  emitToPartner,
   emitBusinessesUpdate,
   getConnectedClientsInfo,
   testEmitToBusiness,
   printEmitter
-}; 
+};

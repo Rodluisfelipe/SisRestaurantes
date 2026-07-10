@@ -1,319 +1,301 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, Linking, TextInput, ActivityIndicator,
-  Vibration, Platform,
+  View, Text, StyleSheet, TouchableOpacity, Alert, Linking,
+  TextInput, Vibration, Platform, ScrollView, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+
 import { markPicked, confirmDelivery, getSession } from '../services/api';
 import { emitLocation } from '../services/socket';
 import { startBackgroundLocation, stopBackgroundLocation } from '../tasks/locationTask';
+import { C, mapDarkStyle, shadow } from '../theme';
+import SlideToConfirm from '../components/SlideToConfirm';
+import DraggableSheet from '../components/DraggableSheet';
 
-const STATUS_LABEL = {
-  confirmed: 'Confirmado',
-  preparing: 'Preparando',
-  ready:     'Listo para recoger',
-  inProgress: 'En camino',
-  delivered: 'Entregado',
-};
-
-function fmtPrice(n) { return `$${(n || 0).toLocaleString('es-CO')}`; }
+const SCREEN_H = Dimensions.get('window').height;
+const fmtPrice = (n) => `$${(n || 0).toLocaleString('es-CO')}`;
 
 export default function OrderScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
-  const { order: initialOrder } = route.params;
-  const [order, setOrder]     = useState(initialOrder);
-  const [picked, setPicked]   = useState(!!initialOrder.deliveryPickedAt);
-  const [delivering, setDelivering] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [code, setCode]       = useState('');
-  const [gpsStatus, setGps]   = useState('idle'); // idle | requesting | active | error
+  const { order: initial } = route.params;
+  const [order, setOrder]   = useState(initial);
+  const [picked, setPicked] = useState(!!initial.deliveryPickedAt);
+  const [code, setCode]     = useState('');
+  const [driverLoc, setDriverLoc] = useState(null);
+  const [gps, setGps]       = useState('idle');
+  const mapRef  = useRef(null);
   const watchRef = useRef(null);
 
-  /* ── Foreground GPS tracking ── */
-  const startFgTracking = useCallback(async () => {
-    setGps('requesting');
+  const dest = initial.deliveryCoordinates?.lat
+    ? { latitude: initial.deliveryCoordinates.lat, longitude: initial.deliveryCoordinates.lon }
+    : null;
+  const needsCode = order.requireDeliveryCode !== false;
+
+  const startTracking = useCallback(async () => {
     const { granted } = await Location.requestForegroundPermissionsAsync();
-    if (!granted) {
-      setGps('error');
-      Alert.alert('Permiso requerido', 'Activa la ubicación para compartir tu posición con el restaurante.');
-      return;
-    }
+    if (!granted) { setGps('error'); return; }
     setGps('active');
     watchRef.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.High, timeInterval: 4000, distanceInterval: 8 },
       ({ coords }) => {
+        setDriverLoc({ latitude: coords.latitude, longitude: coords.longitude });
         emitLocation(order._id, coords.latitude, coords.longitude);
       },
     );
   }, [order._id]);
 
-  const stopFgTracking = useCallback(() => {
-    if (watchRef.current) {
-      watchRef.current.remove();
-      watchRef.current = null;
-    }
+  const stopTracking = useCallback(() => {
+    watchRef.current?.remove?.();
+    watchRef.current = null;
     setGps('idle');
   }, []);
 
-  /* ── Picked up ── */
+  useEffect(() => {
+    (async () => {
+      const { granted } = await Location.requestForegroundPermissionsAsync();
+      if (!granted) return;
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setDriverLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+    })();
+    return () => stopTracking();
+  }, [stopTracking]);
+
+  useEffect(() => {
+    if (picked) { startTracking(); startBackgroundLocation(order._id).catch(() => {}); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (driverLoc && dest && mapRef.current) {
+      mapRef.current.fitToCoordinates([driverLoc, dest], {
+        edgePadding: { top: 120, right: 80, bottom: SCREEN_H * 0.5, left: 80 },
+        animated: true,
+      });
+    } else if (dest && mapRef.current) {
+      mapRef.current.animateToRegion({ ...dest, latitudeDelta: 0.02, longitudeDelta: 0.02 }, 600);
+    }
+  }, [driverLoc, dest]);
+
   const handlePicked = async () => {
-    setDelivering(true);
     try {
       const { slug } = await getSession();
       await markPicked(slug, order._id);
       setPicked(true);
       setOrder(o => ({ ...o, deliveryPickedAt: new Date().toISOString(), status: 'inProgress' }));
-      Vibration.vibrate(100);
-      // Start GPS (foreground + background)
-      await startFgTracking();
+      Vibration.vibrate(80);
+      await startTracking();
       await startBackgroundLocation(order._id);
     } catch (err) {
       Alert.alert('Error', err.data?.message || 'No se pudo registrar la recogida.');
-    } finally {
-      setDelivering(false);
     }
   };
 
-  /* ── Confirm delivery ── */
   const handleConfirm = async () => {
-    if (order.requireDeliveryCode !== false && code.length < 4) {
-      return Alert.alert('Código requerido', 'Ingresa el código de confirmación del cliente.');
-    }
-    setConfirming(true);
+    if (needsCode && code.length < 4) return Alert.alert('Código requerido', 'Pide al cliente el código de 4 dígitos.');
     try {
       const { slug } = await getSession();
-      const payload = order.requireDeliveryCode === false ? { skipCode: true } : { code };
-      await confirmDelivery(slug, order._id, payload.code);
-      stopFgTracking();
+      await confirmDelivery(slug, order._id, needsCode ? code : undefined);
+      stopTracking();
       await stopBackgroundLocation();
-      Vibration.vibrate([0, 100, 80, 100]);
-      Alert.alert('¡Entrega completada!', 'Pedido marcado como entregado.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      Vibration.vibrate([0, 90, 70, 90]);
+      Alert.alert('¡Entrega completada! 🎉', 'Buen trabajo.', [{ text: 'Continuar', onPress: () => navigation.goBack() }]);
     } catch (err) {
-      const msg = err.data?.message || 'Código incorrecto. Intenta de nuevo.';
-      Alert.alert('Error', msg);
-    } finally {
-      setConfirming(false);
+      Alert.alert('Código incorrecto', err.data?.message || 'Verifica el código con el cliente.');
     }
   };
 
-  /* ── Stop tracking on unmount ── */
-  useEffect(() => {
-    return () => { stopFgTracking(); };
-  }, [stopFgTracking]);
-
-  /* ── Call / WhatsApp ── */
-  const callCustomer = () => {
-    if (order.phone) Linking.openURL(`tel:${order.phone}`);
-  };
-
-  const whatsapp = (msg) => {
+  const call = () => order.phone && Linking.openURL(`tel:${order.phone}`);
+  const whatsapp = () => {
     if (!order.phone) return;
-    const phone = order.phone.replace(/\D/g, '');
-    Linking.openURL(`https://wa.me/57${phone}?text=${encodeURIComponent(msg)}`);
+    const msg = `Hola ${order.customerName}, soy tu domiciliario con el pedido #${order.orderNumber}.`;
+    Linking.openURL(`https://wa.me/57${order.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`);
+  };
+  const openMaps = () => {
+    if (!dest) return;
+    const q = `${dest.latitude},${dest.longitude}`;
+    Linking.openURL(Platform.OS === 'ios' ? `maps:?daddr=${q}` : `google.navigation:q=${q}`);
   };
 
-  const waMessages = {
-    onWay: `Hola ${order.customerName}, soy el domiciliario. Ya salí con tu pedido #${order.orderNumber}. Tiempo estimado: ${order.estimatedDeliveryTime?.min || 20}-${order.estimatedDeliveryTime?.max || 35} min.`,
-    arriving: `Hola ${order.customerName}, estoy a pocos minutos de tu ubicación con tu pedido #${order.orderNumber}. 🛵`,
-  };
-
-  /* ── GPS status badge ── */
-  const gpsBadge = () => {
-    if (gpsStatus === 'active') return <View style={styles.gpsBadgeActive}><Text style={styles.gpsBadgeText}>GPS activo</Text></View>;
-    if (gpsStatus === 'requesting') return <View style={styles.gpsBadgeWait}><ActivityIndicator size="small" color="#f59e0b" /></View>;
-    if (gpsStatus === 'error') return <View style={styles.gpsBadgeError}><Text style={styles.gpsBadgeText}>Error GPS</Text></View>;
-    return null;
-  };
+  const footer = (
+    <View style={[styles.actionBar, { paddingBottom: insets.bottom + 12 }]}>
+      {order.status === 'delivered' ? (
+        <View style={styles.deliveredPill}>
+          <Ionicons name="checkmark-circle" size={20} color={C.go} />
+          <Text style={styles.deliveredTxt}>Pedido entregado</Text>
+        </View>
+      ) : !picked ? (
+        <SlideToConfirm label="Desliza para recoger" color={C.brand} colorDark={C.brandDark} onConfirm={handlePicked} />
+      ) : (
+        <SlideToConfirm label="Desliza para entregar" color={C.go} colorDark={C.goDark} onConfirm={handleConfirm} />
+      )}
+    </View>
+  );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>‹ Volver</Text>
+    <View style={styles.container}>
+      {/* MAP */}
+      <MapView
+        ref={mapRef}
+        provider={PROVIDER_DEFAULT}
+        style={StyleSheet.absoluteFill}
+        customMapStyle={mapDarkStyle}
+        showsUserLocation
+        showsMyLocationButton={false}
+        showsCompass={false}
+      >
+        {dest && (
+          <Marker coordinate={dest}>
+            <View style={styles.destPin}>
+              <View style={styles.destPinInner}>
+                <Ionicons name="flag" size={16} color={C.white} />
+              </View>
+            </View>
+          </Marker>
+        )}
+        {driverLoc && dest && (
+          <Polyline coordinates={[driverLoc, dest]} strokeColor={C.brand} strokeWidth={4} lineDashPattern={[2, 8]} geodesic />
+        )}
+      </MapView>
+
+      {/* Top bar */}
+      <View style={[styles.topBar, { paddingTop: insets.top + 6 }]}>
+        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="chevron-back" size={24} color={C.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>#{order.orderNumber}</Text>
-        {gpsBadge()}
+        <View style={styles.topPill}>
+          <Text style={styles.topPillTxt}>Pedido #{order.orderNumber}</Text>
+        </View>
+        <TouchableOpacity style={styles.iconBtn} onPress={openMaps}>
+          <MaterialCommunityIcons name="navigation-variant" size={22} color={C.brand} />
+        </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 40 }]}
-      >
-        {/* Status card */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Estado</Text>
-          <Text style={styles.statusText}>{STATUS_LABEL[order.status] || order.status}</Text>
+      {gps === 'active' && (
+        <View style={[styles.gpsBadge, { top: insets.top + 58 }]}>
+          <View style={styles.gpsDot} />
+          <Text style={styles.gpsTxt}>GPS activo · compartiendo ubicación</Text>
         </View>
+      )}
 
-        {/* Customer info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Cliente</Text>
-          <Text style={styles.customerName}>{order.customerName}</Text>
-          {order.phone && (
-            <View style={styles.contactRow}>
-              <TouchableOpacity onPress={callCustomer} style={styles.contactBtn}>
-                <Text style={styles.contactBtnText}>📞 Llamar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => whatsapp(waMessages.onWay)} style={styles.contactBtn}>
-                <Text style={styles.contactBtnText}>💬 En camino</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => whatsapp(waMessages.arriving)} style={styles.contactBtn}>
-                <Text style={styles.contactBtnText}>📍 Llegando</Text>
-              </TouchableOpacity>
+      {/* Sheet */}
+      <DraggableSheet collapsedHeight={SCREEN_H * 0.46} expandedHeight={SCREEN_H * 0.85} footer={footer}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+          <View style={styles.statusHead}>
+            <View style={[styles.statusIcon, { backgroundColor: (picked ? C.blue : C.brand) + '22' }]}>
+              <MaterialCommunityIcons name={picked ? 'bike-fast' : 'store'} size={22} color={picked ? C.blue : C.brand} />
             </View>
-          )}
-        </View>
-
-        {/* Address */}
-        {order.address && (
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Dirección</Text>
-            <Text style={styles.addressText}>{order.address}</Text>
-            <TouchableOpacity
-              onPress={() => {
-                const addr = encodeURIComponent(order.address);
-                const url = Platform.OS === 'ios'
-                  ? `maps:?q=${addr}`
-                  : `geo:0,0?q=${addr}`;
-                Linking.openURL(url);
-              }}
-              style={styles.mapsBtn}
-            >
-              <Text style={styles.mapsBtnText}>Abrir en Mapas</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Items */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Pedido</Text>
-          {order.items?.map((item, i) => (
-            <View key={i} style={styles.itemRow}>
-              <Text style={styles.itemQty}>×{item.quantity}</Text>
-              <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemPrice}>{fmtPrice(item.price * item.quantity)}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statusTitle}>{picked ? 'En camino al cliente' : 'Recoge el pedido'}</Text>
+              <Text style={styles.statusSub}>{picked ? 'Entrega y confirma con el código' : 'Ve al restaurante y recógelo'}</Text>
             </View>
-          ))}
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{fmtPrice(order.totalAmount)}</Text>
           </View>
-        </View>
 
-        {/* ── Action section ── */}
-        {order.status !== 'delivered' && (
-          <View style={styles.section}>
-            {!picked ? (
-              /* Step 1: Pick up */
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.pickBtn, delivering && styles.btnDisabled]}
-                onPress={handlePicked}
-                disabled={delivering}
-                activeOpacity={0.85}
-              >
-                {delivering
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={styles.actionBtnText}>🛵 Ya recogí el pedido</Text>
-                }
-              </TouchableOpacity>
-            ) : (
-              /* Step 2: Confirm delivery */
-              <View>
-                <Text style={styles.sectionLabel}>Confirmar entrega</Text>
-                {order.requireDeliveryCode !== false && (
-                  <>
-                    <Text style={styles.codeHint}>
-                      Pide al cliente el código de {order.confirmationCode?.length || 4} dígitos que recibió.
-                    </Text>
-                    <TextInput
-                      style={styles.codeInput}
-                      placeholder="Código del cliente"
-                      placeholderTextColor="#475569"
-                      value={code}
-                      onChangeText={t => setCode(t.replace(/\D/g, '').slice(0, 4))}
-                      keyboardType="number-pad"
-                      maxLength={4}
-                      textAlign="center"
-                    />
-                  </>
-                )}
-                <TouchableOpacity
-                  style={[styles.actionBtn, styles.confirmBtn, confirming && styles.btnDisabled]}
-                  onPress={handleConfirm}
-                  disabled={confirming}
-                  activeOpacity={0.85}
-                >
-                  {confirming
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.actionBtnText}>✅ Confirmar entrega</Text>
-                  }
+          <View style={styles.block}>
+            <Text style={styles.blockLabel}>CLIENTE</Text>
+            <Text style={styles.custName}>{order.customerName}</Text>
+            {order.address ? (
+              <View style={styles.addrRow}>
+                <Ionicons name="location" size={15} color={C.brand} />
+                <Text style={styles.addrTxt}>{order.address}</Text>
+              </View>
+            ) : null}
+            {order.phone ? (
+              <View style={styles.contactRow}>
+                <TouchableOpacity style={styles.contactBtn} onPress={call} activeOpacity={0.85}>
+                  <Ionicons name="call" size={16} color={C.go} />
+                  <Text style={styles.contactTxt}>Llamar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.contactBtn} onPress={whatsapp} activeOpacity={0.85}>
+                  <FontAwesome5 name="whatsapp" size={16} color={C.go} />
+                  <Text style={styles.contactTxt}>WhatsApp</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.contactBtn} onPress={openMaps} activeOpacity={0.85}>
+                  <MaterialCommunityIcons name="navigation-variant" size={16} color={C.blue} />
+                  <Text style={[styles.contactTxt, { color: C.blue }]}>Ir</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null}
           </View>
-        )}
 
-        {order.status === 'delivered' && (
-          <View style={[styles.section, styles.deliveredCard]}>
-            <Text style={styles.deliveredText}>✅ Pedido entregado</Text>
+          <View style={styles.block}>
+            <Text style={styles.blockLabel}>PEDIDO</Text>
+            {order.items?.map((it, i) => (
+              <View key={i} style={styles.itemRow}>
+                <Text style={styles.itemQty}>{it.quantity}×</Text>
+                <Text style={styles.itemName}>{it.name}</Text>
+                <Text style={styles.itemPrice}>{fmtPrice((it.price || 0) * (it.quantity || 1))}</Text>
+              </View>
+            ))}
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total{['cash','efectivo'].includes((order.paymentMethod||'').toLowerCase()) ? ' a cobrar' : ''}</Text>
+              <Text style={styles.totalVal}>{fmtPrice(order.totalAmount)}</Text>
+            </View>
           </View>
-        )}
-      </ScrollView>
+
+          {picked && needsCode && (
+            <View style={styles.block}>
+              <Text style={styles.blockLabel}>CÓDIGO DEL CLIENTE</Text>
+              <TextInput
+                style={styles.codeInput}
+                placeholder="• • • •"
+                placeholderTextColor={C.faint}
+                value={code}
+                onChangeText={t => setCode(t.replace(/\D/g, '').slice(0, 4))}
+                keyboardType="number-pad"
+                maxLength={4}
+                textAlign="center"
+              />
+            </View>
+          )}
+        </ScrollView>
+      </DraggableSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container:    { flex: 1, backgroundColor: '#0f172a' },
-  header:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b', gap: 12 },
-  backBtn:      { paddingRight: 4 },
-  backText:     { color: '#94a3b8', fontSize: 16 },
-  headerTitle:  { flex: 1, color: '#f8fafc', fontSize: 17, fontWeight: '800' },
+  container: { flex: 1, backgroundColor: C.bg },
 
-  gpsBadgeActive: { backgroundColor: '#10b98120', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: '#10b98140' },
-  gpsBadgeWait:   { backgroundColor: '#f59e0b20', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  gpsBadgeError:  { backgroundColor: '#ef444420', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  gpsBadgeText:   { color: '#10b981', fontSize: 10, fontWeight: '700' },
+  topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 8 },
+  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, justifyContent: 'center', alignItems: 'center', ...shadow.card },
+  topPill: { backgroundColor: C.card, borderWidth: 1, borderColor: C.line, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, ...shadow.card },
+  topPillTxt: { color: C.text, fontSize: 14, fontWeight: '800' },
 
-  scroll:       { flex: 1 },
-  content:      { padding: 16, gap: 12 },
+  gpsBadge: { position: 'absolute', alignSelf: 'center', zIndex: 5, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: C.card, borderWidth: 1, borderColor: C.go + '55', paddingHorizontal: 13, paddingVertical: 7, borderRadius: 16, ...shadow.card },
+  gpsDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.go },
+  gpsTxt: { color: C.go, fontSize: 11.5, fontWeight: '700' },
 
-  section:      { backgroundColor: '#1e293b', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#334155' },
-  sectionLabel: { color: '#64748b', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
+  destPin: { alignItems: 'center', justifyContent: 'center' },
+  destPinInner: { width: 34, height: 34, borderRadius: 17, backgroundColor: C.brand, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: C.white, ...shadow.glow(C.brand) },
 
-  statusText:   { color: '#f8fafc', fontSize: 16, fontWeight: '700' },
-  customerName: { color: '#f8fafc', fontSize: 17, fontWeight: '800', marginBottom: 10 },
+  statusHead: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingTop: 4, paddingBottom: 16 },
+  statusIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  statusTitle: { color: C.text, fontSize: 16.5, fontWeight: '800' },
+  statusSub: { color: C.sub, fontSize: 12.5, marginTop: 2 },
 
-  contactRow:   { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  contactBtn:   { backgroundColor: '#0f172a', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#334155' },
-  contactBtnText: { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
+  block: { marginHorizontal: 16, marginBottom: 12, backgroundColor: C.card2, borderRadius: 18, borderWidth: 1, borderColor: C.lineSoft, padding: 16 },
+  blockLabel: { color: C.faint, fontSize: 10.5, fontWeight: '800', letterSpacing: 1, marginBottom: 8 },
+  custName: { color: C.text, fontSize: 18, fontWeight: '800' },
+  addrRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8 },
+  addrTxt: { color: C.sub, fontSize: 14, flex: 1, lineHeight: 20 },
+  contactRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  contactBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: C.bg, borderWidth: 1, borderColor: C.line, borderRadius: 12, paddingVertical: 11 },
+  contactTxt: { color: C.go, fontSize: 13, fontWeight: '700' },
 
-  addressText:  { color: '#cbd5e1', fontSize: 14, lineHeight: 20, marginBottom: 10 },
-  mapsBtn:      { backgroundColor: '#3b82f620', borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: '#3b82f640' },
-  mapsBtnText:  { color: '#60a5fa', fontSize: 13, fontWeight: '700' },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  itemQty: { color: C.brand, fontSize: 13, fontWeight: '800', width: 28 },
+  itemName: { flex: 1, color: C.text, fontSize: 14 },
+  itemPrice: { color: C.sub, fontSize: 13, fontWeight: '600' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: C.line },
+  totalLabel: { color: C.sub, fontSize: 14, fontWeight: '700' },
+  totalVal: { color: C.text, fontSize: 18, fontWeight: '800' },
 
-  itemRow:      { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 5 },
-  itemQty:      { color: '#64748b', fontSize: 12, fontWeight: '700', width: 28 },
-  itemName:     { flex: 1, color: '#cbd5e1', fontSize: 13 },
-  itemPrice:    { color: '#94a3b8', fontSize: 12, fontWeight: '600' },
-  totalRow:     { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#334155' },
-  totalLabel:   { color: '#94a3b8', fontSize: 13, fontWeight: '700' },
-  totalValue:   { color: '#f8fafc', fontSize: 16, fontWeight: '800' },
+  codeInput: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.line, borderRadius: 14, paddingVertical: 16, color: C.text, fontSize: 30, fontWeight: '800', letterSpacing: 14 },
 
-  actionBtn:    { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
-  pickBtn:      { backgroundColor: '#3b82f6' },
-  confirmBtn:   { backgroundColor: '#10b981' },
-  btnDisabled:  { opacity: 0.6 },
-  actionBtnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
-
-  codeHint:     { color: '#64748b', fontSize: 12, marginBottom: 10, lineHeight: 17 },
-  codeInput:    { backgroundColor: '#0f172a', borderWidth: 1, borderColor: '#334155', borderRadius: 12, paddingVertical: 14, color: '#f8fafc', fontSize: 22, fontWeight: '800', letterSpacing: 8, marginBottom: 12 },
-
-  deliveredCard: { alignItems: 'center', paddingVertical: 20 },
-  deliveredText: { color: '#10b981', fontSize: 17, fontWeight: '800' },
+  actionBar: { paddingHorizontal: 16, paddingTop: 12, backgroundColor: C.card },
+  deliveredPill: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.go + '1A', borderWidth: 1, borderColor: C.go + '44', borderRadius: 16, paddingVertical: 18 },
+  deliveredTxt: { color: C.go, fontSize: 16, fontWeight: '800' },
 });

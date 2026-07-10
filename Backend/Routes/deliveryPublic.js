@@ -614,6 +614,40 @@ router.get('/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
   }
 });
 
+// ── Driver availability + presence (own-fleet, Mode 3 profiles) ──────────────
+// POST /:slug/domi/online  { online, lat, lng }  → toggle availability + report location
+router.post('/:slug/domi/online', domiAuth, async (req, res) => {
+  try {
+    if (!req.domi.dpId) return res.status(400).json({ message: 'Este modo no admite disponibilidad' });
+    const { online, lat, lng } = req.body;
+    const update = { isOnline: !!online, lastSeenAt: new Date() };
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      update.lastLocation = { type: 'Point', coordinates: [lng, lat] };
+    }
+    await DeliveryPerson.updateOne({ _id: req.domi.dpId }, { $set: update });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Error updating domi availability', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// POST /:slug/domi/heartbeat  { lat, lng }  → keep presence + location fresh while online
+router.post('/:slug/domi/heartbeat', domiAuth, async (req, res) => {
+  try {
+    if (!req.domi.dpId) return res.json({ ok: true });
+    const { lat, lng } = req.body;
+    const update = { lastSeenAt: new Date() };
+    if (typeof lat === 'number' && typeof lng === 'number') {
+      update.lastLocation = { type: 'Point', coordinates: [lng, lat] };
+    }
+    await DeliveryPerson.updateOne({ _id: req.domi.dpId }, { $set: update });
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false });
+  }
+});
+
 // ── Background GPS relay (from Expo TaskManager when app is in background) ────
 // POST /:slug/domi/orders/:id/location  { lat, lng }
 router.post('/:slug/domi/orders/:id/location', domiAuth, async (req, res) => {

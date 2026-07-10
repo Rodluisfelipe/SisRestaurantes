@@ -225,6 +225,33 @@ const businessConfigSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Configuración del módulo de domicilios: modo de asignación y partners externos
+  deliverySettings: {
+    // manual: el admin asigna a mano
+    // auto_nearest: asigna al domi propio disponible más cercano
+    // auto_scored: asigna por scoring (distancia + carga + rating)
+    assignmentMode: {
+      type: String,
+      enum: ['manual', 'auto_nearest', 'auto_scored'],
+      default: 'manual'
+    },
+    // Si no hay domi propio disponible, ofrecer el pedido a empresas partner
+    usePartners: {
+      type: Boolean,
+      default: false
+    },
+    // Empresas externas asociadas a este negocio, con prioridad de oferta
+    partners: [{
+      partnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryPartner' },
+      enabled: { type: Boolean, default: true },
+      priority: { type: Number, default: 1 } // menor = mayor prioridad
+    }],
+    // Radio máximo (km) para considerar un domi "cercano" en auto-asignación
+    maxAssignRadiusKm: {
+      type: Number,
+      default: 8
+    }
+  },
   // API key para Print Agent (auto-print de tiquetes)
   printAgentKey: {
     type: String,
