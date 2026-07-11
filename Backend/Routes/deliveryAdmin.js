@@ -476,8 +476,9 @@ router.get('/restaurants/:slug/delivery-persons/:dpId/stats', tenantAuth, async 
 // ── Pending delivery orders (unassigned, for the admin queue) ─────────────────
 router.get('/restaurants/:slug/pending-delivery-orders', tenantAuth, async (req, res) => {
   try {
+    const businessId = await resolveSlug(req.params.slug);
     const orders = await Order.find({
-      businessId: req.businessId,
+      businessId,
       orderType: 'delivery',
       status: { $in: ['confirmed', 'preparing', 'ready'] },
       $or: [{ deliveryPersonId: { $exists: false } }, { deliveryPersonId: null }]
@@ -495,7 +496,8 @@ router.get('/restaurants/:slug/pending-delivery-orders', tenantAuth, async (req,
 // ── Delivery settings (assignment mode + partners) ───────────────────────────
 router.get('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) => {
   try {
-    const biz = await BusinessConfig.findById(req.businessId).select('deliverySettings').lean();
+    const businessId = await resolveSlug(req.params.slug);
+    const biz = await BusinessConfig.findById(businessId).select('deliverySettings').lean();
     const settings = biz?.deliverySettings || { assignmentMode: 'manual', usePartners: false, partners: [], maxAssignRadiusKm: 8 };
 
     // Enrich associated partners with their name/status
@@ -520,6 +522,7 @@ router.get('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) 
 
 router.put('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) => {
   try {
+    const businessId = await resolveSlug(req.params.slug);
     const { assignmentMode, usePartners, maxAssignRadiusKm, partners } = req.body;
     const update = {};
     if (assignmentMode !== undefined) {
@@ -536,7 +539,7 @@ router.put('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) 
         .map(p => ({ partnerId: p.partnerId, enabled: p.enabled !== false, priority: Number(p.priority) || 1 }));
     }
 
-    await BusinessConfig.updateOne({ _id: req.businessId }, { $set: update });
+    await BusinessConfig.updateOne({ _id: businessId }, { $set: update });
     res.json({ ok: true });
   } catch (err) {
     logger.error('Error updating delivery settings', err);
@@ -550,7 +553,8 @@ router.post('/restaurants/:slug/orders/:id/assign-partner', tenantAuth, async (r
     const { partnerId } = req.body;
     if (!partnerId) return res.status(400).json({ message: 'partnerId requerido' });
 
-    const order = await Order.findOne({ _id: req.params.id, businessId: req.businessId });
+    const businessId = await resolveSlug(req.params.slug);
+    const order = await Order.findOne({ _id: req.params.id, businessId });
     if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
     if (order.orderType !== 'delivery') return res.status(400).json({ message: 'Solo pedidos de delivery' });
 
@@ -604,10 +608,11 @@ router.get('/restaurants/:slug/available-partners', tenantAuth, async (req, res)
 // Trigger auto-assignment for a specific order
 router.post('/restaurants/:slug/orders/:id/auto-assign', tenantAuth, async (req, res) => {
   try {
-    const order = await Order.findOne({ _id: req.params.id, businessId: req.businessId });
+    const businessId = await resolveSlug(req.params.slug);
+    const order = await Order.findOne({ _id: req.params.id, businessId });
     if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
 
-    const business = await BusinessConfig.findById(req.businessId).lean();
+    const business = await BusinessConfig.findById(businessId).lean();
     const assignmentService = require('../services/assignmentService');
     const result = await assignmentService.autoAssignOrder(order, business);
 
@@ -634,7 +639,8 @@ router.get('/restaurants/:slug/orders/:id/timeline', tenantAuth, async (req, res
     const Delivery = require('../Models/Delivery');
     const DeliveryEvent = require('../Models/DeliveryEvent');
 
-    const delivery = await Delivery.findOne({ orderId: req.params.id, businessId: req.businessId }).lean();
+    const businessId = await resolveSlug(req.params.slug);
+    const delivery = await Delivery.findOne({ orderId: req.params.id, businessId }).lean();
     if (!delivery) {
       return res.json({ delivery: null, events: [] });
     }
