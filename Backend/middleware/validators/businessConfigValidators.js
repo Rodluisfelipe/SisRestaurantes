@@ -9,6 +9,7 @@ const validateUpdateConfig = [
   body('address').optional().isString().isLength({ max: 500 }).withMessage('address excede 500 caracteres'),
   body('whatsappNumber').optional().isString().isLength({ max: 30 }).withMessage('whatsappNumber excede 30 caracteres'),
   body('googleMapsUrl').optional().isString().isLength({ max: 2000 }).withMessage('googleMapsUrl excede 2000 caracteres'),
+  body('minOrderAmount').optional().isInt({ min: 0 }).withMessage('minOrderAmount debe ser un número entero ≥ 0'),
   handleValidationErrors,
 ];
 

@@ -1268,7 +1268,11 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               const isDeliveryWithoutZone = orderType === 'delivery' && !initialOrderTypeSelected && locationChecked && !deliveryZoneInfo;
               // Booking requires slot when cart has services
               const needsBookingSlot = hasServices && businessConfig?.enableBookings && !bookingSlot;
-              const isDisabled = isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended' || needsPayment || isDeliveryWithoutZone || needsBookingSlot;
+              // Pedido mínimo (sobre el subtotal de productos, sin domicilio)
+              const minOrder = Number(businessConfig?.minOrderAmount) || 0;
+              const belowMin = minOrder > 0 && totalAmount < minOrder;
+              const minShortfall = Math.max(minOrder - totalAmount, 0);
+              const isDisabled = isSubmitting || !businessStatus?.isOpen || subscriptionStatus === 'suspended' || needsPayment || isDeliveryWithoutZone || needsBookingSlot || belowMin;
 
               if (!showButton) return null;
 
@@ -1352,7 +1356,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               };
 
               let buttonLabel = 'Confirmar Pedido';
-              if (hasServices && bookingSlot) buttonLabel = 'Confirmar Cita';
+              if (belowMin) buttonLabel = `Te faltan ${formatCurrency(minShortfall, businessConfig?.currency)}`;
+              else if (hasServices && bookingSlot) buttonLabel = 'Confirmar Cita';
               else if (initialOrderTypeSelected && orderInfo.orderType === 'inSite') buttonLabel = `Confirmar · Mesa ${tableNumber}`;
               else if (initialOrderTypeSelected && orderInfo.orderType === 'takeaway') buttonLabel = 'Confirmar · Para Llevar';
               else if (orderType === 'inSite') buttonLabel = `Confirmar · Mesa${formState.tableNumber ? ` ${formState.tableNumber}` : ''}`;
@@ -1362,6 +1367,15 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               const displayTotal = (finalAmount + ((loyaltyReward?.reward?.type === 'free_delivery' ? 0 : deliveryFee) || 0));
 
               return (
+                <>
+                {belowMin && (
+                  <div className="mb-3 flex items-center gap-2 rounded-2xl px-4 py-3 bg-amber-50 border border-amber-200">
+                    <svg className="w-5 h-5 text-amber-500 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
+                    <p className="text-[13px] font-semibold text-amber-800">
+                      El pedido mínimo es {formatCurrency(minOrder, businessConfig?.currency)}. Agrega {formatCurrency(minShortfall, businessConfig?.currency)} más para continuar.
+                    </p>
+                  </div>
+                )}
                 <button
                   onClick={handleConfirmClick}
                   style={{ 
@@ -1387,6 +1401,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     </>
                   )}
                 </button>
+                </>
               );
             })()}
           </div>

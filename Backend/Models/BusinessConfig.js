@@ -225,6 +225,12 @@ const businessConfigSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Monto mínimo de pedido (0 = sin mínimo). Se valida en el menú y en el backend.
+  minOrderAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   // Configuración del módulo de domicilios: modo de asignación y partners externos
   deliverySettings: {
     // manual: el admin asigna a mano

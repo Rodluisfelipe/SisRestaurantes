@@ -34,6 +34,7 @@ const PaymentConfig = () => {
   });
   const [orderTypes, setOrderTypes] = useState({ inSite: true, takeaway: true, delivery: true, viewOnly: false });
   const [requireDeliveryCode, setRequireDeliveryCode] = useState(true);
+  const [minOrderAmount, setMinOrderAmount] = useState(0);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
@@ -50,6 +51,7 @@ const PaymentConfig = () => {
         viewOnly: businessConfig.orderTypes?.viewOnly ?? false,
       });
       setRequireDeliveryCode(businessConfig.requireDeliveryCode ?? true);
+      setMinOrderAmount(businessConfig.minOrderAmount ?? 0);
       setPaymentInfo({
         nequi: businessConfig.paymentInfo?.nequi || '',
         daviplata: businessConfig.paymentInfo?.daviplata || '',
@@ -146,6 +148,7 @@ const PaymentConfig = () => {
         orderingMode,
         orderTypes,
         requireDeliveryCode,
+        minOrderAmount,
         paymentInfo,
         paymentMethods
       });
@@ -403,6 +406,37 @@ const PaymentConfig = () => {
               </button>
             </div>
           )}
+
+          {/* Pedido mínimo */}
+          <div className="mt-6">
+            <h4 className="text-sm font-bold text-gray-900 mb-1">Pedido mínimo</h4>
+            <p className="text-xs text-gray-500 mb-3">
+              Monto mínimo para poder hacer un pedido desde el menú. Deja en 0 para no exigir mínimo.
+            </p>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold pointer-events-none select-none">$</span>
+              <input
+                type="number"
+                min="0"
+                step="1000"
+                inputMode="numeric"
+                value={minOrderAmount === 0 ? '' : minOrderAmount}
+                onChange={(e) => {
+                  const v = e.target.value === '' ? 0 : Math.max(0, parseInt(e.target.value, 10) || 0);
+                  setMinOrderAmount(v);
+                  setHasChanges(true);
+                }}
+                placeholder="0 (sin mínimo)"
+                className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-gray-200 focus:border-blue-400 outline-none text-gray-900 font-bold text-lg transition-colors"
+              />
+            </div>
+            {minOrderAmount > 0 && (
+              <p className="text-xs text-emerald-600 font-semibold mt-2 flex items-center gap-1.5">
+                {AI.check ? AI.check('w-3.5 h-3.5') : null}
+                Los clientes verán un aviso y no podrán pedir por menos de ${minOrderAmount.toLocaleString('es-CO')}
+              </p>
+            )}
+          </div>
 
           {/* Info about in-app flow */}
           {(orderingMode === 'inapp' || orderingMode === 'both') && (

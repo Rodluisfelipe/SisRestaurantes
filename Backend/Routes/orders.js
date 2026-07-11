@@ -333,6 +333,21 @@ router.post("/", (req, res, next) => {
       logger.warn('Price validation failed, continuing', { error: priceErr.message });
     }
 
+    // === PEDIDO MÍNIMO === (no se puede saltar por API)
+    try {
+      const bizMin = await BusinessConfig.findById(businessObjectId).select('minOrderAmount').lean();
+      const minOrderAmount = Number(bizMin?.minOrderAmount) || 0;
+      if (minOrderAmount > 0 && numericTotalAmount < minOrderAmount) {
+        return res.status(400).json({
+          message: `El pedido mínimo es $${minOrderAmount.toLocaleString('es-CO')}. Agrega más productos para continuar.`,
+          code: 'BELOW_MIN_ORDER',
+          minOrderAmount,
+        });
+      }
+    } catch (minErr) {
+      logger.warn('Min order validation failed, continuing', { error: minErr.message });
+    }
+
     // Verificar estado de la suscripción antes de permitir crear órdenes
     const {
       subscription,
