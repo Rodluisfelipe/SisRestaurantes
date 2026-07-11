@@ -113,13 +113,27 @@ if (typeof window !== 'undefined') {
   const reload = (why) => {
     if (sessionStorage.getItem(RELOAD_FLAG)) return; // ya intentamos
     sessionStorage.setItem(RELOAD_FLAG, why || '1');
-    if ('caches' in window) {
-      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).finally(() => {
-        window.location.reload();
-      });
-    } else {
-      window.location.reload();
+    // Limpiar TODO lo que puede dejar la app pegada en una versión vieja:
+    // el service worker (que intercepta y sirve el index.html cacheado) y las cachés.
+    const cleanups = [];
+    if ('serviceWorker' in navigator) {
+      cleanups.push(
+        navigator.serviceWorker.getRegistrations()
+          .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+          .catch(() => {})
+      );
     }
+    if ('caches' in window) {
+      cleanups.push(
+        caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {})
+      );
+    }
+    Promise.all(cleanups).finally(() => {
+      // cache-bust duro del documento para saltar cualquier edge/proxy cacheado
+      const u = new URL(window.location.href);
+      u.searchParams.set('_r', Date.now().toString());
+      window.location.replace(u.toString());
+    });
   };
 
   // 0) vite:preloadError — Vite lo emite aunque React/Suspense trague la promesa.
@@ -206,7 +220,7 @@ const Root = () => {
 // Service Worker temporal para limpiar caché
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=6')
+    navigator.serviceWorker.register('/sw.js?v=7')
       .then((registration) => {
         // Service Worker registrado para limpiar caché
         registration.update();

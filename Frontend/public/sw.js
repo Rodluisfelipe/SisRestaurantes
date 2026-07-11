@@ -1,7 +1,7 @@
 // Service Worker para notificaciones push PWA
 // Versión: 4.0.0 - No cache JS/CSS assets (Cloudflare CDN handles it)
 
-const CACHE_NAME = 'menuby-v5';
+const CACHE_NAME = 'menuby-v6';
 
 // Instalación del Service Worker
 self.addEventListener('install', (event) => {
