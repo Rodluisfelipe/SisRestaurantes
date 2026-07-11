@@ -544,6 +544,51 @@ router.put('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) 
   }
 });
 
+// Assign an order to a specific partner company (manual dispatch → offer)
+router.post('/restaurants/:slug/orders/:id/assign-partner', tenantAuth, async (req, res) => {
+  try {
+    const { partnerId } = req.body;
+    if (!partnerId) return res.status(400).json({ message: 'partnerId requerido' });
+
+    const order = await Order.findOne({ _id: req.params.id, businessId: req.businessId });
+    if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
+    if (order.orderType !== 'delivery') return res.status(400).json({ message: 'Solo pedidos de delivery' });
+
+    const DeliveryPartner = require('../Models/DeliveryPartner');
+    const partner = await DeliveryPartner.findOne({ _id: partnerId, active: true }).lean();
+    if (!partner) return res.status(404).json({ message: 'Empresa no encontrada o inactiva' });
+
+    order.assignedPartnerId = partner._id;
+    order.partnerStatus = 'offered';
+    order.partnerOfferedAt = new Date();
+    order.assignmentMethod = 'partner';
+    order.deliveryPersonId = null;
+    if (!order.confirmationCode) order.confirmationCode = generateConfirmationCode();
+    order.status = 'inProgress';
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({ status: 'inProgress', timestamp: new Date(), note: `Ofrecido a empresa ${partner.name}` });
+    await order.save();
+
+    // Notify the partner portal (realtime) + shadow state machine
+    try {
+      socketService.emitToPartner(String(partner._id), 'partner:new_offer', {
+        orderId: String(order._id), orderNumber: order.orderNumber, businessId: String(order.businessId),
+      });
+      socketService.emitToBusiness(String(order.businessId), 'orderUpdated', order.toObject());
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'offer', {
+        actor: 'admin', partnerId: partner._id, assignmentMethod: 'partner',
+        meta: { partnerName: partner.name, manual: true },
+      });
+    } catch (e) { /* non-critical */ }
+
+    res.json({ ok: true, partnerName: partner.name, confirmationCode: order.confirmationCode });
+  } catch (err) {
+    logger.error('Error assigning order to partner', err);
+    res.status(500).json({ message: 'Error al asignar a la empresa' });
+  }
+});
+
 // List all active partner companies available to associate
 router.get('/restaurants/:slug/available-partners', tenantAuth, async (req, res) => {
   try {

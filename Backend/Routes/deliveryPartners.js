@@ -166,6 +166,16 @@ router.post('/portal/orders/:id/accept', partnerAuth, async (req, res) => {
     order.partnerStatus = 'accepted';
     order.deliveryAssignedAt = new Date();
     if (!order.confirmationCode) order.confirmationCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Optionally assign to one of the partner's own drivers
+    let assignedDriver = null;
+    if (req.body.driverId) {
+      assignedDriver = await DeliveryPerson.findOne({ _id: req.body.driverId, partnerId: req.partner._id });
+      if (assignedDriver) {
+        order.deliveryPersonId = assignedDriver._id;
+        await DeliveryPerson.updateOne({ _id: assignedDriver._id }, { $set: { status: 'on_delivery' } });
+      }
+    }
     await order.save();
 
     // Shadow: delivery state machine → accepted (partner accepts)
@@ -253,6 +263,58 @@ router.post('/portal/orders/:id/deliver', partnerAuth, async (req, res) => {
   } catch (err) {
     logger.error('Error delivering partner order', err);
     res.status(500).json({ message: 'Error al marcar entregado' });
+  }
+});
+
+/* ═══════════════════════ PARTNER PORTAL — SUS REPARTIDORES ═══════════════════════ */
+
+// List the partner's own drivers
+router.get('/portal/drivers', partnerAuth, async (req, res) => {
+  try {
+    const drivers = await DeliveryPerson.find({ partnerId: req.partner._id })
+      .select('name phone active status totalDeliveries createdAt')
+      .sort({ createdAt: -1 }).lean();
+    res.json(drivers);
+  } catch (err) {
+    logger.error('Error listing partner drivers', err);
+    res.status(500).json({ message: 'Error al obtener repartidores' });
+  }
+});
+
+// Register a driver for the partner company
+router.post('/portal/drivers', partnerAuth, async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ message: 'Nombre requerido' });
+    const code = Math.floor(1000 + Math.random() * 9000).toString(); // auto-generado (no se usa como login por ahora)
+    const driver = new DeliveryPerson({
+      partnerId: req.partner._id,
+      name: name.trim(),
+      phone: (phone || '').replace(/\D/g, '') || null,
+      code,
+      active: true,
+    });
+    await driver.save();
+    res.status(201).json({ _id: driver._id, name: driver.name, phone: driver.phone, active: driver.active, status: driver.status, totalDeliveries: 0 });
+  } catch (err) {
+    logger.error('Error creating partner driver', err);
+    res.status(500).json({ message: 'Error al crear repartidor' });
+  }
+});
+
+// Update / deactivate a partner driver
+router.patch('/portal/drivers/:id', partnerAuth, async (req, res) => {
+  try {
+    const driver = await DeliveryPerson.findOne({ _id: req.params.id, partnerId: req.partner._id });
+    if (!driver) return res.status(404).json({ message: 'Repartidor no encontrado' });
+    if (req.body.name !== undefined) driver.name = req.body.name.trim();
+    if (req.body.phone !== undefined) driver.phone = (req.body.phone || '').replace(/\D/g, '') || null;
+    if (req.body.active !== undefined) driver.active = req.body.active;
+    await driver.save();
+    res.json({ _id: driver._id, name: driver.name, phone: driver.phone, active: driver.active, status: driver.status });
+  } catch (err) {
+    logger.error('Error updating partner driver', err);
+    res.status(500).json({ message: 'Error al actualizar repartidor' });
   }
 });
 

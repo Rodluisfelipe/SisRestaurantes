@@ -94,10 +94,35 @@ function Dashboard({ token, partner: initialPartner, onLogout }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState(null);
+  const [view, setView] = useState('orders'); // 'orders' | 'drivers'
+  const [drivers, setDrivers] = useState([]);
+  const [newDriver, setNewDriver] = useState({ name: '', phone: '' });
+  const [pickDriver, setPickDriver] = useState({}); // { [orderId]: driverId }
   const socketRef = useRef(null);
 
   const authGet = useCallback((url) => api.get(url, { headers: { Authorization: `Bearer ${token}` } }), [token]);
-  const authPost = useCallback((url) => api.post(url, {}, { headers: { Authorization: `Bearer ${token}` } }), [token]);
+  const authPost = useCallback((url, body = {}) => api.post(url, body, { headers: { Authorization: `Bearer ${token}` } }), [token]);
+  const authPatch = useCallback((url, body = {}) => api.patch(url, body, { headers: { Authorization: `Bearer ${token}` } }), [token]);
+
+  const loadDrivers = useCallback(async () => {
+    try { const res = await authGet('/delivery-partners/portal/drivers'); setDrivers(res.data || []); } catch { /* noop */ }
+  }, [authGet]);
+
+  const addDriver = async (e) => {
+    e.preventDefault();
+    if (!newDriver.name.trim()) return toast.error('Nombre requerido');
+    try {
+      await authPost('/delivery-partners/portal/drivers', { name: newDriver.name.trim(), phone: newDriver.phone.trim() });
+      toast.success('Repartidor agregado');
+      setNewDriver({ name: '', phone: '' });
+      loadDrivers();
+    } catch (err) { toast.error(err.response?.data?.message || 'Error'); }
+  };
+
+  const toggleDriver = async (d) => {
+    try { await authPatch(`/delivery-partners/portal/drivers/${d._id}`, { active: !d.active }); loadDrivers(); }
+    catch { toast.error('Error'); }
+  };
 
   const load = useCallback(async () => {
     try {
@@ -118,9 +143,10 @@ function Dashboard({ token, partner: initialPartner, onLogout }) {
 
   useEffect(() => {
     load();
+    loadDrivers();
     const iv = setInterval(load, 20000);
     return () => clearInterval(iv);
-  }, [load]);
+  }, [load, loadDrivers]);
 
   // socket for realtime new offers
   useEffect(() => {
@@ -138,7 +164,12 @@ function Dashboard({ token, partner: initialPartner, onLogout }) {
 
   const doAccept = async (id) => {
     setActingId(id);
-    try { await authPost(`/delivery-partners/portal/orders/${id}/accept`); toast.success('Pedido aceptado'); load(); }
+    try {
+      const driverId = pickDriver[id] || undefined;
+      await authPost(`/delivery-partners/portal/orders/${id}/accept`, driverId ? { driverId } : {});
+      toast.success('Pedido aceptado');
+      load();
+    }
     catch (err) { toast.error(err.response?.data?.message || 'Error'); }
     finally { setActingId(null); }
   };
@@ -175,9 +206,19 @@ function Dashboard({ token, partner: initialPartner, onLogout }) {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5 pb-24">
+        {/* Tabs */}
+        <div className="flex gap-2 mb-5 bg-slate-900 border border-slate-800 rounded-xl p-1">
+          <button onClick={() => setView('orders')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${view === 'orders' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:text-white'}`}>
+            Pedidos
+          </button>
+          <button onClick={() => setView('drivers')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${view === 'drivers' ? 'bg-orange-500 text-white' : 'text-slate-400 hover:text-white'}`}>
+            Repartidores {drivers.length > 0 && <span className="opacity-70">({drivers.length})</span>}
+          </button>
+        </div>
+
         {loading ? (
           <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-slate-700 border-t-orange-500 rounded-full animate-spin" /></div>
-        ) : (
+        ) : view === 'orders' ? (
           <>
             {/* Offered */}
             <SectionTitle>Pedidos ofrecidos {offered.length > 0 && <Badge>{offered.length}</Badge>}</SectionTitle>
@@ -189,16 +230,28 @@ function Dashboard({ token, partner: initialPartner, onLogout }) {
                   {offered.map(o => (
                     <OrderCard key={o._id} order={o} acting={actingId === o._id}
                       actions={
-                        <>
-                          <button onClick={() => doReject(o._id)} disabled={actingId === o._id}
-                            className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-sm transition-colors">
-                            {IC.x()} Rechazar
-                          </button>
-                          <button onClick={() => doAccept(o._id)} disabled={actingId === o._id}
-                            className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
-                            {IC.check()} Aceptar
-                          </button>
-                        </>
+                        <div className="w-full space-y-2">
+                          {drivers.filter(d => d.active).length > 0 && (
+                            <select
+                              value={pickDriver[o._id] || ''}
+                              onChange={e => setPickDriver(p => ({ ...p, [o._id]: e.target.value }))}
+                              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-orange-500"
+                            >
+                              <option value="">Repartidor (opcional, lo asigno luego)</option>
+                              {drivers.filter(d => d.active).map(d => <option key={d._id} value={d._id}>{d.name}</option>)}
+                            </select>
+                          )}
+                          <div className="flex gap-2">
+                            <button onClick={() => doReject(o._id)} disabled={actingId === o._id}
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 rounded-xl text-sm transition-colors">
+                              {IC.x()} Rechazar
+                            </button>
+                            <button onClick={() => doAccept(o._id)} disabled={actingId === o._id}
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-sm transition-colors">
+                              {IC.check()} Aceptar
+                            </button>
+                          </div>
+                        </div>
                       }
                     />
                   ))}
@@ -221,6 +274,40 @@ function Dashboard({ token, partner: initialPartner, onLogout }) {
                       </button>
                     }
                   />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          /* ── Repartidores ── */
+          <>
+            <SectionTitle>Agregar repartidor</SectionTitle>
+            <form onSubmit={addDriver} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-6 flex flex-col sm:flex-row gap-2">
+              <input value={newDriver.name} onChange={e => setNewDriver(d => ({ ...d, name: e.target.value }))}
+                placeholder="Nombre del repartidor" className="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-orange-500" />
+              <input value={newDriver.phone} onChange={e => setNewDriver(d => ({ ...d, phone: e.target.value.replace(/\D/g, '') }))}
+                placeholder="Teléfono" className="sm:w-40 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-orange-500" />
+              <button type="submit" className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm whitespace-nowrap">+ Agregar</button>
+            </form>
+
+            <SectionTitle>Mis repartidores {drivers.length > 0 && <Badge>{drivers.length}</Badge>}</SectionTitle>
+            {drivers.length === 0 ? (
+              <Empty text="Aún no tienes repartidores. Agrega el primero arriba." />
+            ) : (
+              <div className="space-y-2">
+                {drivers.map(d => (
+                  <div key={d._id} className={`bg-slate-900 border border-slate-800 rounded-xl p-3.5 flex items-center justify-between ${!d.active ? 'opacity-50' : ''}`}>
+                    <div>
+                      <p className="font-bold text-white text-sm">{d.name}</p>
+                      <p className="text-slate-500 text-xs">{d.phone || 'Sin teléfono'} · {d.totalDeliveries || 0} entregas</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {d.status === 'on_delivery' && <span className="text-[10px] font-bold text-blue-300 bg-blue-500/15 px-2 py-0.5 rounded-full">En ruta</span>}
+                      <button onClick={() => toggleDriver(d)} className={`text-xs font-semibold px-3 py-1.5 rounded-lg ${d.active ? 'text-rose-300 bg-rose-500/10 hover:bg-rose-500/20' : 'text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20'}`}>
+                        {d.active ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}

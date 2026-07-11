@@ -11,12 +11,14 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [domis, setDomis] = useState([]);
+  const [partners, setPartners] = useState([]);
   const [selectedDomi, setSelectedDomi] = useState(null);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       fetchDomis();
+      fetchPartners();
       setStep('choose');
       setResult(null);
       setSelectedDomi(null);
@@ -28,6 +30,27 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
       const res = await api.get(`/delivery-admin/restaurants/${businessConfig.slug}/delivery-persons`);
       setDomis(res.data.filter(d => d.active));
     } catch { /* no domis registered yet */ }
+  };
+
+  const fetchPartners = async () => {
+    try {
+      const res = await api.get(`/delivery-admin/restaurants/${businessConfig.slug}/available-partners`);
+      setPartners(res.data || []);
+    } catch { /* no partners */ }
+  };
+
+  const handleAssignPartner = async (partner) => {
+    setLoading(true);
+    try {
+      const res = await api.post(`/delivery-admin/restaurants/${businessConfig.slug}/orders/${order._id}/assign-partner`, { partnerId: partner._id });
+      setResult({ ...res.data, partnerName: partner.name });
+      setStep('partner_result');
+      onAssigned?.();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error al asignar a la empresa');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAssignQR = async () => {
@@ -190,11 +213,62 @@ const AssignDeliveryModal = ({ isOpen, order, onClose, onAssigned }) => {
                   </div>
                 )}
 
+                {/* Empresas de reparto (partners) */}
+                {partners.length > 0 && (
+                  <div className="border-2 border-slate-200 rounded-xl p-4">
+                    <p className="font-bold text-slate-800 mb-1 flex items-center gap-2">
+                      <span className="text-orange-500">🚚</span> Empresa de reparto
+                    </p>
+                    <p className="text-xs text-slate-500 mb-3">Se le ofrece el pedido a la empresa; ellos lo aceptan y lo entregan con sus repartidores.</p>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {partners.map(p => (
+                        <button
+                          key={p._id}
+                          onClick={() => handleAssignPartner(p)}
+                          disabled={loading}
+                          className="w-full p-3 rounded-lg border border-slate-200 hover:border-orange-400 hover:bg-orange-50 text-left transition-all flex items-center justify-between"
+                        >
+                          <div>
+                            <p className="font-medium text-slate-800 text-sm">{p.name}</p>
+                            {p.coverageAreas?.length > 0 && (
+                              <p className="text-xs text-slate-500">{p.coverageAreas.join(', ')}</p>
+                            )}
+                          </div>
+                          <span className="text-xs font-semibold text-orange-500">Ofrecer →</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {loading && (
                   <div className="flex items-center justify-center py-4">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500" />
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Partner offered result */}
+            {step === 'partner_result' && result && (
+              <div className="text-center space-y-4">
+                <div className="w-16 h-16 mx-auto rounded-full bg-orange-100 flex items-center justify-center text-3xl">🚚</div>
+                <div>
+                  <p className="font-bold text-slate-800">Ofrecido a {result.partnerName}</p>
+                  <p className="text-xs text-slate-500 mt-1">La empresa verá el pedido en su portal y lo aceptará. Puedes seguir el estado en la línea de tiempo del pedido.</p>
+                </div>
+                {businessConfig?.requireDeliveryCode !== false && result.confirmationCode && (
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <p className="text-xs text-slate-500 mb-1">Código de confirmación del cliente</p>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-3xl font-black tracking-[0.3em] text-slate-800">{result.confirmationCode}</span>
+                      <button onClick={copyCode} className="p-2 hover:bg-slate-200 rounded-lg transition-colors">
+                        {copied ? <FaCheck className="text-emerald-500" /> : <FaCopy className="text-slate-400" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <button onClick={onClose} className="w-full py-2 text-sm text-slate-500 hover:text-slate-700">Cerrar</button>
               </div>
             )}
 
