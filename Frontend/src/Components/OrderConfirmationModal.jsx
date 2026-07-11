@@ -297,12 +297,67 @@ const OrderConfirmationModal = ({
                 </div>
               )}
             </div>
+            {/* Botón ver ubicación en el mapa */}
+            {(() => {
+              const lat = businessConfig?.location?.coordinates?.lat;
+              const lng = businessConfig?.location?.coordinates?.lng;
+              const addr = businessConfig?.address;
+              const googleMapsUrl = businessConfig?.googleMapsUrl;
+              const hasLocation = googleMapsUrl || addr || (lat && lng);
+              if (!hasLocation) return null;
+
+              const openMaps = () => {
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+                const googleUrl = googleMapsUrl ||
+                  (lat && lng
+                    ? `https://maps.google.com/?q=${lat},${lng}`
+                    : `https://maps.google.com/?q=${encodeURIComponent(addr)}`);
+
+                if (isIOS) {
+                  const appleUrl = lat && lng
+                    ? `maps://?ll=${lat},${lng}&q=${encodeURIComponent(businessConfig.businessName || 'Restaurante')}`
+                    : `maps://?q=${encodeURIComponent(addr)}`;
+                  window.location.href = appleUrl;
+                  setTimeout(() => window.open(googleUrl, '_blank'), 600);
+                } else {
+                  window.open(googleUrl, '_blank');
+                }
+              };
+
+              const isPickup = orderInfo?.orderType === 'pickup' || orderInfo?.orderType === 'takeout';
+
+              return (
+                <button
+                  onClick={openMaps}
+                  className="w-full mb-2 flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div className="text-left flex-1 min-w-0">
+                    <p className="text-[13px] font-bold text-gray-800">
+                      {isPickup ? 'Cómo llegar al restaurante' : 'Ver ubicación del restaurante'}
+                    </p>
+                    {addr && <p className="text-[11px] text-gray-400 truncate">{addr}</p>}
+                  </div>
+                  <svg className="w-4 h-4 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </button>
+              );
+            })()}
+
             {/* Botones mejorados */}
             <div className="flex flex-col space-y-2">
               <button
                 onClick={handleModalClose}
                 className="w-full py-3 sm:py-4 rounded-xl sm:rounded-2xl text-white text-sm sm:text-base font-semibold transition-all duration-200 hover:scale-105 hover:shadow-lg active:scale-95"
-                style={{ 
+                style={{
                   background: `linear-gradient(135deg, ${businessConfig.theme.buttonColor || '#2563eb'} 0%, ${businessConfig.theme.buttonColor || '#2563eb'}dd 100%)`,
                   boxShadow: `0 4px 15px ${businessConfig.theme.buttonColor || '#2563eb'}40`
                 }}

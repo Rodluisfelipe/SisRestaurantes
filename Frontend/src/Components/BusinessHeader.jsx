@@ -246,18 +246,26 @@ const BusinessHeader = ({
                   </button>
                 )}
 
-                {/* Address */}
-                {businessConfig?.address && (
-                  <a 
-                    href={businessConfig?.googleMapsUrl || `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`}
+                {/* Address / Maps button */}
+                {(businessConfig?.address || businessConfig?.googleMapsUrl || businessConfig?.location?.coordinates?.lat) && (
+                  <a
+                    href={(() => {
+                      const lat = businessConfig?.location?.coordinates?.lat;
+                      const lng = businessConfig?.location?.coordinates?.lng;
+                      if (businessConfig?.googleMapsUrl) return businessConfig.googleMapsUrl;
+                      if (lat && lng) return `https://maps.google.com/?q=${lat},${lng}`;
+                      return `https://maps.google.com/?q=${encodeURIComponent(businessConfig.address)}`;
+                    })()}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`inline-flex items-center gap-1 text-[11px] max-w-[180px] ${
-                      hasCover ? 'text-white/60 hover:text-white/90' : 'text-slate-400 hover:text-slate-600'
-                    } transition-colors`}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 ${
+                      hasCover
+                        ? 'bg-white/15 backdrop-blur-sm text-white/80 hover:text-white hover:bg-white/25'
+                        : 'bg-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-200'
+                    }`}
                   >
                     {HI.mapPin('w-3 h-3 flex-shrink-0')}
-                    <span className="truncate">{businessConfig.address}</span>
+                    <span className="truncate max-w-[160px]">{businessConfig.address || 'Ver en el mapa'}</span>
                   </a>
                 )}
 
