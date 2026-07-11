@@ -11,6 +11,7 @@ import AnnouncementManagement from "../../Components/SuperAdmin/AnnouncementMana
 import PaymentsDashboard from "./PaymentsDashboard";
 import PaymentRequestsReview from "./PaymentRequestsReview";
 import OrderManagement from "./OrderManagement";
+import DeliveryPartnersAdmin from "./DeliveryPartnersAdmin";
 import ReferralManagement from "../../Components/SuperAdmin/ReferralManagement";
 import AuditLogsPanel from "../../Components/SuperAdmin/AuditLogsPanel";
 import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
@@ -51,6 +52,11 @@ const NAV_SECTIONS = [
       { id: 'orders', label: 'Pedidos', desc: 'Gestión global de pedidos', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z" />
+        </svg>
+      )},
+      { id: 'partners', label: 'Empresas de reparto', desc: 'Partners de domicilios · portal /partner', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
         </svg>
       )},
     ]
@@ -492,6 +498,12 @@ function SuperAdminDashboard() {
             {currentView === 'orders' && (
               <motion.div key="orders" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <OrderManagement />
+              </motion.div>
+            )}
+
+            {currentView === 'partners' && (
+              <motion.div key="partners" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <DeliveryPartnersAdmin />
               </motion.div>
             )}
 
