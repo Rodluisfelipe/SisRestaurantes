@@ -39,9 +39,22 @@ async function tryRefresh() {
   }
 }
 
+// Retry ONLY on network failures (fetch throws before a response). Safe for
+// POSTs: if fetch never got a response, the server never processed the request.
+async function fetchWithRetry(url, opts, tries = 3) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(url, opts);
+    } catch (netErr) {
+      if (attempt >= tries - 1) throw Object.assign(new Error('Sin conexión. Revisa tu internet.'), { network: true });
+      await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+    }
+  }
+}
+
 async function request(method, path, body, _retried = false) {
   const token = await AsyncStorage.getItem(TOKEN_KEY);
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetchWithRetry(`${API_URL}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
@@ -62,9 +75,10 @@ async function request(method, path, body, _retried = false) {
 }
 
 export const api = {
-  get:   (path)       => request('GET',   path),
-  post:  (path, body) => request('POST',  path, body),
-  patch: (path, body) => request('PATCH', path, body),
+  get:    (path)       => request('GET',    path),
+  post:   (path, body) => request('POST',   path, body),
+  patch:  (path, body) => request('PATCH',  path, body),
+  delete: (path)       => request('DELETE', path),
 };
 
 /* ── Auth ── */
@@ -81,6 +95,19 @@ export async function loginPassword(phone, password) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.message || 'Error de acceso'), { status: res.status, data });
+  await saveSession(data.token, data.slug, data.refreshToken);
+  return data;
+}
+
+// Phone + PIN login (no slug, no password) — the simplest method for drivers
+export async function loginPhonePin(phone, code) {
+  const res = await fetch(`${API_URL}/delivery/domi/login-pin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, code }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.message || 'Error de acceso'), { status: res.status, data });
@@ -116,4 +143,13 @@ export async function setOnline(slug, online, lat, lng) {
 }
 export async function heartbeat(slug, lat, lng) {
   return api.post(`/restaurants/${slug}/domi/heartbeat`, { lat, lng });
+}
+
+/* ── Native push token registration (FCM) ── */
+export async function registerPushToken(slug, fcmToken) {
+  return api.post(`/restaurants/${slug}/domi/push-token`, { fcmToken });
+}
+export async function clearPushToken(slug) {
+  try { return await api.delete(`/restaurants/${slug}/domi/push-token`); }
+  catch { return null; }
 }

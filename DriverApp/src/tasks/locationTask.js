@@ -72,7 +72,7 @@ export async function startBackgroundLocation(orderId) {
     foregroundService: {      // Android: keeps task alive with a notification
       notificationTitle: 'Entrega en curso',
       notificationBody: 'Tu ubicación está siendo compartida con el restaurante.',
-      notificationColor: '#EF4444',
+      notificationColor: '#E11D2A',
     },
     pausesUpdatesAutomatically: false,
     showsBackgroundLocationIndicator: true, // iOS blue bar

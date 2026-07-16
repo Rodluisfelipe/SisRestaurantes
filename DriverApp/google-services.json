@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "835029688896",
+    "project_id": "menuby-31a16",
+    "storage_bucket": "menuby-31a16.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:835029688896:android:8973f705614f13f039f5a5",
+        "android_client_info": {
+          "package_name": "tech.menuby.domiapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDN0DnCzxdhCfk-DlS3kAOPNRewQHOu1_4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

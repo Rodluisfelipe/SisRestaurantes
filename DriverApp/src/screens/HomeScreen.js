@@ -4,19 +4,26 @@ import {
   RefreshControl, Alert, Vibration, AppState, Animated, Easing, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { fetchOrders, getSession, clearSession, setOnline as apiSetOnline, heartbeat, fetchOffers, acceptOffer, rejectOffer } from '../services/api';
 import { joinDomiRoom, disconnectSocket } from '../services/socket';
-import { C, mapDarkStyle, shadow } from '../theme';
+import notifee, { EventType } from '@notifee/react-native';
+import { C, shadow } from '../theme';
+import { MapView, Camera, MarkerView, UserLocation, MAP_STYLE_URL } from '../mapEngine';
+import {
+  displayIncomingOrder, cancelIncomingOrder,
+  startOnlineService, stopOnlineService, requestNotifPermission,
+} from '../services/incomingOrder';
 import AvailabilityToggle from '../components/AvailabilityToggle';
 import DraggableSheet from '../components/DraggableSheet';
 import OfferModal from '../components/OfferModal';
 
 const SCREEN_H = Dimensions.get('window').height;
-const DEFAULT_REGION = { latitude: 4.6533, longitude: -74.0836, latitudeDelta: 0.04, longitudeDelta: 0.04 };
+const DEFAULT_CENTER = [-74.0836, 4.6533]; // [lng, lat] — Bogotá
+const DEFAULT_ZOOM = 12;
 
 const fmtPrice = (n) => `$${(n || 0).toLocaleString('es-CO')}`;
 const fmtTime  = (iso) => iso ? new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -27,10 +34,20 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
   const [online, setOnline]      = useState(true);
   const [connected, setConn]     = useState(false);
   const [refreshing, setRefresh] = useState(false);
-  const [region, setRegion]      = useState(DEFAULT_REGION);
   const [offer, setOffer]        = useState(null);
-  const mapRef = useRef(null);
+  const cameraRef = useRef(null);
+  const centerRef = useRef(DEFAULT_CENTER);
   const appState = useRef(AppState.currentState);
+
+  const recenter = useCallback((zoom = 15) => {
+    cameraRef.current?.setCamera({ centerCoordinate: centerRef.current, zoomLevel: zoom, animationDuration: 600 });
+  }, []);
+
+  // Remember the online/offline choice across app restarts
+  useEffect(() => {
+    AsyncStorage.getItem('domi_online').then(v => { if (v !== null) setOnline(v === '1'); });
+  }, []);
+  useEffect(() => { AsyncStorage.setItem('domi_online', online ? '1' : '0'); }, [online]);
 
   const name = domiInfo?.name || domiInfo?.deliveryPerson?.name || 'Domiciliario';
   const initial = name.charAt(0).toUpperCase();
@@ -50,11 +67,10 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
       const { granted } = await Location.requestForegroundPermissionsAsync();
       if (!granted) return;
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const r = { latitude: pos.coords.latitude, longitude: pos.coords.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 };
-      setRegion(r);
-      mapRef.current?.animateToRegion(r, 700);
+      centerRef.current = [pos.coords.longitude, pos.coords.latitude];
+      recenter(15);
     })();
-  }, []);
+  }, [recenter]);
 
   // Pick up any offer already pending (e.g. arrived while app was closed)
   const loadOffers = useCallback(async () => {
@@ -71,13 +87,35 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
       const socket = joinDomiRoom(token, domiInfo?.deliveryPersonId, slug, domiInfo?.mode);
       socket.on('connect', () => setConn(true));
       socket.on('disconnect', () => setConn(false));
-      socket.on('delivery:offer', (o) => setOffer(o));
-      socket.on('delivery:assigned', () => { Vibration.vibrate([0, 220, 120, 220]); setOffer(null); load(); });
+      socket.on('delivery:offer', (o) => {
+        setOffer(o);
+        // Full-screen incoming-call alert (loops sound; fires even if backgrounded)
+        displayIncomingOrder({
+          offerId: o.offerId || o._id,
+          orderId: o.orderId,
+          address: o.address || o.order?.address,
+          totalAmount: o.totalAmount ?? o.order?.totalAmount,
+          distanceKm: o.distanceKm,
+          timeoutSec: o.timeoutSec,
+        }).catch(() => {});
+      });
+      socket.on('delivery:assigned', () => { Vibration.vibrate([0, 220, 120, 220]); setOffer(null); cancelIncomingOrder(); load(); });
       socket.on('order:status', () => load());
     })();
     loadOffers();
     return () => disconnectSocket();
   }, [domiInfo, load, loadOffers]);
+
+  // In-app Notifee taps (Accept / Reject on the heads-up while app is open)
+  useEffect(() => {
+    return notifee.onForegroundEvent(({ type, detail }) => {
+      if (type !== EventType.ACTION_PRESS) return;
+      const id = detail.pressAction?.id;
+      if (id === 'accept') handleAcceptOffer();
+      else if (id === 'reject') handleRejectOffer();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offer]);
 
   useEffect(() => {
     load();
@@ -106,6 +144,18 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
   // Fire on toggle change
   useEffect(() => { reportOnline(online); }, [online, reportOnline]);
 
+  // Keep-alive foreground service while online, so offers arrive even when the
+  // driver switches to another app. Stops when going offline / leaving the screen.
+  useEffect(() => {
+    if (online) {
+      requestNotifPermission();
+      startOnlineService().catch(() => {});
+    } else {
+      stopOnlineService().catch(() => {});
+    }
+    return () => { stopOnlineService().catch(() => {}); };
+  }, [online]);
+
   // Heartbeat every 60s while online so the assignment algorithm sees fresh location
   useEffect(() => {
     if (!online) return;
@@ -126,32 +176,48 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
   /* ── Offer handlers ── */
   const handleAcceptOffer = useCallback(async () => {
     if (!offer) return;
+    const offerId = offer._id || offer.offerId;
+    const orderId = offer.orderId || offer.order?._id;
+    cancelIncomingOrder();
     try {
       const { slug } = await getSession();
-      await acceptOffer(slug, offer._id);
+      await acceptOffer(slug, offerId);
       setOffer(null);
       await load();
+      // Open the accepted order right away so the domi can start the delivery
+      try {
+        const fresh = await fetchOrders(slug);
+        const ord = (fresh || []).find(o => String(o._id) === String(orderId));
+        if (ord) navigation.navigate('Order', { order: ord });
+      } catch { /* the order is still in the list if this fails */ }
     } catch (err) {
       Alert.alert('No se pudo aceptar', err.data?.message || 'La oferta ya no está disponible.');
       setOffer(null);
     }
-  }, [offer, load]);
+  }, [offer, load, navigation]);
 
   const handleRejectOffer = useCallback(async () => {
     if (!offer) return;
+    const offerId = offer._id || offer.offerId;
+    cancelIncomingOrder();
     try {
       const { slug } = await getSession();
-      await rejectOffer(slug, offer._id);
+      await rejectOffer(slug, offerId);
     } catch { /* noop */ }
     setOffer(null);
   }, [offer]);
 
-  const handleExpireOffer = useCallback(() => setOffer(null), []);
+  const handleExpireOffer = useCallback(() => { cancelIncomingOrder(); setOffer(null); }, []);
 
   const handleLogout = () => {
     Alert.alert('Cerrar sesión', '¿Salir de tu cuenta?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Salir', style: 'destructive', onPress: async () => { await clearSession(); onLogout(); } },
+      { text: 'Salir', style: 'destructive', onPress: async () => {
+        await stopOnlineService().catch(() => {});
+        await cancelIncomingOrder().catch(() => {});
+        await clearSession();
+        onLogout();
+      } },
     ]);
   };
 
@@ -165,26 +231,28 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
     <View style={styles.container}>
       {/* MAP */}
       <MapView
-        ref={mapRef}
-        provider={PROVIDER_DEFAULT}
         style={StyleSheet.absoluteFill}
-        initialRegion={region}
-        showsUserLocation
-        showsMyLocationButton={false}
-        customMapStyle={mapDarkStyle}
-        showsCompass={false}
+        mapStyle={MAP_STYLE_URL}
+        logoEnabled={false}
+        attributionEnabled
+        compassEnabled={false}
+        rotateEnabled={false}
+        pitchEnabled={false}
       >
+        <Camera ref={cameraRef} defaultSettings={{ centerCoordinate: DEFAULT_CENTER, zoomLevel: DEFAULT_ZOOM }} />
+        <UserLocation visible renderMode="normal" />
         {markers.map(o => (
-          <Marker
+          <MarkerView
             key={o._id}
-            coordinate={{ latitude: o.deliveryCoordinates.lat, longitude: o.deliveryCoordinates.lon }}
-            onPress={() => navigation.navigate('Order', { order: o })}
+            id={o._id}
+            coordinate={[o.deliveryCoordinates.lon, o.deliveryCoordinates.lat]}
+            anchor={{ x: 0.5, y: 1 }}
           >
-            <View style={styles.pin}>
+            <Pressable onPress={() => navigation.navigate('Order', { order: o })} style={styles.pin} hitSlop={8}>
               <MaterialCommunityIcons name="map-marker" size={38} color={C.brand} />
               <View style={styles.pinDot} />
-            </View>
-          </Marker>
+            </Pressable>
+          </MarkerView>
         ))}
       </MapView>
 
@@ -204,7 +272,7 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
       </View>
 
       {/* recenter */}
-      <TouchableOpacity style={styles.recenter} onPress={() => mapRef.current?.animateToRegion(region, 500)}>
+      <TouchableOpacity style={styles.recenter} onPress={() => recenter(15)}>
         <MaterialCommunityIcons name="crosshairs-gps" size={22} color={C.text} />
       </TouchableOpacity>
 
@@ -324,7 +392,7 @@ function OfflineCard({ onGoOnline }) {
       <Text style={styles.emptyTitle}>Estás fuera de línea</Text>
       <Text style={styles.emptyHint}>Ponte en línea para recibir pedidos.</Text>
       <TouchableOpacity style={styles.goOnlineBtn} onPress={onGoOnline} activeOpacity={0.9}>
-        <MaterialCommunityIcons name="lightning-bolt" size={18} color="#0A0E16" />
+        <MaterialCommunityIcons name="lightning-bolt" size={18} color={C.white} />
         <Text style={styles.goOnlineTxt}>Ponerme en línea</Text>
       </TouchableOpacity>
     </View>
@@ -333,7 +401,7 @@ function OfflineCard({ onGoOnline }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: 'rgba(10,14,22,0.55)' },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: 'rgba(244,246,250,0.82)' },
 
   header: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 10 },
   avatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: C.brand, justifyContent: 'center', alignItems: 'center', ...shadow.glow(C.brand) },
@@ -379,5 +447,5 @@ const styles = StyleSheet.create({
   emptyTitle: { color: C.text, fontSize: 17, fontWeight: '800' },
   emptyHint: { color: C.sub, fontSize: 13, marginTop: 6, textAlign: 'center', lineHeight: 19 },
   goOnlineBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 20, backgroundColor: C.go, paddingHorizontal: 22, paddingVertical: 13, borderRadius: 14, ...shadow.glow(C.go) },
-  goOnlineTxt: { color: '#0A0E16', fontSize: 15, fontWeight: '800' },
+  goOnlineTxt: { color: C.white, fontSize: 15, fontWeight: '800' },
 });

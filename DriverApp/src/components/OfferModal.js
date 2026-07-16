@@ -111,9 +111,9 @@ export default function OfferModal({ offer, onAccept, onReject, onExpire }) {
               {acting === 'reject' ? <ActivityIndicator color={C.sub} /> : <Text style={styles.rejectTxt}>Rechazar</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={[styles.btn, styles.accept]} onPress={doAccept} disabled={!!acting} activeOpacity={0.85}>
-              {acting === 'accept' ? <ActivityIndicator color="#0A0E16" /> : (
+              {acting === 'accept' ? <ActivityIndicator color={C.white} /> : (
                 <>
-                  <Ionicons name="checkmark" size={20} color="#0A0E16" />
+                  <Ionicons name="checkmark" size={20} color={C.white} />
                   <Text style={styles.acceptTxt}>Aceptar</Text>
                 </>
               )}
@@ -160,6 +160,6 @@ const styles = StyleSheet.create({
   btn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 16, borderRadius: 16 },
   reject: { backgroundColor: C.card2, borderWidth: 1, borderColor: C.line },
   rejectTxt: { color: C.sub, fontSize: 15, fontWeight: '800' },
-  accept: { backgroundColor: C.go, ...shadow.glow(C.go) },
-  acceptTxt: { color: '#0A0E16', fontSize: 16, fontWeight: '900' },
+  accept: { backgroundColor: C.brand, ...shadow.glow(C.brand) },
+  acceptTxt: { color: C.white, fontSize: 16, fontWeight: '900' },
 });

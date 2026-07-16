@@ -6,25 +6,28 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
-import { loginDomi, loginPassword } from '../services/api';
+import { loginDomi, loginPassword, loginPhonePin } from '../services/api';
 import { C, shadow } from '../theme';
 
 export default function AuthScreen({ onLogin }) {
   const insets = useSafeAreaInsets();
-  const [mode, setMode] = useState('account'); // 'account' | 'pin'
+  const [mode, setMode] = useState('phonepin'); // 'phonepin' | 'account' | 'pin'
   const [loading, setLoading] = useState(false);
 
-  // account mode
+  // shared / per-mode fields
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
-  // pin mode
   const [slug, setSlug] = useState('');
   const [code, setCode] = useState('');
 
   const submit = async () => {
     setLoading(true);
     try {
-      if (mode === 'account') {
+      if (mode === 'phonepin') {
+        if (!phone || code.length !== 4) { setLoading(false); return Alert.alert('Datos incompletos', 'Ingresa tu celular y tu PIN de 4 dígitos.'); }
+        const data = await loginPhonePin(phone.replace(/\D/g, ''), code);
+        onLogin({ ...data });
+      } else if (mode === 'account') {
         if (!phone || password.length < 6) { setLoading(false); return Alert.alert('Datos incompletos', 'Ingresa tu teléfono y una contraseña de al menos 6 caracteres.'); }
         const data = await loginPassword(phone.replace(/\D/g, ''), password);
         onLogin({ ...data });
@@ -52,16 +55,42 @@ export default function AuthScreen({ onLogin }) {
 
         {/* mode toggle */}
         <View style={styles.seg}>
+          <TouchableOpacity style={[styles.segBtn, mode === 'phonepin' && styles.segBtnOn]} onPress={() => setMode('phonepin')}>
+            <Text style={[styles.segTxt, mode === 'phonepin' && styles.segTxtOn]}>Cel + PIN</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={[styles.segBtn, mode === 'account' && styles.segBtnOn]} onPress={() => setMode('account')}>
-            <Text style={[styles.segTxt, mode === 'account' && styles.segTxtOn]}>Mi cuenta</Text>
+            <Text style={[styles.segTxt, mode === 'account' && styles.segTxtOn]}>Contraseña</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.segBtn, mode === 'pin' && styles.segBtnOn]} onPress={() => setMode('pin')}>
-            <Text style={[styles.segTxt, mode === 'pin' && styles.segTxtOn]}>PIN</Text>
+            <Text style={[styles.segTxt, mode === 'pin' && styles.segTxtOn]}>Negocio</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.card}>
-          {mode === 'account' ? (
+          {mode === 'phonepin' && (
+            <>
+              <Text style={styles.label}>CELULAR</Text>
+              <View style={styles.inputWrap}>
+                <Ionicons name="call-outline" size={18} color={C.faint} />
+                <TextInput
+                  style={styles.input} placeholder="300 123 4567" placeholderTextColor={C.faint}
+                  value={phone} onChangeText={t => setPhone(t.replace(/[^\d]/g, ''))}
+                  keyboardType="phone-pad"
+                />
+              </View>
+              <Text style={[styles.label, { marginTop: 18 }]}>PIN DE ACCESO</Text>
+              <View style={styles.inputWrap}>
+                <Ionicons name="key-outline" size={18} color={C.faint} />
+                <TextInput
+                  style={[styles.input, styles.codeInput]} placeholder="0000" placeholderTextColor={C.faint}
+                  value={code} onChangeText={t => setCode(t.replace(/\D/g, '').slice(0, 4))}
+                  keyboardType="number-pad" secureTextEntry maxLength={4} onSubmitEditing={submit}
+                />
+              </View>
+              <Text style={styles.hint}>Tu celular y el PIN de 4 dígitos que te dio el restaurante.</Text>
+            </>
+          )}
+          {mode === 'account' && (
             <>
               <Text style={styles.label}>TELÉFONO</Text>
               <View style={styles.inputWrap}>
@@ -83,7 +112,8 @@ export default function AuthScreen({ onLogin }) {
               </View>
               <Text style={styles.hint}>Tu restaurante te da tu teléfono y contraseña.</Text>
             </>
-          ) : (
+          )}
+          {mode === 'pin' && (
             <>
               <Text style={styles.label}>NEGOCIO</Text>
               <View style={styles.inputWrap}>

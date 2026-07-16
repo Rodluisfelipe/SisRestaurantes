@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet, Animated, PanResponder, Dimensions } from 'react-native';
 import { C } from '../theme';
 
@@ -24,7 +24,13 @@ export default function DraggableSheet({
   const ty = useRef(new Animated.Value(range)).current;
   const current = useRef(range);
 
-  ty.addListener(({ value }) => { current.current = value; });
+  // Track the animated value in a ref WITHOUT leaking listeners.
+  // (Adding the listener in the render body attached a new one on every
+  // re-render and never removed them, which progressively froze the screen.)
+  useEffect(() => {
+    const id = ty.addListener(({ value }) => { current.current = value; });
+    return () => ty.removeListener(id);
+  }, [ty]);
 
   const snap = (to) => {
     Animated.spring(ty, { toValue: to, useNativeDriver: true, friction: 9, tension: 65 }).start();

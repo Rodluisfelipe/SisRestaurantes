@@ -4,14 +4,14 @@ import {
   TextInput, Vibration, Platform, ScrollView, Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 
 import { markPicked, confirmDelivery, getSession } from '../services/api';
 import { emitLocation } from '../services/socket';
 import { startBackgroundLocation, stopBackgroundLocation } from '../tasks/locationTask';
-import { C, mapDarkStyle, shadow } from '../theme';
+import { C, shadow } from '../theme';
+import { MapView, Camera, MarkerView, ShapeSource, LineLayer, UserLocation, MAP_STYLE_URL } from '../mapEngine';
 import SlideToConfirm from '../components/SlideToConfirm';
 import DraggableSheet from '../components/DraggableSheet';
 
@@ -26,7 +26,7 @@ export default function OrderScreen({ route, navigation }) {
   const [code, setCode]     = useState('');
   const [driverLoc, setDriverLoc] = useState(null);
   const [gps, setGps]       = useState('idle');
-  const mapRef  = useRef(null);
+  const cameraRef = useRef(null);
   const watchRef = useRef(null);
 
   const dest = initial.deliveryCoordinates?.lat
@@ -69,13 +69,14 @@ export default function OrderScreen({ route, navigation }) {
   }, []);
 
   useEffect(() => {
-    if (driverLoc && dest && mapRef.current) {
-      mapRef.current.fitToCoordinates([driverLoc, dest], {
-        edgePadding: { top: 120, right: 80, bottom: SCREEN_H * 0.5, left: 80 },
-        animated: true,
-      });
-    } else if (dest && mapRef.current) {
-      mapRef.current.animateToRegion({ ...dest, latitudeDelta: 0.02, longitudeDelta: 0.02 }, 600);
+    if (driverLoc && dest && cameraRef.current) {
+      const lngs = [driverLoc.longitude, dest.longitude];
+      const lats = [driverLoc.latitude, dest.latitude];
+      const ne = [Math.max(...lngs), Math.max(...lats)];
+      const sw = [Math.min(...lngs), Math.min(...lats)];
+      cameraRef.current.fitBounds(ne, sw, [120, 80, SCREEN_H * 0.5, 80], 600);
+    } else if (dest && cameraRef.current) {
+      cameraRef.current.setCamera({ centerCoordinate: [dest.longitude, dest.latitude], zoomLevel: 15, animationDuration: 600 });
     }
   }, [driverLoc, dest]);
 
@@ -138,25 +139,37 @@ export default function OrderScreen({ route, navigation }) {
     <View style={styles.container}>
       {/* MAP */}
       <MapView
-        ref={mapRef}
-        provider={PROVIDER_DEFAULT}
         style={StyleSheet.absoluteFill}
-        customMapStyle={mapDarkStyle}
-        showsUserLocation
-        showsMyLocationButton={false}
-        showsCompass={false}
+        mapStyle={MAP_STYLE_URL}
+        logoEnabled={false}
+        attributionEnabled
+        compassEnabled={false}
+        rotateEnabled={false}
+        pitchEnabled={false}
       >
+        <Camera ref={cameraRef} defaultSettings={{ centerCoordinate: dest ? [dest.longitude, dest.latitude] : [-74.0836, 4.6533], zoomLevel: 14 }} />
+        <UserLocation visible renderMode="normal" />
+
+        {driverLoc && dest && (
+          <ShapeSource
+            id="route"
+            shape={{
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: [[driverLoc.longitude, driverLoc.latitude], [dest.longitude, dest.latitude]] },
+            }}
+          >
+            <LineLayer id="routeLine" style={{ lineColor: C.brand, lineWidth: 4, lineDasharray: [2, 2], lineCap: 'round', lineJoin: 'round' }} />
+          </ShapeSource>
+        )}
+
         {dest && (
-          <Marker coordinate={dest}>
+          <MarkerView id="dest" coordinate={[dest.longitude, dest.latitude]} anchor={{ x: 0.5, y: 0.5 }}>
             <View style={styles.destPin}>
               <View style={styles.destPinInner}>
                 <Ionicons name="flag" size={16} color={C.white} />
               </View>
             </View>
-          </Marker>
-        )}
-        {driverLoc && dest && (
-          <Polyline coordinates={[driverLoc, dest]} strokeColor={C.brand} strokeWidth={4} lineDashPattern={[2, 8]} geodesic />
+          </MarkerView>
         )}
       </MapView>
 

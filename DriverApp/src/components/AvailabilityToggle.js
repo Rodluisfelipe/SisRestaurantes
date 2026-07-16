@@ -59,5 +59,5 @@ const styles = StyleSheet.create({
   labelOff: { right: 14 },
   knob: { position: 'absolute', left: PAD, width: KNOB, height: KNOB, borderRadius: KNOB / 2, justifyContent: 'center', alignItems: 'center' },
   pulse: { position: 'absolute', width: KNOB, height: KNOB, borderRadius: KNOB / 2, backgroundColor: C.go },
-  knobDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#0A0E16' },
+  knobDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.white },
 });

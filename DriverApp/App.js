@@ -7,13 +7,14 @@ try {
 }
 
 import React, { useState, useEffect } from 'react';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { getSession } from './src/services/api';
+import { registerForPush, listenForegroundMessages, listenTokenRefresh } from './src/services/fcm';
 import { C } from './src/theme';
 import AuthScreen  from './src/screens/AuthScreen';
 import HomeScreen  from './src/screens/HomeScreen';
@@ -22,8 +23,8 @@ import OrderScreen from './src/screens/OrderScreen';
 const Stack = createNativeStackNavigator();
 
 const navTheme = {
-  ...DarkTheme,
-  colors: { ...DarkTheme.colors, background: C.bg, card: C.bg, text: C.text, primary: C.brand },
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: C.bg, card: C.card, text: C.text, primary: C.brand },
 };
 
 export default function App() {
@@ -35,15 +36,27 @@ export default function App() {
       try {
         const { token, slug } = await getSession();
         setSession(token && slug ? { token, slug } : false);
+        // Re-register push token on app launch when a session already exists
+        if (token && slug) registerForPush(slug);
       } catch {
         setSession(false);
       }
     })();
   }, []);
 
+  // FCM foreground messages + token rotation (active whenever there's a session)
+  useEffect(() => {
+    if (!session || !session.slug) return;
+    const unsubMsg = listenForegroundMessages();
+    const unsubRefresh = listenTokenRefresh(session.slug);
+    return () => { unsubMsg(); unsubRefresh(); };
+  }, [session]);
+
   const handleLogin = (data) => {
     setDomiInfo(data);
     setSession({ token: data.token, slug: data.slug });
+    // Register for native push right after login (permission prompt + token)
+    if (data?.slug) registerForPush(data.slug);
   };
 
   const handleLogout = () => {
@@ -54,7 +67,7 @@ export default function App() {
   if (session === null) {
     return (
       <View style={styles.splash}>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <ActivityIndicator color={C.brand} size="large" />
       </View>
     );
@@ -62,7 +75,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <NavigationContainer theme={navTheme}>
         {!session ? (
           <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: C.bg } }}>

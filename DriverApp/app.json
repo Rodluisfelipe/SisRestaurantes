@@ -1,14 +1,20 @@
 {
   "expo": {
-    "name": "Domi App",
+    "name": "MenuBy Domi",
     "slug": "domi-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
-    "backgroundColor": "#0f172a",
+    "icon": "./assets/icon.png",
+    "backgroundColor": "#FFFFFF",
+    "scheme": "domiapp",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0f172a"
+      "backgroundColor": "#E11D2A"
     },
     "ios": {
       "supportsTablet": false,
@@ -16,20 +22,33 @@
       "infoPlist": {
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación para rastrear tus entregas en tiempo real.",
         "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para rastrear tus entregas.",
-        "UIBackgroundModes": ["location", "fetch"]
+        "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification"
+        ]
       }
     },
     "android": {
       "package": "tech.menuby.domiapp",
+      "versionCode": 1,
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#0f172a"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#E11D2A"
       },
       "permissions": [
         "ACCESS_BACKGROUND_LOCATION",
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "VIBRATE",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "POST_NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "FOREGROUND_SERVICE_SPECIAL_USE",
+        "USE_FULL_SCREEN_INTENT"
       ]
     },
     "plugins": [
@@ -40,8 +59,28 @@
           "isAndroidBackgroundLocationEnabled": true,
           "isIosBackgroundLocationEnabled": true
         }
-      ]
+      ],
+      "@maplibre/maplibre-react-native",
+      "expo-font",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": []
+          }
+        }
+      ],
+      "./plugins/withNotificationIcon"
     ],
-    "extra": {}
+    "extra": {
+      "eas": {
+        "projectId": "8a2763ab-8bf1-48f6-9635-e0c25cfa0dd3"
+      }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8a2763ab-8bf1-48f6-9635-e0c25cfa0dd3"
+    }
   }
 }
