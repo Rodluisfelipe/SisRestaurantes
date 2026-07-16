@@ -319,6 +319,39 @@ router.post('/domi/login', deliveryLimiter, async (req, res) => {
   }
 });
 
+// POST /api/delivery/domi/login-pin — phone + 4-digit PIN (no slug, no password)
+router.post('/domi/login-pin', deliveryLimiter, async (req, res) => {
+  try {
+    const { phone, code } = req.body;
+    if (!phone || !code) return res.status(400).json({ message: 'Celular y PIN requeridos' });
+    if (!/^\d{4}$/.test(code)) return res.status(400).json({ message: 'El PIN debe ser de 4 dígitos' });
+
+    const norm = DeliveryPerson.normalizePhone(phone);
+    if (!norm) return res.status(400).json({ message: 'Celular inválido' });
+
+    // Match by phone, then verify the PIN (phone should be unique among domis;
+    // if legacy data has duplicates, we log in the one whose PIN matches).
+    const candidates = await DeliveryPerson.find({ phone: norm, active: true });
+    const person = candidates.find(p => p.verifyCode(code));
+    if (!person) return res.status(401).json({ message: 'Celular o PIN incorrectos' });
+
+    const business = await BusinessConfig.findById(person.businessId).select('slug businessName').lean();
+    const token = generateDomiToken(person._id.toString(), person.businessId, 'profile');
+    const refreshToken = generateDomiRefresh(person._id);
+    person.refreshTokenHash = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    await person.save();
+
+    res.json({
+      mode: 'profile', token, refreshToken,
+      name: person.name, deliveryPersonId: person._id,
+      businessId: person.businessId, businessName: business?.businessName, slug: business?.slug,
+    });
+  } catch (err) {
+    logger.error('Error in domi login-pin', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
 // POST /api/delivery/domi/refresh — rotate access token with a refresh token
 router.post('/domi/refresh', async (req, res) => {
   try {

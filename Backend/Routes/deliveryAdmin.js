@@ -55,12 +55,14 @@ router.post('/restaurants/:slug/delivery-persons', tenantAuth, async (req, res) 
     const businessId = await resolveSlug(req.params.slug);
     const { name, code, phone, password } = req.body;
 
-    if (!name || !code || code.length !== 4 || !/^\d{4}$/.test(code)) {
+    if (!name || !name.trim() || !code || code.length !== 4 || !/^\d{4}$/.test(code)) {
       return res.status(400).json({ message: 'Nombre requerido y código debe ser exactamente 4 dígitos numéricos' });
     }
 
-    // Check for duplicate code (by hashing and comparing)
-    const existing = await DeliveryPerson.findByCode(businessId, code);
+    // Check for duplicate code across ALL domis of the business (active or not),
+    // so a reactivated domi can never collide on PIN.
+    const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
+    const existing = await DeliveryPerson.findOne({ businessId, code: hashedCode });
     if (existing) {
       return res.status(409).json({ message: 'Ya existe un domiciliario con ese código' });
     }
@@ -70,8 +72,9 @@ router.post('/restaurants/:slug/delivery-persons', tenantAuth, async (req, res) 
     // Optional real account: phone + password (Phase B)
     if (phone) {
       const norm = DeliveryPerson.normalizePhone(phone);
-      const dup = await DeliveryPerson.findOne({ phone: norm, passwordHash: { $ne: null } });
-      if (dup) return res.status(409).json({ message: 'Ya existe una cuenta con ese teléfono' });
+      // Phone must be unique among domis so "celular + PIN" login is unambiguous
+      const dup = await DeliveryPerson.findOne({ phone: norm });
+      if (dup) return res.status(409).json({ message: 'Ya existe un domiciliario con ese celular' });
       person.phone = norm;
     }
     if (password) {
@@ -96,16 +99,23 @@ router.patch('/restaurants/:slug/delivery-persons/:dpId', tenantAuth, async (req
     const person = await DeliveryPerson.findOne({ _id: req.params.dpId, businessId });
     if (!person) return res.status(404).json({ message: 'Domiciliario no encontrado' });
 
-    if (req.body.name !== undefined) person.name = req.body.name.trim();
+    if (req.body.name !== undefined) {
+      if (!req.body.name.trim()) return res.status(400).json({ message: 'El nombre no puede estar vacío' });
+      person.name = req.body.name.trim();
+    }
     if (req.body.active !== undefined) person.active = req.body.active;
     if (req.body.code && /^\d{4}$/.test(req.body.code)) {
+      // Prevent PIN collisions with another domi of the business
+      const hashedCode = crypto.createHash('sha256').update(req.body.code).digest('hex');
+      const dupCode = await DeliveryPerson.findOne({ businessId, code: hashedCode, _id: { $ne: person._id } });
+      if (dupCode) return res.status(409).json({ message: 'Ya existe un domiciliario con ese código' });
       person.code = req.body.code; // Will be hashed by pre-save hook
     }
     if (req.body.phone !== undefined) {
       const norm = DeliveryPerson.normalizePhone(req.body.phone);
       if (norm) {
-        const dup = await DeliveryPerson.findOne({ phone: norm, passwordHash: { $ne: null }, _id: { $ne: person._id } });
-        if (dup) return res.status(409).json({ message: 'Ya existe una cuenta con ese teléfono' });
+        const dup = await DeliveryPerson.findOne({ phone: norm, _id: { $ne: person._id } });
+        if (dup) return res.status(409).json({ message: 'Ya existe un domiciliario con ese celular' });
       }
       person.phone = norm || null;
     }
