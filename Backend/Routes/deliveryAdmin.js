@@ -177,6 +177,21 @@ router.get('/restaurants/:slug/delivery-session/today', tenantAuth, async (req, 
   }
 });
 
+// GET /api/delivery-admin/restaurants/:slug/daily-pickup-code
+// Today's pickup-confirmation code — the restaurant gives it to the domi on
+// arrival so they can confirm the pickup. Auto-generated per day.
+router.get('/restaurants/:slug/daily-pickup-code', tenantAuth, async (req, res) => {
+  try {
+    const businessId = await resolveSlug(req.params.slug);
+    const { getOrCreateDailyPickupCode } = require('../utils/dailyPickupCode');
+    const code = await getOrCreateDailyPickupCode(businessId);
+    res.json({ code });
+  } catch (error) {
+    logger.error('Error fetching daily pickup code', error);
+    res.status(500).json({ message: 'Error al obtener el código de recogida' });
+  }
+});
+
 // ============================================
 // ASSIGN DELIVERY — dashboard actions
 // ============================================

@@ -56,6 +56,11 @@ const deliveryPersonSchema = new mongoose.Schema({
     trim: true,
     maxlength: 100
   },
+  // Profile photo URL (DigitalOcean Spaces) — set by the driver from the app
+  photo: {
+    type: String,
+    default: null
+  },
   code: {
     type: String,
     required: true,

@@ -10,6 +10,9 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const socketService = require('../services/socketService');
 const logger = require('../utils/logger');
 const rateLimit = require('express-rate-limit');
+const multer = require('multer');
+
+const photoUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 const deliveryLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -401,18 +404,166 @@ router.get('/:slug/domi/orders', domiAuth, async (req, res) => {
 
     const orders = await Order.find(filter).sort({ deliveryAssignedAt: -1 }).lean();
 
-    // Never expose confirmation code to domi
-    const business = await BusinessConfig.findById(businessId).select('requireDeliveryCode').lean();
+    // Restaurant info for the two-stage flow (go to store → go to customer) + display
+    const business = await BusinessConfig.findById(businessId)
+      .select('requireDeliveryCode businessName address location logo phone phoneCountryCode')
+      .lean();
     const requireCode = business?.requireDeliveryCode !== false;
+    const restaurant = business ? {
+      name: business.businessName,
+      address: business.location?.address || business.address || '',
+      coordinates: business.location?.coordinates || null, // { lat, lng }
+      phone: (business.phoneCountryCode ? business.phoneCountryCode : '') + (business.phone || ''),
+      logo: business.logo || null,
+    } : null;
+
+    // Never expose the customer confirmation code to the domi
     const safe = orders.map(o => ({
       ...o,
       confirmationCode: undefined,
-      requireConfirmationCode: requireCode
+      requireConfirmationCode: requireCode,
+      restaurant,
     }));
 
     res.json(safe);
   } catch (error) {
     logger.error('Error fetching domi orders', error);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// GET /:slug/domi/me — driver profile (name, photo, phone, business, summary)
+router.get('/:slug/domi/me', domiAuth, async (req, res) => {
+  try {
+    const { dpId, businessId } = req.domi;
+    const business = await BusinessConfig.findById(businessId).select('businessName slug logo').lean();
+    if (!dpId || String(dpId).startsWith('daily-')) {
+      return res.json({ name: 'Domiciliario del día', mode: 'fixed', business: business ? { name: business.businessName, logo: business.logo } : null });
+    }
+    const p = await DeliveryPerson.findById(dpId).select('name phone photo rating totalDeliveries activeDeliveries createdAt').lean();
+    if (!p) return res.status(404).json({ message: 'Domiciliario no encontrado' });
+    res.json({
+      id: p._id, name: p.name, phone: p.phone, photo: p.photo || null,
+      rating: p.rating ?? 5, totalDeliveries: p.totalDeliveries || 0,
+      activeDeliveries: p.activeDeliveries || 0, memberSince: p.createdAt,
+      business: business ? { name: business.businessName, slug: business.slug, logo: business.logo } : null,
+    });
+  } catch (err) {
+    logger.error('Error fetching domi profile', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// GET /:slug/domi/stats — the driver's own delivery stats
+router.get('/:slug/domi/stats', domiAuth, async (req, res) => {
+  try {
+    const { dpId, businessId } = req.domi;
+    if (!dpId || String(dpId).startsWith('daily-')) return res.json({ total: 0, today: 0, week: 0, avgMinutes: 0, chartData: [] });
+
+    const mongoose = require('mongoose');
+    const dp = new mongoose.Types.ObjectId(dpId);
+    const bid = new mongoose.Types.ObjectId(businessId);
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - 6); weekStart.setHours(0, 0, 0, 0);
+
+    const match = { deliveryPersonId: dp, deliveredAt: { $ne: null } };
+    const [totalA, totalC, todayA, todayC] = await Promise.all([
+      Order.countDocuments({ ...match, businessId: bid, status: 'delivered' }),
+      CompletedOrder.countDocuments({ ...match, businessId: bid }),
+      Order.countDocuments({ ...match, businessId: bid, status: 'delivered', deliveredAt: { $gte: todayStart } }),
+      CompletedOrder.countDocuments({ ...match, businessId: bid, deliveredAt: { $gte: todayStart } }),
+    ]);
+
+    // avg minutes (assigned → delivered) across both collections
+    const avgProject = { m: { $divide: [{ $subtract: ['$deliveredAt', '$deliveryAssignedAt'] }, 60000] } };
+    const avgGroup = { _id: null, avg: { $avg: '$m' }, n: { $sum: 1 } };
+    const avgMatch = { deliveryPersonId: dp, deliveryAssignedAt: { $ne: null }, deliveredAt: { $ne: null } };
+    const [a1, a2] = await Promise.all([
+      Order.aggregate([{ $match: { ...avgMatch, status: 'delivered' } }, { $project: avgProject }, { $group: avgGroup }]),
+      CompletedOrder.aggregate([{ $match: avgMatch }, { $project: avgProject }, { $group: avgGroup }]),
+    ]);
+    const s1 = a1[0] || { avg: 0, n: 0 }; const s2 = a2[0] || { avg: 0, n: 0 };
+    const nn = s1.n + s2.n;
+    const avgMinutes = nn > 0 ? Math.round((s1.avg * s1.n + s2.avg * s2.n) / nn) : 0;
+
+    // last 7 days chart
+    const dayPipe = (Model, extra) => Model.aggregate([
+      { $match: { deliveryPersonId: dp, deliveredAt: { $gte: weekStart }, ...extra } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$deliveredAt', timezone: 'America/Bogota' } }, c: { $sum: 1 } } },
+    ]);
+    const [dA, dC] = await Promise.all([dayPipe(Order, { status: 'delivered' }), dayPipe(CompletedOrder, {})]);
+    const dayMap = {};
+    for (const d of [...dA, ...dC]) dayMap[d._id] = (dayMap[d._id] || 0) + d.c;
+    const chartData = []; let week = 0;
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+      const c = dayMap[key] || 0; week += c;
+      chartData.push({ date: d.toLocaleDateString('es-CO', { weekday: 'short' }), count: c });
+    }
+
+    res.json({ total: totalA + totalC, today: todayA + todayC, week, avgMinutes, chartData });
+  } catch (err) {
+    logger.error('Error fetching domi stats', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// POST /:slug/domi/photo — upload/replace the driver's profile photo
+router.post('/:slug/domi/photo', domiAuth, photoUpload.single('photo'), async (req, res) => {
+  try {
+    const { dpId } = req.domi;
+    if (!dpId || String(dpId).startsWith('daily-')) return res.status(400).json({ message: 'Este modo no admite foto' });
+    if (!req.file) return res.status(400).json({ message: 'No se recibió imagen' });
+
+    const { uploadImage, deleteImage, isSpacesConfigured } = require('../services/imageUploadService');
+    if (!isSpacesConfigured()) return res.status(503).json({ message: 'Subida de imágenes no configurada' });
+
+    const person = await DeliveryPerson.findById(dpId);
+    if (!person) return res.status(404).json({ message: 'Domiciliario no encontrado' });
+
+    const result = await uploadImage(req.file.buffer, 'domi-photos', { maxWidth: 400, quality: 80 });
+    const url = result?.url || result;
+    if (person.photo) { try { await deleteImage(person.photo); } catch { /* noop */ } }
+    person.photo = url;
+    await person.save();
+    res.json({ ok: true, photo: url });
+  } catch (err) {
+    logger.error('Error uploading domi photo', err);
+    res.status(500).json({ message: 'Error al subir la foto' });
+  }
+});
+
+// POST /:slug/domi/orders/:id/arrived-store  { code } — confirm arrival at the
+// restaurant with the daily pickup code, then mark the order picked up.
+router.post('/:slug/domi/orders/:id/arrived-store', deliveryLimiter, domiAuth, async (req, res) => {
+  try {
+    const { businessId } = req.domi;
+    const { code } = req.body;
+    const order = await Order.findOne({ _id: req.params.id, businessId });
+    if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
+
+    const { verifyDailyPickupCode } = require('../utils/dailyPickupCode');
+    const ok = await verifyDailyPickupCode(businessId, code);
+    if (!ok) return res.status(400).json({ message: 'Código de recogida incorrecto' });
+
+    order.deliveryArrivedStoreAt = new Date();
+    order.deliveryPickedAt = order.deliveryPickedAt || new Date();
+    order.trackingEnabled = true;
+    await order.save();
+
+    try {
+      const dsm = require('../services/deliveryStateMachine');
+      await dsm.recordForOrder(order, 'arrive_store', { actor: 'driver', actorId: req.domi.dpId && !String(req.domi.dpId).startsWith('daily-') ? req.domi.dpId : null });
+      await dsm.recordForOrder(order, 'pickup', { actor: 'driver' });
+    } catch (e) { /* shadow, non-fatal */ }
+
+    socketService.emitToBusiness(order.businessId, 'orderUpdated', order.toObject());
+    socketService.emitToOrder(order._id, 'order:status', { status: order.status, pickedAt: order.deliveryPickedAt });
+
+    res.json({ ok: true, arrivedAt: order.deliveryArrivedStoreAt });
+  } catch (err) {
+    logger.error('Error confirming arrival at store', err);
     res.status(500).json({ message: 'Error del servidor' });
   }
 });

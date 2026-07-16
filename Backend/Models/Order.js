@@ -248,6 +248,11 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // When the domi confirmed arrival at the restaurant (with the daily pickup code)
+  deliveryArrivedStoreAt: {
+    type: Date,
+    default: null
+  },
   deliveryPickedAt: {
     type: Date,
     default: null

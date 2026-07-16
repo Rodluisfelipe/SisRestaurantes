@@ -225,6 +225,16 @@ const businessConfigSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  // Código diario de recogida: el restaurante se lo da al domi al llegar para
+  // confirmar la recogida. Se regenera automáticamente cada día.
+  dailyPickupCode: {
+    type: String,
+    default: null
+  },
+  dailyPickupCodeDate: {
+    type: String, // YYYY-MM-DD
+    default: null
+  },
   // Monto mínimo de pedido (0 = sin mínimo). Se valida en el menú y en el backend.
   minOrderAmount: {
     type: Number,
