@@ -63,6 +63,11 @@ const IC = {
       <path d="M18.36 6.64a9 9 0 11-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/>
     </svg>
   ),
+  edit: (cls = 'w-3.5 h-3.5') => (
+    <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  ),
   refresh: (cls = 'w-4 h-4') => (
     <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
@@ -102,6 +107,16 @@ const fmtTime = (iso) => {
 
 const fmtCOP = (n) => `$${(n || 0).toLocaleString('es-CO')}`;
 
+// Presence derived from persisted DB state (isOnline + lastSeenAt freshness),
+// used on load/refresh so a connected domi isn't shown "Desconectado" until a
+// transient socket event happens. Live socket events override this.
+const ONLINE_FRESH_MS = 3 * 60 * 1000;
+const dbPresence = (d) => {
+  if (d.status === 'on_delivery') return 'on_delivery';
+  if (d.isOnline && d.lastSeenAt && (Date.now() - new Date(d.lastSeenAt).getTime()) < ONLINE_FRESH_MS) return 'online';
+  return undefined;
+};
+
 /* ── Component ── */
 export default function DomiStats() {
   const { businessConfig } = useBusinessConfig();
@@ -140,6 +155,10 @@ export default function DomiStats() {
 
   /* toggling active */
   const [togglingId, setTogglingId]     = useState(null);
+
+  /* editing an existing domi */
+  const [editingId, setEditingId]       = useState(null);
+  const [editForm, setEditForm]         = useState({ name: '', code: '', phone: '', password: '' });
 
   const socketRef = useRef(null);
   const pollRef   = useRef(null);
@@ -219,7 +238,10 @@ export default function DomiStats() {
     socketRef.current = socket;
 
     socket.on('connect', () => {
-      socket.emit('joinBusiness', { slug, token });
+      // Match the rest of the app: the handler expects `businessId` (it resolves
+      // a slug too). Sending `{ slug }` left businessId undefined → the admin
+      // never joined the room and got NO realtime events.
+      socket.emit('joinBusiness', { businessId: businessConfig?._id || slug, token });
     });
 
     socket.on('domi:status', ({ deliveryPersonId, status }) => {
@@ -284,6 +306,35 @@ export default function DomiStats() {
     } catch (err) { toast.error(err.response?.data?.message || 'Error al crear perfil'); }
   };
 
+  const openEdit = (d) => {
+    setEditingId(prev => prev === d._id ? null : d._id);
+    setEditForm({ name: d.name || '', code: '', phone: d.phone || '', password: '' });
+  };
+
+  const handleUpdateDomi = async (e, d) => {
+    e.preventDefault();
+    const body = {};
+    const name = editForm.name.trim();
+    if (name && name !== d.name) body.name = name;
+    if (editForm.code) {
+      if (editForm.code.length !== 4) return toast.error('El PIN debe ser de 4 dígitos');
+      body.code = editForm.code;
+    }
+    if (editForm.phone !== (d.phone || '')) body.phone = editForm.phone;
+    if (editForm.password) {
+      if (editForm.password.length < 6) return toast.error('La contraseña debe tener al menos 6 caracteres');
+      if (!editForm.phone && !d.phone) return toast.error('Asigna un teléfono antes de la contraseña');
+      body.password = editForm.password;
+    }
+    if (Object.keys(body).length === 0) { setEditingId(null); return; }
+    try {
+      await api.patch(`/delivery-admin/restaurants/${slug}/delivery-persons/${d._id}`, body);
+      toast.success('Domiciliario actualizado');
+      setEditingId(null);
+      fetchDomis();
+    } catch (err) { toast.error(err.response?.data?.message || 'Error al actualizar'); }
+  };
+
   const handleToggleActive = async (domi) => {
     setTogglingId(domi._id);
     try {
@@ -295,7 +346,9 @@ export default function DomiStats() {
   };
 
   const handleAssigned = () => {
-    setAssignOrder(null);
+    // Refresh data but DON'T close the modal — it must stay open to show the QR /
+    // confirmation code / WhatsApp button. Closing here made the result flash and
+    // vanish. The modal closes on its own "Cerrar" button.
     fetchPending();
     fetchDomis();
     fetchStats();
@@ -510,7 +563,7 @@ export default function DomiStats() {
                       required
                     />
                     <input
-                      type="password"
+                      type="text"
                       maxLength={4}
                       inputMode="numeric"
                       className="w-full text-[13px] px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors font-mono tracking-widest text-center"
@@ -519,26 +572,27 @@ export default function DomiStats() {
                       onChange={e => setNewCode(e.target.value.replace(/\D/g, ''))}
                       required
                     />
+                    <p className="text-[10px] text-slate-400 -mt-1">Este PIN es el que el domi usará para entrar. Compártelo con él.</p>
 
-                    {/* Cuenta con contraseña (opcional, recomendado) */}
+                    {/* Celular para ingreso Celular + PIN (opcional) */}
                     <div className="pt-1 border-t border-dashed border-slate-200">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 mb-2">Cuenta con contraseña · opcional</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2 mb-2">Celular para ingreso · opcional</p>
                       <input
                         type="tel"
                         inputMode="numeric"
                         className="w-full text-[13px] px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors mb-2"
-                        placeholder="Teléfono (ingreso a la app)"
+                        placeholder="Celular (para entrar con Celular + PIN)"
                         value={newPhone}
                         onChange={e => setNewPhone(e.target.value.replace(/\D/g, ''))}
                       />
                       <input
                         type="password"
                         className="w-full text-[13px] px-3 py-2.5 rounded-xl border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors"
-                        placeholder="Contraseña (mín. 6 caracteres)"
+                        placeholder="Contraseña (opcional, mín. 6)"
                         value={newPassword}
                         onChange={e => setNewPassword(e.target.value)}
                       />
-                      <p className="text-[10px] text-slate-400 mt-1.5">Con teléfono y contraseña, el domi entra con su cuenta real. Sin ellos, usa solo el PIN.</p>
+                      <p className="text-[10px] text-slate-400 mt-1.5">Con el celular, el domi entra con <b>Celular + PIN</b>. La contraseña es opcional (método alterno). Sin celular, usa el PIN con el link del negocio.</p>
                     </div>
 
                     <button
@@ -558,7 +612,8 @@ export default function DomiStats() {
                 <p className="text-[12px] text-slate-400 text-center py-8">Sin perfiles registrados</p>
               ) : (
                 domis.map(d => {
-                  const online = onlineMap[String(d._id)];
+                  // Live socket state wins; fall back to persisted DB presence
+                  const online = onlineMap[String(d._id)] ?? dbPresence(d);
                   const { label, cls } = statusLabel(online, d.status);
                   return (
                     <div key={d._id} className={`p-3.5 transition-colors ${!d.active ? 'opacity-50' : ''}`}>
@@ -587,19 +642,84 @@ export default function DomiStats() {
                           </div>
                         </div>
 
-                        <button
-                          onClick={() => handleToggleActive(d)}
-                          disabled={togglingId === d._id}
-                          title={d.active ? 'Desactivar' : 'Activar'}
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                            d.active
-                              ? 'bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500'
-                              : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
-                          } ${togglingId === d._id ? 'opacity-50 pointer-events-none' : ''}`}
-                        >
-                          {IC.power('w-3.5 h-3.5')}
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() => openEdit(d)}
+                            title="Editar"
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                              editingId === d._id
+                                ? 'bg-slate-900 text-white'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-600'
+                            }`}
+                          >
+                            {IC.edit('w-3.5 h-3.5')}
+                          </button>
+                          <button
+                            onClick={() => handleToggleActive(d)}
+                            disabled={togglingId === d._id}
+                            title={d.active ? 'Desactivar' : 'Activar'}
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                              d.active
+                                ? 'bg-slate-100 hover:bg-red-50 text-slate-400 hover:text-red-500'
+                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-600'
+                            } ${togglingId === d._id ? 'opacity-50 pointer-events-none' : ''}`}
+                          >
+                            {IC.power('w-3.5 h-3.5')}
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Inline edit form */}
+                      <AnimatePresence>
+                        {editingId === d._id && (
+                          <motion.form
+                            onSubmit={e => handleUpdateDomi(e, d)}
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.18 }}
+                            className="overflow-hidden mt-3 pt-3 border-t border-dashed border-slate-200 space-y-2"
+                          >
+                            <input
+                              className="w-full text-[12px] px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors"
+                              placeholder="Nombre"
+                              value={editForm.name}
+                              onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                            />
+                            <input
+                              type="text" maxLength={4} inputMode="numeric"
+                              className="w-full text-[12px] px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors font-mono tracking-widest text-center"
+                              placeholder="Nuevo PIN (vacío = no cambiar)"
+                              value={editForm.code}
+                              onChange={e => setEditForm(f => ({ ...f, code: e.target.value.replace(/\D/g, '') }))}
+                            />
+                            <input
+                              type="tel" inputMode="numeric"
+                              className="w-full text-[12px] px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors"
+                              placeholder="Teléfono (para app)"
+                              value={editForm.phone}
+                              onChange={e => setEditForm(f => ({ ...f, phone: e.target.value.replace(/\D/g, '') }))}
+                            />
+                            <input
+                              type="password"
+                              className="w-full text-[12px] px-3 py-2 rounded-lg border border-slate-200 outline-none focus:border-slate-400 bg-slate-50 focus:bg-white transition-colors"
+                              placeholder="Nueva contraseña (vacío = no cambiar)"
+                              value={editForm.password}
+                              onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
+                            />
+                            <div className="flex gap-2 pt-0.5">
+                              <button type="button" onClick={() => setEditingId(null)}
+                                className="flex-1 text-[12px] font-bold py-2 rounded-lg bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
+                                Cancelar
+                              </button>
+                              <button type="submit"
+                                className="flex-1 text-[12px] font-bold py-2 rounded-lg bg-slate-900 text-white hover:bg-slate-700 transition-colors">
+                                Guardar
+                              </button>
+                            </div>
+                          </motion.form>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 })
