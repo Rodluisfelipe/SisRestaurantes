@@ -62,14 +62,18 @@ function stringifyData(data = {}) {
 }
 
 /**
- * Send a high-priority data message to one token.
+ * Send a high-priority message to one token. When `notification` is provided it
+ * is a HYBRID message (visible notification + data): Android's system shows the
+ * heads-up reliably even when the app is backgrounded/killed or under battery
+ * optimization (data-only messages get dropped in those cases), while the data
+ * still lets the app render its own UI when it's alive.
  * @returns {Promise<{ok:boolean, invalidToken?:boolean}>}
  */
-async function sendData(token, data) {
+async function sendData(token, data, notification = null) {
   const m = init();
   if (!m || !token) return { ok: false };
   try {
-    await m.send({
+    const msg = {
       token,
       data: stringifyData(data),
       android: {
@@ -77,10 +81,21 @@ async function sendData(token, data) {
         ttl: 60 * 1000, // offers are time-sensitive
       },
       apns: {
-        headers: { 'apns-priority': '10', 'apns-push-type': 'background' },
-        payload: { aps: { contentAvailable: true } },
+        headers: { 'apns-priority': '10' },
+        payload: { aps: notification ? { sound: 'default' } : { contentAvailable: true } },
       },
-    });
+    };
+    if (notification) {
+      msg.notification = { title: notification.title, body: notification.body };
+      msg.android.notification = {
+        channelId: 'incoming-orders', // created by the app (Notifee) — HIGH importance + sound
+        sound: 'default',
+        priority: 'high',
+        defaultVibrateTimings: true,
+        color: '#E11D2A',
+      };
+    }
+    await m.send(msg);
     return { ok: true };
   } catch (err) {
     const code = err.errorInfo?.code || err.code || '';
@@ -97,6 +112,7 @@ async function sendData(token, data) {
  */
 async function notifyOffer(driver, offer = {}) {
   if (!driver || !driver.fcmToken) return { ok: false, skipped: true };
+  const money = offer.totalAmount ? ` · $${Number(offer.totalAmount).toLocaleString('es-CO')}` : '';
   const res = await sendData(driver.fcmToken, {
     type: 'offer',
     offerId: offer.offerId,
@@ -105,6 +121,9 @@ async function notifyOffer(driver, offer = {}) {
     totalAmount: offer.totalAmount,
     distanceKm: offer.distanceKm != null ? Number(offer.distanceKm).toFixed(1) : undefined,
     timeoutSec: offer.timeoutSec,
+  }, {
+    title: '🛵 ¡Nuevo pedido disponible!',
+    body: `${offer.address || 'Toca para ver el pedido'}${money}`,
   });
   // Clear a dead token so we stop trying
   if (res.invalidToken) {
@@ -128,12 +147,17 @@ async function notifyCancel(driver, offerId) {
  */
 async function notifyAssigned(driver, order = {}) {
   if (!driver || !driver.fcmToken) return { ok: false, skipped: true };
+  const amount = order.totalAmount != null ? order.totalAmount : order.finalAmount;
+  const money = amount ? ` · $${Number(amount).toLocaleString('es-CO')}` : '';
   const res = await sendData(driver.fcmToken, {
     type: 'assigned',
     orderId: order.orderId || order._id,
     orderNumber: order.orderNumber,
     address: order.address,
-    totalAmount: order.totalAmount != null ? order.totalAmount : order.finalAmount,
+    totalAmount: amount,
+  }, {
+    title: '🛵 Nuevo pedido asignado',
+    body: `${order.address || 'Toca para ver el pedido'}${money}`,
   });
   if (res.invalidToken) {
     try {
