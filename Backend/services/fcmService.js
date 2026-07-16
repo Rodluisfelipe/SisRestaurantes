@@ -13,7 +13,6 @@
 
 const logger = require('../utils/logger');
 
-let admin = null;
 let messaging = null;
 let initTried = false;
 let warned = false;
@@ -22,26 +21,28 @@ function init() {
   if (initTried) return messaging;
   initTried = true;
   try {
-    admin = require('firebase-admin');
+    // firebase-admin v13+ modular API
+    const { initializeApp, cert, applicationDefault, getApps } = require('firebase-admin/app');
+    const { getMessaging } = require('firebase-admin/messaging');
 
     let credential;
     if (process.env.FIREBASE_SERVICE_ACCOUNT_B64) {
       const json = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT_B64, 'base64').toString('utf8');
-      credential = admin.credential.cert(JSON.parse(json));
+      credential = cert(JSON.parse(json));
     } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      credential = admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT));
+      credential = cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT));
     } else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
       // eslint-disable-next-line import/no-dynamic-require, global-require
-      credential = admin.credential.cert(require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH));
+      credential = cert(require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH));
     } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      credential = admin.credential.applicationDefault();
+      credential = applicationDefault();
     } else {
       if (!warned) { logger.warn('FCM disabled — no FIREBASE_SERVICE_ACCOUNT configured'); warned = true; }
       return null;
     }
 
-    if (!admin.apps.length) admin.initializeApp({ credential });
-    messaging = admin.messaging();
+    const app = getApps().length ? getApps()[0] : initializeApp({ credential });
+    messaging = getMessaging(app);
     logger.info('FCM initialized');
   } catch (err) {
     if (!warned) { logger.warn('FCM init failed', { error: err.message }); warned = true; }
