@@ -2,6 +2,15 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 
+// GeoJSON Point subdocument. `default: undefined` on lastLocation (below) keeps
+// the field ABSENT until a real position is reported — otherwise Mongoose would
+// store `{ type: 'Point' }` with no coordinates, which the 2dsphere index rejects
+// ("Can't extract geo keys"), making every domi creation fail with a 500.
+const PointSchema = new mongoose.Schema({
+  type: { type: String, enum: ['Point'], default: 'Point' },
+  coordinates: { type: [Number], required: true }, // [lng, lat]
+}, { _id: false });
+
 const deliveryPersonSchema = new mongoose.Schema({
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -67,10 +76,11 @@ const deliveryPersonSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  // Last known GPS position (GeoJSON Point [lng, lat]) — used by the assignment algorithm
+  // Last known GPS position (GeoJSON Point [lng, lat]) — used by the assignment
+  // algorithm. Absent until the driver reports a location (see PointSchema note).
   lastLocation: {
-    type: { type: String, enum: ['Point'], default: 'Point' },
-    coordinates: { type: [Number], default: undefined } // [lng, lat]
+    type: PointSchema,
+    default: undefined
   },
   lastSeenAt: {
     type: Date,
