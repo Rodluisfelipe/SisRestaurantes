@@ -132,6 +132,9 @@ export default function DomiStats() {
   const [dailyCode, setDailyCode]       = useState('');
   const [dailySession, setDailySession] = useState(null);
 
+  /* daily pickup code (restaurant gives it to the domi on arrival) */
+  const [pickupCode, setPickupCode]     = useState(null);
+
   /* live socket status per domi */
   const [onlineMap, setOnlineMap]       = useState({}); // { [deliveryPersonId]: 'online'|'on_delivery'|'offline' }
 
@@ -197,6 +200,14 @@ export default function DomiStats() {
       const res = await api.get(`/delivery-admin/restaurants/${slug}/delivery-settings`);
       setAssignMode(res.data.assignmentMode || 'manual');
     } catch { /* default manual */ }
+  }, [slug]);
+
+  const fetchPickupCode = useCallback(async () => {
+    if (!slug) return;
+    try {
+      const res = await api.get(`/delivery-admin/restaurants/${slug}/daily-pickup-code`);
+      setPickupCode(res.data.code);
+    } catch { /* noop */ }
   }, [slug]);
 
   const handleAutoAssign = async (order) => {
@@ -274,9 +285,10 @@ export default function DomiStats() {
     refresh();
     fetchDailySession();
     fetchMode();
+    fetchPickupCode();
     pollRef.current = setInterval(refresh, 15_000);
     return () => clearInterval(pollRef.current);
-  }, [slug, refresh, fetchDailySession, fetchMode]);
+  }, [slug, refresh, fetchDailySession, fetchMode, fetchPickupCode]);
 
   /* ── handlers ── */
   const handleGenerateDaily = async () => {
@@ -725,6 +737,26 @@ export default function DomiStats() {
                 })
               )}
             </div>
+          </div>
+
+          {/* Código de recogida del día */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[12px] font-bold text-slate-500 uppercase tracking-widest">Código de recogida · hoy</p>
+              <span className="text-[10px] text-slate-400">cambia cada día</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-3xl font-black tracking-[0.35em] text-slate-800 tabular-nums">{pickupCode || '····'}</span>
+              {pickupCode && (
+                <button
+                  onClick={() => { navigator.clipboard.writeText(pickupCode); toast.success('Código copiado'); }}
+                  className="text-[11px] font-bold text-slate-400 hover:text-slate-700 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  Copiar
+                </button>
+              )}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">Dáselo al domiciliario cuando llegue a recoger. Él lo ingresa en la app para confirmar la recogida.</p>
           </div>
 
           {/* Daily mode */}
