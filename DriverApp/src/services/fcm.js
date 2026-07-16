@@ -11,7 +11,7 @@
 import messaging from '@react-native-firebase/messaging';
 import { registerPushToken } from './api';
 import {
-  setupChannels, requestNotifPermission, displayIncomingOrder, cancelIncomingOrder,
+  setupChannels, requestNotifPermission, displayIncomingOrder, cancelIncomingOrder, displayAssignedOrder,
 } from './incomingOrder';
 
 // Normalize an FCM data payload into the shape displayIncomingOrder expects.
@@ -52,6 +52,7 @@ export function listenForegroundMessages() {
   return messaging().onMessage(async (msg) => {
     const d = msg?.data || {};
     if (d.type === 'offer') await displayIncomingOrder(offerFromData(d));
+    else if (d.type === 'assigned') await displayAssignedOrder(d);
     else if (d.type === 'cancel_offer') await cancelIncomingOrder();
   });
 }

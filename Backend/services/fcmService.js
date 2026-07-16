@@ -122,4 +122,26 @@ async function notifyCancel(driver, offerId) {
   return sendData(driver.fcmToken, { type: 'cancel_offer', offerId });
 }
 
-module.exports = { init, sendData, notifyOffer, notifyCancel };
+/**
+ * Notify a driver that an order was directly assigned to them (manual assign,
+ * no accept/reject). High-priority heads-up alert that opens the order.
+ */
+async function notifyAssigned(driver, order = {}) {
+  if (!driver || !driver.fcmToken) return { ok: false, skipped: true };
+  const res = await sendData(driver.fcmToken, {
+    type: 'assigned',
+    orderId: order.orderId || order._id,
+    orderNumber: order.orderNumber,
+    address: order.address,
+    totalAmount: order.totalAmount != null ? order.totalAmount : order.finalAmount,
+  });
+  if (res.invalidToken) {
+    try {
+      const DeliveryPerson = require('../Models/DeliveryPerson');
+      await DeliveryPerson.updateOne({ _id: driver._id }, { $set: { fcmToken: null } });
+    } catch { /* noop */ }
+  }
+  return res;
+}
+
+module.exports = { init, sendData, notifyOffer, notifyCancel, notifyAssigned };

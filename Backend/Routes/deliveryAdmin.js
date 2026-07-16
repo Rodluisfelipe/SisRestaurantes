@@ -292,6 +292,20 @@ router.post('/restaurants/:slug/orders/:id/assign-delivery-person', tenantAuth, 
       });
     } catch (e) { /* shadow, non-fatal */ }
 
+    // Native push to the assigned domi (works even with the app closed)
+    if (deliveryPersonId) {
+      try {
+        const driver = await DeliveryPerson.findById(deliveryPersonId).select('fcmToken _id').lean();
+        if (driver?.fcmToken) {
+          const fcm = require('../services/fcmService');
+          await fcm.notifyAssigned(driver, {
+            orderId: order._id, orderNumber: order.orderNumber,
+            address: order.address, totalAmount: order.finalAmount || order.totalAmount,
+          });
+        }
+      } catch (e) { /* non-critical */ }
+    }
+
     // Get business slug for tracking URL
     const business = await BusinessConfig.findById(businessId).select('slug').lean();
     const trackUrl = `https://menuby.tech/${business.slug}/track/${order._id}`;

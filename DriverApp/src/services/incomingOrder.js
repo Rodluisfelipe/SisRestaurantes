@@ -101,6 +101,31 @@ export async function cancelIncomingOrder() {
 }
 
 /**
+ * Show a heads-up alert for a DIRECTLY assigned order (manual assign — no
+ * accept/reject). Loud + high priority; tapping opens the app.
+ */
+export async function displayAssignedOrder(data = {}) {
+  await setupChannels();
+  const money = data.totalAmount ? `$${Number(data.totalAmount).toLocaleString('es-CO')}` : '';
+  const body = [data.address, money].filter(Boolean).join(' · ') || 'Toca para ver el pedido';
+  await notifee.displayNotification({
+    id: `assigned-${data.orderId || Date.now()}`,
+    title: '🛵 Nuevo pedido asignado',
+    body,
+    data: { type: 'assigned', orderId: String(data.orderId || '') },
+    android: {
+      channelId: INCOMING_CHANNEL,
+      importance: AndroidImportance.HIGH,
+      color: '#E11D2A',
+      smallIcon: 'ic_notification',
+      pressAction: { id: 'open', launchActivity: 'default' },
+      sound: 'default',
+      vibrationPattern: [0, 300, 200, 300],
+    },
+  });
+}
+
+/**
  * Start the "online" foreground service — keeps the app alive so the socket
  * stays connected and offers arrive instantly. Call when the driver goes online.
  */

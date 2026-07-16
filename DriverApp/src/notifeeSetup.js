@@ -13,7 +13,7 @@ import messaging from '@react-native-firebase/messaging';
 import notifee, { EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './config';
-import { displayIncomingOrder, cancelIncomingOrder } from './services/incomingOrder';
+import { displayIncomingOrder, cancelIncomingOrder, displayAssignedOrder } from './services/incomingOrder';
 import { offerFromData } from './services/fcm';
 
 // Foreground-service runner: never resolves so the "online" service stays alive.
@@ -23,6 +23,7 @@ notifee.registerForegroundService(() => new Promise(() => {}));
 messaging().setBackgroundMessageHandler(async (msg) => {
   const d = msg?.data || {};
   if (d.type === 'offer') await displayIncomingOrder(offerFromData(d));
+  else if (d.type === 'assigned') await displayAssignedOrder(d);
   else if (d.type === 'cancel_offer') await cancelIncomingOrder();
 });
 
