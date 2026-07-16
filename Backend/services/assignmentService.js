@@ -10,6 +10,7 @@
  * is OFFERED to the highest-priority active partner company (they accept in their portal).
  */
 
+const crypto = require('crypto');
 const logger = require('../utils/logger');
 
 const EARTH_R_KM = 6371;
@@ -25,7 +26,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 function generateConfirmationCode() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  return crypto.randomInt(1000, 10000).toString();
 }
 
 // Consider a driver "online" if seen within this window (ms)
@@ -82,24 +83,27 @@ function pickDriver(drivers, destLat, destLon, mode, maxRadiusKm) {
 }
 
 /**
- * Offer an order to the highest-priority active partner.
- * Returns the partner doc offered to, or null.
+ * Offer an order to the highest-priority active partner that hasn't already
+ * rejected (or timed out on) it. Returns the partner doc offered to, or null.
  */
 async function offerToPartner(order, business) {
   const DeliveryPartner = require('../Models/DeliveryPartner');
   const socketService = require('./socketService');
 
+  const rejected = (order.rejectedPartnerIds || []).map(String);
   const assoc = (business.deliverySettings?.partners || [])
-    .filter((p) => p.enabled && p.partnerId)
+    .filter((p) => p.enabled && p.partnerId && !rejected.includes(String(p.partnerId)))
     .sort((a, b) => (a.priority || 1) - (b.priority || 1));
 
   for (const a of assoc) {
     const partner = await DeliveryPartner.findOne({ _id: a.partnerId, active: true }).lean();
     if (!partner) continue;
 
+    const timeoutMin = business.deliverySettings?.partnerOfferTimeoutMin || 10;
     order.assignedPartnerId = partner._id;
     order.partnerStatus = 'offered';
     order.partnerOfferedAt = new Date();
+    order.partnerOfferExpiresAt = new Date(Date.now() + timeoutMin * 60 * 1000);
     order.assignmentMethod = 'partner';
     await order.save();
 
@@ -217,6 +221,19 @@ async function offerToDriver(order, business, driver, distanceKm, attempt = 1) {
     socketService.emitToBusiness(String(order.businessId), 'delivery:offered', {
       orderId: String(order._id), driverId: String(driver._id), driverName: driver.name,
     });
+  } catch { /* non-critical */ }
+
+  // Native push (FCM high-priority data) — reaches the driver even with the app
+  // closed and triggers the full-screen incoming-order alert (Rappi-style).
+  try {
+    if (driver.fcmToken) {
+      const fcm = require('./fcmService');
+      await fcm.notifyOffer(driver, {
+        offerId: offer._id, orderId: order._id,
+        address: order.address, totalAmount: order.totalAmount,
+        distanceKm, timeoutSec,
+      });
+    }
   } catch { /* non-critical */ }
 
   return { offer, driver, delivery };
@@ -350,11 +367,68 @@ async function expireStaleOffers() {
   return stale.length;
 }
 
+/**
+ * Sweeper: expire partner offers past their window. The timed-out partner is
+ * recorded in rejectedPartnerIds and the order is re-offered to the next
+ * partner in priority. If nobody is left, the restaurant is alerted so the
+ * order never silently rots in "offered".
+ */
+async function expireStalePartnerOffers() {
+  const Order = require('../Models/Order');
+  const BusinessConfig = require('../Models/BusinessConfig');
+  const socketService = require('./socketService');
+  const dsm = require('./deliveryStateMachine');
+
+  const now = new Date();
+  const stale = await Order.find({
+    partnerStatus: 'offered',
+    partnerOfferExpiresAt: { $ne: null, $lt: now },
+  }).limit(50);
+
+  for (const order of stale) {
+    try {
+      const timedOutPartnerId = order.assignedPartnerId;
+      if (timedOutPartnerId) {
+        order.rejectedPartnerIds = order.rejectedPartnerIds || [];
+        if (!order.rejectedPartnerIds.some(id => String(id) === String(timedOutPartnerId))) {
+          order.rejectedPartnerIds.push(timedOutPartnerId);
+        }
+      }
+      order.assignedPartnerId = null;
+      order.partnerStatus = 'none';
+      order.partnerOfferExpiresAt = null;
+      await order.save();
+
+      logger.info('Partner offer timed out', { orderId: String(order._id), partnerId: String(timedOutPartnerId || '') });
+
+      const business = await BusinessConfig.findById(order.businessId).lean();
+      const next = business ? await offerToPartner(order, business) : null;
+
+      if (!next) {
+        // No partners left — alert the restaurant to act manually
+        try {
+          await dsm.recordForOrder(order, 'no_courier', { actor: 'system', meta: { reason: 'partner_timeout' } });
+        } catch { /* shadow, non-fatal */ }
+        socketService.emitToBusiness(String(order.businessId), 'delivery:partner_timeout', {
+          orderId: String(order._id), orderNumber: order.orderNumber,
+        });
+        socketService.emitToBusiness(String(order.businessId), 'orderUpdated', order.toObject());
+      }
+    } catch (e) {
+      logger.warn('expireStalePartnerOffers item failed', { orderId: String(order._id), error: e.message });
+    }
+  }
+  return stale.length;
+}
+
 let sweeperStarted = false;
 function startOfferSweeper(intervalMs = 10000) {
   if (sweeperStarted) return;
   sweeperStarted = true;
-  setInterval(() => { expireStaleOffers().catch(() => {}); }, intervalMs);
+  setInterval(() => {
+    expireStaleOffers().catch(() => {});
+    expireStalePartnerOffers().catch(() => {});
+  }, intervalMs);
   logger.info('Delivery offer sweeper started', { intervalMs });
 }
 
@@ -381,6 +455,7 @@ module.exports = {
   acceptOffer,
   rejectOffer,
   expireStaleOffers,
+  expireStalePartnerOffers,
   startOfferSweeper,
   offerToPartner,
   assignToDriver,

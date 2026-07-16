@@ -261,6 +261,11 @@ const businessConfigSchema = new mongoose.Schema({
     offerTimeoutSec: {
       type: Number,
       default: 30
+    },
+    // Minutos que una empresa partner tiene para aceptar antes de re-ofrecer
+    partnerOfferTimeoutMin: {
+      type: Number,
+      default: 10
     }
   },
   // API key para Print Agent (auto-print de tiquetes)

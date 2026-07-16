@@ -13,7 +13,7 @@ const logger = require('../utils/logger');
 
 // Helper: generate 4-digit confirmation code
 function generateConfirmationCode() {
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  return crypto.randomInt(1000, 10000).toString();
 }
 
 // Helper: generate UUID token for QR
@@ -251,10 +251,24 @@ router.post('/restaurants/:slug/orders/:id/assign-delivery-person', tenantAuth, 
       order.statusHistory.push({ status: 'inProgress', timestamp: new Date(), note: `Domiciliario asignado (${order.deliveryMode})` });
     }
 
-    if (deliveryPersonId) {
+    // Assigning an own-fleet domi supersedes any pending partner offer
+    if (order.assignedPartnerId || order.partnerStatus === 'offered') {
+      order.assignedPartnerId = null;
+      order.partnerStatus = 'none';
+      order.partnerOfferExpiresAt = null;
+    }
+
+    if (deliveryPersonId && String(order.deliveryPersonId || '') !== String(deliveryPersonId)) {
+      // Release the previously assigned domi's load if swapping
+      if (order.deliveryPersonId) {
+        const { releaseDriver } = require('../services/orderCompletionService');
+        await releaseDriver(order.deliveryPersonId, { delivered: false });
+      }
       order.deliveryPersonId = deliveryPersonId;
-      // Update domi status
-      await DeliveryPerson.findByIdAndUpdate(deliveryPersonId, { status: 'on_delivery' });
+      await DeliveryPerson.findByIdAndUpdate(deliveryPersonId, {
+        $set: { status: 'on_delivery' },
+        $inc: { activeDeliveries: 1 }
+      });
     }
 
     await order.save();
@@ -523,7 +537,7 @@ router.get('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) 
 router.put('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) => {
   try {
     const businessId = await resolveSlug(req.params.slug);
-    const { assignmentMode, usePartners, maxAssignRadiusKm, partners } = req.body;
+    const { assignmentMode, usePartners, maxAssignRadiusKm, partners, partnerOfferTimeoutMin } = req.body;
     const update = {};
     if (assignmentMode !== undefined) {
       if (!['manual', 'auto_nearest', 'auto_scored'].includes(assignmentMode)) {
@@ -533,6 +547,7 @@ router.put('/restaurants/:slug/delivery-settings', tenantAuth, async (req, res) 
     }
     if (usePartners !== undefined) update['deliverySettings.usePartners'] = !!usePartners;
     if (maxAssignRadiusKm !== undefined) update['deliverySettings.maxAssignRadiusKm'] = Math.max(1, Math.min(50, Number(maxAssignRadiusKm) || 8));
+    if (partnerOfferTimeoutMin !== undefined) update['deliverySettings.partnerOfferTimeoutMin'] = Math.max(1, Math.min(120, Number(partnerOfferTimeoutMin) || 10));
     if (Array.isArray(partners)) {
       update['deliverySettings.partners'] = partners
         .filter(p => p.partnerId)
@@ -562,9 +577,19 @@ router.post('/restaurants/:slug/orders/:id/assign-partner', tenantAuth, async (r
     const partner = await DeliveryPartner.findOne({ _id: partnerId, active: true }).lean();
     if (!partner) return res.status(404).json({ message: 'Empresa no encontrada o inactiva' });
 
+    // Admin dispatch overrides a previous rejection/timeout by this partner
+    order.rejectedPartnerIds = (order.rejectedPartnerIds || []).filter(id => String(id) !== String(partner._id));
+    // Release the previously assigned domi's load if any
+    if (order.deliveryPersonId) {
+      const { releaseDriver } = require('../services/orderCompletionService');
+      await releaseDriver(order.deliveryPersonId, { delivered: false });
+    }
+    const biz = await BusinessConfig.findById(businessId).select('deliverySettings').lean();
+    const timeoutMin = biz?.deliverySettings?.partnerOfferTimeoutMin || 10;
     order.assignedPartnerId = partner._id;
     order.partnerStatus = 'offered';
     order.partnerOfferedAt = new Date();
+    order.partnerOfferExpiresAt = new Date(Date.now() + timeoutMin * 60 * 1000);
     order.assignmentMethod = 'partner';
     order.deliveryPersonId = null;
     if (!order.confirmationCode) order.confirmationCode = generateConfirmationCode();

@@ -219,6 +219,17 @@ const orderSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  // When the current partner offer expires (sweeper re-offers to the next one)
+  partnerOfferExpiresAt: {
+    type: Date,
+    default: null,
+    index: true
+  },
+  // Partners that already rejected (or timed out on) this order — never re-offered
+  rejectedPartnerIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'DeliveryPartner'
+  }],
   // How this order was assigned (audit): manual, auto_nearest, auto_scored, partner
   assignmentMethod: {
     type: String,

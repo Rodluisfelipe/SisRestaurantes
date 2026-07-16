@@ -1006,6 +1006,19 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
     socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_updated", updatedOrder);
     // Emit to per-order tracking room for customer real-time updates
     socketService.emitToOrder(updatedOrder._id, 'order_status_changed', { orderId: updatedOrder._id, status: updatedOrder.status, order: updatedOrder });
+
+    // Release the assigned domi when the order ends (delivered/completed/cancelled)
+    if (["completed", "delivered", "cancelled"].includes(status) && updatedOrder.deliveryPersonId) {
+      try {
+        const { releaseDriver } = require('../services/orderCompletionService');
+        await releaseDriver(updatedOrder.deliveryPersonId, { delivered: status !== 'cancelled' });
+        socketService.emitToBusiness(updatedOrder.businessId.toString(), 'domi:status', {
+          deliveryPersonId: updatedOrder.deliveryPersonId, status: 'available'
+        });
+      } catch (relErr) {
+        logger.warn('Failed to release driver on order end', { error: relErr.message, orderId: id });
+      }
+    }
     
     // Send push notification to customer about status change
     try {

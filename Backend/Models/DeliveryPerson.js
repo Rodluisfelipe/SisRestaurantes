@@ -27,6 +27,12 @@ const deliveryPersonSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  // FCM registration token (native DriverApp) — used to alert the driver of new
+  // offers even when the app is closed. Set from the app after login.
+  fcmToken: {
+    type: String,
+    default: null
+  },
   // If set, this driver belongs to an external delivery company (partner) and
   // can serve any restaurant that has enabled that partner.
   partnerId: {

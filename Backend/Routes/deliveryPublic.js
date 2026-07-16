@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const Order = require('../Models/Order');
@@ -66,9 +65,13 @@ function domiAuth(req, res, next) {
 // ============================================
 // MODE 1 — QR Token (Public, no auth)
 // ============================================
+// The token is a crypto.randomUUID() — constrain the param so these routes
+// never swallow other single-segment paths (this router is also mounted at
+// /api/restaurants).
+const UUID_PARAM = ':token([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})';
 
 // GET /api/delivery/:token — Public page for QR domiciliario
-router.get('/:token', deliveryLimiter, async (req, res) => {
+router.get(`/${UUID_PARAM}`, deliveryLimiter, async (req, res) => {
   try {
     const { token } = req.params;
     const order = await Order.findOne({ deliveryToken: token }).lean();
@@ -126,7 +129,7 @@ router.get('/:token', deliveryLimiter, async (req, res) => {
 });
 
 // POST /api/delivery/:token/confirm — Domi confirms delivery with 4-digit code
-router.post('/:token/confirm', confirmLimiter, async (req, res) => {
+router.post(`/${UUID_PARAM}/confirm`, confirmLimiter, async (req, res) => {
   try {
     const { token } = req.params;
     const { code, skipCode } = req.body;
@@ -186,96 +189,9 @@ router.post('/:token/confirm', confirmLimiter, async (req, res) => {
       await dsm.recordForOrder(order, 'deliver', { actor: 'driver', assignmentMethod: 'qr', meta: { codeUsed: requireCode } });
     } catch (e) { /* shadow, non-fatal */ }
 
-    // Update delivery person: increment totalDeliveries and set status back to available
-    if (order.deliveryPersonId) {
-      try {
-        await DeliveryPerson.findByIdAndUpdate(order.deliveryPersonId, {
-          $inc: { totalDeliveries: 1 },
-          $set: { status: 'available' }
-        });
-      } catch (dpErr) {
-        logger.warn('Failed to update delivery person after confirm', { error: dpErr.message, dpId: order.deliveryPersonId });
-      }
-    }
-
-    // Notify dashboard and tracking page
-    socketService.emitToBusiness(order.businessId, 'orderUpdated', order.toObject());
-    socketService.emitToBusiness(order.businessId, 'delivery:confirmed', {
-      orderId: order._id,
-      deliveredAt: order.deliveredAt
-    });
-    socketService.emitToOrder(order._id, 'order:status', { status: 'delivered', updatedAt: order.deliveredAt });
-    socketService.emitToOrder(order._id, 'delivery:confirmed', { deliveredAt: order.deliveredAt });
-
-    // Move order to CompletedOrder collection
-    try {
-      const orderData = order.toObject();
-
-      // Delete payment proof file if exists
-      if (orderData.paymentProof) {
-        try {
-          const path = require('path');
-          const fs = require('fs');
-          const proofFilePath = path.join(__dirname, '..', orderData.paymentProof);
-          if (fs.existsSync(proofFilePath)) {
-            fs.unlinkSync(proofFilePath);
-          }
-        } catch (fileErr) {
-          logger.warn('Could not delete payment proof file', { error: fileErr.message });
-        }
-      }
-
-      const completedOrder = new CompletedOrder({
-        ...orderData,
-        paymentProof: null,
-        completedAt: new Date(),
-        status: 'completed'
-      });
-
-      const session = await mongoose.startSession();
-      let moveSucceeded = false;
-      try {
-        await session.withTransaction(async () => {
-          await completedOrder.save({ session });
-          await Order.findByIdAndDelete(order._id, { session });
-        });
-        moveSucceeded = true;
-      } catch (txErr) {
-        logger.error('Transaction failed for delivery completion — order preserved in active', { error: txErr.message, orderId: order._id });
-      } finally {
-        session.endSession();
-      }
-
-      if (moveSucceeded) {
-        setTimeout(() => {
-          socketService.emitToBusiness(order.businessId.toString(), 'order_deleted', { _id: order._id });
-        }, 3000);
-      }
-    } catch (moveErr) {
-      logger.error('Error moving delivered order to completed', { error: moveErr.message, orderId: order._id });
-    }
-
-    // Register in cash register if one is open
-    if (order.orderChannel !== 'pos') {
-      try {
-        const CashRegister = require('../Models/CashRegister');
-        await CashRegister.findOneAndUpdate(
-          { businessId: order.businessId, status: 'open' },
-          { $push: { movements: {
-            type: 'sale',
-            amount: order.finalAmount || order.totalAmount,
-            paymentMethod: order.paymentMethod || 'cash',
-            orderId: order._id,
-            orderNumber: order.orderNumber,
-            orderChannel: 'menuby',
-            description: `MenuBy #${order.orderNumber} - ${order.customerName}`,
-            createdAt: new Date()
-          }}}
-        );
-      } catch (cashErr) {
-        logger.warn('Failed to register delivery sale in cash register', { error: cashErr.message });
-      }
-    }
+    // Release driver, notify dashboard/tracking, archive to CompletedOrder, cash register
+    const { finalizeDeliveredOrder } = require('../services/orderCompletionService');
+    await finalizeDeliveredOrder(order);
 
     res.json({ message: 'Entrega confirmada exitosamente', deliveredAt: order.deliveredAt });
   } catch (error) {
@@ -285,7 +201,7 @@ router.post('/:token/confirm', confirmLimiter, async (req, res) => {
 });
 
 // POST /api/delivery/:token/picked — Domi marks order as picked up
-router.post('/:token/picked', deliveryLimiter, async (req, res) => {
+router.post(`/${UUID_PARAM}/picked`, deliveryLimiter, async (req, res) => {
   try {
     const { token } = req.params;
     const order = await Order.findOne({ deliveryToken: token });
@@ -588,99 +504,9 @@ router.post('/:slug/domi/orders/:id/confirm', confirmLimiter, domiAuth, async (r
       });
     } catch (e) { /* shadow, non-fatal */ }
 
-    // Update delivery person: increment totalDeliveries and set status back to available
-    if (order.deliveryPersonId) {
-      try {
-        await DeliveryPerson.findByIdAndUpdate(order.deliveryPersonId, {
-          $inc: { totalDeliveries: 1 },
-          $set: { status: 'available' }
-        });
-        socketService.emitToBusiness(order.businessId, 'domi:status', {
-          deliveryPersonId: order.deliveryPersonId,
-          status: 'available'
-        });
-      } catch (dpErr) {
-        logger.warn('Failed to update delivery person after confirm', { error: dpErr.message, dpId: order.deliveryPersonId });
-      }
-    }
-
-    socketService.emitToBusiness(order.businessId, 'orderUpdated', order.toObject());
-    socketService.emitToBusiness(order.businessId, 'delivery:confirmed', {
-      orderId: order._id,
-      deliveryPersonId: order.deliveryPersonId,
-      deliveredAt: order.deliveredAt
-    });
-    socketService.emitToOrder(order._id, 'order:status', { status: 'delivered', updatedAt: order.deliveredAt });
-    socketService.emitToOrder(order._id, 'delivery:confirmed', { deliveredAt: order.deliveredAt });
-
-    // Move order to CompletedOrder collection
-    try {
-      const orderData = order.toObject();
-
-      if (orderData.paymentProof) {
-        try {
-          const path = require('path');
-          const fs = require('fs');
-          const proofFilePath = path.join(__dirname, '..', orderData.paymentProof);
-          if (fs.existsSync(proofFilePath)) {
-            fs.unlinkSync(proofFilePath);
-          }
-        } catch (fileErr) {
-          logger.warn('Could not delete payment proof file', { error: fileErr.message });
-        }
-      }
-
-      const completedOrder = new CompletedOrder({
-        ...orderData,
-        paymentProof: null,
-        completedAt: new Date(),
-        status: 'completed'
-      });
-
-      const session = await mongoose.startSession();
-      let moveSucceeded = false;
-      try {
-        await session.withTransaction(async () => {
-          await completedOrder.save({ session });
-          await Order.findByIdAndDelete(order._id, { session });
-        });
-        moveSucceeded = true;
-      } catch (txErr) {
-        logger.error('Transaction failed for domi delivery completion', { error: txErr.message, orderId: order._id });
-      } finally {
-        session.endSession();
-      }
-
-      if (moveSucceeded) {
-        setTimeout(() => {
-          socketService.emitToBusiness(order.businessId.toString(), 'order_deleted', { _id: order._id });
-        }, 3000);
-      }
-    } catch (moveErr) {
-      logger.error('Error moving domi delivered order to completed', { error: moveErr.message, orderId: order._id });
-    }
-
-    // Register in cash register if one is open
-    if (order.orderChannel !== 'pos') {
-      try {
-        const CashRegister = require('../Models/CashRegister');
-        await CashRegister.findOneAndUpdate(
-          { businessId: order.businessId, status: 'open' },
-          { $push: { movements: {
-            type: 'sale',
-            amount: order.finalAmount || order.totalAmount,
-            paymentMethod: order.paymentMethod || 'cash',
-            orderId: order._id,
-            orderNumber: order.orderNumber,
-            orderChannel: 'menuby',
-            description: `MenuBy #${order.orderNumber} - ${order.customerName}`,
-            createdAt: new Date()
-          }}}
-        );
-      } catch (cashErr) {
-        logger.warn('Failed to register delivery sale in cash register', { error: cashErr.message });
-      }
-    }
+    // Release driver, notify dashboard/tracking, archive to CompletedOrder, cash register
+    const { finalizeDeliveredOrder } = require('../services/orderCompletionService');
+    await finalizeDeliveredOrder(order);
 
     res.json({ message: 'Entrega confirmada exitosamente', deliveredAt: order.deliveredAt });
   } catch (error) {
@@ -770,6 +596,36 @@ router.get('/:slug/track/:orderId', deliveryLimiter, async (req, res) => {
   } catch (error) {
     logger.error('Error fetching tracking info', error);
     res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// POST /:slug/domi/push-token  { fcmToken }  → register native FCM token
+router.post('/:slug/domi/push-token', domiAuth, async (req, res) => {
+  try {
+    if (!req.domi.dpId || String(req.domi.dpId).startsWith('daily-')) {
+      return res.json({ ok: true }); // fixed/daily sessions have no persistent driver
+    }
+    const { fcmToken } = req.body;
+    if (!fcmToken || typeof fcmToken !== 'string' || fcmToken.length < 20) {
+      return res.status(400).json({ message: 'Token de push inválido' });
+    }
+    await DeliveryPerson.updateOne({ _id: req.domi.dpId }, { $set: { fcmToken } });
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Error saving push token', err);
+    res.status(500).json({ message: 'Error del servidor' });
+  }
+});
+
+// DELETE /:slug/domi/push-token  → clear token (on logout)
+router.delete('/:slug/domi/push-token', domiAuth, async (req, res) => {
+  try {
+    if (req.domi.dpId && !String(req.domi.dpId).startsWith('daily-')) {
+      await DeliveryPerson.updateOne({ _id: req.domi.dpId }, { $set: { fcmToken: null } });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false });
   }
 });
 

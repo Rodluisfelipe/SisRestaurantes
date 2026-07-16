@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const DeliveryPartner = require('../Models/DeliveryPartner');
 const DeliveryPerson = require('../Models/DeliveryPerson');
@@ -12,6 +13,15 @@ const { protectSuperAdmin, requireRole } = require('../middleware/authSuperAdmin
 const logger = require('../utils/logger');
 
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { message: 'Demasiados intentos. Intenta más tarde.' } });
+
+// Fields a partner portal is allowed to see on an order.
+// NEVER include confirmationCode (the customer holds it) nor paymentProof.
+const PORTAL_ORDER_FIELDS = [
+  'orderNumber', 'customerName', 'phone', 'address', 'deliveryCoordinates',
+  'items', 'totalAmount', 'finalAmount', 'deliveryFee', 'paymentMethod',
+  'partnerStatus', 'partnerOfferedAt', 'partnerOfferExpiresAt',
+  'deliveryPersonId', 'businessId', 'status', 'createdAt', 'deliveredAt', 'notes',
+].join(' ');
 
 /* ═══════════════════════ PARTNER JWT AUTH ═══════════════════════ */
 
@@ -32,6 +42,15 @@ async function partnerAuth(req, res, next) {
   } catch {
     return res.status(401).json({ message: 'Sesión expirada' });
   }
+}
+
+// Attach the business name/phone of each order for display
+async function attachBusinesses(orders) {
+  const bizIds = [...new Set(orders.map(o => String(o.businessId)))];
+  if (!bizIds.length) return orders;
+  const bizs = await BusinessConfig.find({ _id: { $in: bizIds } }).select('businessName slug phone address logo').lean();
+  const bizMap = Object.fromEntries(bizs.map(b => [String(b._id), b]));
+  return orders.map(o => ({ ...o, business: bizMap[String(o.businessId)] || null }));
 }
 
 /* ═══════════════════════ SUPERADMIN CRUD ═══════════════════════ */
@@ -124,7 +143,29 @@ router.post('/portal/login', loginLimiter, async (req, res) => {
 
 router.get('/portal/me', partnerAuth, (req, res) => {
   const p = req.partner;
-  res.json({ id: p._id, name: p.name, email: p.email, phone: p.phone, logo: p.logo, totalDeliveries: p.totalDeliveries, rating: p.rating });
+  res.json({
+    id: p._id, name: p.name, email: p.email, phone: p.phone, logo: p.logo,
+    totalDeliveries: p.totalDeliveries, rating: p.rating,
+    commissionType: p.commissionType, commissionValue: p.commissionValue,
+    coverageAreas: p.coverageAreas, createdAt: p.createdAt,
+  });
+});
+
+// Change own password from the portal
+router.post('/portal/change-password', partnerAuth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ message: 'Contraseña actual y nueva requeridas' });
+    if (newPassword.length < 6) return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    const ok = await req.partner.verifyPassword(currentPassword);
+    if (!ok) return res.status(401).json({ message: 'Contraseña actual incorrecta' });
+    await req.partner.setPassword(newPassword);
+    await req.partner.save();
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error('Error changing partner password', err);
+    res.status(500).json({ message: 'Error al cambiar contraseña' });
+  }
 });
 
 /* ═══════════════════════ PARTNER PORTAL — ORDERS ═══════════════════════ */
@@ -137,22 +178,95 @@ router.get('/portal/orders', partnerAuth, async (req, res) => {
       partnerStatus: { $in: ['offered', 'accepted'] },
       status: { $nin: ['delivered', 'cancelled', 'completed'] },
     })
+      .select(PORTAL_ORDER_FIELDS)
       .sort({ partnerOfferedAt: -1 })
       .limit(50)
       .lean();
 
-    // attach business name for display
-    const bizIds = [...new Set(orders.map(o => String(o.businessId)))];
-    const bizs = await BusinessConfig.find({ _id: { $in: bizIds } }).select('businessName slug phone').lean();
-    const bizMap = Object.fromEntries(bizs.map(b => [String(b._id), b]));
-
-    res.json(orders.map(o => ({
-      ...o,
-      business: bizMap[String(o.businessId)] || null,
-    })));
+    res.json(await attachBusinesses(orders));
   } catch (err) {
     logger.error('Error listing partner orders', err);
     res.status(500).json({ message: 'Error al obtener pedidos' });
+  }
+});
+
+// Delivered history for this partner (Order 'delivered' + CompletedOrder)
+router.get('/portal/history', partnerAuth, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+    const histFields = 'orderNumber customerName address totalAmount finalAmount deliveryFee businessId deliveredAt completedAt deliveryPersonId createdAt';
+    const [active, completed] = await Promise.all([
+      Order.find({ assignedPartnerId: req.partner._id, status: 'delivered' })
+        .select(histFields).sort({ deliveredAt: -1 }).limit(limit).lean(),
+      CompletedOrder.find({ assignedPartnerId: req.partner._id })
+        .select(histFields).sort({ deliveredAt: -1 }).limit(limit).lean(),
+    ]);
+    const merged = [...active, ...completed]
+      .sort((a, b) => new Date(b.deliveredAt || b.completedAt || 0) - new Date(a.deliveredAt || a.completedAt || 0))
+      .slice(0, limit);
+
+    // Attach driver names for display
+    const dpIds = [...new Set(merged.map(o => String(o.deliveryPersonId || '')).filter(Boolean))];
+    const dps = dpIds.length ? await DeliveryPerson.find({ _id: { $in: dpIds } }).select('name').lean() : [];
+    const dpMap = Object.fromEntries(dps.map(d => [String(d._id), d.name]));
+    const withDrivers = merged.map(o => ({ ...o, driverName: dpMap[String(o.deliveryPersonId)] || null }));
+
+    res.json(await attachBusinesses(withDrivers));
+  } catch (err) {
+    logger.error('Error listing partner history', err);
+    res.status(500).json({ message: 'Error al obtener historial' });
+  }
+});
+
+// Aggregate stats for the partner dashboard
+router.get('/portal/stats', partnerAuth, async (req, res) => {
+  try {
+    const pid = req.partner._id;
+    const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+
+    const [offered, active, todayA, todayC, driversTotal, driversOnRoute] = await Promise.all([
+      Order.countDocuments({ assignedPartnerId: pid, partnerStatus: 'offered', status: { $nin: ['delivered', 'cancelled', 'completed'] } }),
+      Order.countDocuments({ assignedPartnerId: pid, partnerStatus: 'accepted', status: { $nin: ['delivered', 'cancelled', 'completed'] } }),
+      Order.countDocuments({ assignedPartnerId: pid, status: 'delivered', deliveredAt: { $gte: todayStart } }),
+      CompletedOrder.countDocuments({ assignedPartnerId: pid, deliveredAt: { $gte: todayStart } }),
+      DeliveryPerson.countDocuments({ partnerId: pid, active: true }),
+      DeliveryPerson.countDocuments({ partnerId: pid, active: true, status: 'on_delivery' }),
+    ]);
+
+    // Deliveries per day — last 7 days, from both collections
+    const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - 6); weekStart.setHours(0, 0, 0, 0);
+    const dayPipeline = (Model, match) => Model.aggregate([
+      { $match: { ...match, deliveredAt: { $gte: weekStart } } },
+      { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$deliveredAt', timezone: 'America/Bogota' } }, count: { $sum: 1 } } },
+    ]);
+    const [dA, dC] = await Promise.all([
+      dayPipeline(Order, { assignedPartnerId: pid, status: 'delivered' }),
+      dayPipeline(CompletedOrder, { assignedPartnerId: pid }),
+    ]);
+    const dayMap = {};
+    for (const d of [...dA, ...dC]) dayMap[d._id] = (dayMap[d._id] || 0) + d.count;
+
+    const chartData = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const key = d.toLocaleDateString('sv-SE', { timeZone: 'America/Bogota' }); // YYYY-MM-DD
+      chartData.push({
+        date: d.toLocaleDateString('es-CO', { weekday: 'short', day: 'numeric' }),
+        count: dayMap[key] || 0,
+      });
+    }
+
+    res.json({
+      offered, active,
+      todayDeliveries: todayA + todayC,
+      totalDeliveries: req.partner.totalDeliveries || 0,
+      rating: req.partner.rating ?? 5,
+      driversTotal, driversOnRoute,
+      chartData,
+    });
+  } catch (err) {
+    logger.error('Error building partner stats', err);
+    res.status(500).json({ message: 'Error al obtener estadísticas' });
   }
 });
 
@@ -164,16 +278,20 @@ router.post('/portal/orders/:id/accept', partnerAuth, async (req, res) => {
     if (order.partnerStatus !== 'offered') return res.status(409).json({ message: 'El pedido ya no está disponible' });
 
     order.partnerStatus = 'accepted';
+    order.partnerOfferExpiresAt = null; // stop the timeout sweeper
     order.deliveryAssignedAt = new Date();
-    if (!order.confirmationCode) order.confirmationCode = Math.floor(1000 + Math.random() * 9000).toString();
+    if (!order.confirmationCode) order.confirmationCode = crypto.randomInt(1000, 10000).toString();
 
     // Optionally assign to one of the partner's own drivers
     let assignedDriver = null;
     if (req.body.driverId) {
-      assignedDriver = await DeliveryPerson.findOne({ _id: req.body.driverId, partnerId: req.partner._id });
+      assignedDriver = await DeliveryPerson.findOne({ _id: req.body.driverId, partnerId: req.partner._id, active: true });
       if (assignedDriver) {
         order.deliveryPersonId = assignedDriver._id;
-        await DeliveryPerson.updateOne({ _id: assignedDriver._id }, { $set: { status: 'on_delivery' } });
+        await DeliveryPerson.updateOne(
+          { _id: assignedDriver._id },
+          { $set: { status: 'on_delivery' }, $inc: { activeDeliveries: 1 } }
+        );
       }
     }
     await order.save();
@@ -191,11 +309,49 @@ router.post('/portal/orders/:id/accept', partnerAuth, async (req, res) => {
     socketService.emitToBusiness(String(order.businessId), 'delivery:assigned', {
       orderId: String(order._id), partnerId: String(req.partner._id), partnerName: req.partner.name,
     });
+    socketService.emitToBusiness(String(order.businessId), 'orderUpdated', order.toObject());
 
-    res.json({ ok: true, order });
+    const safe = order.toObject();
+    delete safe.confirmationCode;
+    delete safe.paymentProof;
+    res.json({ ok: true, order: safe });
   } catch (err) {
     logger.error('Error accepting order', err);
     res.status(500).json({ message: 'Error al aceptar pedido' });
+  }
+});
+
+// Assign / change the partner driver on an accepted order
+router.post('/portal/orders/:id/assign-driver', partnerAuth, async (req, res) => {
+  try {
+    const { driverId } = req.body;
+    if (!driverId) return res.status(400).json({ message: 'driverId requerido' });
+
+    const order = await Order.findOne({ _id: req.params.id, assignedPartnerId: req.partner._id, partnerStatus: 'accepted' });
+    if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
+
+    const driver = await DeliveryPerson.findOne({ _id: driverId, partnerId: req.partner._id, active: true });
+    if (!driver) return res.status(404).json({ message: 'Repartidor no encontrado o inactivo' });
+
+    // Release the previous driver's load if we're swapping
+    const prevId = order.deliveryPersonId && String(order.deliveryPersonId);
+    if (prevId && prevId !== String(driver._id)) {
+      const { releaseDriver } = require('../services/orderCompletionService');
+      await releaseDriver(prevId, { delivered: false });
+    }
+    if (prevId !== String(driver._id)) {
+      order.deliveryPersonId = driver._id;
+      await order.save();
+      await DeliveryPerson.updateOne(
+        { _id: driver._id },
+        { $set: { status: 'on_delivery' }, $inc: { activeDeliveries: 1 } }
+      );
+    }
+
+    res.json({ ok: true, driverName: driver.name });
+  } catch (err) {
+    logger.error('Error assigning partner driver', err);
+    res.status(500).json({ message: 'Error al asignar repartidor' });
   }
 });
 
@@ -204,27 +360,32 @@ router.post('/portal/orders/:id/reject', partnerAuth, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, assignedPartnerId: req.partner._id });
     if (!order) return res.status(404).json({ message: 'Pedido no encontrado' });
+    if (order.partnerStatus !== 'offered') return res.status(409).json({ message: 'El pedido ya no está en oferta' });
 
-    order.partnerStatus = 'rejected';
+    // Record the rejection so this partner is never re-offered this order
+    order.rejectedPartnerIds = order.rejectedPartnerIds || [];
+    if (!order.rejectedPartnerIds.some(id => String(id) === String(req.partner._id))) {
+      order.rejectedPartnerIds.push(req.partner._id);
+    }
+    order.partnerStatus = 'none';
     order.assignedPartnerId = null;
+    order.partnerOfferExpiresAt = null;
     await order.save();
 
-    // Try to offer to the next partner in priority order
+    // Try to offer to the next partner in priority order (rejected ones excluded)
+    let reoffered = false;
     const business = await BusinessConfig.findById(order.businessId).lean();
     if (business?.deliverySettings?.usePartners) {
       const assignmentService = require('../services/assignmentService');
-      // Exclude the rejecting partner by temporarily filtering
-      const remaining = (business.deliverySettings.partners || [])
-        .filter(p => p.enabled && String(p.partnerId) !== String(req.partner._id));
-      const nextBusiness = { ...business, deliverySettings: { ...business.deliverySettings, partners: remaining } };
-      const orderDoc = await Order.findById(order._id);
-      await assignmentService.offerToPartner(orderDoc, nextBusiness);
+      const next = await assignmentService.offerToPartner(order, business);
+      reoffered = !!next;
     }
 
     // Notify restaurant so they can act manually if needed
     socketService.emitToBusiness(String(order.businessId), 'delivery:partner_rejected', {
-      orderId: String(order._id), partnerId: String(req.partner._id),
+      orderId: String(order._id), partnerId: String(req.partner._id), reoffered,
     });
+    socketService.emitToBusiness(String(order.businessId), 'orderUpdated', order.toObject());
 
     res.json({ ok: true });
   } catch (err) {
@@ -233,7 +394,7 @@ router.post('/portal/orders/:id/reject', partnerAuth, async (req, res) => {
   }
 });
 
-// Mark accepted order as delivered
+// Mark accepted order as delivered — full completion (archive + cash register)
 router.post('/portal/orders/:id/deliver', partnerAuth, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, assignedPartnerId: req.partner._id, partnerStatus: 'accepted' });
@@ -241,6 +402,7 @@ router.post('/portal/orders/:id/deliver', partnerAuth, async (req, res) => {
 
     order.status = 'delivered';
     order.deliveredAt = new Date();
+    order.trackingEnabled = false;
     order.statusHistory = order.statusHistory || [];
     order.statusHistory.push({ status: 'delivered', timestamp: new Date(), note: `Entregado por partner ${req.partner.name}` });
     await order.save();
@@ -256,10 +418,11 @@ router.post('/portal/orders/:id/deliver', partnerAuth, async (req, res) => {
 
     await DeliveryPartner.updateOne({ _id: req.partner._id }, { $inc: { totalDeliveries: 1 } });
 
-    socketService.emitToBusiness(String(order.businessId), 'delivery:confirmed', { orderId: String(order._id) });
-    socketService.emitToOrder(String(order._id), 'order:status', { status: 'delivered' });
+    // Release driver, emit realtime events, archive to CompletedOrder, cash register
+    const { finalizeDeliveredOrder } = require('../services/orderCompletionService');
+    await finalizeDeliveredOrder(order);
 
-    res.json({ ok: true });
+    res.json({ ok: true, deliveredAt: order.deliveredAt });
   } catch (err) {
     logger.error('Error delivering partner order', err);
     res.status(500).json({ message: 'Error al marcar entregado' });
@@ -272,7 +435,7 @@ router.post('/portal/orders/:id/deliver', partnerAuth, async (req, res) => {
 router.get('/portal/drivers', partnerAuth, async (req, res) => {
   try {
     const drivers = await DeliveryPerson.find({ partnerId: req.partner._id })
-      .select('name phone active status totalDeliveries createdAt')
+      .select('name phone active status totalDeliveries activeDeliveries createdAt')
       .sort({ createdAt: -1 }).lean();
     res.json(drivers);
   } catch (err) {
@@ -286,7 +449,7 @@ router.post('/portal/drivers', partnerAuth, async (req, res) => {
   try {
     const { name, phone } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ message: 'Nombre requerido' });
-    const code = Math.floor(1000 + Math.random() * 9000).toString(); // auto-generado (no se usa como login por ahora)
+    const code = crypto.randomInt(1000, 10000).toString(); // auto-generado (no se usa como login por ahora)
     const driver = new DeliveryPerson({
       partnerId: req.partner._id,
       name: name.trim(),
