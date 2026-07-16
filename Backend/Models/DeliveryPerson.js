@@ -59,8 +59,9 @@ const deliveryPersonSchema = new mongoose.Schema({
   code: {
     type: String,
     required: true,
-    minlength: 4,
-    maxlength: 4
+    // Stores a SHA-256 hash (64 chars), not the raw PIN. The 4-digit PIN is
+    // validated at the API layer before hashing — a length constraint here made
+    // every save() of an existing domi fail validation (hash is 64 chars).
   },
   active: {
     type: Boolean,
