@@ -65,6 +65,12 @@
       "@react-native-firebase/app",
       "@react-native-firebase/messaging",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Permite elegir una foto de perfil para tu cuenta de domiciliario."
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

@@ -125,6 +125,33 @@ export async function markPicked(slug, orderId) {
 export async function confirmDelivery(slug, orderId, code) {
   return api.post(`/restaurants/${slug}/domi/orders/${orderId}/confirm`, { code });
 }
+// Two-stage flow: confirm arrival at the restaurant with the daily pickup code
+export async function arrivedStore(slug, orderId, code) {
+  return api.post(`/restaurants/${slug}/domi/orders/${orderId}/arrived-store`, { code });
+}
+
+/* ── Profile / stats ── */
+export async function fetchMe(slug) {
+  return api.get(`/restaurants/${slug}/domi/me`);
+}
+export async function fetchMyStats(slug) {
+  return api.get(`/restaurants/${slug}/domi/stats`);
+}
+// Upload a profile photo (React Native file uri → multipart/form-data)
+export async function uploadPhoto(slug, uri) {
+  const token = await AsyncStorage.getItem(TOKEN_KEY);
+  const form = new FormData();
+  const name = `photo_${Date.now()}.jpg`;
+  form.append('photo', { uri, name, type: 'image/jpeg' });
+  const res = await fetch(`${API_URL}/restaurants/${slug}/domi/photo`, {
+    method: 'POST',
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: form,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(data.message || 'Error al subir la foto'), { status: res.status, data });
+  return data;
+}
 
 /* ── Offers (Phase C) ── */
 export async function fetchOffers(slug) {

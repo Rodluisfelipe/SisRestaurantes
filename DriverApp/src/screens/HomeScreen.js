@@ -68,7 +68,9 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
       if (!granted) return;
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       centerRef.current = [pos.coords.longitude, pos.coords.latitude];
+      // Center now, and retry shortly after in case the map camera mounts later
       recenter(15);
+      setTimeout(() => recenter(15), 700);
     })();
   }, [recenter]);
 
@@ -238,6 +240,7 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
         compassEnabled={false}
         rotateEnabled={false}
         pitchEnabled={false}
+        onDidFinishLoadingMap={() => recenter(15)}
       >
         <Camera ref={cameraRef} defaultSettings={{ centerCoordinate: DEFAULT_CENTER, zoomLevel: DEFAULT_ZOOM }} />
         <UserLocation visible renderMode="normal" />
@@ -260,14 +263,14 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
 
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable onPress={handleLogout} style={styles.avatar}>
+        <Pressable onPress={() => navigation.navigate('Profile')} style={styles.avatar}>
           <Text style={styles.avatarTxt}>{initial}</Text>
           <View style={[styles.connDot, { backgroundColor: connected ? C.go : C.brand }]} />
         </Pressable>
-        <View style={styles.headerCenter}>
+        <Pressable onPress={() => navigation.navigate('Profile')} style={styles.headerCenter}>
           <Text style={styles.hello}>Hola, {name.split(' ')[0]}</Text>
           <Text style={styles.headerSub}>{connected ? 'Conectado en tiempo real' : 'Reconectando…'}</Text>
-        </View>
+        </Pressable>
         <AvailabilityToggle online={online} onToggle={() => setOnline(v => !v)} />
       </View>
 

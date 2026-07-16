@@ -16,9 +16,10 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { getSession } from './src/services/api';
 import { registerForPush, listenForegroundMessages, listenTokenRefresh } from './src/services/fcm';
 import { C } from './src/theme';
-import AuthScreen  from './src/screens/AuthScreen';
-import HomeScreen  from './src/screens/HomeScreen';
-import OrderScreen from './src/screens/OrderScreen';
+import AuthScreen    from './src/screens/AuthScreen';
+import HomeScreen    from './src/screens/HomeScreen';
+import OrderScreen   from './src/screens/OrderScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -89,6 +90,9 @@ export default function App() {
               {props => <HomeScreen {...props} domiInfo={domiInfo} onLogout={handleLogout} />}
             </Stack.Screen>
             <Stack.Screen name="Order" component={OrderScreen} options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="Profile" options={{ animation: 'slide_from_right' }}>
+              {props => <ProfileScreen {...props} onLogout={handleLogout} />}
+            </Stack.Screen>
           </Stack.Navigator>
         )}
       </NavigationContainer>
