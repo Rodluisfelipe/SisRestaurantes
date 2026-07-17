@@ -1,5 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import api from '../services/api';
 import SubscriptionStatus from './SubscriptionStatus';
 import GuideOverlay from './Admin/GuideOverlay';
 import BranchSwitcher from './Admin/BranchSwitcher';
@@ -19,6 +20,28 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
   const isHotel = businessConfig?.businessType === 'hotel';
   // Guide overlay state
   const [guideSection, setGuideSection] = useState(null);
+
+  // Daily pickup code — shown to the restaurant so they can give it to the domi
+  const [pickupCode, setPickupCode] = useState(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+  useEffect(() => {
+    if (!businessConfig?.slug || isService || isHotel) return;
+    let cancelled = false;
+    const fetchCode = () => api.get(`/delivery-admin/restaurants/${businessConfig.slug}/daily-pickup-code`)
+      .then(r => { if (!cancelled) setPickupCode(r.data?.code || null); })
+      .catch(() => {});
+    fetchCode();
+    // refresh hourly so it rolls over at midnight without a reload
+    const iv = setInterval(fetchCode, 60 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [businessConfig?.slug, isService, isHotel]);
+
+  const copyPickupCode = () => {
+    if (!pickupCode) return;
+    navigator.clipboard?.writeText(pickupCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 1500);
+  };
   // Grouped menu sections — same items as original sidebar
   const menuSections = [
     {
@@ -236,6 +259,24 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
           )}
         </button>
       </div>
+
+      {/* Daily pickup code — restaurant gives it to the domi on arrival */}
+      {pickupCode && (
+        <div className="px-4 pb-3">
+          <div className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5">
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Código recogida · hoy</span>
+              <button onClick={copyPickupCode} className="text-[9px] font-bold text-red-400 hover:text-red-600 transition-colors">
+                {copiedCode ? '¡copiado!' : 'copiar'}
+              </button>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-red-600 tracking-[0.2em] tabular-nums leading-none">{pickupCode}</span>
+            </div>
+            <p className="text-[9px] text-slate-400 mt-1 leading-tight">Dáselo al domiciliario al recoger el pedido</p>
+          </div>
+        </div>
+      )}
 
       {/* Ver Menú Button */}
       {businessConfig?.slug && !isStaff && (
