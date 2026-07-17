@@ -6,9 +6,7 @@ try {
   console.warn('[App] locationTask not loaded:', e.message);
 }
 
-import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -77,7 +75,6 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <NavigationContainer theme={navTheme}>
@@ -100,7 +97,6 @@ export default function App() {
         )}
       </NavigationContainer>
     </SafeAreaProvider>
-    </GestureHandlerRootView>
   );
 }
 

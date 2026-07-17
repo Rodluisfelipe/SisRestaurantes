@@ -12,8 +12,8 @@ import { emitLocation } from '../services/socket';
 import { startBackgroundLocation, stopBackgroundLocation } from '../tasks/locationTask';
 import { C, shadow } from '../theme';
 import { MapView, Camera, MarkerView, ShapeSource, LineLayer, UserLocation, MAP_STYLE_URL } from '../mapEngine';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import SlideToConfirm from '../components/SlideToConfirm';
+import Sheet from '../components/Sheet';
 
 const SCREEN_H = Dimensions.get('window').height;
 const SNAP_POINTS = ['50%', '90%'];
@@ -225,17 +225,8 @@ export default function OrderScreen({ route, navigation }) {
       )}
 
       {/* Sheet */}
-      <BottomSheet
-        ref={sheetRef}
-        index={1}
-        snapPoints={SNAP_POINTS}
-        enablePanDownToClose={false}
-        keyboardBehavior="interactive"
-        android_keyboardInputMode="adjustResize"
-        handleIndicatorStyle={styles.sheetGrabber}
-        backgroundStyle={styles.sheetBg}
-      >
-        <BottomSheetScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <Sheet height={SCREEN_H * 0.66} footer={footer}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 12 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Phase header */}
           <View style={styles.statusHead}>
             <View style={[styles.statusIcon, { backgroundColor: (picked ? C.blue : C.brand) + '22' }]}>
@@ -306,11 +297,8 @@ export default function OrderScreen({ route, navigation }) {
               <Text style={styles.totalVal}>{fmtPrice(order.finalAmount || order.totalAmount)}</Text>
             </View>
           </View>
-
-          {/* Actions */}
-          {footer}
-        </BottomSheetScrollView>
-      </BottomSheet>
+        </ScrollView>
+      </Sheet>
     </View>
   );
 }

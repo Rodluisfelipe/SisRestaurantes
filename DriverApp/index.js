@@ -1,6 +1,3 @@
-// Gesture handler must be the very first import in the entry file.
-import 'react-native-gesture-handler';
-
 // Notifee background handler + foreground-service runner must be registered
 // before anything else so alerts work from a killed state.
 import './src/notifeeSetup';

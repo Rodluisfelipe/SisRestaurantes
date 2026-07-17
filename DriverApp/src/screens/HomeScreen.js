@@ -7,7 +7,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { fetchOrders, getSession, clearSession, setOnline as apiSetOnline, heartbeat, fetchOffers, acceptOffer, rejectOffer } from '../services/api';
 import { joinDomiRoom, disconnectSocket } from '../services/socket';
@@ -20,6 +19,7 @@ import {
 } from '../services/incomingOrder';
 import AvailabilityToggle from '../components/AvailabilityToggle';
 import OfferModal from '../components/OfferModal';
+import Sheet from '../components/Sheet';
 
 const SCREEN_H = Dimensions.get('window').height;
 const DEFAULT_CENTER = [-74.0836, 4.6533]; // [lng, lat] — Bogotá
@@ -277,16 +277,9 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
         <MaterialCommunityIcons name="crosshairs-gps" size={22} color={following ? C.brand : C.text} />
       </TouchableOpacity>
 
-      {/* SHEET (professional bottom sheet — smooth drag + scroll) */}
-      <BottomSheet
-        ref={sheetRef}
-        index={0}
-        snapPoints={SNAP_POINTS}
-        enablePanDownToClose={false}
-        handleIndicatorStyle={styles.sheetGrabber}
-        backgroundStyle={styles.sheetBg}
-      >
-        <BottomSheetScrollView
+      {/* SHEET (lightweight fixed panel + native scroll) */}
+      <Sheet height={SCREEN_H * 0.56}>
+        <ScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 24, paddingTop: 4 }}
           showsVerticalScrollIndicator={false}
         >
@@ -312,8 +305,8 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
               <OrderCard key={o._id} order={o} onPress={() => navigation.navigate('Order', { order: o })} />
             ))
           )}
-        </BottomSheetScrollView>
-      </BottomSheet>
+        </ScrollView>
+      </Sheet>
 
       {/* Incoming offer */}
       <OfferModal
