@@ -263,18 +263,17 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       {/* Daily pickup code — restaurant gives it to the domi on arrival */}
       {pickupCode && (
         <div className="px-4 pb-3">
-          <div className="rounded-lg border border-red-200/80 bg-red-50 px-3 py-2.5">
-            <div className="flex items-center justify-between mb-0.5">
-              <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Código recogida · hoy</span>
-              <button onClick={copyPickupCode} className="text-[9px] font-bold text-red-400 hover:text-red-600 transition-colors">
-                {copiedCode ? '¡copiado!' : 'copiar'}
-              </button>
-            </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-red-600 tracking-[0.2em] tabular-nums leading-none">{pickupCode}</span>
-            </div>
-            <p className="text-[9px] text-slate-400 mt-1 leading-tight">Dáselo al domiciliario al recoger el pedido</p>
-          </div>
+          <button
+            onClick={copyPickupCode}
+            title="Código de recogida de hoy — clic para copiar"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200/80 bg-red-50 hover:bg-red-100 transition-all"
+          >
+            <FaMotorcycle className="text-[11px] shrink-0 text-red-500" />
+            <span className="text-[11px] font-semibold text-red-700 flex-1 text-left">Código recogida</span>
+            <span className="text-[13px] font-black text-red-600 tracking-wider tabular-nums">
+              {copiedCode ? '¡copiado!' : pickupCode}
+            </span>
+          </button>
         </div>
       )}
 
