@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert, Linking,
-  TextInput, Vibration, Platform, ScrollView, Dimensions, Image,
+  TextInput, Vibration, Platform, ScrollView, Dimensions, Image, Modal, KeyboardAvoidingView, ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
@@ -12,7 +12,6 @@ import { emitLocation } from '../services/socket';
 import { startBackgroundLocation, stopBackgroundLocation } from '../tasks/locationTask';
 import { C, shadow } from '../theme';
 import { MapView, Camera, MarkerView, ShapeSource, LineLayer, UserLocation, MAP_STYLE_URL } from '../mapEngine';
-import SlideToConfirm from '../components/SlideToConfirm';
 import Sheet from '../components/Sheet';
 
 const SCREEN_H = Dimensions.get('window').height;
@@ -24,8 +23,8 @@ export default function OrderScreen({ route, navigation }) {
   const { order: initial } = route.params;
   const [order, setOrder]   = useState(initial);
   const [picked, setPicked] = useState(!!initial.deliveryPickedAt);
-  const [pickupCode, setPickupCode] = useState('');
-  const [code, setCode]     = useState('');
+  const [codeModal, setCodeModal] = useState(null); // 'pickup' | 'deliver'
+  const [modalCode, setModalCode] = useState('');
   const [driverLoc, setDriverLoc] = useState(null);
   const [gps, setGps]       = useState('idle');
   const [busy, setBusy]     = useState(false);
@@ -92,12 +91,13 @@ export default function OrderScreen({ route, navigation }) {
     }
   }, [driverLoc, target, picked]);
 
-  const handlePickup = async () => {
-    if (pickupCode.length !== 4) return Alert.alert('Código requerido', 'Pide al restaurante el código de recogida de 4 dígitos.');
+  const handlePickup = async (enteredCode) => {
+    if ((enteredCode || '').length !== 4) return Alert.alert('Código requerido', 'Ingresa el código de recogida de 4 dígitos que te da el restaurante.');
     setBusy(true);
     try {
       const { slug } = await getSession();
-      await arrivedStore(slug, order._id, pickupCode);
+      await arrivedStore(slug, order._id, enteredCode);
+      setCodeModal(null);
       setPicked(true);
       setOrder(o => ({ ...o, deliveryPickedAt: new Date().toISOString(), deliveryArrivedStoreAt: new Date().toISOString() }));
       Vibration.vibrate(80);
@@ -108,12 +108,13 @@ export default function OrderScreen({ route, navigation }) {
     } finally { setBusy(false); }
   };
 
-  const handleConfirm = async () => {
-    if (needsCode && code.length < 4) return Alert.alert('Código requerido', 'Pide al cliente el código de 4 dígitos.');
+  const handleConfirm = async (enteredCode) => {
+    if (needsCode && (enteredCode || '').length !== 4) return Alert.alert('Código requerido', 'Ingresa el código de 4 dígitos que te da el cliente.');
     setBusy(true);
     try {
       const { slug } = await getSession();
-      await confirmDelivery(slug, order._id, needsCode ? code : undefined);
+      await confirmDelivery(slug, order._id, needsCode ? enteredCode : undefined);
+      setCodeModal(null);
       stopTracking();
       await stopBackgroundLocation();
       Vibration.vibrate([0, 90, 70, 90]);
@@ -122,6 +123,9 @@ export default function OrderScreen({ route, navigation }) {
       Alert.alert('Código incorrecto', err.data?.message || 'Verifica el código con el cliente.');
     } finally { setBusy(false); }
   };
+
+  const openCode = (mode) => { setModalCode(''); setCodeModal(mode); };
+  const submitCode = () => { if (codeModal === 'pickup') handlePickup(modalCode); else handleConfirm(modalCode); };
 
   const call = (phone) => phone && Linking.openURL(`tel:${phone}`);
   const whatsapp = (phone) => {
@@ -150,14 +154,10 @@ export default function OrderScreen({ route, navigation }) {
             <MaterialCommunityIcons name="navigation-variant" size={18} color={C.brand} />
             <Text style={styles.navBtnTxt}>Ir al restaurante</Text>
           </TouchableOpacity>
-          <Text style={styles.pickLabel}>Código de recogida (te lo da el restaurante)</Text>
-          <TextInput
-            style={styles.pickInput}
-            placeholder="• • • •" placeholderTextColor={C.faint}
-            value={pickupCode} onChangeText={t => setPickupCode(t.replace(/\D/g, '').slice(0, 4))}
-            keyboardType="number-pad" maxLength={4} textAlign="center"
-          />
-          <SlideToConfirm label="Desliza para confirmar recogida" color={C.brand} colorDark={C.brandDark} disabled={busy} onConfirm={handlePickup} />
+          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: C.brand }]} onPress={() => openCode('pickup')} activeOpacity={0.9}>
+            <Ionicons name="checkmark-circle" size={20} color={C.white} />
+            <Text style={styles.primaryBtnTxt}>Recoger pedido</Text>
+          </TouchableOpacity>
         </>
       ) : (
         <>
@@ -165,18 +165,10 @@ export default function OrderScreen({ route, navigation }) {
             <MaterialCommunityIcons name="navigation-variant" size={18} color={C.blue} />
             <Text style={[styles.navBtnTxt, { color: C.blue }]}>Ir a destino</Text>
           </TouchableOpacity>
-          {needsCode && (
-            <>
-              <Text style={styles.pickLabel}>Código del cliente</Text>
-              <TextInput
-                style={styles.pickInput}
-                placeholder="• • • •" placeholderTextColor={C.faint}
-                value={code} onChangeText={t => setCode(t.replace(/\D/g, '').slice(0, 4))}
-                keyboardType="number-pad" maxLength={4} textAlign="center"
-              />
-            </>
-          )}
-          <SlideToConfirm label="Desliza para entregar" color={C.go} colorDark={C.goDark} disabled={busy} onConfirm={handleConfirm} />
+          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: C.go }]} onPress={() => needsCode ? openCode('deliver') : handleConfirm(undefined)} activeOpacity={0.9}>
+            <Ionicons name="checkmark-circle" size={20} color={C.white} />
+            <Text style={styles.primaryBtnTxt}>Entregar pedido</Text>
+          </TouchableOpacity>
         </>
       )}
     </View>
@@ -299,6 +291,39 @@ export default function OrderScreen({ route, navigation }) {
           </View>
         </ScrollView>
       </Sheet>
+
+      {/* Code entry modal — keyboard-friendly (not covered by the pinned footer) */}
+      <Modal visible={!!codeModal} transparent animationType="fade" onRequestClose={() => !busy && setCodeModal(null)} statusBarTranslucent>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={[styles.modalIcon, { backgroundColor: (codeModal === 'pickup' ? C.brand : C.go) + '22' }]}>
+              <Ionicons name={codeModal === 'pickup' ? 'storefront' : 'flag'} size={24} color={codeModal === 'pickup' ? C.brand : C.go} />
+            </View>
+            <Text style={styles.modalTitle}>{codeModal === 'pickup' ? 'Código de recogida' : 'Código del cliente'}</Text>
+            <Text style={styles.modalSub}>
+              {codeModal === 'pickup' ? 'Pídeselo al restaurante y escríbelo aquí para confirmar la recogida.' : 'Pídeselo al cliente y escríbelo aquí para confirmar la entrega.'}
+            </Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="0000" placeholderTextColor={C.faint}
+              value={modalCode} onChangeText={t => setModalCode(t.replace(/\D/g, '').slice(0, 4))}
+              keyboardType="number-pad" maxLength={4} textAlign="center" autoFocus
+              onSubmitEditing={submitCode}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setCodeModal(null)} disabled={busy} activeOpacity={0.85}>
+                <Text style={styles.modalCancelTxt}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalConfirm, { backgroundColor: codeModal === 'pickup' ? C.brand : C.go }, (modalCode.length !== 4 || busy) && { opacity: 0.5 }]}
+                onPress={submitCode} disabled={modalCode.length !== 4 || busy} activeOpacity={0.85}
+              >
+                {busy ? <ActivityIndicator color={C.white} /> : <Text style={styles.modalConfirmTxt}>Confirmar</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -351,8 +376,20 @@ const styles = StyleSheet.create({
   actionBar: { paddingHorizontal: 16, paddingTop: 12, backgroundColor: C.card },
   navBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.card2, borderWidth: 1, borderColor: C.line, borderRadius: 14, paddingVertical: 13, marginBottom: 12 },
   navBtnTxt: { color: C.brand, fontSize: 15, fontWeight: '800' },
-  pickLabel: { color: C.faint, fontSize: 11, fontWeight: '700', textAlign: 'center', marginBottom: 6 },
-  pickInput: { backgroundColor: C.card2, borderWidth: 1, borderColor: C.line, borderRadius: 14, paddingVertical: 12, color: C.text, fontSize: 26, fontWeight: '800', letterSpacing: 12, marginBottom: 12 },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 16, paddingVertical: 16, ...shadow.glow(C.brand) },
+  primaryBtnTxt: { color: C.white, fontSize: 16, fontWeight: '900' },
   deliveredPill: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: C.go + '1A', borderWidth: 1, borderColor: C.go + '44', borderRadius: 16, paddingVertical: 18 },
   deliveredTxt: { color: C.go, fontSize: 16, fontWeight: '800' },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(17,24,39,0.55)', justifyContent: 'center', paddingHorizontal: 28 },
+  modalCard: { backgroundColor: C.card, borderRadius: 26, padding: 24, alignItems: 'center', ...shadow.card },
+  modalIcon: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  modalTitle: { color: C.text, fontSize: 19, fontWeight: '900' },
+  modalSub: { color: C.sub, fontSize: 13, textAlign: 'center', marginTop: 6, lineHeight: 19 },
+  modalInput: { alignSelf: 'stretch', backgroundColor: C.card2, borderWidth: 1, borderColor: C.line, borderRadius: 16, paddingVertical: 14, color: C.text, fontSize: 30, fontWeight: '800', letterSpacing: 14, marginTop: 18 },
+  modalActions: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: 16 },
+  modalCancel: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 14, backgroundColor: C.card2, borderWidth: 1, borderColor: C.line },
+  modalCancelTxt: { color: C.sub, fontSize: 15, fontWeight: '800' },
+  modalConfirm: { flex: 1.4, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 14 },
+  modalConfirmTxt: { color: C.white, fontSize: 16, fontWeight: '900' },
 });
