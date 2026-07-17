@@ -12,10 +12,11 @@ import { emitLocation } from '../services/socket';
 import { startBackgroundLocation, stopBackgroundLocation } from '../tasks/locationTask';
 import { C, shadow } from '../theme';
 import { MapView, Camera, MarkerView, ShapeSource, LineLayer, UserLocation, MAP_STYLE_URL } from '../mapEngine';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import SlideToConfirm from '../components/SlideToConfirm';
-import DraggableSheet from '../components/DraggableSheet';
 
 const SCREEN_H = Dimensions.get('window').height;
+const SNAP_POINTS = ['50%', '90%'];
 const fmtPrice = (n) => `$${(n || 0).toLocaleString('es-CO')}`;
 
 export default function OrderScreen({ route, navigation }) {
@@ -29,6 +30,7 @@ export default function OrderScreen({ route, navigation }) {
   const [gps, setGps]       = useState('idle');
   const [busy, setBusy]     = useState(false);
   const cameraRef = useRef(null);
+  const sheetRef = useRef(null);
   const watchRef = useRef(null);
 
   const rest = initial.restaurant || null;
@@ -223,8 +225,17 @@ export default function OrderScreen({ route, navigation }) {
       )}
 
       {/* Sheet */}
-      <DraggableSheet collapsedHeight={SCREEN_H * 0.48} expandedHeight={SCREEN_H * 0.85} footer={footer}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <BottomSheet
+        ref={sheetRef}
+        index={1}
+        snapPoints={SNAP_POINTS}
+        enablePanDownToClose={false}
+        keyboardBehavior="interactive"
+        android_keyboardInputMode="adjustResize"
+        handleIndicatorStyle={styles.sheetGrabber}
+        backgroundStyle={styles.sheetBg}
+      >
+        <BottomSheetScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 20 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {/* Phase header */}
           <View style={styles.statusHead}>
             <View style={[styles.statusIcon, { backgroundColor: (picked ? C.blue : C.brand) + '22' }]}>
@@ -295,14 +306,19 @@ export default function OrderScreen({ route, navigation }) {
               <Text style={styles.totalVal}>{fmtPrice(order.finalAmount || order.totalAmount)}</Text>
             </View>
           </View>
-        </ScrollView>
-      </DraggableSheet>
+
+          {/* Actions */}
+          {footer}
+        </BottomSheetScrollView>
+      </BottomSheet>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
+  sheetBg: { backgroundColor: C.card, borderTopLeftRadius: 26, borderTopRightRadius: 26, borderTopWidth: 1, borderColor: C.lineSoft },
+  sheetGrabber: { backgroundColor: C.line, width: 44, height: 5 },
 
   topBar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 5, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingBottom: 8 },
   iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: C.card, borderWidth: 1, borderColor: C.line, justifyContent: 'center', alignItems: 'center', ...shadow.card },

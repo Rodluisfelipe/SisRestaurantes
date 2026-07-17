@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import BottomSheet, { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { fetchOrders, getSession, clearSession, setOnline as apiSetOnline, heartbeat, fetchOffers, acceptOffer, rejectOffer } from '../services/api';
 import { joinDomiRoom, disconnectSocket } from '../services/socket';
@@ -18,12 +19,12 @@ import {
   startOnlineService, stopOnlineService, requestNotifPermission,
 } from '../services/incomingOrder';
 import AvailabilityToggle from '../components/AvailabilityToggle';
-import DraggableSheet from '../components/DraggableSheet';
 import OfferModal from '../components/OfferModal';
 
 const SCREEN_H = Dimensions.get('window').height;
 const DEFAULT_CENTER = [-74.0836, 4.6533]; // [lng, lat] — Bogotá
 const DEFAULT_ZOOM = 12;
+const SNAP_POINTS = ['42%', '88%'];
 
 const fmtPrice = (n) => `$${(n || 0).toLocaleString('es-CO')}`;
 const fmtTime  = (iso) => iso ? new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '';
@@ -36,12 +37,12 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
   const [refreshing, setRefresh] = useState(false);
   const [offer, setOffer]        = useState(null);
   const cameraRef = useRef(null);
-  const centerRef = useRef(DEFAULT_CENTER);
+  const sheetRef = useRef(null);
   const appState = useRef(AppState.currentState);
+  const [following, setFollowing] = useState(true);
 
-  const recenter = useCallback((zoom = 15) => {
-    cameraRef.current?.setCamera({ centerCoordinate: centerRef.current, zoomLevel: zoom, animationDuration: 600 });
-  }, []);
+  // Re-engage "follow the driver" (the map camera tracks the user location)
+  const recenter = useCallback(() => setFollowing(true), []);
 
   // Remember the online/offline choice across app restarts
   useEffect(() => {
@@ -62,17 +63,8 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
     }
   }, [onLogout]);
 
-  useEffect(() => {
-    (async () => {
-      const { granted } = await Location.requestForegroundPermissionsAsync();
-      if (!granted) return;
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      centerRef.current = [pos.coords.longitude, pos.coords.latitude];
-      // Center now, and retry shortly after in case the map camera mounts later
-      recenter(15);
-      setTimeout(() => recenter(15), 700);
-    })();
-  }, [recenter]);
+  // Location permission — the map follows the driver via followUserLocation
+  useEffect(() => { Location.requestForegroundPermissionsAsync().catch(() => {}); }, []);
 
   // Pick up any offer already pending (e.g. arrived while app was closed)
   const loadOffers = useCallback(async () => {
@@ -240,9 +232,15 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
         compassEnabled={false}
         rotateEnabled={false}
         pitchEnabled={false}
-        onDidFinishLoadingMap={() => recenter(15)}
+        onRegionWillChange={(e) => { if (e?.properties?.isUserInteraction && following) setFollowing(false); }}
       >
-        <Camera ref={cameraRef} defaultSettings={{ centerCoordinate: DEFAULT_CENTER, zoomLevel: DEFAULT_ZOOM }} />
+        <Camera
+          ref={cameraRef}
+          followUserLocation={following}
+          followUserMode="normal"
+          followZoomLevel={16}
+          defaultSettings={{ centerCoordinate: DEFAULT_CENTER, zoomLevel: DEFAULT_ZOOM }}
+        />
         <UserLocation visible renderMode="normal" />
         {markers.map(o => (
           <MarkerView
@@ -275,16 +273,22 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
       </View>
 
       {/* recenter */}
-      <TouchableOpacity style={styles.recenter} onPress={() => recenter(15)}>
-        <MaterialCommunityIcons name="crosshairs-gps" size={22} color={C.text} />
+      <TouchableOpacity style={styles.recenter} onPress={recenter}>
+        <MaterialCommunityIcons name="crosshairs-gps" size={22} color={following ? C.brand : C.text} />
       </TouchableOpacity>
 
-      {/* SHEET */}
-      <DraggableSheet collapsedHeight={SCREEN_H * 0.4} expandedHeight={SCREEN_H * 0.86}>
-        <ScrollView
+      {/* SHEET (professional bottom sheet — smooth drag + scroll) */}
+      <BottomSheet
+        ref={sheetRef}
+        index={0}
+        snapPoints={SNAP_POINTS}
+        enablePanDownToClose={false}
+        handleIndicatorStyle={styles.sheetGrabber}
+        backgroundStyle={styles.sheetBg}
+      >
+        <BottomSheetScrollView
           contentContainerStyle={{ paddingBottom: insets.bottom + 24, paddingTop: 4 }}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.brand} />}
         >
           <View style={styles.statsRow}>
             <Stat icon="cube-outline" label="Activos" value={orders.length} color={C.brand} />
@@ -292,7 +296,12 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
             <Stat icon="cash" label="Por cobrar" value={fmtPrice(porCobrar)} color={C.go} small />
           </View>
 
-          <Text style={styles.sectionTitle}>{online ? 'Pedidos asignados' : 'Estás desconectado'}</Text>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>{online ? 'Pedidos asignados' : 'Estás desconectado'}</Text>
+            <TouchableOpacity onPress={onRefresh} hitSlop={10}>
+              <MaterialCommunityIcons name="refresh" size={18} color={refreshing ? C.brand : C.faint} />
+            </TouchableOpacity>
+          </View>
 
           {!online ? (
             <OfflineCard onGoOnline={() => setOnline(true)} />
@@ -303,8 +312,8 @@ export default function HomeScreen({ navigation, domiInfo, onLogout }) {
               <OrderCard key={o._id} order={o} onPress={() => navigation.navigate('Order', { order: o })} />
             ))
           )}
-        </ScrollView>
-      </DraggableSheet>
+        </BottomSheetScrollView>
+      </BottomSheet>
 
       {/* Incoming offer */}
       <OfferModal
@@ -425,7 +434,10 @@ const styles = StyleSheet.create({
   statValue: { color: C.text, fontSize: 19, fontWeight: '800' },
   statLabel: { color: C.faint, fontSize: 11, marginTop: 1, fontWeight: '600' },
 
-  sectionTitle: { color: C.text, fontSize: 15, fontWeight: '800', paddingHorizontal: 16, marginBottom: 12 },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 12 },
+  sectionTitle: { color: C.text, fontSize: 15, fontWeight: '800' },
+  sheetBg: { backgroundColor: C.card, borderTopLeftRadius: 26, borderTopRightRadius: 26, borderTopWidth: 1, borderColor: C.lineSoft },
+  sheetGrabber: { backgroundColor: C.line, width: 44, height: 5 },
 
   card: { flexDirection: 'row', marginHorizontal: 16, marginBottom: 12, backgroundColor: C.card2, borderRadius: 20, borderWidth: 1, borderColor: C.lineSoft, overflow: 'hidden' },
   cardStripe: { width: 4 },
