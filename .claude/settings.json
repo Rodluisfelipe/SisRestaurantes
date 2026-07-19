@@ -151,7 +151,10 @@
       "Bash(node capture-admin.js \"http://localhost:5173/macdonalds/admin\" \"panel2.png\" 1440 900 9000)",
       "Bash(rm -f c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/impresora.webp c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/agent.webp 'c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/WhatsApp Image 2026-07-18 at 9.13.02 PM.jpeg')",
       "Bash(curl -s \"https://menuby.tech/\" --max-time 15)",
-      "Bash(curl -sI \"https://menuby.tech/assets/index-D_ojIlay.js\" --max-time 15)"
+      "Bash(curl -sI \"https://menuby.tech/assets/index-D_ojIlay.js\" --max-time 15)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=20 root@159.203.136.199 \"echo '=== health + estado ===' && curl -s -o /dev/null -w 'API: %{http_code}\\\\n' http://127.0.0.1:5000/api/health && docker ps --filter name=backend-backend-1 --format '{{.Status}}' && echo '=== errores recientes \\(últimas 200 líneas\\) ===' && docker logs backend-backend-1 --tail 200 2>&1 | grep -iE 'ERROR|FATAL|Unhandled|TypeError|ReferenceError|MongoServerError|ECONNREFUSED|crash' | tail -20 || echo 'sin errores en las últimas 200 líneas'\")",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=20 root@159.203.136.199 \"echo '=== respuestas 5xx recientes ===' && docker logs backend-backend-1 --tail 500 2>&1 | grep -E 'HTTP/1.1\\\\\" 5[0-9][0-9]' | tail -10 || echo 'ninguna 5xx' && echo '=== ¿el server sirve algún Admin-*.js? \\(no debería, es Cloudflare\\) ===' && curl -s -o /dev/null -w '%{http_code}\\\\n' http://127.0.0.1:5000/assets/Admin-__ryRmKC.js\")",
+      "Bash(git checkout *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\PIPE\\.claude\\projects\\c--Users-PIPE-Downloads-SisRestaurantes-SisRestaurantes\\memory",

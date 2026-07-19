@@ -74,6 +74,7 @@ import { AuthProvider } from "./Context/AuthContext";
 import { ThemeProvider } from "./Context/ThemeContext";
 import ErrorBoundary from "./Components/ErrorBoundary";
 import App from "./App.jsx";
+import { isChunkLoadError, recoverFromChunkError } from "./utils/chunkReload";
 
 // ─────────────────────────────────────────────
 // Auto-recovery cuando el HTML quedó cacheado apuntando a un chunk JS/CSS
@@ -88,16 +89,6 @@ import App from "./App.jsx";
 if (typeof window !== 'undefined') {
   const RELOAD_FLAG = '__crew_chunk_reload_attempted';
 
-  const isChunkLoadError = (err) => {
-    const msg = String(err?.message || err || '');
-    return (
-      msg.includes('Failed to fetch dynamically imported module') ||
-      msg.includes('Importing a module script failed') ||
-      msg.includes('Loading chunk') ||
-      err?.name === 'ChunkLoadError'
-    );
-  };
-
   // Para CSS/JS cargados por <link>/<script>: el navegador NO bubble-ea el
   // error y NO dispara unhandledrejection. Hay que usar el listener en fase
   // de captura ({ capture: true }) y mirar e.target.
@@ -110,31 +101,10 @@ if (typeof window !== 'undefined') {
     return null;
   };
 
-  const reload = (why) => {
-    if (sessionStorage.getItem(RELOAD_FLAG)) return; // ya intentamos
-    sessionStorage.setItem(RELOAD_FLAG, why || '1');
-    // Limpiar TODO lo que puede dejar la app pegada en una versión vieja:
-    // el service worker (que intercepta y sirve el index.html cacheado) y las cachés.
-    const cleanups = [];
-    if ('serviceWorker' in navigator) {
-      cleanups.push(
-        navigator.serviceWorker.getRegistrations()
-          .then((regs) => Promise.all(regs.map((r) => r.unregister())))
-          .catch(() => {})
-      );
-    }
-    if ('caches' in window) {
-      cleanups.push(
-        caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {})
-      );
-    }
-    Promise.all(cleanups).finally(() => {
-      // cache-bust duro del documento para saltar cualquier edge/proxy cacheado
-      const u = new URL(window.location.href);
-      u.searchParams.set('_r', Date.now().toString());
-      window.location.replace(u.toString());
-    });
-  };
+  // Detección + recuperación (unregister SW + limpiar cachés + reload con
+  // cache-bust, una sola vez por sesión) viven en ./utils/chunkReload para
+  // reusarse también desde ErrorBoundary cuando React/Suspense traga el error.
+  const reload = (why) => recoverFromChunkError(why);
 
   // 0) vite:preloadError — Vite lo emite aunque React/Suspense trague la promesa.
   //    Es la forma más confiable de detectar chunk load failures en producción.

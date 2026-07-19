@@ -3,11 +3,26 @@
 /index.html
   Cache-Control: no-cache, no-store, must-revalidate
 
-# Rutas SPA comunes: admin, menú, pedidos, etc.
+# Rutas SPA comunes: admin, menú, pedidos, etc. Todas se sirven vía el SPA
+# fallback (/* -> /index.html) y por eso DEBEN ir no-cache: si el navegador
+# cachea ese HTML (heurísticamente, al no llevar Cache-Control), tras un deploy
+# apunta a un chunk /assets/*.js viejo que ya no existe -> "Failed to fetch
+# dynamically imported module".
 /:slug/admin*
   Cache-Control: no-cache, no-store, must-revalidate
 
 /:slug/menu*
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# URL principal del QR: mesa dentro de un restaurante (carga el chunk de Menu).
+/:slug/mesa*
+  Cache-Control: no-cache, no-store, must-revalidate
+
+# Slug pelado del restaurante (menuby.tech/mirestaurante) — la URL más común de
+# los QR, sirve el chunk de Menu vía SPA fallback. Los landings concretos
+# (/features, /pricing, /blog, ...) tienen reglas literales más específicas que
+# ganan por precedencia, así que este no-cache solo afecta a slugs reales.
+/:slug
   Cache-Control: no-cache, no-store, must-revalidate
 
 # Landing pages - allow indexing

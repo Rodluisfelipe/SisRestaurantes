@@ -1,18 +1,30 @@
 import React, { Component } from 'react';
 import * as Sentry from '@sentry/react';
+import { isChunkLoadError, recoverFromChunkError, chunkReloadAlreadyAttempted } from '../utils/chunkReload';
 
 class ErrorBoundary extends Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null };
+    this.state = { hasError: false, error: null, errorInfo: null, recovering: false };
   }
 
   static getDerivedStateFromError(error) {
-    // Actualizar el estado para mostrar la UI de fallback
-    return { hasError: true, error };
+    // Un chunk viejo tras un deploy (React.lazy/Suspense traga la promesa y el
+    // error llega aquí como render error). No es un bug de la app: mostramos
+    // spinner y disparamos la auto-recuperación (limpiar SW/cachés + reload)
+    // en vez de la pantalla roja de "¡Oops!".
+    if (isChunkLoadError(error) && !chunkReloadAlreadyAttempted()) {
+      return { hasError: true, error, recovering: true };
+    }
+    return { hasError: true, error, recovering: false };
   }
 
   componentDidCatch(error, errorInfo) {
+    if (isChunkLoadError(error)) {
+      // Intentar recuperarse (no-op si ya se intentó en esta sesión).
+      const triggered = recoverFromChunkError('errorboundary');
+      if (triggered) return; // reload en camino; no ensuciar Sentry con ruido de deploy
+    }
     // Reportar el error a Sentry
     Sentry.captureException(error, { extra: { componentStack: errorInfo?.componentStack } });
     console.error("Error capturado por ErrorBoundary:", error, errorInfo);
@@ -44,6 +56,22 @@ class ErrorBoundary extends Component {
   };
 
   render() {
+    // Chunk viejo tras deploy: mostramos un spinner neutro mientras la
+    // auto-recuperación limpia SW/cachés y recarga con cache-bust.
+    if (this.state.hasError && this.state.recovering) {
+      return (
+        <div className="min-h-screen bg-white flex items-center justify-center">
+          <div className="text-center">
+            <div className="relative w-16 h-16 mx-auto mb-4">
+              <div className="absolute inset-0 rounded-full border-4 border-red-100" />
+              <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-red-500 animate-spin" style={{ animationDuration: '0.8s' }} />
+            </div>
+            <p className="text-slate-500 text-sm">Actualizando a la última versión...</p>
+          </div>
+        </div>
+      );
+    }
+
     if (this.state.hasError) {
       const err = this.state.error;
       const stack = this.state.errorInfo?.componentStack || err?.stack || '';
