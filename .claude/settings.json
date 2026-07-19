@@ -149,7 +149,9 @@
       "Bash(curl -s -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"pipe95141007@gmail.com\",\"password\":\"TestLocal123!\"}' -w '\\\\nHTTP %{http_code}\\\\n')",
       "Bash(node capture-admin.js \"http://localhost:5173/macdonalds/admin\" \"panel.png\" 1440 900 10000)",
       "Bash(node capture-admin.js \"http://localhost:5173/macdonalds/admin\" \"panel2.png\" 1440 900 9000)",
-      "Bash(rm -f c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/impresora.webp c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/agent.webp 'c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/WhatsApp Image 2026-07-18 at 9.13.02 PM.jpeg')"
+      "Bash(rm -f c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/impresora.webp c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/agent.webp 'c:/Users/PIPE/Downloads/SisRestaurantes/SisRestaurantes/Frontend/public/printagent/WhatsApp Image 2026-07-18 at 9.13.02 PM.jpeg')",
+      "Bash(curl -s \"https://menuby.tech/\" --max-time 15)",
+      "Bash(curl -sI \"https://menuby.tech/assets/index-D_ojIlay.js\" --max-time 15)"
     ],
     "additionalDirectories": [
       "c:\\Users\\PIPE\\.claude\\projects\\c--Users-PIPE-Downloads-SisRestaurantes-SisRestaurantes\\memory",

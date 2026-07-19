@@ -239,6 +239,60 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Boot-time recovery (NO empaquetado, siempre corre). Si el bundle de entrada
+      (o cualquier /assets/*.js|css) falla al cargar tras un deploy — típico en
+      Cloudflare Pages cuando el HTML nuevo pide un chunk que aún no propagó y el
+      fallback SPA devuelve index.html (text/html) → error de MIME — este script
+      recarga UNA vez con cache-bust y limpiando SW/cachés. Es la red de seguridad
+      que main.jsx NO puede ser, porque main.jsx vive dentro del bundle que falló.
+    -->
+    <script>
+      (function () {
+        var FLAG = '__mb_boot_reload';
+        function reload(why) {
+          try {
+            if (sessionStorage.getItem(FLAG)) return; // ya intentamos: no loop
+            sessionStorage.setItem(FLAG, why || '1');
+          } catch (e) {}
+          var go = function () {
+            try {
+              var u = new URL(window.location.href);
+              u.searchParams.set('_r', Date.now().toString());
+              window.location.replace(u.toString());
+            } catch (e) { window.location.reload(); }
+          };
+          var jobs = [];
+          try {
+            if ('serviceWorker' in navigator) {
+              jobs.push(navigator.serviceWorker.getRegistrations()
+                .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })
+                .catch(function () {}));
+            }
+            if (window.caches && caches.keys) {
+              jobs.push(caches.keys()
+                .then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })
+                .catch(function () {}));
+            }
+          } catch (e) {}
+          if (jobs.length) { Promise.all(jobs).then(go, go); } else { go(); }
+        }
+        // <script>/<link> de /assets/ que fallan (incluye el entry con MIME text/html).
+        // El error NO burbujea: hay que escuchar en fase de captura.
+        window.addEventListener('error', function (e) {
+          var t = e && e.target;
+          if (!t || !t.tagName) return;
+          var tag = t.tagName.toLowerCase();
+          var src = t.src || t.href || '';
+          if ((tag === 'script' || tag === 'link') && src.indexOf('/assets/') !== -1) reload('asset');
+        }, true);
+        window.addEventListener('vite:preloadError', function () { reload('preload'); });
+        // Si la app arrancó bien, libera el guard para permitir recuperar en el próximo deploy.
+        window.addEventListener('load', function () {
+          setTimeout(function () { try { sessionStorage.removeItem(FLAG); } catch (e) {} }, 8000);
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
