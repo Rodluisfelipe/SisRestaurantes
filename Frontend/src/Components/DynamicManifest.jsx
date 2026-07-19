@@ -44,6 +44,30 @@ const DynamicManifest = () => {
       if (appleTitleMeta) {
         appleTitleMeta.content = businessConfig.businessName || 'MenuBy';
       }
+
+      // iOS "Agregar a inicio" usa el <link rel="apple-touch-icon">, NO el
+      // manifest. Como es estático (logo de MenuBy), lo reemplazamos por el logo
+      // del negocio para que el atajo del iPhone use su icono. También ponemos el
+      // favicon de la pestaña al logo del negocio.
+      if (businessConfig.logo) {
+        const logoHref = businessConfig.logo.startsWith('http')
+          ? businessConfig.logo
+          : window.location.origin + businessConfig.logo;
+
+        document
+          .querySelectorAll('link[rel="apple-touch-icon"], link[rel="apple-touch-icon-precomposed"]')
+          .forEach((l) => l.remove());
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.href = logoHref;
+        document.head.appendChild(appleIcon);
+
+        document.querySelectorAll('link[rel="icon"]').forEach((l) => l.remove());
+        const favIcon = document.createElement('link');
+        favIcon.rel = 'icon';
+        favIcon.href = logoHref;
+        document.head.appendChild(favIcon);
+      }
     }
   }, [businessConfig, location.pathname]);
 

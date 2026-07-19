@@ -13,7 +13,7 @@
 
 // NOTE: Cloudflare Pages Functions cannot use Vite imports.
 // If the backend URL changes, update this fallback AND the VITE_API_URL env var.
-const API_BASE = (typeof process !== 'undefined' && process.env?.API_BASE_URL) || 'https://157-245-125-216.nip.io/api';
+const API_BASE = (typeof process !== 'undefined' && process.env?.API_BASE_URL) || 'https://159-203-136-199.nip.io/api';
 const SITE_ORIGIN = 'https://menuby.tech';
 
 // Known crawler user agents
@@ -192,7 +192,8 @@ function buildLandingPageHtml(page, pathname) {
   <meta name="twitter:image" content="${SITE_ORIGIN}/og-image.jpg" />
   <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
   <meta name="theme-color" content="#E31E24" />
-  <link rel="icon" href="${SITE_ORIGIN}/logo.jpeg" />
+  <link rel="icon" href="${SITE_ORIGIN}/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="96x96" href="${SITE_ORIGIN}/favicon-96x96.png" />
 </head>
 <body>
   <h1>${escapeHtml(page.title.split('|')[0].trim())}</h1>
@@ -349,7 +350,8 @@ function buildBlogPostHtml(article, slug) {
   <meta name="twitter:image" content="${SITE_ORIGIN}/og-image.jpg" />
   <script type="application/ld+json">${JSON.stringify(jsonLd)}</script>
   <meta name="theme-color" content="#E31E24" />
-  <link rel="icon" href="${SITE_ORIGIN}/logo.jpeg" />
+  <link rel="icon" href="${SITE_ORIGIN}/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="96x96" href="${SITE_ORIGIN}/favicon-96x96.png" />
 </head>
 <body>
   <h1>${escapeHtml(article.title)}</h1>
@@ -396,7 +398,8 @@ function buildBlogIndexHtml() {
   <meta name="twitter:description" content="Guías, tendencias y consejos sobre menú digital para restaurantes." />
   <meta name="twitter:image" content="${SITE_ORIGIN}/og-image.jpg" />
   <meta name="theme-color" content="#E31E24" />
-  <link rel="icon" href="${SITE_ORIGIN}/logo.jpeg" />
+  <link rel="icon" href="${SITE_ORIGIN}/favicon.ico" sizes="any" />
+  <link rel="icon" type="image/png" sizes="96x96" href="${SITE_ORIGIN}/favicon-96x96.png" />
 </head>
 <body>
   <h1>Blog sobre Menú Digital para Restaurantes</h1>
