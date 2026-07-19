@@ -239,6 +239,64 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      Boot-recovery (NO empaquetado, corre siempre). Red de seguridad para el
+      único fallo que main.jsx NO puede curar: cuando el BUNDLE DE ENTRADA
+      (/assets/index-<hash>.js) no carga como JS — típicamente un SW viejo o una
+      respuesta text/html cacheada tras un deploy → "Expected a JavaScript module
+      but the server responded with text/html" → pantalla blanca total.
+
+      QUIRÚRGICO A PROPÓSITO: solo reacciona al <script type=module> de ENTRADA.
+      NO escucha vite:preloadError ni errores de otros /assets/ (chunks lazy,
+      modulepreload). Esos los maneja main.jsx. La versión anterior (revertida en
+      41e8a96) sí los escuchaba y por eso abortaba el fetch del chunk Admin en el
+      flujo de SuperAdmin. Al limitarlo al entry, ese falso positivo desaparece:
+      si el entry carga, esta red de seguridad nunca se dispara.
+    -->
+    <script>
+      (function () {
+        var FLAG = '__mb_boot_reload';
+        function recover() {
+          try {
+            if (sessionStorage.getItem(FLAG)) return; // ya intentamos: sin loop
+            sessionStorage.setItem(FLAG, '1');
+          } catch (e) {}
+          var go = function () {
+            try {
+              var u = new URL(window.location.href);
+              u.searchParams.set('_r', Date.now().toString());
+              window.location.replace(u.toString());
+            } catch (e) { window.location.reload(); }
+          };
+          var jobs = [];
+          try {
+            if ('serviceWorker' in navigator) {
+              jobs.push(navigator.serviceWorker.getRegistrations()
+                .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })
+                .catch(function () {}));
+            }
+            if (window.caches && caches.keys) {
+              jobs.push(caches.keys()
+                .then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })
+                .catch(function () {}));
+            }
+          } catch (e) {}
+          if (jobs.length) { Promise.all(jobs).then(go, go); } else { go(); }
+        }
+        // Solo el bundle de ENTRADA de Vite: <script type=module src=/assets/index-*.js>.
+        // El error de carga de un <script> NO burbujea → escuchar en fase captura.
+        window.addEventListener('error', function (e) {
+          var t = e && e.target;
+          if (!t || t.tagName !== 'SCRIPT' || t.type !== 'module') return;
+          var src = t.src || '';
+          if (/\/assets\/index-[^/]*\.js/.test(src)) recover();
+        }, true);
+        // Si la app arrancó bien, libera el guard para poder recuperar en el próximo deploy.
+        window.addEventListener('load', function () {
+          setTimeout(function () { try { sessionStorage.removeItem(FLAG); } catch (e) {} }, 8000);
+        });
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
