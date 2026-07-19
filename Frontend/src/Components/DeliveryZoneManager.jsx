@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet-draw';
 import api from '../services/api';
 import { useAuth } from '../Context/AuthContext';
+import { AlertTriangle, MapPin, X, RotateCw, Check, Store, CheckCircle2, XCircle, Map, Circle as CircleIcon, FileText } from 'lucide-react';
 
 // Fix para los iconos de Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -508,7 +509,7 @@ const DeliveryZoneManager = () => {
       <div className="flex items-center justify-center h-64">
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md">
           <div className="flex items-center mb-3">
-            <span className="text-2xl mr-2">⚠️</span>
+            <AlertTriangle className="w-6 h-6 mr-2 text-yellow-600" />
             <h3 className="text-lg font-semibold text-yellow-800">Sesión Expirada</h3>
           </div>
           <p className="text-yellow-700 mb-4">
@@ -636,12 +637,12 @@ const DeliveryZoneManager = () => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
         <div className="bg-white rounded-t-2xl lg:rounded-lg p-6 max-w-2xl w-full mx-0 lg:mx-4 max-h-[92vh] lg:max-h-[90vh] overflow-y-auto relative z-[10000]">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg lg:text-xl font-bold">📍 Configurar Ubicación</h3>
+            <h3 className="text-lg lg:text-xl font-bold inline-flex items-center gap-2"><MapPin className="w-5 h-5" /> Configurar Ubicación</h3>
             <button
               onClick={() => setShowLocationModal(false)}
               className="text-gray-500 hover:text-gray-700"
             >
-              ✕
+              <X className="w-5 h-5" />
             </button>
           </div>
 
@@ -659,12 +660,12 @@ const DeliveryZoneManager = () => {
               >
                 {gettingLocation ? (
                   <>
-                    <span className="animate-spin">🔄</span>
+                    <RotateCw className="w-4 h-4 animate-spin" />
                     Obteniendo ubicación...
                   </>
                 ) : (
                   <>
-                    📍 Usar Mi Ubicación Actual
+                    <MapPin className="w-4 h-4" /> Usar Mi Ubicación Actual
                   </>
                 )}
               </button>
@@ -676,7 +677,7 @@ const DeliveryZoneManager = () => {
             {tempLocation && (
               <div className="mt-4">
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg mb-4">
-                  <p className="text-sm font-medium text-green-800 mb-2">✓ Ubicación seleccionada:</p>
+                  <p className="text-sm font-medium text-green-800 mb-2 inline-flex items-center gap-1"><Check className="w-4 h-4" /> Ubicación seleccionada:</p>
                   <p className="text-sm text-green-700">{tempLocation.address}</p>
                   <p className="text-xs text-green-600 mt-1">
                     Lat: {tempLocation.lat.toFixed(6)}, Lng: {tempLocation.lng.toFixed(6)}
@@ -701,7 +702,7 @@ const DeliveryZoneManager = () => {
                     >
                       <Popup>
                         <div className="text-sm">
-                          <strong className="text-red-600">🏪 Tu Tienda</strong>
+                          <strong className="text-red-600 inline-flex items-center gap-1"><Store className="w-3.5 h-3.5" /> Tu Tienda</strong>
                           <br />
                           <span className="text-xs text-gray-600">{tempLocation.address}</span>
                         </div>
@@ -742,8 +743,8 @@ const DeliveryZoneManager = () => {
           <div>
             <h1 className="text-2xl font-bold">Zonas de Entrega</h1>
             {businessLocation && (
-              <p className="text-sm text-gray-600 mt-1">
-                📍 Ubicación de la tienda: Lat {businessLocation.lat.toFixed(4)}, Lng {businessLocation.lng.toFixed(4)}
+              <p className="text-sm text-gray-600 mt-1 inline-flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" /> Ubicación de la tienda: Lat {businessLocation.lat.toFixed(4)}, Lng {businessLocation.lng.toFixed(4)}
               </p>
             )}
           </div>
@@ -753,7 +754,7 @@ const DeliveryZoneManager = () => {
               className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center gap-2"
               title="Configurar ubicación de la tienda"
             >
-              📍 Ubicación
+              <MapPin className="w-4 h-4" /> Ubicación
             </button>
             <button
               onClick={openCreateModal}
@@ -798,7 +799,7 @@ const DeliveryZoneManager = () => {
               >
                 <Popup>
                   <div className="text-sm">
-                    <strong className="text-red-600">🏪 Mi Tienda</strong>
+                    <strong className="text-red-600 inline-flex items-center gap-1"><Store className="w-3.5 h-3.5" /> Mi Tienda</strong>
                     <br />
                     <span className="text-gray-600">
                       Esta es la ubicación de tu negocio
@@ -839,7 +840,7 @@ const DeliveryZoneManager = () => {
                         <div className="text-sm">
                           <strong>{zone.name}</strong>
                           <br />
-                          Estado: {zone.isActive ? '✅ Activa' : '❌ Inactiva'}
+                          Estado: {zone.isActive ? <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 inline" /> Activa</span> : <span className="inline-flex items-center gap-1"><XCircle className="w-3.5 h-3.5 inline" /> Inactiva</span>}
                           <br />
                           Precio base: ${zone.pricing.basePrice}
                           <br />
@@ -862,7 +863,7 @@ const DeliveryZoneManager = () => {
                         <div className="text-sm">
                           <strong>{zone.name}</strong>
                           <br />
-                          Estado: {zone.isActive ? '✅ Activa' : '❌ Inactiva'}
+                          Estado: {zone.isActive ? <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 inline" /> Activa</span> : <span className="inline-flex items-center gap-1"><XCircle className="w-3.5 h-3.5 inline" /> Inactiva</span>}
                           <br />
                           Radio: {Math.round(zone.geometry.radius)}m
                           <br />
@@ -918,8 +919,8 @@ const DeliveryZoneManager = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {zone.type === 'polygon' ? '🗺️ Polígono' : '⭕ Radio'}
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 inline-flex items-center gap-1">
+                    {zone.type === 'polygon' ? <><Map className="w-3.5 h-3.5" /> Polígono</> : <><CircleIcon className="w-3.5 h-3.5" /> Radio</>}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                     ${zone.pricing.basePrice}
@@ -1065,8 +1066,8 @@ const DeliveryZoneManager = () => {
                         </svg>
                       </div>
                       <div className="ml-3">
-                        <p className="text-sm text-blue-800 font-medium">
-                          ✅ Zona existente cargada en el mapa
+                        <p className="text-sm text-blue-800 font-medium inline-flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4" /> Zona existente cargada en el mapa
                         </p>
                         <p className="text-xs text-blue-700 mt-1">
                           Puedes ver la zona actual marcada en <span className="font-semibold" style={{ color: formData.color }}>color {formData.color}</span>. 
@@ -1100,7 +1101,7 @@ const DeliveryZoneManager = () => {
                       >
                         <Popup>
                           <div className="text-sm">
-                            <strong className="text-red-600">🏪 Mi Tienda</strong>
+                            <strong className="text-red-600 inline-flex items-center gap-1"><Store className="w-3.5 h-3.5" /> Mi Tienda</strong>
                           </div>
                         </Popup>
                       </Marker>
@@ -1127,7 +1128,7 @@ const DeliveryZoneManager = () => {
                           >
                             <Popup>
                               <div className="text-sm">
-                                <strong className="text-blue-600">📝 {formData.name}</strong>
+                                <strong className="text-blue-600 inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {formData.name}</strong>
                                 <p className="text-xs text-gray-600 mt-1">Zona en edición</p>
                               </div>
                             </Popup>
@@ -1145,7 +1146,7 @@ const DeliveryZoneManager = () => {
                           >
                             <Popup>
                               <div className="text-sm">
-                                <strong className="text-blue-600">📝 {formData.name}</strong>
+                                <strong className="text-blue-600 inline-flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> {formData.name}</strong>
                                 <p className="text-xs text-gray-600 mt-1">Zona en edición</p>
                                 <p className="text-xs text-gray-600">Radio: {formData.geometry.radius}m</p>
                               </div>

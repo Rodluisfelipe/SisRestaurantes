@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { X } from 'lucide-react';
 
 export default function POSCart({ cart, updateQuantity, removeFromCart, clearCart, onCheckout, onHoldOrder, heldOrders, onRecallHeldOrder, onDeleteHeldOrder, selectedTable, onClearTable, themeColor }) {
   const { businessConfig } = useBusinessConfig();
@@ -32,7 +33,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               {selectedTable && (
                 <button onClick={onClearTable} className="flex items-center gap-1 text-xs lg:text-[10px] font-bold text-blue-600 hover:text-blue-800 transition-colors mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                  {tableLabel} {selectedTable.tableNumber} ✕
+                  {tableLabel} {selectedTable.tableNumber} <X className="w-3 h-3 inline" />
                 </button>
               )}
             </div>

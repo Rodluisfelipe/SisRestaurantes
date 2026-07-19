@@ -7,6 +7,11 @@ import FeaturedProducts from './FeaturedProducts';
 import PopularProducts from './PopularProducts';
 import PendingReviewCard from './PendingReviewCard';
 import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
+import {
+  Hamburger, Pizza, CupSoda, Coffee, CakeSlice, Ham, Salad, Soup, Drumstick,
+  CookingPot, Fish, Croissant, Sandwich, EggFried, UtensilsCrossed, Gift,
+  Wheat, Popcorn, Utensils, Sparkles,
+} from 'lucide-react';
 
 /* ── SVG Icons (stroke-based, admin panel style) ── */
 const MI = {
@@ -21,56 +26,15 @@ const MI = {
 };
 
 /* ── Category SVG Icons (stroke-based, matching the design system) ── */
-const CI = {
-  // Burger / Hamburguesa
-  burger: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M4 15h16a1 1 0 010 2H4a1 1 0 010-2z"/><path d="M5 15V13a7 7 0 0114 0v2"/><path d="M4 17v1a2 2 0 002 2h12a2 2 0 002-2v-1"/><path d="M8 13h.01M12 13h.01M16 13h.01"/></svg>,
-  // Pizza
-  pizza: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L4 20h16L12 2z"/><circle cx="10" cy="13" r="1"/><circle cx="14" cy="11" r="1"/><circle cx="11" cy="8" r="1"/></svg>,
-  // Bebida / Drink — glass with straw
-  drink: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M17 8H7l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13z"/><path d="M7 8l-1-4h12l-1 4"/><path d="M14 4l2-2"/></svg>,
-  // Coffee / Café
-  coffee: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M17 8h1a4 4 0 010 8h-1"/><path d="M3 8h14v9a4 4 0 01-4 4H7a4 4 0 01-4-4V8z"/><path d="M6 2v3M10 2v3M14 2v3"/></svg>,
-  // Postre / Dessert — cake
-  dessert: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M4 18h16v2a1 1 0 01-1 1H5a1 1 0 01-1-1v-2z"/><path d="M4 18v-2a8 8 0 0116 0v2"/><path d="M12 4v4"/><circle cx="12" cy="3" r="1"/></svg>,
-  // Entrada / Appetizer — small plate
-  appetizer: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="14" rx="9" ry="4"/><path d="M3 14v1a9 4 0 0018 0v-1"/><path d="M12 6v4M9 8l3-4 3 4"/></svg>,
-  // Ensalada / Salad — leaf
-  salad: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M17 8C8 10 5.9 16.17 3.82 21.34l1.89.66.95-2.3c.48.17.98.3 1.34.3C19 20 22 3 22 3c-1 2-8 2.25-13 3.5S2 11.5 2 13.5s1.75 3.75 1.75 3.75"/></svg>,
-  // Sopa / Soup — bowl with steam
-  soup: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18"/><path d="M5 12v2a7 7 0 0014 0v-2"/><path d="M9 4c0 1.5-1 2-1 3M12 4c0 1.5-1 2-1 3M15 4c0 1.5-1 2-1 3"/></svg>,
-  // Pollo / Chicken — drumstick
-  chicken: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M15.5 2.5a5 5 0 010 7.07l-5.66 5.66a2 2 0 01-2.83 0l-.7-.71a2 2 0 010-2.83l5.65-5.65a5 5 0 017.07 0z" transform="rotate(-10 12 12)"/><path d="M7 14l-4 4M8 17l-2 2"/></svg>,
-  // Pasta / Noodles
-  pasta: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18"/><path d="M5 12c0 5 3 8 7 8s7-3 7-8"/><path d="M6 4c0 2.5 2 4 6 4s6-1.5 6-4"/><path d="M6 4v8M18 4v8M12 4v8"/></svg>,
-  // Mariscos / Seafood — fish
-  seafood: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M6.34 18.66l-2.83-2.83a2 2 0 010-2.83l9.9-9.9a2 2 0 012.83 0l2.83 2.83a2 2 0 010 2.83l-9.9 9.9a2 2 0 01-2.83 0z" transform="rotate(-15 12 12)"/><path d="M2 22l4-4M18 6l4-4"/><circle cx="15" cy="9" r="1"/></svg>,
-  // Taco
-  taco: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M4 18a8 8 0 0116 0"/><path d="M4 18c0 1 2 3 8 3s8-2 8-3"/><path d="M8 14v-2M12 14v-3M16 14v-2"/></svg>,
-  // Sandwich / Wrap
-  sandwich: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 17l9-14 9 14H3z"/><path d="M6 17h12"/><path d="M8 13h8"/></svg>,
-  // Desayuno / Breakfast — egg & toast
-  breakfast: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><circle cx="10" cy="13" r="6"/><circle cx="10" cy="13" r="2"/><path d="M18 8h2a2 2 0 012 2v4a2 2 0 01-2 2h-2V8z"/><path d="M18 8H14"/></svg>,
-  // Combo — stacked boxes
-  combo: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="13" width="10" height="9" rx="1"/><rect x="12" y="9" width="10" height="13" rx="1"/><path d="M2 17h10M12 15h10"/></svg>,
-  // Almuerzo / Cena — plate with utensils
-  meal: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="13" r="8"/><circle cx="12" cy="13" r="4"/><path d="M3 3l3 7M21 3l-3 7"/></svg>,
-  // Arroz / Rice — bowl
-  rice: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M4 12h16"/><path d="M5 12c0 5.5 3.5 9 7 9s7-3.5 7-9"/><path d="M8 9c0-2 2-4 4-4s4 2 4 4"/></svg>,
-  // Snack — cookie/chip
-  snack: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1"/><circle cx="14" cy="9" r="1"/><circle cx="11" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg>,
-  // Default — utensils
-  utensils: (cls = 'w-4 h-4') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v20M7 2v8a4 4 0 01-4 4"/><path d="M7 2v8a4 4 0 004 4v8"/><path d="M21 2v4a7 4 0 01-7 4v12"/><path d="M21 2c-1 0-3 1-3 4"/></svg>,
+/* ── Map category key → Lucide icon component ── */
+const CATEGORY_ICONS = {
+  burger: Hamburger, pizza: Pizza, drink: CupSoda, coffee: Coffee, dessert: CakeSlice,
+  appetizer: Ham, salad: Salad, soup: Soup, chicken: Drumstick, pasta: CookingPot,
+  seafood: Fish, taco: Croissant, sandwich: Sandwich, breakfast: EggFried, meal: UtensilsCrossed,
+  combo: Gift, rice: Wheat, snack: Popcorn, utensils: Utensils,
 };
 
-/* ── Map category name → Emoji ── */
-const CATEGORY_EMOJIS = {
-  burger: '🍔', pizza: '🍕', drink: '🥤', coffee: '☕', dessert: '🍰',
-  appetizer: '🍽️', salad: '🥗', soup: '🍲', chicken: '🍗', pasta: '🍝',
-  seafood: '🐟', taco: '🌮', sandwich: '🥪', breakfast: '🍳', meal: '🍛',
-  combo: '🎁', rice: '🍚', snack: '🍿', utensils: '🍴',
-};
-
-const getCategoryEmoji = (categoryName) => {
+const getCategoryKey = (categoryName) => {
   const name = (categoryName || '').toLowerCase().trim();
   const map = {
     'hamburguesas': 'burger', 'hamburguesa': 'burger', 'burgers': 'burger', 'burger': 'burger',
@@ -95,83 +59,36 @@ const getCategoryEmoji = (categoryName) => {
     'snacks': 'snack', 'snack': 'snack', 'acompañamientos': 'snack', 'acompañamiento': 'snack', 'extras': 'snack', 'complementos': 'snack',
   };
 
-  if (map[name]) return CATEGORY_EMOJIS[map[name]];
+  if (map[name]) return map[name];
 
-  if (name.includes('burger') || name.includes('hamburguesa')) return CATEGORY_EMOJIS.burger;
-  if (name.includes('pizza')) return CATEGORY_EMOJIS.pizza;
-  if (name.includes('bebida') || name.includes('drink') || name.includes('jugo') || name.includes('batido')) return CATEGORY_EMOJIS.drink;
-  if (name.includes('café') || name.includes('cafe') || name.includes('coffee')) return CATEGORY_EMOJIS.coffee;
-  if (name.includes('postre') || name.includes('dessert') || name.includes('dulce')) return CATEGORY_EMOJIS.dessert;
-  if (name.includes('entrada') || name.includes('appetizer')) return CATEGORY_EMOJIS.appetizer;
-  if (name.includes('ensalada') || name.includes('salad')) return CATEGORY_EMOJIS.salad;
-  if (name.includes('sopa') || name.includes('caldo') || name.includes('crema')) return CATEGORY_EMOJIS.soup;
-  if (name.includes('pollo') || name.includes('chicken') || name.includes('alita')) return CATEGORY_EMOJIS.chicken;
-  if (name.includes('pasta')) return CATEGORY_EMOJIS.pasta;
-  if (name.includes('marisco') || name.includes('pescado') || name.includes('seafood')) return CATEGORY_EMOJIS.seafood;
-  if (name.includes('taco')) return CATEGORY_EMOJIS.taco;
-  if (name.includes('sandwich') || name.includes('wrap') || name.includes('burrito')) return CATEGORY_EMOJIS.sandwich;
-  if (name.includes('desayuno') || name.includes('breakfast')) return CATEGORY_EMOJIS.breakfast;
-  if (name.includes('almuerzo') || name.includes('cena') || name.includes('plato')) return CATEGORY_EMOJIS.meal;
-  if (name.includes('combo') || name.includes('promo')) return CATEGORY_EMOJIS.combo;
-  if (name.includes('arroz') || name.includes('rice')) return CATEGORY_EMOJIS.rice;
-  if (name.includes('snack') || name.includes('extra') || name.includes('complement')) return CATEGORY_EMOJIS.snack;
+  if (name.includes('burger') || name.includes('hamburguesa')) return 'burger';
+  if (name.includes('pizza')) return 'pizza';
+  if (name.includes('bebida') || name.includes('drink') || name.includes('jugo') || name.includes('batido')) return 'drink';
+  if (name.includes('café') || name.includes('cafe') || name.includes('coffee')) return 'coffee';
+  if (name.includes('postre') || name.includes('dessert') || name.includes('dulce')) return 'dessert';
+  if (name.includes('entrada') || name.includes('appetizer')) return 'appetizer';
+  if (name.includes('ensalada') || name.includes('salad')) return 'salad';
+  if (name.includes('sopa') || name.includes('caldo') || name.includes('crema')) return 'soup';
+  if (name.includes('pollo') || name.includes('chicken') || name.includes('alita')) return 'chicken';
+  if (name.includes('pasta')) return 'pasta';
+  if (name.includes('marisco') || name.includes('pescado') || name.includes('seafood')) return 'seafood';
+  if (name.includes('taco')) return 'taco';
+  if (name.includes('sandwich') || name.includes('wrap') || name.includes('burrito')) return 'sandwich';
+  if (name.includes('desayuno') || name.includes('breakfast')) return 'breakfast';
+  if (name.includes('almuerzo') || name.includes('cena') || name.includes('plato')) return 'meal';
+  if (name.includes('combo') || name.includes('promo')) return 'combo';
+  if (name.includes('arroz') || name.includes('rice')) return 'rice';
+  if (name.includes('snack') || name.includes('extra') || name.includes('complement')) return 'snack';
 
-  return CATEGORY_EMOJIS.utensils;
+  return 'utensils';
 };
 
-// Service-aware emoji: returns ✨ instead of 🍴 for service businesses
-const getCategoryEmojiForBusiness = (categoryName, businessType) => {
+// Service-aware: returns Sparkles instead of Utensils for service businesses without a category match
+const getCategoryIconForBusiness = (categoryName, businessType) => {
   const isServiceBiz = ['salon', 'spa', 'clinic', 'services'].includes(businessType);
-  const emoji = getCategoryEmoji(categoryName);
-  if (isServiceBiz && emoji === CATEGORY_EMOJIS.utensils) return '✨';
-  return emoji;
-};
-
-/* ── Legacy SVG icon getter (kept for pill bar) ── */
-const getCategoryIcon = (categoryName, cls = 'w-4 h-4') => {
-  const name = (categoryName || '').toLowerCase().trim();
-  const map = {
-    'hamburguesas': 'burger', 'hamburguesa': 'burger', 'burgers': 'burger', 'burger': 'burger',
-    'pizza': 'pizza', 'pizzas': 'pizza',
-    'bebidas': 'drink', 'bebida': 'drink', 'drinks': 'drink', 'bebidas frías': 'drink', 'bebidas frias': 'drink',
-    'bebidas calientes': 'coffee', 'café': 'coffee', 'cafés': 'coffee', 'cafe': 'coffee', 'coffee': 'coffee',
-    'jugos': 'drink', 'jugo': 'drink', 'batidos': 'drink', 'batido': 'drink', 'malteadas': 'drink',
-    'postres': 'dessert', 'postre': 'dessert', 'desserts': 'dessert', 'dulces': 'dessert',
-    'entradas': 'appetizer', 'entrada': 'appetizer', 'appetizers': 'appetizer', 'aperitivos': 'appetizer',
-    'ensaladas': 'salad', 'ensalada': 'salad', 'salads': 'salad',
-    'sopas': 'soup', 'sopa': 'soup', 'caldos': 'soup', 'cremas': 'soup',
-    'pollo': 'chicken', 'pollos': 'chicken', 'alitas': 'chicken', 'chicken': 'chicken',
-    'pasta': 'pasta', 'pastas': 'pasta',
-    'mariscos': 'seafood', 'pescado': 'seafood', 'pescados': 'seafood', 'seafood': 'seafood',
-    'tacos': 'taco', 'taco': 'taco',
-    'wraps': 'sandwich', 'wrap': 'sandwich', 'burritos': 'sandwich', 'burrito': 'sandwich',
-    'sandwiches': 'sandwich', 'sandwich': 'sandwich', 'sándwiches': 'sandwich',
-    'desayunos': 'breakfast', 'desayuno': 'breakfast', 'breakfast': 'breakfast',
-    'almuerzos': 'meal', 'almuerzo': 'meal', 'cenas': 'meal', 'cena': 'meal', 'platos fuertes': 'meal', 'plato fuerte': 'meal',
-    'combos': 'combo', 'combo': 'combo', 'promociones': 'combo', 'ofertas': 'combo',
-    'arroz': 'rice', 'arroces': 'rice',
-    'snacks': 'snack', 'snack': 'snack', 'acompañamientos': 'snack', 'acompañamiento': 'snack', 'extras': 'snack', 'complementos': 'snack',
-  };
-  if (map[name]) return CI[map[name]](cls);
-  if (name.includes('burger') || name.includes('hamburguesa')) return CI.burger(cls);
-  if (name.includes('pizza')) return CI.pizza(cls);
-  if (name.includes('bebida') || name.includes('drink') || name.includes('jugo') || name.includes('batido')) return CI.drink(cls);
-  if (name.includes('café') || name.includes('cafe') || name.includes('coffee')) return CI.coffee(cls);
-  if (name.includes('postre') || name.includes('dessert') || name.includes('dulce')) return CI.dessert(cls);
-  if (name.includes('entrada') || name.includes('appetizer')) return CI.appetizer(cls);
-  if (name.includes('ensalada') || name.includes('salad')) return CI.salad(cls);
-  if (name.includes('sopa') || name.includes('caldo') || name.includes('crema')) return CI.soup(cls);
-  if (name.includes('pollo') || name.includes('chicken') || name.includes('alita')) return CI.chicken(cls);
-  if (name.includes('pasta')) return CI.pasta(cls);
-  if (name.includes('marisco') || name.includes('pescado') || name.includes('seafood')) return CI.seafood(cls);
-  if (name.includes('taco')) return CI.taco(cls);
-  if (name.includes('sandwich') || name.includes('wrap') || name.includes('burrito')) return CI.sandwich(cls);
-  if (name.includes('desayuno') || name.includes('breakfast')) return CI.breakfast(cls);
-  if (name.includes('almuerzo') || name.includes('cena') || name.includes('plato')) return CI.meal(cls);
-  if (name.includes('combo') || name.includes('promo')) return CI.combo(cls);
-  if (name.includes('arroz') || name.includes('rice')) return CI.rice(cls);
-  if (name.includes('snack') || name.includes('extra') || name.includes('complement')) return CI.snack(cls);
-  return CI.utensils(cls);
+  const key = getCategoryKey(categoryName);
+  if (isServiceBiz && key === 'utensils') return Sparkles;
+  return CATEGORY_ICONS[key];
 };
 
 /**
@@ -576,6 +493,7 @@ const FilterableMenu = ({
           businessId={businessId}
           customerPhone={customerPhone}
           themeColor={themeColor}
+          themeTextColor={themeTextColor}
           onReview={onPendingReview}
         />
       )}
@@ -649,7 +567,9 @@ const FilterableMenu = ({
               transition={{ delay: 0.1 }}
               className="relative z-20 flex flex-wrap gap-2 mt-3"
             >
-              {categoriesWithProducts.slice(0, 5).map(cat => (
+              {categoriesWithProducts.slice(0, 5).map(cat => {
+                const CategoryIcon = CATEGORY_ICONS[getCategoryKey(cat.name)];
+                return (
                 <motion.button
                   key={cat._id}
                   whileTap={{ scale: 0.93 }}
@@ -657,10 +577,11 @@ const FilterableMenu = ({
                   onClick={() => { setSearchTerm(cat.name); setSearchFocused(false); }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white/90 backdrop-blur-md text-slate-700 shadow-md border border-white/50 active:bg-white transition-all"
                 >
-                  <span className="opacity-60">{getCategoryIcon(cat.name, 'w-3 h-3')}</span>
+                  <CategoryIcon className="w-3 h-3 opacity-60" />
                   {cat.name}
                 </motion.button>
-              ))}
+                );
+              })}
             </motion.div>
           )}
         </AnimatePresence>
@@ -805,17 +726,20 @@ const FilterableMenu = ({
                   <div className="mt-6 w-full">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Explora categorías</p>
                     <div className="flex flex-wrap justify-center gap-2">
-                      {categoriesWithProducts.slice(0, 4).map(cat => (
+                      {categoriesWithProducts.slice(0, 4).map(cat => {
+                        const CategoryIcon = CATEGORY_ICONS[getCategoryKey(cat.name)];
+                        return (
                         <motion.button
                           key={cat._id}
                           whileTap={{ scale: 0.93 }}
                           onClick={() => { clearSearch(); handlePillClick(cat._id); }}
                           className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-700 shadow-sm hover:shadow-md transition-all"
                         >
-                          <span className="opacity-50">{getCategoryIcon(cat.name, 'w-3.5 h-3.5')}</span>
+                          <CategoryIcon className="w-3.5 h-3.5 opacity-50" />
                           {cat.name}
                         </motion.button>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -845,7 +769,8 @@ const FilterableMenu = ({
               categoriesWithProducts.map((category, categoryIndex) => {
               const categoryProducts = filteredProducts.filter(product => product.category === category._id);
               if (categoryProducts.length === 0) return null;
-              
+              const CategoryIcon = getCategoryIconForBusiness(category.name, businessConfig?.businessType);
+
               return (
                   <motion.div
                     key={category._id}
@@ -866,7 +791,7 @@ const FilterableMenu = ({
                           border: `1px solid ${themeColor}15`
                         }}
                       >
-                        <span className="text-lg sm:text-xl leading-none" role="img">{getCategoryEmojiForBusiness(category.name, businessConfig?.businessType)}</span>
+                        <CategoryIcon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: themeColor }} />
                       </div>
                       <div className="flex flex-col">
                         <h2 className="text-[15px] sm:text-base font-bold text-slate-800 tracking-tight leading-tight">{category.name}</h2>
@@ -924,20 +849,21 @@ const FilterableMenu = ({
                 {/* Category Header */}
                 {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => {
                   const singleCatProducts = filteredProducts.filter(p => p.category === category._id);
+                  const CategoryIcon = getCategoryIconForBusiness(category.name, businessConfig?.businessType);
                   return (
-                  <div 
+                  <div
                     key={category._id}
                     className="flex items-center gap-3 mb-3 sm:mb-4"
                   >
-                    <div 
+                    <div
                       className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm"
-                      style={{ 
+                      style={{
                         background: `linear-gradient(135deg, ${themeColor}18, ${themeColor}08)`,
                         boxShadow: `0 2px 8px ${themeColor}15`,
                         border: `1px solid ${themeColor}15`
                       }}
                     >
-                      <span className="text-lg sm:text-xl leading-none" role="img">{getCategoryEmojiForBusiness(category.name, businessConfig?.businessType)}</span>
+                      <CategoryIcon className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: themeColor }} />
                     </div>
                     <div className="flex flex-col">
                       <h2 className="text-base sm:text-lg font-bold text-slate-800 tracking-tight leading-tight">{category.name}</h2>

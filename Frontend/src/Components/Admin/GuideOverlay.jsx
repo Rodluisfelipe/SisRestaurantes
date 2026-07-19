@@ -281,9 +281,9 @@ export default function GuideOverlay({ sectionId, isOpen, onClose }) {
             <div className="px-6 pb-5">
               <button
                 onClick={onClose}
-                className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-colors text-sm"
+                className="w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-xl transition-colors text-sm inline-flex items-center justify-center gap-1.5"
               >
-                Entendido ✓
+                Entendido {AI.check('w-4 h-4')}
               </button>
             </div>
           </motion.div>

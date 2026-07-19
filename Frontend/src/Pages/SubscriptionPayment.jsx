@@ -5,6 +5,7 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import { useBusinessSocket } from '../hooks/useBusinessSocket';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Check } from 'lucide-react';
 
 // Planes comerciales directos (sin comisión de pasarela)
 const DIRECT_PLANS = [
@@ -100,9 +101,9 @@ const USAGE_RESOURCE_ORDER = [
 
 // Métodos de pago directo
 const DIRECT_METHODS = [
-  { id: 'Nequi', label: 'Nequi', value: '302 818 1520', icon: '\uD83D\uDCF1' },
-  { id: 'Daviplata', label: 'Daviplata', value: '302 818 1520', icon: '\uD83D\uDCB3' },
-  { id: 'Transferencia', label: 'Llave Breve', value: '@LRQ430', icon: '\uD83D\uDD11' },
+  { id: 'Nequi', label: 'Nequi', value: '302 818 1520', logo: '/payment-logos/nequi.svg' },
+  { id: 'Daviplata', label: 'Daviplata', value: '302 818 1520', logo: '/payment-logos/daviplata.png' },
+  { id: 'Transferencia', label: 'Llave Breve', value: '@LRQ430', logo: '/payment-logos/breb.jpg' },
 ];
 
 const SubscriptionPayment = () => {
@@ -1026,7 +1027,9 @@ const SubscriptionPayment = () => {
                             ? 'border-[#3A7AFF] bg-[#3A7AFF]/5'
                             : 'border-[#DCE4F5] hover:border-[#3A7AFF]/30'
                         }`}>
-                        <span className="text-lg">{method.icon}</span>
+                        <span className="h-7 w-9 flex items-center justify-center shrink-0 rounded-md bg-white border border-[#EEF1F8] overflow-hidden">
+                          <img src={method.logo} alt={method.label} className="max-h-6 max-w-8 object-contain" />
+                        </span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[11px] font-bold text-[#1F2937]">{method.label}</span>
@@ -1034,12 +1037,12 @@ const SubscriptionPayment = () => {
                           </div>
                           <span className="text-sm font-bold text-[#3A7AFF] font-mono tracking-wide">{method.value}</span>
                         </div>
-                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all ${
-                          copiedMethod === method.id 
-                            ? 'bg-emerald-100 text-emerald-700' 
+                        <span className={`text-[9px] font-semibold px-2 py-0.5 rounded-full transition-all inline-flex items-center gap-1 ${
+                          copiedMethod === method.id
+                            ? 'bg-emerald-100 text-emerald-700'
                             : 'bg-[#F4F6FB] text-[#6C7A92]'
                         }`}>
-                          {copiedMethod === method.id ? '\u2713 Copiado' : 'Copiar'}
+                          {copiedMethod === method.id ? <><Check className="w-2.5 h-2.5" /> Copiado</> : 'Copiar'}
                         </span>
                       </button>
                     ))}

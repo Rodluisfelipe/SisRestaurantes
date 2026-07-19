@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { UtensilsCrossed } from 'lucide-react';
 
 /**
  * FlyToCart — renders a small thumbnail that "flies" from a product card
@@ -86,7 +87,7 @@ const FlyingDot = ({ startX, startY, targetX, targetY, image, color }) => {
         {image ? (
           <img src={image} alt="" className="w-full h-full object-cover" loading="lazy" width="40" height="40" />
         ) : (
-          <span className="text-lg">🍽️</span>
+          <UtensilsCrossed className="w-4 h-4 text-white" />
         )}
       </div>
     </motion.div>

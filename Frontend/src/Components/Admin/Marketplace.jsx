@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
+import { ShoppingCart, Store, Factory, X } from 'lucide-react';
 
 const CATEGORIES = [
   { value: '', label: 'Todos' },
@@ -142,7 +143,7 @@ export default function Marketplace({ businessId, businessName }) {
             onClick={() => setShowCart(true)}
             className="relative flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
           >
-            🛒 Carrito
+            <ShoppingCart className="w-4 h-4" /> Carrito
             <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
               {cart.reduce((s, i) => s + i.qty, 0)}
             </span>
@@ -194,7 +195,7 @@ export default function Marketplace({ businessId, businessName }) {
       {/* Productos */}
       {filteredProducts.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
-          <p className="text-4xl mb-2">🏪</p>
+          <Store className="w-10 h-10 mx-auto mb-2 text-slate-300" />
           <p className="font-medium">No hay productos disponibles</p>
           <p className="text-sm mt-1">Los proveedores aparecerán aquí una vez sean aprobados por el administrador</p>
         </div>
@@ -216,7 +217,7 @@ export default function Marketplace({ businessId, businessName }) {
                   <p className="text-xs text-slate-500 mb-3 line-clamp-2">{product.description}</p>
                 )}
                 {product.supplier && (
-                  <p className="text-xs text-slate-400 mb-3">🏭 {product.supplier.businessName}</p>
+                  <p className="text-xs text-slate-400 mb-3 inline-flex items-center gap-1"><Factory className="w-3 h-3" /> {product.supplier.businessName}</p>
                 )}
                 <button
                   onClick={() => addToCart(product)}
@@ -235,14 +236,14 @@ export default function Marketplace({ businessId, businessName }) {
         <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between p-5 border-b">
-              <h3 className="font-bold text-slate-900">🛒 Confirmar pedido</h3>
-              <button onClick={() => setShowCart(false)} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+              <h3 className="font-bold text-slate-900 inline-flex items-center gap-2"><ShoppingCart className="w-4 h-4" /> Confirmar pedido</h3>
+              <button onClick={() => setShowCart(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="overflow-y-auto flex-1 p-5 space-y-4">
               {Object.entries(cartBySupplier).map(([supplierId, { supplierName, items }]) => (
                 <div key={supplierId}>
-                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2">🏭 {supplierName}</p>
+                  <p className="text-xs font-semibold text-slate-500 uppercase mb-2 inline-flex items-center gap-1"><Factory className="w-3 h-3" /> {supplierName}</p>
                   {items.map(item => (
                     <div key={String(item.productId)} className="flex items-center gap-3 py-2 border-b last:border-0">
                       <div className="flex-1 min-w-0">
@@ -253,7 +254,7 @@ export default function Marketplace({ businessId, businessName }) {
                         <button onClick={() => updateQty(item.productId, item.qty - 1)} className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm hover:bg-slate-200">−</button>
                         <span className="text-sm font-medium w-5 text-center">{item.qty}</span>
                         <button onClick={() => updateQty(item.productId, item.qty + 1)} className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm hover:bg-slate-200">+</button>
-                        <button onClick={() => removeFromCart(item.productId)} className="text-red-400 hover:text-red-600 ml-1 text-xs">✕</button>
+                        <button onClick={() => removeFromCart(item.productId)} className="text-red-400 hover:text-red-600 ml-1"><X className="w-3.5 h-3.5" /></button>
                       </div>
                     </div>
                   ))}

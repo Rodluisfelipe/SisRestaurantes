@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTimes, FaSlidersH } from 'react-icons/fa';
+import { UtensilsCrossed } from 'lucide-react';
 
 /**
  * ProductPeek — iOS-style long-press "peek" overlay.
@@ -118,7 +119,7 @@ const ProductPeekWrapper = ({ children, product, buttonColor, buttonTextColor })
                     className="w-full h-full flex items-center justify-center"
                     style={{ background: `linear-gradient(135deg, ${buttonColor}20, ${buttonColor}08)` }}
                   >
-                    <span className="text-6xl opacity-30">🍽️</span>
+                    <UtensilsCrossed className="w-16 h-16 opacity-30" style={{ color: buttonColor }} />
                   </div>
                 )}
 

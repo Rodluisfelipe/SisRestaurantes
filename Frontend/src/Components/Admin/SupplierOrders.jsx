@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../../services/api';
+import { Package, Factory, MapPin, MessageSquare, Info, RotateCw, ClipboardList } from 'lucide-react';
 
 const STATUS_COLORS = {
   pending_approval: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -39,8 +40,8 @@ function OrderCard({ order, isSupplier, onStatusUpdate }) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-xs text-slate-400">#{String(order._id).slice(-6).toUpperCase()}</p>
-          <p className="font-semibold text-slate-900 text-sm truncate">
-            {isSupplier ? `📦 ${order.buyerBusinessName}` : `🏭 ${order.supplierBusinessName}`}
+          <p className="font-semibold text-slate-900 text-sm truncate inline-flex items-center gap-1.5">
+            {isSupplier ? <><Package className="w-3.5 h-3.5 shrink-0" /> {order.buyerBusinessName}</> : <><Factory className="w-3.5 h-3.5 shrink-0" /> {order.supplierBusinessName}</>}
           </p>
           <p className="text-xs text-slate-500">{new Date(order.createdAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
         </div>
@@ -86,9 +87,9 @@ function OrderCard({ order, isSupplier, onStatusUpdate }) {
       {/* Notas */}
       {(order.buyerNote || order.superadminNote || order.deliveryAddress) && (
         <div className="pt-2 border-t border-slate-100 space-y-1">
-          {order.deliveryAddress && <p className="text-xs text-slate-500">📍 {order.deliveryAddress}</p>}
-          {order.buyerNote && <p className="text-xs text-slate-500">💬 {order.buyerNote}</p>}
-          {order.superadminNote && <p className="text-xs text-blue-600">ℹ️ {order.superadminNote}</p>}
+          {order.deliveryAddress && <p className="text-xs text-slate-500 inline-flex items-center gap-1"><MapPin className="w-3 h-3 shrink-0" /> {order.deliveryAddress}</p>}
+          {order.buyerNote && <p className="text-xs text-slate-500 inline-flex items-center gap-1"><MessageSquare className="w-3 h-3 shrink-0" /> {order.buyerNote}</p>}
+          {order.superadminNote && <p className="text-xs text-blue-600 inline-flex items-center gap-1"><Info className="w-3 h-3 shrink-0" /> {order.superadminNote}</p>}
         </div>
       )}
     </div>
@@ -135,7 +136,7 @@ export default function SupplierOrders({ businessId, isSupplier }) {
             {isSupplier ? 'Pedidos B2B de restaurantes que te compran' : 'Historial de tus compras a proveedores'}
           </p>
         </div>
-        <button onClick={fetchOrders} className="text-xs text-blue-600 hover:underline">↻ Actualizar</button>
+        <button onClick={fetchOrders} className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"><RotateCw className="w-3 h-3" /> Actualizar</button>
       </div>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">{error}</div>}
@@ -167,7 +168,7 @@ export default function SupplierOrders({ businessId, isSupplier }) {
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-slate-400">
-          <p className="text-4xl mb-2">📋</p>
+          <ClipboardList className="w-10 h-10 mx-auto mb-2 text-slate-300" />
           <p className="font-medium">{filterStatus ? 'No hay pedidos con ese estado' : 'No hay pedidos aún'}</p>
           {!isSupplier && !filterStatus && (
             <p className="text-sm mt-1">Ve al Marketplace para hacer tu primer pedido a un proveedor</p>

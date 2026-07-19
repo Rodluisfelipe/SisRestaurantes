@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import api from '../../services/api';
+import { CheckCircle2, Clock, Rocket } from 'lucide-react';
 
 const MAX_CHARS = 1000;
 
@@ -177,8 +178,8 @@ export default function WhatsAppCampaign({ businessId }) {
             <p className="text-xs text-slate-500 mt-0.5">Tiempo estimado</p>
           </div>
           <div className={`border rounded-xl p-3 text-center ${stats.canSend ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
-            <p className={`text-sm font-semibold ${stats.canSend ? 'text-green-700' : 'text-amber-700'}`}>
-              {stats.canSend ? '✅ Disponible' : `⏳ ${waitTime}`}
+            <p className={`text-sm font-semibold inline-flex items-center justify-center gap-1 ${stats.canSend ? 'text-green-700' : 'text-amber-700'}`}>
+              {stats.canSend ? <><CheckCircle2 className="w-4 h-4" /> Disponible</> : <><Clock className="w-4 h-4" /> {waitTime}</>}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
               {stats.canSend
@@ -331,7 +332,7 @@ export default function WhatsAppCampaign({ businessId }) {
       )}
       {result && (
         <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 space-y-1">
-          <p className="text-sm font-semibold text-green-800">🚀 Campaña enviada</p>
+          <p className="text-sm font-semibold text-green-800 inline-flex items-center gap-1.5"><Rocket className="w-4 h-4" /> Campaña enviada</p>
           <p className="text-xs text-green-700">{result.message}</p>
         </div>
       )}

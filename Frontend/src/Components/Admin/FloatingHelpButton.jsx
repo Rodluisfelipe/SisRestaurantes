@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaQuestionCircle, FaTimes, FaWhatsapp, FaBookOpen, FaRocket } from 'react-icons/fa';
+import { FaQuestionCircle, FaTimes, FaWhatsapp, FaBookOpen, FaRocket, FaCheck } from 'react-icons/fa';
 import AI from './AdminIcons';
 
 const WHATSAPP_NUMBER = '573138178003';
@@ -191,9 +191,9 @@ export default function FloatingHelpButton({ onShowWizard }) {
                 </button>
                 <button
                   onClick={() => setShowQuickGuide(false)}
-                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition-colors"
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold transition-colors inline-flex items-center justify-center gap-1.5"
                 >
-                  Entendido ✓
+                  Entendido <FaCheck className="text-xs" />
                 </button>
               </div>
             </motion.div>

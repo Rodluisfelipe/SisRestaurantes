@@ -8,6 +8,7 @@ import useCartPricing, { calculateItemTotal } from '../hooks/useCartPricing';
 import { formatCurrency } from '../utils/currency';
 
 import BusinessClosedModal from './BusinessClosedModal';
+import { Gift, UtensilsCrossed, ShoppingBag, Bike } from 'lucide-react';
 import api from '../services/api';
 import DeliveryZoneSelector from './DeliveryZoneSelector';
 import SuggestedProducts from './SuggestedProducts';
@@ -598,7 +599,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-slate-800 text-sm leading-tight truncate">{item.name}</h3>
                     {item.isLoyaltyReward && (
-                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold whitespace-nowrap shrink-0">🎁 Gratis</span>
+                      <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold whitespace-nowrap shrink-0 inline-flex items-center gap-0.5"><Gift className="w-2.5 h-2.5" /> Gratis</span>
                     )}
                     <button
                       onClick={() => removeFromCart(item.uniqueId || item._id)}
@@ -741,9 +742,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     !isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? 1 : 0
                   ].reduce((a, b) => a + b, 0) || 1}, 1fr)` }}>
                     {[
-                      ...(businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: 'En Sitio', icon: CI.dineIn }] : []),
-                      ...(businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: 'Llevar', icon: CI.takeaway }] : []),
-                      ...(!isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: 'Domicilio', icon: CI.delivery }] : [])
+                      ...(businessConfig?.orderTypes?.inSite !== false ? [{ id: 'inSite', label: 'En Sitio', Icon: UtensilsCrossed }] : []),
+                      ...(businessConfig?.orderTypes?.takeaway !== false ? [{ id: 'takeaway', label: 'Llevar', Icon: ShoppingBag }] : []),
+                      ...(!isFromTableQR && businessConfig?.orderTypes?.delivery !== false ? [{ id: 'delivery', label: 'Domicilio', Icon: Bike }] : [])
                     ].map(opt => {
                       const isActive = orderType === opt.id;
                       return (
@@ -756,7 +757,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                           }`}
                           style={{ color: isActive ? themeColor : '#64748b' }}
                         >
-                          <span>{opt.icon('w-3.5 h-3.5')}</span>
+                          <opt.Icon className="w-3.5 h-3.5" />
                           <span>{opt.label}</span>
                         </button>
                       );
@@ -1110,8 +1111,8 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                     onClick={() => setIsGift(v => !v)}
                     className="w-full flex items-center gap-3 p-3.5 text-left transition-all"
                   >
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl transition-colors" style={{ backgroundColor: isGift ? `${themeColor}15` : '#f8fafc' }}>
-                      🎁
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors" style={{ backgroundColor: isGift ? `${themeColor}15` : '#f8fafc' }}>
+                      <Gift className="w-5 h-5" style={{ color: isGift ? themeColor : '#94a3b8' }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[14px] font-bold transition-colors" style={{ color: isGift ? themeColor : '#374151' }}>Enviar como regalo</p>
@@ -1218,7 +1219,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 )}
                 {loyaltyReward?.reward?.type === 'free_delivery' && deliveryFee > 0 && (
                   <div className="flex justify-between text-xs text-amber-500">
-                    <span>🎁 Envío gratis</span>
+                    <span className="inline-flex items-center gap-1"><Gift className="w-3 h-3" /> Envío gratis</span>
                     <span>-{formatCurrency(deliveryFee, businessConfig?.currency)}</span>
                   </div>
                 )}
@@ -1230,7 +1231,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
                 )}
                 {loyaltyDiscountAmount > 0 && (
                   <div className="flex justify-between text-xs text-amber-500">
-                    <span>🎁 {loyaltyReward.reward.name}</span>
+                    <span className="inline-flex items-center gap-1"><Gift className="w-3 h-3" /> {loyaltyReward.reward.name}</span>
                     <span>-{formatCurrency(loyaltyDiscountAmount, businessConfig?.currency)}</span>
                   </div>
                 )}

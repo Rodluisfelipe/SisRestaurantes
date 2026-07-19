@@ -1,35 +1,36 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
+import { Siren, TriangleAlert, Megaphone, Info, Check } from 'lucide-react';
 
 const priorityConfig = {
-  urgent: { 
-    color: 'bg-red-500', 
-    border: 'border-red-500', 
+  urgent: {
+    color: 'bg-red-500',
+    border: 'border-red-500',
     badge: 'bg-red-100 text-red-700',
-    icon: '🚨',
-    label: 'Urgente' 
+    icon: Siren,
+    label: 'Urgente'
   },
-  high: { 
-    color: 'bg-orange-500', 
-    border: 'border-orange-500', 
+  high: {
+    color: 'bg-orange-500',
+    border: 'border-orange-500',
     badge: 'bg-orange-100 text-orange-700',
-    icon: '⚠️',
-    label: 'Importante' 
+    icon: TriangleAlert,
+    label: 'Importante'
   },
-  medium: { 
-    color: 'bg-blue-500', 
-    border: 'border-blue-500', 
+  medium: {
+    color: 'bg-blue-500',
+    border: 'border-blue-500',
     badge: 'bg-blue-100 text-blue-700',
-    icon: '📢',
-    label: 'Información' 
+    icon: Megaphone,
+    label: 'Información'
   },
-  low: { 
-    color: 'bg-gray-500', 
-    border: 'border-gray-500', 
+  low: {
+    color: 'bg-gray-500',
+    border: 'border-gray-500',
     badge: 'bg-gray-100 text-gray-700',
-    icon: 'ℹ️',
-    label: 'Nota' 
+    icon: Info,
+    label: 'Nota'
   }
 };
 
@@ -146,7 +147,7 @@ function AnnouncementPopup() {
             {/* Priority Bar */}
             <div className={`${priority.color} px-5 py-3 flex items-center justify-between`}>
               <div className="flex items-center gap-2">
-                <span className="text-xl">{priority.icon}</span>
+                <priority.icon className="w-5 h-5 text-white" />
                 <span className="text-white font-bold text-sm uppercase tracking-wider">
                   {priority.label}
                 </span>
@@ -205,11 +206,11 @@ function AnnouncementPopup() {
               <button
                 onClick={handleClose}
                 disabled={isProcessing}
-                className={`w-full ${priority.color} hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98] text-sm sm:text-base disabled:opacity-50`}
+                className={`w-full ${priority.color} hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98] text-sm sm:text-base disabled:opacity-50 inline-flex items-center justify-center gap-1.5`}
               >
-                {currentIndex < announcements.length - 1 
+                {currentIndex < announcements.length - 1
                   ? `Entendido — Siguiente (${announcements.length - currentIndex - 1} más)`
-                  : 'Entendido ✓'
+                  : <>Entendido <Check className="w-4 h-4" /></>
                 }
               </button>
             </div>

@@ -4,19 +4,20 @@ import api from '../services/api';
 import { socket } from '../services/socket';
 import logger from '../utils/logger';
 import { formatCurrency } from '../utils/currency';
+import { ClipboardList, CreditCard, Upload, CheckCircle2, ChefHat, PartyPopper, Sparkles, Home, XCircle, PackageOpen } from 'lucide-react';
 
 const STATUS_LABELS = {
-  pending: { label: 'Recibido', icon: '📋', bg: 'bg-blue-100', text: 'text-blue-700' },
-  pending_payment: { label: 'Pendiente Pago', icon: '💳', bg: 'bg-amber-100', text: 'text-amber-700' },
-  payment_uploaded: { label: 'Verificando', icon: '📤', bg: 'bg-purple-100', text: 'text-purple-700' },
-  payment_confirmed: { label: 'Pago OK', icon: '✅', bg: 'bg-green-100', text: 'text-green-700' },
-  confirmed: { label: 'Confirmado', icon: '✅', bg: 'bg-green-100', text: 'text-green-700' },
-  preparing: { label: 'Preparando', icon: '👨‍🍳', bg: 'bg-orange-100', text: 'text-orange-700' },
-  inProgress: { label: 'Preparando', icon: '👨‍🍳', bg: 'bg-orange-100', text: 'text-orange-700' },
-  ready: { label: '¡Listo!', icon: '🎉', bg: 'bg-green-100', text: 'text-green-700' },
-  completed: { label: 'Completado', icon: '✨', bg: 'bg-gray-100', text: 'text-gray-600' },
-  delivered: { label: 'Entregado', icon: '🏠', bg: 'bg-gray-100', text: 'text-gray-600' },
-  cancelled: { label: 'Cancelado', icon: '❌', bg: 'bg-red-100', text: 'text-red-700' }
+  pending: { label: 'Recibido', icon: ClipboardList, bg: 'bg-blue-100', text: 'text-blue-700' },
+  pending_payment: { label: 'Pendiente Pago', icon: CreditCard, bg: 'bg-amber-100', text: 'text-amber-700' },
+  payment_uploaded: { label: 'Verificando', icon: Upload, bg: 'bg-purple-100', text: 'text-purple-700' },
+  payment_confirmed: { label: 'Pago OK', icon: CheckCircle2, bg: 'bg-green-100', text: 'text-green-700' },
+  confirmed: { label: 'Confirmado', icon: CheckCircle2, bg: 'bg-green-100', text: 'text-green-700' },
+  preparing: { label: 'Preparando', icon: ChefHat, bg: 'bg-orange-100', text: 'text-orange-700' },
+  inProgress: { label: 'Preparando', icon: ChefHat, bg: 'bg-orange-100', text: 'text-orange-700' },
+  ready: { label: '¡Listo!', icon: PartyPopper, bg: 'bg-green-100', text: 'text-green-700' },
+  completed: { label: 'Completado', icon: Sparkles, bg: 'bg-gray-100', text: 'text-gray-600' },
+  delivered: { label: 'Entregado', icon: Home, bg: 'bg-gray-100', text: 'text-gray-600' },
+  cancelled: { label: 'Cancelado', icon: XCircle, bg: 'bg-red-100', text: 'text-red-700' }
 };
 
 const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) => {
@@ -142,7 +143,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
             </div>
           ) : currentOrders.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center px-6">
-              <div className="text-4xl mb-3">{tab === 'active' ? '📋' : '📦'}</div>
+              {tab === 'active' ? <ClipboardList className="w-10 h-10 mb-3 text-gray-300" /> : <PackageOpen className="w-10 h-10 mb-3 text-gray-300" />}
               <h3 className="font-semibold text-gray-900 mb-1">
                 {tab === 'active' ? (isService ? 'Sin citas activas' : 'Sin pedidos activos') : (isService ? 'Sin citas anteriores' : 'Sin pedidos anteriores')}
               </h3>
@@ -167,7 +168,7 @@ const MyOrders = ({ businessId, phone, businessConfig, onTrackOrder, onClose }) 
                             Pedido #{order.orderNumber}
                           </span>
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${statusInfo.bg} ${statusInfo.text}`}>
-                            <span>{statusInfo.icon}</span>
+                            <statusInfo.icon className="w-3 h-3" />
                             {statusInfo.label}
                           </span>
                         </div>

@@ -5,7 +5,9 @@ import Footer from '../Components/Landing/Footer';
 
 const LandingLayout = () => {
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="relative flex flex-col min-h-screen">
+      {/* Sentinel used by Navbar's IntersectionObserver to detect scroll past the top (avoids a scroll-listener + setState on every scroll event) */}
+      <div id="scroll-sentinel" className="absolute top-0 left-0 h-5 w-px pointer-events-none" aria-hidden="true" />
       <Navbar />
       <main id="main-content" className="flex-grow">
         <Outlet />

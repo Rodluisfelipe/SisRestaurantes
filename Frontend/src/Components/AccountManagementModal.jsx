@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaUser, FaBox, FaPhone, FaMapMarkerAlt, FaClock, FaCheckCircle, FaTimesCircle, FaEdit, FaSave, FaStore, FaTruck, FaShoppingBag, FaTicketAlt } from 'react-icons/fa';
+import { FaTimes, FaUser, FaBox, FaPhone, FaMapMarkerAlt, FaClock, FaCheckCircle, FaTimesCircle, FaEdit, FaSave, FaStore, FaTruck, FaShoppingBag, FaTicketAlt, FaLock } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { logSystem } from '../utils/systemLogger';
@@ -325,7 +325,7 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = EMPTY_
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Teléfono</label>
                       <div className="flex items-center gap-2">
                         <p className="flex-1 px-3 py-2.5 bg-gray-50 rounded-lg text-sm text-gray-500 font-medium">{profileData.phone}</p>
-                        <span className="text-[10px] text-gray-400 flex-shrink-0">🔒 No editable</span>
+                        <span className="text-[10px] text-gray-400 flex-shrink-0 inline-flex items-center gap-1"><FaLock className="text-[9px]" /> No editable</span>
                       </div>
                     </div>
 

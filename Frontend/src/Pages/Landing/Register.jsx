@@ -259,7 +259,7 @@ const Register = () => {
                 currentStep > s.num
                   ? 'bg-green-500 text-white'
                   : currentStep === s.num
-                    ? 'bg-[#E31E24] text-white'
+                    ? 'bg-[#E8002D] text-white'
                     : 'bg-gray-200 text-gray-400'
               }`}>
                 {currentStep > s.num ? '✓' : s.num}
@@ -278,8 +278,8 @@ const Register = () => {
   if (step === 3) {
     const selectedType = BUSINESS_TYPES.find(t => t.id === businessType);
     return (
-      <div className="min-h-screen bg-white">
-        <section className="py-12 sm:py-20 bg-gradient-to-br from-white via-red-50 to-white">
+      <div className="min-h-screen bg-[#FBFAF8]">
+        <section className="py-12 sm:py-20 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="max-w-md mx-auto">
               <motion.div
@@ -290,15 +290,15 @@ const Register = () => {
               >
                 {authMethod === 'google' && googleUser?.picture ? (
                   <img src={googleUser.picture} alt={googleUser.name}
-                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-[#E31E24] shadow-md" />
+                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-[#E8002D] shadow-md" />
                 ) : (
-                  <div className="w-14 h-14 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
+                  <div className="w-14 h-14 bg-[#E8002D] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
                     <span className="text-white font-bold text-xl">
                       {authMethod === 'google' ? googleUser?.name?.[0] : emailData.firstName[0]?.toUpperCase()}
                     </span>
                   </div>
                 )}
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                <h1 className="text-2xl font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.02em' }}>
                   {selectedType?.emoji} {selectedType?.label}
                 </h1>
                 <p className="text-sm text-gray-500">
@@ -310,7 +310,7 @@ const Register = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.15 }}
-                className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8"
+                className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-[#EFEAE3] p-6 sm:p-8"
               >
                 <StepIndicator currentStep={3} />
 
@@ -327,7 +327,7 @@ const Register = () => {
                     <input type="text" value={businessName}
                       onChange={(e) => { setBusinessName(e.target.value); setError(''); }}
                       autoFocus required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                       placeholder={businessType === 'cafe' ? 'Ej: Café Aroma' : businessType === 'bakery' ? 'Ej: Dulces Delicias' : businessType === 'salon' ? 'Ej: Barbería Style' : businessType === 'spa' ? 'Ej: Spa Zen' : businessType === 'clinic' ? 'Ej: Fisio Salud' : businessType === 'services' ? 'Ej: Studio Pro' : 'Ej: La Parrilla de Juan'} />
                   </div>
 
@@ -337,7 +337,7 @@ const Register = () => {
                       <input type="tel" value={googlePhone}
                         onChange={(e) => { setGooglePhone(e.target.value); setError(''); }}
                         required
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                         placeholder="+57 300 123 4567" />
                     </div>
                   )}
@@ -348,7 +348,7 @@ const Register = () => {
                         exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3 }}>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">Elige tu enlace</label>
                         <p className="text-xs text-gray-400 mb-2">
-                          Tu menú estará en: <span className="font-mono text-gray-600">menuby.tech/<span className="text-[#E31E24]">{isCustomSlug ? (customSlug || '...') : (selectedSlug || '...')}</span>/menu</span>
+                          Tu menú estará en: <span className="font-mono text-gray-600">menuby.tech/<span className="text-[#E8002D]">{isCustomSlug ? (customSlug || '...') : (selectedSlug || '...')}</span>/menu</span>
                         </p>
 
                         {isLoadingSlugs ? (
@@ -364,29 +364,29 @@ const Register = () => {
                               <label key={s.slug}
                                 className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
                                   !isCustomSlug && selectedSlug === s.slug
-                                    ? 'border-[#E31E24] bg-red-50 ring-1 ring-[#E31E24]'
+                                    ? 'border-[#E8002D] bg-red-50 ring-1 ring-[#E8002D]'
                                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                 }`}
                                 onClick={() => { setIsCustomSlug(false); setSelectedSlug(s.slug); }}>
                                 <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                                  !isCustomSlug && selectedSlug === s.slug ? 'border-[#E31E24]' : 'border-gray-300'
+                                  !isCustomSlug && selectedSlug === s.slug ? 'border-[#E8002D]' : 'border-gray-300'
                                 }`}>
-                                  {!isCustomSlug && selectedSlug === s.slug && <div className="w-2 h-2 rounded-full bg-[#E31E24]" />}
+                                  {!isCustomSlug && selectedSlug === s.slug && <div className="w-2 h-2 rounded-full bg-[#E8002D]" />}
                                 </div>
                                 <span className="font-mono text-sm text-gray-700 flex-1">
-                                  menuby.tech/<span className="text-[#E31E24] font-semibold">{s.slug}</span>/menu
+                                  menuby.tech/<span className="text-[#E8002D] font-semibold">{s.slug}</span>/menu
                                 </span>
                                 <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">disponible</span>
                               </label>
                             ))}
 
                             <label className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-200 ${
-                              isCustomSlug ? 'border-[#E31E24] bg-red-50 ring-1 ring-[#E31E24]' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                              isCustomSlug ? 'border-[#E8002D] bg-red-50 ring-1 ring-[#E8002D]' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                             }`} onClick={() => setIsCustomSlug(true)}>
                               <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                                isCustomSlug ? 'border-[#E31E24]' : 'border-gray-300'
+                                isCustomSlug ? 'border-[#E8002D]' : 'border-gray-300'
                               }`}>
-                                {isCustomSlug && <div className="w-2 h-2 rounded-full bg-[#E31E24]" />}
+                                {isCustomSlug && <div className="w-2 h-2 rounded-full bg-[#E8002D]" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <span className="text-sm text-gray-600">Personalizar enlace</span>
@@ -399,7 +399,7 @@ const Register = () => {
                                       <input type="text" value={customSlug}
                                         onChange={(e) => { setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setCustomSlugAvailable(null); setError(''); }}
                                         onClick={(e) => e.stopPropagation()}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] pr-8"
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] pr-8"
                                         placeholder="mi-negocio" autoFocus />
                                       <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
                                         {isCheckingSlug ? (
@@ -432,7 +432,7 @@ const Register = () => {
 
                   <button type="submit"
                     disabled={isLoading || (isCustomSlug && (isCheckingSlug || customSlugAvailable === false))}
-                    className="w-full py-3.5 bg-[#E31E24] hover:bg-[#C71A1F] disabled:bg-red-300 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] disabled:scale-100 flex items-center justify-center text-base">
+                    className="w-full py-3.5 bg-[#E8002D] hover:bg-[#A80020] disabled:bg-red-300 text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] disabled:scale-100 flex items-center justify-center text-base">
                     {isLoading ? (
                       <>
                         <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -468,8 +468,8 @@ const Register = () => {
   // ===========================
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-white">
-        <section className="py-12 sm:py-20 bg-gradient-to-br from-white via-red-50 to-white">
+      <div className="min-h-screen bg-[#FBFAF8]">
+        <section className="py-12 sm:py-20 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
           <div className="container mx-auto px-4 sm:px-6">
             <div className="max-w-md mx-auto">
               <motion.div
@@ -480,15 +480,15 @@ const Register = () => {
               >
                 {authMethod === 'google' && googleUser?.picture ? (
                   <img src={googleUser.picture} alt={googleUser.name}
-                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-[#E31E24] shadow-md" />
+                    className="w-14 h-14 rounded-full mx-auto mb-3 border-2 border-[#E8002D] shadow-md" />
                 ) : (
-                  <div className="w-14 h-14 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
+                  <div className="w-14 h-14 bg-[#E8002D] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
                     <span className="text-white font-bold text-xl">
                       {authMethod === 'google' ? googleUser?.name?.[0] : emailData.firstName[0]?.toUpperCase()}
                     </span>
                   </div>
                 )}
-                <h1 className="text-2xl font-bold text-gray-900 mb-1">
+                <h1 className="text-2xl font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.02em' }}>
                   ¿Qué tipo de negocio tienes?
                 </h1>
                 <p className="text-sm text-gray-500">
@@ -500,7 +500,7 @@ const Register = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.15 }}
-                className="bg-white rounded-2xl shadow-xl border border-gray-200 p-6 sm:p-8"
+                className="bg-white rounded-[26px] shadow-[0_20px_60px_rgba(23,18,15,0.10)] border border-[#EFEAE3] p-6 sm:p-8"
               >
                 <StepIndicator currentStep={2} />
 
@@ -514,12 +514,12 @@ const Register = () => {
                       onClick={() => handleSelectBusinessType(type.id)}
                       className={`relative p-4 rounded-xl border-2 text-left transition-all duration-200 group hover:shadow-md ${
                         businessType === type.id
-                          ? 'border-[#E31E24] bg-red-50 ring-1 ring-[#E31E24] shadow-md'
+                          ? 'border-[#E8002D] bg-red-50 ring-1 ring-[#E8002D] shadow-md'
                           : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                       }`}
                     >
                       <div className="text-3xl mb-2">{type.emoji}</div>
-                      <h3 className={`text-sm font-bold mb-0.5 ${businessType === type.id ? 'text-[#E31E24]' : 'text-gray-900'}`}>
+                      <h3 className={`text-sm font-bold mb-0.5 ${businessType === type.id ? 'text-[#E8002D]' : 'text-gray-900'}`}>
                         {type.label}
                       </h3>
                       <p className="text-[11px] text-gray-400 leading-tight">{type.desc}</p>
@@ -528,7 +528,7 @@ const Register = () => {
                         <motion.div
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
-                          className="absolute top-2 right-2 w-5 h-5 bg-[#E31E24] rounded-full flex items-center justify-center"
+                          className="absolute top-2 right-2 w-5 h-5 bg-[#E8002D] rounded-full flex items-center justify-center"
                         >
                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -559,17 +559,14 @@ const Register = () => {
   // STEP 1 - Identity
   // ===========================
   return (
-    <div className="min-h-screen bg-white">
-      <section className="py-12 sm:py-20 bg-gradient-to-br from-white via-red-50 to-white">
+    <div className="min-h-screen bg-[#FBFAF8]">
+      <section className="py-12 sm:py-20 bg-gradient-to-br from-[#FBFAF8] via-[#FBEEE9] to-[#FBFAF8]">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="max-w-md mx-auto">
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }} className="text-center mb-6">
-              <div className="w-14 h-14 bg-[#E31E24] rounded-full flex items-center justify-center mx-auto mb-3 shadow-md">
-                <span className="text-white font-bold text-xl">M</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Crea tu menú digital gratis</h1>
-              <p className="text-gray-500 text-sm">Tu negocio online en 2 minutos</p>
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#17120F] mb-1" style={{ fontFamily: "'Bricolage Grotesque', sans-serif", letterSpacing: '-0.025em' }}>Crea tu menú digital gratis</h1>
+              <p className="text-[#6E655C] text-sm">Tu negocio online en 2 minutos</p>
             </motion.div>
 
             <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
@@ -589,7 +586,7 @@ const Register = () => {
 
               {/* ===== GOOGLE SIGN-IN - HERO SECTION ===== */}
               <div className="mb-6">
-                <div className="bg-gradient-to-b from-blue-50 to-white border-2 border-blue-100 rounded-2xl p-6 text-center">
+                <div className="bg-gradient-to-b from-[#FBEEE9] to-white border border-[#F0D8CF] rounded-2xl p-6 text-center">
                   <div className="flex justify-center mb-4">
                     <div className="bg-white rounded-2xl shadow-md p-1 inline-block">
                       <GoogleLogin onSuccess={handleGoogleSuccess}
@@ -601,11 +598,11 @@ const Register = () => {
 
                   {isGoogleLoading && (
                     <div className="flex items-center justify-center mb-3 gap-2">
-                      <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                      <svg className="animate-spin h-4 w-4 text-[#E8002D]" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                       </svg>
-                      <span className="text-sm text-blue-600 font-medium">Verificando con Google...</span>
+                      <span className="text-sm text-[#E8002D] font-medium">Verificando con Google...</span>
                     </div>
                   )}
 
@@ -673,13 +670,13 @@ const Register = () => {
                         <div>
                           <label htmlFor="firstName" className="block text-xs font-medium text-gray-600 mb-1">Nombre</label>
                           <input type="text" id="firstName" name="firstName" value={emailData.firstName} onChange={handleEmailChange} required
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                             placeholder="Juan" />
                         </div>
                         <div>
                           <label htmlFor="lastName" className="block text-xs font-medium text-gray-600 mb-1">Apellido</label>
                           <input type="text" id="lastName" name="lastName" value={emailData.lastName} onChange={handleEmailChange} required
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                             placeholder="Pérez" />
                         </div>
                       </div>
@@ -687,7 +684,7 @@ const Register = () => {
                       <div>
                         <label htmlFor="email" className="block text-xs font-medium text-gray-600 mb-1">Correo electrónico</label>
                         <input type="email" id="email" name="email" value={emailData.email} onChange={handleEmailChange} required
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                           placeholder="tu@email.com" />
                       </div>
 
@@ -696,7 +693,7 @@ const Register = () => {
                           WhatsApp
                         </label>
                         <input type="tel" id="phone" name="phone" value={emailData.phone} onChange={handleEmailChange} required
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                           placeholder="+57 300 123 4567" />
                       </div>
 
@@ -706,7 +703,7 @@ const Register = () => {
                           <div className="relative">
                             <input type={showPassword ? 'text' : 'password'} id="password" name="password" value={emailData.password}
                               onChange={handleEmailChange} required
-                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                               placeholder="Mín. 8 caracteres" />
                             <button type="button" onClick={() => setShowPassword(!showPassword)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -726,7 +723,7 @@ const Register = () => {
                           <div className="relative">
                             <input type={showConfirmPassword ? 'text' : 'password'} id="confirmPassword" name="confirmPassword"
                               value={emailData.confirmPassword} onChange={handleEmailChange} required
-                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E31E24] focus:border-[#E31E24] transition-colors text-gray-900 bg-white"
+                              className="w-full px-3 py-2.5 pr-10 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                               placeholder="Repetir" />
                             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -746,15 +743,15 @@ const Register = () => {
                       <div className="flex items-start pt-1">
                         <input type="checkbox" id="acceptTerms" checked={acceptTerms}
                           onChange={(e) => setAcceptTerms(e.target.checked)}
-                          className="w-4 h-4 text-[#E31E24] border-gray-300 rounded focus:ring-[#E31E24] mt-0.5" />
+                          className="w-4 h-4 text-[#E8002D] border-gray-300 rounded focus:ring-[#E8002D] mt-0.5" />
                         <label htmlFor="acceptTerms" className="ml-2 text-xs text-gray-500">
-                          Acepto los{' '}<Link to="/terms" className="text-[#E31E24] hover:underline">términos</Link>{' '}
-                          y la{' '}<Link to="/privacy" className="text-[#E31E24] hover:underline">política de privacidad</Link>
+                          Acepto los{' '}<Link to="/terms" className="text-[#E8002D] hover:underline">términos</Link>{' '}
+                          y la{' '}<Link to="/privacy" className="text-[#E8002D] hover:underline">política de privacidad</Link>
                         </label>
                       </div>
 
                       <button type="submit"
-                        className="w-full py-3 bg-[#E31E24] hover:bg-[#C71A1F] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center">
+                        className="w-full py-3 bg-[#E8002D] hover:bg-[#A80020] text-white font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center">
                         Continuar
                         <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -768,7 +765,7 @@ const Register = () => {
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-500">
                   ¿Ya tienes cuenta?{' '}
-                  <Link to="/login" className="text-[#E31E24] hover:text-[#C71A1F] font-semibold">Inicia sesión</Link>
+                  <Link to="/login" className="text-[#E8002D] hover:text-[#A80020] font-semibold">Inicia sesión</Link>
                 </p>
               </div>
             </motion.div>

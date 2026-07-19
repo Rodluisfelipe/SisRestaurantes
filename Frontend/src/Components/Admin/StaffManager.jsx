@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUserPlus, FaTrash, FaUsers, FaEye, FaEyeSlash, FaTimes, FaCamera, FaSave, FaToggleOn, FaToggleOff, FaClock, FaPercent, FaDollarSign, FaEdit } from 'react-icons/fa';
+import { FaUserPlus, FaTrash, FaUsers, FaEye, FaEyeSlash, FaTimes, FaCamera, FaSave, FaToggleOn, FaToggleOff, FaClock, FaPercent, FaDollarSign, FaEdit, FaCheck } from 'react-icons/fa';
 import api from '../../services/api';
 
 const ROLE_LABELS = { staff: 'Cajero', manager: 'Gerente' };
@@ -366,7 +366,7 @@ const EditProfileModal = ({ member, businessId, onClose, onSaved }) => {
                       <div className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center transition-colors ${
                         isSelected ? 'border-blue-500 bg-blue-500' : 'border-slate-300'
                       }`}>
-                        {isSelected && <span className="text-white text-[8px] font-bold">✓</span>}
+                        {isSelected && <FaCheck className="text-white text-[8px]" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-700 truncate">{svc.name}</p>

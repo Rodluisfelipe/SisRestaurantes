@@ -3,6 +3,7 @@ import * as SessionManager from '../utils/sessionManager';
 import logger from '../utils/logger';
 import api from '../services/api';
 import ConfettiBurst from './ConfettiBurst';
+import { CheckCircle2, Armchair, XCircle } from 'lucide-react';
 
 const CancelConfirmationModal = ({ onConfirm, onCancel, isLoading, isBooking }) => {
   return (
@@ -275,7 +276,7 @@ const OrderConfirmationModal = ({
             <div className="text-center mb-4">
               <div className="mb-3">
                 <div className="inline-flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full mb-2">
-                  <span className="text-lg sm:text-xl">✅</span>
+                  <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
                 </div>
                 <p className="text-gray-800 text-sm sm:text-base leading-relaxed">{orderConfirmationDetails.message}</p>
               </div>
@@ -290,9 +291,10 @@ const OrderConfirmationModal = ({
               )}
               
               {orderConfirmationDetails.type === 'inSite' && orderInfo.tableNumber && !orderConfirmationDetails?.isBooking && (
-                <div className="inline-flex items-center justify-center px-3 py-1 bg-blue-50 rounded-full border border-blue-200">
+                <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1 bg-blue-50 rounded-full border border-blue-200">
+                  <Armchair className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                   <span className="text-blue-600 text-xs sm:text-sm font-medium">
-                    🪑 Será servido en {businessConfig?.businessType === 'hotel' ? 'la' : 'la'} <span className="font-bold">{businessConfig?.businessType === 'hotel' ? 'Habitación' : 'Mesa'} {orderInfo.tableNumber}</span>
+                    Será servido en {businessConfig?.businessType === 'hotel' ? 'la' : 'la'} <span className="font-bold">{businessConfig?.businessType === 'hotel' ? 'Habitación' : 'Mesa'} {orderInfo.tableNumber}</span>
                   </span>
                 </div>
               )}
@@ -363,7 +365,7 @@ const OrderConfirmationModal = ({
                 }}
               >
                 <span className="flex items-center justify-center space-x-1 sm:space-x-2">
-                  <span>✅</span>
+                  <CheckCircle2 className="w-4 h-4" />
                   <span>Entendido</span>
                 </span>
               </button>
@@ -374,7 +376,7 @@ const OrderConfirmationModal = ({
                   className="w-full py-2 sm:py-3 rounded-xl sm:rounded-2xl text-red-600 text-xs sm:text-sm font-medium bg-red-50 border-2 border-red-200 hover:bg-red-100 hover:border-red-300 transition-all duration-200 hover:scale-105 active:scale-95"
                 >
                   <span className="flex items-center justify-center space-x-1 sm:space-x-2">
-                    <span>❌</span>
+                    <XCircle className="w-4 h-4" />
                     <span>Cancelar {orderConfirmationDetails?.isBooking ? 'Cita' : 'Pedido'} ({countdown}s)</span>
                   </span>
                 </button>

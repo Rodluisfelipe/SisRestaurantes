@@ -14,6 +14,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
+  const [productImageError, setProductImageError] = useState(false);
 
   const buttonColor = theme?.buttonColor || '#f97316';
 
@@ -26,6 +27,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
       setThumbsUp(null);
       setSubmitted(false);
       setError(null);
+      setProductImageError(false);
     }
   }, [show, orderId]);
 
@@ -94,9 +96,12 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', damping: 12 }}
-                  className="text-5xl mb-3"
+                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"
+                  style={{ backgroundColor: buttonColor + '15' }}
                 >
-                  🎉
+                  <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke={buttonColor} strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
                 </motion.div>
                 <h3 className="text-lg font-bold text-gray-800">¡Gracias por tu reseña!</h3>
                 <p className="text-sm text-gray-500 mt-1">Tu opinión nos ayuda a mejorar</p>
@@ -104,7 +109,12 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
             ) : (
               <>
                 {/* Header */}
-                <div className="p-5 pb-3 text-center">
+                <div className="p-5 pb-3 text-center" style={{ background: `linear-gradient(180deg, ${buttonColor}0d 0%, transparent 100%)` }}>
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-2" style={{ backgroundColor: buttonColor + '15' }}>
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill={buttonColor} stroke="none">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                  </div>
                   <h3 className="text-lg font-bold text-gray-800">¿Cómo fue tu experiencia?</h3>
                   <p className="text-sm text-gray-500 mt-0.5">Tu opinión es muy importante</p>
                 </div>
@@ -149,20 +159,25 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                     transition={{ duration: 0.3 }}
                     className="px-5 pb-3"
                   >
-                    <div className="bg-gray-50 rounded-xl p-3">
+                    <div className="rounded-xl p-3 border" style={{ backgroundColor: buttonColor + '0a', borderColor: buttonColor + '20' }}>
                       <p className="text-xs text-gray-400 text-center mb-2.5">¿Qué tal estuvo?</p>
                       {/* Top product highlight */}
                       {topProduct && (
                         <div className="flex items-center gap-3 mb-3">
-                          {topProduct.image ? (
+                          {topProduct.image && !productImageError ? (
                             <img
                               src={topProduct.image}
                               alt={topProduct.name}
                               className="w-14 h-14 rounded-xl object-cover shadow-sm"
+                              onError={() => setProductImageError(true)}
                             />
                           ) : (
-                            <div className="w-14 h-14 rounded-xl bg-gray-200 flex items-center justify-center text-2xl">
-                              🍽️
+                            <div className="w-14 h-14 rounded-xl flex items-center justify-center" style={{ backgroundColor: buttonColor + '15' }}>
+                              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke={buttonColor} strokeWidth={1.5}>
+                                <rect x="3" y="3" width="18" height="18" rx="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <path d="M21 15l-5-5L5 21" />
+                              </svg>
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
@@ -180,11 +195,10 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                         <button
                           type="button"
                           onClick={() => setThumbsUp(thumbsUp === true ? null : true)}
-                          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 ${
-                            thumbsUp === true
-                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-200'
-                              : 'bg-white border border-gray-200 text-gray-500 hover:border-emerald-300'
-                          }`}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 border"
+                          style={thumbsUp === true
+                            ? { backgroundColor: buttonColor, color: '#ffffff', borderColor: buttonColor, boxShadow: `0 4px 10px ${buttonColor}30` }
+                            : { backgroundColor: '#ffffff', color: '#6b7280', borderColor: '#e5e7eb' }}
                         >
                           <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" />
@@ -194,11 +208,10 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                         <button
                           type="button"
                           onClick={() => setThumbsUp(thumbsUp === false ? null : false)}
-                          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 ${
-                            thumbsUp === false
-                              ? 'bg-red-500 text-white shadow-md shadow-red-200'
-                              : 'bg-white border border-gray-200 text-gray-500 hover:border-red-300'
-                          }`}
+                          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 border"
+                          style={thumbsUp === false
+                            ? { backgroundColor: buttonColor, color: '#ffffff', borderColor: buttonColor, boxShadow: `0 4px 10px ${buttonColor}30` }
+                            : { backgroundColor: '#ffffff', color: '#6b7280', borderColor: '#e5e7eb' }}
                         >
                           <svg className="w-5 h-5 rotate-180" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M2 20h2c.55 0 1-.45 1-1v-9c0-.55-.45-1-1-1H2v11zm19.83-7.12c.11-.25.17-.52.17-.8V11c0-1.1-.9-2-2-2h-5.5l.92-4.65c.05-.22.02-.46-.08-.66-.23-.45-.52-.86-.88-1.22L14 2 7.59 8.41C7.21 8.79 7 9.3 7 9.83v7.84C7 18.95 8.05 20 9.34 20h8.11c.7 0 1.36-.37 1.72-.97l2.66-6.15z" />
@@ -234,7 +247,8 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                 <div className="p-5 pt-2 flex gap-3">
                   <button
                     onClick={handleSkip}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-medium text-gray-500 bg-gray-100 active:bg-gray-200 transition-colors"
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors border"
+                    style={{ color: buttonColor, backgroundColor: buttonColor + '0a', borderColor: buttonColor + '25' }}
                   >
                     Ahora no
                   </button>

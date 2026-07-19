@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from '../../config';
+import { Landmark, Check } from 'lucide-react';
 
 const PRESETS = [
   { amount: 100000, label: '100K', hint: 'Alcanza para ~7 turnos básicos' },
@@ -26,7 +27,7 @@ const PAYMENT_METHODS = [
     label: 'Llave Breve',
     value: '@LRQ430',
     color: 'from-fuchsia-500 to-violet-500',
-    icon: '🔑',
+    logo: '/payment-logos/breb.jpg',
     note: 'Pago instantáneo desde tu banco o billetera.',
   },
   {
@@ -34,7 +35,7 @@ const PAYMENT_METHODS = [
     label: 'Nequi',
     value: '302 818 1520',
     color: 'from-pink-500 to-rose-500',
-    icon: '📱',
+    logo: '/payment-logos/nequi.svg',
     note: 'Envía desde la app Nequi al número indicado.',
   },
   {
@@ -42,7 +43,7 @@ const PAYMENT_METHODS = [
     label: 'Bancolombia',
     value: 'Cuenta Ahorros 902-XXXXX-XXX',
     color: 'from-amber-500 to-yellow-500',
-    icon: '🏦',
+    Icon: Landmark,
     note: 'Transferencia tradicional. Llega en 24-48h.',
   },
 ];
@@ -279,14 +280,20 @@ export default function CrewRechargeModal({ open, businessId, onClose, onSuccess
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl">{selectedMethod.icon}</span>
+                        {selectedMethod.logo ? (
+                          <span className="h-7 w-9 flex items-center justify-center shrink-0 rounded-md bg-white border border-slate-200 overflow-hidden">
+                            <img src={selectedMethod.logo} alt={selectedMethod.label} className="max-h-6 max-w-8 object-contain" />
+                          </span>
+                        ) : (
+                          <selectedMethod.Icon className="w-5 h-5 text-slate-600" />
+                        )}
                         <span className="text-[13px] font-bold text-slate-700">{selectedMethod.label}</span>
                       </div>
                       <button
                         onClick={() => copyValue(selectedMethod.value, selectedMethod.id)}
-                        className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-white hover:bg-slate-100 text-slate-600 uppercase tracking-wider border border-slate-200"
+                        className="text-[10px] font-extrabold px-2 py-1 rounded-full bg-white hover:bg-slate-100 text-slate-600 uppercase tracking-wider border border-slate-200 inline-flex items-center gap-1"
                       >
-                        {copied === selectedMethod.id ? '✓ Copiado' : 'Copiar'}
+                        {copied === selectedMethod.id ? <><Check className="w-3 h-3" /> Copiado</> : 'Copiar'}
                       </button>
                     </div>
                     <p className="text-[24px] font-black text-slate-900 tabular-nums tracking-tight">{selectedMethod.value}</p>

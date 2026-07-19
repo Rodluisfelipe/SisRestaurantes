@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { X, NotebookPen, Bike, ShoppingBag, Calendar, UtensilsCrossed } from 'lucide-react';
 
 /**
  * Bottom sheet que muestra las reseñas de un restaurante
@@ -149,9 +150,9 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme }) => {
               {filterRating && (
                 <button
                   onClick={() => setFilterRating(null)}
-                  className="mt-2 text-xs font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-600"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium px-3 py-1 rounded-full bg-gray-100 text-gray-600"
                 >
-                  Limpiar filtro ✕
+                  Limpiar filtro <X className="w-3 h-3" />
                 </button>
               )}
             </div>
@@ -175,7 +176,7 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme }) => {
                 ))
               ) : reviews.length === 0 ? (
                 <div className="text-center py-10">
-                  <p className="text-3xl mb-2">📝</p>
+                  <NotebookPen className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                   <p className="text-sm text-gray-500">
                     {filterRating ? 'No hay reseñas con esta calificación' : 'Aún no hay reseñas'}
                   </p>
@@ -212,8 +213,8 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme }) => {
                               </svg>
                             ))}
                             {review.orderType && (
-                              <span className="ml-1.5 text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full">
-                                {review.orderType === 'delivery' ? '🛵 Delivery' : review.orderType === 'takeaway' ? '🥡 Para llevar' : isService ? '📅 Cita' : '🍽️ En mesa'}
+                              <span className="ml-1.5 inline-flex items-center gap-1 text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded-full">
+                                {review.orderType === 'delivery' ? <><Bike className="w-2.5 h-2.5" /> Delivery</> : review.orderType === 'takeaway' ? <><ShoppingBag className="w-2.5 h-2.5" /> Para llevar</> : isService ? <><Calendar className="w-2.5 h-2.5" /> Cita</> : <><UtensilsCrossed className="w-2.5 h-2.5" /> En mesa</>}
                               </span>
                             )}
                           </div>

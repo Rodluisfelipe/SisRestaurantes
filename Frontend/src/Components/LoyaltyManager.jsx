@@ -687,7 +687,7 @@ const LoyaltyManager = () => {
             <div className="space-y-4" data-tour="points-config">
               <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4 lg:p-6">
                 <div className="flex items-center gap-2 mb-5">
-                  <span className="text-xl">🪙</span>
+                  {AI.circleStack('w-5 h-5 text-slate-500')}
                   <h3 className="text-base font-bold text-slate-800">Reglas de puntos</h3>
                 </div>
                 <div className="bg-slate-50 rounded-xl p-5">
@@ -989,7 +989,7 @@ const LoyaltyManager = () => {
                             <span className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
                               i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-slate-100 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-400'
                             }`}>
-                              {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                              {i < 3 ? AI.medal('w-4 h-4', i === 0 ? 'gold' : i === 1 ? 'silver' : 'bronze') : i + 1}
                             </span>
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-semibold text-slate-700 truncate">{c.customerId?.name || c.phone}</p>
@@ -1035,7 +1035,7 @@ const LoyaltyManager = () => {
               {/* Customers list */}
               {allCustomers.length === 0 && !customersLoading ? (
                 <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-                  <div className="text-4xl mb-3">👥</div>
+                  <div className="flex justify-center mb-3 text-slate-300">{AI.user('w-10 h-10')}</div>
                   <p className="text-sm text-slate-500">No se encontraron clientes con puntos</p>
                 </div>
               ) : (
@@ -1048,7 +1048,7 @@ const LoyaltyManager = () => {
                           <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
                             i === 0 ? 'bg-yellow-100 text-yellow-700' : i === 1 ? 'bg-slate-100 text-slate-600' : i === 2 ? 'bg-orange-100 text-orange-700' : 'bg-slate-50 text-slate-500'
                           }`}>
-                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                            {i < 3 ? AI.medal('w-4 h-4', i === 0 ? 'gold' : i === 1 ? 'silver' : 'bronze') : i + 1}
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-slate-700 truncate">{c.customerId?.name || c.phone}</p>

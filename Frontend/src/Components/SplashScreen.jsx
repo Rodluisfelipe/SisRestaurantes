@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { UtensilsCrossed } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -56,10 +57,10 @@ const SplashScreen = ({ businessConfig, visible }) => {
               </div>
             ) : (
               <div
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shadow-xl flex items-center justify-center text-4xl sm:text-5xl"
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shadow-xl flex items-center justify-center"
                 style={{ backgroundColor: `${themeColor}15` }}
               >
-                🍽️
+                <UtensilsCrossed className="w-10 h-10 sm:w-12 sm:h-12" style={{ color: themeColor }} />
               </div>
             )}
           </motion.div>

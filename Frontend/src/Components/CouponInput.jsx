@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { getBusinessSlug } from '../utils/getBusinessId';
+import { Truck } from 'lucide-react';
 
 /* ── helpers ── */
 const hexToRgb = (hex) => {
@@ -277,7 +278,7 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
 
                       {previewData.coupon.freeDelivery && (
                         <div className="bg-blue-50 rounded-lg px-3 py-2 flex items-center gap-2">
-                          <span className="text-base">🚚</span>
+                          <Truck className="w-4 h-4 text-blue-700" />
                           <span className="text-blue-700 text-[12px] font-medium">El costo de envío será $0 para este pedido</span>
                         </div>
                       )}
@@ -339,9 +340,9 @@ const CouponInput = ({ onCouponApplied, onCouponRemoved, appliedCoupon, orderDat
                     <span className="text-[10px] text-gray-500 truncate">— {appliedCoupon.coupon.name}</span>
                   )}
                 </div>
-                <p className="text-[10px] font-medium" style={{ color: btnColor }}>
+                <p className="text-[10px] font-medium flex items-center gap-1" style={{ color: btnColor }}>
                   {appliedCoupon.coupon.freeDelivery
-                    ? '🚚 Envío gratis aplicado'
+                    ? <><Truck className="w-3 h-3" /> Envío gratis aplicado</>
                     : <>Ahorras <span className="font-bold">{formatCurrency(appliedCoupon.discountAmount)}</span></>
                   }
                 </p>

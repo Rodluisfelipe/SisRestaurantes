@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useBusinessConfig } from '../../Context/BusinessContext';
+import { Bell } from 'lucide-react';
 
 /**
  * Banner animado que muestra notificación de nuevo pedido.
@@ -42,7 +43,7 @@ const OrderNotificationBanner = ({
                 transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 1 }}
                 className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"
               >
-                <span className="text-2xl sm:text-3xl">🔔</span>
+                <Bell className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
               </motion.div>
             </div>
 

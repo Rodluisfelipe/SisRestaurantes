@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { API_URL } from '../config';
 import logger from '../utils/logger';
+import { Check, CheckCircle2, Wallet, Lightbulb, AlertTriangle, Upload, Copy } from 'lucide-react';
 
 const PaymentUpload = ({ 
   orderId, 
@@ -16,6 +17,7 @@ const PaymentUpload = ({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
   const fileInputRef = useRef(null);
 
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
@@ -88,12 +90,8 @@ const PaymentUpload = ({
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text).then(() => {
-      // Show brief copied feedback
-      const btn = document.getElementById(`copy-${text}`);
-      if (btn) {
-        btn.textContent = '✓';
-        setTimeout(() => { btn.textContent = '📋'; }, 1000);
-      }
+      setCopiedField(text);
+      setTimeout(() => setCopiedField(prev => (prev === text ? null : prev)), 1000);
     }).catch(() => {});
   };
 
@@ -111,7 +109,7 @@ const PaymentUpload = ({
             transition={{ type: 'spring', delay: 0.2 }}
             className="w-20 h-20 bg-green-100 rounded-full mx-auto mb-4 flex items-center justify-center"
           >
-            <span className="text-4xl">✅</span>
+            <CheckCircle2 className="w-10 h-10 text-green-600" />
           </motion.div>
           <h3 className="text-xl font-bold text-gray-900 mb-2">¡Comprobante Enviado!</h3>
           <p className="text-gray-600 text-sm">
@@ -152,7 +150,7 @@ const PaymentUpload = ({
           {hasPaymentInfo && (
             <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
               <h4 className="font-semibold text-blue-900 text-sm mb-3 flex items-center gap-2">
-                <span>💰</span> Información de Pago
+                <Wallet className="w-4 h-4" /> Información de Pago
               </h4>
               <div className="space-y-2.5">
                 {paymentInfo.nequi && (
@@ -161,12 +159,11 @@ const PaymentUpload = ({
                       <span className="text-xs text-gray-500 block">Nequi</span>
                       <span className="text-sm font-semibold text-gray-900">{paymentInfo.nequi}</span>
                     </div>
-                    <button 
-                      id={`copy-${paymentInfo.nequi}`}
+                    <button
                       onClick={() => copyToClipboard(paymentInfo.nequi)}
-                      className="text-lg hover:scale-110 transition-transform"
+                      className="hover:scale-110 transition-transform"
                     >
-                      📋
+                      {copiedField === paymentInfo.nequi ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-gray-500" />}
                     </button>
                   </div>
                 )}
@@ -176,12 +173,11 @@ const PaymentUpload = ({
                       <span className="text-xs text-gray-500 block">Daviplata</span>
                       <span className="text-sm font-semibold text-gray-900">{paymentInfo.daviplata}</span>
                     </div>
-                    <button 
-                      id={`copy-${paymentInfo.daviplata}`}
+                    <button
                       onClick={() => copyToClipboard(paymentInfo.daviplata)}
-                      className="text-lg hover:scale-110 transition-transform"
+                      className="hover:scale-110 transition-transform"
                     >
-                      📋
+                      {copiedField === paymentInfo.daviplata ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-gray-500" />}
                     </button>
                   </div>
                 )}
@@ -194,12 +190,11 @@ const PaymentUpload = ({
                         </span>
                         <span className="text-sm font-semibold text-gray-900">{paymentInfo.bankAccountNumber}</span>
                       </div>
-                      <button 
-                        id={`copy-${paymentInfo.bankAccountNumber}`}
+                      <button
                         onClick={() => copyToClipboard(paymentInfo.bankAccountNumber)}
-                        className="text-lg hover:scale-110 transition-transform"
+                        className="hover:scale-110 transition-transform"
                       >
-                        📋
+                        {copiedField === paymentInfo.bankAccountNumber ? <Check className="w-5 h-5 text-green-600" /> : <Copy className="w-5 h-5 text-gray-500" />}
                       </button>
                     </div>
                     {paymentInfo.accountHolder && (
@@ -208,8 +203,8 @@ const PaymentUpload = ({
                   </div>
                 )}
                 {paymentInfo.instructions && (
-                  <p className="text-xs text-blue-700 bg-blue-100 rounded-lg px-3 py-2 mt-2">
-                    💡 {paymentInfo.instructions}
+                  <p className="text-xs text-blue-700 bg-blue-100 rounded-lg px-3 py-2 mt-2 flex items-start gap-1.5">
+                    <Lightbulb className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {paymentInfo.instructions}
                   </p>
                 )}
               </div>
@@ -280,9 +275,9 @@ const PaymentUpload = ({
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700"
+                className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700 flex items-start gap-1.5"
               >
-                ⚠️ {error}
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
               </motion.div>
             )}
           </AnimatePresence>
@@ -306,7 +301,7 @@ const PaymentUpload = ({
               </span>
             ) : (
               <span className="flex items-center justify-center gap-2">
-                <span>📤</span>
+                <Upload className="w-4 h-4" />
                 <span>Enviar Comprobante</span>
               </span>
             )}

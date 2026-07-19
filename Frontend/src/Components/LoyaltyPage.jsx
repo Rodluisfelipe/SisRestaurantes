@@ -3,6 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { getBusinessSlug } from '../utils/getBusinessId';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import {
+  Medal, Award, Crown, Gem, Star, Trophy, Flame, Gift, Lock, Check,
+  CheckCircle2, Sparkles, Map, ClipboardList, CalendarCheck,
+  UtensilsCrossed, Wallet, Banknote, Bike,
+} from 'lucide-react';
 
 const EMPTY_ARRAY = [];
 
@@ -58,18 +63,18 @@ const ProgressRing = ({ percent, size = 44, stroke = 3.5, color = '#f97316' }) =
 /*  CONSTANTS                                      */
 /* ═══════════════════════════════════════════════ */
 const TIER_MAP = {
-  bronze: '🥉', bronce: '🥉', silver: '🥈', plata: '🥈',
-  gold: '🥇', oro: '🥇', platinum: '💎', platino: '💎',
-  diamond: '💎', diamante: '💎', vip: '👑'
+  bronze: Medal, bronce: Medal, silver: Award, plata: Award,
+  gold: Trophy, oro: Trophy, platinum: Gem, platino: Gem,
+  diamond: Gem, diamante: Gem, vip: Crown
 };
-const getTierEmoji = (n) => {
-  if (!n) return '⭐';
+const getTierIcon = (n) => {
+  if (!n) return Star;
   const k = n.toLowerCase();
   for (const [a, b] of Object.entries(TIER_MAP)) { if (k.includes(a)) return b; }
-  return '⭐';
+  return Star;
 };
 
-const REWARD_EMOJI = { free_product: '🍽️', discount_percent: '💰', discount_fixed: '💵', free_delivery: '🛵' };
+const REWARD_ICONS = { free_product: UtensilsCrossed, discount_percent: Wallet, discount_fixed: Banknote, free_delivery: Bike };
 
 const stagger = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } } };
@@ -235,7 +240,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                 </div>
               ) : !data ? (
                 <div className="text-center py-20 px-6">
-                  <div className="text-5xl mb-4">⭐</div>
+                  <Star className="w-12 h-12 mx-auto mb-4 text-slate-300" />
                   <h3 className="text-lg font-bold text-slate-700 mb-1">Programa no disponible</h3>
                   <p className="text-sm text-slate-400">Este negocio aún no tiene un programa de fidelidad activo.</p>
                 </div>
@@ -284,13 +289,13 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                               transition={{ type: 'spring', delay: 0.5 }}
                               className="flex items-center gap-1.5 mt-1.5"
                             >
-                              <span className="text-lg">{getTierEmoji(currentTier)}</span>
+                              {(() => { const TierIcon = getTierIcon(currentTier); return <TierIcon className="w-4 h-4 text-white" />; })()}
                               <span className="text-xs font-black uppercase tracking-wider text-white/90">{currentTier}</span>
                             </motion.div>
                           )}
                         </div>
                         <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-center shadow-inner border border-white/10">
-                          <span className="text-2xl">🏆</span>
+                          <Trophy className="w-6 h-6 text-white" />
                         </div>
                       </div>
 
@@ -309,7 +314,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
 
                       {/* Earning rate pill */}
                       <div className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-3.5 py-2.5 border border-white/10">
-                        <span className="text-base">🔥</span>
+                        <Flame className="w-4 h-4 text-white" />
                         <span className="text-xs font-bold text-white/90">
                           {data.pointsPerAmount} pto{data.pointsPerAmount > 1 ? 's' : ''} por cada ${Number(data.amountPerPoints).toLocaleString('es-CO')}
                         </span>
@@ -337,9 +342,9 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                         <motion.div
                           animate={{ scale: [1, 1.15, 1] }}
                           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-                          className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-lg flex-shrink-0"
+                          className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0"
                         >
-                          🔥
+                          <Flame className="w-5 h-5 text-amber-600" />
                         </motion.div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-black text-amber-800">¡Estás cerca!</p>
@@ -372,7 +377,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                     <motion.div variants={fadeUp}>
                       <div className="flex items-center justify-between mb-3 px-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="text-base">🎁</span>
+                          <Gift className="w-4 h-4 text-slate-700" />
                           <h3 className="text-sm font-black text-slate-800">Recompensas</h3>
                         </div>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
@@ -392,7 +397,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                             const remaining = Math.max(0, reward.pointsCost - data.points);
                             const product = getProductForReward(reward);
                             const isRedeeming = redeeming === reward._id;
-                            const emoji = REWARD_EMOJI[reward.type] || '🎁';
+                            const RewardIcon = REWARD_ICONS[reward.type] || Gift;
 
                             return (
                               <motion.div
@@ -418,12 +423,12 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                       />
                                       {!canAfford && (
                                         <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                                          <span className="text-3xl">🔒</span>
+                                          <Lock className="w-7 h-7 text-white" />
                                         </div>
                                       )}
                                       {canAfford && (
-                                        <div className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-green-500 text-white text-[9px] font-black shadow-md">
-                                          ✓ Disponible
+                                        <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500 text-white text-[9px] font-black shadow-md">
+                                          <Check className="w-2.5 h-2.5" /> Disponible
                                         </div>
                                       )}
                                     </div>
@@ -436,9 +441,9 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                         <motion.div
                                           animate={{ scale: [1, 1.15, 1] }}
                                           transition={{ duration: 1.5, repeat: Infinity }}
-                                          className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-lg flex-shrink-0"
+                                          className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0"
                                         >
-                                          {emoji}
+                                          <RewardIcon className="w-5 h-5 text-green-600" />
                                         </motion.div>
                                       ) : (
                                         <ProgressRing percent={progress} size={40} stroke={3} color={btnColor} />
@@ -488,13 +493,15 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                             Canjeando...
                                           </span>
                                         ) : (
-                                          isService ? '🎁 Agregar a la cita gratis' : '🎁 Agregar al pedido gratis'
+                                          <span className="inline-flex items-center justify-center gap-1.5">
+                                            <Gift className="w-3.5 h-3.5" /> {isService ? 'Agregar a la cita gratis' : 'Agregar al pedido gratis'}
+                                          </span>
                                         )}
                                       </motion.button>
                                     )}
                                     {canAfford && reward.type !== 'free_product' && (
-                                      <div className="mt-3 w-full py-2 rounded-xl bg-green-50 border border-green-200 text-green-700 text-[11px] font-bold text-center">
-                                        ✨ Se aplica al ordenar
+                                      <div className="mt-3 w-full py-2 rounded-xl bg-green-50 border border-green-200 text-green-700 text-[11px] font-bold text-center inline-flex items-center justify-center gap-1.5">
+                                        <Sparkles className="w-3.5 h-3.5" /> Se aplica al ordenar
                                       </div>
                                     )}
                                   </div>
@@ -525,7 +532,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                       className="rounded-2xl bg-white border border-slate-100 shadow-sm p-4 overflow-hidden"
                     >
                       <div className="flex items-center gap-2 mb-4">
-                        <span className="text-base">🗺️</span>
+                        <Map className="w-4 h-4 text-slate-700" />
                         <h3 className="text-sm font-black text-slate-800">Tu camino</h3>
                         {nextTier && (
                           <span
@@ -556,7 +563,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                     initial={{ scale: 0 }}
                                     animate={{ scale: 1 }}
                                     transition={{ type: 'spring', delay: idx * 0.15 }}
-                                    className={`w-14 h-14 rounded-2xl flex items-center justify-center text-xl border-2 transition-all ${
+                                    className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all ${
                                       isCurrent
                                         ? 'border-amber-400 bg-amber-50 shadow-lg shadow-amber-200/60 ring-4 ring-amber-100'
                                         : isCompleted
@@ -564,7 +571,9 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                                           : 'border-slate-200 bg-slate-50 opacity-50'
                                     }`}
                                   >
-                                    {isCompleted ? '✅' : getTierEmoji(tier.name)}
+                                    {isCompleted
+                                      ? <CheckCircle2 className="w-6 h-6 text-green-600" />
+                                      : (() => { const TierIcon = getTierIcon(tier.name); return <TierIcon className={`w-6 h-6 ${isCurrent ? 'text-amber-600' : 'text-slate-400'}`} />; })()}
                                   </motion.div>
                                   <p className={`text-[10px] font-bold text-center leading-tight ${
                                     isCurrent ? 'text-amber-700' : isCompleted ? 'text-green-600' : 'text-slate-400'
@@ -647,13 +656,13 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                     <h3 className="text-sm font-black text-slate-800 mb-3">¿Cómo funciona?</h3>
                     <div className="space-y-3">
                       {[
-                        { emoji: '�', title: isService ? 'Agenda tu cita' : 'Haz tu pedido', desc: `Ganas ${data.pointsPerAmount} punto${data.pointsPerAmount > 1 ? 's' : ''} por cada $${Number(data.amountPerPoints).toLocaleString('es-CO')} en compras` },
-                        { emoji: '⭐', title: 'Acumula puntos', desc: isService ? 'Tus puntos se suman automáticamente con cada cita' : 'Tus puntos se suman automáticamente con cada compra' },
-                        { emoji: '🎁', title: 'Canjea recompensas', desc: isService ? 'Usa tus puntos al reservar para obtener descuentos y servicios gratis' : 'Usa tus puntos al ordenar para obtener descuentos y productos gratis' }
+                        { icon: CalendarCheck, title: isService ? 'Agenda tu cita' : 'Haz tu pedido', desc: `Ganas ${data.pointsPerAmount} punto${data.pointsPerAmount > 1 ? 's' : ''} por cada $${Number(data.amountPerPoints).toLocaleString('es-CO')} en compras` },
+                        { icon: Star, title: 'Acumula puntos', desc: isService ? 'Tus puntos se suman automáticamente con cada cita' : 'Tus puntos se suman automáticamente con cada compra' },
+                        { icon: Gift, title: 'Canjea recompensas', desc: isService ? 'Usa tus puntos al reservar para obtener descuentos y servicios gratis' : 'Usa tus puntos al ordenar para obtener descuentos y productos gratis' }
                       ].map((step, i) => (
                         <motion.div key={i} variants={fadeUp} className="flex items-start gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-100 flex items-center justify-center text-lg flex-shrink-0">
-                            {step.emoji}
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-100 flex items-center justify-center flex-shrink-0">
+                            <step.icon className="w-5 h-5 text-slate-500" />
                           </div>
                           <div>
                             <p className="text-xs font-bold text-slate-700">{step.title}</p>
@@ -674,7 +683,7 @@ const LoyaltyPage = ({ show, onClose, phone, businessId, businessName, theme, pr
                         className="w-full flex items-center justify-between px-4 py-3.5 active:bg-slate-50 transition-colors"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="text-base">📋</span>
+                          <ClipboardList className="w-4 h-4 text-slate-700" />
                           <h3 className="text-sm font-black text-slate-800">Historial</h3>
                           <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-400 font-bold">
                             {data.recentTransactions.length}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHistory, FaTimes, FaShoppingCart, FaHeart, FaClock, FaCheckCircle, FaChevronDown, FaRedo, FaMapMarkerAlt, FaChair, FaTruck, FaBoxOpen, FaStar } from 'react-icons/fa';
+import { FaHistory, FaTimes, FaShoppingCart, FaHeart, FaClock, FaCheckCircle, FaChevronDown, FaRedo, FaMapMarkerAlt, FaChair, FaTruck, FaBoxOpen, FaStar, FaUtensils } from 'react-icons/fa';
 import api from '../services/api';
 import logger from '../utils/logger';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -330,7 +330,7 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
                                       />
                                     ) : (
                                       <div className="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center shrink-0">
-                                        <span className="text-lg">🍽️</span>
+                                        <FaUtensils className="text-slate-300 text-sm" />
                                       </div>
                                     )}
                                     <div className="flex-1 min-w-0">
