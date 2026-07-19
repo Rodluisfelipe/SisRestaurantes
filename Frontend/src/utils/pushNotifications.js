@@ -77,7 +77,9 @@ export const registerServiceWorker = async () => {
   }
 
   try {
-    const registration = await navigator.serviceWorker.register('/sw.js', {
+    // ?v=8 cache-buster: el sw.js sin query quedó cacheado immutable en el edge
+    // de Cloudflare; con la versión en la URL el navegador trae el SW nuevo.
+    const registration = await navigator.serviceWorker.register('/sw.js?v=8', {
       scope: '/',
       updateViaCache: 'none'
     });

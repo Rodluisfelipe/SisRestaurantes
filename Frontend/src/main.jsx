@@ -217,14 +217,16 @@ const Root = () => {
   );
 };
 
-// Service Worker (push notifications). updateViaCache:'none' obliga al navegador
-// a re-descargar el script del SW saltándose la caché HTTP en cada chequeo de
-// actualización — así un SW viejo (que cacheaba /assets/) no puede quedar
-// atascado sirviendo chunks obsoletos. URL única '/sw.js' (sin ?v=) para no
-// competir con el registro de pushNotifications.js.
+// Service Worker (push notifications). El ?v=8 es un cache-buster de URL: el
+// sw.js SIN query quedó cacheado como `immutable` en el edge de Cloudflare
+// (antes del fix de _headers) y el edge no lo revalida, así que servía por
+// siempre el SW viejo con fetch handler. Registrando '/sw.js?v=8' el navegador
+// pide una URL que el edge NO tiene cacheada → trae el SW nuevo desde origen.
+// updateViaCache:'none' además salta la caché HTTP del navegador en cada chequeo.
+const SW_URL = '/sw.js?v=8';
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
+    navigator.serviceWorker.register(SW_URL, { scope: '/', updateViaCache: 'none' })
       .then((registration) => {
         registration.update();
       })
