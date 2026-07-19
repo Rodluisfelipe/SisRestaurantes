@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateDailyReportPDF } from './DailyReportPDF';
 import { ORDER_STATUS } from '../utils/constants';
 import AI from './Admin/AdminIcons';
 import {
@@ -154,7 +153,7 @@ const GiftPanel = ({ order, businessName }) => {
   return (
     <div className="rounded-xl border border-pink-200 bg-pink-50/70 overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 bg-pink-100/70 border-b border-pink-200">
-        <span className="text-base">🎁</span>
+        {AI.gift('w-4 h-4 text-pink-700')}
         <span className="text-[13px] font-bold text-pink-800">Pedido de regalo</span>
       </div>
       <div className="p-3 space-y-2">

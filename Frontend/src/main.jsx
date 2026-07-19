@@ -217,15 +217,33 @@ const Root = () => {
   );
 };
 
-// Service Worker temporal para limpiar caché
+// Service Worker (push notifications). El ?v=8 es un cache-buster de URL: el
+// sw.js SIN query quedó cacheado como `immutable` en el edge de Cloudflare
+// (antes del fix de _headers) y el edge no lo revalida, así que servía por
+// siempre el SW viejo con fetch handler. Registrando '/sw.js?v=8' el navegador
+// pide una URL que el edge NO tiene cacheada → trae el SW nuevo desde origen.
+// updateViaCache:'none' además salta la caché HTTP del navegador en cada chequeo.
+const SW_URL = '/sw.js?v=8';
 if ('serviceWorker' in navigator) {
+  // Auto-curación: si un SW nuevo TOMA EL CONTROL a mitad de sesión (p.ej. el
+  // usuario venía con el SW viejo con fetch handler que servía /assets/ roto),
+  // recargamos UNA vez para que la página use el SW nuevo (sin fetch handler) y
+  // los chunks se descarguen frescos del CDN. Solo recargamos si YA había un
+  // controller previo (una actualización) — no en la primera instalación en un
+  // navegador limpio, donde la página ya cargó bien directo del CDN.
+  let hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    if (hadController) { refreshing = true; window.location.reload(); }
+    hadController = true;
+  });
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=7')
+    navigator.serviceWorker.register(SW_URL, { scope: '/', updateViaCache: 'none' })
       .then((registration) => {
-        // Service Worker registrado para limpiar caché
         registration.update();
       })
-      .catch((registrationError) => {
+      .catch(() => {
         // Error silencioso
       });
   });
