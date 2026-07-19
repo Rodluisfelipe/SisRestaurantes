@@ -225,6 +225,19 @@ const Root = () => {
 // updateViaCache:'none' además salta la caché HTTP del navegador en cada chequeo.
 const SW_URL = '/sw.js?v=8';
 if ('serviceWorker' in navigator) {
+  // Auto-curación: si un SW nuevo TOMA EL CONTROL a mitad de sesión (p.ej. el
+  // usuario venía con el SW viejo con fetch handler que servía /assets/ roto),
+  // recargamos UNA vez para que la página use el SW nuevo (sin fetch handler) y
+  // los chunks se descarguen frescos del CDN. Solo recargamos si YA había un
+  // controller previo (una actualización) — no en la primera instalación en un
+  // navegador limpio, donde la página ya cargó bien directo del CDN.
+  let hadController = !!navigator.serviceWorker.controller;
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    if (hadController) { refreshing = true; window.location.reload(); }
+    hadController = true;
+  });
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(SW_URL, { scope: '/', updateViaCache: 'none' })
       .then((registration) => {
