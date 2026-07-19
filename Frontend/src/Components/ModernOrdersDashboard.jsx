@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { generateDailyReportPDF } from './DailyReportPDF';
 import { ORDER_STATUS } from '../utils/constants';
 import AI from './Admin/AdminIcons';
 import {
