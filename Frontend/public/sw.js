@@ -1,33 +1,73 @@
-// Service Worker SOLO para notificaciones push.
-// Versión: 5.0.0 - SIN fetch handler.
-//
-// Históricamente este SW interceptaba fetch y cacheaba HTML/assets. Eso dejaba
-// navegadores atascados sirviendo un index.html o un /assets/*.js VIEJO desde la
-// caché del SW tras un deploy → "Failed to fetch dynamically imported module" y
-// "Expected a JavaScript module but got text/html". El CDN de Cloudflare ya
-// cachea correctamente con hashes inmutables, así que el SW NO debe tocar la red.
-// Sin fetch handler, todas las peticiones van directo al navegador/CDN y este
-// tipo de bug desaparece de raíz.
+// Service Worker para notificaciones push PWA
+// Versión: 4.0.0 - No cache JS/CSS assets (Cloudflare CDN handles it)
 
-const CACHE_NAME = 'menuby-push-v7';
+const CACHE_NAME = 'menuby-v6';
 
-// Instalación — activar de inmediato.
+// Instalación del Service Worker
 self.addEventListener('install', (event) => {
+  console.log('[SW] Installing service worker v3.0...');
   self.skipWaiting();
 });
 
-// Activación — BORRAR TODAS las cachés viejas (incluidas las de versiones que
-// cacheaban assets) y tomar control de las pestañas abiertas al instante.
+// Activación del Service Worker - limpiar cachés viejos
 self.addEventListener('activate', (event) => {
+  console.log('[SW] Activating service worker...');
   event.waitUntil(
-    caches.keys()
-      .then((names) => Promise.all(names.map((n) => caches.delete(n))))
-      .then(() => self.clients.claim())
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            console.log('[SW] Deleting old cache:', cacheName);
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    }).then(() => self.clients.claim())
   );
 });
 
-// NOTA: intencionalmente NO hay 'fetch' handler. El SW no intercepta ninguna
-// petición de red — el navegador y el CDN se encargan de todo.
+// Fetch: Network first — only cache index.html for offline support
+// Hashed assets (JS/CSS) are served by Cloudflare CDN and don't need SW caching
+self.addEventListener('fetch', (event) => {
+  // Solo interceptar requests GET del mismo origen
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' ||
+      url.origin !== self.location.origin ||
+      url.pathname.startsWith('/api/') ||
+      url.pathname.startsWith('/socket.io/')) {
+    return;
+  }
+
+  // Don't cache hashed assets — they change on every deploy and CDN handles them
+  const isHashedAsset = url.pathname.startsWith('/assets/');
+  if (isHashedAsset) {
+    // Let the browser fetch directly from CDN, no SW interception
+    return;
+  }
+
+  // Network first, cache fallback — only for HTML/non-hashed resources
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        // Only cache full 200 responses — 206 partial responses (audio/video range) are not cacheable
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          // Siempre devolver un Response válido
+          if (event.request.destination === 'document') {
+            return caches.match('/index.html') || new Response('<h1>Offline</h1>', { headers: { 'Content-Type': 'text/html' } });
+          }
+          return new Response('', { status: 503, statusText: 'Offline' });
+        });
+      })
+  );
+});
 
 // Push: recibir y mostrar notificación
 self.addEventListener('push', (event) => {

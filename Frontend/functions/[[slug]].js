@@ -550,26 +550,6 @@ export async function onRequest(context) {
   const pathname = url.pathname;
   const userAgent = context.request.headers.get('user-agent') || '';
 
-  // Build assets (/assets/*.js|css con hash). Si el archivo exacto NO existe
-  // —hash viejo tras un deploy, o request que llegó a mitad de un deploy—
-  // Cloudflare Pages cae al SPA fallback y devuelve index.html (text/html).
-  // Servir HTML ante un <script type=module> revienta con:
-  //   "Expected a JavaScript module but the server responded with text/html".
-  // En vez de eso devolvemos un 404 honesto: el navegador lanza un
-  // "Failed to fetch dynamically imported module" limpio que el auto-recovery
-  // de main.jsx detecta para recargar y traer el index.html + chunks nuevos.
-  if (pathname.startsWith('/assets/')) {
-    const res = await context.next();
-    const ct = res.headers.get('content-type') || '';
-    if (res.status === 200 && ct.includes('text/html')) {
-      return new Response('Not found', {
-        status: 404,
-        headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' },
-      });
-    }
-    return res;
-  }
-
   // Skip static files and admin paths
   if (shouldSkipPath(pathname)) {
     return context.next();

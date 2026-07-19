@@ -54,13 +54,6 @@
 /*.css
   Cache-Control: public, max-age=31536000, immutable
 
-# El service worker NUNCA debe cachearse immutable: si un usuario queda con un
-# SW viejo (que cacheaba /assets/), el navegador jamás lo re-descargaría y
-# seguiría sirviendo chunks obsoletos → "Failed to fetch dynamically imported
-# module". Regla más específica que /*.js para forzar revalidación siempre.
-/sw.js
-  Cache-Control: no-cache, no-store, must-revalidate
-
 # Images
 /*.jpeg
   Cache-Control: public, max-age=604800

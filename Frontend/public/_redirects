@@ -1,6 +1,9 @@
-# Assets versionados con hash: el 404 honesto para archivos inexistentes lo
-# maneja functions/[[slug]].js (Cloudflare _redirects NO soporta status 404,
-# la regla anterior se ignoraba y dejaba el SPA fallback devolviendo text/html).
+# Assets versionados (con hash en el nombre). Si el archivo no existe en el
+# build, devolvemos 404 honesto en vez de caer al SPA fallback. Esto evita el
+# bug del "MIME text/html en CSS" cuando el navegador tiene HTML cacheado
+# apuntando a hashes viejos. El auto-recovery de main.jsx detecta el 404 y
+# recarga la página para traer el index.html nuevo.
+/assets/*  /__not_found  404
 
 # SPA fallback para rutas del cliente (todo lo demás).
 /*  /index.html  200
