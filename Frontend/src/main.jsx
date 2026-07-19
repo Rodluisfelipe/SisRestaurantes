@@ -217,15 +217,18 @@ const Root = () => {
   );
 };
 
-// Service Worker temporal para limpiar caché
+// Service Worker (push notifications). updateViaCache:'none' obliga al navegador
+// a re-descargar el script del SW saltándose la caché HTTP en cada chequeo de
+// actualización — así un SW viejo (que cacheaba /assets/) no puede quedar
+// atascado sirviendo chunks obsoletos. URL única '/sw.js' (sin ?v=) para no
+// competir con el registro de pushNotifications.js.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=7')
+    navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' })
       .then((registration) => {
-        // Service Worker registrado para limpiar caché
         registration.update();
       })
-      .catch((registrationError) => {
+      .catch(() => {
         // Error silencioso
       });
   });
