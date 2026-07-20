@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
@@ -16,6 +16,14 @@ import {
   FaWhatsapp, FaMobileAlt, FaCashRegister, FaMoneyBillWave,
   FaCalendarWeek
 } from 'react-icons/fa';
+
+// Estilo premium por tipo de insight de IA
+const AI_INSIGHT_STYLES = {
+  success: { wrap: 'bg-emerald-50/70 border-emerald-200', chip: 'from-emerald-500 to-teal-600', Icon: FaTrophy },
+  good:    { wrap: 'bg-blue-50/70 border-blue-200',       chip: 'from-blue-500 to-indigo-600',  Icon: FaArrowUp },
+  warning: { wrap: 'bg-amber-50/70 border-amber-200',     chip: 'from-amber-500 to-orange-600', Icon: FaInfoCircle },
+  info:    { wrap: 'bg-slate-50 border-slate-200',        chip: 'from-slate-400 to-slate-500',  Icon: FaLightbulb },
+};
 
 function EnhancedCompletedOrders() {
   const [completedOrders, setCompletedOrders] = useState([]);
@@ -1160,113 +1168,137 @@ function EnhancedCompletedOrders() {
         )}
       </div>
 
-      {/* Stats Row — iOS glass cards on mobile */}
+      {/* Stats Row — premium cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
-        <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
-          <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 lg:bg-blue-50 lg:from-transparent lg:to-transparent flex items-center justify-center shadow-sm lg:shadow-none">
-            <FaClipboardList className="text-white lg:text-blue-500 text-sm" />
-          </div>
-          <div>
-            <p className="text-xs lg:text-[11px] text-slate-400 font-medium">{isService ? 'Citas' : 'Pedidos'}</p>
-            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">{(metrics.orders || 0).toLocaleString('es-CO')}</p>
-          </div>
-        </div>
-
-        <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
-          <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 lg:bg-emerald-50 lg:from-transparent lg:to-transparent flex items-center justify-center shadow-sm lg:shadow-none">
-            <FaDollarSign className="text-white lg:text-emerald-500 text-sm" />
-          </div>
-          <div>
-            <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Ventas</p>
-            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
-              ${fmtMoney(metrics.revenue)}
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
-          <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 lg:bg-violet-50 lg:from-transparent lg:to-transparent flex items-center justify-center shadow-sm lg:shadow-none">
-            <FaChartBar className="text-white lg:text-violet-500 text-sm" />
-          </div>
-          <div>
-            <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Promedio</p>
-            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
-              ${fmtMoney(metrics.avg)}
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-white lg:bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-3.5 lg:p-3 flex items-center gap-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
-          <div className="w-10 h-10 lg:w-9 lg:h-9 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 lg:bg-orange-50 lg:from-transparent lg:to-transparent flex items-center justify-center shadow-sm lg:shadow-none">
-            <FaHamburger className="text-white lg:text-orange-500 text-sm" />
-          </div>
-          <div>
-            <p className="text-xs lg:text-[11px] text-slate-400 font-medium">{isService ? 'Servicios' : 'Productos'}</p>
-            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
-              {(metrics.products || 0).toLocaleString('es-CO')}
-            </p>
-          </div>
-        </div>
+        {[
+          { label: isService ? 'Citas' : 'Pedidos', value: (metrics.orders || 0).toLocaleString('es-CO'), Icon: FaClipboardList, from: 'from-blue-500', to: 'to-indigo-600' },
+          { label: 'Ventas', value: `$${fmtMoney(metrics.revenue)}`, Icon: FaDollarSign, from: 'from-emerald-500', to: 'to-teal-600' },
+          { label: 'Promedio', value: `$${fmtMoney(metrics.avg)}`, Icon: FaChartBar, from: 'from-violet-500', to: 'to-purple-600' },
+          { label: isService ? 'Servicios' : 'Productos', value: (metrics.products || 0).toLocaleString('es-CO'), Icon: FaHamburger, from: 'from-orange-500', to: 'to-amber-600' },
+        ].map((c, i) => (
+          <motion.div
+            key={c.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] }}
+            className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-3.5 lg:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.05)]"
+          >
+            <div className={`pointer-events-none absolute -top-8 -right-8 w-24 h-24 rounded-full bg-gradient-to-br ${c.from} ${c.to} opacity-[0.08]`} />
+            <div className="relative flex items-center gap-3">
+              <div className={`w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-gradient-to-br ${c.from} ${c.to} flex items-center justify-center shadow-sm shrink-0`}>
+                <c.Icon className="text-white text-sm lg:text-base" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide truncate">{c.label}</p>
+                <p className="text-[19px] lg:text-2xl font-bold text-slate-900 leading-tight truncate tabular-nums">{c.value}</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
       </div>
 
       {/* Análisis de ventas con IA (Groq) */}
-      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shrink-0">
-              <FaLightbulb className="text-white text-xs" />
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+        className="relative overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-[0_2px_16px_rgba(124,58,237,0.06)]"
+      >
+        {/* Header con gradiente */}
+        <div className="relative flex items-center justify-between gap-3 p-4 bg-gradient-to-r from-violet-50 via-fuchsia-50 to-white border-b border-violet-100">
+          <div className="pointer-events-none absolute -top-10 -left-6 w-32 h-32 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 opacity-[0.08]" />
+          <div className="relative flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-sm shrink-0">
+              <FaLightbulb className="text-white text-sm" />
             </div>
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-slate-800">Análisis de ventas IA</h3>
-              <p className="text-[11px] text-slate-400 truncate">
-                Recomendaciones sobre {viewMode === 'all' ? (dateFrom || dateTo ? 'el rango filtrado' : 'todo el historial') : 'hoy'}
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-800">Análisis de ventas</h3>
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" /> IA
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 truncate">
+                {viewMode === 'all' ? (dateFrom || dateTo ? 'Sobre el rango filtrado' : 'Sobre todo el historial') : 'Sobre las ventas de hoy'}
               </p>
             </div>
           </div>
           <button
             onClick={fetchAiInsights}
             disabled={aiInsightsLoading}
-            className="text-xs font-semibold px-3 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-60 transition-colors whitespace-nowrap shrink-0"
+            className="relative shrink-0 text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm hover:shadow-md hover:from-violet-700 hover:to-fuchsia-700 disabled:opacity-60 transition-all active:scale-[0.97]"
           >
-            {aiInsightsLoading ? 'Analizando…' : (aiInsightsGenerated ? 'Regenerar' : '✨ Generar análisis')}
+            {aiInsightsLoading ? 'Analizando…' : (aiInsightsGenerated ? '↻ Regenerar' : '✨ Generar')}
           </button>
         </div>
 
-        {aiInsightsError && <p className="text-xs text-amber-600 mt-2">{aiInsightsError}</p>}
+        {/* Contenido */}
+        <div className="p-4">
+          {aiInsightsError && (
+            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <FaInfoCircle className="shrink-0" /> {aiInsightsError}
+            </div>
+          )}
 
-        {!aiInsightsGenerated && !aiInsightsLoading && !aiInsightsError && (
-          <p className="text-xs text-slate-400 mt-2">Genera recomendaciones automáticas basadas en tus ventas del periodo.</p>
-        )}
-
-        {aiInsights.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
-            {aiInsights.map((insight, i) => (
-              <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border ${
-                insight.type === 'success' ? 'bg-emerald-50 border-emerald-200' :
-                insight.type === 'warning' ? 'bg-amber-50 border-amber-200' :
-                insight.type === 'good' ? 'bg-blue-50 border-blue-200' :
-                'bg-slate-50 border-slate-200'
-              }`}>
-                <span className={`mt-0.5 text-sm shrink-0 ${
-                  insight.type === 'success' ? 'text-emerald-500' :
-                  insight.type === 'warning' ? 'text-amber-500' :
-                  insight.type === 'good' ? 'text-blue-500' :
-                  'text-slate-500'
-                }`}>
-                  <FaLightbulb />
-                </span>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-semibold text-slate-800">{insight.title}</h4>
-                  {insight.message && <p className="text-xs text-slate-600 mt-0.5">{insight.message}</p>}
-                  {insight.recommendation && (
-                    <p className="text-xs text-violet-600 mt-1 font-medium">→ {insight.recommendation}</p>
-                  )}
+          {/* Skeleton mientras carga */}
+          {aiInsightsLoading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="rounded-xl border border-slate-100 p-3 animate-pulse">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-slate-200" />
+                    <div className="h-3 bg-slate-200 rounded w-1/2" />
+                  </div>
+                  <div className="h-2.5 bg-slate-100 rounded w-full mb-1.5" />
+                  <div className="h-2.5 bg-slate-100 rounded w-4/5" />
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!aiInsightsLoading && !aiInsightsGenerated && !aiInsightsError && (
+            <div className="flex flex-col items-center justify-center text-center py-6">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center mb-2">
+                <FaLightbulb className="text-violet-500" />
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <p className="text-xs text-slate-500 max-w-xs">Genera recomendaciones automáticas basadas en tus ventas: qué se vende más, mejores días, canales y acciones concretas.</p>
+            </div>
+          )}
+
+          {/* Insights */}
+          {!aiInsightsLoading && aiInsights.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              {aiInsights.map((insight, i) => {
+                const st = AI_INSIGHT_STYLES[insight.type] || AI_INSIGHT_STYLES.info;
+                const StIcon = st.Icon;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.07 }}
+                    className={`flex items-start gap-3 p-3 rounded-xl border ${st.wrap}`}
+                  >
+                    <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${st.chip} flex items-center justify-center shrink-0 shadow-sm`}>
+                      <StIcon className="text-white text-[11px]" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-slate-800">{insight.title}</h4>
+                      {insight.message && <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{insight.message}</p>}
+                      {insight.recommendation && (
+                        <p className="text-xs text-violet-700 mt-1.5 font-semibold flex items-start gap-1">
+                          <span className="mt-px">→</span><span>{insight.recommendation}</span>
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </motion.div>
 
       {/* Insights + Top Selling — side by side on larger screens */}
       {viewMode === 'today' && (insights.length > 0 || topSellingItems.length > 0) && (
