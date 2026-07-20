@@ -677,15 +677,15 @@ router.get("/completed", tenantAuth, async (req, res) => {
     // Build filter
     const filter = { businessId: businessObjectId };
 
-    // Date range filter
+    // Date range filter — interpretar from/to como DÍAS COMPLETOS en hora
+    // Colombia (UTC-5), igual que /daily-closing. Antes se usaba new Date(from)
+    // (medianoche UTC) + setHours (TZ del servidor = UTC en prod), lo que
+    // desplazaba el rango ~5h y perdía/incluía los pedidos de la noche.
     if (from || to) {
+      const dateOnly = (s) => String(s).slice(0, 10); // "YYYY-MM-DD", robusto ante ISO completos
       filter.completedAt = {};
-      if (from) filter.completedAt.$gte = new Date(from);
-      if (to) {
-        const toDate = new Date(to);
-        toDate.setHours(23, 59, 59, 999);
-        filter.completedAt.$lte = toDate;
-      }
+      if (from) filter.completedAt.$gte = startOfDayCOL(new Date(dateOnly(from) + 'T12:00:00Z'));
+      if (to) filter.completedAt.$lt = endOfDayCOL(new Date(dateOnly(to) + 'T12:00:00Z'));
     }
 
     // Optional filters
@@ -723,15 +723,49 @@ router.get("/completed", tenantAuth, async (req, res) => {
       query = query.limit(500);
     }
     
-    const [completedOrders, total] = await Promise.all([
+    // Stats agregados sobre TODO el filtro (no solo la página actual), para que
+    // las tarjetas Pedidos/Ventas/Promedio/Productos reflejen el rango completo.
+    // Ventas usa finalAmount (con descuentos/envíos) igual que el Excel; cae a
+    // totalAmount cuando finalAmount es null.
+    const [completedOrders, statsAgg] = await Promise.all([
       query.lean(),
-      CompletedOrder.countDocuments(filter),
+      CompletedOrder.aggregate([
+        // aggregate NO castea strings a ObjectId (a diferencia de find), así que
+        // el businessId (string de validateAndResolveBusinessId) debe convertirse.
+        { $match: { ...filter, businessId: new ObjectId(businessObjectId) } },
+        {
+          $group: {
+            _id: null,
+            totalOrders: { $sum: 1 },
+            totalRevenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+            totalProducts: {
+              $sum: {
+                $reduce: {
+                  input: { $ifNull: ['$items', []] },
+                  initialValue: 0,
+                  in: { $add: ['$$value', { $ifNull: ['$$this.quantity', 0] }] }
+                }
+              }
+            }
+          }
+        }
+      ]),
     ]);
-    
+
+    const agg = statsAgg[0] || { totalOrders: 0, totalRevenue: 0, totalProducts: 0 };
+    const total = agg.totalOrders;
+    const stats = {
+      totalOrders: agg.totalOrders,
+      totalRevenue: agg.totalRevenue,
+      totalProducts: agg.totalProducts,
+      avgTicket: agg.totalOrders > 0 ? agg.totalRevenue / agg.totalOrders : 0,
+    };
+
     // Always return structured response
     if (limitNum > 0) {
       return res.json({
         orders: completedOrders,
+        stats,
         pagination: {
           current: pageNum || 1,
           total: Math.ceil(total / limitNum),
