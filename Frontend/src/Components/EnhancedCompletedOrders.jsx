@@ -1088,84 +1088,95 @@ function EnhancedCompletedOrders() {
         </div>
 
         {/* Advanced Filters Panel */}
-        {showFilters && (
-          <div className="bg-slate-50 rounded-xl border border-slate-200 p-3 space-y-3">
-            {/* Quick date presets */}
-            <div className="flex flex-wrap gap-1.5">
-              <span className="text-xs font-medium text-slate-500 flex items-center mr-1"><FaCalendarWeek className="text-[9px] mr-1" />Rápido:</span>
-              {[['Hoy', 'today'], ['Ayer', 'yesterday'], ['Última semana', 'week'], ['Último mes', 'month'], ['Último año', 'year']].map(([label, key]) => (
-                <button key={key} onClick={() => applyDatePreset(key)}
-                  className="px-3 py-2 lg:py-1.5 text-[13px] lg:text-xs font-semibold lg:font-medium rounded-xl lg:rounded-md border border-slate-200 bg-white text-slate-600 hover:bg-red-50 lg:hover:bg-blue-50 hover:border-red-300 lg:hover:border-blue-300 hover:text-red-700 lg:hover:text-blue-700 transition-colors active:scale-[0.97] lg:active:scale-100">
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {/* Date From */}
-              <div>
-                <label className="text-xs font-medium text-slate-500 mb-1 block">Desde</label>
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500"
-                />
+        <AnimatePresence initial={false}>
+          {showFilters && (
+            <motion.div
+              key="filters"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="bg-white rounded-xl border border-slate-200 p-3.5 space-y-3 shadow-[0_2px_10px_rgba(0,0,0,0.04)]">
+                {/* Quick date presets */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1 mr-1"><FaCalendarWeek className="text-[9px]" />Rápido</span>
+                  {[['Hoy', 'today'], ['Ayer', 'yesterday'], ['Última semana', 'week'], ['Último mes', 'month'], ['Último año', 'year']].map(([label, key]) => (
+                    <button key={key} onClick={() => applyDatePreset(key)}
+                      className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all active:scale-[0.97]">
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                  {/* Date From */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 block">Desde</label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="w-full px-2.5 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
+                    />
+                  </div>
+                  {/* Date To */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 block">Hasta</label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="w-full px-2.5 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all"
+                    />
+                  </div>
+                  {/* Order Type */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 block">Tipo</label>
+                    <select value={filterOrderType} onChange={(e) => setFilterOrderType(e.target.value)}
+                      className="w-full px-2.5 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all">
+                      <option value="">Todos</option>
+                      <option value="inSite">En sitio</option>
+                      <option value="takeaway">Para llevar</option>
+                      <option value="delivery">Domicilio</option>
+                    </select>
+                  </div>
+                  {/* Channel */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 block">Canal</label>
+                    <select value={filterChannel} onChange={(e) => setFilterChannel(e.target.value)}
+                      className="w-full px-2.5 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all">
+                      <option value="">Todos</option>
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="inapp">In-App</option>
+                      <option value="pos">POS</option>
+                    </select>
+                  </div>
+                  {/* Payment */}
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1 block">Pago</label>
+                    <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}
+                      className="w-full px-2.5 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition-all">
+                      <option value="">Todos</option>
+                      <option value="cash">Efectivo</option>
+                      <option value="nequi">Nequi</option>
+                      <option value="daviplata">Daviplata</option>
+                      <option value="transfer">Transferencia</option>
+                      <option value="other">Otro</option>
+                    </select>
+                  </div>
+                  {/* Clear */}
+                  <div className="flex items-end">
+                    <button onClick={clearFilters}
+                      className="w-full px-2.5 py-2 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-colors">
+                      Limpiar filtros
+                    </button>
+                  </div>
+                </div>
               </div>
-              {/* Date To */}
-              <div>
-                <label className="text-xs font-medium text-slate-500 mb-1 block">Hasta</label>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500"
-                />
-              </div>
-              {/* Order Type */}
-              <div>
-                <label className="text-xs lg:text-[11px] font-medium text-slate-500 mb-1 block">Tipo</label>
-                <select value={filterOrderType} onChange={(e) => setFilterOrderType(e.target.value)}
-                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500">
-                  <option value="">Todos</option>
-                  <option value="inSite">En sitio</option>
-                  <option value="takeaway">Para llevar</option>
-                  <option value="delivery">Domicilio</option>
-                </select>
-              </div>
-              {/* Channel */}
-              <div>
-                <label className="text-xs lg:text-[11px] font-medium text-slate-500 mb-1 block">Canal</label>
-                <select value={filterChannel} onChange={(e) => setFilterChannel(e.target.value)}
-                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500">
-                  <option value="">Todos</option>
-                  <option value="whatsapp">WhatsApp</option>
-                  <option value="inapp">In-App</option>
-                  <option value="pos">POS</option>
-                </select>
-              </div>
-              {/* Payment */}
-              <div>
-                <label className="text-xs lg:text-[11px] font-medium text-slate-500 mb-1 block">Pago</label>
-                <select value={filterPayment} onChange={(e) => setFilterPayment(e.target.value)}
-                  className="w-full px-2.5 py-2.5 lg:py-1.5 text-[14px] lg:text-sm border border-slate-200 rounded-xl lg:rounded-lg bg-white focus:ring-2 focus:ring-red-500/20 lg:focus:ring-1 lg:focus:ring-blue-500">
-                  <option value="">Todos</option>
-                  <option value="cash">Efectivo</option>
-                  <option value="nequi">Nequi</option>
-                  <option value="daviplata">Daviplata</option>
-                  <option value="transfer">Transferencia</option>
-                  <option value="other">Otro</option>
-                </select>
-              </div>
-              {/* Clear */}
-              <div className="flex items-end">
-                <button onClick={clearFilters}
-                  className="w-full px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors">
-                  Limpiar filtros
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Stats Row — compact cards */}
@@ -1291,19 +1302,26 @@ function EnhancedCompletedOrders() {
       {/* Orders Table (desktop) + Card List (mobile) */}
       <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
         {/* Table header */}
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-800">
-            {viewMode === 'today' ? (isService ? 'Citas del Día' : 'Pedidos del Día') : (isService ? 'Todas las Citas' : 'Todos los Pedidos')}
-          </h2>
-          <span className="text-xs text-slate-500">
-            {viewMode === 'all' ? `${totalOrders} total` : `${filteredOrders.length}`} {isService ? 'citas' : 'pedidos'}
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50/80 to-white">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center shrink-0">
+              <FaClipboardList className="text-white text-[11px]" />
+            </div>
+            <h2 className="text-sm font-bold text-slate-800">
+              {viewMode === 'today' ? (isService ? 'Citas del Día' : 'Pedidos del Día') : (isService ? 'Todas las Citas' : 'Todos los Pedidos')}
+            </h2>
+          </div>
+          <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full tabular-nums">
+            {viewMode === 'all' ? `${totalOrders}` : `${filteredOrders.length}`} {isService ? 'citas' : 'pedidos'}
           </span>
         </div>
 
         {filteredOrders.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <FaShoppingBag className="text-3xl text-slate-300 mb-3" />
-            <p className="text-sm text-slate-500 font-medium">{isService ? 'Sin citas completadas' : 'Sin pedidos completados'}</p>
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center mb-3">
+              <FaShoppingBag className="text-2xl text-slate-400" />
+            </div>
+            <p className="text-sm text-slate-600 font-semibold">{isService ? 'Sin citas completadas' : 'Sin pedidos completados'}</p>
             <p className="text-xs text-slate-400 mt-1">
               {hasActiveFilters ? 'Intenta ajustar los filtros' : (isService ? 'Las citas completadas aparecerán aquí' : 'Los pedidos completados aparecerán aquí')}
             </p>
@@ -1328,9 +1346,9 @@ function EnhancedCompletedOrders() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {filteredOrders.map((order) => (
-                  <tr key={order._id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">
-                      #{order.orderNumber}
+                  <tr key={order._id} className="hover:bg-slate-50 transition-colors group">
+                    <td className="px-4 py-2.5">
+                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-slate-100 text-[12px] font-bold text-slate-700 tabular-nums group-hover:bg-white">#{order.orderNumber}</span>
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="text-sm text-slate-600">{order.customerName || 'Sin nombre'}</div>
@@ -1377,10 +1395,10 @@ function EnhancedCompletedOrders() {
                         ? `${isHotel ? 'Hab.' : 'Mesa'} ${order.tableNumber}`
                         : '—'}
                     </td>
-                    <td className="px-4 py-2.5 text-sm font-semibold text-slate-800">
+                    <td className="px-4 py-2.5 text-sm font-bold text-emerald-600 tabular-nums">
                       ${(order.finalAmount || order.totalAmount || 0).toLocaleString()}
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell">
+                    <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell tabular-nums">
                       {new Date(order.completedAt || order.createdAt).toLocaleString('es-ES', {
                         day: 'numeric', month: 'numeric',
                         hour: '2-digit', minute: '2-digit'
@@ -1389,7 +1407,7 @@ function EnhancedCompletedOrders() {
                     <td className="px-4 py-2.5 text-right">
                       <button
                         onClick={() => showOrderDetails(order)}
-                        className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-blue-600 transition-colors"
+                        className="p-2 rounded-lg text-slate-400 hover:bg-violet-50 hover:text-violet-600 transition-colors"
                         title="Ver detalles"
                       >
                         <FaEye className="text-xs" />
@@ -1432,7 +1450,7 @@ function EnhancedCompletedOrders() {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[13px] font-bold text-slate-900">${(order.finalAmount || order.totalAmount || 0).toLocaleString()}</p>
+                  <p className="text-[13px] font-bold text-emerald-600 tabular-nums">${(order.finalAmount || order.totalAmount || 0).toLocaleString()}</p>
                   <p className="text-[10px] text-slate-400">{order.items?.length || 0} items</p>
                 </div>
                 <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
@@ -1444,22 +1462,22 @@ function EnhancedCompletedOrders() {
 
         {/* Pagination — only for history mode */}
         {viewMode === 'all' && totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
+          <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/40">
             <span className="text-xs text-slate-500">
-              Página {currentPage} de {totalPages} ({totalOrders} pedidos)
+              Página <span className="font-bold text-slate-700">{currentPage}</span> de {totalPages} · <span className="tabular-nums">{totalOrders}</span> pedidos
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={() => { const p = currentPage - 1; setCurrentPage(p); fetchAllCompletedOrders(p); }}
                 disabled={currentPage <= 1}
-                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <FaChevronLeft className="text-xs" />
               </button>
               <button
                 onClick={() => { const p = currentPage + 1; setCurrentPage(p); fetchAllCompletedOrders(p); }}
                 disabled={currentPage >= totalPages}
-                className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm"
               >
                 <FaChevronRight className="text-xs" />
               </button>
