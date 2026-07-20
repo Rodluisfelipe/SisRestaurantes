@@ -1168,8 +1168,8 @@ function EnhancedCompletedOrders() {
         )}
       </div>
 
-      {/* Stats Row — premium cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 lg:gap-3">
+      {/* Stats Row — compact cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         {[
           { label: isService ? 'Citas' : 'Pedidos', value: (metrics.orders || 0).toLocaleString('es-CO'), Icon: FaClipboardList, from: 'from-blue-500', to: 'to-indigo-600' },
           { label: 'Ventas', value: `$${fmtMoney(metrics.revenue)}`, Icon: FaDollarSign, from: 'from-emerald-500', to: 'to-teal-600' },
@@ -1178,126 +1178,106 @@ function EnhancedCompletedOrders() {
         ].map((c, i) => (
           <motion.div
             key={c.label}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: i * 0.06, ease: [0.22, 1, 0.36, 1] }}
-            className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 p-3.5 lg:p-4 shadow-[0_2px_12px_rgba(0,0,0,0.05)]"
+            transition={{ duration: 0.28, delay: i * 0.05 }}
+            className="bg-white rounded-xl border border-slate-100 px-3 py-2.5 flex items-center gap-2.5 shadow-[0_1px_4px_rgba(0,0,0,0.04)]"
           >
-            <div className={`pointer-events-none absolute -top-8 -right-8 w-24 h-24 rounded-full bg-gradient-to-br ${c.from} ${c.to} opacity-[0.08]`} />
-            <div className="relative flex items-center gap-3">
-              <div className={`w-10 h-10 lg:w-11 lg:h-11 rounded-xl bg-gradient-to-br ${c.from} ${c.to} flex items-center justify-center shadow-sm shrink-0`}>
-                <c.Icon className="text-white text-sm lg:text-base" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wide truncate">{c.label}</p>
-                <p className="text-[19px] lg:text-2xl font-bold text-slate-900 leading-tight truncate tabular-nums">{c.value}</p>
-              </div>
+            <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${c.from} ${c.to} flex items-center justify-center shrink-0`}>
+              <c.Icon className="text-white text-[11px]" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide truncate leading-none mb-0.5">{c.label}</p>
+              <p className="text-[15px] lg:text-base font-bold text-slate-900 leading-tight truncate tabular-nums">{c.value}</p>
             </div>
           </motion.div>
         ))}
       </div>
 
-      {/* Análisis de ventas con IA (Groq) */}
+      {/* Análisis de ventas con IA (Groq) — compacto y colapsable */}
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-        className="relative overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-[0_2px_16px_rgba(124,58,237,0.06)]"
+        transition={{ duration: 0.3, delay: 0.08 }}
+        className="rounded-xl border border-violet-100 bg-white shadow-[0_1px_6px_rgba(124,58,237,0.05)] overflow-hidden"
       >
-        {/* Header con gradiente */}
-        <div className="relative flex items-center justify-between gap-3 p-4 bg-gradient-to-r from-violet-50 via-fuchsia-50 to-white border-b border-violet-100">
-          <div className="pointer-events-none absolute -top-10 -left-6 w-32 h-32 rounded-full bg-gradient-to-br from-violet-400 to-fuchsia-500 opacity-[0.08]" />
-          <div className="relative flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shadow-sm shrink-0">
-              <FaLightbulb className="text-white text-sm" />
+        <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shrink-0">
+              <FaLightbulb className="text-white text-[11px]" />
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-800">Análisis de ventas</h3>
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded-full">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" /> IA
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500 truncate">
-                {viewMode === 'all' ? (dateFrom || dateTo ? 'Sobre el rango filtrado' : 'Sobre todo el historial') : 'Sobre las ventas de hoy'}
-              </p>
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="text-[13px] font-bold text-slate-800 whitespace-nowrap">Análisis IA</h3>
+              <span className="hidden sm:inline text-[10px] text-slate-400 truncate">
+                {viewMode === 'all' ? (dateFrom || dateTo ? 'rango filtrado' : 'todo el historial') : 'hoy'}
+              </span>
             </div>
           </div>
           <button
             onClick={fetchAiInsights}
             disabled={aiInsightsLoading}
-            className="relative shrink-0 text-xs font-bold px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm hover:shadow-md hover:from-violet-700 hover:to-fuchsia-700 disabled:opacity-60 transition-all active:scale-[0.97]"
+            className="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-sm hover:from-violet-700 hover:to-fuchsia-700 disabled:opacity-60 transition-all active:scale-[0.97]"
           >
             {aiInsightsLoading ? 'Analizando…' : (aiInsightsGenerated ? '↻ Regenerar' : '✨ Generar')}
           </button>
         </div>
 
-        {/* Contenido */}
-        <div className="p-4">
-          {aiInsightsError && (
-            <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-              <FaInfoCircle className="shrink-0" /> {aiInsightsError}
-            </div>
-          )}
-
-          {/* Skeleton mientras carga */}
-          {aiInsightsLoading && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              {[0, 1, 2, 3].map((i) => (
-                <div key={i} className="rounded-xl border border-slate-100 p-3 animate-pulse">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-7 h-7 rounded-lg bg-slate-200" />
-                    <div className="h-3 bg-slate-200 rounded w-1/2" />
-                  </div>
-                  <div className="h-2.5 bg-slate-100 rounded w-full mb-1.5" />
-                  <div className="h-2.5 bg-slate-100 rounded w-4/5" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Empty state */}
-          {!aiInsightsLoading && !aiInsightsGenerated && !aiInsightsError && (
-            <div className="flex flex-col items-center justify-center text-center py-6">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-100 to-fuchsia-100 flex items-center justify-center mb-2">
-                <FaLightbulb className="text-violet-500" />
+        {/* Contenido: solo cuando hay algo que mostrar */}
+        {(aiInsightsLoading || aiInsightsError || aiInsights.length > 0) && (
+          <div className="px-3.5 pb-3.5 border-t border-slate-50">
+            {aiInsightsError && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <FaInfoCircle className="shrink-0" /> {aiInsightsError}
               </div>
-              <p className="text-xs text-slate-500 max-w-xs">Genera recomendaciones automáticas basadas en tus ventas: qué se vende más, mejores días, canales y acciones concretas.</p>
-            </div>
-          )}
+            )}
 
-          {/* Insights */}
-          {!aiInsightsLoading && aiInsights.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-              {aiInsights.map((insight, i) => {
-                const st = AI_INSIGHT_STYLES[insight.type] || AI_INSIGHT_STYLES.info;
-                const StIcon = st.Icon;
-                return (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: i * 0.07 }}
-                    className={`flex items-start gap-3 p-3 rounded-xl border ${st.wrap}`}
-                  >
-                    <div className={`w-7 h-7 rounded-lg bg-gradient-to-br ${st.chip} flex items-center justify-center shrink-0 shadow-sm`}>
-                      <StIcon className="text-white text-[11px]" />
+            {aiInsightsLoading && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className="rounded-lg border border-slate-100 p-2.5 animate-pulse">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-6 h-6 rounded-md bg-slate-200" />
+                      <div className="h-2.5 bg-slate-200 rounded w-1/2" />
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-slate-800">{insight.title}</h4>
-                      {insight.message && <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">{insight.message}</p>}
-                      {insight.recommendation && (
-                        <p className="text-xs text-violet-700 mt-1.5 font-semibold flex items-start gap-1">
-                          <span className="mt-px">→</span><span>{insight.recommendation}</span>
-                        </p>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                    <div className="h-2 bg-slate-100 rounded w-full mb-1.5" />
+                    <div className="h-2 bg-slate-100 rounded w-4/5" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!aiInsightsLoading && aiInsights.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+                {aiInsights.map((insight, i) => {
+                  const st = AI_INSIGHT_STYLES[insight.type] || AI_INSIGHT_STYLES.info;
+                  const StIcon = st.Icon;
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: i * 0.06 }}
+                      className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${st.wrap}`}
+                    >
+                      <div className={`w-6 h-6 rounded-md bg-gradient-to-br ${st.chip} flex items-center justify-center shrink-0`}>
+                        <StIcon className="text-white text-[10px]" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-[12px] font-bold text-slate-800">{insight.title}</h4>
+                        {insight.message && <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">{insight.message}</p>}
+                        {insight.recommendation && (
+                          <p className="text-[11px] text-violet-700 mt-1 font-semibold flex items-start gap-1">
+                            <span>→</span><span>{insight.recommendation}</span>
+                          </p>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </motion.div>
 
       {/* Insights + Top Selling — side by side on larger screens */}
