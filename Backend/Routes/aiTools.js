@@ -4,6 +4,10 @@ const rateLimit = require('express-rate-limit');
 const authMiddleware = require('../middleware/authMiddleware');
 const logger = require('../utils/logger');
 const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
+const CompletedOrder = require('../Models/CompletedOrder');
+const { validateAndResolveBusinessId } = require('../utils/businessValidator');
+const { startOfDayCOL, endOfDayCOL } = require('../utils/timezone');
+const { ObjectId } = require('mongoose').Types;
 
 // Rate limiter: 30 AI tool calls per 10 minutes per user
 const aiLimiter = rateLimit({
@@ -66,7 +70,10 @@ async function callGroq(apiKey, systemPrompt, userMessage, opts = {}) {
           model,
           messages,
           max_tokens: maxTokens,
-          temperature: opts.temperature || 0.8
+          temperature: opts.temperature || 0.8,
+          // JSON mode para salidas estructuradas fiables (llama-3.x lo soportan;
+          // si un modelo no lo acepta devuelve 400 y pasamos al siguiente).
+          ...(opts.jsonMode ? { response_format: { type: 'json_object' } } : {})
         })
       });
 
@@ -221,6 +228,120 @@ router.post('/review-response', authMiddleware, aiLimiter, async (req, res) => {
       return res.status(429).json({ message: 'Demasiadas solicitudes. Intenta en un minuto.' });
     }
     res.status(500).json({ message: 'Error al generar respuesta' });
+  }
+});
+
+// ─── 3. SALES INSIGHTS (lenguaje natural) ───────────────
+const INSIGHTS_PROMPT = `Eres un analista de negocios de restaurantes en Colombia.
+Recibes un resumen de ventas y generas insights ACCIONABLES para el dueño.
+
+REGLAS ESTRICTAS:
+- Responde SOLO con un objeto JSON válido: { "insights": [ ... ] }
+- Genera entre 3 y 5 insights, ordenados por impacto (el más importante primero)
+- Cada insight es: { "title": "...", "message": "...", "recommendation": "...", "type": "success|warning|good|info" }
+- "title": máximo 6 palabras
+- "message": el hallazgo con NÚMEROS concretos del resumen, en 1 oración
+- "recommendation": una acción concreta, realista y específica, en 1 oración
+- Usa español colombiano natural (tuteo). Montos en pesos colombianos.
+- Básate SOLO en los datos entregados. NO inventes cifras ni productos.
+- "type": success (algo va muy bien), good (positivo), warning (a mejorar), info (observación neutral)`;
+
+router.post('/sales-insights', authMiddleware, aiLimiter, async (req, res) => {
+  try {
+    const { businessId, from, to } = req.body;
+    if (!businessId) return res.status(400).json({ message: 'businessId es requerido' });
+    if (!(await ensureAiToolsEnabled(req, res))) return;
+
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return res.status(503).json({ message: 'Servicio de IA no disponible' });
+
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) return res.status(404).json({ message: businessResult.error });
+    const bizId = new ObjectId(businessResult.businessId);
+
+    // Rango en hora Colombia; por defecto, últimos 30 días.
+    const dateOnly = (s) => String(s).slice(0, 10);
+    const toDate = to ? endOfDayCOL(new Date(dateOnly(to) + 'T12:00:00Z')) : endOfDayCOL();
+    const fromDate = from
+      ? startOfDayCOL(new Date(dateOnly(from) + 'T12:00:00Z'))
+      : new Date(toDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const match = { businessId: bizId, completedAt: { $gte: fromDate, $lt: toDate } };
+    const rev = { $ifNull: ['$finalAmount', '$totalAmount'] };
+
+    const facet = await CompletedOrder.aggregate([
+      { $match: match },
+      { $facet: {
+        totals: [{ $group: {
+          _id: null,
+          orders: { $sum: 1 },
+          revenue: { $sum: rev },
+          products: { $sum: { $reduce: { input: { $ifNull: ['$items', []] }, initialValue: 0, in: { $add: ['$$value', { $ifNull: ['$$this.quantity', 0] }] } } } },
+          discounts: { $sum: { $ifNull: ['$discountAmount', 0] } },
+        } }],
+        byType: [{ $group: { _id: '$orderType', orders: { $sum: 1 }, revenue: { $sum: rev } } }],
+        byChannel: [{ $group: { _id: '$orderChannel', orders: { $sum: 1 } } }],
+        byPayment: [{ $group: { _id: '$paymentMethod', orders: { $sum: 1 } } }],
+        byWeekday: [{ $group: { _id: { $dayOfWeek: { date: '$completedAt', timezone: 'America/Bogota' } }, orders: { $sum: 1 }, revenue: { $sum: rev } } }],
+        topProducts: [
+          { $unwind: '$items' },
+          { $group: { _id: '$items.name', qty: { $sum: '$items.quantity' }, revenue: { $sum: { $multiply: [{ $ifNull: ['$items.price', 0] }, { $ifNull: ['$items.quantity', 0] }] } } } },
+          { $sort: { qty: -1 } },
+          { $limit: 8 },
+        ],
+      } },
+    ]);
+
+    const f = facet[0] || {};
+    const totals = (f.totals && f.totals[0]) || { orders: 0, revenue: 0, products: 0, discounts: 0 };
+
+    if (!totals.orders) {
+      return res.json({ insights: [], summary: null, message: 'No hay pedidos completados en el rango seleccionado.' });
+    }
+
+    const WD = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const typeLabel = (t) => t === 'delivery' ? 'Domicilio' : t === 'takeaway' ? 'Para llevar' : 'En sitio';
+    const days = Math.max(1, Math.round((toDate - fromDate) / (24 * 60 * 60 * 1000)));
+
+    const summary = {
+      periodo_dias: days,
+      pedidos: totals.orders,
+      ventas_totales: Math.round(totals.revenue),
+      ticket_promedio: Math.round(totals.revenue / totals.orders),
+      productos_vendidos: totals.products,
+      descuentos_totales: Math.round(totals.discounts || 0),
+      por_tipo: (f.byType || []).map(x => ({ tipo: typeLabel(x._id), pedidos: x.orders, ventas: Math.round(x.revenue) })),
+      por_canal: (f.byChannel || []).map(x => ({ canal: x._id || 'n/d', pedidos: x.orders })),
+      por_metodo_pago: (f.byPayment || []).map(x => ({ metodo: x._id || 'n/d', pedidos: x.orders })),
+      ventas_por_dia_semana: (f.byWeekday || []).map(x => ({ dia: WD[x._id] || x._id, pedidos: x.orders, ventas: Math.round(x.revenue) })).sort((a, b) => b.ventas - a.ventas),
+      top_productos: (f.topProducts || []).map(x => ({ producto: x._id, unidades: x.qty, ventas: Math.round(x.revenue) })),
+    };
+
+    const userPrompt = `Resumen de ventas (${days} días):\n${JSON.stringify(summary)}\n\nGenera los insights en el JSON pedido.`;
+    const result = await callGroq(apiKey, INSIGHTS_PROMPT, userPrompt, { maxTokens: 900, temperature: 0.6, jsonMode: true });
+
+    let insights = [];
+    try {
+      const parsed = JSON.parse(result);
+      insights = Array.isArray(parsed.insights) ? parsed.insights : (Array.isArray(parsed) ? parsed : []);
+    } catch (e) {
+      insights = [{ title: 'Análisis de ventas', message: String(result).slice(0, 400), recommendation: '', type: 'info' }];
+    }
+
+    insights = insights.slice(0, 6).map(i => ({
+      title: String(i.title || '').slice(0, 80),
+      message: String(i.message || '').slice(0, 300),
+      recommendation: String(i.recommendation || '').slice(0, 300),
+      type: ['success', 'warning', 'good', 'info'].includes(i.type) ? i.type : 'info',
+    })).filter(i => i.title || i.message);
+
+    res.json({ insights, summary });
+  } catch (error) {
+    logger.error('Error generating sales insights', error);
+    if ((error.message || '').includes('429')) {
+      return res.status(429).json({ message: 'Demasiadas solicitudes. Intenta en un minuto.' });
+    }
+    res.status(500).json({ message: 'Error al generar el análisis' });
   }
 });
 

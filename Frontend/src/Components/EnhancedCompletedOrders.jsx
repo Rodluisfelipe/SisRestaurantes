@@ -61,6 +61,12 @@ function EnhancedCompletedOrders() {
   const [rangeStats, setRangeStats] = useState(null);
   const PAGE_SIZE = 50;
 
+  // Análisis de ventas con IA (Groq)
+  const [aiInsights, setAiInsights] = useState([]);
+  const [aiInsightsLoading, setAiInsightsLoading] = useState(false);
+  const [aiInsightsError, setAiInsightsError] = useState(null);
+  const [aiInsightsGenerated, setAiInsightsGenerated] = useState(false);
+
   // Export states
   const [exportingExcel, setExportingExcel] = useState(false);
 
@@ -484,6 +490,39 @@ function EnhancedCompletedOrders() {
   };
 
   const hasActiveFilters = filterOrderType || filterChannel || filterPayment || dateFrom || dateTo;
+
+  // Genera insights de ventas con IA sobre el rango actual (o el día en modo hoy)
+  const fetchAiInsights = async () => {
+    setAiInsightsLoading(true);
+    setAiInsightsError(null);
+    try {
+      const body = { businessId };
+      if (viewMode === 'all') {
+        if (dateFrom) body.from = dateFrom;
+        if (dateTo) body.to = dateTo;
+      } else {
+        const now = new Date();
+        const d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        body.from = d;
+        body.to = d;
+      }
+      const res = await api.post('/ai-tools/sales-insights', body);
+      const list = res.data?.insights || [];
+      setAiInsights(list);
+      setAiInsightsGenerated(true);
+      if (list.length === 0) setAiInsightsError(res.data?.message || 'No hay suficientes datos para generar el análisis.');
+    } catch (err) {
+      const status = err?.response?.status;
+      setAiInsightsError(
+        status === 403 ? 'Tu plan actual no incluye herramientas IA.' :
+        status === 429 ? 'Demasiadas solicitudes. Intenta en un minuto.' :
+        status === 503 ? 'Servicio de IA no disponible.' :
+        'No se pudo generar el análisis.'
+      );
+    } finally {
+      setAiInsightsLoading(false);
+    }
+  };
 
   // Generate insights and recommendations
   const generateInsights = (stats, orders) => {
@@ -1168,6 +1207,65 @@ function EnhancedCompletedOrders() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* Análisis de ventas con IA (Groq) */}
+      <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center shrink-0">
+              <FaLightbulb className="text-white text-xs" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="text-sm font-semibold text-slate-800">Análisis de ventas IA</h3>
+              <p className="text-[11px] text-slate-400 truncate">
+                Recomendaciones sobre {viewMode === 'all' ? (dateFrom || dateTo ? 'el rango filtrado' : 'todo el historial') : 'hoy'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={fetchAiInsights}
+            disabled={aiInsightsLoading}
+            className="text-xs font-semibold px-3 py-2 rounded-lg bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-60 transition-colors whitespace-nowrap shrink-0"
+          >
+            {aiInsightsLoading ? 'Analizando…' : (aiInsightsGenerated ? 'Regenerar' : '✨ Generar análisis')}
+          </button>
+        </div>
+
+        {aiInsightsError && <p className="text-xs text-amber-600 mt-2">{aiInsightsError}</p>}
+
+        {!aiInsightsGenerated && !aiInsightsLoading && !aiInsightsError && (
+          <p className="text-xs text-slate-400 mt-2">Genera recomendaciones automáticas basadas en tus ventas del periodo.</p>
+        )}
+
+        {aiInsights.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+            {aiInsights.map((insight, i) => (
+              <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border ${
+                insight.type === 'success' ? 'bg-emerald-50 border-emerald-200' :
+                insight.type === 'warning' ? 'bg-amber-50 border-amber-200' :
+                insight.type === 'good' ? 'bg-blue-50 border-blue-200' :
+                'bg-slate-50 border-slate-200'
+              }`}>
+                <span className={`mt-0.5 text-sm shrink-0 ${
+                  insight.type === 'success' ? 'text-emerald-500' :
+                  insight.type === 'warning' ? 'text-amber-500' :
+                  insight.type === 'good' ? 'text-blue-500' :
+                  'text-slate-500'
+                }`}>
+                  <FaLightbulb />
+                </span>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-semibold text-slate-800">{insight.title}</h4>
+                  {insight.message && <p className="text-xs text-slate-600 mt-0.5">{insight.message}</p>}
+                  {insight.recommendation && (
+                    <p className="text-xs text-violet-600 mt-1 font-medium">→ {insight.recommendation}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Insights + Top Selling — side by side on larger screens */}
