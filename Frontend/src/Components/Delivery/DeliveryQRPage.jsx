@@ -5,6 +5,7 @@ import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
 import { FaMapMarkerAlt, FaPhone, FaCheck, FaBoxOpen, FaLocationArrow, FaMotorcycle, FaWhatsapp } from 'react-icons/fa';
 import 'leaflet/dist/leaflet.css';
+import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../../utils/mapTiles';
 
 const API_BASE = API_URL;
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
@@ -62,7 +63,7 @@ const DeliveryQRPage = () => {
       if (mapInstanceRef.current) return;
       const { lat, lon } = order.deliveryCoordinates;
       const map = L.map(mapRef.current, { zoomControl: false, attributionControl: false }).setView([lat, lon], 16);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+      L.tileLayer(MAP_TILE_URL, { maxZoom: 19, attribution: MAP_ATTRIBUTION }).addTo(map);
       const icon = L.divIcon({
         html: '<div style="background:#ef4444;width:16px;height:16px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4)"></div>',
         className: 'delivery-pin',

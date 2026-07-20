@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../utils/mapTiles';
 
 export default function DeliveryLocationMap({ lat, lon, address }) {
   const [copied, setCopied] = useState(false);
@@ -32,7 +33,7 @@ export default function DeliveryLocationMap({ lat, lon, address }) {
           touchZoom={false}
           style={{ height: '100%', width: '100%' }}
         >
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <TileLayer url={MAP_TILE_URL} attribution={MAP_ATTRIBUTION} />
         </MapContainer>
 
         {/* Center pin overlay */}

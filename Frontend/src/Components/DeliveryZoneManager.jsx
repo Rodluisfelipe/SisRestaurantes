@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw/dist/leaflet.draw.css';
 import L from 'leaflet';
 import 'leaflet-draw';
+import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../utils/mapTiles';
 import api from '../services/api';
 import { useAuth } from '../Context/AuthContext';
 import { AlertTriangle, MapPin, X, RotateCw, Check, Store, CheckCircle2, XCircle, Map, Circle as CircleIcon, FileText } from 'lucide-react';
@@ -693,8 +694,8 @@ const DeliveryZoneManager = () => {
                     key={`${tempLocation.lat}-${tempLocation.lng}`}
                   >
                     <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution='&copy; OpenStreetMap'
+                      url={MAP_TILE_URL}
+                      attribution={MAP_ATTRIBUTION}
                     />
                     <Marker 
                       position={[tempLocation.lat, tempLocation.lng]} 
@@ -782,8 +783,8 @@ const DeliveryZoneManager = () => {
             style={{ height: '100%', width: '100%' }}
           >
             <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url={MAP_TILE_URL}
+              attribution={MAP_ATTRIBUTION}
             />
             
             {/* Actualizar centro del mapa cuando cambia la ubicación de la tienda */}
@@ -1088,8 +1089,8 @@ const DeliveryZoneManager = () => {
                     style={{ height: '100%', width: '100%' }}
                   >
                     <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution='&copy; OpenStreetMap'
+                      url={MAP_TILE_URL}
+                      attribution={MAP_ATTRIBUTION}
                     />
                     <MapInitializer center={businessLocation ? [businessLocation.lat, businessLocation.lng] : mapCenter} />
                     

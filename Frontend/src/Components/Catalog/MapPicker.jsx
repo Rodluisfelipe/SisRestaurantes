@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../services/api';
+import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../../utils/mapTiles';
 
 const BOGOTA = { lat: 4.711, lng: -74.0721 };
 const LABEL_OPTIONS = [
@@ -191,7 +192,7 @@ export default function MapPicker({ open, onClose, onConfirm, initialCoords, ini
               zoomControl={false}
               attributionControl={false}
             >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <TileLayer url={MAP_TILE_URL} attribution={MAP_ATTRIBUTION} />
               <MoveHandler onMoveStart={handleMoveStart} onMoveEnd={handleMoveEnd} />
               <MapController onReadyRef={onReadyRef} />
             </MapContainer>

@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, Polygon } from 'react-l
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import api from '../services/api';
+import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../utils/mapTiles';
 
 // Fix para los iconos de Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -294,8 +295,8 @@ const DeliveryCoverageChecker = ({ businessId, orderTotal, onCoverageResult }) =
               style={{ height: '100%', width: '100%' }}
             >
               <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; OpenStreetMap'
+                url={MAP_TILE_URL}
+                attribution={MAP_ATTRIBUTION}
               />
 
               {/* Mostrar zonas activas */}

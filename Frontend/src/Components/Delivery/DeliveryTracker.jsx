@@ -5,6 +5,7 @@ import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
 import { FaPhone, FaMotorcycle, FaCheck, FaMapMarkerAlt, FaWhatsapp, FaLocationArrow, FaBoxOpen } from 'react-icons/fa';
 import 'leaflet/dist/leaflet.css';
+import { MAP_TILE_URL, MAP_ATTRIBUTION } from '../../utils/mapTiles';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_URL.replace('/api', '');
 const API_BASE = API_URL;
@@ -103,7 +104,7 @@ const DeliveryTracker = () => {
           zoomControl: false,
           attributionControl: false,
         });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        L.tileLayer(MAP_TILE_URL, { maxZoom: 19, attribution: MAP_ATTRIBUTION }).addTo(map);
         mapRef.current = map;
         requestAnimationFrame(() => {
           map.invalidateSize();
