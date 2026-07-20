@@ -41,7 +41,7 @@ import SubscriptionPayment from "./SubscriptionPayment";
 import AdminSectionErrorBoundary from "../Components/Admin/AdminSectionErrorBoundary";
 import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 import WelcomeWizard from "../Components/Admin/WelcomeWizard";
-// import FloatingHelpChat from "../Components/Admin/FloatingHelpChat"; // Temporalmente deshabilitado
+import FloatingHelpChat from "../Components/Admin/FloatingHelpChat";
 import AdminReviews from "../Components/Admin/AdminReviews";
 import StaffManager from "../Components/Admin/StaffManager";
 import BookingsManager from "../Components/Admin/BookingsManager";
@@ -649,8 +649,8 @@ function Admin() {
         product={productToDelete || {}}
       />
 
-      {/* Floating AI Help Chat — temporalmente deshabilitado */}
-      {/* <FloatingHelpChat /> */}
+      {/* Floating AI Help Chat (Groq) */}
+      <FloatingHelpChat />
 
       {/* Modo Operación full-screen overlay */}
       <ModoOperacion isOpen={modoOpOpen} onClose={() => setModoOpOpen(false)} />
