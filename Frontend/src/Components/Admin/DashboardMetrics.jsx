@@ -213,7 +213,7 @@ const SOURCE_COLORS = {
 function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
   if (count === 0) {
     return (
-      <div className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3">
+      <div className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-2.5 sm:p-3">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center">
             {ViewerIcons.eye("w-2.5 h-2.5 text-slate-300")}
@@ -232,7 +232,7 @@ function LiveViewers({ viewers = EMPTY_ARRAY, count = 0, currency = 'COP' }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-      className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3 relative overflow-hidden"
+      className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-2.5 sm:p-3 relative overflow-hidden"
     >
       <div className="absolute top-0 right-0 w-12 h-12 bg-blue-500 opacity-[0.04] rounded-full -translate-y-5 translate-x-5" />
 
@@ -352,7 +352,7 @@ function AbandonedCarts({ carts = EMPTY_ARRAY, totalLost = 0, currency = 'COP' }
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-xl border border-red-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3 relative overflow-hidden"
+      className="bg-white rounded-xl border border-red-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-2.5 sm:p-3 relative overflow-hidden"
     >
       <div className="absolute top-0 right-0 w-12 h-12 bg-red-500 opacity-[0.04] rounded-full -translate-y-5 translate-x-5" />
       
@@ -490,30 +490,30 @@ function KPICard({ icon, label, value, subtitle, delta, color, pulse }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: [0.25, 0.1, 0.25, 1] }}
-      className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-2.5 sm:p-3 relative overflow-hidden group"
+      className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-3 sm:p-3.5 relative overflow-hidden"
     >
-      <div className={`absolute top-0 right-0 w-12 h-12 ${color} opacity-[0.04] rounded-full -translate-y-5 translate-x-5`} />
+      <div className={`pointer-events-none absolute -top-6 -right-6 w-20 h-20 ${color} opacity-[0.07] rounded-full`} />
 
-      <div className="flex items-center gap-1.5 mb-1">
-        <div className={`w-5 h-5 rounded-md ${color} bg-opacity-10 flex items-center justify-center`}>
-          {Icon && Icon(`w-2.5 h-2.5 ${color.replace("bg-", "text-")}`)}
+      <div className="relative flex items-center gap-2 mb-1.5">
+        <div className={`w-7 h-7 rounded-lg ${color} bg-opacity-15 flex items-center justify-center shrink-0`}>
+          {Icon && Icon(`w-3.5 h-3.5 ${color.replace("bg-", "text-")}`)}
         </div>
-        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">{label}</span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide truncate">{label}</span>
         {pulse && (
-          <span className="relative flex h-1.5 w-1.5 ml-auto">
+          <span className="relative flex h-1.5 w-1.5 ml-auto shrink-0">
             <span className="animate-ping absolute inset-0 rounded-full bg-amber-400 opacity-60" />
             <span className="relative rounded-full h-1.5 w-1.5 bg-amber-400" />
           </span>
         )}
       </div>
 
-      <p className="text-base sm:text-lg font-extrabold text-slate-800 tracking-tight leading-none">
+      <p className="relative text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight leading-none tabular-nums">
         {value}
       </p>
 
-      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+      <div className="relative mt-1.5 flex items-center gap-1.5 flex-wrap">
         {delta}
-        {subtitle && <span className="text-[9px] text-slate-400 font-medium">{subtitle}</span>}
+        {subtitle && <span className="text-[10px] text-slate-400 font-medium">{subtitle}</span>}
       </div>
     </motion.div>
   );
@@ -535,7 +535,7 @@ function WeeklyChart({ data, loading, isService, currency = 'COP' }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.1 }}
-      className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3 sm:p-4"
+      className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-3 sm:p-4"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-2.5">
@@ -621,7 +621,7 @@ function BreakdownBar({ title, data, labels, colors, icon }) {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3"
+        className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-3"
       >
         <div className="flex items-center gap-1.5 mb-1.5">
           {Icon && Icon("w-3 h-3 text-slate-400")}
@@ -639,7 +639,7 @@ function BreakdownBar({ title, data, labels, colors, icon }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3"
+      className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-3"
     >
       <div className="flex items-center gap-2 mb-2">
         {Icon && Icon("w-3 h-3 text-slate-400")}
@@ -694,7 +694,7 @@ function TopProducts({ products, loading, isService, currency = 'COP' }) {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.15 }}
-        className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-4 sm:p-5"
+        className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-4 sm:p-5"
       >
         <div className="flex items-center gap-2 mb-3">
           {Icons.fire("w-4 h-4 text-orange-500")}
@@ -715,7 +715,7 @@ function TopProducts({ products, loading, isService, currency = 'COP' }) {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.15 }}
-      className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3 sm:p-4"
+      className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-3 sm:p-4"
     >
       <div className="flex items-center gap-1.5 mb-2.5">
         {Icons.fire("w-3.5 h-3.5 text-orange-500")}
@@ -792,7 +792,7 @@ function CustomerSummary({ customers, loading }) {
       </div>
       <div className="grid grid-cols-3 gap-2">
         {items.map((item) => (
-          <div key={item.label} className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3 text-center">
+          <div key={item.label} className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-3 text-center">
             <p className={`text-lg sm:text-xl font-extrabold ${item.color}`}>{item.value}</p>
             <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{item.label}</p>
           </div>
@@ -825,7 +825,7 @@ function RecentOrders({ orders, loading, onViewOrders, isService, currency = 'CO
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, delay: 0.25 }}
-        className="bg-white rounded-2xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-4 sm:p-5"
+        className="bg-white rounded-2xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-4 sm:p-5"
       >
         <div className="flex items-center gap-2 mb-3">
           {Icons.clock("w-4 h-4 text-slate-400")}
@@ -844,7 +844,7 @@ function RecentOrders({ orders, loading, onViewOrders, isService, currency = 'CO
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay: 0.25 }}
-      className="bg-white rounded-xl border border-slate-100 shadow-[0_1px_2px_rgba(0,0,0,0.04)] p-3 sm:p-4"
+      className="bg-white rounded-xl border border-slate-100 shadow-[0_2px_10px_rgba(0,0,0,0.04)] p-3 sm:p-4"
     >
       <div className="flex items-center justify-between mb-2.5">
         <div className="flex items-center gap-1.5">

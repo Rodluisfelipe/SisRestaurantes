@@ -618,7 +618,10 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
           </div>
         )}
 
-        {/* Desktop section grids */}
+        {/* Desktop section grids — solo durante búsqueda; en PC el sidebar ya cubre
+            la navegación, así que las tarjetas de acceso rápido (que son la home de
+            celular) quedan ocultas hasta que el usuario busca una función. */}
+        {q && (
         <AnimatePresence mode="wait">
           <motion.div
             key={q || 'all'}
@@ -670,6 +673,7 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
             )}
           </motion.div>
         </AnimatePresence>
+        )}
       </div>
     </div>
   );
