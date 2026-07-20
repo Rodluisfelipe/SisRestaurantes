@@ -55,6 +55,10 @@ function EnhancedCompletedOrders() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
+  // Stats agregados del rango completo (modo historial), calculados por el backend
+  // sobre TODO el filtro, no solo la página actual. null = backend aún no los
+  // envía (versión vieja) → el frontend cae al cálculo sobre la página.
+  const [rangeStats, setRangeStats] = useState(null);
   const PAGE_SIZE = 50;
 
   // Export states
@@ -131,6 +135,7 @@ function EnhancedCompletedOrders() {
         setCurrentPage(response.data.pagination?.current || 1);
         setTotalPages(response.data.pagination?.total || 1);
         setTotalOrders(response.data.pagination?.totalOrders || response.data.orders.length);
+        if (response.data.stats) setRangeStats(response.data.stats);
       } else if (Array.isArray(response.data)) {
         setAllTimeOrders(response.data);
         setTotalPages(1);
@@ -425,7 +430,14 @@ function EnhancedCompletedOrders() {
   // Quick date presets
   const applyDatePreset = (preset) => {
     const now = new Date();
-    const toStr = (d) => d.toISOString().split('T')[0];
+    // Fecha LOCAL (zona del navegador = Colombia), NO UTC. toISOString() daría
+    // la fecha UTC y de noche adelantaría el día (ej. 8pm COL -> día siguiente).
+    const toStr = (d) => {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
     const today = toStr(now);
     switch (preset) {
       case 'today': {
@@ -885,6 +897,31 @@ function EnhancedCompletedOrders() {
 
   const filteredOrders = getFilteredOrders();
 
+  // Métricas de las tarjetas superiores. En historial ('all') vienen agregadas
+  // del backend sobre TODO el rango filtrado (no solo la página cargada); en
+  // 'today' se calculan sobre los pedidos del día. "Ventas" usa finalAmount
+  // (incluye descuentos/envíos) igual que el Excel; cae a totalAmount si es null.
+  const revenueOf = (o) => (o.finalAmount || o.totalAmount || 0);
+  const localMetrics = (orderCount) => {
+    const orders = orderCount != null ? orderCount : filteredOrders.length;
+    const revenue = filteredOrders.reduce((s, o) => s + revenueOf(o), 0);
+    const products = filteredOrders.reduce(
+      (s, o) => s + (o.items || []).reduce((a, it) => a + (it.quantity || 0), 0), 0
+    );
+    return { orders, revenue, products, avg: filteredOrders.length > 0 ? revenue / filteredOrders.length : 0 };
+  };
+  const metrics = viewMode === 'all'
+    ? (rangeStats
+        ? {
+            orders: rangeStats.totalOrders || 0,
+            revenue: rangeStats.totalRevenue || 0,
+            products: rangeStats.totalProducts || 0,
+            avg: rangeStats.avgTicket || 0,
+          }
+        : localMetrics(totalOrders)) // backend viejo sin stats: total real + montos de la página
+    : localMetrics();
+  const fmtMoney = (n) => Math.round(n || 0).toLocaleString('es-CO');
+
   // Loading state — only show full spinner on initial load
   if (loading && !refreshing) {
     return (
@@ -1092,7 +1129,7 @@ function EnhancedCompletedOrders() {
           </div>
           <div>
             <p className="text-xs lg:text-[11px] text-slate-400 font-medium">{isService ? 'Citas' : 'Pedidos'}</p>
-            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">{filteredOrders.length}</p>
+            <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">{(metrics.orders || 0).toLocaleString('es-CO')}</p>
           </div>
         </div>
 
@@ -1103,7 +1140,7 @@ function EnhancedCompletedOrders() {
           <div>
             <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Ventas</p>
             <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
-              ${filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0).toLocaleString()}
+              ${fmtMoney(metrics.revenue)}
             </p>
           </div>
         </div>
@@ -1115,7 +1152,7 @@ function EnhancedCompletedOrders() {
           <div>
             <p className="text-xs lg:text-[11px] text-slate-400 font-medium">Promedio</p>
             <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
-              ${(filteredOrders.reduce((sum, order) => sum + order.totalAmount, 0) / (filteredOrders.length || 1)).toLocaleString()}
+              ${fmtMoney(metrics.avg)}
             </p>
           </div>
         </div>
@@ -1127,7 +1164,7 @@ function EnhancedCompletedOrders() {
           <div>
             <p className="text-xs lg:text-[11px] text-slate-400 font-medium">{isService ? 'Servicios' : 'Productos'}</p>
             <p className="text-[20px] lg:text-lg font-bold text-slate-900 leading-tight">
-              {filteredOrders.reduce((sum, order) => sum + order.items.reduce((s, item) => s + item.quantity, 0), 0)}
+              {(metrics.products || 0).toLocaleString('es-CO')}
             </p>
           </div>
         </div>
