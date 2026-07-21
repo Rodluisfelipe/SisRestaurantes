@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import api from '../services/api';
+import { isPromoActive, getEffectivePrice } from '../utils/promo';
 
 // Palabras clave de complementos de alto margen (bebidas, postres, adiciones…)
 const COMPLEMENT_RE = /(bebida|gaseosa|refresco|jugo|agua|cerveza|limonada|malteada|postre|helado|torta|brownie|adici|acompa|papas|snack|entrada|salsa|combo|dip|topping)/i;
@@ -75,7 +76,8 @@ function SuggestedProducts({ allProducts, cart, onAddToCart, themeColor, busines
     if (hasToppings) {
       setToppingsProduct(product);
     } else {
-      onAddToCart({ ...product, quantity: 1 });
+      // Cobrar el precio promo si la promo del producto está activa
+      onAddToCart({ ...product, price: getEffectivePrice(product), quantity: 1 });
     }
   }, [onAddToCart]);
 
@@ -119,8 +121,15 @@ function SuggestedProducts({ allProducts, cart, onAddToCart, themeColor, busines
                   {product.name}
                 </p>
                 <div className="flex items-center justify-between mt-1">
-                  <span className="text-[11px] font-bold text-slate-800">
-                    ${Number(product.price).toLocaleString('es-CO')}
+                  <span className="text-[11px] font-bold text-slate-800 flex items-baseline gap-1 min-w-0">
+                    {isPromoActive(product) && (
+                      <span className="text-[9px] font-medium text-slate-400 line-through">
+                        ${Number(product.price).toLocaleString('es-CO')}
+                      </span>
+                    )}
+                    <span className={isPromoActive(product) ? 'text-orange-600' : undefined}>
+                      ${Number(getEffectivePrice(product)).toLocaleString('es-CO')}
+                    </span>
                   </span>
                   <button
                     onClick={() => handleAdd(product)}
@@ -143,6 +152,7 @@ function SuggestedProducts({ allProducts, cart, onAddToCart, themeColor, busines
         <ProductToppingsSelector
           product={{
             ...toppingsProduct,
+            price: getEffectivePrice(toppingsProduct), // cobra el precio promo si aplica
             toppingGroups: Array.isArray(toppingsProduct.toppingGroups) ? toppingsProduct.toppingGroups : []
           }}
           onAddToCart={handleToppingsAdd}
