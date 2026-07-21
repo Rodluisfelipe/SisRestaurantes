@@ -36,31 +36,34 @@ function SuggestedProducts({ allProducts, cart, onAddToCart, themeColor, busines
     );
     const byId = new Map(available.map(p => [p._id, p]));
 
+    // A) Datos reales ("se piden juntos"), en orden de ranking.
+    const listA = boughtTogetherIds.map(id => byId.get(id)).filter(Boolean);
+    const inA = new Set(listA.map(p => p._id));
+
+    // B) Reglas: complementos (bebidas/postres/adiciones) → otras categorías → más barato.
+    const isComplement = (p) => COMPLEMENT_RE.test(`${p.categoryName || ''} ${p.category || ''} ${p.name || ''}`);
+    const listB = available.filter(p => !inA.has(p._id)).sort((a, b) => {
+      const ca = isComplement(a) ? 1 : 0, cb = isComplement(b) ? 1 : 0;
+      if (ca !== cb) return cb - ca;                       // complementos primero
+      const oa = cartCategories.has(a.category) ? 0 : 1, ob = cartCategories.has(b.category) ? 0 : 1;
+      if (oa !== ob) return ob - oa;                       // otras categorías primero
+      return a.price - b.price;                            // más barato primero
+    });
+
+    // Intercalar: uno de A (datos reales) y uno de B (reglas), alternando, para
+    // que siempre se combinen ambas fuentes. Si A está vacío (negocio nuevo),
+    // queda todo B (fallback). Sin duplicados.
     const result = [];
     const used = new Set();
-
-    // A) Primero, lo que la gente REALMENTE compra junto (orden de ranking).
-    for (const id of boughtTogetherIds) {
-      const p = byId.get(id);
-      if (p && !used.has(id)) { result.push(p); used.add(id); }
-      if (result.length >= 6) break;
-    }
-
-    // B) Rellenar: prioriza complementos (bebidas/postres/adiciones), luego
-    // otras categorías, del más barato al más caro (impulso).
-    if (result.length < 6) {
-      const isComplement = (p) => COMPLEMENT_RE.test(`${p.categoryName || ''} ${p.category || ''} ${p.name || ''}`);
-      const rest = available.filter(p => !used.has(p._id));
-      rest.sort((a, b) => {
-        const ca = isComplement(a) ? 1 : 0, cb = isComplement(b) ? 1 : 0;
-        if (ca !== cb) return cb - ca;                       // complementos primero
-        const oa = cartCategories.has(a.category) ? 0 : 1, ob = cartCategories.has(b.category) ? 0 : 1;
-        if (oa !== ob) return ob - oa;                       // otras categorías primero
-        return a.price - b.price;                            // más barato primero
-      });
-      for (const p of rest) {
-        result.push(p); used.add(p._id);
-        if (result.length >= 6) break;
+    let ia = 0, ib = 0;
+    while (result.length < 6 && (ia < listA.length || ib < listB.length)) {
+      if (ia < listA.length) {
+        const p = listA[ia++];
+        if (!used.has(p._id)) { result.push(p); used.add(p._id); }
+      }
+      if (result.length < 6 && ib < listB.length) {
+        const p = listB[ib++];
+        if (!used.has(p._id)) { result.push(p); used.add(p._id); }
       }
     }
 
