@@ -967,6 +967,14 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                                         <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke={themeTxt} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                                       )}
                                     </div>
+                                    {option.image && (
+                                      <img
+                                        src={option.image}
+                                        alt=""
+                                        loading="lazy"
+                                        className="w-8 h-8 rounded-md object-cover flex-shrink-0 border border-slate-200 bg-slate-50"
+                                      />
+                                    )}
                                     <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
                                   </div>
                                   
@@ -1030,6 +1038,14 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
                                                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke={themeTxt} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
                                               )}
                                             </div>
+                                            {option.image && (
+                                              <img
+                                                src={option.image}
+                                                alt=""
+                                                loading="lazy"
+                                                className="w-8 h-8 rounded-md object-cover flex-shrink-0 border border-slate-200 bg-slate-50"
+                                              />
+                                            )}
                                             <span className={`text-sm ${isSelected ? 'font-semibold text-slate-800' : 'text-slate-600'}`}>{option.name || 'Opción'}</span>
                                           </div>
                                           

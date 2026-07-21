@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCheese, FaPlus, FaTrash, FaTag, FaAlignLeft, FaDollarSign, FaCog, FaListUl, FaExclamationTriangle, FaCheck, FaTimes, FaEdit, FaBoxOpen, FaSyncAlt, FaEye, FaEyeSlash, FaLayerGroup } from 'react-icons/fa';
+import { FaCheese, FaPlus, FaTrash, FaTag, FaAlignLeft, FaDollarSign, FaCog, FaListUl, FaExclamationTriangle, FaCheck, FaTimes, FaEdit, FaBoxOpen, FaSyncAlt, FaEye, FaEyeSlash, FaLayerGroup, FaImage } from 'react-icons/fa';
+import ImageUploader from './Admin/ImageUploader';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
@@ -19,6 +20,8 @@ function ToppingGroupsManager() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Qué opción tiene abierto el editor de foto: {kind:'opt', index} | {kind:'sub', si, oi}
+  const [imageEditor, setImageEditor] = useState(null);
   const { businessId } = useBusinessConfig();
 
   useEffect(() => {
@@ -369,7 +372,20 @@ function ToppingGroupsManager() {
                 ) : (
                   <div className="space-y-1.5">
                     {currentGroup.options.map((option, index) => (
-                      <div key={index} className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
+                      <div key={index} className="flex flex-wrap items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
+                        {/* Miniatura / botón de foto */}
+                        <button
+                          type="button"
+                          onClick={() => setImageEditor(prev => (prev?.kind === 'opt' && prev.index === index) ? null : { kind: 'opt', index })}
+                          className={`w-9 h-9 rounded-md border flex items-center justify-center overflow-hidden flex-shrink-0 transition-colors ${
+                            imageEditor?.kind === 'opt' && imageEditor.index === index ? 'border-blue-400 ring-2 ring-blue-500/20' : 'border-slate-200 hover:border-blue-300'
+                          } bg-slate-50`}
+                          title={option.image ? 'Cambiar foto' : 'Agregar foto'}
+                        >
+                          {option.image
+                            ? <img src={option.image} alt="" className="w-full h-full object-cover" />
+                            : <FaImage className="text-slate-300 text-xs" />}
+                        </button>
                         <input
                           type="text"
                           value={option.name}
@@ -395,6 +411,24 @@ function ToppingGroupsManager() {
                         >
                           <FaTimes className="text-[10px]" />
                         </button>
+
+                        {imageEditor?.kind === 'opt' && imageEditor.index === index && (
+                          <div className="w-full pt-2 mt-1 border-t border-slate-100">
+                            <ImageUploader
+                              value={option.image || ''}
+                              onChange={(url) => handleOptionChange(index, 'image', url)}
+                            />
+                            {option.image && (
+                              <button
+                                type="button"
+                                onClick={() => handleOptionChange(index, 'image', '')}
+                                className="mt-1.5 text-[11px] text-red-500 hover:text-red-600 font-medium"
+                              >
+                                Quitar foto
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -466,7 +500,20 @@ function ToppingGroupsManager() {
                         <div className="pl-3 border-l-2 border-slate-200 space-y-1">
                           <p className="text-[11px] font-medium text-slate-500 mb-1">Opciones</p>
                           {subGroup.options.map((option, optionIndex) => (
-                            <div key={optionIndex} className="flex items-center gap-2">
+                            <div key={optionIndex} className="flex flex-wrap items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setImageEditor(prev => (prev?.kind === 'sub' && prev.si === subGroupIndex && prev.oi === optionIndex) ? null : { kind: 'sub', si: subGroupIndex, oi: optionIndex })}
+                                className={`w-8 h-8 rounded-md border flex items-center justify-center overflow-hidden flex-shrink-0 bg-slate-50 transition-colors ${
+                                  imageEditor?.kind === 'sub' && imageEditor.si === subGroupIndex && imageEditor.oi === optionIndex
+                                    ? 'border-blue-400 ring-2 ring-blue-500/20' : 'border-slate-200 hover:border-blue-300'
+                                }`}
+                                title={option.image ? 'Cambiar foto' : 'Agregar foto'}
+                              >
+                                {option.image
+                                  ? <img src={option.image} alt="" className="w-full h-full object-cover" />
+                                  : <FaImage className="text-slate-300 text-[10px]" />}
+                              </button>
                               <input
                                 type="text"
                                 value={option.name}
@@ -492,6 +539,24 @@ function ToppingGroupsManager() {
                               >
                                 <FaTimes className="text-[9px]" />
                               </button>
+
+                              {imageEditor?.kind === 'sub' && imageEditor.si === subGroupIndex && imageEditor.oi === optionIndex && (
+                                <div className="w-full pt-2 mt-1 border-t border-slate-100">
+                                  <ImageUploader
+                                    value={option.image || ''}
+                                    onChange={(url) => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'image', url)}
+                                  />
+                                  {option.image && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'image', '')}
+                                      className="mt-1.5 text-[11px] text-red-500 hover:text-red-600 font-medium"
+                                    >
+                                      Quitar foto
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ))}
                           <button

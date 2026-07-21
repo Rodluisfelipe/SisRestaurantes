@@ -13,6 +13,11 @@ const toppingOptionSchema = new mongoose.Schema({
   active: {
     type: Boolean,
     default: true
+  },
+  // Foto opcional de la opción (se muestra al elegir extras en el menú)
+  image: {
+    type: String,
+    default: ''
   }
 });
 
