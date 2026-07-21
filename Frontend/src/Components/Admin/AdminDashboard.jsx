@@ -231,7 +231,7 @@ function MobileActionCard({ tab, gradient, icon, label, sublabel, badge, onClick
 }
 
 /* ═══ MAIN COMPONENT ═══ */
-export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, onboarding, onOpenModoOp }) {
+export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, onboarding, onOpenModoOp, products, categories, toppingGroups }) {
   const { businessConfig, updateConfig } = useBusinessConfig();
   const [search, setSearch] = useState('');
   const [toggling, setToggling] = useState(false);
@@ -532,29 +532,16 @@ export default function AdminDashboard({ setActiveTab, pendingOrdersCount = 0, o
           <StatusBadge businessConfig={businessConfig} />
         </div>
 
-        {/* Desktop metrics */}
-        {!q && <DashboardMetrics setActiveTab={handleNav} businessId={businessConfig?._id} businessConfig={businessConfig} />}
-
-        {/* Desktop hero cards */}
+        {/* Desktop metrics (incluye la tarjeta de Salud del menú bajo los KPIs) */}
         {!q && (
-          <div className="flex gap-3">
-            <HeroCard
-              svgKey="orders"
-              title={isService ? 'Citas' : 'Pedidos'}
-              subtitle={isService ? 'Gestión de citas' : 'Gestión en tiempo real'}
-              onClick={() => handleNav('orders')}
-              count={pendingOrdersCount}
-              colorClass="bg-gradient-to-br from-blue-600 to-blue-700"
-            />
-            <HeroCard
-              svgKey="products"
-              title={isService ? 'Servicios' : 'Productos'}
-              subtitle={isService ? 'Administra tus servicios' : 'Administra tu carta'}
-              onClick={() => handleNav('products')}
-              count={0}
-              colorClass="bg-gradient-to-br from-orange-500 to-orange-600"
-            />
-          </div>
+          <DashboardMetrics
+            setActiveTab={handleNav}
+            businessId={businessConfig?._id}
+            businessConfig={businessConfig}
+            products={products}
+            categories={categories}
+            toppingGroups={toppingGroups}
+          />
         )}
 
         {/* Desktop onboarding */}

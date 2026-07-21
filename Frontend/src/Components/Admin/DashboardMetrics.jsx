@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { API_URL } from "../../config";
 import { socket } from "../../services/socket";
 import { formatCurrency } from "../../utils/currency";
+import MenuHealthScore from "./MenuHealthScore";
 
 const EMPTY_ARRAY = [];
 
@@ -938,7 +939,7 @@ function PendingBanner({ pending, onViewOrders, isService }) {
 }
 
 /* ═══ MAIN COMPONENT ═══ */
-export default function DashboardMetrics({ setActiveTab, businessId, businessConfig }) {
+export default function DashboardMetrics({ setActiveTab, businessId, businessConfig, products, categories, toppingGroups }) {
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const fmt = (n) => COP(n, businessConfig?.currency || 'COP');
   const [data, setData] = useState(null);
@@ -1122,6 +1123,17 @@ export default function DashboardMetrics({ setActiveTab, businessId, businessCon
             subtitle={data?.pending?.total > 0 ? "Requieren atención" : "Todo al día"}
           />
         </div>
+      )}
+
+      {/* ═══ Salud del menú (justo debajo de los KPIs) ═══ */}
+      {Array.isArray(products) && (
+        <MenuHealthScore
+          products={products}
+          categories={categories}
+          toppingGroups={toppingGroups}
+          businessConfig={businessConfig}
+          setActiveTab={setActiveTab}
+        />
       )}
 
       {/* ═══ Pending orders banner ═══ */}
