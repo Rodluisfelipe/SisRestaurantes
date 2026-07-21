@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import logger from '../utils/logger';
 import ProductToppingsSelector from './ProductToppingsSelector';
+import ProductCard from './Productcard';
+import { isPromoActive } from '../utils/promo';
 import { FeaturedProductsSkeleton } from './MenuSkeletons';
 import { useFlyToCart } from './FlyToCart';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -21,7 +23,7 @@ const FI = {
  * Componente para mostrar productos destacados del negocio
  * Estos son seleccionados por el administrador, no son favoritos personales
  */
-const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onToppingsClose }) => {
+const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppingsOpen, onToppingsClose, isViewOnly = false }) => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -88,7 +90,12 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
     return <FeaturedProductsSkeleton />;
   }
 
-  if (featuredProducts.length === 0) {
+  // Promo del día: va como primera(s) card(s) de la sección, sin duplicar.
+  const promoProducts = (products || []).filter(isPromoActive);
+  const promoIds = new Set(promoProducts.map(p => p._id));
+  const featuredToShow = featuredProducts.filter(p => !promoIds.has(p._id));
+
+  if (featuredToShow.length === 0 && promoProducts.length === 0) {
     return <div className="h-0" />;
   }
 
@@ -119,7 +126,7 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
               <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium -mt-0.5">{isService ? 'Los más solicitados' : 'Selección del chef'}</p>
             </div>
           </div>
-          <span className="text-[11px] font-semibold text-slate-400">{featuredProducts.length} {isService ? 'servicios' : 'productos'}</span>
+          <span className="text-[11px] font-semibold text-slate-400">{featuredToShow.length + promoProducts.length} {isService ? 'servicios' : 'productos'}</span>
         </div>
 
         {/* ── Horizontal scroll — 2 cards visible at a time ── */}
@@ -127,7 +134,18 @@ const FeaturedProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTo
           ref={scrollRef}
           className="flex overflow-x-auto gap-3 pb-1 snap-x snap-mandatory scrollbar-hide -mx-3 px-3 sm:-mx-4 sm:px-4"
         >
-          {featuredProducts.map((product, index) => {
+          {promoProducts.map((product) => (
+            <div key={`promo-${product._id}`} className="flex-shrink-0 snap-start" style={{ width: 'calc(50% - 6px)' }}>
+              <ProductCard
+                product={product}
+                addToCart={onAddToCart}
+                onToppingsOpen={onToppingsOpen}
+                onToppingsClose={onToppingsClose}
+                isViewOnly={isViewOnly}
+              />
+            </div>
+          ))}
+          {featuredToShow.map((product, index) => {
             const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
             return (
               <motion.div

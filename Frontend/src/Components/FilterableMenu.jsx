@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ProductCard from './Productcard';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { useBusinessConfig } from '../Context/BusinessContext';
-import MenuHighlights from './MenuHighlights';
+import FeaturedProducts from './FeaturedProducts';
+import PopularProducts from './PopularProducts';
 import PendingReviewCard from './PendingReviewCard';
 import { NoSearchResultsIllustration, EmptyMenuIllustration } from './EmptyStates';
 import {
@@ -667,17 +668,29 @@ const FilterableMenu = ({
         </div>
       </div>
 
-      {/* Destacados + Más pedidos unificados (una franja con chips; promo del día primero) */}
+      {/* Los más pedidos (premium) */}
       {businessId && !searchTerm && (
-        <MenuHighlights
+        <PopularProducts
           businessId={businessId}
           products={products}
-          addToCart={isViewOnly ? undefined : addToCart}
+          onAddToCart={isViewOnly ? null : addToCart}
+          theme={businessConfig?.theme}
           onToppingsOpen={onToppingsOpen}
           onToppingsClose={onToppingsClose}
-          subscriptionStatus={subscriptionStatus}
           isViewOnly={isViewOnly}
+        />
+      )}
+
+      {/* Productos Destacados */}
+      {businessId && (
+        <FeaturedProducts
+          businessId={businessId}
+          products={products}
+          onAddToCart={isViewOnly ? null : addToCart}
           theme={businessConfig?.theme}
+          onToppingsOpen={onToppingsOpen}
+          onToppingsClose={onToppingsClose}
+          isViewOnly={isViewOnly}
         />
       )}
 

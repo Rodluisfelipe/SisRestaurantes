@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import api from '../services/api';
 import logger from '../utils/logger';
 import ProductToppingsSelector from './ProductToppingsSelector';
+import ProductCard from './Productcard';
+import { isPromoActive } from '../utils/promo';
 import { FeaturedProductsSkeleton } from './MenuSkeletons';
 import { useFlyToCart } from './FlyToCart';
 import { useBusinessConfig } from '../Context/BusinessContext';
@@ -26,7 +28,7 @@ const MEDALS = {
  * "Los más pedidos" — sección premium del menú.
  * Ranking dinámico por ventas reales + híbrido (destacados/favoritos) con badges de prueba social.
  */
-const PopularProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onToppingsClose }) => {
+const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, theme, onToppingsOpen, onToppingsClose, isViewOnly = false }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -90,6 +92,11 @@ const PopularProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTop
   const products = data?.products || [];
   if (!data?.enabled || products.length === 0) return <div className="h-0" />;
 
+  // Promo del día: primera(s) card(s) de la sección, sin duplicar.
+  const promoProducts = (allMenuProducts || []).filter(isPromoActive);
+  const promoIds = new Set(promoProducts.map(p => p._id));
+  const popularToShow = products.filter(p => !promoIds.has(p._id));
+
   const showBadges = data.showBadges !== false;
   const showCounts = data.showOrderCounts !== false;
   const title = data.title || 'Los más pedidos';
@@ -124,7 +131,7 @@ const PopularProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTop
               <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium -mt-0.5">{isService ? 'Los más solicitados por clientes' : 'Lo que más piden los clientes'}</p>
             </div>
           </div>
-          <span className="text-[11px] font-semibold text-slate-400">{products.length}</span>
+          <span className="text-[11px] font-semibold text-slate-400">{popularToShow.length + promoProducts.length}</span>
         </div>
 
         {/* Horizontal scroll carousel */}
@@ -132,7 +139,18 @@ const PopularProducts = ({ businessId, onAddToCart, theme, onToppingsOpen, onTop
           ref={scrollRef}
           className="flex overflow-x-auto gap-3 pb-1 snap-x snap-mandatory scrollbar-hide -mx-3 px-3 sm:-mx-4 sm:px-4"
         >
-          {products.map((product, index) => {
+          {promoProducts.map((product) => (
+            <div key={`promo-${product._id}`} className="flex-shrink-0 snap-start" style={{ width: 'calc(50% - 6px)' }}>
+              <ProductCard
+                product={product}
+                addToCart={onAddToCart}
+                onToppingsOpen={onToppingsOpen}
+                onToppingsClose={onToppingsClose}
+                isViewOnly={isViewOnly}
+              />
+            </div>
+          ))}
+          {popularToShow.map((product, index) => {
             const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
             const pop = product.popular || {};
             const medal = pop.rank && MEDALS[pop.rank];
