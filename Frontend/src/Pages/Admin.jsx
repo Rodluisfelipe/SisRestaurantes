@@ -9,6 +9,7 @@ import SubscriptionStatus from "../Components/SubscriptionStatus";
 import MultiSessionWarning from "../Components/MultiSessionWarning";
 import PushNotificationToggle from "../Components/PushNotificationToggle";
 import AdminDashboard from "../Components/Admin/AdminDashboard";
+import MenuHealthScore from "../Components/Admin/MenuHealthScore";
 import AdminTabWrapper from "../Components/Admin/AdminTabWrapper";
 import AdminHeader from "../Components/Admin/AdminHeader";
 import AdminToasts from "../Components/Admin/AdminToasts";
@@ -374,7 +375,18 @@ function Admin() {
               >
                 <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /></div>}>
                 {activeTab === 'dashboard' && (
-                  <AdminDashboard setActiveTab={setActiveTab} pendingOrdersCount={pendingOrdersCount} onboarding={onboardingData} onOpenModoOp={() => setModoOpOpen(true)} />
+                  <>
+                    <AdminDashboard setActiveTab={setActiveTab} pendingOrdersCount={pendingOrdersCount} onboarding={onboardingData} onOpenModoOp={() => setModoOpOpen(true)} />
+                    <div className="mt-4">
+                      <MenuHealthScore
+                        products={products}
+                        categories={categories}
+                        toppingGroups={toppingGroups}
+                        businessConfig={businessConfig}
+                        setActiveTab={setActiveTab}
+                      />
+                    </div>
+                  </>
                 )}
                 {activeTab === 'business' && (
                   <AdminTabWrapper setActiveTab={setActiveTab}>
