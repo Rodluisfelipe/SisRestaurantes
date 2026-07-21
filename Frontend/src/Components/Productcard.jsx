@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProductToppingsSelector from './ProductToppingsSelector';
+import { isPromoActive, getEffectivePrice, promoMsLeft, formatCountdown } from '../utils/promo';
 import ErrorBoundary from './ErrorBoundary';
 import { useBusinessConfig } from "../Context/BusinessContext";
 import BusinessClosedModal from './BusinessClosedModal';
@@ -33,6 +34,19 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
   const isFavorite = businessConfig?.reviewStats?.favoriteProductIds?.some(
     id => id === product._id || id?.toString() === product._id?.toString()
   );
+
+  // Promo / Producto del día con cuenta regresiva. El tick (1s) solo corre si la
+  // promo tiene fecha de fin, para no poner intervalos en todos los productos.
+  const hasPromoEnds = !!product?.promo?.active && !!product?.promo?.endsAt;
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    if (!hasPromoEnds) return;
+    const id = setInterval(() => setNowTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [hasPromoEnds]);
+  const promoActive = isPromoActive(product);
+  const effPrice = getEffectivePrice(product);
+  const msLeft = promoMsLeft(product);
 
   const flashAdded = useCallback(() => {
     setJustAdded(true);
@@ -120,8 +134,23 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
           {/* Cinematic gradient overlay — always on for price/button readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent pointer-events-none" />
 
+          {/* Promo / Producto del día con cuenta regresiva */}
+          {promoActive && (
+            <div className="absolute top-2 left-2 z-[3] flex flex-col items-start gap-1">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold text-white shadow-md bg-gradient-to-r from-red-500 to-orange-500">
+                {PCI.flame('w-2.5 h-2.5')}
+                <span className="truncate max-w-[110px]">{product.promo?.label || 'Producto del día'}</span>
+              </span>
+              {msLeft != null && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-black/70 text-white backdrop-blur-sm tabular-nums">
+                  ⏱ {formatCountdown(msLeft)}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* "Personalizable" badge for products with toppings */}
-          {hasToppings && (
+          {hasToppings && !promoActive && (
             <div className="absolute top-2 left-2">
               <span 
                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-semibold backdrop-blur-md shadow-sm bg-white/90 border border-white/50"
@@ -151,7 +180,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
               </span>
             </div>
           )}
-          {isLowStock && !isOutOfStock && (
+          {isLowStock && !isOutOfStock && !promoActive && (
             <div className="absolute top-2 left-2 z-[2]">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500 text-white shadow-sm">
                 <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/></svg>
@@ -160,13 +189,15 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </div>
           )}
 
-          {/* Price — overlaid on image bottom-left */}
-          <div className="absolute bottom-2.5 left-3 z-[2]">
-            <span className={`font-black text-white drop-shadow-lg ${isHero ? 'text-xl sm:text-2xl' : 'text-[15px] sm:text-lg'}`}>
-              ${(() => {
-                const p = Number(product.price);
-                return p.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-              })()}
+          {/* Price — overlaid on image bottom-left (con precio promo tachado si aplica) */}
+          <div className="absolute bottom-2.5 left-3 z-[2] flex items-end gap-1.5">
+            {promoActive && (
+              <span className="text-white/70 line-through drop-shadow text-[11px] sm:text-xs mb-0.5">
+                ${Number(product.price).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
+              </span>
+            )}
+            <span className={`font-black drop-shadow-lg ${promoActive ? 'text-amber-300' : 'text-white'} ${isHero ? 'text-xl sm:text-2xl' : 'text-[15px] sm:text-lg'}`}>
+              ${Number(promoActive ? effPrice : product.price).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </span>
           </div>
 
@@ -245,6 +276,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
           <ProductToppingsSelector
             product={{
               ...product,
+              price: getEffectivePrice(product), // cobra el precio promo si está activa
               toppingGroups: Array.isArray(product.toppingGroups) ? product.toppingGroups : []
             }}
             onAddToCart={(p) => {

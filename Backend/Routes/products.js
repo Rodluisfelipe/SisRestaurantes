@@ -716,7 +716,7 @@ router.put("/:id/toggle-featured", tenantAuth, validateToggleFeatured, async (re
 router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput, async (req, res) => {
   try {
     const productId = req.params.id;
-    const { name, description, price, category, image, toppingGroups } = req.body;
+    const { name, description, price, category, image, toppingGroups, promo } = req.body;
     
     // Force businessId from token, fallback to body for superadmin
     const finalBusinessId = req.user.businessId || req.body.businessId;
@@ -748,7 +748,9 @@ router.put("/:id", tenantAuth, validateUpdateProductParam, validateProductInput,
         businessId: finalBusinessId,
         // Asegúrate de que toppingGroups se actualice correctamente
         toppingGroups: toppingGroups || [],
-        toppingGroupsOrder: toppingGroupsOrder
+        toppingGroupsOrder: toppingGroupsOrder,
+        // Solo actualizar promo si el cliente la envió (no borrarla en clientes viejos)
+        ...(promo !== undefined ? { promo } : {})
       },
       { new: true }
     ).populate({

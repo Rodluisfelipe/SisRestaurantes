@@ -1,6 +1,28 @@
 import { useState } from 'react';
 import api from '../services/api';
 
+// Convierte ISO/Date a valor de <input type="datetime-local"> en hora LOCAL.
+function toLocalDatetimeInput(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Arma el objeto promo que espera el backend desde los campos planos del form.
+function buildPromoPayload(form) {
+  if (!form.promoActive) return { active: false, price: null, endsAt: null, label: '' };
+  const price = (form.promoPrice !== '' && form.promoPrice != null && !isNaN(Number(form.promoPrice)))
+    ? Number(form.promoPrice) : null;
+  return {
+    active: true,
+    price,
+    endsAt: form.promoEndsAt ? new Date(form.promoEndsAt).toISOString() : null,
+    label: (form.promoLabel || '').slice(0, 40),
+  };
+}
+
 /**
  * Custom hook que encapsula TODA la lógica de gestión de productos:
  * - CRUD (crear, editar, eliminar)
@@ -93,6 +115,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       trackStock: !!form.trackStock,
       stock: form.trackStock && form.stock !== '' ? parseInt(form.stock, 10) : null,
       lowStockAlert: form.trackStock && form.lowStockAlert !== '' ? parseInt(form.lowStockAlert, 10) : 5,
+      promo: buildPromoPayload(form),
     };
     if (form.image) payload.image = form.image;
     if (form.itemType) payload.itemType = form.itemType;
@@ -131,6 +154,7 @@ export default function useProductHandlers({ businessId, products, setProducts, 
         trackStock: !!form.trackStock,
         stock: form.trackStock && form.stock !== '' ? parseInt(form.stock, 10) : null,
         lowStockAlert: form.trackStock && form.lowStockAlert !== '' ? parseInt(form.lowStockAlert, 10) : 5,
+        promo: buildPromoPayload(form),
       };
 
       const response = await api.put(`/products/${editingId}`, formToSend);
@@ -272,6 +296,10 @@ export default function useProductHandlers({ businessId, products, setProducts, 
       trackStock: product.trackStock || false,
       stock: product.stock !== null && product.stock !== undefined ? product.stock.toString() : '',
       lowStockAlert: product.lowStockAlert !== undefined ? product.lowStockAlert.toString() : '5',
+      promoActive: !!product.promo?.active,
+      promoPrice: product.promo?.price != null ? String(product.promo.price) : '',
+      promoEndsAt: toLocalDatetimeInput(product.promo?.endsAt),
+      promoLabel: product.promo?.label || '',
     });
     setTouchedFields({});
     setShowProductModal(true);

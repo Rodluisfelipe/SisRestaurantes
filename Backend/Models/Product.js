@@ -78,6 +78,13 @@ const ProductSchema = new mongoose.Schema({
     type: Number,
     default: 5
   },
+  // Promo / Producto del día con cuenta regresiva
+  promo: {
+    active: { type: Boolean, default: false },
+    price: { type: Number, default: null },   // precio promocional
+    endsAt: { type: Date, default: null },     // fin de la promo (countdown)
+    label: { type: String, default: '' }        // ej. "Producto del día"
+  },
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',

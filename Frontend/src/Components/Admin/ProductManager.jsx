@@ -403,6 +403,76 @@ export default function ProductManager({
                         </AnimatePresence>
                       </div>
 
+                      {/* Promo / Producto del día con cuenta regresiva */}
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setForm(prev => ({ ...prev, promoActive: !prev.promoActive }))}
+                          className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                            form.promoActive ? 'border-orange-300 bg-orange-50/50' : 'border-slate-200 bg-slate-50/50'
+                          }`}
+                        >
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${form.promoActive ? 'bg-orange-100' : 'bg-slate-100'}`}>
+                            <span className="text-base">🔥</span>
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm font-semibold ${form.promoActive ? 'text-orange-700' : 'text-slate-700'}`}>Promo / Producto del día</p>
+                            <p className="text-xs text-slate-400">{form.promoActive ? 'Precio especial con cuenta regresiva' : 'Sin promoción'}</p>
+                          </div>
+                          <div className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${form.promoActive ? 'bg-orange-500' : 'bg-slate-300'}`}>
+                            <motion.div layout className="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow-sm" style={{ left: form.promoActive ? '22px' : '2px' }} />
+                          </div>
+                        </button>
+
+                        <AnimatePresence>
+                          {form.promoActive && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.18 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="grid grid-cols-2 gap-2 pt-1">
+                                <div className="space-y-1">
+                                  <label className="text-xs font-semibold text-slate-600">Precio promo</label>
+                                  <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                                    <input
+                                      type="number" min="0" inputMode="numeric"
+                                      value={form.promoPrice || ''}
+                                      onChange={e => setForm(prev => ({ ...prev, promoPrice: e.target.value }))}
+                                      className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-slate-900 pl-7 pr-3 py-2 text-sm font-semibold"
+                                      placeholder="0"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-semibold text-slate-600">Termina</label>
+                                  <input
+                                    type="datetime-local"
+                                    value={form.promoEndsAt || ''}
+                                    onChange={e => setForm(prev => ({ ...prev, promoEndsAt: e.target.value }))}
+                                    className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-slate-900 px-2.5 py-2 text-sm"
+                                  />
+                                </div>
+                              </div>
+                              <div className="space-y-1 pt-2">
+                                <label className="text-xs font-semibold text-slate-600">Etiqueta (opcional)</label>
+                                <input
+                                  type="text" maxLength={40}
+                                  value={form.promoLabel || ''}
+                                  onChange={e => setForm(prev => ({ ...prev, promoLabel: e.target.value }))}
+                                  className="w-full rounded-lg border border-slate-200 bg-white focus:ring-1 focus:ring-orange-500 focus:border-orange-500 text-slate-900 px-3 py-2 text-sm"
+                                  placeholder="Ej: Producto del día, 2x1, Happy hour..."
+                                />
+                              </div>
+                              <p className="text-[11px] text-slate-400 mt-1.5">Sin fecha de fin queda activa (sin cuenta regresiva) hasta que la apagues.</p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
                       <div className="space-y-1">
                         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
                           <FaImage className="text-slate-400 text-[10px]" />{isService ? 'Imagen del servicio' : 'Imagen del producto'}
