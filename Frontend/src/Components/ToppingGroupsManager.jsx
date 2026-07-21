@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCheese, FaPlus, FaTrash, FaTag, FaAlignLeft, FaDollarSign, FaCog, FaListUl, FaExclamationTriangle, FaCheck, FaTimes, FaEdit, FaBoxOpen, FaSyncAlt, FaEye, FaEyeSlash, FaLayerGroup, FaImage } from 'react-icons/fa';
 import ImageUploader from './Admin/ImageUploader';
@@ -230,6 +230,44 @@ function ToppingGroupsManager() {
     }
   };
 
+  // Fotos ya usadas en cualquier extra (guardados + el grupo que se edita ahora),
+  // para reusarlas de un clic en vez de volver a subirlas.
+  const usedImages = useMemo(() => {
+    const set = new Set();
+    const collect = (groups) => (groups || []).forEach(g => {
+      (g.options || []).forEach(o => { if (o?.image) set.add(o.image); });
+      (g.subGroups || []).forEach(sg => (sg?.options || []).forEach(o => { if (o?.image) set.add(o.image); }));
+    });
+    collect(toppingGroups);
+    collect([currentGroup]);
+    return Array.from(set);
+  }, [toppingGroups, currentGroup]);
+
+  // Galería para reusar una foto existente
+  const ImageGallery = ({ current, onPick }) => {
+    if (usedImages.length === 0) return null;
+    return (
+      <div className="mt-2">
+        <p className="text-[11px] font-semibold text-slate-500 mb-1.5">Reusar una foto ya usada</p>
+        <div className="flex flex-wrap gap-1.5">
+          {usedImages.map(url => (
+            <button
+              key={url}
+              type="button"
+              onClick={() => onPick(url)}
+              className={`w-10 h-10 rounded-md overflow-hidden border-2 transition-all ${
+                current === url ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-200 hover:border-blue-300'
+              }`}
+              title="Usar esta foto"
+            >
+              <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-4">
       {/* Status messages */}
@@ -418,6 +456,10 @@ function ToppingGroupsManager() {
                               value={option.image || ''}
                               onChange={(url) => handleOptionChange(index, 'image', url)}
                             />
+                            <ImageGallery
+                              current={option.image}
+                              onPick={(url) => handleOptionChange(index, 'image', url)}
+                            />
                             {option.image && (
                               <button
                                 type="button"
@@ -545,6 +587,10 @@ function ToppingGroupsManager() {
                                   <ImageUploader
                                     value={option.image || ''}
                                     onChange={(url) => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'image', url)}
+                                  />
+                                  <ImageGallery
+                                    current={option.image}
+                                    onPick={(url) => handleSubGroupOptionChange(subGroupIndex, optionIndex, 'image', url)}
                                   />
                                   {option.image && (
                                     <button
