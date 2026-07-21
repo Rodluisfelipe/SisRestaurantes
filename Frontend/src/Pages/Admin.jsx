@@ -1,60 +1,65 @@
-﻿import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { useSearchParams } from 'react-router-dom';
 import { useBusinessConfig } from "../Context/BusinessContext";
-import BusinessSettings from "../Components/BusinessSettings";
-import CategorySettings from "../Components/CategorySettings";
-import ToppingGroupsManager from '../Components/ToppingGroupsManager';
-import WhatsAppCustomizer from '../Components/WhatsAppCustomizer';
-import ThemeSettings from '../Components/ThemeSettings';
-import LocationSettings from '../Components/LocationSettings';
-import BannerUpload from '../Components/Catalog/BannerUpload';
-import RestaurantBannerView from '../Components/Catalog/RestaurantBannerView';
-import ChangePassword from "../Components/ChangePassword";
-import TableSettings from "../Components/TableSettings";
-import ModernOrdersDashboard from "../Components/ModernOrdersDashboard";
-import EnhancedCompletedOrders from "../Components/EnhancedCompletedOrders";
-import ModernAdminSidebar from "../Components/ModernAdminSidebar";
-import SubscriptionStatus from "../Components/SubscriptionStatus";
-import CustomersManager from "../Components/CustomersManager";
-import CouponsManager from "../Components/CouponsManager";
-import LoyaltyManager from "../Components/LoyaltyManager";
-import MultiSessionWarning from "../Components/MultiSessionWarning";
-import DeliveryZoneManager from "../Components/DeliveryZoneManager";
-import PushNotificationToggle from "../Components/PushNotificationToggle";
-import PaymentConfig from "../Components/Admin/PaymentConfig";
-import PrinterSettings from "../Components/PrinterSettings";
-import PrintAgentConfig from "../Components/Admin/PrintAgentConfig";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Componentes extraidos del monolito
+// ── EAGER: estructura, siempre visibles, modales globales y pestaña por defecto ──
+import ModernAdminSidebar from "../Components/ModernAdminSidebar";
+import SubscriptionStatus from "../Components/SubscriptionStatus";
+import MultiSessionWarning from "../Components/MultiSessionWarning";
+import PushNotificationToggle from "../Components/PushNotificationToggle";
 import AdminDashboard from "../Components/Admin/AdminDashboard";
 import AdminTabWrapper from "../Components/Admin/AdminTabWrapper";
 import AdminHeader from "../Components/Admin/AdminHeader";
 import AdminToasts from "../Components/Admin/AdminToasts";
-import DomiStats from '../Components/Delivery/DomiStats';
-import ProductManager from "../Components/Admin/ProductManager";
-import FeaturedProductsManager from "../Components/Admin/FeaturedProductsManager";
 import ConfirmationModal from "../Components/Admin/ConfirmationModal";
 import DeleteConfirmationModal from "../Components/Admin/DeleteConfirmationModal";
 import OrderNotificationBanner from "../Components/Admin/OrderNotificationBanner";
-import SubscriptionPayment from "./SubscriptionPayment";
 import AdminSectionErrorBoundary from "../Components/Admin/AdminSectionErrorBoundary";
 import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 import WelcomeWizard from "../Components/Admin/WelcomeWizard";
 import FloatingHelpChat from "../Components/Admin/FloatingHelpChat";
-import AdminReviews from "../Components/Admin/AdminReviews";
-import StaffManager from "../Components/Admin/StaffManager";
-import BookingsManager from "../Components/Admin/BookingsManager";
-import CashClosings from "../Components/Admin/CashClosings";import ReferralsPanel from '../Components/Admin/ReferralsPanel';import CrewPanel from "../Components/Admin/CrewPanel";import MobileBottomNav from "../Components/Admin/MobileBottomNav";
+import MobileBottomNav from "../Components/Admin/MobileBottomNav";
 import ModoOperacion from "../Components/Admin/ModoOperacion";
-import DashboardMetrics from "../Components/Admin/DashboardMetrics";
 import MobileHeader from "../Components/Admin/MobileHeader";
-import Marketplace from "../Components/Admin/Marketplace";
-import SupplierOrders from "../Components/Admin/SupplierOrders";
-import WhatsAppCampaign from "../Components/Admin/WhatsAppCampaign";
-import ToolsPanel from "../Components/Admin/ToolsPanel";
-import BranchManager from "../Components/Admin/BranchManager";
-import LinkPageSettings from "../Components/Admin/LinkPageSettings";
+
+// ── LAZY: cada pestaña carga su código bajo demanda (code-split del Admin) ──
+const BusinessSettings = lazy(() => import("../Components/BusinessSettings"));
+const CategorySettings = lazy(() => import("../Components/CategorySettings"));
+const ToppingGroupsManager = lazy(() => import("../Components/ToppingGroupsManager"));
+const WhatsAppCustomizer = lazy(() => import("../Components/WhatsAppCustomizer"));
+const ThemeSettings = lazy(() => import("../Components/ThemeSettings"));
+const LocationSettings = lazy(() => import("../Components/LocationSettings"));
+const BannerUpload = lazy(() => import("../Components/Catalog/BannerUpload"));
+const RestaurantBannerView = lazy(() => import("../Components/Catalog/RestaurantBannerView"));
+const ChangePassword = lazy(() => import("../Components/ChangePassword"));
+const TableSettings = lazy(() => import("../Components/TableSettings"));
+const ModernOrdersDashboard = lazy(() => import("../Components/ModernOrdersDashboard"));
+const EnhancedCompletedOrders = lazy(() => import("../Components/EnhancedCompletedOrders"));
+const CustomersManager = lazy(() => import("../Components/CustomersManager"));
+const CouponsManager = lazy(() => import("../Components/CouponsManager"));
+const LoyaltyManager = lazy(() => import("../Components/LoyaltyManager"));
+const DeliveryZoneManager = lazy(() => import("../Components/DeliveryZoneManager"));
+const PaymentConfig = lazy(() => import("../Components/Admin/PaymentConfig"));
+const PrinterSettings = lazy(() => import("../Components/PrinterSettings"));
+const PrintAgentConfig = lazy(() => import("../Components/Admin/PrintAgentConfig"));
+const DomiStats = lazy(() => import("../Components/Delivery/DomiStats"));
+const ProductManager = lazy(() => import("../Components/Admin/ProductManager"));
+const FeaturedProductsManager = lazy(() => import("../Components/Admin/FeaturedProductsManager"));
+const SubscriptionPayment = lazy(() => import("./SubscriptionPayment"));
+const AdminReviews = lazy(() => import("../Components/Admin/AdminReviews"));
+const StaffManager = lazy(() => import("../Components/Admin/StaffManager"));
+const BookingsManager = lazy(() => import("../Components/Admin/BookingsManager"));
+const CashClosings = lazy(() => import("../Components/Admin/CashClosings"));
+const ReferralsPanel = lazy(() => import("../Components/Admin/ReferralsPanel"));
+const CrewPanel = lazy(() => import("../Components/Admin/CrewPanel"));
+const DashboardMetrics = lazy(() => import("../Components/Admin/DashboardMetrics"));
+const Marketplace = lazy(() => import("../Components/Admin/Marketplace"));
+const SupplierOrders = lazy(() => import("../Components/Admin/SupplierOrders"));
+const WhatsAppCampaign = lazy(() => import("../Components/Admin/WhatsAppCampaign"));
+const ToolsPanel = lazy(() => import("../Components/Admin/ToolsPanel"));
+const BranchManager = lazy(() => import("../Components/Admin/BranchManager"));
+const LinkPageSettings = lazy(() => import("../Components/Admin/LinkPageSettings"));
 
 // Custom hooks
 import useAdminAuth from "../hooks/useAdminAuth";
@@ -367,6 +372,7 @@ function Admin() {
                 transition={{ duration: 0.3, ease: [0.2, 0.8, 0.2, 1] }}
                 className="w-full"
               >
+                <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" /></div>}>
                 {activeTab === 'dashboard' && (
                   <AdminDashboard setActiveTab={setActiveTab} pendingOrdersCount={pendingOrdersCount} onboarding={onboardingData} onOpenModoOp={() => setModoOpOpen(true)} />
                 )}
@@ -620,6 +626,7 @@ function Admin() {
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
+                </Suspense>
               </motion.div>
             </AnimatePresence>
           </div>
