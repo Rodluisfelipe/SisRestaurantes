@@ -783,6 +783,43 @@ router.get("/completed", tenantAuth, async (req, res) => {
   }
 });
 
+// Upsell "se piden juntos" — productos más co-ordenados con los del carrito.
+// Público (lo consume el menú del cliente). Fail-soft: ante cualquier error
+// devuelve lista vacía y el frontend cae a su lógica por reglas.
+router.get('/bought-together', publicOrderLimiter, async (req, res) => {
+  try {
+    const { businessId, productIds } = req.query;
+    if (!businessId) return res.json({ productIds: [] });
+
+    const businessResult = await validateAndResolveBusinessId(businessId);
+    if (!businessResult.success) return res.json({ productIds: [] });
+    const bizId = new ObjectId(businessResult.businessId);
+
+    const ids = String(productIds || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => isValidObjectId(s))
+      .map((s) => new ObjectId(s));
+    if (!ids.length) return res.json({ productIds: [] });
+
+    // Pedidos completados que contienen ALGUNO de los productos del carrito;
+    // contamos los OTROS productos de esos pedidos por cantidad total.
+    const rows = await CompletedOrder.aggregate([
+      { $match: { businessId: bizId, 'items.productId': { $in: ids } } },
+      { $unwind: '$items' },
+      { $match: { 'items.productId': { $nin: ids, $ne: null } } },
+      { $group: { _id: '$items.productId', count: { $sum: { $ifNull: ['$items.quantity', 1] } } } },
+      { $sort: { count: -1 } },
+      { $limit: 12 },
+    ]);
+
+    res.json({ productIds: rows.map((r) => String(r._id)) });
+  } catch (error) {
+    logger.error('Error in bought-together', error);
+    res.json({ productIds: [] });
+  }
+});
+
 // Track order by ID + customerToken (public endpoint) - MUST be before /:id
 router.get('/track/:id', publicOrderLimiter, async (req, res) => {
   try {

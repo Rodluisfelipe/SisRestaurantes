@@ -1,9 +1,29 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import ProductToppingsSelector from './ProductToppingsSelector';
+import api from '../services/api';
 
-function SuggestedProducts({ allProducts, cart, onAddToCart, themeColor }) {
+// Palabras clave de complementos de alto margen (bebidas, postres, adiciones…)
+const COMPLEMENT_RE = /(bebida|gaseosa|refresco|jugo|agua|cerveza|limonada|malteada|postre|helado|torta|brownie|adici|acompa|papas|snack|entrada|salsa|combo|dip|topping)/i;
+
+function SuggestedProducts({ allProducts, cart, onAddToCart, themeColor, businessId }) {
   const [toppingsProduct, setToppingsProduct] = useState(null);
+  const [boughtTogetherIds, setBoughtTogetherIds] = useState([]);
   const btnColor = themeColor || '#f97316';
+
+  // Clave estable de los productos del carrito
+  const cartKey = useMemo(() => cart.map(i => i._id).sort().join(','), [cart]);
+
+  // A) "Se piden juntos" (datos reales de pedidos completados), con debounce.
+  useEffect(() => {
+    if (!businessId || !cartKey) { setBoughtTogetherIds([]); return; }
+    let cancelled = false;
+    const t = setTimeout(() => {
+      api.get(`/orders/bought-together?businessId=${encodeURIComponent(businessId)}&productIds=${encodeURIComponent(cartKey)}`)
+        .then(res => { if (!cancelled) setBoughtTogetherIds(res.data?.productIds || []); })
+        .catch(() => { if (!cancelled) setBoughtTogetherIds([]); });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [businessId, cartKey]);
 
   const suggestions = useMemo(() => {
     if (!cart.length || !allProducts?.length) return [];
@@ -14,22 +34,38 @@ function SuggestedProducts({ allProducts, cart, onAddToCart, themeColor }) {
     const available = allProducts.filter(
       p => !cartIds.has(p._id) && p.price > 0 && p.isAvailable !== false
     );
+    const byId = new Map(available.map(p => [p._id, p]));
 
-    // Prioritize products from OTHER categories, then same category
-    const other = [];
-    const same = [];
-    available.forEach(p => {
-      if (cartCategories.has(p.category)) same.push(p);
-      else other.push(p);
-    });
+    const result = [];
+    const used = new Set();
 
-    // Sort each group by price ascending (cheaper = easier impulse buy)
-    const byPrice = (a, b) => a.price - b.price;
-    other.sort(byPrice);
-    same.sort(byPrice);
+    // A) Primero, lo que la gente REALMENTE compra junto (orden de ranking).
+    for (const id of boughtTogetherIds) {
+      const p = byId.get(id);
+      if (p && !used.has(id)) { result.push(p); used.add(id); }
+      if (result.length >= 6) break;
+    }
 
-    return [...other, ...same].slice(0, 6);
-  }, [allProducts, cart]);
+    // B) Rellenar: prioriza complementos (bebidas/postres/adiciones), luego
+    // otras categorías, del más barato al más caro (impulso).
+    if (result.length < 6) {
+      const isComplement = (p) => COMPLEMENT_RE.test(`${p.categoryName || ''} ${p.category || ''} ${p.name || ''}`);
+      const rest = available.filter(p => !used.has(p._id));
+      rest.sort((a, b) => {
+        const ca = isComplement(a) ? 1 : 0, cb = isComplement(b) ? 1 : 0;
+        if (ca !== cb) return cb - ca;                       // complementos primero
+        const oa = cartCategories.has(a.category) ? 0 : 1, ob = cartCategories.has(b.category) ? 0 : 1;
+        if (oa !== ob) return ob - oa;                       // otras categorías primero
+        return a.price - b.price;                            // más barato primero
+      });
+      for (const p of rest) {
+        result.push(p); used.add(p._id);
+        if (result.length >= 6) break;
+      }
+    }
+
+    return result.slice(0, 6);
+  }, [allProducts, cart, boughtTogetherIds]);
 
   const handleAdd = useCallback((product) => {
     const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;

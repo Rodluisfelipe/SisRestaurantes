@@ -695,6 +695,7 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
               cart={cart}
               onAddToCart={addToCart}
               themeColor={businessConfig?.theme?.buttonColor}
+              businessId={businessId}
             />
           )}
 
