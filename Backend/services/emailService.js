@@ -448,12 +448,31 @@ async function sendWeeklyReportEmail({ to, businessName, slug, stats }) {
   return sendSystemEmail({ to, subject: `📊 Tu resumen semanal — ${businessName}`, html });
 }
 
+async function sendPasswordResetEmail({ to, businessName, slug, resetUrl }) {
+  if (!to || !resetUrl) return { sent: false, reason: 'missing_data' };
+  const content = `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:6px 0 12px">
+      <div style="width:56px;height:56px;border-radius:50%;background:#eff6ff;display:inline-block;line-height:56px;text-align:center;font-size:28px">🔐</div>
+    </td></tr></table>
+    <h2 style="color:#1e293b;font-size:19px;margin:0 0 8px;text-align:center;font-weight:700">Restablecer tu contraseña</h2>
+    <p style="color:#64748b;font-size:14px;text-align:center;margin:0 0 20px;line-height:1.55">Recibimos una solicitud para restablecer la contraseña de tu panel${businessName ? ` de <strong style="color:#1e293b">${businessName}</strong>` : ''}. El enlace expira en <strong>1 hora</strong>.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 0 18px">
+      <a href="${resetUrl}" style="display:inline-block;background:#E31E24;color:#ffffff;font-weight:700;padding:13px 30px;border-radius:10px;text-decoration:none;font-size:14px" target="_blank">Restablecer contraseña</a>
+    </td></tr></table>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0 0 8px;line-height:1.5">Si no fuiste tú, ignora este correo — tu contraseña no cambiará.</p>
+    <p style="color:#cbd5e1;font-size:11px;text-align:center;margin:0;word-break:break-all">O copia este enlace:<br>${resetUrl}</p>
+  `;
+  const html = baseTemplate(menubyConfig(businessName, slug), content);
+  return sendSystemEmail({ to, subject: '🔐 Restablece tu contraseña — MenuBy', html });
+}
+
 module.exports = {
   sendEmail,
   sendTestEmail,
   sendSystemEmail,
   sendWelcomeEmail,
   sendWeeklyReportEmail,
+  sendPasswordResetEmail,
   sendBookingCreatedEmail,
   sendBookingConfirmedEmail,
   sendBookingCancelledEmail,
