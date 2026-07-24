@@ -34,7 +34,8 @@ const ThemeSettings = () => {
     buttonColor: '#2563eb',
     buttonTextColor: '#ffffff',
     primaryColor: '',
-    menuFont: ''
+    menuFont: '',
+    collapsedMenu: false
   });
   
   const [loading, setLoading] = useState(false);
@@ -46,7 +47,8 @@ const ThemeSettings = () => {
         buttonColor: businessConfig.theme.buttonColor || '#2563eb',
         buttonTextColor: businessConfig.theme.buttonTextColor || '#ffffff',
         primaryColor: businessConfig.theme.primaryColor || '',
-        menuFont: businessConfig.theme.menuFont || ''
+        menuFont: businessConfig.theme.menuFont || '',
+        collapsedMenu: businessConfig.theme.collapsedMenu || false
       });
     }
   }, [businessConfig]);
@@ -219,6 +221,74 @@ const ThemeSettings = () => {
               );
             })}
           </div>
+        </div>
+
+        {/* ── MENU LAYOUT (collapsed categories) ── */}
+        <div className="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-slate-100 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 5.25h16.5M3.75 12h16.5M3.75 18.75h16.5" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Diseño del menú</h3>
+              <p className="text-[11px] text-slate-400">Cómo se organizan tus categorías y productos</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            {/* Expandido */}
+            <button type="button"
+              onClick={() => setTheme(prev => ({ ...prev, collapsedMenu: false }))}
+              className={`text-left p-3 rounded-xl border-2 transition-all ${
+                !theme.collapsedMenu ? 'border-blue-400 bg-blue-50/40 shadow-sm' : 'border-slate-100 hover:border-slate-200'
+              }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-800">Expandido</span>
+                {!theme.collapsedMenu && (
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                )}
+              </div>
+              <div className="space-y-1">
+                <div className="h-1.5 w-8 rounded-full bg-slate-300" />
+                <div className="grid grid-cols-3 gap-0.5">
+                  {[...Array(3)].map((_, i) => <div key={i} className="h-4 rounded bg-slate-200" />)}
+                </div>
+                <div className="h-1.5 w-8 rounded-full bg-slate-300 mt-1" />
+                <div className="grid grid-cols-3 gap-0.5">
+                  {[...Array(3)].map((_, i) => <div key={i} className="h-4 rounded bg-slate-200" />)}
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2 leading-snug">Todo visible en scroll continuo</p>
+            </button>
+
+            {/* Colapsado */}
+            <button type="button"
+              onClick={() => setTheme(prev => ({ ...prev, collapsedMenu: true }))}
+              className={`text-left p-3 rounded-xl border-2 transition-all ${
+                theme.collapsedMenu ? 'border-blue-400 bg-blue-50/40 shadow-sm' : 'border-slate-100 hover:border-slate-200'
+              }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-800">Colapsado</span>
+                {theme.collapsedMenu && (
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <div className="h-3 flex-1 rounded bg-slate-200" />
+                    <svg className="w-2.5 h-2.5 text-slate-300" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-slate-400 mt-2 leading-snug">Índice de categorías; el cliente entra a cada una</p>
+            </button>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-3">
+            💡 Recomendado para cartas con <strong className="text-slate-500">muchos productos</strong>: el cliente ve primero los nombres de las categorías y entra a la que le interesa.
+          </p>
         </div>
 
         {/* ── PREVIEW ── */}

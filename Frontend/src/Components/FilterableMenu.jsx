@@ -398,6 +398,28 @@ const FilterableMenu = ({
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
   const themeTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
 
+  // ── Menú colapsado: índice de categorías + drill-in por categoría ──
+  const collapsedMenu = businessConfig?.theme?.collapsedMenu === true;
+  // Índice visible: modo colapsado, sin búsqueda y sin categoría abierta
+  const showCategoryIndex = collapsedMenu && !searchTerm && activeCategory === 'all';
+  // Dentro de una categoría (drill-in) en modo colapsado
+  const insideCollapsedCategory = collapsedMenu && activeCategory !== 'all';
+
+  // Abrir una categoría desde el índice (conserva el header, sube al inicio)
+  const openCategory = useCallback((categoryId) => {
+    setActiveCategory(categoryId);
+    setSpyCategory(categoryId);
+    setSearchTerm('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
+  // Volver al índice de categorías
+  const backToIndex = useCallback(() => {
+    setActiveCategory('all');
+    setSpyCategory('all');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   // The visually active pill is always based on spyCategory
   // (either set by IntersectionObserver or explicitly by handlePillClick)
   const visualActive = spyCategory;
@@ -591,6 +613,8 @@ const FilterableMenu = ({
       <div ref={pillBarSentinelRef} className="h-0" />
 
       {/* ── Sticky Category Filter Pills + Progress Bar ── */}
+      {/* En modo colapsado ocultamos las pills: la navegación es el índice de categorías */}
+      {!collapsedMenu && (
       <div
         ref={pillBarRef}
         className={`z-40 py-2.5 mb-4 sm:mb-5 ${
@@ -667,9 +691,10 @@ const FilterableMenu = ({
           />
         </div>
       </div>
+      )}
 
-      {/* Los más pedidos (premium) */}
-      {businessId && !searchTerm && (
+      {/* Los más pedidos (premium) — se ocultan dentro de una categoría (drill-in) */}
+      {businessId && !searchTerm && !insideCollapsedCategory && (
         <PopularProducts
           businessId={businessId}
           products={products}
@@ -681,8 +706,8 @@ const FilterableMenu = ({
         />
       )}
 
-      {/* Productos Destacados */}
-      {businessId && (
+      {/* Productos Destacados — ocultos dentro de una categoría (drill-in) */}
+      {businessId && !insideCollapsedCategory && (
         <FeaturedProducts
           businessId={businessId}
           products={products}
@@ -767,6 +792,44 @@ const FilterableMenu = ({
             transition={{ duration: 0.2 }}
           >
           {activeCategory === 'all' ? (
+            showCategoryIndex ? (
+              // ── Índice de categorías (modo colapsado): el cliente entra a cada una ──
+              <div className="space-y-2.5">
+                {categoriesWithProducts.map((category, i) => {
+                  const CategoryIcon = getCategoryIconForBusiness(category.name, businessConfig?.businessType);
+                  return (
+                    <motion.button
+                      key={category._id}
+                      onClick={() => openCategory(category._id)}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(i * 0.035, 0.4) }}
+                      whileTap={{ scale: 0.985 }}
+                      className="w-full flex items-center gap-3.5 p-3.5 rounded-2xl bg-white border border-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] active:bg-slate-50 transition-colors text-left"
+                    >
+                      <div
+                        className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+                        style={{
+                          background: `linear-gradient(135deg, ${themeColor}18, ${themeColor}08)`,
+                          border: `1px solid ${themeColor}15`
+                        }}
+                      >
+                        <CategoryIcon className="w-5 h-5" style={{ color: themeColor }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h2 className="text-[15px] font-bold text-slate-800 tracking-tight truncate">{category.name}</h2>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                          {category.count} {category.count === 1 ? (isService ? 'servicio' : 'producto') : (isService ? 'servicios' : 'productos')}
+                        </span>
+                      </div>
+                      <span className="flex-shrink-0 text-slate-300">
+                        {MI.chevron('w-5 h-5')}
+                      </span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            ) : (
               // Group products by category
               categoriesWithProducts.map((category, categoryIndex) => {
               const categoryProducts = filteredProducts.filter(product => product.category === category._id);
@@ -842,12 +905,24 @@ const FilterableMenu = ({
                   </motion.div>
               );
             })
+            )
           ) : (
               // Specific category selected
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
               >
+                {/* Botón volver al índice (solo en modo colapsado) */}
+                {collapsedMenu && (
+                  <button
+                    onClick={backToIndex}
+                    className="inline-flex items-center gap-1.5 mb-3 px-3.5 py-2 rounded-full text-[13px] font-semibold text-slate-600 bg-slate-100 active:bg-slate-200 transition-colors"
+                    aria-label="Volver a las categorías"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                    Categorías
+                  </button>
+                )}
                 {/* Category Header */}
                 {categoriesWithProducts.filter(category => category._id === activeCategory).map(category => {
                   const singleCatProducts = filteredProducts.filter(p => p.category === category._id);

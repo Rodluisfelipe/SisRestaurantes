@@ -185,7 +185,10 @@ const businessConfigSchema = new mongoose.Schema({
     buttonColor: { type: String, default: "#2563eb" },
     buttonTextColor: { type: String, default: "#ffffff" },
     primaryColor: { type: String, default: "" },
-    menuFont: { type: String, enum: ['', 'inter', 'playfair', 'poppins', 'lora', 'montserrat'], default: '' }
+    menuFont: { type: String, enum: ['', 'inter', 'playfair', 'poppins', 'lora', 'montserrat'], default: '' },
+    // Menú colapsado: muestra el índice de categorías y el cliente entra a cada una.
+    // Ideal para cartas con muchos productos.
+    collapsedMenu: { type: Boolean, default: false }
   },
   // Feature flags
   features: {
