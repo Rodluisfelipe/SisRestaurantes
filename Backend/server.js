@@ -341,6 +341,14 @@ mongoose.connect(MONGO_URI, {
       logger.warn('Error iniciando cron de recordatorios de citas:', error.message);
     }
 
+    // Cron de reporte semanal al dueño (lunes 8am COL)
+    try {
+      const { startWeeklyReportCron } = require('./services/weeklyReportCron');
+      startWeeklyReportCron();
+    } catch (error) {
+      logger.warn('Error iniciando cron de reporte semanal:', error.message);
+    }
+
     // Cron de expiración de puntos de lealtad
     try {
       const { startLoyaltyExpiryCron } = require('./services/loyaltyExpiryCron');

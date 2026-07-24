@@ -298,6 +298,13 @@ router.post('/register', registerLimiter, validateRegister, async (req, res) => 
     
     await initialSubscription.save();
 
+    // Correo de bienvenida (MenuBy → dueño), no bloquea el registro.
+    try {
+      const { sendWelcomeEmail } = require('../services/emailService');
+      sendWelcomeEmail({ to: email, businessName, slug })
+        .catch(err => logger.warn('Welcome email failed', { error: err.message }));
+    } catch (e) { /* no-op */ }
+
     // Process referral code if provided
     if (referralCode && typeof referralCode === 'string' && referralCode.trim()) {
       try {

@@ -365,9 +365,95 @@ async function sendBookingReminderEmail(businessId, booking, hoursUntil) {
   return sendEmail(businessId, { to: booking.customerEmail, subject: `⏰ Recordatorio: ${services} ${timeLabel} — ${config.businessName}`, html });
 }
 
+// ─── SYSTEM EMAILS (MenuBy → dueño; NO dependen de emailSettings del negocio) ──
+
+async function sendSystemEmail({ to, subject, html }) {
+  if (!to) return { sent: false, reason: 'no_recipient' };
+  const providers = getAvailableProviders();
+  if (providers.length === 0) {
+    logger.warn('No email providers available (system email)');
+    return { sent: false, reason: 'no_providers' };
+  }
+  for (const provider of providers) {
+    try {
+      const messageId = await provider.fn(to, subject, html, EMAIL_FROM_NAME);
+      usage[provider.name]++;
+      logger.info('System email sent', { provider: provider.name, to, subject });
+      return { sent: true, provider: provider.name, messageId };
+    } catch (error) {
+      logger.warn(`Email provider ${provider.name} failed (system)`, { error: error.message });
+    }
+  }
+  logger.error('All email providers failed (system)', { to, subject });
+  return { sent: false, reason: 'all_providers_failed' };
+}
+
+// Config con marca MenuBy para baseTemplate (cuando el negocio aún no tiene branding).
+function menubyConfig(businessName, slug) {
+  return { businessName: businessName || 'MenuBy', logo: '', brandColor: '#E31E24', whatsapp: '', address: '', instagram: '', slug: slug || '' };
+}
+
+async function sendWelcomeEmail({ to, businessName, slug }) {
+  const adminUrl = `${MENUBY_URL}/${slug}/admin`;
+  const menuUrl = `${MENUBY_URL}/${slug}`;
+  const content = `
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:6px 0 12px">
+      <div style="width:56px;height:56px;border-radius:50%;background:#fef2f2;display:inline-block;line-height:56px;text-align:center;font-size:28px">🎉</div>
+    </td></tr></table>
+    <h2 style="color:#1e293b;font-size:19px;margin:0 0 8px;text-align:center;font-weight:700">¡Bienvenido a MenuBy, ${businessName}!</h2>
+    <p style="color:#64748b;font-size:14px;text-align:center;margin:0 0 20px;line-height:1.55">Tu menú digital ya está creado. Tienes <strong style="color:#1e293b">7 días gratis</strong> para probarlo todo, sin tarjeta.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:0 0 20px">
+      <a href="${adminUrl}" style="display:inline-block;background:#E31E24;color:#ffffff;font-weight:700;padding:13px 30px;border-radius:10px;text-decoration:none;font-size:14px" target="_blank">Ir a mi panel →</a>
+    </td></tr></table>
+    <p style="color:#1e293b;font-size:13px;font-weight:700;margin:0 0 8px">Primeros pasos (5 minutos):</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px">
+      <tr><td style="padding:6px 0;color:#475569;font-size:13px;line-height:1.5"><strong style="color:#E31E24">1.</strong> Sube tus productos con foto y precio</td></tr>
+      <tr><td style="padding:6px 0;color:#475569;font-size:13px;line-height:1.5"><strong style="color:#E31E24">2.</strong> Comparte tu link o imprime tu código QR</td></tr>
+      <tr><td style="padding:6px 0;color:#475569;font-size:13px;line-height:1.5"><strong style="color:#E31E24">3.</strong> Recibe pedidos por WhatsApp o en la app</td></tr>
+    </table>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0">Tu menú: <a href="${menuUrl}" style="color:#E31E24;text-decoration:none" target="_blank">${menuUrl.replace('https://', '')}</a></p>
+  `;
+  const html = baseTemplate(menubyConfig(businessName, slug), content);
+  return sendSystemEmail({ to, subject: `🎉 Bienvenido a MenuBy, ${businessName}`, html });
+}
+
+async function sendWeeklyReportEmail({ to, businessName, slug, stats }) {
+  if (!to || !stats) return { sent: false, reason: 'missing_data' };
+  const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-CO');
+  const delta = (cur, prev) => {
+    if (!prev || prev === 0) return '';
+    const d = Math.round(((cur - prev) / prev) * 100);
+    if (d === 0) return ` <span style="color:#94a3b8;font-size:11px;font-weight:600">=</span>`;
+    const up = d > 0;
+    return ` <span style="color:${up ? '#16a34a' : '#dc2626'};font-size:11px;font-weight:700">${up ? '▲' : '▼'}${Math.abs(d)}%</span>`;
+  };
+  const dashUrl = `${MENUBY_URL}/${slug}/admin`;
+
+  const content = `
+    <h2 style="color:#1e293b;font-size:19px;margin:0 0 4px;text-align:center;font-weight:700">📊 Tu semana en MenuBy</h2>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0 0 20px">${stats.periodLabel}</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px">
+      ${detailRow('💵', 'Ventas', money(stats.revenue) + delta(stats.revenue, stats.revenuePrev), '#16a34a')}
+      ${detailRow('🧾', 'Pedidos', String(stats.orders) + delta(stats.orders, stats.ordersPrev))}
+      ${detailRow('🎯', 'Ticket promedio', money(stats.avgTicket))}
+      ${detailRow('🍽️', 'Productos vendidos', String(stats.products))}
+    </table>
+    ${stats.topProduct ? `<p style="color:#475569;font-size:13px;margin:14px 0 4px">🏆 Tu plato estrella: <strong style="color:#1e293b">${stats.topProduct.name}</strong> (${stats.topProduct.qty} vendidos)</p>` : ''}
+    ${stats.bestDay ? `<p style="color:#475569;font-size:13px;margin:0 0 4px">📈 Tu mejor día: <strong style="color:#1e293b">${stats.bestDay.label}</strong> (${money(stats.bestDay.revenue)})</p>` : ''}
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:18px 0 4px">
+      <a href="${dashUrl}" style="display:inline-block;background:#E31E24;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px" target="_blank">Ver mi panel completo →</a>
+    </td></tr></table>
+  `;
+  const html = baseTemplate(menubyConfig(businessName, slug), content);
+  return sendSystemEmail({ to, subject: `📊 Tu resumen semanal — ${businessName}`, html });
+}
+
 module.exports = {
   sendEmail,
   sendTestEmail,
+  sendSystemEmail,
+  sendWelcomeEmail,
+  sendWeeklyReportEmail,
   sendBookingCreatedEmail,
   sendBookingConfirmedEmail,
   sendBookingCancelledEmail,
