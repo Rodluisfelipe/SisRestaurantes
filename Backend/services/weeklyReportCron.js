@@ -50,7 +50,7 @@ async function runWeeklyReports() {
   const prevStart = new Date(start.getTime() - 7 * DAY_MS);
   const periodLabel = `${start.toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })} — ${new Date(end.getTime() - 1).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}`;
 
-  const businesses = await BusinessConfig.find({ isActive: true }).select('_id businessName slug').lean();
+  const businesses = await BusinessConfig.find({ isActive: true }).select('_id businessName slug logo').lean();
   let sent = 0;
   for (const b of businesses) {
     try {
@@ -64,7 +64,7 @@ async function runWeeklyReports() {
 
       const prev = await statsFor(bizId, prevStart, prevEnd);
       await sendWeeklyReportEmail({
-        to, businessName: b.businessName, slug: b.slug,
+        to, businessName: b.businessName, slug: b.slug, logo: b.logo,
         stats: {
           periodLabel,
           revenue: cur.revenue, orders: cur.orders, products: cur.products,

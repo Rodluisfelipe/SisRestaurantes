@@ -152,9 +152,12 @@ async function sendTestEmail(businessId) {
 function baseTemplate(config, content) {
   const { businessName, logo, brandColor, whatsapp, address, instagram } = config;
   const color2 = adjustColor(brandColor, -30);
-  const logoBlock = logo
-    ? `<img src="${logo}" alt="${businessName}" style="max-height:56px;max-width:200px;display:block;margin:0 auto 10px;border-radius:8px" />`
-    : '';
+  // Avatar / foto de perfil circular (logo del negocio, o inicial si no hay)
+  const safeLogo = (logo && /^https?:\/\//.test(logo)) ? logo : '';
+  const initial = (businessName || 'M').trim().charAt(0).toUpperCase();
+  const avatarBlock = safeLogo
+    ? `<img src="${safeLogo}" alt="${businessName}" width="80" height="80" style="width:80px;height:80px;border-radius:50%;object-fit:cover;display:block;margin:0 auto;border:3px solid rgba(255,255,255,0.95);box-shadow:0 6px 20px rgba(0,0,0,0.22)" />`
+    : `<div style="width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,0.18);display:inline-block;line-height:80px;text-align:center;color:#ffffff;font-size:36px;font-weight:800;border:3px solid rgba(255,255,255,0.55)">${initial}</div>`;
 
   // Contact section — always show at least the business page link
   const contactItems = [];
@@ -181,9 +184,9 @@ function baseTemplate(config, content) {
   <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
       <!-- HEADER -->
-      <tr><td style="background:linear-gradient(135deg,${brandColor},${color2});padding:32px 24px;text-align:center">
-        ${logoBlock}
-        <h1 style="color:#ffffff;font-size:20px;margin:0;font-weight:700;letter-spacing:-0.3px">${businessName}</h1>
+      <tr><td style="background:linear-gradient(135deg,${brandColor},${color2});padding:36px 24px 28px;text-align:center">
+        ${avatarBlock}
+        <h1 style="color:#ffffff;font-size:21px;margin:14px 0 0;font-weight:700;letter-spacing:-0.3px">${businessName}</h1>
       </td></tr>
       <!-- CONTENT -->
       <tr><td style="padding:28px 24px">${content}</td></tr>
@@ -388,9 +391,9 @@ async function sendSystemEmail({ to, subject, html }) {
   return { sent: false, reason: 'all_providers_failed' };
 }
 
-// Config con marca MenuBy para baseTemplate (cuando el negocio aún no tiene branding).
-function menubyConfig(businessName, slug) {
-  return { businessName: businessName || 'MenuBy', logo: '', brandColor: '#E31E24', whatsapp: '', address: '', instagram: '', slug: slug || '' };
+// Config con marca MenuBy para baseTemplate. `logo` = foto de perfil (avatar).
+function menubyConfig(businessName, slug, logo = '') {
+  return { businessName: businessName || 'MenuBy', logo: logo || '', brandColor: '#E31E24', whatsapp: '', address: '', instagram: '', slug: slug || '' };
 }
 
 async function sendWelcomeEmail({ to, businessName, slug }) {
@@ -413,39 +416,53 @@ async function sendWelcomeEmail({ to, businessName, slug }) {
     </table>
     <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0">Tu menú: <a href="${menuUrl}" style="color:#E31E24;text-decoration:none" target="_blank">${menuUrl.replace('https://', '')}</a></p>
   `;
-  const html = baseTemplate(menubyConfig(businessName, slug), content);
-  return sendSystemEmail({ to, subject: `🎉 Bienvenido a MenuBy, ${businessName}`, html });
+  const html = baseTemplate(menubyConfig(businessName, slug, MENUBY_LOGO), content);
+  return sendSystemEmail({ to, subject: `Tu menú digital ${businessName} ya está listo`, html });
 }
 
-async function sendWeeklyReportEmail({ to, businessName, slug, stats }) {
+async function sendWeeklyReportEmail({ to, businessName, slug, logo, stats }) {
   if (!to || !stats) return { sent: false, reason: 'missing_data' };
   const money = (n) => '$' + Math.round(n || 0).toLocaleString('es-CO');
   const delta = (cur, prev) => {
-    if (!prev || prev === 0) return '';
+    if (!prev || prev === 0) return '<span style="color:#cbd5e1;font-size:11px">—</span>';
     const d = Math.round(((cur - prev) / prev) * 100);
-    if (d === 0) return ` <span style="color:#94a3b8;font-size:11px;font-weight:600">=</span>`;
+    if (d === 0) return '<span style="color:#94a3b8;font-size:11px;font-weight:600">= igual</span>';
     const up = d > 0;
-    return ` <span style="color:${up ? '#16a34a' : '#dc2626'};font-size:11px;font-weight:700">${up ? '▲' : '▼'}${Math.abs(d)}%</span>`;
+    return `<span style="color:${up ? '#16a34a' : '#dc2626'};font-size:11px;font-weight:700">${up ? '▲' : '▼'} ${Math.abs(d)}%</span>`;
   };
+  const box = (bg, border, labelColor, valColor, label, value, sub) => `
+    <td width="50%" valign="top" style="padding:5px">
+      <div style="background:${bg};border:1px solid ${border};border-radius:14px;padding:14px 12px;text-align:center">
+        <div style="font-size:10px;color:${labelColor};font-weight:700;text-transform:uppercase;letter-spacing:0.5px">${label}</div>
+        <div style="font-size:21px;font-weight:800;color:${valColor};margin:3px 0 2px;line-height:1.1">${value}</div>
+        <div style="line-height:1.2">${sub || ''}</div>
+      </div>
+    </td>`;
   const dashUrl = `${MENUBY_URL}/${slug}/admin`;
 
   const content = `
-    <h2 style="color:#1e293b;font-size:19px;margin:0 0 4px;text-align:center;font-weight:700">📊 Tu semana en MenuBy</h2>
-    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0 0 20px">${stats.periodLabel}</p>
-    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 8px">
-      ${detailRow('💵', 'Ventas', money(stats.revenue) + delta(stats.revenue, stats.revenuePrev), '#16a34a')}
-      ${detailRow('🧾', 'Pedidos', String(stats.orders) + delta(stats.orders, stats.ordersPrev))}
-      ${detailRow('🎯', 'Ticket promedio', money(stats.avgTicket))}
-      ${detailRow('🍽️', 'Productos vendidos', String(stats.products))}
+    <h2 style="color:#1e293b;font-size:19px;margin:0 0 4px;text-align:center;font-weight:700">Tu semana en resumen</h2>
+    <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0 0 18px">${stats.periodLabel}</p>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        ${box('#f0fdf4', '#bbf7d0', '#16a34a', '#14532d', 'Ventas', money(stats.revenue), delta(stats.revenue, stats.revenuePrev))}
+        ${box('#eff6ff', '#bfdbfe', '#2563eb', '#1e3a8a', 'Pedidos', String(stats.orders), delta(stats.orders, stats.ordersPrev))}
+      </tr>
+      <tr>
+        ${box('#faf5ff', '#e9d5ff', '#7c3aed', '#4c1d95', 'Ticket promedio', money(stats.avgTicket), '')}
+        ${box('#fff7ed', '#fed7aa', '#ea580c', '#7c2d12', 'Productos', String(stats.products), '')}
+      </tr>
     </table>
-    ${stats.topProduct ? `<p style="color:#475569;font-size:13px;margin:14px 0 4px">🏆 Tu plato estrella: <strong style="color:#1e293b">${stats.topProduct.name}</strong> (${stats.topProduct.qty} vendidos)</p>` : ''}
-    ${stats.bestDay ? `<p style="color:#475569;font-size:13px;margin:0 0 4px">📈 Tu mejor día: <strong style="color:#1e293b">${stats.bestDay.label}</strong> (${money(stats.bestDay.revenue)})</p>` : ''}
-    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:18px 0 4px">
-      <a href="${dashUrl}" style="display:inline-block;background:#E31E24;color:#ffffff;font-weight:700;padding:12px 28px;border-radius:10px;text-decoration:none;font-size:14px" target="_blank">Ver mi panel completo →</a>
+    ${(stats.topProduct || stats.bestDay) ? `<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:14px 0 0"><tr><td style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px">
+      ${stats.topProduct ? `<p style="color:#475569;font-size:13px;margin:0 0 6px">🏆 <strong style="color:#1e293b">Plato estrella:</strong> ${stats.topProduct.name} <span style="color:#94a3b8">(${stats.topProduct.qty} vendidos)</span></p>` : ''}
+      ${stats.bestDay ? `<p style="color:#475569;font-size:13px;margin:0">📈 <strong style="color:#1e293b">Mejor día:</strong> ${stats.bestDay.label} <span style="color:#94a3b8">(${money(stats.bestDay.revenue)})</span></p>` : ''}
+    </td></tr></table>` : ''}
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:20px 0 4px">
+      <a href="${dashUrl}" style="display:inline-block;background:#E31E24;color:#ffffff;font-weight:700;padding:12px 30px;border-radius:10px;text-decoration:none;font-size:14px" target="_blank">Ver mi panel completo →</a>
     </td></tr></table>
   `;
-  const html = baseTemplate(menubyConfig(businessName, slug), content);
-  return sendSystemEmail({ to, subject: `📊 Tu resumen semanal — ${businessName}`, html });
+  const html = baseTemplate(menubyConfig(businessName, slug, logo), content);
+  return sendSystemEmail({ to, subject: `Tu resumen semanal — ${businessName}`, html });
 }
 
 async function sendPasswordResetEmail({ to, businessName, slug, resetUrl }) {
@@ -462,8 +479,8 @@ async function sendPasswordResetEmail({ to, businessName, slug, resetUrl }) {
     <p style="color:#94a3b8;font-size:12px;text-align:center;margin:0 0 8px;line-height:1.5">Si no fuiste tú, ignora este correo — tu contraseña no cambiará.</p>
     <p style="color:#cbd5e1;font-size:11px;text-align:center;margin:0;word-break:break-all">O copia este enlace:<br>${resetUrl}</p>
   `;
-  const html = baseTemplate(menubyConfig(businessName, slug), content);
-  return sendSystemEmail({ to, subject: '🔐 Restablece tu contraseña — MenuBy', html });
+  const html = baseTemplate(menubyConfig(businessName, slug, MENUBY_LOGO), content);
+  return sendSystemEmail({ to, subject: 'Restablece tu contraseña — MenuBy', html });
 }
 
 module.exports = {
