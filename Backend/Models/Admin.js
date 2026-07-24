@@ -41,6 +41,15 @@ const adminSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // ── Password reset (self-service) ──
+  resetPasswordToken: {
+    type: String,
+    default: null
+  },
+  resetPasswordExpires: {
+    type: Date,
+    default: null
+  },
   businessId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'BusinessConfig',

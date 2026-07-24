@@ -682,6 +682,99 @@ router.post('/force-change-password', authMiddleware, async (req, res) => {
   }
 });
 
+// ==================== PASSWORD RESET (SELF-SERVICE) ====================
+
+const crypto = require('crypto');
+
+// Rate limiter para recuperación de contraseña (previene abuso/enumeración)
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5,
+  message: { message: 'Demasiadas solicitudes. Intenta nuevamente en 15 minutos.' }
+});
+
+// POST /auth/forgot-password — genera token + envía email (respuesta genérica, sin enumeración)
+router.post('/forgot-password', passwordResetLimiter, async (req, res) => {
+  // Respuesta genérica: nunca revelamos si el correo existe
+  const generic = { message: 'Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.' };
+  try {
+    const { email } = req.body;
+    if (!email || !validateEmail(email)) {
+      return res.status(400).json({ message: 'Correo electrónico inválido' });
+    }
+
+    const admin = await Admin.findOne({ username: email.toLowerCase().trim() });
+    // Solo cuentas locales con dueño real (no Google, no staff)
+    if (!admin || admin.authProvider === 'google' || !['admin', 'brand_admin'].includes(admin.role)) {
+      return res.json(generic);
+    }
+
+    // Token en claro para el email; guardamos solo el hash
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    admin.resetPasswordToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+    admin.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+    await admin.save();
+
+    const business = await BusinessConfig.findById(admin.businessId).select('businessName slug').lean();
+    const base = (process.env.FRONTEND_URL || 'https://www.menuby.tech').replace(/\/$/, '');
+    const resetUrl = `${base}/recuperar/${rawToken}`;
+
+    try {
+      const { sendPasswordResetEmail } = require('../services/emailService');
+      await sendPasswordResetEmail({
+        to: admin.username,
+        businessName: business?.businessName,
+        slug: business?.slug,
+        resetUrl
+      });
+    } catch (e) {
+      logger.warn('Password reset email failed', { error: e.message });
+    }
+
+    res.json(generic);
+  } catch (error) {
+    logger.error('Error en forgot-password', process.env.NODE_ENV !== 'production' ? error : undefined);
+    // Aun con error, respuesta genérica para no filtrar información
+    res.json(generic);
+  }
+});
+
+// POST /auth/reset-password — valida token + cambia contraseña
+router.post('/reset-password', passwordResetLimiter, async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token) return res.status(400).json({ message: 'Token requerido' });
+
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) return res.status(400).json({ message: passwordError });
+
+    const hashed = crypto.createHash('sha256').update(token).digest('hex');
+    const admin = await Admin.findOne({
+      resetPasswordToken: hashed,
+      resetPasswordExpires: { $gt: new Date() }
+    });
+
+    if (!admin) {
+      return res.status(400).json({ message: 'El enlace es inválido o expiró. Solicita uno nuevo.' });
+    }
+
+    admin.password = newPassword;          // el pre-save del modelo la hashea
+    admin.resetPasswordToken = null;
+    admin.resetPasswordExpires = null;
+    admin.mustChangePassword = false;
+    admin.refreshTokens = [];              // cierra todas las sesiones abiertas
+    await admin.save();
+
+    const { invalidateUserCache } = require('../middleware/authMiddleware');
+    invalidateUserCache(admin._id.toString(), admin.role || 'admin');
+
+    res.json({ message: 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.' });
+  } catch (error) {
+    logger.error('Error en reset-password', process.env.NODE_ENV !== 'production' ? error : undefined);
+    res.status(500).json({ message: 'Error en el servidor' });
+  }
+});
+
 // Obtener datos del usuario autenticado (protegido)
 router.get('/me', authMiddleware, async (req, res) => {
   try {

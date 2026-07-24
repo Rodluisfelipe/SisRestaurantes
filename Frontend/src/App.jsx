@@ -26,6 +26,8 @@ const MenuByLink = lazy(() => import("./Pages/MenuByLink"));
 // Lazy load landing pages (solo se usan en la landing, no en app de restaurante)
 const LandingHome = lazy(() => import("./Pages/Landing/Home"));
 const LandingLogin = lazy(() => import("./Pages/Landing/Login"));
+const LandingForgotPassword = lazy(() => import("./Pages/Landing/ForgotPassword"));
+const LandingResetPassword = lazy(() => import("./Pages/Landing/ResetPassword"));
 const LandingRegister = lazy(() => import("./Pages/Landing/Register"));
 const LandingFeatures = lazy(() => import("./Pages/Landing/Features"));
 const LandingDemo = lazy(() => import("./Pages/Landing/Demo"));
@@ -140,7 +142,7 @@ const RESERVED_PATHS = ['login', 'register', 'features', 'demo', 'contact', 'pri
   'menu-digital-restaurante', 'menu-digital-bar', 'menu-digital-cafeteria', 'menu-digital-pizzeria',
   'menu-digital-hamburgueseria', 'menu-digital-hotel', 'menu-digital-food-truck', 'menu-digital-panaderia',
   'menu-digital-comida-rapida', 'menu-digital-sushi', 'menu-digital-asadero', 'menu-digital-heladeria',
-  'restaurantes', 'health', 'superadmin', 'app-login'
+  'restaurantes', 'health', 'superadmin', 'app-login', 'forgot-password', 'recuperar'
 ];
 
 function App() {
@@ -173,6 +175,8 @@ function App() {
         <Route element={<LandingLayout />}>
           <Route path="/" element={<LandingHome />} />
           <Route path="/login" element={<LandingLogin />} />
+          <Route path="/forgot-password" element={<LandingForgotPassword />} />
+          <Route path="/recuperar/:token" element={<LandingResetPassword />} />
           <Route path="/register" element={<LandingRegister />} />
           <Route path="/features" element={<LandingFeatures />} />
           <Route path="/demo" element={<LandingDemo />} />
