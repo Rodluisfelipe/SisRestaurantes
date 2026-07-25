@@ -58,30 +58,44 @@ const BusinessSettings = () => {
   // ── Vincular con Google Places ──
   const [googleConnecting, setGoogleConnecting] = useState(false);
   const [googleResult, setGoogleResult] = useState(null);
+  const [placePreview, setPlacePreview] = useState(null); // details del lugar elegido
+  const [applyFlags, setApplyFlags] = useState({ address: true, hours: true, location: true, google: true });
 
-  const handleGoogleConnect = async (picked) => {
-    if (!picked?.placeId) return;
+  // Al elegir un lugar: mostramos preview con checkboxes (aún no aplicamos nada)
+  const handlePlacePicked = (d) => {
+    if (!d?.placeId) return;
+    setPlacePreview(d);
+    setApplyFlags({
+      address: !!d.address,
+      hours: !!d.businessHours,
+      location: !!d.location,
+      google: typeof d.rating === 'number',
+    });
+    setGoogleResult(null);
+    setError(null);
+  };
+
+  const toggleFlag = (key) => setApplyFlags(f => ({ ...f, [key]: !f[key] }));
+
+  // Importar solo lo seleccionado
+  const handleImportPlace = async () => {
+    if (!placePreview?.placeId) return;
     setGoogleConnecting(true);
     setError(null);
-    setGoogleResult(null);
     try {
-      const res = await api.post('/places/connect', { placeId: picked.placeId });
+      const res = await api.post('/places/connect', { placeId: placePreview.placeId, apply: applyFlags });
       const p = res.data.preview || {};
       setSettings(prev => ({
         ...prev,
-        address: p.address || prev.address,
-        googleMapsUrl: res.data.google?.mapsUrl || prev.googleMapsUrl,
+        address: applyFlags.address && p.address ? p.address : prev.address,
+        googleMapsUrl: applyFlags.google && res.data.google?.mapsUrl ? res.data.google.mapsUrl : prev.googleMapsUrl,
       }));
-      setGoogleResult({
-        name: p.name,
-        rating: p.rating,
-        reviewCount: p.reviewCount,
-        changed: res.data.changed || [],
-      });
-      setSuccessMessage('Negocio vinculado con Google ✓');
+      setGoogleResult({ name: p.name, changed: res.data.changed || [] });
+      setSuccessMessage('Datos importados de Google ✓');
       setTimeout(() => setSuccessMessage(''), 4000);
+      setPlacePreview(null);
     } catch (e) {
-      setError('No se pudo vincular con Google. Verifica que la integración esté configurada.');
+      setError('No se pudo importar desde Google. Verifica que la integración esté configurada.');
     } finally {
       setGoogleConnecting(false);
     }
@@ -557,23 +571,78 @@ const BusinessSettings = () => {
                     <svg className="w-3.5 h-3.5 animate-spin text-slate-400 ml-auto" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70" /></svg>
                   )}
                 </div>
-                <GooglePlaceSearch
-                  onSelect={handleGoogleConnect}
-                  fetchDetails={false}
-                  placeholder="Busca tu negocio en Google…"
-                  accentColor="#0f172a"
-                />
-                {googleResult ? (
+                {!placePreview && (
+                  <GooglePlaceSearch
+                    onSelect={handlePlacePicked}
+                    fetchDetails={true}
+                    placeholder="Busca tu negocio en Google…"
+                    accentColor="#0f172a"
+                  />
+                )}
+
+                {/* Panel de selección: elige qué importar */}
+                {placePreview && (
+                  <div className="rounded-lg border border-slate-200 bg-white p-2.5">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[11px] font-bold text-slate-700 truncate">{placePreview.name || 'Negocio'}</p>
+                      <button type="button" onClick={() => setPlacePreview(null)} className="text-[11px] text-slate-400 hover:text-slate-600">cambiar</button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mb-2">Elige qué datos traer:</p>
+                    <div className="space-y-1.5">
+                      {/* Dirección */}
+                      <label className={`flex items-center gap-2 text-[11px] ${placePreview.address ? 'text-slate-600' : 'text-slate-300'}`}>
+                        <input type="checkbox" disabled={!placePreview.address} checked={applyFlags.address} onChange={() => toggleFlag('address')} className="rounded border-slate-300 text-slate-700 focus:ring-slate-400" />
+                        <span className="font-medium flex-shrink-0">Dirección</span>
+                        {placePreview.address && <span className="text-slate-400 truncate">— {placePreview.address}</span>}
+                      </label>
+                      {/* Horarios */}
+                      <label className={`flex items-center gap-2 text-[11px] ${placePreview.businessHours ? 'text-slate-600' : 'text-slate-300'}`}>
+                        <input type="checkbox" disabled={!placePreview.businessHours} checked={applyFlags.hours} onChange={() => toggleFlag('hours')} className="rounded border-slate-300 text-slate-700 focus:ring-slate-400" />
+                        <span className="font-medium flex-shrink-0">Horarios</span>
+                        <span className="text-slate-400">{placePreview.businessHours ? '— según Google' : '— no disponibles'}</span>
+                      </label>
+                      {/* Ubicación */}
+                      <label className={`flex items-center gap-2 text-[11px] ${placePreview.location ? 'text-slate-600' : 'text-slate-300'}`}>
+                        <input type="checkbox" disabled={!placePreview.location} checked={applyFlags.location} onChange={() => toggleFlag('location')} className="rounded border-slate-300 text-slate-700 focus:ring-slate-400" />
+                        <span className="font-medium flex-shrink-0">Ubicación (mapa)</span>
+                        {placePreview.location && <span className="text-slate-400 truncate">— {placePreview.location.lat?.toFixed(4)}, {placePreview.location.lng?.toFixed(4)}</span>}
+                      </label>
+                      {/* Rating y reseñas */}
+                      <label className={`flex items-center gap-2 text-[11px] ${typeof placePreview.rating === 'number' ? 'text-slate-600' : 'text-slate-300'}`}>
+                        <input type="checkbox" disabled={typeof placePreview.rating !== 'number'} checked={applyFlags.google} onChange={() => toggleFlag('google')} className="rounded border-slate-300 text-slate-700 focus:ring-slate-400" />
+                        <span className="font-medium flex-shrink-0">Rating y reseñas</span>
+                        {typeof placePreview.rating === 'number' && <span className="text-slate-400">— ⭐ {placePreview.rating} ({placePreview.reviewCount})</span>}
+                      </label>
+                    </div>
+                    <div className="flex gap-2 mt-2.5">
+                      <button
+                        type="button"
+                        onClick={handleImportPlace}
+                        disabled={googleConnecting || !(applyFlags.address || applyFlags.hours || applyFlags.location || applyFlags.google)}
+                        className="flex-1 py-2 rounded-lg text-[11px] font-bold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-40 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        {googleConnecting && <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70" /></svg>}
+                        Importar seleccionados
+                      </button>
+                      <button type="button" onClick={() => setPlacePreview(null)} className="px-3 py-2 rounded-lg text-[11px] font-medium text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors">
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {googleResult && !placePreview && (
                   <div className="mt-2 flex items-start gap-1.5 text-[11px] text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5">
                     <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                     <span>
-                      Vinculado{googleResult.name ? ` con ${googleResult.name}` : ''}. Actualizamos dirección, horarios y ubicación
-                      {typeof googleResult.rating === 'number' && googleResult.rating > 0 && <> · ⭐ {googleResult.rating} ({googleResult.reviewCount})</>}.
-                      <br /><span className="text-emerald-600">Recarga la página para ver los horarios sincronizados.</span>
+                      Importado{googleResult.name ? ` desde ${googleResult.name}` : ''}.
+                      {applyFlags.hours && <> <span className="text-emerald-600">Recarga la página para ver los horarios.</span></>}
                     </span>
                   </div>
-                ) : (
-                  <p className="mt-1.5 text-[10px] text-slate-400">Autocompleta dirección, horarios, ubicación y trae tu rating y enlace de reseñas de Google.</p>
+                )}
+
+                {!placePreview && !googleResult && (
+                  <p className="mt-1.5 text-[10px] text-slate-400">Trae dirección, horarios, ubicación y tu rating/enlace de reseñas de Google — tú eliges qué importar.</p>
                 )}
               </div>
 

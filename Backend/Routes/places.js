@@ -47,12 +47,21 @@ router.get('/details', placesLimiter, async (req, res) => {
 });
 
 // POST /api/places/connect — vincula el negocio a un lugar de Google y prellena datos
-// body: { placeId, sessionToken, businessId?, syncHours? }
+// body: { placeId, sessionToken, businessId?, apply?: {address,hours,location,google} }
 router.post('/connect', authMiddleware, async (req, res) => {
   try {
     if (!places.isConfigured()) return res.status(400).json({ message: 'Integración no configurada' });
-    const { placeId, sessionToken, syncHours = true } = req.body;
+    const { placeId, sessionToken } = req.body;
     if (!placeId) return res.status(400).json({ message: 'placeId requerido' });
+
+    // Qué campos aplicar (por defecto todos, p.ej. registro). El panel manda flags explícitos.
+    // Compat: si viene syncHours (legacy) lo respetamos para las horas.
+    const apply = req.body.apply || {
+      address: true,
+      hours: req.body.syncHours !== false,
+      location: true,
+      google: true,
+    };
 
     // businessId del token (o del body para superadmin)
     const businessId = req.user.businessId || req.body.businessId;
@@ -64,30 +73,31 @@ router.post('/connect', authMiddleware, async (req, res) => {
     const det = await places.details(placeId, sessionToken);
 
     const changed = [];
-    if (det.address) { cfg.address = det.address; changed.push('address'); }
-    if (det.mapsUrl) { cfg.googleMapsUrl = det.mapsUrl; }
-    if (det.location && det.location.lat != null && det.location.lng != null) {
+    if (apply.address && det.address) { cfg.address = det.address; changed.push('address'); }
+    if (apply.location && det.location && det.location.lat != null && det.location.lng != null) {
       cfg.location = {
         coordinates: { lat: det.location.lat, lng: det.location.lng },
         address: det.address || cfg.location?.address || '',
       };
       changed.push('location');
     }
-    if (syncHours && det.businessHours) {
+    if (apply.hours && det.businessHours) {
       cfg.businessHours = det.businessHours;
       changed.push('businessHours');
     }
-
-    cfg.google = {
-      placeId: det.placeId,
-      rating: det.rating,
-      reviewCount: det.reviewCount,
-      reviewUrl: det.reviewUrl,
-      mapsUrl: det.mapsUrl,
-      website: det.website,
-      syncedAt: new Date(),
-    };
-    changed.push('google');
+    if (apply.google) {
+      if (det.mapsUrl) cfg.googleMapsUrl = det.mapsUrl;
+      cfg.google = {
+        placeId: det.placeId,
+        rating: det.rating,
+        reviewCount: det.reviewCount,
+        reviewUrl: det.reviewUrl,
+        mapsUrl: det.mapsUrl,
+        website: det.website,
+        syncedAt: new Date(),
+      };
+      changed.push('google');
+    }
 
     await cfg.save();
 
