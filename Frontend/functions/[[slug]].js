@@ -261,6 +261,50 @@ function buildOpeningHoursSpec(businessHours) {
   }).filter(Boolean);
 }
 
+// Construye el menú completo (secciones + items con precio) para el JSON-LD
+function buildMenuSchema(business, products, categories) {
+  const url = `${SITE_ORIGIN}/${business.slug || ''}`;
+  const base = { "@type": "Menu", "url": url, "name": `Menú de ${business.businessName || 'Restaurante'}` };
+  if (!Array.isArray(products) || !Array.isArray(categories) || !products.length) return base;
+
+  const currency = business.currency || 'COP';
+  const active = products.filter(p => p && p.active !== false);
+  const sorted = [...categories].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+  const sections = [];
+  let count = 0;
+
+  for (const cat of sorted) {
+    const items = active
+      .filter(p => p.category === cat._id)
+      .slice(0, 30)
+      .map(p => {
+        const item = { "@type": "MenuItem", "name": p.name };
+        if (p.description) item.description = String(p.description).slice(0, 300);
+        if (p.image) item.image = p.image;
+        if (typeof p.price === 'number' && p.price > 0) {
+          item.offers = { "@type": "Offer", "price": String(p.price), "priceCurrency": currency };
+        }
+        return item;
+      });
+    if (items.length) {
+      sections.push({ "@type": "MenuSection", "name": cat.name, "hasMenuItem": items });
+      count += items.length;
+    }
+    if (count >= 120) break;
+  }
+
+  return sections.length ? { ...base, "hasMenuSection": sections } : base;
+}
+
+function priceRangeSymbol(products) {
+  const prices = (products || []).map(p => p?.price).filter(n => typeof n === 'number' && n > 0);
+  if (!prices.length) return '$$';
+  const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+  if (avg < 20000) return '$';
+  if (avg < 45000) return '$$';
+  return '$$$';
+}
+
 // Blog article metadata for crawler pre-rendering
 const BLOG_ARTICLES = {
   'como-crear-menu-digital-restaurante': {
@@ -418,7 +462,7 @@ function buildBlogIndexHtml() {
 </html>`;
 }
 
-function buildMetaHtml(business, slug) {
+function buildMetaHtml(business, slug, products, categories) {
   const name = escapeHtml(business.businessName || 'Restaurante');
   const description = escapeHtml(business.description || `Menú digital de ${name}. Pide online y disfruta de la mejor comida.`);
   const logo = business.logo || `${SITE_ORIGIN}/logo.jpeg`;
@@ -440,8 +484,8 @@ function buildMetaHtml(business, slug) {
     "logo": absoluteLogo,
     "image": business.coverImage || absoluteLogo,
     "servesCuisine": "Variada",
-    "priceRange": "$$",
-    ...(address && { 
+    "priceRange": priceRangeSymbol(products),
+    ...(address && {
       "address": {
         "@type": "PostalAddress",
         "streetAddress": address,
@@ -451,11 +495,16 @@ function buildMetaHtml(business, slug) {
       }
     }),
     ...(phone && { "telephone": phone }),
-    "hasMenu": {
-      "@type": "Menu",
-      "url": url,
-      "name": `Menú de ${business.businessName}`
-    },
+    "hasMenu": buildMenuSchema(business, products, categories),
+    ...(business.reviewStats?.totalReviews > 0 && business.reviewStats?.averageRating > 0 && {
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": Number(business.reviewStats.averageRating).toFixed(1),
+        "reviewCount": business.reviewStats.totalReviews,
+        "bestRating": 5,
+        "worstRating": 1
+      }
+    }),
     "openingHoursSpecification": buildOpeningHoursSpec(business.businessHours),
     ...(business.location?.coordinates?.lat && {
       "geo": {
@@ -641,7 +690,23 @@ export async function onRequest(context) {
     }
 
     const business = await apiResponse.json();
-    const html = buildMetaHtml(business, slug);
+
+    // Traer productos y categorías para el menú estructurado (tolerante a fallos)
+    let products = [];
+    let categories = [];
+    try {
+      const bid = business._id;
+      if (bid) {
+        const [pRes, cRes] = await Promise.all([
+          fetch(`${API_BASE}/products?businessId=${bid}`, { headers: { 'Accept': 'application/json' }, cf: { cacheTtl: 300 } }),
+          fetch(`${API_BASE}/categories?businessId=${bid}`, { headers: { 'Accept': 'application/json' }, cf: { cacheTtl: 300 } }),
+        ]);
+        if (pRes.ok) { const j = await pRes.json(); products = Array.isArray(j) ? j : (j.products || []); }
+        if (cRes.ok) { const j = await cRes.json(); categories = Array.isArray(j) ? j : (j.categories || []); }
+      }
+    } catch (e) { /* seguimos con el menú básico */ }
+
+    const html = buildMetaHtml(business, slug, products, categories);
 
     return new Response(html, {
       headers: {
