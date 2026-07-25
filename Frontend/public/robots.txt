@@ -3,6 +3,7 @@ Allow: /
 Disallow: /admin/
 Disallow: /superadmin/
 Disallow: /api/
-Disallow: /assets/
+
+# JS y CSS deben ser rastreables para que Google renderice el menú (SPA) y sus datos estructurados.
 
 Sitemap: https://menuby.tech/sitemap.xml
