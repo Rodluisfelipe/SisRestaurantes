@@ -107,7 +107,7 @@ async function details(placeId, sessionToken) {
     'id', 'displayName', 'formattedAddress', 'location',
     'nationalPhoneNumber', 'internationalPhoneNumber',
     'rating', 'userRatingCount', 'googleMapsUri', 'websiteUri',
-    'regularOpeningHours', 'reviews',
+    'regularOpeningHours', 'reviews', 'photos',
   ].join(',');
 
   const url = new URL(`${DETAILS_URL}/${encodeURIComponent(placeId)}`);
@@ -153,7 +153,34 @@ async function details(placeId, sessionToken) {
       relativeTime: r.relativePublishTimeDescription || '',
       publishTime: r.publishTime || null,
     })).filter(r => r.text),
+    // Hasta 10 fotos del lugar (muchas subidas por clientes). Guardamos el "name" para el proxy.
+    photos: (d.photos || []).slice(0, 10).map(p => ({
+      name: p.name,
+      widthPx: p.widthPx || 0,
+      heightPx: p.heightPx || 0,
+    })).filter(p => p.name),
   };
 }
 
-module.exports = { isConfigured, autocomplete, details, mapOpeningHours };
+/**
+ * Resuelve la URL pública (googleusercontent) de una foto de Places.
+ * Server-side porque la key está restringida por IP; el navegador no puede llamarla.
+ * @param {string} name  ej: "places/PID/photos/REF"
+ * @param {number} maxWidthPx
+ * @returns {Promise<string>} URL directa embebible en <img>
+ */
+async function resolvePhotoUri(name, maxWidthPx = 600) {
+  if (!isConfigured()) throw new Error('GOOGLE_PLACES_API_KEY no configurada');
+  if (!name || !name.includes('/photos/')) throw new Error('nombre de foto inválido');
+  const url = `https://places.googleapis.com/v1/${name}/media?maxWidthPx=${maxWidthPx}&skipHttpRedirect=true`;
+  const res = await fetch(url, { headers: { 'X-Goog-Api-Key': API_KEY } });
+  if (!res.ok) {
+    const t = await res.text().catch(() => '');
+    logger.warn('Places photo error', { status: res.status, body: t.slice(0, 200) });
+    throw new Error(`Places photo ${res.status}`);
+  }
+  const j = await res.json();
+  return j.photoUri || '';
+}
+
+module.exports = { isConfigured, autocomplete, details, mapOpeningHours, resolvePhotoUri };

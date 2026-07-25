@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../services/api';
+import { API_ENDPOINTS } from '../config';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import { X, NotebookPen, Bike, ShoppingBag, Calendar, UtensilsCrossed } from 'lucide-react';
 
@@ -25,6 +26,7 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme, initialSo
   const mode = businessConfig?.reviewsDisplay || 'both';
   const googleData = businessConfig?.google || {};
   const googleReviews = Array.isArray(googleData.reviews) ? googleData.reviews : [];
+  const googlePhotos = Array.isArray(googleData.photos) ? googleData.photos : [];
   const showInternalTab = mode === 'both' || mode === 'internal';
   const showGoogleTab = (mode === 'both' || mode === 'google') && (googleReviews.length > 0 || googleData.rating > 0);
   const [source, setSource] = useState(showInternalTab ? 'internal' : 'google');
@@ -291,6 +293,24 @@ const ReviewsSheet = ({ show, onClose, businessId, reviewStats, theme, initialSo
             {/* ── Google reviews ── */}
             {source === 'google' && (
               <>
+                {/* Galería de fotos de Google */}
+                {googlePhotos.length > 0 && (
+                  <div className="pt-3 pb-2">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide px-5">
+                      {googlePhotos.map((p, i) => (
+                        <img
+                          key={i}
+                          src={`${API_ENDPOINTS.BASE_URL}/places/photo?name=${encodeURIComponent(p.name)}&maxWidthPx=500`}
+                          alt="Foto de Google"
+                          loading="lazy"
+                          className="h-28 w-28 sm:h-32 sm:w-32 object-cover rounded-2xl flex-shrink-0 bg-gray-100"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="px-5 pt-2 pb-4 border-b border-gray-100 flex items-center gap-3">
                   <div className="text-center">
                     <div className="text-4xl font-bold text-gray-800">{googleData.rating ? googleData.rating.toFixed(1) : '—'}</div>

@@ -167,6 +167,15 @@ const businessConfigSchema = new mongoose.Schema({
         publishTime: { type: Date, default: null }
       }],
       default: []
+    },
+    // Referencias de fotos del lugar (se resuelven vía proxy /api/places/photo)
+    photos: {
+      type: [{
+        name: { type: String, default: "" },
+        widthPx: { type: Number, default: 0 },
+        heightPx: { type: Number, default: 0 }
+      }],
+      default: []
     }
   },
   // Qué reseñas mostrar en el menú: ambas | solo internas | solo Google | ninguna

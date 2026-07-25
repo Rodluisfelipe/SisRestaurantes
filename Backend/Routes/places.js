@@ -32,6 +32,35 @@ router.get('/autocomplete', placesLimiter, async (req, res) => {
   }
 });
 
+// Proxy de fotos: el navegador no puede llamar a Google (key restringida por IP),
+// así que el servidor resuelve la URL pública y redirige. Cache en memoria para no repetir cuota.
+const photoCache = new Map(); // `${name}|${w}` -> { uri, exp }
+// GET /api/places/photo?name=places/PID/photos/REF&maxWidthPx=600
+router.get('/photo', async (req, res) => {
+  try {
+    if (!places.isConfigured()) return res.status(404).end();
+    const { name } = req.query;
+    if (!name || !String(name).includes('/photos/')) return res.status(400).end();
+    const w = Math.min(Math.max(parseInt(req.query.maxWidthPx) || 600, 100), 1200);
+    const key = `${name}|${w}`;
+
+    const cached = photoCache.get(key);
+    if (cached && cached.exp > Date.now()) {
+      res.set('Cache-Control', 'public, max-age=3600');
+      return res.redirect(302, cached.uri);
+    }
+
+    const uri = await places.resolvePhotoUri(name, w);
+    if (!uri) return res.status(502).end();
+    photoCache.set(key, { uri, exp: Date.now() + 45 * 60 * 1000 });
+    res.set('Cache-Control', 'public, max-age=3600');
+    return res.redirect(302, uri);
+  } catch (err) {
+    logger.warn('Places photo route error', { error: err.message });
+    return res.status(502).end();
+  }
+});
+
 // GET /api/places/details?placeId=&sessionToken=
 router.get('/details', placesLimiter, async (req, res) => {
   try {
@@ -95,6 +124,7 @@ router.post('/connect', authMiddleware, async (req, res) => {
         mapsUrl: det.mapsUrl,
         website: det.website,
         reviews: det.reviews || [],
+        photos: det.photos || [],
         syncedAt: new Date(),
       };
       changed.push('google');
