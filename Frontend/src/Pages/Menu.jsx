@@ -5,6 +5,7 @@ const ReviewModal = lazy(() => import("../Components/ReviewModal"));
 const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
+import MenuStructuredData from "../Components/MenuStructuredData";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
@@ -1525,7 +1526,8 @@ export default function Menu() {
   return (
     <FlyToCartProvider>
     <main className="min-h-screen bg-gray-50 pb-20 pt-safe" style={menuFontFamily ? { fontFamily: menuFontFamily } : undefined}>
-      <BusinessHeader 
+      <MenuStructuredData businessConfig={businessConfig} products={products} categories={categories} />
+      <BusinessHeader
         comesFromCatalog={comesFromCatalog}
         onShowFavorites={() => setShowFavorites(true)}
         onShowHistory={() => setShowHistory(true)}
