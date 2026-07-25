@@ -39,8 +39,13 @@ const RatingBar = ({ label, count, total, color }) => {
 };
 
 export default function AdminReviews() {
-  const { businessConfig } = useBusinessConfig();
+  const { businessConfig, updateConfig } = useBusinessConfig();
   const businessId = businessConfig?._id || businessConfig?.businessId || getBusinessSlug();
+
+  // ── Preferencia: qué reseñas mostrar en el menú ──
+  const [reviewsDisplay, setReviewsDisplayState] = useState(businessConfig?.reviewsDisplay || 'both');
+  const [savingDisplay, setSavingDisplay] = useState(false);
+  const hasGoogleRating = businessConfig?.google?.rating > 0;
 
   // State
   const [stats, setStats] = useState(null);
@@ -62,6 +67,27 @@ export default function AdminReviews() {
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // Sincroniza la preferencia si cambia el config externamente
+  useEffect(() => {
+    setReviewsDisplayState(businessConfig?.reviewsDisplay || 'both');
+  }, [businessConfig?.reviewsDisplay]);
+
+  const changeReviewsDisplay = async (val) => {
+    if (val === reviewsDisplay) return;
+    const prev = reviewsDisplay;
+    setReviewsDisplayState(val); // optimista
+    setSavingDisplay(true);
+    try {
+      await updateConfig({ reviewsDisplay: val });
+      showToast('Preferencia guardada');
+    } catch {
+      setReviewsDisplayState(prev);
+      showToast('No se pudo guardar', 'error');
+    } finally {
+      setSavingDisplay(false);
+    }
   };
 
   // Fetch stats
@@ -204,8 +230,52 @@ export default function AdminReviews() {
   const thumbs = stats?.thumbsFeedback || { thumbsUp: 0, thumbsDown: 0, total: 0 };
   const thumbsUpPct = thumbs.total > 0 ? Math.round((thumbs.thumbsUp / thumbs.total) * 100) : 0;
 
+  const displayOptions = [
+    { val: 'both', label: 'Ambas', desc: 'Internas + Google' },
+    { val: 'google', label: 'Solo Google', desc: 'Rating de Google' },
+    { val: 'internal', label: 'Solo internas', desc: 'Tus reseñas' },
+    { val: 'none', label: 'Ninguna', desc: 'Ocultar' },
+  ];
+
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Preferencia de reseñas visibles en el menú */}
+      <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
+        <div className="flex items-center gap-2 mb-1">
+          <FaEye className="text-slate-400 text-sm" />
+          <h3 className="text-sm font-bold text-slate-800">Reseñas visibles en tu menú</h3>
+          {savingDisplay && <FaSyncAlt className="text-[10px] text-slate-300 animate-spin ml-1" />}
+        </div>
+        <p className="text-xs text-slate-400 mb-3">Elige qué calificación ven tus clientes en el encabezado del menú.</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {displayOptions.map(opt => {
+            const active = reviewsDisplay === opt.val;
+            return (
+              <button
+                key={opt.val}
+                type="button"
+                onClick={() => changeReviewsDisplay(opt.val)}
+                disabled={savingDisplay}
+                className={`text-left p-2.5 rounded-xl border-2 transition-all disabled:opacity-60 ${
+                  active ? 'border-slate-800 bg-slate-50 shadow-sm' : 'border-slate-100 hover:border-slate-200'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-bold ${active ? 'text-slate-800' : 'text-slate-600'}`}>{opt.label}</span>
+                  {active && <FaStar className="text-[10px] text-amber-400" />}
+                </div>
+                <span className="text-[10px] text-slate-400">{opt.desc}</span>
+              </button>
+            );
+          })}
+        </div>
+        {(reviewsDisplay === 'google' || reviewsDisplay === 'both') && !hasGoogleRating && (
+          <p className="mt-2.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+            Aún no has vinculado tu negocio con Google. Ve a <strong>Configuración → Conectar con Google</strong> para mostrar tu rating de Google.
+          </p>
+        )}
+      </div>
+
       {/* Stats Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Average Rating Card */}

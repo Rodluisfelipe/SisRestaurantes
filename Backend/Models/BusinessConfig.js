@@ -156,6 +156,12 @@ const businessConfigSchema = new mongoose.Schema({
     website: { type: String, default: "" },
     syncedAt: { type: Date, default: null }
   },
+  // Qué reseñas mostrar en el menú: ambas | solo internas | solo Google | ninguna
+  reviewsDisplay: {
+    type: String,
+    enum: ['both', 'internal', 'google', 'none'],
+    default: 'both'
+  },
   // NIT / Tax ID del negocio
   nit: {
     type: String,

@@ -231,8 +231,8 @@ const BusinessHeader = ({
 
             {/* Meta row: rating + address + socials */}
             <div className="flex items-center gap-2 flex-wrap justify-center">
-                {/* Rating */}
-                {reviewStats && reviewStats.totalReviews > 0 && (
+                {/* Rating interno — según preferencia del negocio (both/internal) */}
+                {['both', 'internal'].includes(businessConfig?.reviewsDisplay || 'both') && reviewStats && reviewStats.totalReviews > 0 && (
                   <button
                     onClick={onShowReviews}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 ${
@@ -246,8 +246,8 @@ const BusinessHeader = ({
                   </button>
                 )}
 
-                {/* Google rating badge */}
-                {businessConfig?.google?.rating > 0 && (
+                {/* Google rating badge — según preferencia del negocio (both/google) */}
+                {['both', 'google'].includes(businessConfig?.reviewsDisplay || 'both') && businessConfig?.google?.rating > 0 && (
                   <a
                     href={businessConfig.google.mapsUrl || businessConfig.google.reviewUrl || '#'}
                     target="_blank"
