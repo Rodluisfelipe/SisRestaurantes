@@ -83,7 +83,7 @@ const BusinessSettings = () => {
     setGoogleConnecting(true);
     setError(null);
     try {
-      const res = await api.post('/places/connect', { placeId: placePreview.placeId, apply: applyFlags });
+      const res = await api.post('/places/connect', { placeId: placePreview.placeId, apply: applyFlags, businessId });
       const p = res.data.preview || {};
       setSettings(prev => ({
         ...prev,
