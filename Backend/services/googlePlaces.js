@@ -107,7 +107,7 @@ async function details(placeId, sessionToken) {
     'id', 'displayName', 'formattedAddress', 'location',
     'nationalPhoneNumber', 'internationalPhoneNumber',
     'rating', 'userRatingCount', 'googleMapsUri', 'websiteUri',
-    'regularOpeningHours',
+    'regularOpeningHours', 'reviews',
   ].join(',');
 
   const url = new URL(`${DETAILS_URL}/${encodeURIComponent(placeId)}`);
@@ -143,6 +143,16 @@ async function details(placeId, sessionToken) {
     // Enlace directo para escribir reseña (deep link estable de Google)
     reviewUrl: `https://search.google.com/local/writereview?placeid=${encodeURIComponent(d.id || placeId)}`,
     businessHours: mapOpeningHours(d.regularOpeningHours),
+    // Hasta 5 reseñas escritas (Places API New)
+    reviews: (d.reviews || []).slice(0, 5).map(r => ({
+      author: r.authorAttribution?.displayName || 'Usuario de Google',
+      authorUrl: r.authorAttribution?.uri || '',
+      photo: r.authorAttribution?.photoUri || '',
+      rating: r.rating || 0,
+      text: r.text?.text || r.originalText?.text || '',
+      relativeTime: r.relativePublishTimeDescription || '',
+      publishTime: r.publishTime || null,
+    })).filter(r => r.text),
   };
 }
 

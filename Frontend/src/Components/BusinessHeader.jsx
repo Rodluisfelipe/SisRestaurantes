@@ -234,7 +234,7 @@ const BusinessHeader = ({
                 {/* Rating interno — según preferencia del negocio (both/internal) */}
                 {['both', 'internal'].includes(businessConfig?.reviewsDisplay || 'both') && reviewStats && reviewStats.totalReviews > 0 && (
                   <button
-                    onClick={onShowReviews}
+                    onClick={() => onShowReviews('internal')}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 ${
                       hasCover ? 'bg-white/15 backdrop-blur-sm text-white' : 'bg-amber-50 text-amber-700'
                     }`}
@@ -248,10 +248,11 @@ const BusinessHeader = ({
 
                 {/* Google rating badge — según preferencia del negocio (both/google) */}
                 {['both', 'google'].includes(businessConfig?.reviewsDisplay || 'both') && businessConfig?.google?.rating > 0 && (
-                  <a
-                    href={businessConfig.google.mapsUrl || businessConfig.google.reviewUrl || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    onClick={() => {
+                      if (businessConfig.google.reviews?.length > 0) onShowReviews('google');
+                      else window.open(businessConfig.google.mapsUrl || businessConfig.google.reviewUrl || '#', '_blank', 'noopener');
+                    }}
                     className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold transition-all active:scale-95 ${
                       hasCover ? 'bg-white/15 backdrop-blur-sm text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
@@ -263,7 +264,7 @@ const BusinessHeader = ({
                     {businessConfig.google.reviewCount > 0 && (
                       <span className="opacity-60">{businessConfig.google.reviewCount}</span>
                     )}
-                  </a>
+                  </button>
                 )}
 
                 {/* Address / Maps button */}

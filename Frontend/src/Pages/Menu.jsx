@@ -114,6 +114,7 @@ export default function Menu() {
   // Reviews states
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showReviewsSheet, setShowReviewsSheet] = useState(false);
+  const [reviewsInitialSource, setReviewsInitialSource] = useState('internal');
   const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
   const [pendingReviewTopProduct, setPendingReviewTopProduct] = useState(null);
   const [waReviewName, setWaReviewName] = useState(null);
@@ -1532,7 +1533,7 @@ export default function Menu() {
         showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
         showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
         showLoyaltyButton={!!orderInfo.phone}
-        onShowReviews={() => setShowReviewsSheet(true)}
+        onShowReviews={(src) => { setReviewsInitialSource(typeof src === 'string' ? src : 'internal'); setShowReviewsSheet(true); }}
         reviewStats={businessConfig?.reviewStats}
         subscriptionPlanType={subscriptionPlanType}
         subscriptionCommercialPlan={subscriptionCommercialPlan}
@@ -1860,6 +1861,7 @@ export default function Menu() {
             businessId={businessId}
             reviewStats={businessConfig?.reviewStats}
             theme={businessConfig?.theme}
+            initialSource={reviewsInitialSource}
           />
         )}
       </Suspense>

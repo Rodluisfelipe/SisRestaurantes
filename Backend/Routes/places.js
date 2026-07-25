@@ -94,6 +94,7 @@ router.post('/connect', authMiddleware, async (req, res) => {
         reviewUrl: det.reviewUrl,
         mapsUrl: det.mapsUrl,
         website: det.website,
+        reviews: det.reviews || [],
         syncedAt: new Date(),
       };
       changed.push('google');

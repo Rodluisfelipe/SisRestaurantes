@@ -154,7 +154,20 @@ const businessConfigSchema = new mongoose.Schema({
     reviewUrl: { type: String, default: "" },   // deep-link para escribir reseña
     mapsUrl: { type: String, default: "" },
     website: { type: String, default: "" },
-    syncedAt: { type: Date, default: null }
+    syncedAt: { type: Date, default: null },
+    // Snapshot de hasta 5 reseñas escritas de Google (se refresca al vincular)
+    reviews: {
+      type: [{
+        author: { type: String, default: "" },
+        authorUrl: { type: String, default: "" },
+        photo: { type: String, default: "" },
+        rating: { type: Number, default: 0 },
+        text: { type: String, default: "" },
+        relativeTime: { type: String, default: "" },
+        publishTime: { type: Date, default: null }
+      }],
+      default: []
+    }
   },
   // Qué reseñas mostrar en el menú: ambas | solo internas | solo Google | ninguna
   reviewsDisplay: {
