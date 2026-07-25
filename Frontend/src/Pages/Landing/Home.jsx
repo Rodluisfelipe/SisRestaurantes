@@ -85,6 +85,15 @@ const Eyebrow = ({ children, color = C.accent }) => (
   <p className="text-[11px] font-bold tracking-[0.18em] uppercase mb-3" style={{ color }}>{children}</p>
 );
 
+const GoogleGLogo = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{ display: 'block' }}>
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z" />
+    <path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.06H2.18a11 11 0 000 9.88l3.66-2.84z" />
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" />
+  </svg>
+);
+
 /* === COUNTER === */
 function useCounter(end, duration = 2000, active = false) {
   const [val, setVal] = useState(0);
@@ -887,6 +896,89 @@ export default function Home() {
                     <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold" style={{ color: C.green }}>
                       <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.green }} /> Conectado
                     </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </FadeInWhenVisible>
+      </Section>
+
+      {/* ========== GOOGLE RESEÑAS ========== */}
+      <Section className="pb-4 sm:pb-8">
+        <FadeInWhenVisible>
+          <div className="rounded-[36px] p-7 sm:p-12 relative overflow-hidden" style={{ background: `linear-gradient(160deg, #fff, ${C.surface})`, border: '1px solid ' + C.border }}>
+            <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+              {/* Text */}
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-[0.12em] uppercase mb-5" style={{ background: '#fff', color: C.textSecondary, border: '1px solid ' + C.border }}>
+                  <GoogleGLogo size={14} /> Google Reseñas
+                </div>
+                <h2 className="hd-sub text-[1.9rem] sm:text-[2.4rem] mb-4" style={{ color: C.text }}>Conecta con Google y crece con reseñas</h2>
+                <p className="text-[15px] leading-relaxed mb-7 max-w-lg" style={{ color: C.textSecondary }}>
+                  Vincula tu negocio de Google en un clic y muéstralo en tu menú. Y con el <strong style={{ color: C.text }}>embudo inteligente</strong>, cada cliente feliz ayuda a que crezcas en Google — mientras tú proteges tu reputación.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3 mb-7">
+                  {[
+                    'Tu rating de Google en el menú',
+                    'Tus reseñas escritas, dentro del menú',
+                    'Galería con las fotos de tu negocio',
+                    'Autocompleta dirección y horarios',
+                    'Embudo: solo las buenas van a Google',
+                    'Tú eliges qué mostrar y cómo pedirlas',
+                  ].map((t) => (
+                    <div key={t} className="flex items-start gap-2.5 text-[13.5px] leading-snug" style={{ color: C.text }}>
+                      <Check size={15} className="mt-0.5 shrink-0" strokeWidth={3} style={{ color: C.green }} /> {t}
+                    </div>
+                  ))}
+                </div>
+                <span className="inline-flex items-center gap-2 text-[12px] font-semibold" style={{ color: C.muted }}>
+                  <Star size={14} style={{ color: '#FBBC05' }} fill="#FBBC05" /> Protege tu reputación: las malas experiencias las ves tú primero
+                </span>
+              </div>
+
+              {/* Visual: mock del sheet de reseñas de Google */}
+              <div className="relative pt-2 pb-2">
+                <div className="absolute right-[8%] top-[6%] w-60 h-60 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, #4285F418, transparent 70%)' }} />
+                <div className="relative rounded-[26px] bg-white p-5 sm:p-6 mx-auto max-w-[380px]" style={{ border: '1px solid ' + C.border, boxShadow: '0 24px 56px rgba(23,18,15,0.16)' }}>
+                  {/* Header rating */}
+                  <div className="flex items-center gap-3 pb-4 mb-4" style={{ borderBottom: '1px solid ' + C.borderLight }}>
+                    <GoogleGLogo size={26} />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-2xl font-extrabold" style={{ color: C.text, fontFamily: DISPLAY }}>4.8</span>
+                        <div className="flex gap-0.5">
+                          {[0, 1, 2, 3, 4].map(i => <Star key={i} size={13} fill="#FBBC05" style={{ color: '#FBBC05' }} />)}
+                        </div>
+                      </div>
+                      <p className="text-[11px]" style={{ color: C.muted }}>177 reseñas en Google</p>
+                    </div>
+                  </div>
+                  {/* Photo strip */}
+                  <div className="flex gap-2 mb-4">
+                    {[
+                      'linear-gradient(135deg,#FF7A45,#E8002D)',
+                      'linear-gradient(135deg,#FFB020,#FF5A1F)',
+                      'linear-gradient(135deg,#6BBF59,#0E7A4F)',
+                    ].map((g, i) => (
+                      <div key={i} className="flex-1 h-16 rounded-xl flex items-center justify-center text-2xl" style={{ background: g }}>
+                        {['🍔', '🍟', '🥗'][i]}
+                      </div>
+                    ))}
+                  </div>
+                  {/* Review card */}
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: C.accent }}>N</div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[13px] font-bold" style={{ color: C.text }}>Nicolás B.</span>
+                        <span className="text-[10px]" style={{ color: C.muted }}>Hace 2 días</span>
+                      </div>
+                      <div className="flex gap-0.5 my-0.5">
+                        {[0, 1, 2, 3, 4].map(i => <Star key={i} size={10} fill="#FBBC05" style={{ color: '#FBBC05' }} />)}
+                      </div>
+                      <p className="text-[12px] leading-snug" style={{ color: C.textSecondary }}>Hamburguesa muy rica, porciones generosas y el servicio excelente. ¡Volveré!</p>
+                    </div>
                   </div>
                 </div>
               </div>
