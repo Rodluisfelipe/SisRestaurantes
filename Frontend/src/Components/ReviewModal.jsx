@@ -15,6 +15,8 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
   const [productImageError, setProductImageError] = useState(false);
+  // Elección de dónde calificar: null = aún no elige (solo si hay Google), 'internal' = aquí
+  const [choice, setChoice] = useState('internal');
 
   const buttonColor = theme?.buttonColor || '#f97316';
 
@@ -28,8 +30,15 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
       setSubmitted(false);
       setError(null);
       setProductImageError(false);
+      // Si el negocio tiene Google vinculado, primero preguntamos dónde calificar
+      setChoice(googleReviewUrl ? null : 'internal');
     }
-  }, [show, orderId]);
+  }, [show, orderId, googleReviewUrl]);
+
+  const goToGoogle = () => {
+    window.open(googleReviewUrl, '_blank', 'noopener');
+    onClose(true);
+  };
 
   const handleSubmit = async () => {
     if (rating === 0) return;
@@ -49,12 +58,7 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
       }
       await api.post('/reviews', payload);
       setSubmitted(true);
-      // Embudo a Google: si la reseña es positiva y hay enlace, mostramos CTA (no auto-cerramos)
-      if (!(rating >= 4 && googleReviewUrl)) {
-        setTimeout(() => {
-          onClose(true);
-        }, 1800);
-      }
+      setTimeout(() => { onClose(true); }, 1800);
     } catch (err) {
       const msg = err.response?.data?.message || 'Error al enviar reseña';
       if (msg.includes('Ya existe')) {
@@ -93,43 +97,6 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
             onClick={e => e.stopPropagation()}
           >
             {submitted ? (
-              rating >= 4 && googleReviewUrl ? (
-                /* Embudo: reseña positiva → invitar a reseñar en Google */
-                <div className="p-7 text-center">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', damping: 12 }}
-                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3"
-                    style={{ backgroundColor: buttonColor + '15' }}
-                  >
-                    <svg className="w-9 h-9" viewBox="0 0 24 24" fill="none" stroke={buttonColor} strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </motion.div>
-                  <h3 className="text-lg font-bold text-gray-800">¡Gracias! 🎉</h3>
-                  <p className="text-sm text-gray-500 mt-1 mb-4">
-                    ¿Nos ayudas con una reseña en Google? Solo te toma 10 segundos y nos ayuda muchísimo.
-                  </p>
-                  <a
-                    href={googleReviewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setTimeout(() => onClose(true), 400)}
-                    className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold text-white transition-all active:scale-95 mb-2"
-                    style={{ backgroundColor: buttonColor }}
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" opacity=".9"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z" opacity=".75"/><path fill="#fff" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.06H2.18a11 11 0 000 9.88l3.66-2.84z" opacity=".6"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z" opacity=".85"/></svg>
-                    Reseñar en Google
-                  </a>
-                  <button
-                    onClick={() => onClose(true)}
-                    className="w-full py-2 text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    Ahora no
-                  </button>
-                </div>
-              ) : (
               /* Success state */
               <div className="p-8 text-center">
                 <motion.div
@@ -146,7 +113,52 @@ const ReviewModal = ({ show, onClose, businessId, orderId, customerName, custome
                 <h3 className="text-lg font-bold text-gray-800">¡Gracias por tu reseña!</h3>
                 <p className="text-sm text-gray-500 mt-1">Tu opinión nos ayuda a mejorar</p>
               </div>
-              )
+            ) : choice === null ? (
+              /* Elección: dónde calificar (solo si el negocio tiene Google vinculado) */
+              <div className="p-6 text-center">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: buttonColor + '15' }}>
+                  <svg className="w-7 h-7" viewBox="0 0 24 24" fill={buttonColor}>
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">¿Dónde quieres calificarnos?</h3>
+                <p className="text-sm text-gray-500 mt-1 mb-5">Tu opinión nos ayuda a crecer 💜</p>
+
+                {/* Calificar aquí (interna) */}
+                <button
+                  onClick={() => setChoice('internal')}
+                  className="w-full flex items-center gap-3 p-3.5 rounded-xl border mb-2.5 active:scale-[0.98] transition-transform text-left"
+                  style={{ borderColor: buttonColor + '33', backgroundColor: buttonColor + '0a' }}
+                >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: buttonColor + '1f' }}>
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill={buttonColor}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800">Calificar aquí</p>
+                    <p className="text-xs text-gray-500">Rápido, en el mismo menú</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-300 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
+                </button>
+
+                {/* Reseñar en Google */}
+                <button
+                  onClick={goToGoogle}
+                  className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-gray-200 active:scale-[0.98] transition-transform text-left hover:bg-gray-50"
+                >
+                  <div className="w-10 h-10 rounded-full bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.06H2.18a11 11 0 000 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-gray-800">Reseñar en Google</p>
+                    <p className="text-xs text-gray-500">Ayuda al negocio a crecer en Google</p>
+                  </div>
+                  <svg className="w-4 h-4 text-gray-300 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
+                </button>
+
+                <button onClick={handleSkip} className="mt-3 text-sm font-medium text-gray-400 hover:text-gray-600 transition-colors">
+                  Ahora no
+                </button>
+              </div>
             ) : (
               <>
                 {/* Header */}
