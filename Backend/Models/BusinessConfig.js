@@ -184,6 +184,15 @@ const businessConfigSchema = new mongoose.Schema({
     enum: ['both', 'internal', 'google', 'none'],
     default: 'both'
   },
+  // Cómo recolectar reseñas del cliente
+  reviewCollection: {
+    // funnel = califica aquí y solo si es alta se invita a Google (protege reputación)
+    // choice = el cliente elige dónde calificar
+    // internal = nunca se envía a Google
+    mode: { type: String, enum: ['funnel', 'choice', 'internal'], default: 'funnel' },
+    // Umbral mínimo (estrellas) para invitar a Google en modo embudo
+    googleThreshold: { type: Number, default: 4, min: 1, max: 5 }
+  },
   // NIT / Tax ID del negocio
   nit: {
     type: String,

@@ -47,6 +47,10 @@ export default function AdminReviews() {
   const [savingDisplay, setSavingDisplay] = useState(false);
   const hasGoogleRating = businessConfig?.google?.rating > 0;
 
+  // ── Cómo recolectar reseñas ──
+  const [collection, setCollectionState] = useState(businessConfig?.reviewCollection || { mode: 'funnel', googleThreshold: 4 });
+  const [savingCollection, setSavingCollection] = useState(false);
+
   // State
   const [stats, setStats] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -87,6 +91,26 @@ export default function AdminReviews() {
       showToast('No se pudo guardar', 'error');
     } finally {
       setSavingDisplay(false);
+    }
+  };
+
+  useEffect(() => {
+    if (businessConfig?.reviewCollection) setCollectionState(businessConfig.reviewCollection);
+  }, [businessConfig?.reviewCollection?.mode, businessConfig?.reviewCollection?.googleThreshold]);
+
+  const changeCollection = async (patch) => {
+    const prev = collection;
+    const next = { mode: prev.mode, googleThreshold: prev.googleThreshold || 4, ...patch };
+    setCollectionState(next); // optimista
+    setSavingCollection(true);
+    try {
+      await updateConfig({ reviewCollection: next });
+      showToast('Guardado');
+    } catch {
+      setCollectionState(prev);
+      showToast('No se pudo guardar', 'error');
+    } finally {
+      setSavingCollection(false);
     }
   };
 
@@ -272,6 +296,72 @@ export default function AdminReviews() {
         {(reviewsDisplay === 'google' || reviewsDisplay === 'both') && !hasGoogleRating && (
           <p className="mt-2.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
             Aún no has vinculado tu negocio con Google. Ve a <strong>Configuración → Conectar con Google</strong> para mostrar tu rating de Google.
+          </p>
+        )}
+      </div>
+
+      {/* Cómo recolectar reseñas */}
+      <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
+        <div className="flex items-center gap-2 mb-1">
+          <FaMagic className="text-slate-400 text-sm" />
+          <h3 className="text-sm font-bold text-slate-800">Cómo recolectar reseñas</h3>
+          {savingCollection && <FaSyncAlt className="text-[10px] text-slate-300 animate-spin ml-1" />}
+        </div>
+        <p className="text-xs text-slate-400 mb-3">Qué sucede cuando un cliente va a calificar.</p>
+        <div className="space-y-2">
+          {[
+            { val: 'funnel', label: 'Embudo inteligente', desc: 'Califican aquí primero; solo las buenas se invitan a Google. Protege tu reputación.', badge: 'Recomendado' },
+            { val: 'choice', label: 'Elección libre', desc: 'El cliente elige dónde calificar: aquí o en Google.' },
+            { val: 'internal', label: 'Solo interna', desc: 'Nunca se envía a Google; todo queda en tu panel.' },
+          ].map(opt => {
+            const active = (collection.mode || 'funnel') === opt.val;
+            return (
+              <button
+                key={opt.val}
+                type="button"
+                onClick={() => changeCollection({ mode: opt.val })}
+                disabled={savingCollection}
+                className={`w-full text-left p-3 rounded-xl border-2 transition-all disabled:opacity-60 ${
+                  active ? 'border-slate-800 bg-slate-50 shadow-sm' : 'border-slate-100 hover:border-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-bold ${active ? 'text-slate-800' : 'text-slate-600'}`}>{opt.label}</span>
+                  {opt.badge && <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{opt.badge}</span>}
+                  {active && <FaStar className="text-[10px] text-amber-400 ml-auto" />}
+                </div>
+                <span className="text-[11px] text-slate-400 leading-snug">{opt.desc}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Umbral para el embudo */}
+        {(collection.mode || 'funnel') === 'funnel' && (
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            <span className="text-[11px] text-slate-500">Invitar a Google desde:</span>
+            {[3, 4, 5].map(n => {
+              const active = (collection.googleThreshold || 4) === n;
+              return (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => changeCollection({ googleThreshold: n })}
+                  disabled={savingCollection}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors disabled:opacity-60 ${
+                    active ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
+                >
+                  {n}<FaStar className="text-[9px] text-amber-400" />{n < 5 ? '+' : ''}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {collection.mode !== 'internal' && !hasGoogleRating && (
+          <p className="mt-2.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
+            Para enviar reseñas a Google, primero vincula tu negocio en <strong>Configuración → Conectar con Google</strong>.
           </p>
         )}
       </div>

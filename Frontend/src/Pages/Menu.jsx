@@ -1852,6 +1852,8 @@ export default function Menu() {
             theme={businessConfig?.theme}
             topProduct={pendingReviewTopProduct}
             googleReviewUrl={businessConfig?.google?.reviewUrl}
+            reviewMode={businessConfig?.reviewCollection?.mode || 'funnel'}
+            googleThreshold={businessConfig?.reviewCollection?.googleThreshold || 4}
           />
         )}
         {showReviewsSheet && (
