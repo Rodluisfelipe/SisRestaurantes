@@ -1850,6 +1850,7 @@ export default function Menu() {
             customerPhone={waReviewPhone || orderInfo.phone}
             theme={businessConfig?.theme}
             topProduct={pendingReviewTopProduct}
+            googleReviewUrl={businessConfig?.google?.reviewUrl}
           />
         )}
         {showReviewsSheet && (

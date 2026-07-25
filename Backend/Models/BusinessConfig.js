@@ -146,6 +146,16 @@ const businessConfigSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  // Vinculación con Google Places: rating, conteo y enlace para reseñas
+  google: {
+    placeId: { type: String, default: "" },
+    rating: { type: Number, default: null },
+    reviewCount: { type: Number, default: 0 },
+    reviewUrl: { type: String, default: "" },   // deep-link para escribir reseña
+    mapsUrl: { type: String, default: "" },
+    website: { type: String, default: "" },
+    syncedAt: { type: Date, default: null }
+  },
   // NIT / Tax ID del negocio
   nit: {
     type: String,

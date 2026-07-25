@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleLogin } from '@react-oauth/google';
 import { registerUser, googleAuth, suggestSlugs, checkSlug } from '../../services/authService';
 import { useAuth } from '../../Context/AuthContext';
+import api from '../../services/api';
+import GooglePlaceSearch from '../../Components/GooglePlaceSearch';
 
 // Business type definitions (matches backend BUSINESS_TYPE_CONFIG)
 const BUSINESS_TYPES = [
@@ -62,6 +64,25 @@ const Register = () => {
   const [isLoadingSlugs, setIsLoadingSlugs] = useState(false);
   const [isCheckingSlug, setIsCheckingSlug] = useState(false);
   const [googlePhone, setGooglePhone] = useState('');
+
+  // ===== GOOGLE PLACES AUTOFILL =====
+  const [placeId, setPlaceId] = useState(null);
+  const [placeFilled, setPlaceFilled] = useState(null); // resumen para mostrar "prellenado desde Google"
+
+  const handlePlaceSelect = (d) => {
+    if (d.name) setBusinessName(d.name);
+    if (d.placeId) setPlaceId(d.placeId);
+    if (authMethod === 'google' && d.phone && !googlePhone.trim()) setGooglePhone(d.phone);
+    setPlaceFilled({ address: d.address, rating: d.rating, reviewCount: d.reviewCount });
+    setError('');
+  };
+
+  // Tras crear la cuenta, vincula el negocio a Google (dirección, horarios, coords, rating)
+  const connectPlace = (token) => {
+    if (!placeId || !token) return;
+    api.post('/places/connect', { placeId }, { headers: { Authorization: `Bearer ${token}` } })
+      .catch(() => { /* no bloquea el registro */ });
+  };
 
   // ===== SHARED STATE =====
   const [isLoading, setIsLoading] = useState(false);
@@ -216,6 +237,7 @@ const Register = () => {
         }
         const result = await googleAuth(googleCredential, businessName.trim(), finalSlug, businessType, googlePhone.trim(), referralCode);
         if (result.token) {
+          connectPlace(result.token);
           loginWithGoogle(result);
         }
       } else {
@@ -230,6 +252,7 @@ const Register = () => {
           referralCode
         });
         if (result.token) {
+          connectPlace(result.token);
           loginWithGoogle(result);
         } else {
           navigate('/login', { state: { message: '¡Cuenta creada exitosamente! Inicia sesión.' } });
@@ -322,11 +345,34 @@ const Register = () => {
                     </motion.div>
                   )}
 
+                  {/* Autofill desde Google (opcional) */}
+                  <div className="rounded-2xl border border-[#EFEAE3] bg-[#FBFAF8] p-3.5">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.06H2.18a11 11 0 000 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+                      <span className="text-xs font-semibold text-gray-600">¿Tu negocio ya está en Google?</span>
+                    </div>
+                    <GooglePlaceSearch
+                      onSelect={handlePlaceSelect}
+                      placeholder="Busca tu negocio…"
+                      accentColor="#E8002D"
+                    />
+                    {placeFilled && (
+                      <div className="mt-2 flex items-start gap-1.5 text-[11px] text-green-700 bg-green-50 rounded-lg px-2.5 py-1.5">
+                        <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                        <span>
+                          Prellenaremos dirección, horarios y ubicación
+                          {typeof placeFilled.rating === 'number' && placeFilled.rating > 0 && <> · ⭐ {placeFilled.rating} ({placeFilled.reviewCount})</>}
+                        </span>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-gray-400 mt-1.5">Opcional — puedes escribir el nombre a mano abajo.</p>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1.5">Nombre del negocio</label>
                     <input type="text" value={businessName}
                       onChange={(e) => { setBusinessName(e.target.value); setError(''); }}
-                      autoFocus required
+                      required
                       className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#E8002D] focus:border-[#E8002D] transition-colors text-gray-900 bg-white"
                       placeholder={businessType === 'cafe' ? 'Ej: Café Aroma' : businessType === 'bakery' ? 'Ej: Dulces Delicias' : businessType === 'salon' ? 'Ej: Barbería Style' : businessType === 'spa' ? 'Ej: Spa Zen' : businessType === 'clinic' ? 'Ej: Fisio Salud' : businessType === 'services' ? 'Ej: Studio Pro' : 'Ej: La Parrilla de Juan'} />
                   </div>

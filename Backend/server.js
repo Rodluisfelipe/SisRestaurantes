@@ -224,6 +224,7 @@ app.use("/api/upload", require("./Routes/upload")); // Subida de imágenes a Dig
 app.use("/api/health", require("./Routes/health")); // Health check endpoint para Uptime Robot
 app.use("/api/help-chat", require("./Routes/helpChat")); // Asistente IA de ayuda (Groq)
 app.use("/api/ai-tools", require("./Routes/aiTools")); // Herramientas IA (nombres, respuestas a reseñas)
+app.use("/api/places", require("./Routes/places")); // Google Places: autocompletado + vincular negocio
 app.use("/api/dashboard", require("./Routes/dashboard")); // Dashboard de métricas admin
 app.use("/api/cash-register", require("./Routes/cashRegister")); // POS - Caja registradora
 // Debug endpoints - solo disponibles en desarrollo

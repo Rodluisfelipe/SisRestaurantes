@@ -1,0 +1,113 @@
+const express = require('express');
+const router = express.Router();
+const rateLimit = require('express-rate-limit');
+const authMiddleware = require('../middleware/authMiddleware');
+const BusinessConfig = require('../Models/BusinessConfig');
+const places = require('../services/googlePlaces');
+const logger = require('../utils/logger');
+
+// Rate limit para el proxy (evita abuso de la cuota de Google)
+const placesLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 min
+  max: 30,
+  message: { message: 'Demasiadas búsquedas. Intenta de nuevo en un momento.' },
+});
+
+// GET /api/places/status — ¿está configurada la integración?
+router.get('/status', (req, res) => {
+  res.json({ configured: places.isConfigured() });
+});
+
+// GET /api/places/autocomplete?input=&sessionToken=
+router.get('/autocomplete', placesLimiter, async (req, res) => {
+  try {
+    if (!places.isConfigured()) return res.json({ configured: false, predictions: [] });
+    const { input, sessionToken } = req.query;
+    if (!input || input.trim().length < 3) return res.json({ predictions: [] });
+    const predictions = await places.autocomplete(input, sessionToken);
+    res.json({ configured: true, predictions });
+  } catch (err) {
+    logger.warn('Places autocomplete route error', { error: err.message });
+    res.status(502).json({ message: 'No se pudo consultar Google Places', predictions: [] });
+  }
+});
+
+// GET /api/places/details?placeId=&sessionToken=
+router.get('/details', placesLimiter, async (req, res) => {
+  try {
+    if (!places.isConfigured()) return res.status(400).json({ message: 'Integración no configurada' });
+    const { placeId, sessionToken } = req.query;
+    if (!placeId) return res.status(400).json({ message: 'placeId requerido' });
+    const det = await places.details(placeId, sessionToken);
+    res.json({ details: det });
+  } catch (err) {
+    logger.warn('Places details route error', { error: err.message });
+    res.status(502).json({ message: 'No se pudo obtener el detalle del lugar' });
+  }
+});
+
+// POST /api/places/connect — vincula el negocio a un lugar de Google y prellena datos
+// body: { placeId, sessionToken, businessId?, syncHours? }
+router.post('/connect', authMiddleware, async (req, res) => {
+  try {
+    if (!places.isConfigured()) return res.status(400).json({ message: 'Integración no configurada' });
+    const { placeId, sessionToken, syncHours = true } = req.body;
+    if (!placeId) return res.status(400).json({ message: 'placeId requerido' });
+
+    // businessId del token (o del body para superadmin)
+    const businessId = req.user.businessId || req.body.businessId;
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+
+    const cfg = await BusinessConfig.findById(businessId);
+    if (!cfg) return res.status(404).json({ message: 'Negocio no encontrado' });
+
+    const det = await places.details(placeId, sessionToken);
+
+    const changed = [];
+    if (det.address) { cfg.address = det.address; changed.push('address'); }
+    if (det.mapsUrl) { cfg.googleMapsUrl = det.mapsUrl; }
+    if (det.location && det.location.lat != null && det.location.lng != null) {
+      cfg.location = {
+        coordinates: { lat: det.location.lat, lng: det.location.lng },
+        address: det.address || cfg.location?.address || '',
+      };
+      changed.push('location');
+    }
+    if (syncHours && det.businessHours) {
+      cfg.businessHours = det.businessHours;
+      changed.push('businessHours');
+    }
+
+    cfg.google = {
+      placeId: det.placeId,
+      rating: det.rating,
+      reviewCount: det.reviewCount,
+      reviewUrl: det.reviewUrl,
+      mapsUrl: det.mapsUrl,
+      website: det.website,
+      syncedAt: new Date(),
+    };
+    changed.push('google');
+
+    await cfg.save();
+
+    res.json({
+      message: 'Negocio vinculado con Google',
+      changed,
+      google: cfg.google,
+      preview: {
+        name: det.name,
+        address: det.address,
+        phone: det.phone,
+        rating: det.rating,
+        reviewCount: det.reviewCount,
+        businessHours: det.businessHours,
+      },
+    });
+  } catch (err) {
+    logger.error('Places connect error', { error: err.message });
+    res.status(502).json({ message: 'No se pudo vincular con Google' });
+  }
+});
+
+module.exports = router;
