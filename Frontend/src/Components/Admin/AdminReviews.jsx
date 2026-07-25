@@ -254,24 +254,43 @@ export default function AdminReviews() {
   const thumbs = stats?.thumbsFeedback || { thumbsUp: 0, thumbsDown: 0, total: 0 };
   const thumbsUpPct = thumbs.total > 0 ? Math.round((thumbs.thumbsUp / thumbs.total) * 100) : 0;
 
+  const GoogleG = ({ className = 'w-3.5 h-3.5' }) => (
+    <svg className={className} viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.84 14.1a6.6 6.6 0 010-4.2V7.06H2.18a11 11 0 000 9.88l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
+  );
+
   const displayOptions = [
-    { val: 'both', label: 'Ambas', desc: 'Internas + Google' },
-    { val: 'google', label: 'Solo Google', desc: 'Rating de Google' },
-    { val: 'internal', label: 'Solo internas', desc: 'Tus reseñas' },
-    { val: 'none', label: 'Ninguna', desc: 'Ocultar' },
+    { val: 'both', label: 'Ambas', desc: 'Internas + Google', icon: '⭐' },
+    { val: 'google', label: 'Solo Google', desc: 'Rating de Google', icon: '🔵' },
+    { val: 'internal', label: 'Solo internas', desc: 'Tus reseñas', icon: '💬' },
+    { val: 'none', label: 'Ninguna', desc: 'Ocultar del menú', icon: '🚫' },
   ];
+
+  const collectionOptions = [
+    { val: 'funnel', label: 'Embudo inteligente', desc: 'El cliente califica en tu menú; solo las calificaciones altas se invitan a Google.', badge: 'Recomendado', icon: '🎯' },
+    { val: 'choice', label: 'Elección libre', desc: 'El cliente decide dónde dejar su reseña: en tu menú o en Google.', icon: '🔀' },
+    { val: 'internal', label: 'Solo interna', desc: 'Las reseñas nunca se envían a Google. Todo queda en tu panel.', icon: '🔒' },
+  ];
+
+  const cmode = collection.mode || 'funnel';
+  const gThreshold = collection.googleThreshold || 4;
 
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Preferencia de reseñas visibles en el menú */}
       <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
-        <div className="flex items-center gap-2 mb-1">
-          <FaEye className="text-slate-400 text-sm" />
-          <h3 className="text-sm font-bold text-slate-800">Reseñas visibles en tu menú</h3>
-          {savingDisplay && <FaSyncAlt className="text-[10px] text-slate-300 animate-spin ml-1" />}
+        <div className="flex items-center gap-2.5 mb-0.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+            <FaEye className="text-indigo-500 text-xs" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              Qué reseñas ve el cliente
+              {savingDisplay && <FaSyncAlt className="text-[10px] text-indigo-300 animate-spin" />}
+            </h3>
+            <p className="text-[11px] text-slate-400">La calificación que aparece en el encabezado de tu menú.</p>
+          </div>
         </div>
-        <p className="text-xs text-slate-400 mb-3">Elige qué calificación ven tus clientes en el encabezado del menú.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-3">
           {displayOptions.map(opt => {
             const active = reviewsDisplay === opt.val;
             return (
@@ -280,88 +299,127 @@ export default function AdminReviews() {
                 type="button"
                 onClick={() => changeReviewsDisplay(opt.val)}
                 disabled={savingDisplay}
-                className={`text-left p-2.5 rounded-xl border-2 transition-all disabled:opacity-60 ${
-                  active ? 'border-slate-800 bg-slate-50 shadow-sm' : 'border-slate-100 hover:border-slate-200'
+                className={`relative text-left p-3 rounded-xl border-2 transition-all disabled:opacity-60 ${
+                  active ? 'border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-500/15' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-bold ${active ? 'text-slate-800' : 'text-slate-600'}`}>{opt.label}</span>
-                  {active && <FaStar className="text-[10px] text-amber-400" />}
-                </div>
-                <span className="text-[10px] text-slate-400">{opt.desc}</span>
+                {active && (
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth={3.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                  </span>
+                )}
+                <span className="text-base">{opt.icon}</span>
+                <span className={`block text-xs font-bold mt-1 ${active ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.label}</span>
+                <span className="block text-[10px] text-slate-400 leading-tight">{opt.desc}</span>
               </button>
             );
           })}
         </div>
         {(reviewsDisplay === 'google' || reviewsDisplay === 'both') && !hasGoogleRating && (
-          <p className="mt-2.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
-            Aún no has vinculado tu negocio con Google. Ve a <strong>Configuración → Conectar con Google</strong> para mostrar tu rating de Google.
+          <p className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
+            <span>⚠️</span><span>Aún no vinculas Google. Ve a <strong>Configuración → Conectar con Google</strong> para mostrar tu rating.</span>
           </p>
         )}
       </div>
 
       {/* Cómo recolectar reseñas */}
       <div className="bg-white rounded-2xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none p-4">
-        <div className="flex items-center gap-2 mb-1">
-          <FaMagic className="text-slate-400 text-sm" />
-          <h3 className="text-sm font-bold text-slate-800">Cómo recolectar reseñas</h3>
-          {savingCollection && <FaSyncAlt className="text-[10px] text-slate-300 animate-spin ml-1" />}
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+            <FaMagic className="text-indigo-500 text-xs" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              Cómo se piden las reseñas
+              {savingCollection && <FaSyncAlt className="text-[10px] text-indigo-300 animate-spin" />}
+            </h3>
+            <p className="text-[11px] text-slate-400">Qué pasa cuando un cliente va a calificarte.</p>
+          </div>
         </div>
-        <p className="text-xs text-slate-400 mb-3">Qué sucede cuando un cliente va a calificar.</p>
+
         <div className="space-y-2">
-          {[
-            { val: 'funnel', label: 'Embudo inteligente', desc: 'Califican aquí primero; solo las buenas se invitan a Google. Protege tu reputación.', badge: 'Recomendado' },
-            { val: 'choice', label: 'Elección libre', desc: 'El cliente elige dónde calificar: aquí o en Google.' },
-            { val: 'internal', label: 'Solo interna', desc: 'Nunca se envía a Google; todo queda en tu panel.' },
-          ].map(opt => {
-            const active = (collection.mode || 'funnel') === opt.val;
+          {collectionOptions.map(opt => {
+            const active = cmode === opt.val;
             return (
               <button
                 key={opt.val}
                 type="button"
                 onClick={() => changeCollection({ mode: opt.val })}
                 disabled={savingCollection}
-                className={`w-full text-left p-3 rounded-xl border-2 transition-all disabled:opacity-60 ${
-                  active ? 'border-slate-800 bg-slate-50 shadow-sm' : 'border-slate-100 hover:border-slate-200'
+                className={`w-full flex items-start gap-3 text-left p-3 rounded-xl border-2 transition-all disabled:opacity-60 ${
+                  active ? 'border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-500/15' : 'border-slate-100 hover:border-slate-200 hover:bg-slate-50'
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-bold ${active ? 'text-slate-800' : 'text-slate-600'}`}>{opt.label}</span>
-                  {opt.badge && <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{opt.badge}</span>}
-                  {active && <FaStar className="text-[10px] text-amber-400 ml-auto" />}
+                {/* Radio */}
+                <span className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${active ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300'}`}>
+                  {active && <span className="w-2 h-2 rounded-full bg-white" />}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[13px] font-bold ${active ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.icon} {opt.label}</span>
+                    {opt.badge && <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">{opt.badge}</span>}
+                  </div>
+                  <span className="block text-[11px] text-slate-500 leading-snug mt-0.5">{opt.desc}</span>
                 </div>
-                <span className="text-[11px] text-slate-400 leading-snug">{opt.desc}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Umbral para el embudo */}
-        {(collection.mode || 'funnel') === 'funnel' && (
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] text-slate-500">Invitar a Google desde:</span>
-            {[3, 4, 5].map(n => {
-              const active = (collection.googleThreshold || 4) === n;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => changeCollection({ googleThreshold: n })}
-                  disabled={savingCollection}
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors disabled:opacity-60 ${
-                    active ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }`}
-                >
-                  {n}<FaStar className="text-[9px] text-amber-400" />{n < 5 ? '+' : ''}
-                </button>
-              );
-            })}
+        {/* Configuración + diagrama del embudo */}
+        {cmode === 'funnel' && (
+          <div className="mt-3 rounded-xl bg-slate-50 border border-slate-100 p-3">
+            <div className="flex items-center gap-2 flex-wrap mb-3">
+              <span className="text-[11px] font-semibold text-slate-600">Invitar a Google desde:</span>
+              {[3, 4, 5].map(n => {
+                const active = gThreshold === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => changeCollection({ googleThreshold: n })}
+                    disabled={savingCollection}
+                    className={`inline-flex items-center gap-0.5 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all disabled:opacity-60 ${
+                      active ? 'bg-amber-400 text-white shadow-sm ring-2 ring-amber-400/25' : 'bg-white border border-slate-200 text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    {n}<FaStar className={`text-[9px] ${active ? 'text-white' : 'text-amber-400'}`} />{n < 5 ? '+' : ''}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Diagrama: qué pasa según la calificación */}
+            <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400 mb-2">Cómo funciona</p>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 text-[11px] font-bold flex-shrink-0">
+                  {gThreshold}<FaStar className="text-[8px] text-emerald-500" />{gThreshold < 5 ? ' o más' : ''}
+                </span>
+                <FaChevronRight className="text-[8px] text-slate-300 flex-shrink-0" />
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium"><GoogleG /> Se le invita a reseñar en Google</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-0.5 px-2 py-1 rounded-lg bg-slate-200 text-slate-500 text-[11px] font-bold flex-shrink-0">
+                  menos de {gThreshold}<FaStar className="text-[8px] text-slate-400" />
+                </span>
+                <FaChevronRight className="text-[8px] text-slate-300 flex-shrink-0" />
+                <span className="inline-flex items-center gap-1 text-[11px] text-slate-600 font-medium">🔒 Queda solo en tu panel (privada)</span>
+              </div>
+            </div>
+            <p className="text-[10px] text-slate-400 mt-2.5 leading-snug">Así proteges tu reputación: las malas experiencias las ves tú primero y no llegan a Google.</p>
           </div>
         )}
 
-        {collection.mode !== 'internal' && !hasGoogleRating && (
-          <p className="mt-2.5 text-[11px] text-amber-600 bg-amber-50 rounded-lg px-2.5 py-1.5">
-            Para enviar reseñas a Google, primero vincula tu negocio en <strong>Configuración → Conectar con Google</strong>.
+        {cmode === 'choice' && (
+          <p className="mt-3 text-[11px] text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2 leading-snug">
+            Al calificar, el cliente verá dos botones: <strong>Calificar aquí</strong> o <strong className="inline-flex items-center gap-1"><GoogleG className="w-3 h-3" /> Reseñar en Google</strong>. Ojo: un cliente molesto podría dejar su reseña baja directamente en Google.
+          </p>
+        )}
+
+        {cmode !== 'internal' && !hasGoogleRating && (
+          <p className="mt-3 text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 flex items-start gap-1.5">
+            <span>⚠️</span><span>Para enviar reseñas a Google, primero vincula tu negocio en <strong>Configuración → Conectar con Google</strong>.</span>
           </p>
         )}
       </div>
