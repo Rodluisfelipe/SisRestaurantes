@@ -61,6 +61,9 @@ const BusinessSettings = () => {
   const [placePreview, setPlacePreview] = useState(null); // details del lugar elegido
   const [applyFlags, setApplyFlags] = useState({ address: true, hours: true, location: true, google: true });
 
+  // Pestaña activa de la configuración
+  const [activeTab, setActiveTab] = useState('cfg-general');
+
   // Al elegir un lugar: mostramos preview con checkboxes (aún no aplicamos nada)
   const handlePlacePicked = (d) => {
     if (!d?.placeId) return;
@@ -406,11 +409,11 @@ const BusinessSettings = () => {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 max-w-2xl mx-auto w-full">
       <form onSubmit={handleSubmit} className="space-y-3">
-        {/* Navegación de secciones */}
-        <div className="sticky top-0 z-20 -mx-1 px-1 py-2 bg-white/90 backdrop-blur-md">
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+        {/* Pestañas de secciones */}
+        <div className="sticky top-0 z-20 -mx-1 px-1 pt-1 pb-2 bg-white/95 backdrop-blur-md">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide p-1 bg-slate-100 rounded-xl">
             {[
               { id: 'cfg-general', label: 'Identidad' },
               { id: 'cfg-contacto', label: 'Contacto' },
@@ -421,8 +424,10 @@ const BusinessSettings = () => {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all"
+                onClick={() => setActiveTab(s.id)}
+                className={`flex-1 min-w-max px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  activeTab === s.id ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                }`}
               >
                 {s.label}
               </button>
@@ -431,7 +436,7 @@ const BusinessSettings = () => {
         </div>
 
         {/* Información Básica */}
-        <div id="cfg-general" className="scroll-mt-16 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+        <div id="cfg-general" className={`${activeTab === 'cfg-general' ? '' : 'hidden'} bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden`}>
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
               <FaStore className="text-[10px] text-slate-500" />
@@ -514,7 +519,7 @@ const BusinessSettings = () => {
         </div>
 
         {/* Contacto y ubicación */}
-        <div id="cfg-contacto" className="scroll-mt-16 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+        <div id="cfg-contacto" className={`${activeTab === 'cfg-contacto' ? '' : 'hidden'} bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden`}>
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center">
               <FaMapMarkerAlt className="text-[10px] text-emerald-500" />
@@ -727,12 +732,12 @@ const BusinessSettings = () => {
         </div>
 
         {/* Horarios y Estado del Negocio */}
-        <div id="cfg-horarios" className="scroll-mt-16">
+        <div id="cfg-horarios" className={activeTab === 'cfg-horarios' ? '' : 'hidden'}>
           <BusinessHoursSettings />
         </div>
 
         {/* Agenda y Reservas */}
-        <div id="cfg-reservas" className="scroll-mt-16 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+        <div id="cfg-reservas" className={`${activeTab === 'cfg-reservas' ? '' : 'hidden'} bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden`}>
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
@@ -1018,7 +1023,7 @@ const BusinessSettings = () => {
         </div>}
 
         {/* Redes Sociales */}
-        <div id="cfg-redes" className="scroll-mt-16 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+        <div id="cfg-redes" className={`${activeTab === 'cfg-redes' ? '' : 'hidden'} bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden`}>
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
               <FaShareAlt className="text-[10px] text-slate-500" />
@@ -1156,8 +1161,8 @@ const BusinessSettings = () => {
         </div>
       </form>
 
-      {/* Vista Previa del Logo */}
-      {previewLogo && (
+      {/* Vista Previa del Logo (redundante: el uploader ya muestra preview) */}
+      {false && previewLogo && (
         <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
