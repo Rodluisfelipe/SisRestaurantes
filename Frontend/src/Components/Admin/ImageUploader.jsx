@@ -15,13 +15,15 @@ import { API_URL } from '../../config';
  * - quality: calidad WebP (default: 80)
  * - className: clases adicionales para el contenedor
  */
-export default function ImageUploader({ 
-  value = '', 
-  onChange, 
-  folder = 'products', 
-  maxWidth = 800, 
+export default function ImageUploader({
+  value = '',
+  onChange,
+  folder = 'products',
+  maxWidth = 800,
   quality = 80,
-  className = '' 
+  className = '',
+  previewClassName = 'w-full h-40',
+  previewFit = 'cover'
 }) {
   // 'url' = pegar link, 'upload' = subir archivo
   const [mode, setMode] = useState(value && !value.includes('digitaloceanspaces.com') ? 'url' : 'url');
@@ -216,11 +218,11 @@ export default function ImageUploader({
 
       {/* Preview */}
       {value && (
-        <div className="relative w-full h-40 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+        <div className={`relative rounded-lg overflow-hidden border border-slate-200 bg-slate-50 ${previewClassName}`}>
           <img
             src={value}
             alt="Preview"
-            className="w-full h-full object-cover"
+            className={`w-full h-full ${previewFit === 'contain' ? 'object-contain' : 'object-cover'}`}
             onError={(e) => {
               e.target.style.display = 'none';
               e.target.nextSibling.style.display = 'flex';

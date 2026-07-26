@@ -498,6 +498,8 @@ const BusinessSettings = () => {
                   folder="logos"
                   maxWidth={400}
                   quality={85}
+                  previewClassName="w-24 h-24"
+                  previewFit="contain"
                 />
               </div>
 
@@ -513,6 +515,7 @@ const BusinessSettings = () => {
                   folder="covers"
                   maxWidth={1200}
                   quality={80}
+                  previewClassName="w-full h-28"
                 />
               </div>
             </div>
