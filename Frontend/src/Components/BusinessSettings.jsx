@@ -408,8 +408,30 @@ const BusinessSettings = () => {
   return (
     <div className="space-y-3">
       <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Navegación de secciones */}
+        <div className="sticky top-0 z-20 -mx-1 px-1 py-2 bg-white/90 backdrop-blur-md">
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-hide">
+            {[
+              { id: 'cfg-general', label: 'Identidad' },
+              { id: 'cfg-contacto', label: 'Contacto' },
+              { id: 'cfg-horarios', label: 'Horarios' },
+              { id: 'cfg-reservas', label: 'Reservas' },
+              { id: 'cfg-redes', label: 'Redes' },
+            ].map(s => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 active:scale-95 transition-all"
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Información Básica */}
-        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+        <div id="cfg-general" className="scroll-mt-16 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
               <FaStore className="text-[10px] text-slate-500" />
@@ -417,9 +439,7 @@ const BusinessSettings = () => {
             <h3 className="text-sm font-bold text-slate-800">Información Básica</h3>
           </div>
           
-          <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left Column */}
-            <div className="space-y-3">
+          <div className="p-4 space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
                   Nombre del Negocio
@@ -491,9 +511,17 @@ const BusinessSettings = () => {
                 />
               </div>
             </div>
+        </div>
 
-            {/* Right Column */}
-            <div className="space-y-3">
+        {/* Contacto y ubicación */}
+        <div id="cfg-contacto" className="scroll-mt-16 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+            <div className="w-6 h-6 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <FaMapMarkerAlt className="text-[10px] text-emerald-500" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-800">Contacto y ubicación</h3>
+          </div>
+          <div className="p-4 space-y-3">
               {/* WhatsApp number with country code selector */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
@@ -695,15 +723,16 @@ const BusinessSettings = () => {
                   Enlace de ubicación en Google Maps
                 </p>
               </div>
-            </div>
           </div>
         </div>
 
         {/* Horarios y Estado del Negocio */}
-        <BusinessHoursSettings />
+        <div id="cfg-horarios" className="scroll-mt-16">
+          <BusinessHoursSettings />
+        </div>
 
         {/* Agenda y Reservas */}
-        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+        <div id="cfg-reservas" className="scroll-mt-16 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-indigo-50 rounded-lg flex items-center justify-center">
@@ -989,7 +1018,7 @@ const BusinessSettings = () => {
         </div>}
 
         {/* Redes Sociales */}
-        <div className="bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
+        <div id="cfg-redes" className="scroll-mt-16 bg-white rounded-2xl lg:rounded-xl border border-slate-100 lg:border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)] lg:shadow-none overflow-hidden">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
             <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center">
               <FaShareAlt className="text-[10px] text-slate-500" />
