@@ -14,7 +14,7 @@ const {
  * Eliminates the duplicated logic across subscriptions.js, paymentRequests.js, and orders.js.
  */
 
-const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || '0');
+const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || '1');
 
 /**
  * Calculate the effective status of a subscription.

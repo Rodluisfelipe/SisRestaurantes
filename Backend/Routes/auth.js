@@ -270,7 +270,7 @@ router.post('/register', registerLimiter, validateRegister, async (req, res) => 
     // Crear suscripción inicial: 7 días de prueba + 1 día de gracia
     const Subscription = require('../Models/Subscription');
     const TRIAL_DAYS = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || 7);
-    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 0);
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 1);
     const now = new Date();
     const periodEnd = new Date(now);
     periodEnd.setDate(periodEnd.getDate() + TRIAL_DAYS);
@@ -1010,7 +1010,7 @@ router.post('/google', googleAuthLimiter, async (req, res) => {
     // Crear Subscription (trial)
     const Subscription = require('../Models/Subscription');
     const TRIAL_DAYS = parseInt(process.env.SUBSCRIPTION_TRIAL_DAYS || 7);
-    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 0);
+    const GRACE_DAYS = parseInt(process.env.SUBSCRIPTION_GRACE_DAYS || 1);
     const now = new Date();
     const periodEnd = new Date(now);
     periodEnd.setDate(periodEnd.getDate() + TRIAL_DAYS);
