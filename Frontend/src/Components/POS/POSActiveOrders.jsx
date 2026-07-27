@@ -218,7 +218,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-slate-50">
+    <div className="flex-1 flex flex-col min-h-0 bg-[#F5F6F8]">
       {/* Filter pills */}
       <div className="px-4 py-3 flex items-center gap-2 flex-shrink-0">
         {[
@@ -261,94 +261,85 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
               const time = new Date(order.createdAt);
               const elapsed = Math.floor((Date.now() - time.getTime()) / 60000);
 
+              const custName = order.customerName;
+              const showCust = custName && custName !== 'POS' && !/^(mesa|hab)\.?\s*/i.test(custName);
+              const items = order.items || [];
+              const itemCount = items.reduce((s, it) => s + (it.quantity || 1), 0);
               return (
-                <div key={order._id} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                <div key={order._id} className="bg-white rounded-2xl border border-slate-200/70 shadow-[0_1px_3px_rgba(15,23,42,0.05)] hover:shadow-[0_10px_26px_-12px_rgba(15,23,42,0.22)] transition-shadow overflow-hidden flex flex-col">
+                  {/* Status accent strip */}
+                  <div className={`h-1.5 ${config.dot}`} />
+
                   {/* Card header */}
-                  <div className="px-3.5 py-2.5 flex items-center justify-between border-b border-slate-50">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-black text-slate-800">#{order.orderNumber}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isPOS ? 'bg-indigo-50 text-indigo-600' : 'bg-violet-50 text-violet-600'}`}>
-                        {isPOS ? 'POS' : 'MenuBy'}
+                  <div className="px-4 pt-3 pb-2.5 flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-lg font-black text-slate-900 leading-none">#{order.orderNumber}</span>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black tracking-wide ${isPOS ? 'bg-indigo-50 text-indigo-600' : 'bg-violet-50 text-violet-600'}`}>
+                        {isPOS ? 'POS' : 'MENUBY'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs lg:text-[10px] font-bold ${config.bg} ${config.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-                        {config.label}
-                      </span>
-                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-bold flex-shrink-0 ${config.bg} ${config.text}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
+                      {config.label}
+                    </span>
                   </div>
 
-                  {/* Card body */}
-                  <div className="px-3.5 py-2.5 space-y-1.5">
-                    {/* Customer & type */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-500 truncate max-w-[60%]">
-                        {order.customerName !== 'POS' ? order.customerName : 'Sin nombre'}
-                      </span>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                        <span>{TYPE_LABELS[order.orderType] || order.orderType}</span>
-                        {order.tableNumber && <span className="font-bold text-slate-600">{isHotel ? 'H' : 'M'}{order.tableNumber}</span>}
-                      </div>
-                    </div>
-
-                    {/* Items summary */}
-                    <div className="space-y-0.5">
-                      {(order.items || []).slice(0, 3).map((item, i) => (
-                        <div key={i} className="flex justify-between text-xs">
-                          <span className="text-slate-600 truncate max-w-[70%]">{item.quantity}x {item.name}</span>
-                          <span className="text-slate-400 font-semibold">${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
-                        </div>
-                      ))}
-                      {(order.items || []).length > 3 && (
-                        <span className="text-xs lg:text-[10px] text-slate-300">+{order.items.length - 3} más</span>
+                  {/* Table / customer chips */}
+                  {(order.tableNumber || showCust || order.orderType !== 'inSite') && (
+                    <div className="px-4 pb-2.5 flex items-center gap-1.5 flex-wrap">
+                      {order.tableNumber ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-black">
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+                          {isHotel ? 'Hab.' : 'Mesa'} {order.tableNumber}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-lg bg-slate-100 text-slate-500 text-xs font-bold">{TYPE_LABELS[order.orderType] || order.orderType}</span>
                       )}
+                      {showCust && <span className="text-xs text-slate-500 font-medium truncate">{custName}</span>}
                     </div>
+                  )}
 
-                    {/* Total & time */}
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-50">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-black text-slate-800">${(order.finalAmount || order.totalAmount || 0).toLocaleString()}</span>
-                        {order.paymentMethod && (
-                          <span className="text-xs lg:text-[10px] text-slate-400">{METHOD_LABELS[order.paymentMethod] || order.paymentMethod}</span>
-                        )}
+                  {/* Items */}
+                  <div className="px-4 pb-2.5 space-y-1 flex-1">
+                    {items.slice(0, 4).map((item, i) => (
+                      <div key={i} className="flex justify-between gap-2 text-[13px]">
+                        <span className="text-slate-700 truncate"><span className="font-bold text-slate-400 mr-1">{item.quantity}×</span>{item.name}</span>
+                        <span className="text-slate-400 font-semibold tabular-nums flex-shrink-0">${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
                       </div>
-                      <span className={`text-xs lg:text-[10px] font-bold ${elapsed > 15 ? 'text-red-500' : elapsed > 8 ? 'text-amber-500' : 'text-slate-400'}`}>
-                        {elapsed < 1 ? 'Ahora' : `${elapsed} min`}
-                      </span>
+                    ))}
+                    {items.length > 4 && (
+                      <span className="text-[11px] text-slate-400 font-semibold">+{items.length - 4} producto{items.length - 4 !== 1 ? 's' : ''} más</span>
+                    )}
+                  </div>
+
+                  {/* Total & time */}
+                  <div className="px-4 py-2.5 bg-slate-50/80 flex items-center justify-between border-t border-slate-100">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-lg font-black text-slate-900 tabular-nums leading-none">${(order.finalAmount || order.totalAmount || 0).toLocaleString()}</span>
+                      {order.paymentMethod && <span className="text-[11px] text-slate-400 font-semibold">{METHOD_LABELS[order.paymentMethod] || order.paymentMethod}</span>}
                     </div>
+                    <span className={`text-[11px] font-black ${elapsed > 15 ? 'text-red-500' : elapsed > 8 ? 'text-amber-500' : 'text-slate-400'}`}>
+                      {elapsed < 1 ? 'Ahora' : `${elapsed} min`}
+                    </span>
                   </div>
 
                   {/* Actions */}
                   {config.next && (
-                    <div className="px-3.5 py-2 border-t border-slate-50 flex gap-2">
-                      <button
-                        onClick={() => handlePrintOrder(order)}
-                        className="px-3 py-2 rounded-lg text-xs font-bold text-slate-500 bg-slate-50 hover:bg-slate-100 transition-colors"
-                        title="Imprimir comanda"
-                      >
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                    <div className="px-3 py-2.5 border-t border-slate-100 flex gap-2">
+                      <button onClick={() => handlePrintOrder(order)} className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors" title="Imprimir comanda">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
                       </button>
-                      <button
-                        onClick={() => { if (window.confirm((isService ? '¿Cancelar cita #' : '¿Cancelar pedido #') + order.orderNumber + '?')) handleStatusChange(order._id, 'cancelled'); }}
-                        disabled={isUpdating}
-                        className="px-3 py-2 rounded-lg text-xs font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
-                      >
-                        Cancelar
+                      <button onClick={() => { if (window.confirm((isService ? '¿Cancelar cita #' : '¿Cancelar pedido #') + order.orderNumber + '?')) handleStatusChange(order._id, 'cancelled'); }} disabled={isUpdating} className="w-9 h-9 flex-shrink-0 rounded-xl flex items-center justify-center text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50" title="Cancelar">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
                       </button>
-                      <button
-                        onClick={() => handleStatusChange(order._id, config.next)}
-                        disabled={isUpdating}
-                        className="flex-1 py-2 rounded-lg text-xs font-bold text-white transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
-                        style={{ backgroundColor: themeColor }}
-                      >
+                      <button onClick={() => handleStatusChange(order._id, config.next)} disabled={isUpdating} className="flex-1 py-2.5 rounded-xl text-[13px] font-black text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5" style={{ backgroundColor: themeColor }}>
                         {isUpdating ? (
-                          <div className="animate-spin rounded-full h-3.5 w-3.5 border-b-2 border-white" />
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
                         ) : (
                           <>
-                            {config.next === 'inProgress' && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>}
-                            {config.next === 'completed' && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>}
-                            {config.next === 'payment_confirmed' && <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+                            {config.next === 'inProgress' && <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>}
+                            {config.next === 'completed' && <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+                            {config.next === 'payment_confirmed' && <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>}
                             {config.nextLabel}
                           </>
                         )}
