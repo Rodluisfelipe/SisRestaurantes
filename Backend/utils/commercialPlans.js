@@ -64,7 +64,7 @@ const COMMERCIAL_PLANS = {
       deliveryZones: null,
       coupons: 3,
       banners: 1,
-      autoprintPrinters: 2
+      autoprintPrinters: null
     },
     features: {
       inAppOrdering: true,
