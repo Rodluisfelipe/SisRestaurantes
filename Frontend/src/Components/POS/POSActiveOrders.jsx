@@ -26,6 +26,7 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
   const [filter, setFilter] = useState('all'); // all, pos, menuby
+  const [detailOrder, setDetailOrder] = useState(null);
 
   const fetchOrders = useCallback(async () => {
     if (!businessId) return;
@@ -299,17 +300,22 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
                     </div>
                   )}
 
-                  {/* Items */}
-                  <div className="px-4 pb-2.5 space-y-1 flex-1">
+                  {/* Items — toca para ver el pedido completo */}
+                  <div onClick={() => setDetailOrder(order)} className="px-4 pb-2.5 space-y-1 flex-1 cursor-pointer hover:bg-slate-50/70 transition-colors">
                     {items.slice(0, 4).map((item, i) => (
                       <div key={i} className="flex justify-between gap-2 text-[13px]">
                         <span className="text-slate-700 truncate"><span className="font-bold text-slate-400 mr-1">{item.quantity}×</span>{item.name}</span>
                         <span className="text-slate-400 font-semibold tabular-nums flex-shrink-0">${((item.totalPrice || item.price) * item.quantity).toLocaleString()}</span>
                       </div>
                     ))}
-                    {items.length > 4 && (
-                      <span className="text-[11px] text-slate-400 font-semibold">+{items.length - 4} producto{items.length - 4 !== 1 ? 's' : ''} más</span>
-                    )}
+                    {items.length > 4 ? (
+                      <span className="inline-flex items-center gap-1 text-[12px] font-black mt-0.5" style={{ color: themeColor }}>
+                        Ver pedido completo ({items.length})
+                        <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M9 5l7 7-7 7" /></svg>
+                      </span>
+                    ) : items.length > 0 ? (
+                      <span className="text-[10px] text-slate-300">Toca para ver el detalle</span>
+                    ) : null}
                   </div>
 
                   {/* Total & time */}
@@ -352,6 +358,115 @@ export default function POSActiveOrders({ businessId, themeColor, businessConfig
           </div>
         )}
       </div>
+
+      {/* Detalle del pedido completo */}
+      {detailOrder && (() => {
+        const d = detailOrder;
+        const dc = STATUS_CONFIG[d.status] || STATUS_CONFIG.confirmed;
+        const dItems = d.items || [];
+        const dIsPOS = d.orderChannel === 'pos';
+        const dTotal = (d.finalAmount || d.totalAmount || 0);
+        const dCust = d.customerName;
+        const dShowCust = dCust && dCust !== 'POS' && !/^(mesa|hab)\.?\s*/i.test(dCust);
+        const dUpdating = updatingId === d._id;
+        return (
+          <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/55 backdrop-blur-sm sm:p-4" onClick={() => setDetailOrder(null)}>
+            <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+              <div className={`h-1.5 ${dc.dot} flex-shrink-0`} />
+              {/* Header */}
+              <div className="px-5 pt-3.5 pb-3 flex items-start justify-between border-b border-slate-100 flex-shrink-0">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-black text-slate-900">#{d.orderNumber}</span>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${dIsPOS ? 'bg-indigo-50 text-indigo-600' : 'bg-violet-50 text-violet-600'}`}>{dIsPOS ? 'POS' : 'MENUBY'}</span>
+                  </div>
+                  <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[11px] font-bold ${dc.bg} ${dc.text}`}><span className={`w-1.5 h-1.5 rounded-full ${dc.dot}`} />{dc.label}</span>
+                </div>
+                <button onClick={() => setDetailOrder(null)} className="w-9 h-9 rounded-xl flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                {/* Meta */}
+                <div className="flex flex-wrap gap-1.5">
+                  {d.tableNumber ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 text-xs font-black">{isHotel ? 'Hab.' : 'Mesa'} {d.tableNumber}</span>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-bold">{TYPE_LABELS[d.orderType] || d.orderType}</span>
+                  )}
+                  {dShowCust && <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-semibold">{dCust}</span>}
+                  {d.phone && <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 text-xs font-medium">{d.phone}</span>}
+                </div>
+                {d.orderType === 'delivery' && d.address && (
+                  <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">📍 {d.address}{d.deliveryZoneName ? ` · ${d.deliveryZoneName}` : ''}</p>
+                )}
+
+                {/* Items */}
+                <div className="space-y-3">
+                  {dItems.map((item, i) => (
+                    <div key={i} className="flex justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-slate-800 leading-snug">
+                          <span className="font-black mr-1" style={{ color: themeColor }}>{item.quantity}×</span>{item.name}
+                        </p>
+                        {item.selectedToppings && item.selectedToppings.map((t, ti) => (
+                          <div key={ti} className="mt-0.5">
+                            {t.optionName && <p className="text-[11px] text-slate-500 pl-4 leading-tight">+ {t.groupName ? `${t.groupName}: ` : ''}{t.optionName}{t.price > 0 ? ` ($${t.price.toLocaleString()})` : ''}</p>}
+                            {t.subGroups && t.subGroups.map((sg, si) => (
+                              <p key={si} className="text-[11px] text-slate-400 pl-6 leading-tight">+ {sg.subGroupTitle ? `${sg.subGroupTitle}: ` : ''}{sg.optionName}{sg.price > 0 ? ` ($${sg.price.toLocaleString()})` : ''}</p>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                      <span className="text-sm font-bold text-slate-800 tabular-nums flex-shrink-0">${((item.totalPrice || item.price || 0) * item.quantity).toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Totals */}
+                <div className="border-t border-slate-100 pt-3 space-y-1.5">
+                  {d.deliveryFee > 0 && (
+                    <div className="flex justify-between text-[13px] text-slate-500"><span>Envío</span><span className="tabular-nums">${d.deliveryFee.toLocaleString()}</span></div>
+                  )}
+                  {d.discountAmount > 0 && (
+                    <div className="flex justify-between text-[13px] text-emerald-600"><span>Descuento</span><span className="tabular-nums">-${d.discountAmount.toLocaleString()}</span></div>
+                  )}
+                  <div className="flex items-baseline justify-between pt-1">
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Total</span>
+                    <span className="text-2xl font-black text-slate-900 tabular-nums">${dTotal.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Payment */}
+                {d.paymentMethod && (
+                  <div className="bg-slate-50 rounded-xl px-3.5 py-2.5 space-y-1">
+                    <div className="flex justify-between text-[13px]"><span className="text-slate-400 font-medium">Pago</span><span className="font-bold text-slate-700">{METHOD_LABELS[d.paymentMethod] || d.paymentMethod}</span></div>
+                    {d.posPaymentInfo?.cashReceived != null && <div className="flex justify-between text-[13px]"><span className="text-slate-400 font-medium">Recibido</span><span className="font-semibold text-slate-600 tabular-nums">${d.posPaymentInfo.cashReceived.toLocaleString()}</span></div>}
+                    {d.posPaymentInfo?.change > 0 && <div className="flex justify-between text-[13px]"><span className="text-slate-400 font-medium">Cambio</span><span className="font-semibold text-emerald-600 tabular-nums">${d.posPaymentInfo.change.toLocaleString()}</span></div>}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer actions */}
+              <div className="px-4 py-3 border-t border-slate-100 flex gap-2 flex-shrink-0">
+                <button onClick={() => handlePrintOrder(d)} className="w-11 h-11 flex-shrink-0 rounded-xl flex items-center justify-center text-slate-500 bg-slate-100 hover:bg-slate-200 transition-colors" title="Imprimir">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></svg>
+                </button>
+                {dc.next && (
+                  <button onClick={() => { if (window.confirm((isService ? '¿Cancelar cita #' : '¿Cancelar pedido #') + d.orderNumber + '?')) { handleStatusChange(d._id, 'cancelled'); setDetailOrder(null); } }} disabled={dUpdating} className="px-4 h-11 rounded-xl text-[13px] font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50">Cancelar</button>
+                )}
+                {dc.next && (
+                  <button onClick={() => { handleStatusChange(d._id, dc.next); if (dc.next === 'completed' || dc.next === 'cancelled') setDetailOrder(null); }} disabled={dUpdating} className="flex-1 h-11 rounded-xl text-[14px] font-black text-white transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-1.5" style={{ backgroundColor: themeColor }}>
+                    {dUpdating ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : dc.nextLabel}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
