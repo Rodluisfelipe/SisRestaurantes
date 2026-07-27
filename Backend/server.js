@@ -350,6 +350,14 @@ mongoose.connect(MONGO_URI, {
       logger.warn('Error iniciando cron de reporte semanal:', error.message);
     }
 
+    // Cron de refresco de reseñas de Google (diario 4am COL)
+    try {
+      const { startGoogleRefreshCron } = require('./services/googleRefreshCron');
+      startGoogleRefreshCron();
+    } catch (error) {
+      logger.warn('Error iniciando cron de refresco de Google:', error.message);
+    }
+
     // Cron de expiración de puntos de lealtad
     try {
       const { startLoyaltyExpiryCron } = require('./services/loyaltyExpiryCron');
