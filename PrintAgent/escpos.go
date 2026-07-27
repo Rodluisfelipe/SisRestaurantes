@@ -209,7 +209,7 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 					subTitle = cleanCategoryLabel(subTitle)
 					if subName != "" {
 						label := subTitle + ": " + subName
-						buf = appendLine(buf, "  >> "+truncate(label, itemCols-5))
+						buf = appendToppingLine(buf, label, itemCols)
 					}
 				}
 			} else {
@@ -221,7 +221,7 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 					if gn != "" {
 						label = gn + ": " + tName
 					}
-					buf = appendLine(buf, "  >> "+truncate(label, itemCols-5))
+					buf = appendToppingLine(buf, label, itemCols)
 				}
 			}
 		}
@@ -520,7 +520,7 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 					if subName != "" {
 						label := subTitle + ": " + subName
 						if isCompact {
-							buf = appendLine(buf, " +"+truncate(label, itemCols-2))
+							buf = appendToppingWrapped(buf, " +", "   ", label, "", itemCols)
 						} else {
 							tLine := "  + " + label
 							if subPrice > 0 {
@@ -540,7 +540,7 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 						label = groupName + ": " + tName
 					}
 					if isCompact {
-						buf = appendLine(buf, " +"+truncate(label, itemCols-2))
+						buf = appendToppingWrapped(buf, " +", "   ", label, "", itemCols)
 					} else {
 						tLine := "  + " + label
 						if tPrice > 0 {
@@ -759,6 +759,76 @@ func truncate(s string, maxLen int) string {
 		return string(runes[:maxLen])
 	}
 	return string(runes[:maxLen-3]) + "..."
+}
+
+// wrapLines divide el texto en líneas que caben en cols, respetando palabras.
+// Palabras más largas que cols se parten en trozos. Nunca corta con "...".
+func wrapLines(text string, cols int) []string {
+	if cols < 1 {
+		return []string{text}
+	}
+	words := strings.Fields(text)
+	var lines []string
+	var line string
+	for _, w := range words {
+		wRunes := []rune(w)
+		if len(wRunes) > cols {
+			if line != "" {
+				lines = append(lines, line)
+				line = ""
+			}
+			for len(wRunes) > cols {
+				lines = append(lines, string(wRunes[:cols]))
+				wRunes = wRunes[cols:]
+			}
+			line = string(wRunes)
+			continue
+		}
+		if line == "" {
+			line = w
+		} else if len([]rune(line))+1+len(wRunes) <= cols {
+			line += " " + w
+		} else {
+			lines = append(lines, line)
+			line = w
+		}
+	}
+	if line != "" {
+		lines = append(lines, line)
+	}
+	if len(lines) == 0 {
+		lines = append(lines, "")
+	}
+	return lines
+}
+
+// appendToppingWrapped imprime un topping envolviendo el texto (sin cortar con "...").
+// prefix va en la 1ª línea, contPrefix en las continuaciones. Si price != "",
+// se justifica a la derecha en la última línea. Así en papel angosto (44/58mm)
+// el cocinero/cliente ve la selección completa.
+func appendToppingWrapped(buf []byte, prefix, contPrefix, label, price string, cols int) []byte {
+	w := cols - len([]rune(prefix))
+	if w < 6 {
+		w = 6
+	}
+	lines := wrapLines(label, w)
+	for j, ln := range lines {
+		p := prefix
+		if j > 0 {
+			p = contPrefix
+		}
+		if price != "" && j == len(lines)-1 {
+			buf = appendLineJustified(buf, p+ln, price, cols)
+		} else {
+			buf = appendLine(buf, p+ln)
+		}
+	}
+	return buf
+}
+
+// appendToppingLine: comanda de cocina (sin precio).
+func appendToppingLine(buf []byte, label string, itemCols int) []byte {
+	return appendToppingWrapped(buf, "  >> ", "     ", label, "", itemCols)
 }
 
 func safeStr(s, fallback string) string {
