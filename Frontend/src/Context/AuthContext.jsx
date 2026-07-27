@@ -99,12 +99,12 @@ export function AuthProvider({ children }) {
   };
 
   // Login
-  const login = useCallback(async (username, password) => {
+  const login = useCallback(async (username, password, options = {}) => {
     const res = await api.post('/auth/login', { username, password });
     saveTokens(res.data.token, res.data.refreshToken, res.data.user);
     setIsAuthenticated(true);
     setUser(res.data.user);
-    
+
     // Verificar sesiones múltiples después del login
     checkMultipleSessions();
     // Buscar el slug usando el businessId
@@ -118,9 +118,15 @@ export function AuthProvider({ children }) {
       // fallback: usar businessId si no se encuentra el slug
       slug = res.data.user.businessId;
     }
-    // Staff goes directly to orders tab
-    const adminPath = res.data.user.role === 'staff' ? `/${slug}/admin?tab=orders` : `/${slug}/admin`;
-    navigate(adminPath, { replace: true });
+    // Destino: app del mesero o panel (staff va directo a órdenes)
+    let path;
+    if (options.target === 'waiter') {
+      path = `/${slug}/waiter`;
+    } else {
+      path = res.data.user.role === 'staff' ? `/${slug}/admin?tab=orders` : `/${slug}/admin`;
+    }
+    navigate(path, { replace: true });
+    return res.data.user;
   }, [navigate]);
 
   // Login con Google (ya tiene tokens del backend)

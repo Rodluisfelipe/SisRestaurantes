@@ -57,6 +57,7 @@ const Footer = () => {
         { name: 'Restaurantes', to: '/restaurantes' },
         { name: 'Registrarse Gratis', to: '/register' },
         { name: 'Iniciar Sesión', to: '/login' },
+        { name: 'Acceso Mesero', to: '/mesero' },
       ],
     },
     {
