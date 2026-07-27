@@ -175,8 +175,8 @@ func GenerateComanda(order map[string]interface{}, business *BusinessInfo, paper
 
 		// Item line — bold, quantity prominent
 		buf = append(buf, cmdBoldOn...)
-		itemLine := fmt.Sprintf("%.0fx  %s", qty, name)
-		buf = appendLine(buf, truncate(itemLine, itemCols))
+		itemPrefix := fmt.Sprintf("%.0fx  ", qty)
+		buf = appendToppingWrapped(buf, itemPrefix, strings.Repeat(" ", len([]rune(itemPrefix))), name, "", itemCols)
 		buf = append(buf, cmdBoldOff...)
 
 		// Toppings — essential for kitchen
@@ -476,18 +476,16 @@ func GenerateRecibo(order map[string]interface{}, business *BusinessInfo, paperW
 		if isCompact {
 			// 44mm: name on one line, price on next (not enough space for both)
 			buf = append(buf, cmdBoldOn...)
-			buf = appendLine(buf, fmt.Sprintf("%.0fx %s", qty, truncate(name, itemCols-3)))
+			itemPrefix := fmt.Sprintf("%.0fx ", qty)
+			buf = appendToppingWrapped(buf, itemPrefix, strings.Repeat(" ", len([]rune(itemPrefix))), name, "", itemCols)
 			buf = append(buf, cmdBoldOff...)
 			buf = append(buf, cmdAlignRight...)
 			buf = appendLine(buf, priceStr)
 			buf = append(buf, cmdAlignLeft...)
 		} else {
 			// 58mm+: item and price on same line, justified
-			prefix := fmt.Sprintf("%.0fx %s", qty, name)
-			if len(prefix)+len(priceStr)+1 > itemCols {
-				prefix = fmt.Sprintf("%.0fx %s", qty, truncate(name, itemCols-len(priceStr)-5))
-			}
-			buf = appendLineJustified(buf, prefix, priceStr, itemCols)
+			itemPrefix := fmt.Sprintf("%.0fx ", qty)
+			buf = appendToppingWrapped(buf, itemPrefix, strings.Repeat(" ", len([]rune(itemPrefix))), name, priceStr, itemCols)
 		}
 
 		// Toppings
