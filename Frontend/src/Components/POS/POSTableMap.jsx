@@ -3,10 +3,10 @@ import api from '../../services/api';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 
 const STATUS_COLORS = {
-  available: 'bg-emerald-100 border-emerald-400 text-emerald-800',
-  occupied:  'bg-orange-100 border-orange-400 text-orange-800',
-  held:      'bg-amber-100 border-amber-400 text-amber-800',
-  selected:  'bg-blue-100 border-blue-500 text-blue-800 ring-2 ring-blue-400',
+  available: 'bg-white border-emerald-300 text-emerald-700 shadow-sm hover:border-emerald-400',
+  occupied:  'bg-orange-50 border-orange-300 text-orange-700 shadow-sm',
+  held:      'bg-amber-50 border-amber-300 text-amber-700 shadow-sm',
+  selected:  'bg-blue-50 border-blue-500 text-blue-800 shadow-md ring-2 ring-blue-400/40 ring-offset-1',
 };
 
 export default function POSTableMap({ businessId, selectedTable, onSelectTable, activeOrders, heldOrders }) {
@@ -70,20 +70,22 @@ export default function POSTableMap({ businessId, selectedTable, onSelectTable, 
     <div className="h-full flex flex-col">
       {/* Floor tabs */}
       {floors.length > 0 && (
-        <div className="flex gap-1 px-3 pt-3 pb-2 overflow-x-auto flex-shrink-0">
-          {floors.map(floor => (
-            <button
-              key={floor._id}
-              onClick={() => setActiveFloor(floor._id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                activeFloor === floor._id
-                  ? 'bg-slate-800 text-white'
-                  : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
-              }`}
-            >
-              {floor.name}
-            </button>
-          ))}
+        <div className="px-3 pt-3 pb-2 flex-shrink-0">
+          <div className="inline-flex gap-1 p-1 bg-slate-100 rounded-xl overflow-x-auto no-scrollbar max-w-full">
+            {floors.map(floor => (
+              <button
+                key={floor._id}
+                onClick={() => setActiveFloor(floor._id)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${
+                  activeFloor === floor._id
+                    ? 'bg-white text-slate-800 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {floor.name}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
@@ -104,7 +106,7 @@ export default function POSTableMap({ businessId, selectedTable, onSelectTable, 
       </div>
 
       {/* Table map */}
-      <div className="flex-1 relative mx-3 mb-3 bg-slate-50 border border-slate-200 rounded-xl overflow-hidden" style={{ minHeight: '300px' }}>
+      <div className="flex-1 relative mx-3 mb-3 bg-[#F5F6F8] border border-slate-200/70 rounded-2xl overflow-hidden shadow-inner" style={{ minHeight: '300px' }}>
         {/* Grid */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.06]">
           {[10,20,30,40,50,60,70,80,90].map(p => (

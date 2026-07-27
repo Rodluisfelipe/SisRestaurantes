@@ -3,10 +3,10 @@ import api from '../../services/api';
 import { queueOfflineOrder } from '../../services/posOfflineStore';
 
 const PAYMENT_METHODS = [
-  { id: 'cash', label: 'Efectivo', icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm0-5c-.83 0-1.5-.67-1.5-1.5V7c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v3c0 .83-.67 1.5-1.5 1.5z' },
-  { id: 'nequi', label: 'Nequi', icon: null },
-  { id: 'daviplata', label: 'Daviplata', icon: null },
-  { id: 'transfer', label: 'Transferencia', icon: null },
+  { id: 'cash', label: 'Efectivo', color: '#059669', svg: 'M2 8a2 2 0 012-2h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8z M2 11h20 M7 15h.01' },
+  { id: 'nequi', label: 'Nequi', color: '#E5007E', svg: 'M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z M12 17h.01' },
+  { id: 'daviplata', label: 'Daviplata', color: '#ED1C27', svg: 'M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z M12 17h.01' },
+  { id: 'transfer', label: 'Transferencia', color: '#2563EB', svg: 'M3 10h18 M6 6l-3 4 3 4 M18 14l3-4-3-4 M3 10v8a2 2 0 002 2h14a2 2 0 002-2v-8' },
 ];
 
 const ORDER_TYPE_ICONS = {
@@ -305,22 +305,31 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
           <div className="p-4 lg:p-5 flex flex-col gap-4 overflow-y-auto">
             {/* Payment method */}
             <div>
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Método de pago</p>
-              <div className="grid grid-cols-4 lg:grid-cols-2 gap-2">
-                {PAYMENT_METHODS.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setPaymentMethod(m.id)}
-                    className={`py-2.5 rounded-xl text-xs font-bold border-2 transition-all ${
-                      paymentMethod === m.id
-                        ? 'text-white border-transparent shadow-md'
-                        : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                    }`}
-                    style={paymentMethod === m.id ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
-                  >
-                    {m.label}
-                  </button>
-                ))}
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Método de pago</p>
+              <div className="grid grid-cols-2 gap-2">
+                {PAYMENT_METHODS.map(m => {
+                  const active = paymentMethod === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setPaymentMethod(m.id)}
+                      className={`relative py-2.5 px-3 rounded-xl border-2 transition-all flex items-center gap-2.5 ${
+                        active ? 'shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                      style={active ? { borderColor: m.color, backgroundColor: `${m.color}0d` } : undefined}
+                    >
+                      <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${m.color}1a`, color: m.color }}>
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d={m.svg} /></svg>
+                      </span>
+                      <span className="text-[13px] font-bold" style={{ color: active ? m.color : '#334155' }}>{m.label}</span>
+                      {active && (
+                        <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: m.color }}>
+                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 12.75l6 6 9-13.5" /></svg>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
