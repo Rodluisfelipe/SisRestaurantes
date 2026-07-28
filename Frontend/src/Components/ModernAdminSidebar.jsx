@@ -82,6 +82,7 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       label: 'Marketing',
       items: [
         { id: 'catalog', label: 'Catálogo', Icon: FaBullhorn, badge: null },
+        { id: 'popups', label: 'Anuncios', Icon: FaBullhorn, badge: null },
         { id: 'whatsapp', label: 'WhatsApp', Icon: FaWhatsapp, badge: null },
         { id: 'wa-campaign', label: 'Campaña WA', Icon: FaWhatsapp, badge: null },
         { id: 'payment-config', label: 'Pagos', Icon: FaMoneyBillWave, badge: null },

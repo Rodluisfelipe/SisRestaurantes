@@ -26,6 +26,7 @@ const TAB_TITLES = {
   'completed_orders': 'Completados',
   'payment-config':   'Pagos',
   'reviews':          'Reseñas',
+  'popups':           'Anuncios',
   'printer':          'Impresoras',
   'team':             'Equipo',
   'bookings':         'Agenda',

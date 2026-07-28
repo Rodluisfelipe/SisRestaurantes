@@ -6,6 +6,8 @@ const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
 import MenuStructuredData from "../Components/MenuStructuredData";
+import DiscoverMore from "../Components/DiscoverMore";
+import MenuPopup from "../Components/MenuPopup";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
@@ -1646,6 +1648,9 @@ export default function Menu() {
         }}
       />
 
+      {/* Red de descubrimiento MenuBy */}
+      <DiscoverMore />
+
       {!isViewOnly && (
         <CartBar
           cart={cart}
@@ -1869,6 +1874,9 @@ export default function Menu() {
           />
         )}
       </Suspense>
+
+      {/* Anuncio / popup configurado por el negocio */}
+      <MenuPopup businessId={businessId} themeColor={businessConfig?.theme?.buttonColor} />
 
       {/* Loyalty Page - Full gamified loyalty view */}
       <LoyaltyPage

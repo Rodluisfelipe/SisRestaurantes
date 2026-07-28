@@ -217,6 +217,7 @@ app.use("/api/delivery-partners", require("./Routes/deliveryPartners")); // Empr
 app.use("/api/delivery", require("./Routes/deliveryPublic")); // Endpoints públicos de domiciliarios
 app.use("/api/restaurants", require("./Routes/deliveryPublic")); // Rutas públicas /restaurants/:slug/domi y /track
 app.use("/api/reviews", require("./Routes/reviews")); // Reseñas de clientes
+app.use("/api/menu-popups", require("./Routes/menuPopups")); // Popups/anuncios del negocio en su menú
 app.use("/api/bookings", require("./Routes/bookings")); // Bookings / appointments for service businesses
 app.use("/api/email", require("./Routes/email")); // Email configuration and test
 app.use("/api/push", require("./Routes/push")); // Push notifications (PWA)

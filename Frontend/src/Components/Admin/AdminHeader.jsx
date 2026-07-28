@@ -25,6 +25,7 @@ const TAB_CONFIG = {
   'completed_orders': { title: 'Pedidos Completados',     desc: 'Historial y resumen de pedidos' },
   'payment-config':   { title: 'Configuración de Pagos',  desc: 'Configura métodos de pago y modo de pedidos' },
   'reviews':          { title: 'Reseñas y Calificaciones', desc: 'Gestiona las reseñas de tus clientes' },
+  'popups':           { title: 'Anuncios del menú',        desc: 'Popups para promocionar productos y ver sus estadísticas' },
 };
 
 const HOTEL_OVERRIDES = {

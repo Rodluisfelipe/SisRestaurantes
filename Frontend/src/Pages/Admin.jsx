@@ -48,6 +48,7 @@ const ProductManager = lazy(() => import("../Components/Admin/ProductManager"));
 const FeaturedProductsManager = lazy(() => import("../Components/Admin/FeaturedProductsManager"));
 const SubscriptionPayment = lazy(() => import("./SubscriptionPayment"));
 const AdminReviews = lazy(() => import("../Components/Admin/AdminReviews"));
+const AdminPopups = lazy(() => import("../Components/Admin/AdminPopups"));
 const StaffManager = lazy(() => import("../Components/Admin/StaffManager"));
 const BookingsManager = lazy(() => import("../Components/Admin/BookingsManager"));
 const CashClosings = lazy(() => import("../Components/Admin/CashClosings"));
@@ -554,6 +555,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Reseñas" onGoBack={() => setActiveTab('dashboard')}>
                       <AdminReviews />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'popups' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Anuncios" onGoBack={() => setActiveTab('dashboard')}>
+                      <AdminPopups />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}
