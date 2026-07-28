@@ -470,6 +470,20 @@ router.post("/", (req, res, next) => {
       finalAmount = couponResult.finalAmount;
     }
 
+    // POS: propina y descuento manual (staff autenticado). No aplica a canales públicos.
+    let tipAmount = 0;
+    if (orderChannel === 'pos') {
+      tipAmount = Math.max(0, Math.round(parseFloat(req.body.tipAmount) || 0));
+      if (!couponCode) {
+        const manualDiscount = Math.max(0, Math.round(parseFloat(req.body.discountAmount) || 0));
+        if (manualDiscount > 0) {
+          discountAmount = Math.min(manualDiscount, numericTotalAmount);
+          finalAmount = numericTotalAmount - discountAmount;
+        }
+      }
+      finalAmount = finalAmount + tipAmount;
+    }
+
     // Validate delivery fee server-side to prevent fee tampering
     if (orderType === 'delivery' && deliveryCalculated && !deliveryNeedsConfirmation && deliveryZoneInfo?.coordinates) {
       const { validateDeliveryForOrder } = require('../services/deliveryZoneService');
@@ -512,6 +526,7 @@ router.post("/", (req, res, next) => {
       couponCode: coupon ? coupon.code : null,
       couponId: coupon ? coupon._id : null,
       discountAmount,
+      tipAmount,
       finalAmount,
       // In-app ordering fields
       orderChannel: orderChannel || 'whatsapp',

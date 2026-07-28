@@ -35,6 +35,8 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
   const [deliveryZones, setDeliveryZones] = useState([]);
   const [selectedZone, setSelectedZone] = useState(null);
   const [notes, setNotes] = useState('');
+  const [tipPct, setTipPct] = useState(0);
+  const [discount, setDiscount] = useState(''); // monto de descuento (string)
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,8 +53,10 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
   }, [businessId]);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0), [cart]);
-  const deliveryFee = selectedZone?.pricing?.displayPrice || 0;
-  const total = orderType === 'delivery' ? subtotal + deliveryFee : subtotal;
+  const deliveryFee = orderType === 'delivery' ? (selectedZone?.pricing?.displayPrice || 0) : 0;
+  const discountAmount = Math.min(parseInt(discount) || 0, subtotal);
+  const tipAmount = Math.round(subtotal * tipPct / 100);
+  const total = Math.max(0, subtotal + deliveryFee - discountAmount + tipAmount);
   const cashNum = parseFloat(cashReceived) || 0;
   const change = paymentMethod === 'cash' ? cashNum - total : 0;
 
@@ -95,7 +99,9 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
         phone: customerPhone.trim(),
         address: orderType === 'delivery' ? deliveryAddress.trim() : '',
         items,
-        totalAmount: String(total),
+        totalAmount: String(subtotal + deliveryFee),
+        discountAmount: discountAmount || undefined,
+        tipAmount: tipAmount || undefined,
         paymentMethod,
         orderChannel: 'pos',
         customerNotes: notes.trim(),
@@ -297,6 +303,47 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
                     <span className="font-bold text-slate-800 ml-2 shrink-0">${((item.totalPrice || item.price || 0) * item.quantity).toLocaleString()}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Descuento y propina */}
+            <div className="space-y-2.5">
+              {/* Descuento */}
+              <div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Descuento</p>
+                <div className="flex gap-1.5">
+                  {[5, 10, 15].map(p => (
+                    <button key={p} type="button" onClick={() => setDiscount(String(Math.round(subtotal * p / 100)))} className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600 transition-colors">{p}%</button>
+                  ))}
+                  <div className="relative flex-1">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+                    <input inputMode="numeric" value={discount} onChange={e => setDiscount(e.target.value.replace(/\D/g, ''))} placeholder="0" className="w-full pl-6 pr-8 py-2 rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                    {discount && <button type="button" onClick={() => setDiscount('')} className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs">×</button>}
+                  </div>
+                </div>
+              </div>
+              {/* Propina */}
+              <div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Propina</p>
+                <div className="flex gap-1.5 items-center">
+                  {[0, 5, 10, 15].map(p => {
+                    const active = tipPct === p;
+                    return (
+                      <button key={p} type="button" onClick={() => setTipPct(p)} className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${active ? 'text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`} style={active ? { backgroundColor: themeColor } : undefined}>
+                        {p === 0 ? 'Sin' : `${p}%`}
+                      </button>
+                    );
+                  })}
+                  {tipAmount > 0 && <span className="ml-auto text-sm font-black text-slate-700 tabular-nums">+${tipAmount.toLocaleString()}</span>}
+                </div>
+              </div>
+              {/* Desglose */}
+              <div className="rounded-xl bg-slate-50 p-3 space-y-1 text-[13px]">
+                <div className="flex justify-between text-slate-500"><span>Subtotal</span><span className="tabular-nums">${subtotal.toLocaleString()}</span></div>
+                {deliveryFee > 0 && <div className="flex justify-between text-slate-500"><span>Envío</span><span className="tabular-nums">${deliveryFee.toLocaleString()}</span></div>}
+                {discountAmount > 0 && <div className="flex justify-between text-emerald-600"><span>Descuento</span><span className="tabular-nums">-${discountAmount.toLocaleString()}</span></div>}
+                {tipAmount > 0 && <div className="flex justify-between text-slate-500"><span>Propina</span><span className="tabular-nums">+${tipAmount.toLocaleString()}</span></div>}
+                <div className="flex justify-between pt-1.5 mt-0.5 border-t border-slate-200 font-black text-slate-900 text-[15px]"><span>Total</span><span className="tabular-nums">${total.toLocaleString()}</span></div>
               </div>
             </div>
           </div>
