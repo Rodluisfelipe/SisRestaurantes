@@ -200,31 +200,45 @@ export default function MenuPopup({ businessId, themeColor = '#E8002D' }) {
 
   // ── BARRA (arriba / abajo) ──
   if ((fmt === 'bar-top' || fmt === 'bar-bottom') && !expanded) {
-    const openFull = hasForm || (popup.body && popup.body.length > 60);
+    const openFull = hasForm || (popup.body && popup.body.length > 70);
     return (
       <AnimatePresence>
         {visible && (
           <motion.div
-            initial={{ y: fmt === 'bar-top' ? -60 : 60, opacity: 0 }}
+            initial={{ y: fmt === 'bar-top' ? -80 : 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: fmt === 'bar-top' ? -60 : 60, opacity: 0 }}
-            transition={{ type: 'spring', damping: 24, stiffness: 260 }}
-            className={`fixed left-0 right-0 z-[100] px-3 ${fmt === 'bar-top' ? 'top-0 pt-2' : 'bottom-0 pb-2'}`}
+            exit={{ y: fmt === 'bar-top' ? -80 : 80, opacity: 0 }}
+            transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+            className={`fixed left-0 right-0 z-[100] px-3 sm:px-4 ${fmt === 'bar-top' ? 'top-0 pt-3' : 'bottom-0'}`}
+            style={fmt === 'bar-bottom' ? { paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' } : undefined}
           >
-            <div className="max-w-2xl mx-auto flex items-center gap-3 rounded-2xl shadow-xl px-4 py-2.5 text-white" style={{ backgroundColor: themeColor }}>
-              {popup.image && <img src={popup.image} alt="" className="w-8 h-8 rounded-lg object-cover shrink-0" />}
-              <div className="min-w-0 flex-1">
-                <p className="font-bold text-sm truncate">{popup.title}</p>
-                {popup.body && <p className="text-[12px] text-white/80 truncate">{popup.body}</p>}
+            <div
+              className="max-w-xl mx-auto flex items-center gap-3 rounded-2xl px-3 py-2.5 text-white"
+              style={{
+                backgroundImage: `linear-gradient(135deg, rgba(255,255,255,.14), rgba(0,0,0,.14)), linear-gradient(${themeColor},${themeColor})`,
+                boxShadow: `0 14px 36px -12px ${themeColor}, 0 4px 14px rgba(0,0,0,.14)`,
+              }}
+            >
+              {popup.image ? (
+                <img src={popup.image} alt="" className="w-11 h-11 rounded-xl object-cover shrink-0 ring-2 ring-white/25" />
+              ) : (
+                <div className="w-11 h-11 rounded-xl shrink-0 bg-white/20 flex items-center justify-center">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z" /><path d="M11.6 16.8a3 3 0 11-5.8-1.6" /></svg>
+                </div>
+              )}
+              <div className="min-w-0 flex-1 py-0.5">
+                <p className="font-black text-[15px] leading-tight truncate">{popup.title}</p>
+                {popup.body && <p className="text-[12.5px] text-white/85 leading-tight truncate">{popup.body}</p>}
               </div>
               <button
-                onClick={() => { if (openFull) { setExpanded(true); } else { handleCta(); } }}
-                className="shrink-0 px-3 py-1.5 rounded-xl bg-white/20 hover:bg-white/30 font-black text-xs transition-colors"
+                onClick={() => { if (openFull) setExpanded(true); else handleCta(); }}
+                className="shrink-0 px-4 py-2 rounded-xl bg-white font-black text-[13px] active:scale-95 transition-transform shadow-sm"
+                style={{ color: themeColor }}
               >
-                {popup.ctaText || (openFull ? 'Ver' : 'Ver')}
+                {popup.ctaText || 'Ver'}
               </button>
-              <button onClick={close} className="shrink-0 w-6 h-6 rounded-full hover:bg-white/20 flex items-center justify-center" aria-label="Cerrar">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+              <button onClick={close} className="shrink-0 -mr-0.5 w-7 h-7 rounded-full hover:bg-white/20 flex items-center justify-center text-white/85" aria-label="Cerrar">
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
               </button>
             </div>
           </motion.div>
@@ -260,12 +274,51 @@ export default function MenuPopup({ businessId, themeColor = '#E8002D' }) {
     );
   }
 
-  // ── MODAL / PANTALLA COMPLETA / (barra o toast expandidos) ──
-  const isFull = fmt === 'fullscreen';
+  // ── PANTALLA COMPLETA (inmersiva: hero + panel) ──
+  if (fmt === 'fullscreen' && !expanded) {
+    return (
+      <AnimatePresence>
+        {visible && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex flex-col bg-white"
+          >
+            {/* Hero */}
+            <div className="relative shrink-0" style={{ height: '42%' }}>
+              {popup.image ? (
+                <img src={popup.image} alt={popup.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full" style={{ backgroundImage: `linear-gradient(160deg, rgba(255,255,255,.18), rgba(0,0,0,.28)), linear-gradient(${themeColor},${themeColor})` }} />
+              )}
+              <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-white to-transparent" />
+              <CloseBtn dark />
+            </div>
+            {/* Panel */}
+            <div className="flex-1 overflow-y-auto">
+              <motion.div
+                initial={{ y: 24, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.06, type: 'spring', damping: 26, stiffness: 300 }}
+                className="max-w-md mx-auto w-full px-6 pt-1 pb-10 text-center"
+              >
+                <h3 className="text-2xl font-black text-slate-900 leading-tight">{popup.title}</h3>
+                {popup.body && <p className="text-[15px] text-slate-500 mt-2.5 leading-relaxed whitespace-pre-line">{popup.body}</p>}
+                <ActionBlock />
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  // ── MODAL (y barra/toast expandidos) ──
   return (
     <AnimatePresence>
       {visible && (
-        <div className={`fixed inset-0 z-[100] flex justify-center ${isFull ? '' : 'items-center p-4'}`}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -273,8 +326,8 @@ export default function MenuPopup({ businessId, themeColor = '#E8002D' }) {
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={close}
           />
-          <div className={`relative ${isFull ? 'w-full h-full' : 'w-full max-w-sm'}`}>
-            <Card fullscreen={isFull} />
+          <div className="relative w-full max-w-sm">
+            <Card fullscreen={false} />
           </div>
         </div>
       )}
