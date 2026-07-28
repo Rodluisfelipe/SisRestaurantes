@@ -19,9 +19,28 @@ const menuPopupSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 120 },
   body: { type: String, trim: true, maxlength: 600, default: '' },
   image: { type: String, default: null },
+  // Formato de presentación en el menú
+  format: {
+    type: String,
+    enum: ['modal', 'bar-top', 'bar-bottom', 'toast', 'fullscreen'],
+    default: 'modal'
+  },
   // Botón de acción (opcional)
   ctaText: { type: String, trim: true, maxlength: 40, default: '' },
   ctaUrl: { type: String, trim: true, maxlength: 500, default: '' },
+  // Formulario de captura de datos (opcional) — se muestra debajo de la imagen
+  form: {
+    enabled: { type: Boolean, default: false },
+    title: { type: String, trim: true, maxlength: 120, default: '' },
+    fields: [{
+      key: { type: String, enum: ['name', 'email', 'phone', 'birthday'], required: true },
+      label: { type: String, trim: true, maxlength: 40 },
+      required: { type: Boolean, default: false },
+      _id: false,
+    }],
+    submitText: { type: String, trim: true, maxlength: 40, default: 'Enviar' },
+    successMessage: { type: String, trim: true, maxlength: 200, default: '¡Gracias!' },
+  },
   // Estado / programación
   active: { type: Boolean, default: true },
   startsAt: { type: Date, default: null },
@@ -36,6 +55,7 @@ const menuPopupSchema = new mongoose.Schema({
   // Estadísticas
   views: { type: Number, default: 0 },
   clicks: { type: Number, default: 0 },
+  submissions: { type: Number, default: 0 },
 }, { timestamps: true });
 
 menuPopupSchema.index({ businessId: 1, active: 1 });

@@ -10,10 +10,28 @@ const FREQUENCY_LABELS = {
   always: 'Siempre',
 };
 
+const FORMATS = [
+  { id: 'modal', label: 'Modal centrado', preview: 'center' },
+  { id: 'bar-top', label: 'Barra arriba', preview: 'top' },
+  { id: 'bar-bottom', label: 'Barra abajo', preview: 'bottom' },
+  { id: 'toast', label: 'Toast esquina', preview: 'corner' },
+  { id: 'fullscreen', label: 'Pantalla completa', preview: 'full' },
+];
+
+const LEAD_FIELDS = [
+  { key: 'name', label: 'Nombre' },
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Teléfono' },
+  { key: 'birthday', label: 'Cumpleaños' },
+];
+
+const EMPTY_FIELDS = { name: { on: false, required: false }, email: { on: false, required: false }, phone: { on: false, required: false }, birthday: { on: false, required: false } };
+
 const EMPTY_FORM = {
   title: '',
   body: '',
   image: '',
+  format: 'modal',
   ctaText: '',
   ctaUrl: '',
   active: true,
@@ -21,6 +39,26 @@ const EMPTY_FORM = {
   delaySeconds: 1,
   startsAt: '',
   endsAt: '',
+  // formulario de captura
+  formEnabled: false,
+  formTitle: '',
+  formFields: { ...EMPTY_FIELDS },
+  submitText: 'Enviar',
+  successMessage: '¡Gracias! Te contactaremos pronto.',
+};
+
+// Mini preview del formato para el selector
+const FormatGlyph = ({ preview }) => {
+  const base = 'absolute bg-current rounded-sm';
+  return (
+    <div className="relative w-full h-9 rounded-md bg-slate-100 overflow-hidden text-slate-400">
+      {preview === 'center' && <span className={`${base} left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-5`} />}
+      {preview === 'top' && <span className={`${base} left-1 right-1 top-1 h-2`} />}
+      {preview === 'bottom' && <span className={`${base} left-1 right-1 bottom-1 h-2`} />}
+      {preview === 'corner' && <span className={`${base} right-1 bottom-1 w-5 h-4`} />}
+      {preview === 'full' && <span className={`${base} inset-1`} />}
+    </div>
+  );
 };
 
 const toInputDate = (d) => {
@@ -73,10 +111,15 @@ export default function AdminPopups() {
   };
 
   const openEdit = (p) => {
+    const fields = { ...EMPTY_FIELDS };
+    (p.form?.fields || []).forEach(f => {
+      if (fields[f.key]) fields[f.key] = { on: true, required: !!f.required };
+    });
     setForm({
       title: p.title || '',
       body: p.body || '',
       image: p.image || '',
+      format: p.format || 'modal',
       ctaText: p.ctaText || '',
       ctaUrl: p.ctaUrl || '',
       active: p.active !== false,
@@ -84,6 +127,11 @@ export default function AdminPopups() {
       delaySeconds: p.delaySeconds ?? 1,
       startsAt: toInputDate(p.startsAt),
       endsAt: toInputDate(p.endsAt),
+      formEnabled: !!p.form?.enabled,
+      formTitle: p.form?.title || '',
+      formFields: fields,
+      submitText: p.form?.submitText || 'Enviar',
+      successMessage: p.form?.successMessage || '¡Gracias! Te contactaremos pronto.',
     });
     setError('');
     setEditing(p);
@@ -97,11 +145,15 @@ export default function AdminPopups() {
     if (!form.title.trim()) { setError('El título es obligatorio'); return; }
     setSaving(true);
     setError('');
+    const formFields = LEAD_FIELDS
+      .filter(f => form.formFields[f.key]?.on)
+      .map(f => ({ key: f.key, label: f.label, required: !!form.formFields[f.key]?.required }));
     const payload = {
       businessId,
       title: form.title.trim(),
       body: form.body.trim(),
       image: form.image || null,
+      format: form.format,
       ctaText: form.ctaText.trim(),
       ctaUrl: form.ctaUrl.trim(),
       active: form.active,
@@ -109,6 +161,13 @@ export default function AdminPopups() {
       delaySeconds: Number(form.delaySeconds) || 0,
       startsAt: form.startsAt || null,
       endsAt: form.endsAt || null,
+      form: {
+        enabled: form.formEnabled,
+        title: form.formTitle.trim(),
+        fields: formFields,
+        submitText: form.submitText.trim() || 'Enviar',
+        successMessage: form.successMessage.trim() || '¡Gracias!',
+      },
     };
     try {
       if (editing && editing._id) {
@@ -143,6 +202,31 @@ export default function AdminPopups() {
     } catch {
       load();
     }
+  };
+
+  // ── Visor de contactos capturados ──
+  const [leadsPopup, setLeadsPopup] = useState(null);
+  const [leads, setLeads] = useState([]);
+  const [leadsLoading, setLeadsLoading] = useState(false);
+
+  const openLeads = async (p) => {
+    setLeadsPopup(p); setLeads([]); setLeadsLoading(true);
+    try {
+      const res = await api.get(`/menu-popups/${p._id}/leads?businessId=${businessId}`);
+      setLeads(Array.isArray(res.data) ? res.data : []);
+    } catch { setLeads([]); }
+    finally { setLeadsLoading(false); }
+  };
+
+  const exportLeadsCsv = async (p) => {
+    try {
+      const res = await api.get(`/menu-popups/${p._id}/leads?businessId=${businessId}&format=csv`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a');
+      a.href = url; a.download = `contactos-${p._id}.csv`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch {}
   };
 
   return (
@@ -207,12 +291,15 @@ export default function AdminPopups() {
                     </span>
                   </div>
                   {p.body && <p className="text-[13px] text-slate-500 line-clamp-1 mt-0.5">{p.body}</p>}
-                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-400 font-semibold">
-                    <span>{FREQUENCY_LABELS[p.frequency] || p.frequency}</span>
+                  <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-[11px] text-slate-400 font-semibold">
+                    <span>{FORMATS.find(f => f.id === p.format)?.label || 'Modal'}</span>
                     <span className="text-slate-300">·</span>
                     <span>👁 {(p.views || 0).toLocaleString()}</span>
                     <span>🖱 {(p.clicks || 0).toLocaleString()}</span>
                     <span className="text-blue-500">CTR {ctr}%</span>
+                    {p.form?.enabled && (
+                      <button onClick={() => openLeads(p)} className="text-fuchsia-600 hover:underline">📝 {(p.submissions || 0).toLocaleString()} contactos</button>
+                    )}
                   </div>
                 </div>
 
@@ -264,6 +351,23 @@ export default function AdminPopups() {
                 <ImageUploader value={form.image} onChange={(url) => set('image', url)} folder="popups" previewClassName="w-full h-32" previewFit="cover" />
               </div>
 
+              <div>
+                <label className="text-xs font-bold text-slate-500 block mb-1.5">Formato</label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                  {FORMATS.map(f => {
+                    const active = form.format === f.id;
+                    return (
+                      <button key={f.id} type="button" onClick={() => set('format', f.id)}
+                        className={`p-2 rounded-xl border-2 transition-all text-center ${active ? 'shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}
+                        style={active ? { borderColor: themeColor } : { borderColor: undefined }}>
+                        <FormatGlyph preview={f.preview} />
+                        <p className="text-[10px] font-bold text-slate-500 mt-1 leading-tight">{f.label}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-slate-500 block mb-1">Texto del botón</label>
@@ -299,6 +403,54 @@ export default function AdminPopups() {
                 </div>
               </div>
 
+              {/* Formulario de captura de datos */}
+              <div className="rounded-xl border border-slate-200 p-3.5 space-y-3">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <span className="text-sm font-bold text-slate-700">Recoger datos del cliente</span>
+                    <p className="text-[11px] text-slate-400">Muestra un formulario debajo del anuncio</p>
+                  </div>
+                  <input type="checkbox" checked={form.formEnabled} onChange={e => set('formEnabled', e.target.checked)} className="w-5 h-5 rounded" style={{ accentColor: themeColor }} />
+                </label>
+
+                {form.formEnabled && (
+                  <div className="space-y-3 pt-1">
+                    <input value={form.formTitle} onChange={e => set('formTitle', e.target.value)} maxLength={120} placeholder="Título del formulario (ej: Únete a nuestro club)" className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+
+                    <div className="space-y-1.5">
+                      {LEAD_FIELDS.map(f => {
+                        const cfg = form.formFields[f.key] || { on: false, required: false };
+                        return (
+                          <div key={f.key} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2">
+                            <label className="flex items-center gap-2 cursor-pointer flex-1">
+                              <input type="checkbox" checked={cfg.on} onChange={e => set('formFields', { ...form.formFields, [f.key]: { ...cfg, on: e.target.checked } })} className="w-4 h-4 rounded" style={{ accentColor: themeColor }} />
+                              <span className="text-sm font-semibold text-slate-600">{f.label}</span>
+                            </label>
+                            {cfg.on && (
+                              <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-slate-400 font-bold">
+                                <input type="checkbox" checked={cfg.required} onChange={e => set('formFields', { ...form.formFields, [f.key]: { ...cfg, required: e.target.checked } })} className="w-3.5 h-3.5 rounded" style={{ accentColor: themeColor }} />
+                                Obligatorio
+                              </label>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold text-slate-400 block mb-1">Texto del botón</label>
+                        <input value={form.submitText} onChange={e => set('submitText', e.target.value)} maxLength={40} placeholder="Enviar" className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-400 block mb-1">Mensaje de agradecimiento</label>
+                      <input value={form.successMessage} onChange={e => set('successMessage', e.target.value)} maxLength={200} placeholder="¡Gracias! Te contactaremos pronto." className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <label className="flex items-center gap-2.5 cursor-pointer">
                 <input type="checkbox" checked={form.active} onChange={e => set('active', e.target.checked)} className="w-4 h-4 rounded" style={{ accentColor: themeColor }} />
                 <span className="text-sm font-semibold text-slate-600">Activo (visible en el menú)</span>
@@ -312,6 +464,54 @@ export default function AdminPopups() {
               <button onClick={handleSave} disabled={saving} className="flex-1 py-3 rounded-xl text-white font-bold text-sm disabled:opacity-60" style={{ backgroundColor: themeColor }}>
                 {saving ? 'Guardando…' : editing._id ? 'Guardar cambios' : 'Crear anuncio'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Visor de contactos */}
+      {leadsPopup && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setLeadsPopup(null)}>
+          <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 shrink-0">
+              <div className="min-w-0">
+                <h2 className="font-black text-slate-800 truncate">Contactos</h2>
+                <p className="text-[11px] text-slate-400 truncate">{leadsPopup.title}</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {leads.length > 0 && (
+                  <button onClick={() => exportLeadsCsv(leadsPopup)} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs">
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                    CSV
+                  </button>
+                )}
+                <button onClick={() => setLeadsPopup(null)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100">
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </div>
+            <div className="overflow-y-auto p-4">
+              {leadsLoading ? (
+                <p className="py-12 text-center text-slate-400 text-sm">Cargando…</p>
+              ) : leads.length === 0 ? (
+                <p className="py-12 text-center text-slate-400 text-sm">Aún no hay contactos capturados.</p>
+              ) : (
+                <div className="space-y-2">
+                  {leads.map(l => (
+                    <div key={l._id} className="rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-bold text-slate-800 text-sm truncate">{l.name || l.email || l.phone || 'Sin nombre'}</p>
+                        <span className="text-[10px] text-slate-400 shrink-0">{new Date(l.createdAt).toLocaleDateString('es-CO')}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-[12px] text-slate-500">
+                        {l.email && <span>✉ {l.email}</span>}
+                        {l.phone && <span>📞 {l.phone}</span>}
+                        {l.birthday && <span>🎂 {l.birthday}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
