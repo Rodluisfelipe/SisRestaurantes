@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useBusinessConfig } from '../../Context/BusinessContext';
 import { X } from 'lucide-react';
 
-export default function POSCart({ cart, updateQuantity, removeFromCart, clearCart, onCheckout, onHoldOrder, heldOrders, onRecallHeldOrder, onDeleteHeldOrder, selectedTable, onClearTable, themeColor }) {
+export default function POSCart({ cart, updateQuantity, removeFromCart, clearCart, onCheckout, onHoldOrder, heldOrders, onRecallHeldOrder, onDeleteHeldOrder, selectedTable, onClearTable, openTab, onSendToTab, onPayTab, tabBusy, themeColor }) {
   const { businessConfig } = useBusinessConfig();
   const isHotel = businessConfig?.businessType === 'hotel';
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
@@ -30,10 +30,15 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
                 )}
               </div>
               {selectedTable && (
-                <button onClick={onClearTable} className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                  {tableLabel} {selectedTable.tableNumber} <X className="w-3 h-3 inline" />
-                </button>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <button onClick={onClearTable} className="flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    {tableLabel} {selectedTable.tableNumber} <X className="w-3 h-3 inline" />
+                  </button>
+                  {openTab && (
+                    <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Cuenta abierta</span>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -145,7 +150,7 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
       </div>
 
       {/* Footer / Checkout */}
-      {cart.length > 0 && (
+      {cart.length > 0 ? (
         <div className="border-t border-slate-200/70 bg-white p-4 flex-shrink-0">
           <div className="flex items-end justify-between mb-3">
             <span className="text-[13px] font-semibold text-slate-400">{itemCount} artículo{itemCount !== 1 ? 's' : ''}</span>
@@ -154,16 +159,60 @@ export default function POSCart({ cart, updateQuantity, removeFromCart, clearCar
               <p className="text-[32px] font-black text-slate-900 leading-none tabular-nums mt-0.5">${total.toLocaleString()}</p>
             </div>
           </div>
+          {selectedTable && onSendToTab ? (
+            <div className="flex gap-2">
+              <button
+                onClick={onSendToTab}
+                disabled={tabBusy}
+                className="flex-1 py-4 rounded-2xl font-black text-[14px] border-2 bg-white active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
+                style={{ borderColor: themeColor, color: themeColor }}
+              >
+                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14" /></svg>
+                {openTab ? 'Sumar a cuenta' : 'Abrir cuenta'}
+              </button>
+              <button
+                onClick={() => onCheckout(total)}
+                className="flex-1 py-4 rounded-2xl text-white font-black text-[14px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
+                style={{ backgroundColor: themeColor, boxShadow: `0 10px 26px -10px ${themeColor}` }}
+              >
+                <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" /><path d="M1 10h22" /></svg>
+                Cobrar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => onCheckout(total)}
+              className="w-full py-4 rounded-2xl text-white font-black text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              style={{ backgroundColor: themeColor, boxShadow: `0 10px 26px -10px ${themeColor}` }}
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" /><path d="M1 10h22" /></svg>
+              Cobrar ${total.toLocaleString()}
+            </button>
+          )}
+        </div>
+      ) : (openTab && selectedTable) ? (
+        <div className="border-t border-slate-200/70 bg-white p-4 flex-shrink-0">
+          <div className="flex items-end justify-between mb-3">
+            <div>
+              <p className="text-[10px] text-emerald-600 font-black uppercase tracking-widest">Cuenta {tableLabel} {selectedTable.tableNumber}</p>
+              <p className="text-[13px] text-slate-400 font-semibold mt-0.5">{(openTab.items || []).reduce((s, i) => s + i.quantity, 0)} artículo(s) · Orden #{openTab.orderNumber}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Total cuenta</p>
+              <p className="text-[30px] font-black text-slate-900 leading-none tabular-nums mt-0.5">${(openTab.totalAmount || 0).toLocaleString()}</p>
+            </div>
+          </div>
           <button
-            onClick={() => onCheckout(total)}
+            onClick={() => onPayTab(openTab)}
             className="w-full py-4 rounded-2xl text-white font-black text-[15px] shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             style={{ backgroundColor: themeColor, boxShadow: `0 10px 26px -10px ${themeColor}` }}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" /><path d="M1 10h22" /></svg>
-            Cobrar ${total.toLocaleString()}
+            Cobrar {tableLabel} {selectedTable.tableNumber}
           </button>
+          <p className="text-[11px] text-slate-400 text-center mt-2">Agrega productos y toca "Sumar a cuenta" para seguir acumulando</p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

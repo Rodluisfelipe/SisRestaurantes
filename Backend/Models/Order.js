@@ -111,6 +111,11 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Cuenta abierta de mesa (POS): la orden acumula ítems y se cobra al final
+  posOpenTab: {
+    type: Boolean,
+    default: false
+  },
   finalAmount: {
     type: Number,
     required: true

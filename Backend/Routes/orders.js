@@ -506,6 +506,8 @@ router.post("/", (req, res, next) => {
     // Determine initial status based on ordering channel
     const isInApp = orderChannel === 'inapp';
     const isPOS = orderChannel === 'pos';
+    // Cuenta abierta de mesa: solo para POS. No cobra al crear; acumula hasta pay-tab.
+    const isOpenTab = isPOS && !!req.body.posOpenTab;
     const isAdmin = orderChannel === 'admin';
     const initialStatus = isPOS ? ORDER_STATUS.CONFIRMED : isAdmin ? ORDER_STATUS.CONFIRMED : isInApp ? ORDER_STATUS.PENDING_PAYMENT : ORDER_STATUS.PENDING;
     const customerToken = isInApp ? generateCustomerToken() : null;
@@ -527,6 +529,7 @@ router.post("/", (req, res, next) => {
       couponId: coupon ? coupon._id : null,
       discountAmount,
       tipAmount,
+      posOpenTab: isOpenTab,
       finalAmount,
       // In-app ordering fields
       orderChannel: orderChannel || 'whatsapp',
@@ -588,8 +591,9 @@ router.post("/", (req, res, next) => {
       logger.warn('Failed to update product stock for order', { error: stockErr.message, orderId: savedOrder._id });
     }
 
-    // POS: Auto-register sale in open cash register (only for POS orders) — atomic $push
-    if (orderChannel === 'pos') {
+    // POS: Auto-register sale in open cash register (only for POS orders) — atomic $push.
+    // Las cuentas abiertas (posOpenTab) NO cobran al crear: se registran al cobrar la mesa (pay-tab).
+    if (orderChannel === 'pos' && !isOpenTab) {
       try {
         const CashRegister = require('../Models/CashRegister');
         await CashRegister.findOneAndUpdate(
@@ -1183,6 +1187,30 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
         }
       }
 
+      // Red de seguridad: cuenta abierta POS completada sin pasar por pay-tab.
+      // pay-tab pone posOpenTab=false y saca la orden de Order, así que esto solo
+      // se dispara si se cerró la cuenta desde Órdenes sin cobrar → registrar la venta.
+      if (updatedOrder.orderChannel === 'pos' && updatedOrder.posOpenTab) {
+        try {
+          const CashRegister = require('../Models/CashRegister');
+          await CashRegister.findOneAndUpdate(
+            { businessId: updatedOrder.businessId, status: 'open' },
+            { $push: { movements: {
+              type: 'sale',
+              amount: updatedOrder.finalAmount || updatedOrder.totalAmount,
+              paymentMethod: updatedOrder.paymentMethod || 'cash',
+              orderId: updatedOrder._id,
+              orderNumber: updatedOrder.orderNumber,
+              orderChannel: 'pos',
+              description: `Venta POS #${updatedOrder.orderNumber} - ${updatedOrder.customerName}`,
+              createdAt: new Date()
+            }}}
+          );
+        } catch (cashErr) {
+          logger.warn('Failed to register POS tab sale on completion', { error: cashErr.message, orderId: updatedOrder._id });
+        }
+      }
+
       try {
         // Convert Mongoose document to plain object
         const orderData = updatedOrder.toObject();
@@ -1389,6 +1417,86 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
     res.json(order);
   } catch (error) {
     logger.error('Error adding items to order', { error: error.message, orderId: req.params.id });
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Cobrar una cuenta abierta de mesa (POS): aplica pago + propina + descuento,
+// registra la venta en la caja (canal 'pos', una sola vez) y completa la orden.
+router.patch("/:id/pay-tab", tenantAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
+    const order = await Order.findOne({
+      _id: id,
+      ...(tenantBizId ? { businessId: tenantBizId } : {})
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    if (order.orderChannel !== 'pos') {
+      return res.status(400).json({ message: "Solo se pueden cobrar cuentas del POS" });
+    }
+    if (['completed', 'cancelled', 'delivered'].includes(order.status)) {
+      return res.status(400).json({ message: "Esta cuenta ya fue cerrada" });
+    }
+
+    const paymentMethod = req.body.paymentMethod || 'cash';
+    const tipAmount = Math.max(0, Math.round(parseFloat(req.body.tipAmount) || 0));
+    const base = (order.totalAmount || 0) + (order.deliveryFee || 0);
+    const manualDiscount = Math.max(0, Math.round(parseFloat(req.body.discountAmount) || 0));
+    const discountAmount = Math.min(manualDiscount, base);
+    const finalAmount = Math.max(0, base - discountAmount + tipAmount);
+
+    order.paymentMethod = paymentMethod;
+    order.tipAmount = tipAmount;
+    order.discountAmount = discountAmount;
+    order.finalAmount = finalAmount;
+    order.posOpenTab = false;
+    if (req.body.posPaymentInfo) order.posPaymentInfo = req.body.posPaymentInfo;
+    order.status = 'completed';
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({ status: 'completed', timestamp: new Date(), note: 'Cuenta cobrada (POS)' });
+    order.updatedAt = new Date();
+    await order.save();
+
+    // Registrar la venta POS en la caja abierta (una sola vez, canal 'pos')
+    try {
+      const CashRegister = require('../Models/CashRegister');
+      await CashRegister.findOneAndUpdate(
+        { businessId: order.businessId, status: 'open' },
+        { $push: { movements: {
+          type: 'sale',
+          amount: finalAmount,
+          paymentMethod: paymentMethod || 'cash',
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          orderChannel: 'pos',
+          description: `Venta POS #${order.orderNumber} - ${order.customerName}`,
+          createdAt: new Date()
+        }}}
+      );
+    } catch (cashErr) {
+      logger.warn('Failed to register tab sale in cash register', { error: cashErr.message, orderId: order._id });
+    }
+
+    // Mover a CompletedOrder + emitir (registerCashSale salta POS, sin doble conteo)
+    try {
+      const { moveOrderToCompleted } = require('../services/orderCompletionService');
+      await moveOrderToCompleted(order);
+    } catch (moveErr) {
+      logger.warn('Failed to move paid tab to completed', { error: moveErr.message, orderId: order._id });
+      socketService.emitToBusiness(order.businessId.toString(), "order_updated", order);
+    }
+
+    res.json({ success: true, order });
+  } catch (error) {
+    logger.error('Error paying tab', { error: error.message, orderId: req.params.id });
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });

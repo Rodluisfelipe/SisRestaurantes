@@ -17,7 +17,8 @@ const ORDER_TYPE_ICONS = {
 
 const QUICK_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
 
-export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister, preselectedTable, isOnline = true }) {
+export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrderComplete, cashRegister, preselectedTable, isOnline = true, tabOrder = null }) {
+  const isTab = !!tabOrder;
   const isHotel = businessConfig?.businessType === 'hotel';
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
   const ORDER_TYPES = [
@@ -52,7 +53,10 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
     }
   }, [businessId]);
 
-  const subtotal = useMemo(() => cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0), [cart]);
+  const subtotal = useMemo(() => {
+    if (isTab) return tabOrder.totalAmount || 0; // total autoritativo de la cuenta
+    return cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0);
+  }, [cart, isTab, tabOrder]);
   const deliveryFee = orderType === 'delivery' ? (selectedZone?.pricing?.displayPrice || 0) : 0;
   const discountAmount = Math.min(parseInt(discount) || 0, subtotal);
   const tipAmount = Math.round(subtotal * tipPct / 100);
@@ -81,6 +85,30 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
     if (submitting || !canSubmit || !canSubmitDelivery) return;
     setSubmitting(true);
     setError('');
+
+    // Cobrar cuenta abierta de mesa: no crea orden nueva, cierra la existente
+    if (isTab) {
+      try {
+        const res = await api.patch(`/orders/${tabOrder._id}/pay-tab`, {
+          businessId,
+          paymentMethod,
+          tipAmount: tipAmount || 0,
+          discountAmount: discountAmount || 0,
+          posPaymentInfo: paymentMethod === 'cash' ? { cashReceived: cashNum, change } : undefined,
+        });
+        const order = res.data?.order || res.data;
+        order._posExtra = {
+          paymentMethod,
+          cashReceived: paymentMethod === 'cash' ? cashNum : null,
+          change: paymentMethod === 'cash' ? change : null,
+        };
+        onOrderComplete(order);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Error al cobrar la cuenta');
+        setSubmitting(false);
+      }
+      return;
+    }
 
     try {
       const items = cart.map(item => ({
@@ -171,7 +199,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
         {/* Header */}
         <div className="flex items-center justify-between px-4 lg:px-6 py-3 border-b border-slate-100 shrink-0">
           <div className="flex items-center gap-2 lg:gap-3">
-            <h2 className="text-base lg:text-lg font-bold text-slate-800">Cobrar</h2>
+            <h2 className="text-base lg:text-lg font-bold text-slate-800">{isTab ? `Cobrar ${isHotel ? 'Hab.' : 'Mesa'} ${tabOrder.tableNumber}` : 'Cobrar'}</h2>
             <span className="text-xl lg:text-2xl font-black" style={{ color: themeColor }}>${total.toLocaleString()}</span>
             {orderType === 'delivery' && deliveryFee > 0 && (
               <span className="text-xs text-slate-400 hidden sm:inline">
@@ -189,7 +217,7 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
           {/* LEFT COLUMN — Order details */}
           <div className="p-4 lg:p-5 space-y-4 overflow-y-auto border-b lg:border-b-0 lg:border-r border-slate-100">
             {/* Order type */}
-            <div>
+            {!isTab && <div>
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Tipo de orden</p>
               <div className="grid grid-cols-3 gap-2">
                 {ORDER_TYPES.map(t => (
@@ -208,10 +236,18 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
                   </button>
                 ))}
               </div>
-            </div>
+            </div>}
+
+            {/* Cuenta abierta: resumen de la mesa */}
+            {isTab && (
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cuenta de {isHotel ? 'Hab.' : 'Mesa'} {tabOrder.tableNumber}</p>
+                <p className="text-sm text-slate-600 mt-1">{cart.reduce((s, i) => s + i.quantity, 0)} artículo(s) acumulado(s) · Orden #{tabOrder.orderNumber}</p>
+              </div>
+            )}
 
             {/* Order-type specific fields */}
-            {orderType === 'inSite' && (
+            {!isTab && orderType === 'inSite' && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
@@ -224,14 +260,14 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
               </div>
             )}
 
-            {orderType === 'takeaway' && (
+            {!isTab && orderType === 'takeaway' && (
               <div>
                 <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente (opcional)</label>
                 <input type="text" value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Nombre" className="w-full px-3 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent" style={{ '--tw-ring-color': `${themeColor}40` }} />
               </div>
             )}
 
-            {orderType === 'delivery' && (
+            {!isTab && orderType === 'delivery' && (
               <div className="space-y-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Datos de entrega</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

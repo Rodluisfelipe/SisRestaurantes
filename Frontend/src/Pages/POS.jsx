@@ -42,6 +42,8 @@ export default function POS() {
   const [activeTab, setActiveTab] = useState('products'); // products, tables, orders
   const [activeOrders, setActiveOrders] = useState([]);
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [payingTab, setPayingTab] = useState(null); // orden de cuenta abierta que se está cobrando
+  const [tabBusy, setTabBusy] = useState(false);
 
   // Order notifications (web orders arriving)
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
@@ -72,17 +74,19 @@ export default function POS() {
   }, [heldOrders, resolvedBusinessId]);
 
   // Fetch active orders (for table occupancy)
+  const refreshActiveOrders = useCallback(() => {
+    if (!resolvedBusinessId) return;
+    api.get(`/orders?businessId=${resolvedBusinessId}&status=confirmed,preparing,ready&_t=${Date.now()}`)
+      .then(res => setActiveOrders(Array.isArray(res.data) ? res.data : []))
+      .catch(() => {});
+  }, [resolvedBusinessId]);
+
   useEffect(() => {
     if (!resolvedBusinessId) return;
-    const fetchActive = () => {
-      api.get(`/orders?businessId=${resolvedBusinessId}&status=confirmed,preparing,ready&_t=${Date.now()}`)
-        .then(res => setActiveOrders(Array.isArray(res.data) ? res.data : []))
-        .catch(() => {});
-    };
-    fetchActive();
-    const interval = setInterval(fetchActive, 15000);
+    refreshActiveOrders();
+    const interval = setInterval(refreshActiveOrders, 15000);
     return () => clearInterval(interval);
-  }, [resolvedBusinessId]);
+  }, [resolvedBusinessId, refreshActiveOrders]);
 
   // Fetch products, categories, and cash register (with offline fallback)
   useEffect(() => {
@@ -275,6 +279,71 @@ export default function POS() {
     }
   }, [clearCart, resolvedBusinessId]);
 
+  // Enviar el carrito a la cuenta abierta de la mesa (crear o acumular). No cobra.
+  const handleSendToTab = useCallback(async () => {
+    if (cart.length === 0 || !selectedTable || tabBusy) return;
+    setTabBusy(true);
+    try {
+      const existing = activeOrders.find(o => o.posOpenTab && String(o.tableNumber) === String(selectedTable.tableNumber));
+      if (existing) {
+        // Acumular: add-items recalcula con base + toppings, así que enviamos precio base
+        const items = cart.map(item => ({
+          productId: item._id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          selectedToppings: item.selectedToppings || [],
+        }));
+        await api.patch(`/orders/${existing._id}/add-items`, { businessId: resolvedBusinessId, items });
+      } else {
+        // Crear cuenta: create usa totalAmount directo, enviamos precio con toppings incluidos
+        const items = cart.map(item => ({
+          productId: item._id,
+          name: item.name,
+          price: item.totalPrice || item.price,
+          quantity: item.quantity,
+          selectedToppings: item.selectedToppings || [],
+        }));
+        const subtotal = cart.reduce((s, i) => s + (i.totalPrice || i.price || 0) * i.quantity, 0);
+        await api.post('/orders', {
+          businessId: resolvedBusinessId,
+          customerName: `${businessConfig?.businessType === 'hotel' ? 'Hab.' : 'Mesa'} ${selectedTable.tableNumber}`,
+          orderType: 'inSite',
+          tableNumber: String(selectedTable.tableNumber),
+          items,
+          totalAmount: String(subtotal),
+          orderChannel: 'pos',
+          posOpenTab: true,
+        });
+      }
+      setCart([]);
+      setShowMobileCart(false);
+      refreshActiveOrders();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Error al enviar a la cuenta');
+    } finally {
+      setTabBusy(false);
+    }
+  }, [cart, selectedTable, activeOrders, tabBusy, resolvedBusinessId, businessConfig, refreshActiveOrders]);
+
+  // Abrir el checkout en modo cobro de cuenta
+  const handlePayTab = useCallback((tab) => {
+    setShowMobileCart(false);
+    setPayingTab(tab);
+  }, []);
+
+  // Tras cobrar la cuenta
+  const handleTabPaid = useCallback((order) => {
+    setPayingTab(null);
+    setLastOrder(order);
+    setSelectedTable(null);
+    setCart([]);
+    refreshActiveOrders();
+    api.get(`/cash-register/current?businessId=${resolvedBusinessId}`)
+      .then(res => setCashRegister(res.data))
+      .catch(() => {});
+  }, [refreshActiveOrders, resolvedBusinessId]);
+
   // Cash register opened
   const handleCashOpened = useCallback((register) => {
     setCashRegister(register);
@@ -319,6 +388,11 @@ export default function POS() {
 
   const cartItemCount = cart.reduce((s, i) => s + i.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + (item.totalPrice || item.price || 0) * item.quantity, 0);
+
+  // Cuenta abierta de la mesa seleccionada (si existe)
+  const openTab = selectedTable
+    ? activeOrders.find(o => o.posOpenTab && String(o.tableNumber) === String(selectedTable.tableNumber))
+    : null;
 
   return (
     <div className="h-screen flex flex-col bg-slate-100 overflow-hidden select-none">
@@ -421,6 +495,10 @@ export default function POS() {
             onDeleteHeldOrder={deleteHeldOrder}
             selectedTable={selectedTable}
             onClearTable={() => setSelectedTable(null)}
+            openTab={openTab}
+            onSendToTab={handleSendToTab}
+            onPayTab={handlePayTab}
+            tabBusy={tabBusy}
             themeColor={themeColor}
           />
         </div>
@@ -480,6 +558,10 @@ export default function POS() {
                 onDeleteHeldOrder={deleteHeldOrder}
                 selectedTable={selectedTable}
                 onClearTable={() => setSelectedTable(null)}
+                openTab={openTab}
+                onSendToTab={handleSendToTab}
+                onPayTab={handlePayTab}
+                tabBusy={tabBusy}
                 themeColor={themeColor}
               />
             </motion.div>
@@ -496,6 +578,18 @@ export default function POS() {
           onOrderComplete={handleOrderComplete}
           cashRegister={cashRegister}
           preselectedTable={selectedTable}
+          isOnline={offline.isOnline}
+        />
+      )}
+
+      {payingTab && (
+        <POSCheckoutModal
+          cart={(payingTab.items || []).map((it, i) => ({ ...it, uniqueId: `tab-${i}`, totalPrice: it.price, quantity: it.quantity }))}
+          businessConfig={businessConfig}
+          tabOrder={payingTab}
+          onClose={() => setPayingTab(null)}
+          onOrderComplete={handleTabPaid}
+          cashRegister={cashRegister}
           isOnline={offline.isOnline}
         />
       )}
