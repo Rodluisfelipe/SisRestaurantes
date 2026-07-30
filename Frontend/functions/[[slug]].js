@@ -14,7 +14,21 @@
 // NOTE: Cloudflare Pages Functions cannot use Vite imports.
 // If the backend URL changes, update this fallback AND the VITE_API_URL env var.
 const API_BASE = (typeof process !== 'undefined' && process.env?.API_BASE_URL) || 'https://159-203-136-199.nip.io/api';
+const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
 const SITE_ORIGIN = 'https://menuby.tech';
+
+// Pre-render ligero del menú para USUARIOS (no solo bots): inyecta un splash con
+// la marca del negocio en el HTML inicial para que pinte al instante; el SPA lo
+// reemplaza al montar. Poner en false para desactivarlo por completo.
+const PRERENDER_MENU_FOR_USERS = true;
+
+// Rutas de un solo segmento que NO son negocios (evita un fetch innecesario).
+// Si se escapa alguna, igual cae con gracia al SPA (el fetch del negocio da 404).
+const RESERVED_SLUGS = new Set([
+  'login', 'register', 'features', 'pricing', 'demo', 'contact', 'blog',
+  'restaurantes', 'mesero', 'crew', 'favoritos', 'pedidos', 'checkout',
+  'pago', 'payment', 'not-found', '404', 'terms', 'privacy',
+]);
 
 // Known crawler user agents
 const CRAWLER_PATTERNS = [
@@ -597,6 +611,82 @@ function buildMetaHtml(business, slug, products, categories) {
 </html>`;
 }
 
+// Splash con la marca del negocio (estilos inline: aún no cargó Tailwind).
+// Imita a SplashScreen.jsx para que la transición al montar React sea fluida.
+function buildSplashDiv(name, theme, logo) {
+  const safeName = escapeHtml(name || '');
+  const logoHtml = logo
+    ? `<img src="${escapeHtml(logo)}" alt="${safeName}" style="width:100%;height:100%;object-fit:cover"/>`
+    : `<span style="font-size:46px;line-height:1">🍽️</span>`;
+  return `<div id="mb-splash" style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#fff;font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif">`
+    + `<div style="width:104px;height:104px;border-radius:22px;overflow:hidden;box-shadow:0 14px 44px -10px rgba(0,0,0,.22);border:2px solid ${theme}33;background:${theme}14;display:flex;align-items:center;justify-content:center">${logoHtml}</div>`
+    + (safeName ? `<div style="margin-top:18px;font-weight:800;font-size:19px;color:#1f2937;letter-spacing:-.01em">${safeName}</div>` : '')
+    + `<div style="margin-top:20px;width:32px;height:32px;border:3px solid ${theme}22;border-top-color:${theme};border-radius:50%;animation:mbspin .7s linear infinite"></div>`
+    + `<style>@keyframes mbspin{to{transform:rotate(360deg)}}</style>`
+    + `</div>`;
+}
+
+// Inyecta el splash + título/theme del negocio en el index.html del SPA.
+// Devuelve null si no encuentra el punto de anclaje (para no romper nada).
+function injectMenuShell(html, business) {
+  try {
+    const rootTag = '<div id="root"></div>';
+    if (html.indexOf(rootTag) === -1) return null;
+    const name = business.businessName || 'Menú';
+    const rawTheme = (business.theme && business.theme.buttonColor) || '';
+    const theme = /^#[0-9a-fA-F]{6}$/.test(rawTheme) ? rawTheme : '#E31E24';
+    let logo = business.logo || '';
+    if (logo && !/^https?:\/\//i.test(logo)) logo = API_ORIGIN + logo;
+
+    let out = html.replace(rootTag, `<div id="root">${buildSplashDiv(name, theme, logo)}</div>`);
+    out = out.replace(/<title>[\s\S]*?<\/title>/, `<title>${escapeHtml(name)} — Menú</title>`);
+    out = out.replace(/<meta name="theme-color" content="[^"]*"\s*\/>/, `<meta name="theme-color" content="${escapeHtml(theme)}" />`);
+    return out;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Enhancer para usuarios en la página del menú: entrega el SPA con el splash
+// de marca ya pintado. Ante cualquier duda o fallo, cae al SPA normal.
+async function enhanceMenuForUser(context, pathname) {
+  if (!PRERENDER_MENU_FOR_USERS) return context.next();
+
+  const seg = pathname.split('/').filter(Boolean);
+  if (seg.length !== 1) return context.next(); // solo la página del menú (/:slug)
+  const slug = seg[0];
+  if (slug.length < 2 || slug.length > 50) return context.next();
+  if (RESERVED_SLUGS.has(slug) || LANDING_PAGES['/' + slug]) return context.next();
+
+  try {
+    const shellPromise = context.next(); // index.html del SPA (fallback de Pages)
+    const bizRes = await fetch(`${API_BASE}/business-config/by-slug/${slug}`, {
+      headers: { Accept: 'application/json' },
+      cf: { cacheTtl: 300 },
+    });
+    const shell = await shellPromise;
+
+    if (!bizRes.ok) return shell; // no es un negocio → SPA normal
+    const ct = shell.headers.get('content-type') || '';
+    if (!ct.includes('text/html')) return shell;
+
+    const business = await bizRes.json();
+    if (!business || !business._id) return shell;
+
+    const html = await shell.text();
+    const enhanced = injectMenuShell(html, business);
+    return new Response(enhanced || html, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html;charset=UTF-8',
+        'Cache-Control': 'public, max-age=0, s-maxage=60',
+      },
+    });
+  } catch (e) {
+    return context.next();
+  }
+}
+
 export async function onRequest(context) {
   const url = new URL(context.request.url);
   const pathname = url.pathname;
@@ -627,9 +717,10 @@ export async function onRequest(context) {
     return context.next();
   }
 
-  // Only intercept for crawlers
+  // Usuarios (no bots): en la página del menú, servir el SPA con el splash de
+  // marca ya pintado (pre-render ligero). El resto de rutas pasan directo.
   if (!isCrawler(userAgent)) {
-    return context.next();
+    return enhanceMenuForUser(context, pathname);
   }
 
   // Pre-render landing pages for crawlers
