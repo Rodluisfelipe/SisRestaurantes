@@ -26,13 +26,15 @@ const Footer = () => {
       title: 'Funcionalidades',
       links: [
         { name: 'Menú Digital con QR', to: '/features' },
-        { name: 'Pedidos a Domicilio', to: '/features' },
+        { name: 'Punto de Venta (POS)', to: '/features' },
         { name: 'Pantalla de Cocina', to: '/features' },
+        { name: 'Impresión de Comandas', to: '/features' },
+        { name: 'Pedidos a Domicilio', to: '/features' },
         { name: 'Pagos en Línea', to: '/features' },
-        { name: 'Zonas de Entrega', to: '/features' },
-        { name: 'Notificaciones Push', to: '/features' },
-        { name: 'Reportes de Ventas', to: '/features' },
+        { name: 'Multi-sucursal', to: '/features' },
+        { name: 'Reservas', to: '/features' },
         { name: 'WhatsApp Integrado', to: '/features' },
+        { name: 'Reportes de Ventas', to: '/features' },
       ],
     },
     {
@@ -85,7 +87,7 @@ const Footer = () => {
               </span>
             </Link>
             <p className="text-stone-500 text-sm leading-relaxed mb-5 sm:mb-6 max-w-xs">
-              La plataforma #1 de menú digital para restaurantes en Colombia. Sin comisiones, sin complicaciones. Más de 500 negocios confían en nosotros.
+              El sistema completo para restaurantes en Colombia: menú digital, POS, cocina y domicilios. 0% comisiones. Más de 500 negocios confían en nosotros.
             </p>
             <a
               href="https://wa.me/573028181520"

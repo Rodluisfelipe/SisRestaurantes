@@ -6,7 +6,9 @@ import {
   Bell, QrCode, UtensilsCrossed, MapPin, Gift, ShieldCheck, Zap, Users, CreditCard,
   Palette, CalendarCheck, Printer, Coffee, Pizza, Beef, IceCreamCone, Croissant,
   Wine, Sandwich, ChefHat, Soup, TrendingUp, Sparkles,
+  Store, Nfc, Calculator, MessageCircle, Receipt, WifiOff,
 } from 'lucide-react';
+import api from '../../services/api';
 import useLandingSEO from '../../hooks/useLandingSEO';
 
 /* ===============================================================
@@ -382,8 +384,9 @@ function DashboardMockup() {
 /* === DATA === */
 const FAQ_DATA = [
   { q: '¿Necesito tarjeta de crédito para empezar?', a: 'No. El plan Gratis es completamente gratis, sin tarjeta ni prueba temporal. Solo creas tu cuenta y empiezas.' },
-  { q: '¿Cuánto se demora configurar mi menú?', a: 'En promedio 5 minutos. Solo necesitas tu logo, los nombres de tus productos y los precios. Puedes agregar fotos después.' },
-  { q: '¿Funciona sin internet en el restaurante?', a: 'El menú del cliente funciona con la conexión del celular del cliente. Tu panel de admin necesita internet, pero tiene modo offline para emergencias.' },
+  { q: '¿Cuánto se demora configurar mi menú?', a: '5 minutos si lo haces tú. Y si no tienes tiempo, mándanos tu carta por WhatsApp — foto, PDF o como la tengas — y te la montamos gratis en menos de 24 horas.' },
+  { q: '¿Funciona sin internet en el restaurante?', a: 'Sí. El POS tiene modo offline: sigues cobrando y registrando ventas sin conexión, y todo se sincroniza solo cuando vuelve el internet.' },
+  { q: '¿Sirve para varias sedes?', a: 'Sí. Con multi-sucursal compartes el menú entre sedes, cada una tiene su panel y tú ves todo consolidado desde una sola cuenta.' },
   { q: '¿Cobran comisión por pedido?', a: 'Jamás. Todos los planes tienen 0% de comisión. Pagas una tarifa fija mensual y cada peso que vendes es tuyo.' },
   { q: '¿Puedo cancelar en cualquier momento?', a: 'Sí. Sin contratos, sin penalidades. Tu cuenta queda activa en plan Gratis y no pierdes tus datos.' },
   { q: '¿Funciona con impresoras térmicas?', a: 'Sí. Menuby tiene Autoprint: los pedidos se imprimen automáticamente en tu impresora térmica. Compatible con las principales marcas.' },
@@ -513,7 +516,7 @@ const PLANS = [
   { id: 'free', name: 'Gratis', desc: '20 productos · 30 pedidos/mes', monthly: 0, quarterly: 0, semiannual: 0, annual: 0, popular: false, features: ['Menú digital con QR', '5 categorías, 5 mesas', 'Carrito básico', 'Logo y portada', '1 zona de entrega'], cta: 'Empezar gratis' },
   { id: 'starter', name: 'Starter', desc: '60 productos · 350 pedidos/mes', monthly: 39900, quarterly: 37900, semiannual: 35900, annual: 34900, popular: false, features: ['Todo de Gratis', 'Push notifications', 'Zonas de entrega ilimitadas', 'Toppings y extras', 'KDS básico + Autoprint'], cta: 'Comenzar con Starter' },
   { id: 'pro', name: 'Pro', desc: 'Ilimitado en todo', monthly: 59900, quarterly: 56900, semiannual: 52900, annual: 49900, popular: true, features: ['Todo de Starter', 'Pedidos ilimitados', 'Reservas y recordatorios', 'Lealtad con niveles', 'Analytics completo + IA'], cta: 'Elegir Pro' },
-  { id: 'promax', name: 'Pro Max', desc: 'Lo mejor de Menuby', monthly: 89900, quarterly: 84900, semiannual: 79900, annual: 74900, popular: false, features: ['Todo de Pro', 'Soporte prioritario', 'Acceso anticipado', 'Eventos exclusivos', 'Tutoriales premium'], cta: 'Ir con Pro Max' },
+  { id: 'promax', name: 'Pro Max', desc: 'Para operaciones serias y multi-sede', monthly: 89900, quarterly: 84900, semiannual: 79900, annual: 74900, popular: false, features: ['Todo de Pro', 'POS completo: caja, cuenta por mesa y modo offline', 'Webapp de mesero', 'Multi-sucursal con panel consolidado', 'Campañas masivas de WhatsApp', 'Soporte prioritario'], cta: 'Ir con Pro Max' },
 ];
 
 const CYCLES = [
@@ -543,17 +546,37 @@ const CUSTOMERS = [
   { name: 'Caprichosos', logo: '/customers/caprichosos.webp' },
 ];
 
-/* Features — first is the flagship (big bento cell), rest fill the grid */
+/* Features — first is the flagship (big bento cell), rest fill the grid.
+   Diez módulos: POS y KDS al frente (es lo que nos separa de un menú QR). */
 const FEATURES = [
+  { icon: Receipt, label: 'Punto de venta', title: 'Tu caja, tus mesas y el cuadre sin Excel', desc: 'Apertura y cierre de caja, ventas POS y web en un solo lugar, cuenta abierta por mesa y propina o descuento al cobrar. Funciona incluso sin internet.', color: '#0E7A4F', details: ['Apertura, cierre y movimientos', 'Cuenta abierta por mesa', 'Modo offline con sincronización', 'Webapp de mesero incluida'] },
+  { icon: Monitor, label: 'Pantalla de cocina', title: 'Cocina sin gritos ni papeles', desc: 'Timers, prioridad automática y botón para marcar como listo que avisa al cliente.', color: '#0891B2', details: ['Timers en vivo', 'Prioridad automática', 'Multi-pantalla'] },
+  { icon: Printer, label: 'Autoprint', title: 'Tus comandas se imprimen solas', desc: 'Cada pedido sale automático: comanda a cocina y recibo al cliente, sin tocar nada.', color: '#17120F', details: ['Térmicas 44 a 80mm', 'Reconexión automática', 'App para Windows'] },
   { icon: QrCode, label: 'Menú digital', title: 'Tu carta completa en el celular de cada cliente', desc: 'Categorías, fotos en alta resolución, toppings, buscador y favoritos — todo desde un QR en la mesa.', color: '#E8002D', details: ['Categorías ilimitadas', 'Toppings y extras', 'Búsqueda y favoritos', 'QR por mesa'] },
   { icon: Bell, label: 'Tiempo real', title: 'Cada pedido llega al instante', desc: 'Con sonido, notificación push y el comprobante de pago adjunto. En sitio o a domicilio.', color: '#FF5A1F', details: ['Push al admin y cliente', 'Seguimiento en vivo', 'Comprobante de pago'] },
-  { icon: Monitor, label: 'Pantalla de cocina', title: 'Cocina sin gritos ni papeles', desc: 'Timers, prioridad automática y botón para marcar como listo que avisa al cliente.', color: '#0891B2', details: ['Timers en vivo', 'Autoprint', 'Multi-pantalla'] },
+  { icon: MapPin, label: 'Delivery propio', title: 'Domicilios sin intermediarios', desc: 'Zonas con tarifas propias, tracking en vivo y domiciliarios propios o empresas aliadas. 0% comisión.', color: '#7C3AED', details: ['Zonas con tarifa propia', 'Tracking en vivo', 'Reasignación automática'] },
   { icon: Gift, label: 'Fidelización', title: 'Haz que vuelvan', desc: 'Puntos por compra, niveles con beneficios y recompensas canjeables desde el menú.', color: '#D97706', details: ['Puntos y niveles', 'Cupones', 'Canje directo'] },
-  { icon: BarChart3, label: 'Analytics e IA', title: 'Datos que deciden por ti', desc: 'Ventas, productos top, ticket promedio y herramientas de IA para tu contenido.', color: '#0E7A4F', details: ['Ventas en vivo', 'Productos top', 'IA integrada'] },
-  { icon: MapPin, label: 'Delivery propio', title: 'Sin intermediarios', desc: 'Zonas con costos diferenciados, tracking en vivo y QR por zona. 0% comisión.', color: '#7C3AED', details: ['Zonas geográficas', 'Tracking en vivo', 'Sin comisiones'] },
+  { icon: BarChart3, label: 'Analytics e IA', title: 'Datos que deciden por ti', desc: 'Ventas, productos top, ticket promedio, horas pico — y herramientas de IA para tu contenido.', color: '#0E7A4F', details: ['Ventas en vivo', 'Productos top', 'Horas pico'] },
   { icon: CalendarCheck, label: 'Reservas', title: 'Agenda inteligente', desc: 'Tus clientes reservan desde el menú. Recordatorios automáticos por push y WhatsApp.', color: '#DB2777', details: ['Slots configurables', 'Recordatorios auto', 'Vista calendario'] },
-  { icon: Palette, label: 'Tu marca', title: 'Tu estilo, tu menú', desc: 'Colores, logo, portada, banners y splash — cada detalle con la identidad de tu negocio.', color: '#2563EB', details: ['Colores propios', 'Banners', 'Splash screen'] },
+  { icon: Store, label: 'Multi-sucursal', title: 'Varias sedes, una sola marca', desc: 'Menú compartido entre sucursales, panel por sede y vista consolidada para el dueño.', color: '#2563EB', details: ['Menú compartido', 'Panel por sede', 'Vista consolidada'] },
 ];
+
+/* Comparativa contra otros menús digitales — ganamos con lo que solo nosotros tenemos */
+const COMPARE_MENUS = [
+  { label: 'Menú digital con QR', menuby: true, others: true },
+  { label: 'POS con caja y cuenta por mesa', menuby: true, others: false },
+  { label: 'Pantalla de cocina con timers', menuby: true, others: 'Parcial' },
+  { label: 'Impresión automática de comandas', menuby: true, others: false },
+  { label: 'Delivery propio con tracking', menuby: true, others: 'Parcial' },
+  { label: 'Embudo de reseñas a Google', menuby: true, others: false },
+  { label: 'Lealtad con puntos y niveles', menuby: true, others: 'Parcial' },
+  { label: 'Modo offline', menuby: true, others: false },
+];
+
+/* Concierge: montamos el menú por ti */
+const WA_NUMBER = '573028181520';
+const WA_CONCIERGE = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola! Quiero que me monten mi menú en Menuby. Les envío mi carta.')}`;
+const WA_NFC = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent('Hola! Quiero cotizar los soportes NFC + QR para mis mesas.')}`;
 
 const COMPARE = [
   { label: 'Comisión por pedido', menuby: '0%, siempre', apps: '15% – 30%' },
@@ -572,21 +595,132 @@ const STEPS = [
   { num: '3', title: 'Recibe pedidos', desc: 'Comparte tu QR o link. Los pedidos llegan en tiempo real a tu panel.', icon: Bell },
 ];
 
-const TESTIMONIALS = [
-  { name: 'Carlos M.', role: 'Dueño · Burger Lab', city: 'Bogotá', text: 'Pasamos de recibir pedidos por WhatsApp a tener todo organizado en un solo lugar. Los pedidos ya no se pierden y la cocina funciona mucho mejor con el KDS.', stars: 5 },
-  { name: 'Laura P.', role: 'Administradora · Sabor Criollo', city: 'Medellín', text: 'Lo que más me gustó es que no cobran comisión. Con las plataformas de delivery perdíamos el 25%. Ahora cada peso es nuestro.', stars: 5 },
-  { name: 'Diego R.', role: 'Chef · Wok & Roll', city: 'Cali', text: 'El programa de lealtad ha sido increíble. Los clientes acumulan puntos y vuelven. Vimos un aumento del 30% en clientes recurrentes.', stars: 5 },
-];
+/* NOTA: los testimonios se retiraron a propósito. Solo volverán cuando sean
+   reales y verificables: nombre completo, foto y link al menú del negocio.
+   La prueba social honesta hoy son los logos de clientes con link en vivo. */
+
+/* ===== Métricas públicas agregadas (contador vivo) ===== */
+function usePublicStats() {
+  const [stats, setStats] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    api.get('/stats/public')
+      .then((res) => { if (alive && res.data) setStats(res.data); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+  return stats;
+}
+
+/* ===== Calculadora de ahorro — el mejor conversor de la página =====
+   Compara lo que hoy se lleva una app de delivery contra Menuby (0%). */
+const COMMISSIONS = [15, 25, 30];
+
+function SavingsCalculator() {
+  const [sales, setSales] = useState(8000000);   // ventas mensuales en COP
+  const [rate, setRate] = useState(25);          // comisión actual %
+
+  const monthlyLoss = Math.round(sales * (rate / 100));
+  const yearlySaving = monthlyLoss * 12;
+
+  return (
+    <div
+      className="rounded-3xl overflow-hidden"
+      style={{ background: '#fff', border: '1px solid ' + C.border, boxShadow: '0 24px 70px -30px rgba(23,18,15,0.28)' }}
+    >
+      <div className="grid md:grid-cols-[1.05fr_0.95fr]">
+        {/* Controles */}
+        <div className="p-6 sm:p-8">
+          <label className="block text-[12.5px] font-bold mb-2" style={{ color: C.muted }}>
+            ¿Cuánto vendes al mes?
+          </label>
+          <div className="text-[2rem] sm:text-[2.4rem] font-black tabular-nums mb-3" style={{ color: C.text, fontFamily: DISPLAY }}>
+            {fmtCOP(sales)}
+          </div>
+          <input
+            type="range"
+            min={1000000}
+            max={60000000}
+            step={500000}
+            value={sales}
+            onChange={(e) => setSales(Number(e.target.value))}
+            aria-label="Ventas mensuales"
+            className="w-full mb-1 accent-[#E8002D] cursor-pointer"
+            style={{ accentColor: C.accent }}
+          />
+          <div className="flex justify-between text-[11px] font-semibold mb-7" style={{ color: C.muted }}>
+            <span>$1M</span><span>$60M</span>
+          </div>
+
+          <label className="block text-[12.5px] font-bold mb-2.5" style={{ color: C.muted }}>
+            Comisión que pagas hoy
+          </label>
+          <div className="flex gap-2">
+            {COMMISSIONS.map((r) => {
+              const on = rate === r;
+              return (
+                <button
+                  key={r}
+                  onClick={() => setRate(r)}
+                  aria-pressed={on}
+                  className="flex-1 py-3 rounded-2xl text-[15px] font-bold transition-all active:scale-[0.97]"
+                  style={
+                    on
+                      ? { background: C.accent, color: '#fff', boxShadow: '0 10px 26px -10px ' + C.accent }
+                      : { background: C.bg, color: C.textSecondary, border: '1px solid ' + C.border }
+                  }
+                >
+                  {r}%
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Resultado */}
+        <div
+          className="p-6 sm:p-8 flex flex-col justify-center text-center"
+          style={{ background: `linear-gradient(155deg, ${C.dark} 0%, #241C18 100%)` }}
+        >
+          <p className="text-[11px] font-bold tracking-[0.16em] uppercase mb-3" style={{ color: 'rgba(255,255,255,0.55)' }}>
+            Ahorras al año con Menuby
+          </p>
+          <motion.div
+            key={yearlySaving}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28 }}
+            className="text-[2.3rem] sm:text-[3.1rem] leading-none font-black tabular-nums mb-4"
+            style={{ color: '#fff', fontFamily: DISPLAY }}
+          >
+            {fmtCOP(yearlySaving)}
+          </motion.div>
+          <p className="text-[13.5px] leading-relaxed mb-6" style={{ color: 'rgba(255,255,255,0.7)' }}>
+            Hoy le dejas <strong style={{ color: '#fff' }}>{fmtCOP(monthlyLoss)}</strong> al mes a las apps.
+            <br />Con Menuby: <strong style={{ color: '#5FD39B' }}>$0</strong>.
+          </p>
+          <Link
+            to="/register"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-white text-[15px] font-bold transition-transform active:scale-[0.97]"
+            style={{ background: C.accent, boxShadow: '0 12px 34px rgba(232,0,45,0.4)' }}
+          >
+            Quiero vender sin comisiones
+            <ArrowRight size={17} />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /* ===============================================================
    MAIN
    =============================================================== */
 export default function Home() {
+  const stats = usePublicStats();
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [demoTab, setDemoTab] = useState(0);
   const [showSticky, setShowSticky] = useState(false);
-  const [monthlySales, setMonthlySales] = useState(12000000);
-  const [commissionPct, setCommissionPct] = useState(25);
 
   const statsRef = useRef(null);
   const statsInView = useInView(statsRef, { once: true, margin: '-80px' });
@@ -619,10 +753,6 @@ export default function Home() {
   const flagship = FEATURES[0];
   const rest = FEATURES.slice(1);
 
-  const lossMonth = Math.round(monthlySales * commissionPct / 100);
-  const savingsYear = lossMonth * 12;
-  const salesPct = ((monthlySales - 1000000) / 59000000) * 100;
-
   return (
     <div style={{ fontFamily: BODY, color: C.text, background: C.bg, overflowX: 'hidden' }}>
       <style>{`
@@ -648,14 +778,14 @@ export default function Home() {
               <FadeInWhenVisible delay={0}>
                 <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[12px] font-semibold mb-6" style={{ background: '#fff', color: C.accent, border: '1px solid ' + C.border, boxShadow: '0 2px 12px rgba(23,18,15,0.04)' }}>
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.green }} />
-                  0% comisiones · para siempre
+                  0% comisiones · para siempre · hecho en Colombia
                 </div>
               </FadeInWhenVisible>
 
-              <motion.h1 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.05, ease: [0.22, 1, 0.36, 1] }} className="hd text-[3rem] sm:text-[4rem] lg:text-[4.6rem] mb-6" style={{ color: C.text }}>
-                Tu restaurante<br />merece{' '}
+              <motion.h1 initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.05, ease: [0.22, 1, 0.36, 1] }} className="hd text-[2.7rem] sm:text-[3.6rem] lg:text-[4.1rem] mb-6" style={{ color: C.text }}>
+                El sistema completo<br />de tu restaurante.{' '}
                 <span className="relative inline-block" style={{ color: C.accent }}>
-                  más
+                  Sin comisiones
                   <motion.svg initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1, delay: 0.7, ease: 'easeOut' }} className="absolute -bottom-2 left-0 w-full" viewBox="0 0 100 8" fill="none" aria-hidden="true">
                     <motion.path d="M2 6C20 2 40 2 50 4C60 6 80 3 98 2" stroke={C.accent} strokeWidth="2.5" strokeLinecap="round" fill="none" />
                   </motion.svg>
@@ -663,21 +793,22 @@ export default function Home() {
               </motion.h1>
 
               <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.2 }} className="text-[16px] sm:text-[17px] leading-relaxed mb-8 max-w-lg" style={{ color: C.textSecondary }}>
-                Menú digital, pedidos en tiempo real, pantalla de cocina y fidelización — en una sola plataforma hecha en Colombia. Sin comisiones, sin intermediarios.
+                Menú digital, pedidos en tiempo real, caja (POS), pantalla de cocina, domicilios propios y clientes que vuelven — todo en una sola plataforma. Desde $0.
               </motion.p>
 
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.32 }} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
                 <Link to="/register" className="group inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-white text-[15px] font-bold transition-transform active:scale-[0.97]" style={{ background: C.accent, boxShadow: '0 12px 34px rgba(232,0,45,0.28)' }}>
-                  Crear mi menú gratis
+                  Crear mi cuenta gratis
                   <ArrowRight size={17} className="transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <a href="#demo" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-[15px] font-bold transition-colors" style={{ background: '#fff', color: C.text, border: '1px solid ' + C.border }}>
-                  Ver demo en vivo
+                <a href={WA_CONCIERGE} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full text-[14.5px] font-bold transition-colors" style={{ background: '#fff', color: C.text, border: '1px solid ' + C.border }}>
+                  <MessageCircle size={17} style={{ color: '#25D366' }} />
+                  Te montamos el menú gratis
                 </a>
               </motion.div>
 
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.7, delay: 0.5 }} className="flex flex-wrap items-center gap-x-5 gap-y-2 text-[12.5px] font-medium" style={{ color: C.muted }}>
-                {['Sin tarjeta de crédito', 'Listo en 5 minutos', 'Cancela cuando quieras'].map((t) => (
+                {['Sin tarjeta de crédito', 'Tu menú listo en 24h', 'Cancela cuando quieras'].map((t) => (
                   <span key={t} className="inline-flex items-center gap-1.5"><Check size={14} style={{ color: C.green }} strokeWidth={3} />{t}</span>
                 ))}
               </motion.div>
@@ -723,24 +854,76 @@ export default function Home() {
               Restaurantes que ya venden con Menuby
             </p>
             <StaggerContainer className="grid grid-cols-3 sm:grid-cols-6 gap-3 sm:gap-4" stagger={0.06}>
-              {CUSTOMERS.map((c) => (
-                <motion.div
-                  key={c.name}
-                  variants={staggerChild}
-                  className="h-16 sm:h-[76px] rounded-2xl flex items-center justify-center p-2.5 sm:p-3 transition-shadow duration-300 hover:shadow-[0_8px_24px_rgba(23,18,15,0.08)]"
-                  style={{ background: C.bg, border: '1px solid ' + C.borderLight }}
-                  title={c.name}
-                >
+              {CUSTOMERS.map((c) => {
+                const inner = (
                   <img src={c.logo} alt={c.name} loading="lazy" className="max-h-full max-w-full object-contain" style={{ borderRadius: '8px' }} />
-                </motion.div>
-              ))}
+                );
+                const cls = 'h-16 sm:h-[76px] rounded-2xl flex items-center justify-center p-2.5 sm:p-3 transition-shadow duration-300 hover:shadow-[0_8px_24px_rgba(23,18,15,0.08)]';
+                const st = { background: C.bg, border: '1px solid ' + C.borderLight };
+                return (
+                  <motion.div key={c.name} variants={staggerChild} title={c.name}>
+                    {/* Si el negocio tiene slug, el logo lleva a su menú real en vivo */}
+                    {c.slug ? (
+                      <a href={`/${c.slug}`} target="_blank" rel="noopener noreferrer" className={cls} style={st}>{inner}</a>
+                    ) : (
+                      <div className={cls} style={st}>{inner}</div>
+                    )}
+                  </motion.div>
+                );
+              })}
             </StaggerContainer>
+
+            {/* Contador vivo — cifras reales agregadas de la plataforma */}
+            {stats && stats.ordersThisMonth > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="mt-7 flex flex-wrap items-center justify-center gap-x-7 gap-y-2 text-[13px] font-semibold"
+                style={{ color: C.textSecondary }}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-70" style={{ background: C.accent }} />
+                    <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: C.accent }} />
+                  </span>
+                  <strong className="tabular-nums" style={{ color: C.text }}>{stats.ordersThisMonth.toLocaleString('es-CO')}</strong>
+                  pedidos procesados este mes
+                </span>
+                {stats.cities > 0 && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin size={14} style={{ color: C.muted }} />
+                    <strong style={{ color: C.text }}>{stats.cities}</strong> ciudades
+                  </span>
+                )}
+              </motion.div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Sentinel: marks the end of the hero for the sticky mobile CTA */}
       <div ref={heroEndRef} aria-hidden="true" />
+
+      {/* ========== CALCULADORA DE AHORRO ========== */}
+      <Section id="calculadora" className="py-20 sm:py-28" style={{ background: C.bg }}>
+        <div className="max-w-5xl mx-auto">
+          <FadeInWhenVisible>
+            <div className="text-center mb-10">
+              <Eyebrow>Cuentas claras</Eyebrow>
+              <h2 className="hd-sub text-[2rem] sm:text-[2.8rem] mt-3 mb-3" style={{ color: C.text }}>
+                Deja de regalarle una parte de cada venta
+              </h2>
+              <p className="text-[15.5px] leading-relaxed max-w-2xl mx-auto" style={{ color: C.textSecondary }}>
+                Las apps de delivery cobran entre 15% y 30% por pedido. Con Menuby vendes directo, con tu marca y con 0% de comisión — para siempre.
+              </p>
+            </div>
+          </FadeInWhenVisible>
+          <FadeInWhenVisible delay={0.1}>
+            <SavingsCalculator />
+          </FadeInWhenVisible>
+        </div>
+      </Section>
 
       {/* ========== CÓMO FUNCIONA ========== */}
       <Section id="como-funciona" className="py-20 sm:py-28">
@@ -788,8 +971,8 @@ export default function Home() {
         <FadeInWhenVisible>
           <div className="mb-14 max-w-2xl">
             <Eyebrow>Funciones</Eyebrow>
-            <h2 className="hd-sub text-[2rem] sm:text-[2.8rem] mb-3" style={{ color: C.text }}>Todo lo que tu restaurante necesita, en un solo lugar</h2>
-            <p className="text-[15px]" style={{ color: C.muted }}>Ocho módulos que trabajan juntos. Sin integraciones, sin dolores de cabeza.</p>
+            <h2 className="hd-sub text-[2rem] sm:text-[2.8rem] mb-3" style={{ color: C.text }}>Todo tu restaurante en un solo lugar</h2>
+            <p className="text-[15px]" style={{ color: C.muted }}>Diez módulos que trabajan juntos. Sin integraciones, sin dolores de cabeza.</p>
           </div>
         </FadeInWhenVisible>
 
@@ -838,6 +1021,20 @@ export default function Home() {
             </motion.div>
           ))}
         </StaggerContainer>
+
+        {/* Tu marca — franja transversal a todos los módulos */}
+        <FadeInWhenVisible delay={0.1}>
+          <div className="mt-4 rounded-[28px] p-6 sm:p-7 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6" style={{ background: `linear-gradient(120deg, #fff, ${C.blush})`, border: '1px solid ' + C.border }}>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#2563EB14' }}>
+              <Palette size={21} style={{ color: '#2563EB' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10.5px] font-bold tracking-[0.12em] uppercase mb-1" style={{ color: '#2563EB' }}>Tu marca</p>
+              <h3 className="text-[15.5px] font-extrabold mb-1" style={{ color: C.text, fontFamily: DISPLAY, letterSpacing: '-0.02em' }}>Y todo, con la identidad de tu negocio</h3>
+              <p className="text-[13px] leading-relaxed" style={{ color: C.muted }}>Colores, logo, portada, banners y splash — tu marca atraviesa los diez módulos, no un template genérico.</p>
+            </div>
+          </div>
+        </FadeInWhenVisible>
       </Section>
 
       {/* ========== AUTOPRINT ========== */}
@@ -1028,8 +1225,11 @@ export default function Home() {
               {[
                 { end: 500, suffix: '+', label: 'Restaurantes activos' },
                 { end: 0, suffix: '%', label: 'Comisión por pedido' },
-                { end: 5, suffix: ' min', label: 'Tiempo de setup' },
-                { end: 15, suffix: '+', label: 'Ciudades en Colombia' },
+                // Cifras reales de la plataforma cuando el endpoint responde
+                stats && stats.ordersThisMonth > 0
+                  ? { end: stats.ordersThisMonth, suffix: '', label: 'Pedidos este mes' }
+                  : { end: 5, suffix: ' min', label: 'Tiempo de setup' },
+                { end: stats && stats.cities > 0 ? stats.cities : 15, suffix: '+', label: 'Ciudades en Colombia' },
               ].map((s, i) => (
                 <FadeInWhenVisible key={s.label} delay={i * 0.08} y={16}>
                   <p className="hd text-[2.6rem] sm:text-[3.4rem] text-white mb-1"><CounterValue end={s.end} active={statsInView} />{s.suffix}</p>
@@ -1041,93 +1241,109 @@ export default function Home() {
         </Section>
       </div>
 
-      {/* ========== TESTIMONIOS ========== */}
+      {/* ========== NFC ========== */}
       <Section className="py-20 sm:py-28">
-        <FadeInWhenVisible>
-          <div className="text-center mb-14">
-            <Eyebrow>Testimonios</Eyebrow>
-            <h2 className="hd-sub text-[2rem] sm:text-[2.6rem]" style={{ color: C.text }}>Lo que dicen nuestros restaurantes</h2>
-          </div>
-        </FadeInWhenVisible>
-
-        <StaggerContainer className="grid md:grid-cols-3 gap-5" stagger={0.1}>
-          {TESTIMONIALS.map((t) => (
-            <motion.div key={t.name} variants={staggerChild} className="rounded-3xl p-7 flex flex-col" style={{ background: C.card, border: '1px solid ' + C.borderLight }}>
-              <div className="flex items-center gap-0.5 mb-4">
-                {Array.from({ length: t.stars }).map((_, i) => <Star key={i} size={15} fill="#F5A623" color="#F5A623" />)}
+        <div
+          className="max-w-5xl mx-auto rounded-[32px] overflow-hidden grid md:grid-cols-[1.05fr_0.95fr] items-center"
+          style={{ background: `linear-gradient(150deg, ${C.dark} 0%, #241C18 100%)` }}
+        >
+          <FadeInWhenVisible>
+            <div className="p-8 sm:p-11">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11.5px] font-bold mb-5" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                <Nfc size={14} /> Los únicos en Colombia
               </div>
-              <p className="text-[14px] leading-relaxed mb-6 flex-1" style={{ color: C.textSecondary }}>"{t.text}"</p>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold text-white" style={{ background: `linear-gradient(135deg, ${C.accent}, ${C.ember})` }}>{t.name.charAt(0)}</div>
-                <div>
-                  <p className="text-[13px] font-bold" style={{ color: C.text }}>{t.name}</p>
-                  <p className="text-[11px]" style={{ color: C.muted }}>{t.role} · {t.city}</p>
+              <h2 className="hd-sub text-[1.9rem] sm:text-[2.5rem] leading-tight mb-4" style={{ color: '#fff' }}>
+                Un toque en la mesa y el menú se abre
+              </h2>
+              <p className="text-[15px] leading-relaxed mb-7" style={{ color: 'rgba(255,255,255,0.72)' }}>
+                Sin app y sin cámara. Con los soportes NFC + QR de Menuby el cliente acerca su teléfono y tu menú abre al instante. El QR impreso queda como respaldo para todos los demás.
+              </p>
+              <a
+                href={WA_NFC}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full text-[15px] font-bold transition-transform active:scale-[0.97]"
+                style={{ background: '#fff', color: C.text }}
+              >
+                <MessageCircle size={17} style={{ color: '#25D366' }} />
+                Quiero NFC en mis mesas
+              </a>
+              <p className="text-[12px] mt-4" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                Packs por mesa con tu marca · te cotizamos por WhatsApp
+              </p>
+            </div>
+          </FadeInWhenVisible>
+
+          <FadeInWhenVisible delay={0.12}>
+            <div className="relative h-full min-h-[260px] flex items-center justify-center p-8">
+              {/* Onda NFC animada */}
+              <div className="relative flex items-center justify-center">
+                {[0, 1, 2].map((i) => (
+                  <motion.span
+                    key={i}
+                    className="absolute rounded-full"
+                    style={{ border: '2px solid rgba(255,255,255,0.28)' }}
+                    initial={{ width: 70, height: 70, opacity: 0 }}
+                    animate={{ width: [70, 210], height: [70, 210], opacity: [0.55, 0] }}
+                    transition={{ duration: 2.4, repeat: Infinity, delay: i * 0.8, ease: 'easeOut' }}
+                  />
+                ))}
+                <div
+                  className="relative w-[86px] h-[86px] rounded-3xl flex items-center justify-center"
+                  style={{ background: C.accent, boxShadow: '0 18px 46px rgba(232,0,45,0.5)' }}
+                >
+                  <Nfc size={38} color="#fff" strokeWidth={1.8} />
                 </div>
               </div>
-            </motion.div>
-          ))}
-        </StaggerContainer>
+            </div>
+          </FadeInWhenVisible>
+        </div>
       </Section>
+
+      {/* ========== ONBOARDING CONCIERGE ========== */}
+      <div style={{ background: C.blush, borderTop: '1px solid ' + C.borderLight, borderBottom: '1px solid ' + C.borderLight }}>
+        <Section className="py-16 sm:py-20">
+          <FadeInWhenVisible>
+            <div className="max-w-3xl mx-auto text-center">
+              <div className="w-14 h-14 rounded-2xl mx-auto mb-5 flex items-center justify-center" style={{ background: '#25D366' }}>
+                <MessageCircle size={26} color="#fff" />
+              </div>
+              <h2 className="hd-sub text-[1.9rem] sm:text-[2.5rem] leading-tight mb-4" style={{ color: C.text }}>
+                ¿Sin tiempo para montar tu menú? Lo hacemos por ti, gratis
+              </h2>
+              <p className="text-[15.5px] leading-relaxed mb-8" style={{ color: C.textSecondary }}>
+                Mándanos tu carta por WhatsApp — foto, PDF o como la tengas — y en menos de 24 horas tienes tu menú montado, con fotos y toppings, listo para vender.
+              </p>
+              <a
+                href={WA_CONCIERGE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full text-white text-[15px] font-bold transition-transform active:scale-[0.97]"
+                style={{ background: '#25D366', boxShadow: '0 12px 34px rgba(37,211,102,0.36)' }}
+              >
+                <MessageCircle size={18} />
+                Enviar mi carta por WhatsApp
+              </a>
+              <p className="text-[12.5px] mt-4 font-semibold" style={{ color: C.muted }}>+57 302 818 1520</p>
+            </div>
+          </FadeInWhenVisible>
+        </Section>
+      </div>
 
       {/* ========== VS DELIVERY APPS ========== */}
       <div style={{ background: C.bg }}>
         <Section className="py-20 sm:py-28">
           <FadeInWhenVisible>
             <div className="text-center mb-12">
-              <Eyebrow>Menuby vs. apps de delivery</Eyebrow>
-              <h2 className="hd-sub text-[2rem] sm:text-[2.8rem] mb-3" style={{ color: C.text }}>Deja de regalar una parte de cada venta</h2>
+              <Eyebrow>Comparativa</Eyebrow>
+              <h2 className="hd-sub text-[2rem] sm:text-[2.8rem] mb-3" style={{ color: C.text }}>Míranos al lado de los demás</h2>
               <p className="text-[15px] max-w-xl mx-auto" style={{ color: C.muted }}>
-                Apps como Rappi o Didi cobran entre 15% y 30% por pedido. Con Menuby vendes directo, sin intermediarios y con 0% de comisión — para siempre.
+                Contra las apps de delivery y contra los otros menús digitales. Sin adornos: lo que cada uno hace y lo que no.
               </p>
             </div>
           </FadeInWhenVisible>
 
-          <div className="grid lg:grid-cols-2 gap-6 items-stretch max-w-5xl mx-auto">
-            {/* Savings calculator */}
-            <FadeInWhenVisible>
-              <div className="rounded-[28px] p-7 sm:p-8 h-full flex flex-col" style={{ background: C.card, border: '1px solid ' + C.border, boxShadow: '0 16px 44px rgba(23,18,15,0.06)' }}>
-                <div className="flex items-center gap-2 mb-6">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: C.accent + '12' }}>
-                    <TrendingUp size={16} style={{ color: C.accent }} />
-                  </div>
-                  <p className="text-[12px] font-bold tracking-[0.12em] uppercase" style={{ color: C.accent }}>Calculadora de ahorro</p>
-                </div>
-
-                <div className="flex items-end justify-between mb-2">
-                  <label className="text-[13px] font-semibold" style={{ color: C.textSecondary }}>¿Cuánto vendes al mes?</label>
-                  <span className="hd text-[1.5rem]" style={{ color: C.text }}>{fmtCOP(monthlySales)}</span>
-                </div>
-                <input
-                  type="range" min={1000000} max={60000000} step={500000} value={monthlySales}
-                  onChange={(e) => setMonthlySales(Number(e.target.value))}
-                  className="range-red w-full mb-1.5" aria-label="Ventas mensuales"
-                  style={{ background: `linear-gradient(90deg, ${C.accent} ${salesPct}%, ${C.elevated} ${salesPct}%)` }}
-                />
-                <div className="flex justify-between text-[10.5px] mb-6" style={{ color: C.muted }}>
-                  <span>$1M</span><span>$60M</span>
-                </div>
-
-                <div className="flex items-center gap-3 mb-7">
-                  <label className="text-[13px] font-semibold" style={{ color: C.textSecondary }}>Comisión</label>
-                  <div className="inline-flex rounded-xl p-1" style={{ background: C.surface, border: '1px solid ' + C.borderLight }}>
-                    {[15, 25, 30].map((p) => (
-                      <button key={p} onClick={() => setCommissionPct(p)} className="px-3.5 py-1.5 rounded-lg text-[12.5px] font-bold transition-all" style={{ background: commissionPct === p ? C.accent : 'transparent', color: commissionPct === p ? '#fff' : C.muted }}>{p}%</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Hero result */}
-                <div className="rounded-2xl p-5 mt-auto relative overflow-hidden" style={{ background: `linear-gradient(150deg, ${C.accent}, ${C.accentDeep})`, boxShadow: '0 14px 36px rgba(232,0,45,0.28)' }}>
-                  <div className="absolute -right-6 -top-8 w-32 h-32 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }} />
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-white/70 mb-1">Ahorras al año con Menuby</p>
-                  <p className="hd text-[2.4rem] sm:text-[2.8rem] text-white leading-none mb-2">{fmtCOP(savingsYear)}</p>
-                  <p className="text-[12px] text-white/80">
-                    Hoy le dejas <span className="font-bold text-white">{fmtCOP(lossMonth)}/mes</span> a las apps en comisiones. Con Menuby: <span className="font-bold text-white">$0</span>.
-                  </p>
-                </div>
-              </div>
-            </FadeInWhenVisible>
-
+          <div className="grid lg:grid-cols-2 gap-6 items-start max-w-5xl mx-auto">
             {/* Comparison table */}
             <FadeInWhenVisible delay={0.1}>
               <div className="rounded-[28px] p-2 h-full" style={{ background: C.card, border: '1px solid ' + C.border, boxShadow: '0 16px 44px rgba(23,18,15,0.06)' }}>
@@ -1162,10 +1378,48 @@ export default function Home() {
                 })}
               </div>
             </FadeInWhenVisible>
+
+            {/* Comparativa 2 — vs otros menús digitales */}
+            <FadeInWhenVisible delay={0.1}>
+              <div className="rounded-[28px] p-2 h-full" style={{ background: C.card, border: '1px solid ' + C.border, boxShadow: '0 16px 44px rgba(23,18,15,0.06)' }}>
+                <div className="grid grid-cols-[1.5fr_1fr_1fr] items-end text-center">
+                  <div className="px-3 py-3" />
+                  <div className="px-1.5 pt-3 pb-2.5 rounded-t-2xl" style={{ background: C.accent + '0E', borderLeft: '1.5px solid ' + C.accent + '2A', borderRight: '1.5px solid ' + C.accent + '2A', borderTop: '1.5px solid ' + C.accent + '2A' }}>
+                    <span className="inline-flex items-center gap-1 text-[13px] font-extrabold" style={{ color: C.accent, fontFamily: DISPLAY }}>
+                      <Sparkles size={12} /> Menuby
+                    </span>
+                  </div>
+                  <div className="px-1.5 py-3">
+                    <span className="text-[12px] font-bold leading-tight" style={{ color: C.muted }}>Otros menús QR</span>
+                  </div>
+                </div>
+
+                {COMPARE_MENUS.map((row, i) => {
+                  const last = i === COMPARE_MENUS.length - 1;
+                  return (
+                    <div key={row.label} className="grid grid-cols-[1.5fr_1fr_1fr] items-stretch text-center">
+                      <div className="px-3 py-3 text-left text-[12.5px] font-semibold flex items-center" style={{ color: C.text, borderTop: '1px solid ' + C.borderLight }}>{row.label}</div>
+                      <div className="px-1.5 py-3 flex items-center justify-center" style={{ background: C.accent + '0E', borderLeft: '1.5px solid ' + C.accent + '2A', borderRight: '1.5px solid ' + C.accent + '2A', borderTop: '1px solid ' + C.accent + '18', ...(last ? { borderBottom: '1.5px solid ' + C.accent + '2A', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 } : {}) }}>
+                        {row.menuby === true ? <Check size={17} strokeWidth={3} style={{ color: C.green }} />
+                          : <span className="text-[11.5px] font-bold leading-tight" style={{ color: C.text }}>{row.menuby}</span>}
+                      </div>
+                      <div className="px-1.5 py-3 flex items-center justify-center" style={{ borderTop: '1px solid ' + C.borderLight }}>
+                        {row.others === false ? <X size={16} strokeWidth={2.5} style={{ color: '#CBBFB4' }} />
+                          : row.others === true ? <Check size={17} strokeWidth={3} style={{ color: C.green }} />
+                          : <span className="text-[11.5px] font-medium leading-tight" style={{ color: C.muted }}>{row.others}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </FadeInWhenVisible>
           </div>
 
           <FadeInWhenVisible>
             <div className="text-center mt-10">
+              <p className="text-[14.5px] font-semibold mb-5" style={{ color: C.textSecondary }}>
+                Compáranos. Por eso somos la plataforma más completa de Colombia.
+              </p>
               <Link to="/register" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full text-white text-[15px] font-bold transition-transform active:scale-[0.97]" style={{ background: C.accent, boxShadow: '0 12px 34px rgba(232,0,45,0.26)' }}>
                 Quiero vender sin comisiones <ArrowRight size={17} />
               </Link>
@@ -1271,15 +1525,16 @@ export default function Home() {
           <div className="relative rounded-[36px] px-6 py-16 sm:py-20 text-center overflow-hidden" style={{ background: `linear-gradient(165deg, #fff, ${C.blush})`, border: '1px solid ' + C.border, boxShadow: '0 24px 60px rgba(232,0,45,0.08)' }}>
             <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(680px 360px at 50% -6%, rgba(232,0,45,0.10), transparent 62%)` }} />
             <div className="relative z-10">
-              <h2 className="hd text-[2.4rem] sm:text-[3.4rem] mb-4" style={{ color: C.text }}>Empieza gratis hoy</h2>
-              <p className="text-[15px] sm:text-[16px] mb-8 max-w-lg mx-auto" style={{ color: C.textSecondary }}>Crea tu menú digital en 5 minutos. Sin tarjeta, sin comisiones, sin compromisos.</p>
+              <h2 className="hd text-[2.2rem] sm:text-[3rem] mb-4" style={{ color: C.text }}>Empieza gratis hoy — o mándanos tu carta y la montamos por ti</h2>
+              <p className="text-[15px] sm:text-[16px] mb-8 max-w-lg mx-auto" style={{ color: C.textSecondary }}>Sin tarjeta, sin comisiones, sin compromisos.</p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link to="/register" className="group inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full text-[15px] font-bold text-white transition-transform active:scale-[0.97]" style={{ background: C.accent, boxShadow: '0 14px 40px rgba(232,0,45,0.32)' }}>
-                  Crear mi menú gratis
+                  Crear mi cuenta gratis
                   <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
                 </Link>
-                <a href="#demo" className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full text-[15px] font-bold transition-colors" style={{ background: '#fff', color: C.text, border: '1px solid ' + C.border }}>
-                  Ver demo
+                <a href={WA_CONCIERGE} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-full text-[15px] font-bold transition-colors" style={{ background: '#fff', color: C.text, border: '1px solid ' + C.border }}>
+                  <MessageCircle size={17} style={{ color: '#25D366' }} />
+                  Montar mi menú por WhatsApp
                 </a>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 mt-9 text-[12px] font-medium" style={{ color: C.muted }}>
