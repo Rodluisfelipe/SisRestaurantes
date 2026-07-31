@@ -29,6 +29,7 @@ export default function ProfileHeader({
   onShowFavorites,
   onShowHistory,
   onShowReviews,
+  onOrderNow,
   showFavoritesButton = false,
   showHistoryButton = false,
   reviewStats,
@@ -195,8 +196,9 @@ export default function ProfileHeader({
             </div>
           </div>
 
-          {/* Stats — tocables */}
-          <div className="flex items-center gap-5 pb-1.5">
+          {/* Stats — tocables. Se reparten el espacio disponible para que la
+              fila no quede cargada a la derecha cuando hay menos de tres. */}
+          <div className="flex-1 flex items-center justify-around pb-1.5 pl-3">
             {rating > 0 && (
               <button onClick={() => onShowReviews(googleRating ? 'google' : 'internal')} className="text-center active:scale-95 transition-transform">
                 <span className="flex items-center justify-center gap-1 text-[17px] font-extrabold tabular-nums" style={{ color: 'var(--mb-ink)' }}>
@@ -251,36 +253,41 @@ export default function ProfileHeader({
           </a>
         )}
 
-        {/* Botonera — sin "Pedir ahora": el menú ya está justo debajo y el
-            carrito vive en el bottom nav, así que ese CTA sobraba. */}
-        {(waHref || showFavoritesButton) && (
-          <div className="flex items-stretch gap-2 mt-3.5">
-            {waHref && (
-              <a
-                href={waHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 py-2.5 flex items-center justify-center gap-1.5 rounded-[var(--mb-radius-btn)] text-[13.5px] font-bold active:scale-[0.98] transition-transform"
-                style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink)', border: '1px solid var(--mb-line)' }}
-              >
-                <span className="text-[#25D366]">{PH.whatsapp()}</span>
-                WhatsApp
-              </a>
-            )}
-            {showFavoritesButton && (
-              <button
-                onClick={onShowFavorites}
-                className={`${waHref ? 'w-12' : 'flex-1'} py-2.5 flex items-center justify-center gap-1.5 rounded-[var(--mb-radius-btn)] text-[13.5px] font-bold active:scale-[0.95] transition-transform`}
-                style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)', border: '1px solid var(--mb-line)' }}
-                aria-label="Favoritos"
-                title="Favoritos"
-              >
-                {PH.heart()}
-                {!waHref && <span>Favoritos</span>}
-              </button>
-            )}
-          </div>
-        )}
+        {/* Botonera — "Pedir ahora" es SIEMPRE el primario; WhatsApp nunca lo es.
+            Con el negocio cerrado el botón se mantiene: el menú se puede
+            recorrer igual y el aviso aparece al confirmar el pedido. */}
+        <div className="flex items-stretch gap-2 mt-3.5">
+          <button
+            onClick={onOrderNow}
+            className="flex-1 py-2.5 rounded-[var(--mb-radius-btn)] text-[14px] font-extrabold active:scale-[0.98] transition-transform"
+            style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
+          >
+            Pedir ahora
+          </button>
+          {waHref && (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 flex items-center justify-center gap-1.5 rounded-[var(--mb-radius-btn)] text-[13.5px] font-bold active:scale-[0.98] transition-transform"
+              style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink)', border: '1px solid var(--mb-line)' }}
+              aria-label="Escribir por WhatsApp"
+            >
+              <span className="text-[#25D366]">{PH.whatsapp()}</span>
+            </a>
+          )}
+          {showFavoritesButton && (
+            <button
+              onClick={onShowFavorites}
+              className="w-12 flex items-center justify-center rounded-[var(--mb-radius-btn)] active:scale-[0.95] transition-transform"
+              style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)', border: '1px solid var(--mb-line)' }}
+              aria-label="Favoritos"
+              title="Favoritos"
+            >
+              {PH.heart()}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ── Header compacto sticky ── */}

@@ -1545,7 +1545,7 @@ export default function Menu() {
     <main
       /* En V2 el nav flotante ocupa más alto que la CartBar: más aire abajo
          para que no tape el final del menú. */
-      className={`min-h-screen bg-gray-50 pt-safe ${menuV2 ? 'pb-32' : 'pb-20'}`}
+      className={`min-h-screen bg-gray-50 pt-safe ${menuV2 ? 'pb-[110px]' : 'pb-20'}`}
       /* Permite verificar en producción que el flag llega al cliente sin ningún
          cambio visual. PR-2 lo usa para montar ProfileHeader en vez de este. */
       data-menu-v2={menuV2 ? '1' : '0'}
@@ -1560,6 +1560,10 @@ export default function Menu() {
           onShowFavorites={() => setShowFavorites(true)}
           onShowHistory={() => setShowHistory(true)}
           onShowReviews={(src) => { setReviewsInitialSource(typeof src === 'string' ? src : 'internal'); setShowReviewsSheet(true); }}
+          onOrderNow={() => {
+            const el = document.getElementById('menu-content');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
           showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
           showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
           reviewStats={businessConfig?.reviewStats}

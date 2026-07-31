@@ -107,7 +107,9 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
       });
     }
 
-    // 3) Categoría estrella — la que más productos aporta
+    // 3) Categoría estrella — la que más productos aporta.
+    //    La etiqueta NUNCA hereda el nombre de la categoría (se desborda y hay
+    //    que truncarlo): se usa siempre "Combos", del mapa fijo.
     const byCat = new Map();
     active.forEach((p) => { if (p.category) byCat.set(p.category, (byCat.get(p.category) || 0) + 1); });
     const starCatId = [...byCat.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
@@ -117,7 +119,7 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
       if (items.length) {
         out.push({
           key: `cat-${starCat._id}`,
-          label: starCat.name,
+          label: 'Combos',
           cover: items[0].image || businessConfig?.logo,
           slides: items.map((p) => productSlide(p, starCat.name)),
         });
@@ -157,6 +159,19 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
           cta: null,
         })),
       });
+    }
+
+    /* Dos anillos con la misma foto se ven como un error. Si una portada ya se
+       usó, se busca la siguiente imagen distinta dentro de la propia historia;
+       si no hay ninguna, se cae al logo del negocio. */
+    const usedCovers = new Set();
+    for (const s of out) {
+      if (s.cover && !usedCovers.has(s.cover)) { usedCovers.add(s.cover); continue; }
+      const alt = (s.slides || [])
+        .map((sl) => sl.image)
+        .find((img) => img && !usedCovers.has(img));
+      s.cover = alt || businessConfig?.logo || null;
+      if (s.cover) usedCovers.add(s.cover);
     }
 
     return out;
