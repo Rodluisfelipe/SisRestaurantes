@@ -87,9 +87,11 @@ export default function BottomNav({
             animate={pop && !reduceMotion ? { scale: [1, 1.16, 1] } : { scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="relative w-[54px] h-[54px] rounded-full flex items-center justify-center disabled:opacity-50"
+            /* Sobre la píldora oscura no sirve el acento crudo: un color de
+               marca oscuro desaparecería. Se usa su variante para fondo negro. */
             style={{
-              background: 'var(--mb-accent)',
-              color: 'var(--mb-on-accent)',
+              background: 'var(--mb-accent-on-dark)',
+              color: 'var(--mb-on-accent-dark)',
               boxShadow: '0 8px 22px rgba(0,0,0,0.35)',
             }}
             aria-label={totalItems > 0 ? `Ver carrito, ${totalItems} artículo(s)` : 'Ver carrito'}

@@ -107,10 +107,27 @@ export function derivePalette(primaryRaw, { dark = false, on: onRaw } = {}) {
     ? chosenOn
     : shade(accent, lum < 0.2 ? 0.55 : -0.35);
 
+  /* Variante del acento legible sobre superficies OSCURAS (el bottom nav es una
+     píldora casi negra). Un acento oscuro —negro, azul marino— desaparecería
+     ahí, así que se cambia por el color secundario de la marca si contrasta, y
+     si no, se aclara hasta que se vea. */
+  const NAV_BG = '#101319';
+  let accentOnDark = accent;
+  if (contrast(accentOnDark, NAV_BG) < 3) {
+    accentOnDark = chosenOn && contrast(chosenOn, NAV_BG) >= 3 ? chosenOn : accent;
+    let g = 0;
+    while (contrast(accentOnDark, NAV_BG) < 3 && g < 14) {
+      accentOnDark = shade(accentOnDark, 0.12);
+      g += 1;
+    }
+  }
+
   return {
     primary,
     accent,
     onAccent,
+    accentOnDark,
+    onAccentDark: textOn(accentOnDark),
     ringPartner,
     soft: dark ? alpha(primary, 0.18) : shade(primary, 0.9),   // fondos suaves
     softer: dark ? alpha(primary, 0.1) : shade(primary, 0.95),
@@ -200,6 +217,8 @@ export function menuCssVars(primary, { dark = false, on } = {}) {
     '--mb-accent': p.accent,
     '--mb-on-accent': p.onAccent,
     '--mb-ring-partner': p.ringPartner,
+    '--mb-accent-on-dark': p.accentOnDark,
+    '--mb-on-accent-dark': p.onAccentDark,
     '--mb-accent-soft': p.soft,
     '--mb-accent-softer': p.softer,
     '--mb-accent-strong': p.strong,
