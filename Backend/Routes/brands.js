@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const Brand = require('../Models/Brand');
 const BusinessConfig = require('../Models/BusinessConfig');
 const Admin = require('../Models/Admin');
@@ -116,7 +115,10 @@ router.post('/:id/assign', requireRole('admin'), async (req, res) => {
     let createdAdmin = null;
     if (brandAdmin?.username && brandAdmin?.password) {
       const existing = await Admin.findOne({ username: brandAdmin.username });
-      const hashedPassword = await bcrypt.hash(brandAdmin.password, 10);
+      // La contraseña se pasa EN PLANO: el hook pre('save') del modelo Admin la
+      // hashea (también en Admin.create). Hashearla aquí la dejaba con doble
+      // bcrypt y el admin de marca no podía iniciar sesión.
+      const plainPassword = brandAdmin.password;
 
       if (existing) {
         existing.brandId = brand._id;
@@ -124,14 +126,14 @@ router.post('/:id/assign', requireRole('admin'), async (req, res) => {
         existing.role = 'brand_admin';
         existing.businessId = new mongoose.Types.ObjectId(mainBranchId);
         if (brandAdmin.password) {
-          existing.password = hashedPassword;
+          existing.password = plainPassword;
         }
         await existing.save();
         createdAdmin = { id: existing._id, username: existing.username, isNew: false };
       } else {
         const newAdmin = await Admin.create({
           username: brandAdmin.username.trim(),
-          password: hashedPassword,
+          password: plainPassword,
           name: brandAdmin.name || brand.name,
           role: 'brand_admin',
           brandId: brand._id,

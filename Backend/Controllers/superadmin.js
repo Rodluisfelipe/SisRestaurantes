@@ -109,8 +109,10 @@ exports.resetBusinessCredentials = async (req, res) => {
     }
 
     if (newPassword?.trim()) {
-      const salt = await bcrypt.genSalt(10);
-      admin.password = await bcrypt.hash(newPassword.trim(), salt);
+      // Se asigna la contraseña EN PLANO: el hook pre('save') de Admin la
+      // hashea. Hashearla aquí además la dejaba con doble bcrypt y el login
+      // nunca coincidía.
+      admin.password = newPassword.trim();
       admin.mustChangePassword = true;
       admin.refreshTokens = [];
       admin.authProvider = 'local';
