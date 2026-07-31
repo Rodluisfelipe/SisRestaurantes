@@ -8,6 +8,11 @@ import { isPromoActive } from '../utils/promo';
 import { FeaturedProductsSkeleton } from './MenuSkeletons';
 import { useFlyToCart } from './FlyToCart';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { radii, shadows, productNameSize, alpha, TOUCH_TARGET } from '../utils/menuTokens';
+
+/* Umbral de prueba social: por debajo de esto el número resta en vez de sumar
+   ("1 pedido esta semana" no vende). Si no llega, se muestra otra cosa. */
+const SOCIAL_PROOF_MIN = 15;
 
 /* ── SVG Icons ── */
 const PI = {
@@ -162,11 +167,11 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                 transition={{ delay: index * 0.06 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleProductClick(product)}
-                className="flex-shrink-0 snap-start cursor-pointer group shadow-sm hover:shadow-lg border border-slate-100 rounded-2xl overflow-hidden bg-white transition-shadow duration-300"
-                style={{ width: 'calc(50% - 6px)' }}
+                className="flex-shrink-0 snap-start cursor-pointer group border border-slate-100 overflow-hidden bg-white transition-shadow duration-300"
+                style={{ width: 'calc(50% - 6px)', borderRadius: radii.card, boxShadow: shadows.card }}
               >
-                {/* Image */}
-                <div className="relative aspect-square bg-slate-50 overflow-hidden">
+                {/* Image — 4:3, igual que ProductCard */}
+                <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
                   {product.image ? (
                     <img
                       src={product.image}
@@ -176,11 +181,27 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
+                    /* Placeholder de marca, nunca un gris genérico */
                     <div
-                      className="w-full h-full flex items-center justify-center"
-                      style={{ background: `linear-gradient(135deg, ${buttonColor}08, ${buttonColor}03)` }}
+                      className="w-full h-full flex items-center justify-center relative overflow-hidden"
+                      style={{ background: `linear-gradient(135deg, ${alpha(buttonColor, 0.14)}, ${alpha(buttonColor, 0.05)})` }}
                     >
-                      <span className="text-slate-200">{PI.flame('w-10 h-10')}</span>
+                      <div
+                        className="absolute inset-0 opacity-[0.07]"
+                        style={{ backgroundImage: `radial-gradient(${buttonColor} 1.5px, transparent 1.5px)`, backgroundSize: '14px 14px' }}
+                      />
+                      {businessConfig?.logo ? (
+                        <img
+                          src={businessConfig.logo}
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          className="relative w-12 h-12 rounded-full object-cover opacity-30"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="relative opacity-25" style={{ color: buttonColor }}>{PI.flame('w-10 h-10')}</span>
+                      )}
                     </div>
                   )}
 
@@ -212,7 +233,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
 
                   {/* Price — bottom left */}
                   <div className="absolute bottom-2.5 left-3 z-[2]">
-                    <span className="text-[15px] sm:text-lg font-black text-white drop-shadow-lg">
+                    <span className="text-[17px] tabular-nums text-white drop-shadow-lg" style={{ fontWeight: 800 }}>
                       ${product.price?.toLocaleString()}
                     </span>
                   </div>
@@ -232,8 +253,8 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                       }
                       handleProductClick(product);
                     }}
-                    className="absolute bottom-2 right-2.5 z-[2] w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-90"
-                    style={{ backgroundColor: `${buttonColor}e0`, color: buttonTextColor, boxShadow: `0 4px 16px ${buttonColor}40` }}
+                    className="absolute bottom-2 right-2.5 z-[2] flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-90"
+                    style={{ width: TOUCH_TARGET, height: TOUCH_TARGET, borderRadius: radii.button, backgroundColor: `${buttonColor}e0`, color: buttonTextColor, boxShadow: `0 4px 16px ${alpha(buttonColor, 0.25)}` }}
                     aria-label={hasToppings ? `Personalizar ${product.name}` : `Agregar ${product.name} al carrito`}
                   >
                     {hasToppings ? PI.plus('w-4 h-4') : PI.cart('w-4 h-4')}
@@ -242,13 +263,22 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
 
                 {/* Product Info */}
                 <div className="px-3 py-2 sm:px-3.5">
-                  <h3 className="font-bold text-[13px] sm:text-sm text-slate-800 leading-tight line-clamp-1">
+                  <h3
+                    className={`font-semibold text-slate-800 leading-tight line-clamp-2 ${productNameSize(product.name)}`}
+                    style={{ minHeight: '2.4em' }}
+                    title={product.name}
+                  >
                     {product.name}
                   </h3>
-                  {/* Social proof line */}
-                  {showCounts && pop.weeklyCount > 0 ? (
+                  {/* Prueba social: el número solo se muestra si de verdad impresiona.
+                      Por debajo del umbral, un sello cualitativo vende más. */}
+                  {showCounts && pop.weeklyCount >= SOCIAL_PROOF_MIN ? (
                     <p className="text-[10px] sm:text-[11px] font-semibold mt-0.5 line-clamp-1 flex items-center gap-1" style={{ color: buttonColor }}>
-                      {PI.trophy('w-2.5 h-2.5')} {pop.weeklyCount} {pop.weeklyCount === 1 ? 'pedido' : 'pedidos'} esta semana
+                      {PI.flame('w-2.5 h-2.5')} {pop.weeklyCount} pedidos esta semana
+                    </p>
+                  ) : (medal || pop.isTopSeller) ? (
+                    <p className="text-[10px] sm:text-[11px] font-semibold mt-0.5 line-clamp-1 flex items-center gap-1" style={{ color: buttonColor }}>
+                      {PI.trophy('w-2.5 h-2.5')} El favorito de la casa
                     </p>
                   ) : product.description ? (
                     <p className="text-[10px] sm:text-[11px] text-slate-400 leading-relaxed mt-0.5 line-clamp-1">

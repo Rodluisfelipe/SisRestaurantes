@@ -8,6 +8,7 @@ import { isPromoActive } from '../utils/promo';
 import { FeaturedProductsSkeleton } from './MenuSkeletons';
 import { useFlyToCart } from './FlyToCart';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { radii, shadows, productNameSize, alpha, TOUCH_TARGET } from '../utils/menuTokens';
 
 /* ── SVG Icons ── */
 const FI = {
@@ -169,11 +170,27 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
+                    /* Placeholder de marca, nunca un gris genérico */
                     <div
-                      className="w-full h-full flex items-center justify-center"
-                      style={{ background: `linear-gradient(135deg, ${buttonColor}08, ${buttonColor}03)` }}
+                      className="w-full h-full flex items-center justify-center relative overflow-hidden"
+                      style={{ background: `linear-gradient(135deg, ${alpha(buttonColor, 0.14)}, ${alpha(buttonColor, 0.05)})` }}
                     >
-                      <span className="text-slate-200">{FI.star('w-10 h-10')}</span>
+                      <div
+                        className="absolute inset-0 opacity-[0.07]"
+                        style={{ backgroundImage: `radial-gradient(${buttonColor} 1.5px, transparent 1.5px)`, backgroundSize: '14px 14px' }}
+                      />
+                      {businessConfig?.logo ? (
+                        <img
+                          src={businessConfig.logo}
+                          alt=""
+                          aria-hidden="true"
+                          loading="lazy"
+                          className="relative w-12 h-12 rounded-full object-cover opacity-30"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : (
+                        <span className="relative opacity-25" style={{ color: buttonColor }}>{FI.star('w-10 h-10')}</span>
+                      )}
                     </div>
                   )}
 
@@ -194,7 +211,7 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
 
                   {/* Price — bottom left */}
                   <div className="absolute bottom-2.5 left-3 z-[2]">
-                    <span className="text-[15px] sm:text-lg font-black text-white drop-shadow-lg">
+                    <span className="text-[17px] tabular-nums text-white drop-shadow-lg" style={{ fontWeight: 800 }}>
                       ${product.price?.toLocaleString()}
                     </span>
                   </div>
@@ -214,11 +231,14 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                       }
                       handleProductClick(product);
                     }}
-                    className="absolute bottom-2 right-2.5 z-[2] w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-90"
-                    style={{ 
+                    className="absolute bottom-2 right-2.5 z-[2] flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-90"
+                    style={{
+                      width: TOUCH_TARGET,
+                      height: TOUCH_TARGET,
+                      borderRadius: radii.button,
                       backgroundColor: `${buttonColor}e0`,
                       color: buttonTextColor,
-                      boxShadow: `0 4px 16px ${buttonColor}40`
+                      boxShadow: `0 4px 16px ${alpha(buttonColor, 0.25)}`
                     }}
                     aria-label={hasToppings ? `Personalizar ${product.name}` : `Agregar ${product.name} al carrito`}
                   >
@@ -228,7 +248,11 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
 
                 {/* Product Info — compact */}
                 <div className="px-3 py-2 sm:px-3.5">
-                  <h3 className="font-bold text-[13px] sm:text-sm text-slate-800 leading-tight line-clamp-1">
+                  <h3
+                    className={`font-semibold text-slate-800 leading-tight line-clamp-2 ${productNameSize(product.name)}`}
+                    style={{ minHeight: '2.4em' }}
+                    title={product.name}
+                  >
                     {product.name}
                   </h3>
                   {product.description && (
