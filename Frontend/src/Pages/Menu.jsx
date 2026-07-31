@@ -18,6 +18,7 @@ import FilterableMenu from "../Components/FilterableMenu";
 import OrderConfirmationModal from "../Components/OrderConfirmationModal";
 import CartBar from "../Components/CartBar";
 import BottomNav from "../Components/BottomNav";
+const StoriesRow = lazy(() => import("../Components/StoriesRow"));
 import FavoritesModal from "../Components/FavoritesModal";
 import OrderHistoryModal from "../Components/OrderHistoryModal";
 import LoyaltyPage from "../Components/LoyaltyPage";
@@ -1564,7 +1565,21 @@ export default function Menu() {
           reviewStats={businessConfig?.reviewStats}
           subscriptionCommercialPlan={subscriptionCommercialPlan}
         />
-      ) : (
+      ) : null}
+
+      {/* Historias — bajo la cabecera de perfil. Si no hay contenido no se
+          renderiza nada (StoriesRow se degrada solo). */}
+      {menuV2 && (
+        <Suspense fallback={null}>
+          <StoriesRow
+            products={products}
+            categories={categories}
+            addToCart={isViewOnly ? null : addToCart}
+          />
+        </Suspense>
+      )}
+
+      {!menuV2 ? (
         <BusinessHeader
           comesFromCatalog={comesFromCatalog}
           onShowFavorites={() => setShowFavorites(true)}
@@ -1578,8 +1593,8 @@ export default function Menu() {
           subscriptionPlanType={subscriptionPlanType}
           subscriptionCommercialPlan={subscriptionCommercialPlan}
         />
-      )}
-      
+      ) : null}
+
       {/* Banner solo-vista: todos los tipos de pedido desactivados */}
       {isViewOnly && (
         <div className="bg-slate-900 px-4 py-3">
