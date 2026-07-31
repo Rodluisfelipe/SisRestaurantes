@@ -524,7 +524,9 @@ function CartSummary({ cart, updateQuantity, removeFromCart, onClose, onOrder: o
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.2 }}
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-40"
+      /* z-[130]: por encima del header colapsado (45) y de las pantallas de
+         sección (110). Con z-40 el header fijo se pintaba encima del carrito. */
+      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-[130]"
       onMouseDown={(e) => { if (e.target === backdropRef.current) touchStartedOnBackdrop.current = true; }}
       onMouseUp={(e) => { if (e.target === backdropRef.current && touchStartedOnBackdrop.current) onClose(); touchStartedOnBackdrop.current = false; }}
       onTouchStart={(e) => { if (e.target === backdropRef.current) touchStartedOnBackdrop.current = true; else touchStartedOnBackdrop.current = false; }}

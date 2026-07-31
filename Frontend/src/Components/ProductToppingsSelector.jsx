@@ -534,7 +534,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     return (
       <div
         ref={backdropRef}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[130]"
         onMouseDown={handleBackdropPointerDown}
       >
         <div
@@ -667,11 +667,11 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
     {/* ── Fullscreen image lightbox ── */}
     {imageExpanded && product.image && (
       <div
-        className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/90 backdrop-blur-md z-[140] flex items-center justify-center p-4"
         onClick={() => setImageExpanded(false)}
       >
         <button
-          className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all flex items-center justify-center z-50"
+          className="absolute top-4 right-4 w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md text-white hover:bg-white/20 transition-all flex items-center justify-center z-[141]"
           onClick={() => setImageExpanded(false)}
           aria-label="Cerrar imagen"
         >
@@ -689,7 +689,7 @@ function ProductToppingsSelector({ product, onAddToCart, onClose, compact = fals
 
     <div
       ref={backdropRef}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-40"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-[130]"
       onMouseDown={handleBackdropPointerDown}
       onTouchEnd={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
