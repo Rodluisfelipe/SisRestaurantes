@@ -548,6 +548,8 @@ const FilterableMenu = ({
             {MI.search('w-[18px] h-[18px] sm:w-5 sm:h-5')}
           </span>
           <input
+            /* id estable: el BottomNav del menú V2 lo enfoca desde el ícono de buscar */
+            id="menu-search-input"
             type="text"
             placeholder={isService ? '¿Qué servicio buscas?' : '¿Qué se te antoja hoy?'}
             value={searchTerm}

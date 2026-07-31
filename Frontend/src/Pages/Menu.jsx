@@ -17,6 +17,7 @@ import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
 import OrderConfirmationModal from "../Components/OrderConfirmationModal";
 import CartBar from "../Components/CartBar";
+import BottomNav from "../Components/BottomNav";
 import FavoritesModal from "../Components/FavoritesModal";
 import OrderHistoryModal from "../Components/OrderHistoryModal";
 import LoyaltyPage from "../Components/LoyaltyPage";
@@ -1541,7 +1542,9 @@ export default function Menu() {
         (--mb-accent, --mb-surface, …). Todo lo de adentro las consume con
         bg-[var(--mb-accent)] en vez de repetir el color inline. */}
     <main
-      className="min-h-screen bg-gray-50 pb-20 pt-safe"
+      /* En V2 el nav flotante ocupa más alto que la CartBar: más aire abajo
+         para que no tape el final del menú. */
+      className={`min-h-screen bg-gray-50 pt-safe ${menuV2 ? 'pb-32' : 'pb-20'}`}
       /* Permite verificar en producción que el flag llega al cliente sin ningún
          cambio visual. PR-2 lo usa para montar ProfileHeader en vez de este. */
       data-menu-v2={menuV2 ? '1' : '0'}
@@ -1688,7 +1691,8 @@ export default function Menu() {
       {/* Red de descubrimiento MenuBy */}
       <DiscoverMore />
 
-      {!isViewOnly && (
+      {/* En V2 el carrito vive en el BottomNav, así que la CartBar no se monta */}
+      {!isViewOnly && !menuV2 && (
         <CartBar
           cart={cart}
           totalItems={totalItems}
@@ -1701,6 +1705,23 @@ export default function Menu() {
           isSelectingToppings={isSelectingToppings}
           showCartSummary={showCartSummary}
           subscriptionStatus={subscriptionStatus}
+        />
+      )}
+
+      {/* Bottom nav del menú V2 — se oculta mientras hay un sheet abierto para
+          no competir con sus CTAs. */}
+      {menuV2 && !isViewOnly && !isSelectingToppings && !showCartSummary && (
+        <BottomNav
+          totalItems={totalItems}
+          onShowCart={() => {
+            if (subscriptionStatus === 'suspended') return;
+            setShowCartSummary(true);
+          }}
+          onShowReviews={() => { setReviewsInitialSource('internal'); setShowReviewsSheet(true); }}
+          onShowHistory={() => setShowHistory(true)}
+          customerName={orderInfo?.customerName}
+          hasActiveOrder={!!activeOrderId && !['completed', 'delivered', 'cancelled'].includes(activeOrderStatus)}
+          disabled={subscriptionStatus === 'suspended'}
         />
       )}
       

@@ -23,9 +23,19 @@ export const FlyToCartProvider = ({ children }) => {
   const triggerFly = useCallback(({ x, y, image, color }) => {
     const id = ++flyId;
 
-    // Target = center-bottom of viewport (CartBar lives at bottom)
-    const targetX = window.innerWidth / 2;
-    const targetY = window.innerHeight - 28; // middle of CartBar
+    // Target: el botón real del carrito si está en el DOM (el BottomNav del
+    // menú V2 lo marca con data-cart-target). Si no, el centro-inferior, que es
+    // donde vive la CartBar clásica.
+    let targetX = window.innerWidth / 2;
+    let targetY = window.innerHeight - 28;
+    const cartEl = document.querySelector('[data-cart-target]');
+    if (cartEl) {
+      const r = cartEl.getBoundingClientRect();
+      if (r.width && r.height) {
+        targetX = r.left + r.width / 2;
+        targetY = r.top + r.height / 2;
+      }
+    }
 
     setItems(prev => [...prev, { id, startX: x, startY: y, targetX, targetY, image, color }]);
 
