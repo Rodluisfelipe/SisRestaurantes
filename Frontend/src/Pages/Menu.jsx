@@ -21,6 +21,7 @@ import BottomNav from "../Components/BottomNav";
 const MoreSheet = lazy(() => import("../Components/MoreSheet"));
 const MenuScreen = lazy(() => import("../Components/MenuScreen"));
 const TableTab = lazy(() => import("../Components/TableTab"));
+const DiscoverSheet = lazy(() => import("../Components/DiscoverSheet"));
 const StoriesRow = lazy(() => import("../Components/StoriesRow"));
 import FavoritesModal from "../Components/FavoritesModal";
 import OrderHistoryModal from "../Components/OrderHistoryModal";
@@ -128,6 +129,7 @@ export default function Menu() {
   const [showReviewsSheet, setShowReviewsSheet] = useState(false);
   const [showMoreSheet, setShowMoreSheet] = useState(false); // hub "Más" del menú V2
   const [showTableTab, setShowTableTab] = useState(false);   // cuenta de la mesa (V2)
+  const [showDiscover, setShowDiscover] = useState(false);   // feed "Descubre" (V2)
   const [reviewsInitialSource, setReviewsInitialSource] = useState('internal');
   const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
   const [pendingReviewTopProduct, setPendingReviewTopProduct] = useState(null);
@@ -1746,6 +1748,19 @@ export default function Menu() {
         </Suspense>
       )}
 
+      {/* Feed "Descubre" (V2) */}
+      {menuV2 && (
+        <Suspense fallback={null}>
+          <DiscoverSheet
+            open={showDiscover}
+            onClose={() => setShowDiscover(false)}
+            products={products}
+            categories={categories}
+            addToCart={isViewOnly ? null : addToCart}
+          />
+        </Suspense>
+      )}
+
       {/* Cuenta de la mesa en vivo (V2 + QR de mesa + POS) */}
       {menuV2 && (
         <Suspense fallback={null}>
@@ -1775,7 +1790,7 @@ export default function Menu() {
 
       {/* Bottom nav del menú V2 — se oculta mientras hay un sheet abierto para
           no competir con sus CTAs. */}
-      {menuV2 && !isViewOnly && !isSelectingToppings && !showCartSummary && !showMoreSheet && !showHistory && !showFavorites && !showTableTab && (
+      {menuV2 && !isViewOnly && !isSelectingToppings && !showCartSummary && !showMoreSheet && !showHistory && !showFavorites && !showTableTab && !showDiscover && (
         <BottomNav
           totalItems={totalItems}
           onShowCart={() => {
@@ -1788,10 +1803,7 @@ export default function Menu() {
             if (tableFromUrl && businessConfig?.features?.posBetaEnabled) setShowTableTab(true);
             else setShowHistory(true);
           }}
-          onDiscover={() => {
-            const el = document.getElementById('menu-content');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }}
+          onDiscover={() => setShowDiscover(true)}
           onShowMore={() => setShowMoreSheet(true)}
           hasActiveOrder={!!activeOrderId && !['completed', 'delivered', 'cancelled'].includes(activeOrderStatus)}
           disabled={subscriptionStatus === 'suspended'}
