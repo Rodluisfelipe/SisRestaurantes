@@ -98,7 +98,8 @@ export const FilterableMenuSkeleton = () => (
 export const BusinessHeaderSkeleton = () => (
   <div className="w-full relative animate-fadeIn">
     {/* Immersive cover area */}
-    <div className={`relative bg-gray-200 ${shimmerClass}`} style={{ paddingBottom: '38%' }}>
+    {/* Debe calcar la portada real (44vh) para que no salte al cargar */}
+    <div className={`relative bg-gray-200 ${shimmerClass}`} style={{ minHeight: '44vh' }}>
       {/* Status badge skeleton — top left */}
       <div className="absolute left-3 top-3 z-10">
         <div className={`h-6 w-16 rounded-full bg-gray-300/50 ${shimmerClass}`} />

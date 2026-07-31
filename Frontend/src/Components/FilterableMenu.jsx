@@ -619,9 +619,12 @@ const FilterableMenu = ({
         ref={pillBarRef}
         className={`z-40 py-2.5 mb-4 sm:mb-5 ${
           isSticky
-            ? 'sticky top-0 bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6'
+            ? 'sticky bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6'
             : ''
         }`}
+        /* Se pega justo debajo del header compacto del negocio. BusinessHeader
+           publica su altura en --mb-header-h (0px cuando no está colapsado). */
+        style={isSticky ? { top: 'var(--mb-header-h, 0px)' } : undefined}
       >
         <div className="overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 pb-1 px-0.5 min-w-max">

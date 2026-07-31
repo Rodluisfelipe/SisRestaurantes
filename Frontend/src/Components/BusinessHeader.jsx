@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
 import AccountManagementModal from './AccountManagementModal';
@@ -28,6 +29,9 @@ const BusinessHeader = ({
   subscriptionCommercialPlan
 }) => {
   const [logoError, setLogoError] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const coverRef = useRef(null);
+  const reduceMotion = useReducedMotion();
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [hasActiveOrder, setHasActiveOrder] = useState(false);
   const [activeOrderType, setActiveOrderType] = useState('');
@@ -77,6 +81,38 @@ const BusinessHeader = ({
   const defaultLogo = 'https://placehold.co/150x150?text=Logo';
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
 
+  /* La portada colapsa a un header compacto al hacer scroll. El listener es
+     pasivo y se agrupa con rAF para no penalizar el scroll en gama baja. */
+  useEffect(() => {
+    let ticking = false;
+    const update = () => {
+      ticking = false;
+      const h = coverRef.current?.offsetHeight || 260;
+      // Colapsa cuando la portada ya salió casi por completo de la vista
+      setCollapsed(window.scrollY > Math.max(120, h - 90));
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
+  /* Publica la altura del header compacto para que otros elementos sticky
+     (las pills de categoría) se peguen justo debajo y no se superpongan. */
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--mb-header-h', collapsed ? '52px' : '0px');
+    return () => root.style.setProperty('--mb-header-h', '0px');
+  }, [collapsed]);
+
   // Fetch loyalty points for the customer
   useEffect(() => {
     if (!showLoyaltyButton || !customerData?.phone || !businessId) return;
@@ -118,26 +154,35 @@ const BusinessHeader = ({
 
   return (
     <div className="w-full relative -mt-[env(safe-area-inset-top,0px)]">
-      {/* ── Immersive Header — everything inside the cover ── */}
-      <div className="relative">
+      {/* ── Portada cinematográfica — todo vive dentro de la foto ── */}
+      <div
+        ref={coverRef}
+        className="relative flex flex-col"
+        style={hasCover ? { minHeight: '44vh' } : undefined}
+      >
         {/* Background: cover image or fallback gradient */}
         {hasCover ? (
           <>
-            <div 
+            <div
               className="absolute inset-0 bg-cover bg-center bg-no-repeat"
               style={{ backgroundImage: `url(${businessConfig.coverImage})` }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/60" />
+            {/* El contenido "emerge" de la foto: funde hacia el fondo de la página */}
+            <div
+              className="absolute inset-x-0 bottom-0 h-28 pointer-events-none"
+              style={{ background: 'linear-gradient(to bottom, rgba(249,250,251,0), #F9FAFB)' }}
+            />
           </>
         ) : (
-          <div 
+          <div
             className="absolute inset-0"
             style={{ background: `linear-gradient(135deg, ${themeColor}30 0%, ${themeColor}15 50%, ${themeColor}25 100%)` }}
           />
         )}
 
         {/* ── Content floating inside the cover ── */}
-        <div className="relative z-10 px-4 pt-[max(env(safe-area-inset-top,4px),4px)] pb-4">
+        <div className="relative z-10 px-4 pt-[max(env(safe-area-inset-top,4px),4px)] pb-4 flex-1 flex flex-col">
           {/* Top row: Status left — Action buttons right */}
           <div className="flex items-center justify-between mb-2">
             {/* Status Badge */}
@@ -188,11 +233,14 @@ const BusinessHeader = ({
             </div>
           </div>
 
+          {/* Empuja la identidad al centro-inferior de la portada */}
+          {hasCover && <div className="flex-1 min-h-[8px]" />}
+
           {/* Center: Logo + Name + Info — centered column */}
           <div className="flex flex-col items-center gap-1.5">
             {/* Logo */}
-            <div 
-              className="w-[80px] h-[80px] sm:w-[92px] sm:h-[92px] rounded-full p-[3px] shadow-xl"
+            <div
+              className="w-[88px] h-[88px] rounded-full p-[3px] shadow-xl"
               style={{ 
                 background: businessStatus?.isOpen 
                   ? `linear-gradient(135deg, ${themeColor}, ${themeColor}90)` 
@@ -316,8 +364,72 @@ const BusinessHeader = ({
         </div>
       </div>
 
+      {/* ── Header compacto sticky: aparece cuando la portada sale de vista ── */}
+      <AnimatePresence>
+        {collapsed && (
+          <motion.div
+            initial={reduceMotion ? { opacity: 0 } : { y: -64, opacity: 0 }}
+            animate={reduceMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { y: -64, opacity: 0 }}
+            transition={reduceMotion ? { duration: 0.15 } : { type: 'spring', damping: 28, stiffness: 320 }}
+            className="fixed top-0 left-0 right-0 z-40"
+            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+          >
+            <div
+              className="flex items-center gap-2.5 px-3 py-2 border-b"
+              style={{
+                background: 'rgba(255,255,255,0.86)',
+                backdropFilter: 'blur(14px)',
+                WebkitBackdropFilter: 'blur(14px)',
+                borderColor: 'rgba(15,23,42,0.07)',
+              }}
+            >
+              <img
+                src={businessConfig.logo || defaultLogo}
+                alt=""
+                aria-hidden="true"
+                className="w-8 h-8 rounded-full object-cover shrink-0"
+                style={{ boxShadow: `0 0 0 2px ${themeColor}33` }}
+                onError={(e) => { e.target.src = defaultLogo; }}
+              />
+              <p className="flex-1 min-w-0 truncate text-[14px] font-extrabold tracking-tight text-slate-800">
+                {businessConfig.businessName || 'Mi Negocio'}
+              </p>
+              {/* Estado, para no perder la señal de abierto/cerrado al colapsar */}
+              <span
+                className={`shrink-0 inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-bold ${
+                  businessStatus?.isOpen ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${businessStatus?.isOpen ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                {businessStatus?.isOpen ? 'Abierto' : 'Cerrado'}
+              </span>
+              {/* Acciones compactas (mismas del hero) */}
+              <div className="flex items-center gap-1 shrink-0">
+                {actionButtons.slice(-2).map((btn) => (
+                  <button
+                    key={btn.key}
+                    onClick={btn.onClick}
+                    aria-label={btn.label}
+                    title={btn.label}
+                    className="relative w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 transition-colors"
+                  >
+                    <span className={btn.colorLight}>{btn.icon('w-4 h-4')}</span>
+                    {btn.badge && (
+                      <span className="absolute -top-0.5 -right-0.5 min-w-[15px] h-[15px] px-1 flex items-center justify-center rounded-full text-[8px] font-bold text-white bg-emerald-500 ring-2 ring-white">
+                        {typeof btn.badge === 'number' ? btn.badge : ''}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Account Management Modal */}
-      <AccountManagementModal 
+      <AccountManagementModal
         isOpen={showAccountModal}
         onClose={() => setShowAccountModal(false)}
         customerData={customerData}
