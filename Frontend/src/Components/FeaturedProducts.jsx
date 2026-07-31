@@ -155,11 +155,11 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                 transition={{ delay: index * 0.06 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleProductClick(product)}
-                className="flex-shrink-0 snap-start cursor-pointer group shadow-sm hover:shadow-lg border border-slate-100 rounded-2xl overflow-hidden bg-white transition-shadow duration-300"
-                style={{ width: 'calc(50% - 6px)' }}
+                className="flex-shrink-0 snap-start cursor-pointer group border border-slate-100 overflow-hidden bg-white transition-shadow duration-300"
+                style={{ width: 'calc(50% - 6px)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)' }}
               >
-                {/* Image — square like ProductCard */}
-                <div className="relative aspect-square bg-slate-50 overflow-hidden">
+                {/* Image — 4:3, igual que ProductCard */}
+                <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
                   {product.image ? (
                     <img
                       src={product.image}

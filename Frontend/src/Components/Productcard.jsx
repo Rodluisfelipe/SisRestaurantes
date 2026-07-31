@@ -7,6 +7,7 @@ import { useBusinessConfig } from "../Context/BusinessContext";
 import BusinessClosedModal from './BusinessClosedModal';
 import { useFlyToCart } from './FlyToCart';
 import ProductPeekWrapper from './ProductPeekWrapper';
+import { radii, shadows, productNameSize, alpha, TOUCH_TARGET } from '../utils/menuTokens';
 
 /* ── SVG icons (stroke-based) ── */
 const PCI = {
@@ -105,12 +106,13 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
         whileHover={!isDisabled ? { y: -3 } : {}}
         whileTap={!isDisabled ? { scale: 0.98 } : {}}
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
-        className={`group relative bg-white rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 overflow-hidden transition-shadow duration-300 ${
-          isDisabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'
-        }`}
+        className={`group relative bg-white border border-slate-100 overflow-hidden transition-shadow duration-300 ${
+          isOutOfStock ? 'opacity-50' : ''
+        } ${isDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        style={{ borderRadius: radii.card, boxShadow: shadows.card }}
       >
-        {/* Product Image — cinematic, hero gets landscape ratio */}
-        <div className={`relative overflow-hidden bg-slate-50 ${isHero ? 'aspect-[2/1]' : 'aspect-square'}`}>
+        {/* Product Image — ratio 4:3 (hero en panorámico) */}
+        <div className={`relative overflow-hidden bg-slate-50 ${isHero ? 'aspect-[2/1]' : 'aspect-[4/3]'}`}>
           {product.image ? (
             <motion.img 
               src={product.image} 
@@ -121,13 +123,33 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           ) : (
-            <div 
-              className="w-full h-full flex items-center justify-center"
-              style={{
-                background: `linear-gradient(135deg, ${buttonColor}08, ${buttonColor}03)`
-              }}
+            /* Placeholder de marca: patrón con el logo del restaurante en su
+               color, nunca un gris genérico. */
+            <div
+              className="w-full h-full flex items-center justify-center relative overflow-hidden"
+              style={{ background: `linear-gradient(135deg, ${alpha(buttonColor, 0.14)}, ${alpha(buttonColor, 0.05)})` }}
             >
-              <span className="text-slate-200">{PCI.image('w-10 h-10 sm:w-12 sm:h-12')}</span>
+              <div
+                className="absolute inset-0 opacity-[0.07]"
+                style={{
+                  backgroundImage: `radial-gradient(${buttonColor} 1.5px, transparent 1.5px)`,
+                  backgroundSize: '14px 14px',
+                }}
+              />
+              {businessConfig?.logo ? (
+                <img
+                  src={businessConfig.logo}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover opacity-30"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              ) : (
+                <span className="relative opacity-25" style={{ color: buttonColor }}>
+                  {PCI.image('w-10 h-10 sm:w-12 sm:h-12')}
+                </span>
+              )}
             </div>
           )}
 
@@ -162,8 +184,8 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </div>
           )}
 
-          {/* "Favorito" badge */}
-          {isFavorite && (
+          {/* "Favorito" — se oculta si ya hay otro badge, para no pasar de 2 */}
+          {isFavorite && !isOutOfStock && !promoActive && (
             <div className="absolute top-2 right-2">
               <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm backdrop-blur-md">
                 {PCI.flame('w-2.5 h-2.5')}
@@ -172,11 +194,12 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </div>
           )}
 
-          {/* Badge agotado / últimas unidades */}
+          {/* Agotado: la card baja a 50% (arriba) y se marca, pero NO se tapa
+              ni desaparece — evita la sensación de menú vacío. */}
           {isOutOfStock && (
-            <div className="absolute inset-0 z-[3] flex items-center justify-center bg-black/50 backdrop-blur-[1px]">
-              <span className="bg-slate-900/90 text-white text-[11px] font-bold px-3 py-1.5 rounded-full tracking-wide uppercase">
-                Agotado
+            <div className="absolute top-2 right-2 z-[3]">
+              <span className="bg-slate-900/85 text-white text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wide backdrop-blur-sm">
+                Agotado hoy
               </span>
             </div>
           )}
@@ -196,7 +219,11 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
                 ${Number(product.price).toLocaleString('es-CO', { maximumFractionDigits: 0 })}
               </span>
             )}
-            <span className={`font-black drop-shadow-lg ${promoActive ? 'text-amber-300' : 'text-white'} ${isHero ? 'text-xl sm:text-2xl' : 'text-[15px] sm:text-lg'}`}>
+            {/* El precio nunca es tímido: 17px/800 tabular-nums */}
+            <span
+              className={`font-extrabold tabular-nums drop-shadow-lg ${promoActive ? 'text-amber-300' : 'text-white'} ${isHero ? 'text-xl sm:text-2xl' : 'text-[17px]'}`}
+              style={{ fontWeight: 800 }}
+            >
               ${Number(promoActive ? effPrice : product.price).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </span>
           </div>
@@ -219,13 +246,16 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
               }}
               whileTap={!isDisabled ? { scale: 0.85 } : {}}
               transition={{ type: "spring", stiffness: 400, damping: 15 }}
-              className={`absolute bottom-2 right-2.5 z-[2] w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shadow-lg backdrop-blur-md transition-all duration-200 ${
+              className={`absolute bottom-2 right-2.5 z-[2] flex items-center justify-center shadow-lg backdrop-blur-md transition-all duration-200 ${
                 isDisabled ? 'opacity-40 cursor-not-allowed' : 'active:shadow-xl'
               }`}
               style={{
+                width: TOUCH_TARGET,
+                height: TOUCH_TARGET,
+                borderRadius: radii.button,
                 backgroundColor: isDisabled ? 'rgba(226,232,240,0.8)' : `${buttonColor}e0`,
                 color: buttonTextColor,
-                boxShadow: isDisabled ? undefined : `0 4px 16px ${buttonColor}40`
+                boxShadow: isDisabled ? undefined : `0 4px 16px ${alpha(buttonColor, 0.25)}`
               }}
               aria-label={isOutOfStock ? "Agotado" : isDisabled ? "No disponible" : "Agregar al carrito"}
               disabled={isDisabled}
@@ -260,7 +290,13 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
 
         {/* Product Info — compact, name + description only */}
         <div className={isHero ? 'px-3 py-2.5 sm:px-4 sm:py-3' : 'px-3 py-2 sm:px-3.5'}>
-          <h3 className={`font-bold text-slate-800 leading-tight line-clamp-1 group-hover:text-slate-900 transition-colors ${isHero ? 'text-sm sm:text-base' : 'text-[13px] sm:text-sm'}`}>
+          {/* El nombre no se trunca jamás: hasta 2 líneas y, si es muy largo,
+              se reduce el tamaño antes que cortar con "…". */}
+          <h3
+            className={`font-semibold text-slate-800 leading-tight line-clamp-2 group-hover:text-slate-900 transition-colors ${productNameSize(product.name, { hero: isHero })}`}
+            style={{ minHeight: '2.4em' }}
+            title={product.name}
+          >
             {product.name}
           </h3>
           {product.description && (

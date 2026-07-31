@@ -10,18 +10,16 @@ const shimmerClass =
 /* ------------------------------------------------------------------ */
 /*  ProductCardSkeleton                                                */
 /* ------------------------------------------------------------------ */
+/* Debe calcar la geometría de ProductCard (4:3 + radio 20px) para que al
+   cargar no haya salto de layout. */
 export const ProductCardSkeleton = () => (
-  <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+  <div className="bg-white border border-gray-100 overflow-hidden" style={{ borderRadius: '20px', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)' }}>
     {/* Image placeholder */}
-    <div className={`aspect-square bg-gray-200 ${shimmerClass}`} />
+    <div className={`aspect-[4/3] bg-gray-200 ${shimmerClass}`} />
     {/* Info */}
-    <div className="p-3 sm:p-4 space-y-2.5">
+    <div className="px-3 py-2 sm:px-3.5 space-y-2">
       <div className={`h-4 w-3/4 rounded-full bg-gray-200 ${shimmerClass}`} />
-      <div className={`h-3 w-full rounded-full bg-gray-100 ${shimmerClass}`} />
-      <div className="flex items-end justify-between pt-1">
-        <div className={`h-5 w-16 rounded-full bg-gray-200 ${shimmerClass}`} />
-        <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gray-200 ${shimmerClass}`} />
-      </div>
+      <div className={`h-3 w-1/2 rounded-full bg-gray-100 ${shimmerClass}`} />
     </div>
   </div>
 );
