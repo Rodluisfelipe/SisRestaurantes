@@ -1838,6 +1838,7 @@ export default function Menu() {
 
       {/* Modal de Favoritos */}
       <FavoritesModal
+        fullScreen={menuV2}
         show={showFavorites}
         onClose={() => setShowFavorites(false)}
         businessId={businessId}
@@ -1857,6 +1858,7 @@ export default function Menu() {
 
       {/* Modal de Historial de Pedidos */}
       <OrderHistoryModal
+        fullScreen={menuV2}
         show={showHistory}
         onClose={() => setShowHistory(false)}
         businessId={businessId}

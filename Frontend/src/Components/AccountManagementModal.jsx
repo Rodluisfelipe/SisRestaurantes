@@ -7,7 +7,9 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 
 const EMPTY_ARRAY = [];
 
-const AccountManagementModal = ({ isOpen, onClose, customerData, orders = EMPTY_ARRAY, initialTab = 'profile' }) => {
+/* fullScreen: en el menú V2 esta sección deja de ser un modal flotante y se
+   comporta como una pantalla de app (entra desde la derecha y ocupa todo). */
+const AccountManagementModal = ({ isOpen, onClose, customerData, orders = EMPTY_ARRAY, initialTab = 'profile', fullScreen = false }) => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [profileData, setProfileData] = useState({
     name: customerData?.name || '',
@@ -197,18 +199,52 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = EMPTY_
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50"
-        onClick={onClose}
+        className={`fixed inset-0 z-50 ${fullScreen ? '' : 'bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center'}`}
+        onClick={fullScreen ? undefined : onClose}
       >
-        <motion.div 
-          initial={{ y: 40, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 40, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 350, damping: 30 }}
-          className="bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[85vh] overflow-hidden sm:mx-4"
+        <motion.div
+          initial={fullScreen ? { x: '100%' } : { y: 40, opacity: 0 }}
+          animate={fullScreen ? { x: 0 } : { y: 0, opacity: 1 }}
+          exit={fullScreen ? { x: '100%' } : { y: 40, opacity: 0 }}
+          transition={{ type: "spring", stiffness: 320, damping: 30 }}
+          className={fullScreen
+            ? 'w-full h-full flex flex-col overflow-hidden'
+            : 'bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg max-h-[92vh] sm:max-h-[85vh] overflow-hidden sm:mx-4'}
+          style={fullScreen ? { background: 'var(--mb-surface)' } : undefined}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
+          {/* Header — en pantalla completa se comporta como barra de app:
+              volver a la izquierda y la identidad del cliente en grande. */}
+          {fullScreen ? (
+            <div
+              className="shrink-0 px-4 pb-4 border-b"
+              style={{ background: 'var(--mb-card)', borderColor: 'var(--mb-line)', paddingTop: 'calc(14px + env(safe-area-inset-top, 0px))' }}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <button
+                  onClick={onClose}
+                  className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-transform"
+                  style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink)' }}
+                  aria-label="Volver"
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+                <h2 className="text-[17px] font-extrabold tracking-tight" style={{ color: 'var(--mb-ink)' }}>Mi cuenta</h2>
+              </div>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-14 h-14 rounded-full flex items-center justify-center text-[20px] font-black"
+                  style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
+                >
+                  {(profileData.name || 'C').trim().charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[17px] font-extrabold truncate" style={{ color: 'var(--mb-ink)' }}>{profileData.name || 'Cliente'}</p>
+                  <p className="text-[13px]" style={{ color: 'var(--mb-ink-2)' }}>{profileData.phone}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
           <div className="px-5 pt-5 pb-4 border-b border-gray-100">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-bold text-gray-900">Mi Cuenta</h2>
@@ -219,10 +255,10 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = EMPTY_
                 <FaTimes className="text-sm" />
               </button>
             </div>
-            
+
             {/* User info pill */}
             <div className="flex items-center gap-2.5">
-              <div 
+              <div
                 className="w-9 h-9 rounded-full flex items-center justify-center"
                 style={{ backgroundColor: `${primaryColor}15` }}
               >
@@ -234,9 +270,10 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = EMPTY_
               </div>
             </div>
           </div>
+          )}
 
           {/* Tab bar — underline style */}
-          <div className="flex border-b border-gray-100">
+          <div className="flex border-b shrink-0" style={fullScreen ? { background: 'var(--mb-card)', borderColor: 'var(--mb-line)' } : { borderColor: '#f3f4f6' }}>
             {[
               { id: 'profile', label: 'Perfil', icon: FaUser },
               { id: 'orders', label: 'Pedidos', icon: FaBox }
@@ -263,7 +300,10 @@ const AccountManagementModal = ({ isOpen, onClose, customerData, orders = EMPTY_
           </div>
 
           {/* Content */}
-          <div className="p-5 overflow-y-auto" style={{ maxHeight: 'calc(92vh - 180px)' }}>
+          <div
+            className={fullScreen ? 'p-5 flex-1 overflow-y-auto overscroll-contain' : 'p-5 overflow-y-auto'}
+            style={fullScreen ? undefined : { maxHeight: 'calc(92vh - 180px)' }}
+          >
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div

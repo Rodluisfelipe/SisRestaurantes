@@ -8,7 +8,8 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 /**
  * Modal para mostrar historial de pedidos y permitir re-ordenar rápidamente
  */
-const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder, onAddToFavorites, theme, onReview }) => {
+/* fullScreen: en el menú V2 se abre como pantalla, no como hoja flotante. */
+const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder, onAddToFavorites, theme, onReview, fullScreen = false }) => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -148,23 +149,31 @@ const OrderHistoryModal = ({ show, onClose, businessId, customerPhone, onReorder
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center"
-        onClick={onClose}
+        className={`fixed inset-0 z-50 ${fullScreen ? '' : 'bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center'}`}
+        onClick={fullScreen ? undefined : onClose}
       >
         <motion.div
-          initial={{ y: '100%', opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: '100%', opacity: 0 }}
+          initial={fullScreen ? { x: '100%' } : { y: '100%', opacity: 0 }}
+          animate={fullScreen ? { x: 0 } : { y: 0, opacity: 1 }}
+          exit={fullScreen ? { x: '100%' } : { y: '100%', opacity: 0 }}
           transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-          className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl"
+          className={fullScreen
+            ? 'w-full h-full overflow-hidden flex flex-col'
+            : 'bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-md max-h-[92vh] sm:max-h-[85vh] overflow-hidden flex flex-col shadow-2xl'}
+          style={fullScreen ? { background: 'var(--mb-surface)' } : undefined}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header — compact */}
-          <div className="relative shrink-0">
-            {/* Drag handle for mobile */}
-            <div className="flex justify-center pt-3 pb-1 sm:hidden">
-              <div className="w-10 h-1 rounded-full bg-slate-300" />
-            </div>
+          <div
+            className="relative shrink-0"
+            style={fullScreen ? { background: 'var(--mb-card)', paddingTop: 'env(safe-area-inset-top, 0px)' } : undefined}
+          >
+            {/* Drag handle for mobile — en pantalla completa no aplica */}
+            {!fullScreen && (
+              <div className="flex justify-center pt-3 pb-1 sm:hidden">
+                <div className="w-10 h-1 rounded-full bg-slate-300" />
+              </div>
+            )}
             <div className="flex items-center justify-between px-5 py-3">
               <div className="flex items-center gap-3">
                 <div 

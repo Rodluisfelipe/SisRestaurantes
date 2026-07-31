@@ -8,7 +8,8 @@ import logger from '../utils/logger';
  * Modal para mostrar y gestionar productos favoritos del cliente
  * Permite visualizar, agregar al carrito y eliminar favoritos
  */
-const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart, theme, businessConfig }) => {
+/* fullScreen: en el menú V2 se abre como pantalla, no como modal centrado. */
+const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart, theme, businessConfig, fullScreen = false }) => {
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -124,19 +125,41 @@ const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart,
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-        onClick={onClose}
+        className={`fixed inset-0 z-50 ${fullScreen ? '' : 'bg-black bg-opacity-50 flex items-center justify-center p-4'}`}
+        onClick={fullScreen ? undefined : onClose}
       >
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.9, opacity: 0 }}
-          transition={{ type: 'spring', damping: 25 }}
-          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden"
+          initial={fullScreen ? { x: '100%' } : { scale: 0.9, opacity: 0 }}
+          animate={fullScreen ? { x: 0 } : { scale: 1, opacity: 1 }}
+          exit={fullScreen ? { x: '100%' } : { scale: 0.9, opacity: 0 }}
+          transition={{ type: 'spring', damping: fullScreen ? 30 : 25, stiffness: 320 }}
+          className={fullScreen
+            ? 'w-full h-full overflow-hidden flex flex-col'
+            : 'bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden'}
+          style={fullScreen ? { background: 'var(--mb-surface)' } : undefined}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div 
+          {fullScreen ? (
+            <div
+              className="shrink-0 flex items-center gap-3 px-4 pb-3 border-b"
+              style={{ background: 'var(--mb-card)', borderColor: 'var(--mb-line)', paddingTop: 'calc(12px + env(safe-area-inset-top, 0px))' }}
+            >
+              <button
+                onClick={onClose}
+                className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink)' }}
+                aria-label="Volver"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+              <div className="min-w-0">
+                <h2 className="text-[17px] font-extrabold tracking-tight" style={{ color: 'var(--mb-ink)' }}>Mis favoritos</h2>
+                <p className="text-[12px]" style={{ color: 'var(--mb-ink-2)' }}>{isService ? 'Tus servicios preferidos' : 'Tus productos preferidos'}</p>
+              </div>
+            </div>
+          ) : (
+          <div
             className="p-6 text-white"
             style={{ backgroundColor: buttonColor }}
           >
@@ -156,9 +179,10 @@ const FavoritesModal = ({ show, onClose, businessId, customerPhone, onAddToCart,
               </button>
             </div>
           </div>
+          )}
 
           {/* Content */}
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)]">
+          <div className={fullScreen ? 'p-5 flex-1 overflow-y-auto overscroll-contain' : 'p-6 overflow-y-auto max-h-[calc(90vh-140px)]'}>
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
                 <div className="relative w-16 h-16">

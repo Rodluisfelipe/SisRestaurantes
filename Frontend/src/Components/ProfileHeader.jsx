@@ -335,6 +335,7 @@ export default function ProfileHeader({
       </AnimatePresence>
 
       <AccountManagementModal
+        fullScreen
         isOpen={showAccountModal}
         onClose={() => setShowAccountModal(false)}
         customerData={customerData}
