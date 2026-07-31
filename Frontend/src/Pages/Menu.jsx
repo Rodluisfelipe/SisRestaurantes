@@ -5,6 +5,9 @@ const ReviewModal = lazy(() => import("../Components/ReviewModal"));
 const ReviewsSheet = lazy(() => import("../Components/ReviewsSheet"));
 import ProductCard from "../Components/Productcard";
 import BusinessHeader from "../Components/BusinessHeader";
+// Import directo (no lazy): es el primer render del menú, un chunk aparte
+// castigaría el LCP y haría parpadear la cabecera.
+import ProfileHeader from "../Components/ProfileHeader";
 import MenuStructuredData from "../Components/MenuStructuredData";
 import DiscoverMore from "../Components/DiscoverMore";
 import MenuPopup from "../Components/MenuPopup";
@@ -1548,19 +1551,36 @@ export default function Menu() {
       }}
     >
       <MenuStructuredData businessConfig={businessConfig} products={products} categories={categories} />
-      <BusinessHeader
-        comesFromCatalog={comesFromCatalog}
-        onShowFavorites={() => setShowFavorites(true)}
-        onShowHistory={() => setShowHistory(true)}
-        onShowLoyalty={() => setShowLoyalty(true)}
-        showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
-        showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
-        showLoyaltyButton={!!orderInfo.phone}
-        onShowReviews={(src) => { setReviewsInitialSource(typeof src === 'string' ? src : 'internal'); setShowReviewsSheet(true); }}
-        reviewStats={businessConfig?.reviewStats}
-        subscriptionPlanType={subscriptionPlanType}
-        subscriptionCommercialPlan={subscriptionCommercialPlan}
-      />
+      {menuV2 ? (
+        <ProfileHeader
+          onShowFavorites={() => setShowFavorites(true)}
+          onShowHistory={() => setShowHistory(true)}
+          onShowReviews={(src) => { setReviewsInitialSource(typeof src === 'string' ? src : 'internal'); setShowReviewsSheet(true); }}
+          onOrderNow={() => {
+            const el = document.getElementById('menu-content');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            else window.scrollTo({ top: window.innerHeight * 0.5, behavior: 'smooth' });
+          }}
+          showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
+          showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
+          reviewStats={businessConfig?.reviewStats}
+          subscriptionCommercialPlan={subscriptionCommercialPlan}
+        />
+      ) : (
+        <BusinessHeader
+          comesFromCatalog={comesFromCatalog}
+          onShowFavorites={() => setShowFavorites(true)}
+          onShowHistory={() => setShowHistory(true)}
+          onShowLoyalty={() => setShowLoyalty(true)}
+          showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
+          showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
+          showLoyaltyButton={!!orderInfo.phone}
+          onShowReviews={(src) => { setReviewsInitialSource(typeof src === 'string' ? src : 'internal'); setShowReviewsSheet(true); }}
+          reviewStats={businessConfig?.reviewStats}
+          subscriptionPlanType={subscriptionPlanType}
+          subscriptionCommercialPlan={subscriptionCommercialPlan}
+        />
+      )}
       
       {/* Banner solo-vista: todos los tipos de pedido desactivados */}
       {isViewOnly && (
@@ -1644,6 +1664,9 @@ export default function Menu() {
         />
       )}
       
+      {/* Ancla para el botón "Pedir ahora" del ProfileHeader (menú V2) */}
+      <div id="menu-content" style={{ scrollMarginTop: 'var(--mb-header-h, 0px)' }} />
+
       <FilterableMenu
         products={products}
         categories={categories}
