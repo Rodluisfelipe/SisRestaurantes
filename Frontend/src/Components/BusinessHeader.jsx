@@ -168,9 +168,11 @@ const BusinessHeader = ({
               style={{ backgroundImage: `url(${businessConfig.coverImage})` }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-black/60" />
-            {/* El contenido "emerge" de la foto: funde hacia el fondo de la página */}
+            {/* El contenido "emerge" de la foto: funde hacia el fondo de la
+                página. Se mantiene BAJO la identidad (que es texto blanco):
+                solo cubre la franja libre del final, nunca el nombre. */}
             <div
-              className="absolute inset-x-0 bottom-0 h-28 pointer-events-none"
+              className="absolute inset-x-0 bottom-0 h-14 pointer-events-none"
               style={{ background: 'linear-gradient(to bottom, rgba(249,250,251,0), #F9FAFB)' }}
             />
           </>
@@ -181,8 +183,10 @@ const BusinessHeader = ({
           />
         )}
 
-        {/* ── Content floating inside the cover ── */}
-        <div className="relative z-10 px-4 pt-[max(env(safe-area-inset-top,4px),4px)] pb-4 flex-1 flex flex-col">
+        {/* ── Content floating inside the cover ──
+            Con portada, el padding inferior deja libre la franja del degradado
+            para que el nombre (blanco) nunca caiga sobre el fundido claro. */}
+        <div className={`relative z-10 px-4 pt-[max(env(safe-area-inset-top,4px),4px)] flex-1 flex flex-col ${hasCover ? 'pb-16' : 'pb-4'}`}>
           {/* Top row: Status left — Action buttons right */}
           <div className="flex items-center justify-between mb-2">
             {/* Status Badge */}
@@ -372,8 +376,10 @@ const BusinessHeader = ({
             animate={reduceMotion ? { opacity: 1 } : { y: 0, opacity: 1 }}
             exit={reduceMotion ? { opacity: 0 } : { y: -64, opacity: 0 }}
             transition={reduceMotion ? { duration: 0.15 } : { type: 'spring', damping: 28, stiffness: 320 }}
-            className="fixed top-0 left-0 right-0 z-40"
-            style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+            className="fixed top-0 left-0 right-0"
+            /* Por encima de las pills de categoría (z-40), por debajo de los
+               modales (z-50). Sin esto las pills lo tapaban por orden de DOM. */
+            style={{ zIndex: 45, paddingTop: 'env(safe-area-inset-top, 0px)' }}
           >
             <div
               className="flex items-center gap-2.5 px-3 py-2 border-b"
