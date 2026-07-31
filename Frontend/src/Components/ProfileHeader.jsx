@@ -29,7 +29,6 @@ export default function ProfileHeader({
   onShowFavorites,
   onShowHistory,
   onShowReviews,
-  onOrderNow,
   showFavoritesButton = false,
   showHistoryButton = false,
   reviewStats,
@@ -252,39 +251,36 @@ export default function ProfileHeader({
           </a>
         )}
 
-        {/* Botonera */}
-        <div className="flex items-stretch gap-2 mt-3.5">
-          <button
-            onClick={onOrderNow}
-            className="flex-1 py-2.5 rounded-[var(--mb-radius-btn)] text-[14px] font-extrabold active:scale-[0.98] transition-transform"
-            style={{ background: 'var(--mb-accent)', color: 'var(--mb-on-accent)' }}
-          >
-            Pedir ahora
-          </button>
-          {waHref && (
-            <a
-              href={waHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 flex items-center justify-center gap-1.5 rounded-[var(--mb-radius-btn)] text-[13.5px] font-bold active:scale-[0.98] transition-transform"
-              style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink)', border: '1px solid var(--mb-line)' }}
-            >
-              <span className="text-[#25D366]">{PH.whatsapp()}</span>
-              WhatsApp
-            </a>
-          )}
-          {showFavoritesButton && (
-            <button
-              onClick={onShowFavorites}
-              className="w-11 flex items-center justify-center rounded-[var(--mb-radius-btn)] active:scale-[0.95] transition-transform"
-              style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)', border: '1px solid var(--mb-line)' }}
-              aria-label="Favoritos"
-              title="Favoritos"
-            >
-              {PH.heart()}
-            </button>
-          )}
-        </div>
+        {/* Botonera — sin "Pedir ahora": el menú ya está justo debajo y el
+            carrito vive en el bottom nav, así que ese CTA sobraba. */}
+        {(waHref || showFavoritesButton) && (
+          <div className="flex items-stretch gap-2 mt-3.5">
+            {waHref && (
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 py-2.5 flex items-center justify-center gap-1.5 rounded-[var(--mb-radius-btn)] text-[13.5px] font-bold active:scale-[0.98] transition-transform"
+                style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink)', border: '1px solid var(--mb-line)' }}
+              >
+                <span className="text-[#25D366]">{PH.whatsapp()}</span>
+                WhatsApp
+              </a>
+            )}
+            {showFavoritesButton && (
+              <button
+                onClick={onShowFavorites}
+                className={`${waHref ? 'w-12' : 'flex-1'} py-2.5 flex items-center justify-center gap-1.5 rounded-[var(--mb-radius-btn)] text-[13.5px] font-bold active:scale-[0.95] transition-transform`}
+                style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink-2)', border: '1px solid var(--mb-line)' }}
+                aria-label="Favoritos"
+                title="Favoritos"
+              >
+                {PH.heart()}
+                {!waHref && <span>Favoritos</span>}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Header compacto sticky ── */}

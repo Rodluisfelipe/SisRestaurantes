@@ -41,6 +41,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
   const scrollRef = useRef(null);
   const flyToCart = useFlyToCart();
   const { businessConfig } = useBusinessConfig();
+  const menuV2 = !!businessConfig?.features?.menuV2;
   const isService = ['salon', 'spa', 'clinic', 'services'].includes(businessConfig?.businessType);
 
   const buttonColor = theme?.buttonColor || '#f97316';
@@ -276,7 +277,9 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                     <p className="text-[10px] sm:text-[11px] font-semibold mt-0.5 line-clamp-1 flex items-center gap-1" style={{ color: buttonColor }}>
                       {PI.flame('w-2.5 h-2.5')} {pop.weeklyCount} pedidos esta semana
                     </p>
-                  ) : (medal || pop.isTopSeller) ? (
+                  ) : (menuV2 ? index === 0 : (medal || pop.isTopSeller)) ? (
+                    /* En V2 el sello es exclusivo del #1: repetirlo en tres
+                       productos lo vuelve ruido y deja de significar algo. */
                     <p className="text-[10px] sm:text-[11px] font-semibold mt-0.5 line-clamp-1 flex items-center gap-1" style={{ color: buttonColor }}>
                       {PI.trophy('w-2.5 h-2.5')} El favorito de la casa
                     </p>

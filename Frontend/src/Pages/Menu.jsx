@@ -1556,11 +1556,6 @@ export default function Menu() {
           onShowFavorites={() => setShowFavorites(true)}
           onShowHistory={() => setShowHistory(true)}
           onShowReviews={(src) => { setReviewsInitialSource(typeof src === 'string' ? src : 'internal'); setShowReviewsSheet(true); }}
-          onOrderNow={() => {
-            const el = document.getElementById('menu-content');
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            else window.scrollTo({ top: window.innerHeight * 0.5, behavior: 'smooth' });
-          }}
           showFavoritesButton={orderInfo.phone && businessConfig?.features?.favoritesEnabled !== false}
           showHistoryButton={orderInfo.phone && businessConfig?.features?.orderHistoryEnabled !== false}
           reviewStats={businessConfig?.reviewStats}

@@ -28,6 +28,12 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
 
   const buttonColor = businessConfig?.theme?.buttonColor || '#f97316';
   const buttonTextColor = businessConfig?.theme?.buttonTextColor || '#ffffff';
+  /* Menú V2: la card consume los tokens (--mb-*) y afina tipografía. Apagado
+     el flag, todo queda EXACTAMENTE igual que hoy (criterio de aceptación:
+     con menuV2:false el menú es pixel-idéntico). */
+  const menuV2 = !!businessConfig?.features?.menuV2;
+  const accentBg = menuV2 ? 'var(--mb-accent)' : `${buttonColor}e0`;
+  const accentFg = menuV2 ? 'var(--mb-on-accent)' : buttonTextColor;
   const hasToppings = product.toppingGroups && product.toppingGroups.length > 0;
   const isOutOfStock = product.trackStock && product.stock !== null && product.stock !== undefined && product.stock <= 0;
   const isLowStock = product.trackStock && product.stock !== null && product.stock !== undefined && product.stock > 0 && product.stock <= (product.lowStockAlert || 5);
@@ -221,7 +227,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             )}
             {/* El precio nunca es tímido: 17px/800 tabular-nums */}
             <span
-              className={`font-extrabold tabular-nums drop-shadow-lg ${promoActive ? 'text-amber-300' : 'text-white'} ${isHero ? 'text-xl sm:text-2xl' : 'text-[17px]'}`}
+              className={`font-extrabold tabular-nums drop-shadow-lg ${promoActive ? 'text-amber-300' : 'text-white'} ${isHero ? 'text-xl sm:text-2xl' : menuV2 ? 'text-[15.5px]' : 'text-[17px]'}`}
               style={{ fontWeight: 800 }}
             >
               ${Number(promoActive ? effPrice : product.price).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
@@ -253,8 +259,8 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
                 width: TOUCH_TARGET,
                 height: TOUCH_TARGET,
                 borderRadius: radii.button,
-                backgroundColor: isDisabled ? 'rgba(226,232,240,0.8)' : `${buttonColor}e0`,
-                color: buttonTextColor,
+                backgroundColor: isDisabled ? 'rgba(226,232,240,0.8)' : accentBg,
+                color: accentFg,
                 boxShadow: isDisabled ? undefined : `0 4px 16px ${alpha(buttonColor, 0.25)}`
               }}
               aria-label={isOutOfStock ? "Agotado" : isDisabled ? "No disponible" : "Agregar al carrito"}
