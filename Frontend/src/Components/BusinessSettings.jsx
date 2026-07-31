@@ -28,6 +28,7 @@ const BusinessSettings = () => {
     address: '',
     nit: '',
     googleMapsUrl: '',
+    wifi: { ssid: '', password: '', enabled: false },
     socialMedia: {
       facebook: { url: '', isVisible: true },
       instagram: { url: '', isVisible: true },
@@ -120,6 +121,7 @@ const BusinessSettings = () => {
           address: response.data.address || '',
           nit: response.data.nit || '',
           googleMapsUrl: response.data.googleMapsUrl || '',
+          wifi: { ssid: '', password: '', enabled: false, ...(response.data.wifi || {}) },
           socialMedia: {
             ...initialSettings.socialMedia,
             ...(response.data.socialMedia || {})
@@ -253,6 +255,11 @@ const BusinessSettings = () => {
         address: settings.address || "",
         nit: settings.nit || "",
         googleMapsUrl: settings.googleMapsUrl || "",
+        wifi: {
+          ssid: settings.wifi?.ssid || "",
+          password: settings.wifi?.password || "",
+          enabled: !!settings.wifi?.enabled,
+        },
         socialMedia: {
           facebook: {
             url: settings.socialMedia?.facebook?.url || "",
@@ -530,6 +537,40 @@ const BusinessSettings = () => {
             <h3 className="text-sm font-bold text-slate-800">Contacto y ubicación</h3>
           </div>
           <div className="p-4 space-y-3">
+              {/* Wi-Fi para los comensales — solo se publica si está activo */}
+              <div className="rounded-xl border border-slate-200 p-3">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <div>
+                    <span className="text-sm font-bold text-slate-700">Wi-Fi para clientes</span>
+                    <p className="text-[11px] text-slate-400">Aparece en el menú con botón de copiar y código QR</p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!!settings.wifi?.enabled}
+                    onChange={e => setSettings(prev => ({ ...prev, wifi: { ...prev.wifi, enabled: e.target.checked } }))}
+                    className="w-5 h-5 rounded"
+                  />
+                </label>
+                {settings.wifi?.enabled && (
+                  <div className="grid grid-cols-2 gap-2 mt-3">
+                    <input
+                      value={settings.wifi?.ssid || ''}
+                      onChange={e => setSettings(prev => ({ ...prev, wifi: { ...prev.wifi, ssid: e.target.value } }))}
+                      placeholder="Nombre de la red"
+                      maxLength={64}
+                      className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    />
+                    <input
+                      value={settings.wifi?.password || ''}
+                      onChange={e => setSettings(prev => ({ ...prev, wifi: { ...prev.wifi, password: e.target.value } }))}
+                      placeholder="Contraseña"
+                      maxLength={64}
+                      className="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-100"
+                    />
+                  </div>
+                )}
+              </div>
+
               {/* WhatsApp number with country code selector */}
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">

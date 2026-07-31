@@ -16,6 +16,7 @@ const CustomerLoyalty = require('../Models/CustomerLoyalty');
 const { ORDER_STATUS } = require('../utils/constants');
 const authMiddleware = require('../middleware/authMiddleware');
 const { tenantAuth } = require('../middleware/tenantAuth');
+const { resolveBusinessId } = require('../utils/businessResolver');
 const { validateCreateOrder } = require('../middleware/validate');
 const {
   validateUpdateOrderStatus,
@@ -990,6 +991,47 @@ router.get('/my-orders', publicOrderLimiter, async (req, res) => {
   } catch (error) {
     logger.error('Error fetching my orders', error);
     res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+// Cuenta abierta de una mesa — lectura PÚBLICA para el comensal que escaneó el
+// QR de esa mesa. Devuelve solo lo consumido (qué, cuánto y el subtotal): nunca
+// datos del cliente, del pago, ni de otras mesas.
+// OJO: debe ir ANTES de "/:id", que lleva authMiddleware y capturaría esta ruta.
+router.get('/open-tab', async (req, res) => {
+  try {
+    const { businessId: rawBiz, table } = req.query;
+    if (!rawBiz || !table) {
+      return res.status(400).json({ message: 'businessId y table son requeridos' });
+    }
+    let businessId;
+    try { businessId = await resolveBusinessId(rawBiz); } catch { return res.json({ open: false }); }
+
+    const order = await Order.findOne({
+      businessId,
+      posOpenTab: true,
+      tableNumber: String(table).trim(),
+      status: { $nin: ['completed', 'cancelled', 'delivered'] },
+    }).select('orderNumber items totalAmount createdAt').lean();
+
+    if (!order) return res.json({ open: false });
+
+    res.set('Cache-Control', 'no-store');
+    res.json({
+      open: true,
+      orderNumber: order.orderNumber,
+      openedAt: order.createdAt,
+      items: (order.items || []).map((i) => ({
+        name: i.name,
+        quantity: i.quantity,
+        price: i.price,
+        selectedToppings: (i.selectedToppings || []).map((t) => ({ optionName: t.optionName, price: t.price })),
+      })),
+      subtotal: order.totalAmount || 0,
+    });
+  } catch (e) {
+    logger.error('open-tab error', { error: e.message });
+    res.status(500).json({ open: false });
   }
 });
 

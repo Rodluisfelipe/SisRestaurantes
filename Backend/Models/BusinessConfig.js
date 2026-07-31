@@ -194,6 +194,14 @@ const businessConfigSchema = new mongoose.Schema({
     googleThreshold: { type: Number, default: 4, min: 1, max: 5 }
   },
   // NIT / Tax ID del negocio
+  // Wi-Fi del local para los comensales. Solo se sirve si enabled = true
+  // (ver el transform de toJSON, que lo filtra en las APIs públicas).
+  wifi: {
+    ssid: { type: String, trim: true, maxlength: 64, default: '' },
+    password: { type: String, trim: true, maxlength: 64, default: '' },
+    enabled: { type: Boolean, default: false }
+  },
+
   nit: {
     type: String,
     default: ""
@@ -578,6 +586,11 @@ businessConfigSchema.set('toJSON', {
         sendOnBookingConfirmed: ret.emailSettings.sendOnBookingConfirmed !== false,
         sendOnBookingCancelled: ret.emailSettings.sendOnBookingCancelled !== false
       };
+    }
+    // La clave del wifi solo viaja si el dueño lo activó para los comensales.
+    // Apagado, ni siquiera se expone el nombre de la red.
+    if (!ret.wifi || !ret.wifi.enabled) {
+      ret.wifi = { enabled: false };
     }
     return ret;
   }
