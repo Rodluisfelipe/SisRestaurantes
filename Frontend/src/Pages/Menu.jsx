@@ -701,6 +701,12 @@ export default function Menu() {
     montserrat: "'Montserrat', sans-serif",
   }[menuFont] || undefined : undefined;
 
+  /* Menú V2 ("perfil + historias"): beta por negocio, la activa el SuperAdmin.
+     Apagada (por defecto) el menú se comporta exactamente igual que hoy.
+     Conmuta SOLO la capa de presentación: hooks, carrito, sheets, tracking y
+     lealtad son los mismos en ambas versiones. */
+  const menuV2 = !!businessConfig?.features?.menuV2;
+
   useEffect(() => {
     // Usar isValidBusinessIdentifier en lugar de isValidObjectId para aceptar tanto slugs como ObjectIDs
     const isValid = isValidBusinessIdentifier(businessId);
@@ -1533,6 +1539,9 @@ export default function Menu() {
         bg-[var(--mb-accent)] en vez de repetir el color inline. */}
     <main
       className="min-h-screen bg-gray-50 pb-20 pt-safe"
+      /* Permite verificar en producción que el flag llega al cliente sin ningún
+         cambio visual. PR-2 lo usa para montar ProfileHeader en vez de este. */
+      data-menu-v2={menuV2 ? '1' : '0'}
       style={{
         ...menuCssVars(businessConfig?.theme?.buttonColor),
         ...(menuFontFamily ? { fontFamily: menuFontFamily } : {}),

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
-import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleSupplier, getBusinessCredentials, resetBusinessCredentials } from "../../services/superadminApi";
+import { fetchBusinesses, activateBusiness, deleteBusiness, togglePosBeta, toggleMenuV2, toggleSupplier, getBusinessCredentials, resetBusinessCredentials } from "../../services/superadminApi";
 import { socket } from "../../services/socket";
 import { motion, AnimatePresence } from "framer-motion";
 import { SAToast } from "../../Components/SuperAdmin/ui";
@@ -274,6 +274,17 @@ export default function BusinessTable({ refreshTrigger }) {
     }
   };
 
+  const handleToggleMenuV2 = async (b) => {
+    const current = b.features?.menuV2 || false;
+    try {
+      await toggleMenuV2(b._id, !current);
+      showMessage(`Menú V2 ${current ? 'desactivado' : 'activado'} para ${b.businessName}`);
+      loadBusinesses();
+    } catch (err) {
+      showMessage("Error al cambiar Menú V2", "error");
+    }
+  };
+
   const handleToggleSupplier = async (b) => {
     const current = b.isSupplier || false;
     try {
@@ -498,6 +509,19 @@ export default function BusinessTable({ refreshTrigger }) {
                       <span className={`w-1.5 h-1.5 rounded-full ${b.features?.posBetaEnabled ? 'bg-purple-400' : 'bg-white/20'}`} />
                       {b.features?.posBetaEnabled ? 'POS ✓' : 'POS'}
                     </button>
+                    {/* Menú V2 (perfil + historias) — beta por negocio */}
+                    <button
+                      onClick={() => handleToggleMenuV2(b)}
+                      title={b.features?.menuV2 ? 'Volver al menú actual' : 'Activar Menú V2 (perfil + historias)'}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 ml-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                        b.features?.menuV2
+                          ? 'bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-200 dark:border-sky-500/20 hover:bg-sky-200 dark:hover:bg-sky-500/25'
+                          : 'bg-slate-100 dark:bg-white/[0.04] text-slate-400 dark:text-white/25 border border-slate-200 dark:border-white/[0.06] hover:text-slate-900 dark:hover:text-white/40'
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${b.features?.menuV2 ? 'bg-sky-400' : 'bg-white/20'}`} />
+                      {b.features?.menuV2 ? 'V2 ✓' : 'V2'}
+                    </button>
                   </td>
                   <td className="py-3.5 px-4">
                     <button
@@ -637,6 +661,20 @@ export default function BusinessTable({ refreshTrigger }) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
                   </svg>
                   POS
+                </button>
+                <button
+                  onClick={() => handleToggleMenuV2(b)}
+                  className={`flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
+                    b.features?.menuV2
+                      ? 'bg-sky-100 dark:bg-sky-500/15 text-sky-600 dark:text-sky-400/90 border border-sky-200 dark:border-sky-500/15'
+                      : 'bg-slate-50 dark:bg-white/[0.03] text-slate-400 dark:text-white/25 border border-slate-200 dark:border-white/[0.06]'
+                  }`}
+                  title={b.features?.menuV2 ? 'Volver al menú actual' : 'Activar Menú V2 (perfil + historias)'}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  V2
                 </button>
                 <button
                   onClick={() => handleToggleSupplier(b)}

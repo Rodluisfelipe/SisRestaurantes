@@ -127,6 +127,16 @@ export const togglePosBeta = async (id, enabled) => {
   }
 };
 
+// Menú V2 (perfil + historias) — beta por negocio
+export const toggleMenuV2 = async (id, enabled) => {
+  try {
+    const response = await superadminApi.patch(`/business/${id}/menu-v2`, { enabled });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const toggleSupplier = async (id, enabled) => {
   try {
     const response = await superadminApi.patch(`/business/${id}/supplier`, { enabled });

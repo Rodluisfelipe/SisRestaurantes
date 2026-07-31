@@ -52,6 +52,26 @@ router.patch('/business/:id/pos-beta', requireRole('admin'), async (req, res) =>
   }
 });
 
+// Toggle Menú V2 (perfil + historias) para un negocio — admin+
+router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled } = req.body;
+    const negocio = await BusinessConfig.findByIdAndUpdate(
+      id,
+      { 'features.menuV2': !!enabled },
+      { new: true }
+    );
+    if (!negocio) return res.status(404).json({ message: 'Negocio no encontrado' });
+    const io = req.app.get('io');
+    if (io) io.emit('businesses-updated');
+    res.json(negocio);
+  } catch (error) {
+    logger.error('Error toggling menu V2', error);
+    res.status(500).json({ message: 'Error al cambiar Menú V2' });
+  }
+});
+
 // Obtener credenciales del admin del negocio — solo admin+
 router.get('/business/:id/credentials', requireRole('admin'), superadmin.getBusinessCredentials);
 
