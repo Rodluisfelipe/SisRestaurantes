@@ -18,6 +18,7 @@ import FilterableMenu from "../Components/FilterableMenu";
 import OrderConfirmationModal from "../Components/OrderConfirmationModal";
 import CartBar from "../Components/CartBar";
 import BottomNav from "../Components/BottomNav";
+const MoreSheet = lazy(() => import("../Components/MoreSheet"));
 const StoriesRow = lazy(() => import("../Components/StoriesRow"));
 import FavoritesModal from "../Components/FavoritesModal";
 import OrderHistoryModal from "../Components/OrderHistoryModal";
@@ -123,6 +124,7 @@ export default function Menu() {
   // Reviews states
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showReviewsSheet, setShowReviewsSheet] = useState(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false); // hub "Más" del menú V2
   const [reviewsInitialSource, setReviewsInitialSource] = useState('internal');
   const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
   const [pendingReviewTopProduct, setPendingReviewTopProduct] = useState(null);
@@ -1727,18 +1729,35 @@ export default function Menu() {
         />
       )}
 
+      {/* Hub "Más" — solo tiles con dato real detrás */}
+      {menuV2 && (
+        <Suspense fallback={null}>
+          <MoreSheet
+            open={showMoreSheet}
+            onClose={() => setShowMoreSheet(false)}
+            /* Calificar SIEMPRE pasa por el embudo interno, nunca directo a
+               Google: así las malas experiencias las ve primero el negocio. */
+            onRate={() => setShowReviewModal(true)}
+            onShowLoyalty={orderInfo?.phone ? () => setShowLoyalty(true) : null}
+          />
+        </Suspense>
+      )}
+
       {/* Bottom nav del menú V2 — se oculta mientras hay un sheet abierto para
           no competir con sus CTAs. */}
-      {menuV2 && !isViewOnly && !isSelectingToppings && !showCartSummary && (
+      {menuV2 && !isViewOnly && !isSelectingToppings && !showCartSummary && !showMoreSheet && !showHistory && !showFavorites && (
         <BottomNav
           totalItems={totalItems}
           onShowCart={() => {
             if (subscriptionStatus === 'suspended') return;
             setShowCartSummary(true);
           }}
-          onShowReviews={() => { setReviewsInitialSource('internal'); setShowReviewsSheet(true); }}
-          onShowHistory={() => setShowHistory(true)}
-          customerName={orderInfo?.customerName}
+          onShowOrders={() => setShowHistory(true)}
+          onDiscover={() => {
+            const el = document.getElementById('menu-content');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          onShowMore={() => setShowMoreSheet(true)}
           hasActiveOrder={!!activeOrderId && !['completed', 'delivered', 'cancelled'].includes(activeOrderStatus)}
           disabled={subscriptionStatus === 'suspended'}
         />

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Home, Star, ShoppingBag, Search, User } from 'lucide-react';
+import { Home, ReceiptText, ShoppingBag, Sparkles, Star } from 'lucide-react';
+
+const INACTIVE = '#9AA3B2';
 
 /**
  * BottomNav — pill flotante del menú V2.
@@ -10,9 +12,9 @@ import { Home, Star, ShoppingBag, Search, User } from 'lucide-react';
 export default function BottomNav({
   totalItems = 0,
   onShowCart,
-  onShowReviews,
-  onShowHistory,
-  customerName,
+  onShowOrders,
+  onDiscover,
+  onShowMore,
   hasActiveOrder = false,
   disabled = false,
 }) {
@@ -34,16 +36,25 @@ export default function BottomNav({
 
   const goTop = () => window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
 
-  const focusSearch = () => {
-    const el = document.getElementById('menu-search-input');
-    if (!el) return;
-    el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-    // Esperar al scroll para que el teclado móvil no lo desplace de vuelta
-    setTimeout(() => el.focus({ preventScroll: true }), reduceMotion ? 0 : 320);
-  };
-
-  const iconBtn = 'flex-1 h-12 flex items-center justify-center transition-colors active:scale-90';
-  const iconColor = 'rgba(255,255,255,0.62)';
+  /* Ítem con etiqueta: los íconos mudos obligan a adivinar. */
+  const Item = ({ icon: Icon, label, onClick, dot = false }) => (
+    <button
+      onClick={onClick}
+      className="flex-1 py-1.5 flex flex-col items-center justify-center gap-0.5 active:scale-90 transition-transform"
+      aria-label={label}
+    >
+      <span className="relative">
+        <Icon size={20} strokeWidth={1.8} style={{ color: INACTIVE }} />
+        {dot && (
+          <span
+            className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full"
+            style={{ background: '#EF4444', border: '1.5px solid #101319' }}
+          />
+        )}
+      </span>
+      <span className="text-[10px] font-medium leading-none" style={{ color: INACTIVE }}>{label}</span>
+    </button>
+  );
 
   return (
     <div
@@ -63,15 +74,8 @@ export default function BottomNav({
           boxShadow: '0 12px 34px rgba(0,0,0,0.34)',
         }}
       >
-        <button onClick={goTop} className={iconBtn} aria-label="Inicio" title="Inicio">
-          <Home size={21} style={{ color: iconColor }} strokeWidth={1.9} />
-        </button>
-
-        {/* El ítem 2 sería "Videos", pero el campo de video por producto aún no
-            existe: en su lugar va Reseñas para no dejar un ícono muerto. */}
-        <button onClick={onShowReviews} className={iconBtn} aria-label="Reseñas" title="Reseñas">
-          <Star size={21} style={{ color: iconColor }} strokeWidth={1.9} />
-        </button>
+        <Item icon={Home} label="Inicio" onClick={goTop} />
+        <Item icon={ReceiptText} label="Pedidos" onClick={onShowOrders} dot={hasActiveOrder} />
 
         {/* Carrito — centro */}
         <div className="px-1.5">
@@ -108,28 +112,8 @@ export default function BottomNav({
           </motion.button>
         </div>
 
-        <button onClick={focusSearch} className={iconBtn} aria-label="Buscar" title="Buscar">
-          <Search size={21} style={{ color: iconColor }} strokeWidth={1.9} />
-        </button>
-
-        <button onClick={onShowHistory} className={`${iconBtn} relative`} aria-label="Mis pedidos" title="Mis pedidos">
-          {customerName ? (
-            <span
-              className="w-[27px] h-[27px] rounded-full flex items-center justify-center text-[12px] font-black"
-              style={{ background: 'rgba(255,255,255,0.14)', color: '#fff' }}
-            >
-              {customerName.trim().charAt(0).toUpperCase()}
-            </span>
-          ) : (
-            <User size={21} style={{ color: iconColor }} strokeWidth={1.9} />
-          )}
-          {hasActiveOrder && (
-            <span
-              className="absolute top-2.5 right-[22%] w-2.5 h-2.5 rounded-full"
-              style={{ background: '#EF4444', border: '2px solid #101319' }}
-            />
-          )}
-        </button>
+        <Item icon={Sparkles} label="Descubre" onClick={onDiscover} />
+        <Item icon={Star} label="Más" onClick={onShowMore} />
       </div>
     </div>
   );
