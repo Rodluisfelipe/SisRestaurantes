@@ -136,7 +136,7 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
           className="flex overflow-x-auto gap-3 pb-1 snap-x snap-mandatory scrollbar-hide -mx-3 px-3 sm:-mx-4 sm:px-4"
         >
           {promoProducts.map((product) => (
-            <div key={`promo-${product._id}`} className="flex-shrink-0 snap-start" style={{ width: 'calc(50% - 6px)' }}>
+            <div key={`promo-${product._id}`} className="flex-shrink-0 snap-start" style={{ width: 'min(calc(50% - 6px), 260px)' }}>
               <ProductCard
                 product={product}
                 addToCart={onAddToCart}
@@ -157,7 +157,7 @@ const FeaturedProducts = ({ businessId, products, onAddToCart, theme, onToppings
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleProductClick(product)}
                 className="flex-shrink-0 snap-start cursor-pointer group border border-slate-100 overflow-hidden bg-white transition-shadow duration-300"
-                style={{ width: 'calc(50% - 6px)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)' }}
+                style={{ width: 'min(calc(50% - 6px), 260px)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)' }}
               >
                 {/* Image — 4:3, igual que ProductCard */}
                 <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">

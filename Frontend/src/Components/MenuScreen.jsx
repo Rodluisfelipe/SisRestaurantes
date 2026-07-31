@@ -44,12 +44,25 @@ export default function MenuScreen({
   return (
     <AnimatePresence>
       {open && (
+        <>
+        {/* Fondo — solo en escritorio, donde el panel no cubre la pantalla */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="hidden md:block fixed inset-0 z-[109] bg-black/45 backdrop-blur-sm"
+        />
         <motion.div
           initial={reduceMotion ? { opacity: 0 } : { x: '100%' }}
           animate={reduceMotion ? { opacity: 1 } : { x: 0 }}
           exit={reduceMotion ? { opacity: 0 } : { x: '100%' }}
           transition={reduceMotion ? { duration: 0.15 } : { type: 'spring', damping: 30, stiffness: 320 }}
-          className="fixed inset-0 z-[110] flex flex-col"
+          /* En móvil ocupa todo; en escritorio es un panel centrado, porque una
+             pantalla completa en un monitor de 27" se ve enorme y vacía.
+             Se centra con left/calc y no con -translate-x-1/2: framer-motion
+             anima transform y pisaría esa clase. */
+          className="fixed inset-0 z-[110] flex flex-col md:inset-y-6 md:left-[calc(50%-280px)] md:w-[560px] md:rounded-3xl md:overflow-hidden md:shadow-2xl"
           style={{ background: 'var(--mb-surface)' }}
           role="dialog"
           aria-modal="true"
@@ -105,6 +118,7 @@ export default function MenuScreen({
             </div>
           )}
         </motion.div>
+        </>
       )}
     </AnimatePresence>
   );

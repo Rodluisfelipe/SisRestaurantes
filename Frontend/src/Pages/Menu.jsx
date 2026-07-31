@@ -1700,6 +1700,9 @@ export default function Menu() {
       {/* Ancla para el botón "Pedir ahora" del ProfileHeader (menú V2) */}
       <div id="menu-content" style={{ scrollMarginTop: 'var(--mb-header-h, 0px)' }} />
 
+      {/* En V2 el menú se acota en escritorio: a pantalla completa las tarjetas
+          se estiraban hasta verse gigantes. */}
+      <div className={menuV2 ? 'max-w-[900px] mx-auto w-full' : ''}>
       <FilterableMenu
         products={products}
         categories={categories}
@@ -1722,6 +1725,7 @@ export default function Menu() {
           setShowReviewModal(true);
         }}
       />
+      </div>
 
       {/* Red de descubrimiento MenuBy */}
       <DiscoverMore />

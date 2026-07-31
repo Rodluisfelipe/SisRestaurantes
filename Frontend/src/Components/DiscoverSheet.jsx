@@ -67,12 +67,22 @@ export default function DiscoverSheet({ open, onClose, products = [], categories
     <>
       <AnimatePresence>
         {open && (
+          <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="hidden md:block fixed inset-0 z-[109] bg-black/70 backdrop-blur-sm"
+          />
           <motion.div
             initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
             animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24 }}
             transition={reduceMotion ? { duration: 0.15 } : { type: 'spring', damping: 30, stiffness: 320 }}
-            className="fixed inset-0 z-[110] bg-black"
+            /* En escritorio, columna centrada tipo teléfono: una foto a 1900px
+               de ancho se ve descomunal. */
+            className="fixed inset-0 z-[110] bg-black md:inset-y-4 md:left-[calc(50%-215px)] md:w-[430px] md:rounded-3xl md:overflow-hidden md:shadow-2xl"
           >
             {/* Cerrar */}
             <button
@@ -171,6 +181,7 @@ export default function DiscoverSheet({ open, onClose, products = [], categories
               </div>
             )}
           </motion.div>
+          </>
         )}
       </AnimatePresence>
 

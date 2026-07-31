@@ -152,8 +152,9 @@ export default function ProfileHeader({
 
   return (
     <div ref={headerRef} className="relative">
-      {/* ── Banner 128px ── */}
-      <div className="relative h-32 overflow-hidden">
+      {/* ── Banner (más alto en escritorio: a lo ancho, 128px se ve como una
+             franja) ── */}
+      <div className="relative h-32 md:h-56 overflow-hidden">
         {businessConfig?.coverImage ? (
           <>
             <img src={businessConfig.coverImage} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" />
@@ -166,7 +167,7 @@ export default function ProfileHeader({
         <div className="absolute inset-x-0 bottom-0 h-14" style={{ background: 'linear-gradient(to bottom, transparent, var(--mb-surface))' }} />
 
         {/* Chip de estado */}
-        <div className="absolute top-3 left-3">
+        <div className="absolute top-3 left-3 md:left-[max(0.75rem,calc(50%-440px))]">
           <span
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold text-white"
             style={glassStyle}
@@ -177,7 +178,7 @@ export default function ProfileHeader({
         </div>
 
         {/* Acciones glass */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+        <div className="absolute top-3 right-3 md:right-[max(0.75rem,calc(50%-440px))] flex items-center gap-1.5">
           {showHistoryButton && (
             <button onClick={onShowHistory} className={glassBtn} style={glassStyle} aria-label="Mis pedidos" title="Mis pedidos">
               {PH.history()}
@@ -189,8 +190,9 @@ export default function ProfileHeader({
         </div>
       </div>
 
-      {/* ── Perfil ── */}
-      <div className="px-4">
+      {/* ── Perfil — acotado en escritorio: a 1900px de ancho la identidad
+             quedaba perdida y los stats separadísimos ── */}
+      <div className="px-4 max-w-[880px] mx-auto w-full">
         {/* Avatar montado sobre el banner */}
         <div className="-mt-[42px] relative z-10 flex items-end justify-between">
           <div

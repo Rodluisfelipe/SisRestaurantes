@@ -221,7 +221,7 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
 
   return (
     <>
-      <div className="overflow-x-auto scrollbar-hide px-4 pt-4 pb-1">
+      <div className="overflow-x-auto scrollbar-hide px-4 pt-4 pb-1 max-w-[880px] mx-auto w-full">
         <div className="flex gap-3.5 min-w-max">
           {stories.map((s, i) => {
             const isSeen = seen.has(s.key);
