@@ -1,5 +1,6 @@
-import React from 'react';
-import { Star, Gift, MessageCircle, MapPin, CalendarCheck, ChevronRight, Share2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
+import { Star, Gift, MessageCircle, MapPin, CalendarCheck, ChevronRight, Share2, Wifi, Check } from 'lucide-react';
 import MenuScreen from './MenuScreen';
 import { useBusinessConfig } from '../Context/BusinessContext';
 
@@ -7,8 +8,62 @@ import { useBusinessConfig } from '../Context/BusinessContext';
  * MoreSheet — hub "Mantente al día" del menú V2.
  * Regla: cada tile solo se dibuja si su dato existe. Nada de accesos muertos.
  */
+/* Wi-Fi del local: copiar la clave y QR para conectarse sin teclearla.
+   El formato WIFI:T:WPA;S:red;P:clave;; lo entienden iOS y Android nativos. */
+function WifiCard({ wifi }) {
+  const [copied, setCopied] = useState(false);
+  const payload = `WIFI:T:${wifi.password ? 'WPA' : 'nopass'};S:${wifi.ssid};P:${wifi.password || ''};;`;
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(wifi.password || wifi.ssid);
+      setCopied(true);
+      if (navigator.vibrate) navigator.vibrate(10);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* sin permisos de portapapeles */ }
+  };
+
+  return (
+    <div className="rounded-2xl border p-4" style={{ background: 'var(--mb-card)', borderColor: 'var(--mb-line)' }}>
+      <div className="flex items-center gap-3 mb-3">
+        <span className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ background: 'var(--mb-accent-soft)', color: 'var(--mb-accent-strong)' }}>
+          <Wifi size={20} strokeWidth={1.8} />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[15px] font-bold truncate" style={{ color: 'var(--mb-ink)' }}>Wi-Fi del local</p>
+          <p className="text-[12.5px] truncate" style={{ color: 'var(--mb-ink-2)' }}>{wifi.ssid}</p>
+        </div>
+      </div>
+
+      {wifi.password && (
+        <button
+          onClick={copy}
+          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl mb-3 active:scale-[0.99] transition-transform"
+          style={{ background: 'var(--mb-surface-2)' }}
+        >
+          <span className="font-mono text-[15px] tracking-wide truncate" style={{ color: 'var(--mb-ink)' }}>{wifi.password}</span>
+          <span className="flex items-center gap-1 text-[12px] font-bold shrink-0" style={{ color: copied ? '#059669' : 'var(--mb-accent-strong)' }}>
+            {copied ? <><Check size={14} /> Copiada</> : 'Copiar'}
+          </span>
+        </button>
+      )}
+
+      <div className="flex flex-col items-center gap-2 py-1">
+        <div className="p-2.5 rounded-xl bg-white">
+          <QRCodeCanvas value={payload} size={136} level="M" includeMargin={false} />
+        </div>
+        <p className="text-[11.5px] text-center" style={{ color: 'var(--mb-ink-3)' }}>
+          Escanea con la cámara para conectarte
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function MoreSheet({ open, onClose, onRate, onShowLoyalty, loyaltySubtitle }) {
   const { businessConfig } = useBusinessConfig();
+  const wifi = businessConfig?.wifi;
+  const hasWifi = !!(wifi?.enabled && wifi?.ssid);
 
   const wa = (businessConfig?.whatsappNumber || '').replace(/\D/g, '');
   const waHref = wa
@@ -73,7 +128,9 @@ export default function MoreSheet({ open, onClose, onRate, onShowLoyalty, loyalt
   return (
     <MenuScreen open={open} onClose={onClose} title="Más" subtitle="Mantente al día">
       <div className="p-4 space-y-2.5">
-        {tiles.length === 0 ? (
+        {hasWifi && <WifiCard wifi={wifi} />}
+
+        {tiles.length === 0 && !hasWifi ? (
           <div className="py-20 text-center">
             <Star size={44} className="mx-auto mb-3" style={{ color: 'var(--mb-accent)', opacity: 0.2 }} />
             <p className="font-bold" style={{ color: 'var(--mb-ink)' }}>Nada por aquí todavía</p>

@@ -19,6 +19,8 @@ import OrderConfirmationModal from "../Components/OrderConfirmationModal";
 import CartBar from "../Components/CartBar";
 import BottomNav from "../Components/BottomNav";
 const MoreSheet = lazy(() => import("../Components/MoreSheet"));
+const MenuScreen = lazy(() => import("../Components/MenuScreen"));
+const TableTab = lazy(() => import("../Components/TableTab"));
 const StoriesRow = lazy(() => import("../Components/StoriesRow"));
 import FavoritesModal from "../Components/FavoritesModal";
 import OrderHistoryModal from "../Components/OrderHistoryModal";
@@ -125,6 +127,7 @@ export default function Menu() {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [showReviewsSheet, setShowReviewsSheet] = useState(false);
   const [showMoreSheet, setShowMoreSheet] = useState(false); // hub "Más" del menú V2
+  const [showTableTab, setShowTableTab] = useState(false);   // cuenta de la mesa (V2)
   const [reviewsInitialSource, setReviewsInitialSource] = useState('internal');
   const [pendingReviewOrder, setPendingReviewOrder] = useState(null);
   const [pendingReviewTopProduct, setPendingReviewTopProduct] = useState(null);
@@ -1743,16 +1746,48 @@ export default function Menu() {
         </Suspense>
       )}
 
+      {/* Cuenta de la mesa en vivo (V2 + QR de mesa + POS) */}
+      {menuV2 && (
+        <Suspense fallback={null}>
+          <MenuScreen
+            open={showTableTab}
+            onClose={() => setShowTableTab(false)}
+            title="La cuenta"
+            subtitle={tableFromUrl ? `Mesa ${tableFromUrl}` : undefined}
+            footer={
+              <button
+                onClick={() => { setShowTableTab(false); setShowHistory(true); }}
+                className="w-full py-3 rounded-[var(--mb-radius-btn)] text-[14px] font-bold"
+                style={{ background: 'var(--mb-surface-2)', color: 'var(--mb-ink)', border: '1px solid var(--mb-line)' }}
+              >
+                Ver mis pedidos anteriores
+              </button>
+            }
+          >
+            <TableTab
+              businessId={businessId}
+              table={tableFromUrl}
+              onGoToMenu={() => setShowTableTab(false)}
+            />
+          </MenuScreen>
+        </Suspense>
+      )}
+
       {/* Bottom nav del menú V2 — se oculta mientras hay un sheet abierto para
           no competir con sus CTAs. */}
-      {menuV2 && !isViewOnly && !isSelectingToppings && !showCartSummary && !showMoreSheet && !showHistory && !showFavorites && (
+      {menuV2 && !isViewOnly && !isSelectingToppings && !showCartSummary && !showMoreSheet && !showHistory && !showFavorites && !showTableTab && (
         <BottomNav
           totalItems={totalItems}
           onShowCart={() => {
             if (subscriptionStatus === 'suspended') return;
             setShowCartSummary(true);
           }}
-          onShowOrders={() => setShowHistory(true)}
+          /* Con mesa y POS, "Pedidos" muestra la cuenta en vivo; si no, el
+             historial, que es lo único que hay que enseñar. */
+          onShowOrders={() => {
+            if (tableFromUrl && businessConfig?.features?.posBetaEnabled) setShowTableTab(true);
+            else setShowHistory(true);
+          }}
           onDiscover={() => {
             const el = document.getElementById('menu-content');
             if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
