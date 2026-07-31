@@ -8,6 +8,51 @@ const shimmerClass =
   'relative overflow-hidden before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_1.5s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent';
 
 /* ------------------------------------------------------------------ */
+/*  ProfileHeaderSkeleton — calca la cabecera del menú V2              */
+/* ------------------------------------------------------------------ */
+export const ProfileHeaderSkeleton = () => (
+  <div className="w-full">
+    {/* Banner 128px */}
+    <div className={`h-32 bg-gray-200 ${shimmerClass}`} />
+    <div className="px-4">
+      {/* Avatar montado + stats */}
+      <div className="-mt-[42px] flex items-end justify-between">
+        <div className={`w-[92px] h-[92px] rounded-full bg-gray-200 border-4 border-white ${shimmerClass}`} />
+        <div className="flex-1 flex items-center justify-around pb-2 pl-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex flex-col items-center gap-1.5">
+              <div className={`h-4 w-10 rounded-full bg-gray-200 ${shimmerClass}`} />
+              <div className={`h-2.5 w-14 rounded-full bg-gray-100 ${shimmerClass}`} />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className={`h-5 w-40 rounded-full bg-gray-200 mt-3 ${shimmerClass}`} />
+      <div className={`h-3 w-56 rounded-full bg-gray-100 mt-2 ${shimmerClass}`} />
+      {/* Botonera */}
+      <div className="flex gap-2 mt-4">
+        <div className={`h-10 flex-1 rounded-xl bg-gray-200 ${shimmerClass}`} />
+        <div className={`h-10 w-12 rounded-xl bg-gray-100 ${shimmerClass}`} />
+      </div>
+    </div>
+  </div>
+);
+
+/* ------------------------------------------------------------------ */
+/*  StoriesRowSkeleton — anillos de historias                          */
+/* ------------------------------------------------------------------ */
+export const StoriesRowSkeleton = () => (
+  <div className="flex gap-3.5 px-4 pt-4 pb-1 overflow-hidden">
+    {[0, 1, 2, 3, 4].map((i) => (
+      <div key={i} className="flex flex-col items-center gap-1.5 w-[66px] shrink-0">
+        <div className={`w-[62px] h-[62px] rounded-full bg-gray-200 ${shimmerClass}`} />
+        <div className={`h-2.5 w-12 rounded-full bg-gray-100 ${shimmerClass}`} />
+      </div>
+    ))}
+  </div>
+);
+
+/* ------------------------------------------------------------------ */
 /*  ProductCardSkeleton                                                */
 /* ------------------------------------------------------------------ */
 /* Debe calcar la geometría de ProductCard (4:3 + radio 20px) para que al

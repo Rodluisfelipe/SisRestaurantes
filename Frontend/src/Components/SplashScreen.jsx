@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UtensilsCrossed } from 'lucide-react';
+import { derivePalette } from '../utils/menuTokens';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -10,6 +11,9 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
  */
 const SplashScreen = ({ businessConfig, visible }) => {
   const themeColor = businessConfig?.theme?.buttonColor || '#f97316';
+  /* El splash vive FUERA del <main> que publica las variables --mb-*, así que
+     deriva la paleta directamente en vez de leerlas (no resolverían). */
+  const palette = derivePalette(themeColor, { on: businessConfig?.theme?.buttonTextColor });
   const businessName = businessConfig?.businessName || '';
   const logoUrl = businessConfig?.logo
     ? (businessConfig.logo.startsWith('http')
@@ -37,32 +41,38 @@ const SplashScreen = ({ businessConfig, visible }) => {
             style={{ backgroundColor: themeColor }}
           />
 
-          {/* Logo */}
+          {/* Logo dentro de un anillo que gira una vuelta: la marca del negocio
+              es la que "carga", no un spinner genérico. */}
           <motion.div
             initial={{ opacity: 0, scale: 0.7, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ type: 'spring', stiffness: 260, damping: 22, delay: 0.1 }}
             className="relative z-10"
           >
-            {logoUrl ? (
+            <motion.div
+              className="p-[3px] rounded-full"
+              style={{ background: `conic-gradient(from 0deg, ${palette.accent}, ${palette.ringPartner}, ${palette.accent})` }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.2, ease: 'linear', repeat: Infinity }}
+            >
               <div
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shadow-xl overflow-hidden border-2"
-                style={{ borderColor: `${themeColor}30` }}
+                className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden flex items-center justify-center"
+                style={{ background: '#fff', border: '3px solid #fff' }}
               >
-                <img
-                  src={logoUrl}
-                  alt={businessName}
-                  className="w-full h-full object-cover"
-                />
+                {/* Contra-rotación: el logo se queda quieto mientras gira el anillo */}
+                <motion.div
+                  className="w-full h-full flex items-center justify-center"
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 1.2, ease: 'linear', repeat: Infinity }}
+                >
+                  {logoUrl ? (
+                    <img src={logoUrl} alt={businessName} className="w-full h-full object-cover" />
+                  ) : (
+                    <UtensilsCrossed className="w-10 h-10 sm:w-12 sm:h-12" style={{ color: palette.accent }} />
+                  )}
+                </motion.div>
               </div>
-            ) : (
-              <div
-                className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl shadow-xl flex items-center justify-center"
-                style={{ backgroundColor: `${themeColor}15` }}
-              >
-                <UtensilsCrossed className="w-10 h-10 sm:w-12 sm:h-12" style={{ color: themeColor }} />
-              </div>
-            )}
+            </motion.div>
           </motion.div>
 
           {/* Business name */}

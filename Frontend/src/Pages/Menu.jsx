@@ -28,7 +28,7 @@ import OrderHistoryModal from "../Components/OrderHistoryModal";
 import LoyaltyPage from "../Components/LoyaltyPage";
 import FeaturedProducts from "../Components/FeaturedProducts";
 import { FlyToCartProvider } from "../Components/FlyToCart";
-import { FilterableMenuSkeleton, BusinessHeaderSkeleton } from "../Components/MenuSkeletons";
+import { FilterableMenuSkeleton, BusinessHeaderSkeleton, ProfileHeaderSkeleton, StoriesRowSkeleton } from "../Components/MenuSkeletons";
 import SplashScreen from "../Components/SplashScreen";
 import RestaurantClosedOverlay from "../Components/RestaurantClosedOverlay";
 import OrderTracker from "../Components/OrderTracker";
@@ -1524,7 +1524,16 @@ export default function Menu() {
         <SplashScreen businessConfig={businessConfig} visible={showSplash} />
         {!showSplash && (
           <div className="min-h-screen bg-gray-50 pb-20 pt-safe">
-            <BusinessHeaderSkeleton />
+            {/* El esqueleto debe calcar la cabecera que se va a montar, o el
+                salto al cargar delata el cambio de layout. */}
+            {menuV2 ? (
+              <>
+                <ProfileHeaderSkeleton />
+                <StoriesRowSkeleton />
+              </>
+            ) : (
+              <BusinessHeaderSkeleton />
+            )}
             <FilterableMenuSkeleton />
           </div>
         )}
