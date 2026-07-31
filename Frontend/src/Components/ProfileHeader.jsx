@@ -18,6 +18,19 @@ const PH = {
 };
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+/* Los horarios se guardan en 24h ("18:30"), pero en Colombia se leen en 12h.
+   Devuelve "6:30 p. m." y omite los minutos en punto: "6 p. m.". */
+const to12h = (hhmm) => {
+  if (!hhmm || typeof hhmm !== 'string') return '';
+  const [hStr, mStr = '00'] = hhmm.split(':');
+  const h = parseInt(hStr, 10);
+  if (Number.isNaN(h)) return hhmm;
+  const suffix = h >= 12 ? 'p. m.' : 'a. m.';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  const min = parseInt(mStr, 10) || 0;
+  return min === 0 ? `${h12} ${suffix}` : `${h12}:${String(min).padStart(2, '0')} ${suffix}`;
+};
 const DEFAULT_LOGO = 'https://placehold.co/150x150?text=Logo';
 
 /**
@@ -103,8 +116,8 @@ export default function ProfileHeader({
   /* Chip de estado: "Abierto · cierra 22:00" / "Cerrado · abre 10:00" */
   const todayHours = businessConfig?.businessHours?.[DAYS[new Date().getDay()]];
   const statusLabel = isOpen
-    ? (todayHours?.closeTime ? `Abierto · cierra ${todayHours.closeTime}` : 'Abierto')
-    : (businessStatus?.nextOpenTime?.time ? `Cerrado · abre ${businessStatus.nextOpenTime.time}` : 'Cerrado');
+    ? (todayHours?.closeTime ? `Abierto · cierra ${to12h(todayHours.closeTime)}` : 'Abierto')
+    : (businessStatus?.nextOpenTime?.time ? `Cerrado · abre ${to12h(businessStatus.nextOpenTime.time)}` : 'Cerrado');
 
   /* Rating: Google si está permitido, si no el interno */
   const display = businessConfig?.reviewsDisplay || 'both';
@@ -234,7 +247,9 @@ export default function ProfileHeader({
 
         {/* Tagline / descripción */}
         {(businessConfig?.tagline || businessConfig?.description) && (
-          <p className="text-[13.5px] leading-snug mt-0.5 line-clamp-1" style={{ color: 'var(--mb-ink-2)' }}>
+          /* Sin recorte: la descripción del negocio se lee completa. Cortarla
+             con "…" escondía justo lo que el dueño quiere contar. */
+          <p className="text-[13.5px] leading-snug mt-0.5" style={{ color: 'var(--mb-ink-2)' }}>
             {businessConfig.tagline || businessConfig.description}
           </p>
         )}

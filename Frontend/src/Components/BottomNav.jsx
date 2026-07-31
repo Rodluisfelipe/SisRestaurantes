@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Home, ReceiptText, ShoppingBag, Sparkles, Star } from 'lucide-react';
 
-const INACTIVE = '#9AA3B2';
+/* Nav claro: gris medio sobre superficie clara — legible sin competir con el
+   carrito, que es el único elemento a color. */
+const INACTIVE = '#6B7280';
 
 /**
  * BottomNav — pill flotante del menú V2.
@@ -48,7 +50,7 @@ export default function BottomNav({
         {dot && (
           <span
             className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full"
-            style={{ background: '#EF4444', border: '1.5px solid #101319' }}
+            style={{ background: '#EF4444', border: '1.5px solid #fff' }}
           />
         )}
       </span>
@@ -67,11 +69,11 @@ export default function BottomNav({
       <div
         className="flex items-center rounded-full px-2"
         style={{
-          background: '#101319ee',
+          background: 'rgba(255,255,255,0.92)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 12px 34px rgba(0,0,0,0.34)',
+          border: '1px solid var(--mb-line)',
+          boxShadow: '0 10px 30px rgba(15,23,42,0.14)',
         }}
       >
         <Item icon={Home} label="Inicio" onClick={goTop} />
@@ -87,12 +89,12 @@ export default function BottomNav({
             animate={pop && !reduceMotion ? { scale: [1, 1.16, 1] } : { scale: 1 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="relative w-[54px] h-[54px] rounded-full flex items-center justify-center disabled:opacity-50"
-            /* Sobre la píldora oscura no sirve el acento crudo: un color de
-               marca oscuro desaparecería. Se usa su variante para fondo negro. */
+            /* Píldora clara: el acento del negocio se usa tal cual, que ya
+               tiene contraste AA garantizado contra su propio texto. */
             style={{
-              background: 'var(--mb-accent-on-dark)',
-              color: 'var(--mb-on-accent-dark)',
-              boxShadow: '0 8px 22px rgba(0,0,0,0.35)',
+              background: 'var(--mb-accent)',
+              color: 'var(--mb-on-accent)',
+              boxShadow: '0 8px 20px rgba(15,23,42,0.22)',
             }}
             aria-label={totalItems > 0 ? `Ver carrito, ${totalItems} artículo(s)` : 'Ver carrito'}
           >
@@ -105,7 +107,7 @@ export default function BottomNav({
                   exit={reduceMotion ? { opacity: 0 } : { scale: 0, opacity: 0 }}
                   transition={{ type: 'spring', stiffness: 420, damping: 18 }}
                   className="absolute -top-0.5 -right-0.5 min-w-[21px] h-[21px] px-1 rounded-full flex items-center justify-center text-[11px] font-black text-white tabular-nums"
-                  style={{ background: '#EF4444', border: '2px solid #101319' }}
+                  style={{ background: '#EF4444', border: '2px solid #fff' }}
                 >
                   {totalItems > 99 ? '99+' : totalItems}
                 </motion.span>
