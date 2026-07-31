@@ -8,6 +8,7 @@ import BusinessHeader from "../Components/BusinessHeader";
 import MenuStructuredData from "../Components/MenuStructuredData";
 import DiscoverMore from "../Components/DiscoverMore";
 import MenuPopup from "../Components/MenuPopup";
+import { menuCssVars } from "../utils/menuTokens";
 import CartSummary from "../Components/CartSummary";
 import OrderTypeSelector from "../Components/OrderTypeSelector";
 import FilterableMenu from "../Components/FilterableMenu";
@@ -1527,7 +1528,16 @@ export default function Menu() {
 
   return (
     <FlyToCartProvider>
-    <main className="min-h-screen bg-gray-50 pb-20 pt-safe" style={menuFontFamily ? { fontFamily: menuFontFamily } : undefined}>
+    {/* Los tokens del menú se cuelgan UNA vez de aquí como CSS variables
+        (--mb-accent, --mb-surface, …). Todo lo de adentro las consume con
+        bg-[var(--mb-accent)] en vez de repetir el color inline. */}
+    <main
+      className="min-h-screen bg-gray-50 pb-20 pt-safe"
+      style={{
+        ...menuCssVars(businessConfig?.theme?.buttonColor),
+        ...(menuFontFamily ? { fontFamily: menuFontFamily } : {}),
+      }}
+    >
       <MenuStructuredData businessConfig={businessConfig} products={products} categories={categories} />
       <BusinessHeader
         comesFromCatalog={comesFromCatalog}

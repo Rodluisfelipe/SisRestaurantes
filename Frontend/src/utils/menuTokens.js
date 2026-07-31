@@ -108,8 +108,8 @@ export function derivePalette(primaryRaw, { dark = false } = {}) {
 
 export const surfaces = {
   light: {
-    bg: '#FFFFFF',
-    subtle: '#F8FAFC',
+    bg: '#F9FAFB',   // fondo real de la página del menú (bg-gray-50)
+    subtle: '#F1F5F9',
     card: '#FFFFFF',
     border: '#F1F5F9',
     text: '#0F172A',
@@ -169,7 +169,40 @@ export function productNameSize(name = '', { hero = false } = {}) {
   return 'text-[14px]';
 }
 
+/**
+ * Emite todo el sistema como CSS variables para colgarlas UNA vez del
+ * contenedor del menú. Así el color del negocio deja de vivir en styles inline
+ * repetidos y el tema oscuro pasa a ser un cambio de set, no un refactor.
+ *
+ *   <main style={menuCssVars(businessConfig?.theme?.buttonColor)}>
+ *   ...
+ *   <button className="bg-[var(--mb-accent)] text-[var(--mb-on-accent)]">
+ */
+export function menuCssVars(primary, { dark = false } = {}) {
+  const p = derivePalette(primary, { dark });
+  const s = dark ? surfaces.dark : surfaces.light;
+  return {
+    '--mb-accent': p.accent,
+    '--mb-on-accent': p.onAccent,
+    '--mb-accent-soft': p.soft,
+    '--mb-accent-softer': p.softer,
+    '--mb-accent-strong': p.strong,
+    '--mb-ring': p.ring,
+    '--mb-surface': s.bg,
+    '--mb-surface-2': s.subtle,
+    '--mb-card': s.card,
+    '--mb-line': s.border,
+    '--mb-ink': s.text,
+    '--mb-ink-2': s.textSoft,
+    '--mb-ink-3': s.textFaint,
+    '--mb-radius-card': radii.card,
+    '--mb-radius-btn': radii.button,
+    '--mb-radius-sheet': radii.sheet,
+    '--mb-shadow-card': dark ? 'none' : shadows.card,
+  };
+}
+
 export default {
   derivePalette, surfaces, radii, shadows, type, TOUCH_TARGET,
-  productNameSize, contrast, textOn, alpha, shade, safeColor,
+  productNameSize, contrast, textOn, alpha, shade, safeColor, menuCssVars,
 };
