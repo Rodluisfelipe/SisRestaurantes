@@ -1550,7 +1550,7 @@ export default function Menu() {
          cambio visual. PR-2 lo usa para montar ProfileHeader en vez de este. */
       data-menu-v2={menuV2 ? '1' : '0'}
       style={{
-        ...menuCssVars(businessConfig?.theme?.buttonColor),
+        ...menuCssVars(businessConfig?.theme?.buttonColor, { on: businessConfig?.theme?.buttonTextColor }),
         ...(menuFontFamily ? { fontFamily: menuFontFamily } : {}),
       }}
     >

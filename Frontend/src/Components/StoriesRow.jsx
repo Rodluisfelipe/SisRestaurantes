@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import api from '../services/api';
 import { useBusinessConfig } from '../Context/BusinessContext';
+import { API_ENDPOINTS } from '../config';
 import { isPromoActive, getEffectivePrice } from '../utils/promo';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import StoryViewer from './StoryViewer';
@@ -17,6 +18,15 @@ const persistSeen = (bid, set) => {
 };
 
 const money = (n) => `$${Number(n || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 })}`;
+
+/* Las fotos de Google llegan como { name: 'places/.../photos/REF' }, no como
+   URL: hay que pasarlas por el proxy del backend (la key está restringida por
+   IP y no se puede llamar desde el navegador). */
+const googlePhotoUrl = (photo, w = 600) => {
+  const name = typeof photo === 'string' ? photo : photo?.name;
+  if (!name || !String(name).includes('/photos/')) return null;
+  return `${API_ENDPOINTS.BASE_URL}/places/photo?name=${encodeURIComponent(name)}&maxWidthPx=${w}`;
+};
 
 /* Convierte un producto en slide de historia */
 const productSlide = (p, kicker) => ({
@@ -135,13 +145,13 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
       out.push({
         key: 'reviews',
         label: 'Reseñas',
-        cover: businessConfig?.google?.photos?.[0] || businessConfig?.logo,
+        cover: googlePhotoUrl(businessConfig?.google?.photos?.[0], 200) || businessConfig?.logo || businessConfig?.coverImage,
         slides: withText.map((r, i) => ({
           type: 'review',
           id: `rev-${i}`,
-          image: businessConfig?.google?.photos?.[i] || businessConfig?.coverImage || null,
+          image: googlePhotoUrl(businessConfig?.google?.photos?.[i]) || businessConfig?.coverImage || null,
           kicker: 'Reseña',
-          title: r.authorName || r.author || 'Cliente',
+          title: r.author || r.authorName || 'Cliente',
           body: r.text,
           rating: r.rating,
           cta: null,
@@ -212,12 +222,27 @@ export default function StoriesRow({ products = [], categories = [], addToCart }
                   style={{
                     background: isSeen
                       ? 'var(--mb-line)'
-                      : 'conic-gradient(from 200deg, var(--mb-accent), var(--mb-accent-strong), var(--mb-accent))',
+                      : 'conic-gradient(from 200deg, var(--mb-accent), var(--mb-ring-partner), var(--mb-accent))',
                   }}
                 >
-                  <span className="w-full h-full rounded-full overflow-hidden" style={{ border: '2.5px solid var(--mb-surface)', background: 'var(--mb-surface-2)' }}>
+                  <span
+                    className="relative w-full h-full rounded-full overflow-hidden flex items-center justify-center"
+                    style={{ border: '2.5px solid var(--mb-surface)', background: 'var(--mb-surface-2)' }}
+                  >
+                    <span className="text-[19px] font-black" style={{ color: 'var(--mb-ink-3)' }} aria-hidden="true">
+                      {s.label.charAt(0).toUpperCase()}
+                    </span>
                     {s.cover ? (
-                      <img src={s.cover} alt="" aria-hidden="true" className="w-full h-full object-cover" loading="lazy" />
+                      <img
+                        src={s.cover}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 w-full h-full object-cover"
+                        loading="lazy"
+                        /* Si la foto falla, cae a la inicial en vez de dejar el
+                           anillo en blanco. */
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
                     ) : null}
                   </span>
                 </span>

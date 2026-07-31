@@ -82,7 +82,7 @@ export function alpha(hex, a) {
  * `accent` es el color seguro para CTAs: si el primario es tan claro que el
  * texto blanco encima no alcanza AA, lo oscurecemos hasta que sí cumpla.
  */
-export function derivePalette(primaryRaw, { dark = false } = {}) {
+export function derivePalette(primaryRaw, { dark = false, on: onRaw } = {}) {
   const primary = safeColor(primaryRaw);
 
   // CTA con contraste garantizado contra su propio texto
@@ -93,10 +93,25 @@ export function derivePalette(primaryRaw, { dark = false } = {}) {
     guard += 1;
   }
 
+  /* Si el negocio eligió su propio color de texto (buttonTextColor) y cumple
+     AA sobre el acento, se respeta: es parte de su identidad (ej. negro con
+     amarillo). Si no llega al contraste, gana la legibilidad. */
+  const chosenOn = hexToRgb(onRaw) ? safeColor(onRaw) : null;
+  const onAccent = chosenOn && contrast(accent, chosenOn) >= 4.5 ? chosenOn : textOn(accent);
+
+  /* Compañero del anillo: con acentos muy oscuros o muy claros, un degradado
+     accent→accent es invisible. Se usa el color de texto de la marca si aporta
+     contraste; si no, se aclara/oscurece el acento para que el anillo se vea. */
+  const lum = luminance(accent);
+  const ringPartner = chosenOn && contrast(accent, chosenOn) >= 3
+    ? chosenOn
+    : shade(accent, lum < 0.2 ? 0.55 : -0.35);
+
   return {
     primary,
     accent,
-    onAccent: textOn(accent),
+    onAccent,
+    ringPartner,
     soft: dark ? alpha(primary, 0.18) : shade(primary, 0.9),   // fondos suaves
     softer: dark ? alpha(primary, 0.1) : shade(primary, 0.95),
     strong: shade(primary, -0.25),                              // texto sobre claro
@@ -178,12 +193,13 @@ export function productNameSize(name = '', { hero = false } = {}) {
  *   ...
  *   <button className="bg-[var(--mb-accent)] text-[var(--mb-on-accent)]">
  */
-export function menuCssVars(primary, { dark = false } = {}) {
-  const p = derivePalette(primary, { dark });
+export function menuCssVars(primary, { dark = false, on } = {}) {
+  const p = derivePalette(primary, { dark, on });
   const s = dark ? surfaces.dark : surfaces.light;
   return {
     '--mb-accent': p.accent,
     '--mb-on-accent': p.onAccent,
+    '--mb-ring-partner': p.ringPartner,
     '--mb-accent-soft': p.soft,
     '--mb-accent-softer': p.softer,
     '--mb-accent-strong': p.strong,

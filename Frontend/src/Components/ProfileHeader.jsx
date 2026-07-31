@@ -181,7 +181,7 @@ export default function ProfileHeader({
         <div className="-mt-[42px] relative z-10 flex items-end justify-between">
           <div
             className="w-[92px] h-[92px] rounded-full p-[3px]"
-            style={{ background: 'conic-gradient(from 180deg, var(--mb-accent), var(--mb-accent-strong), var(--mb-accent))' }}
+            style={{ background: 'conic-gradient(from 180deg, var(--mb-accent), var(--mb-ring-partner), var(--mb-accent))' }}
           >
             <div className="w-full h-full rounded-full overflow-hidden" style={{ border: '3.5px solid var(--mb-surface)', background: 'var(--mb-card)' }}>
               <img
