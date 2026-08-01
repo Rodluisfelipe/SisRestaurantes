@@ -86,7 +86,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
             transition={{ type: "spring", damping: 30, stiffness: 400 }}
             onSubmit={handleSubmit}
             onClick={e => e.stopPropagation()}
-            className="relative w-full max-w-lg bg-[#0d1b2a]/95 backdrop-blur-xl border border-slate-200 dark:border-white/[0.08] rounded-2xl shadow-2xl overflow-hidden"
+            className="relative w-full max-w-lg bg-[#0d1b2a]/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Top accent */}
             <div className="h-[2px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
@@ -95,20 +95,20 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-500/15 border border-cyan-200 dark:border-cyan-500/20 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-100 border border-cyan-200 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Nuevo negocio</h2>
-                    <p className="text-xs text-slate-500 dark:text-white/30">Completa los datos del negocio</p>
+                    <h2 className="text-lg font-semibold text-slate-900">Nuevo negocio</h2>
+                    <p className="text-xs text-slate-500">Completa los datos del negocio</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-2 text-slate-500 dark:text-white/30 hover:text-slate-600 dark:hover:text-slate-900 dark:hover:text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-slate-100 dark:bg-white/[0.06] rounded-xl transition-all"
+                  className="p-2 text-slate-500 hover:text-slate-600 hover:bg-slate-200 rounded-xl transition-all"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -125,8 +125,8 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
                   >
-                    <label className="block text-xs font-medium text-slate-500 dark:text-white/40 mb-1.5 ml-1">
-                      {field.label} {field.required && <span className="text-cyan-600 dark:text-cyan-400">*</span>}
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5 ml-1">
+                      {field.label} {field.required && <span className="text-cyan-600">*</span>}
                     </label>
                     <div className="relative group flex items-center gap-2">
                       <div className="relative flex-1">
@@ -136,9 +136,9 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                           onChange={handleChange}
                           required={field.required}
                           placeholder={field.placeholder}
-                          className="w-full px-4 py-2.5 pl-10 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500 dark:focus:border-cyan-500/40 focus:bg-slate-100 dark:bg-white/[0.06] focus:ring-1 focus:ring-cyan-500/10"
+                          className="w-full px-4 py-2.5 pl-10 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10"
                         />
-                        <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20 group-focus-within:text-cyan-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                        <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                           {field.icon}
                         </svg>
                       </div>
@@ -160,8 +160,8 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <label className="block text-xs font-medium text-slate-500 dark:text-white/40 mb-1.5 ml-1">
-                    Slug <span className="text-cyan-600 dark:text-cyan-400">*</span>
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5 ml-1">
+                    Slug <span className="text-cyan-600">*</span>
                   </label>
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1 group">
@@ -171,23 +171,23 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                         onChange={handleChange}
                         required
                         placeholder="mi-negocio"
-                        className="w-full px-4 py-2.5 pl-10 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500 dark:focus:border-cyan-500/40 focus:bg-slate-100 dark:bg-white/[0.06] focus:ring-1 focus:ring-cyan-500/10 font-mono"
+                        className="w-full px-4 py-2.5 pl-10 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10 font-mono"
                       />
-                      <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20 group-focus-within:text-cyan-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-3.828a4.5 4.5 0 010 6.364l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757" />
                       </svg>
                     </div>
                     <button
                       type="button"
                       onClick={generateSlug}
-                      className="px-3 py-2.5 rounded-xl text-xs font-medium bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/[0.08] text-slate-600 dark:text-white/50 hover:text-slate-800 dark:hover:text-slate-900 dark:hover:text-slate-800 dark:text-white/80 hover:bg-slate-200 dark:hover:bg-slate-200 dark:bg-white/[0.08] transition-all whitespace-nowrap"
+                      className="px-3 py-2.5 rounded-xl text-xs font-medium bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 hover:bg-slate-200 transition-all whitespace-nowrap"
                     >
                       Auto
                     </button>
                   </div>
                   {form.slug && (
-                    <p className="mt-1.5 text-[11px] text-slate-400 dark:text-white/20 ml-1">
-                      menuby.tech/<span className="text-cyan-600 dark:text-cyan-400/60">{form.slug}</span>
+                    <p className="mt-1.5 text-[11px] text-slate-400 ml-1">
+                      menuby.tech/<span className="text-cyan-600">{form.slug}</span>
                     </p>
                   )}
                 </motion.div>
@@ -198,7 +198,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20"
+                  className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200"
                 >
                   <p className="text-sm text-red-300/90">{error}</p>
                 </motion.div>
@@ -209,7 +209,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium text-slate-500 dark:text-white/40 hover:text-slate-600 dark:hover:text-slate-900 dark:hover:text-slate-600 dark:text-white/60 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06] hover:bg-slate-200 dark:hover:bg-slate-100 dark:bg-white/[0.06] transition-all"
+                  className="flex-1 py-2.5 px-4 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-600 bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-all"
                 >
                   Cancelar
                 </button>
@@ -217,10 +217,10 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                   type="submit"
                   disabled={loading}
                   className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-300 ${
-                    loading
-                      ? 'bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-white/30 cursor-not-allowed'
-                      : 'bg-white text-black hover:bg-white/90 active:scale-[0.98]'
-                  }`}
+ loading
+ ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
+ : 'bg-white text-black hover:bg-white/90 active:scale-[0.98]'
+ }`}
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">

@@ -40,16 +40,16 @@ export default function CrewFinanceManagement() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 p-1 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-fit">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all ${
-              tab === t.id
-                ? 'bg-white dark:bg-white/[0.08] text-slate-900 dark:text-white shadow-sm'
-                : 'text-slate-500 dark:text-white/40 hover:text-slate-700 dark:hover:text-white/60'
-            }`}
+ tab === t.id
+ ? 'bg-white text-slate-900 shadow-sm'
+ : 'text-slate-500 hover:text-slate-700'
+ }`}
           >
             {t.label}
           </button>
@@ -119,7 +119,7 @@ function TreasuryView() {
   if (loading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 animate-pulse">
-        {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06]" />)}
+        {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl bg-white border border-slate-200" />)}
       </div>
     );
   }
@@ -141,15 +141,15 @@ function TreasuryView() {
       </div>
 
       {/* Comisión por mes */}
-      <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-white dark:bg-white/[0.03] p-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Comisión por mes</h3>
-          <span className="text-xs text-slate-500 dark:text-white/40">
-            Total <strong className="text-slate-900 dark:text-white tabular-nums">{formatCOP(commissionTotal)}</strong>
+          <h3 className="text-sm font-semibold text-slate-900">Comisión por mes</h3>
+          <span className="text-xs text-slate-500">
+            Total <strong className="text-slate-900 tabular-nums">{formatCOP(commissionTotal)}</strong>
           </span>
         </div>
         {data.commissionByMonth.length === 0 ? (
-          <p className="text-xs text-slate-500 dark:text-white/40 text-center py-4">Aún no hay comisiones registradas.</p>
+          <p className="text-xs text-slate-500 text-center py-4">Aún no hay comisiones registradas.</p>
         ) : (
           <div className="space-y-1.5">
             {data.commissionByMonth.map((m) => {
@@ -157,19 +157,19 @@ function TreasuryView() {
               const pct = max > 0 ? (m.total / max) * 100 : 0;
               return (
                 <div key={m._id} className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-slate-500 dark:text-white/50 w-16 shrink-0">{m._id}</span>
-                  <div className="flex-1 h-6 bg-slate-100 dark:bg-white/[0.04] rounded-md relative overflow-hidden">
+                  <span className="text-xs font-medium text-slate-500 w-16 shrink-0">{m._id}</span>
+                  <div className="flex-1 h-6 bg-slate-100 rounded-md relative overflow-hidden">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${pct}%` }}
                       transition={{ duration: 0.6, ease: 'easeOut' }}
                       className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 rounded-md"
                     />
-                    <span className="absolute inset-0 flex items-center justify-end px-2 text-[11px] font-bold tabular-nums text-slate-900 dark:text-white">
+                    <span className="absolute inset-0 flex items-center justify-end px-2 text-[11px] font-bold tabular-nums text-slate-900">
                       {formatCOP(m.total)}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-400 dark:text-white/30 w-12 text-right tabular-nums">{m.count} ops</span>
+                  <span className="text-[10px] text-slate-400 w-12 text-right tabular-nums">{m.count} ops</span>
                 </div>
               );
             })}
@@ -178,28 +178,28 @@ function TreasuryView() {
       </div>
 
       {/* Pendiente */}
-      <div className="rounded-xl border border-amber-200 dark:border-amber-500/20 bg-amber-50 dark:bg-amber-500/[0.06] p-4">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Retiros pendientes de pagar</p>
-            <p className="text-[22px] font-extrabold text-amber-900 dark:text-amber-200 tabular-nums mt-0.5">{formatCOP(w.total)}</p>
-            <p className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-0.5">{w.count} solicitud(es)</p>
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Retiros pendientes de pagar</p>
+            <p className="text-[22px] font-extrabold text-amber-900 tabular-nums mt-0.5">{formatCOP(w.total)}</p>
+            <p className="text-[11px] text-amber-700/80 mt-0.5">{w.count} solicitud(es)</p>
           </div>
-          <svg className="w-10 h-10 text-amber-400 dark:text-amber-500/60" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <svg className="w-10 h-10 text-amber-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
       </div>
 
       {/* Backfill rescate */}
-      <div className="rounded-xl border border-rose-200 dark:border-rose-500/20 bg-rose-50 dark:bg-rose-500/[0.06] p-4">
+      <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Recuperar pagos rotos</p>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white mt-1">
+            <p className="text-xs font-bold text-rose-700 uppercase tracking-wider">Recuperar pagos rotos</p>
+            <p className="text-sm font-semibold text-slate-900 mt-1">
               Procesar bookings que quedaron como "completados" pero nunca recibieron pago
             </p>
-            <p className="text-[11px] text-slate-600 dark:text-white/50 mt-1 leading-relaxed">
+            <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
               Acredita el dinero al worker, da XP, badges y stats retroactivos.
               Idempotente — puedes correrlo varias veces sin duplicar nada.
             </p>
@@ -222,20 +222,20 @@ function TreasuryView() {
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mt-3 px-3 py-2.5 rounded-lg bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] text-xs"
+            className="mt-3 px-3 py-2.5 rounded-lg bg-white border border-slate-200 text-xs"
           >
             {backfillResult.error ? (
-              <p className="text-rose-600 dark:text-rose-400 font-semibold">Error: {backfillResult.error}</p>
+              <p className="text-rose-600 font-semibold">Error: {backfillResult.error}</p>
             ) : (
               <div className="space-y-1">
-                <p className="font-semibold text-slate-900 dark:text-white">
-                  Procesados {backfillResult.processed} · Acreditados <span className="text-emerald-600 dark:text-emerald-400">{backfillResult.released}</span>
+                <p className="font-semibold text-slate-900">
+                  Procesados {backfillResult.processed} · Acreditados <span className="text-emerald-600">{backfillResult.released}</span>
                   {backfillResult.skipped > 0 && <> · Ya estaban OK {backfillResult.skipped}</>}
                 </p>
                 {backfillResult.failed?.length > 0 && (
                   <details className="cursor-pointer">
-                    <summary className="text-rose-600 dark:text-rose-400 font-semibold">{backfillResult.failed.length} fallaron — ver detalle</summary>
-                    <pre className="mt-1.5 text-[10px] text-slate-500 dark:text-white/50 overflow-x-auto">{JSON.stringify(backfillResult.failed, null, 2)}</pre>
+                    <summary className="text-rose-600 font-semibold">{backfillResult.failed.length} fallaron — ver detalle</summary>
+                    <pre className="mt-1.5 text-[10px] text-slate-500 overflow-x-auto">{JSON.stringify(backfillResult.failed, null, 2)}</pre>
                   </details>
                 )}
               </div>
@@ -249,16 +249,16 @@ function TreasuryView() {
 
 function KpiCard({ label, value, hint, tone }) {
   const tones = {
-    emerald: 'from-emerald-500/15 to-transparent border-emerald-200 dark:border-emerald-500/20',
-    amber: 'from-amber-500/15 to-transparent border-amber-200 dark:border-amber-500/20',
-    sky: 'from-sky-500/15 to-transparent border-sky-200 dark:border-sky-500/20',
-    violet: 'from-violet-500/15 to-transparent border-violet-200 dark:border-violet-500/20',
+    emerald: 'from-emerald-500/15 to-transparent border-emerald-200',
+    amber: 'from-amber-500/15 to-transparent border-amber-200',
+    sky: 'from-sky-500/15 to-transparent border-sky-200',
+    violet: 'from-violet-500/15 to-transparent border-violet-200',
   };
   return (
-    <div className={`rounded-xl border bg-gradient-to-br ${tones[tone]} dark:bg-white/[0.02] p-3.5`}>
-      <p className="text-[10px] font-bold text-slate-600 dark:text-white/50 uppercase tracking-wider">{label}</p>
-      <p className="text-[18px] font-extrabold text-slate-900 dark:text-white tabular-nums mt-1 leading-tight">{value}</p>
-      <p className="text-[10px] text-slate-500 dark:text-white/40 mt-0.5">{hint}</p>
+    <div className={`rounded-xl border bg-gradient-to-br ${tones[tone]} p-3.5`}>
+      <p className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">{label}</p>
+      <p className="text-[18px] font-extrabold text-slate-900 tabular-nums mt-1 leading-tight">{value}</p>
+      <p className="text-[10px] text-slate-500 mt-0.5">{hint}</p>
     </div>
   );
 }
@@ -303,22 +303,22 @@ function RechargesQueue({ setToast }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 p-1 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-fit">
         {['pending', 'approved', 'rejected'].map((s) => (
           <button
             key={s}
             onClick={() => setStatus(s)}
             className={`px-3 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
-              status === s ? 'bg-white dark:bg-white/[0.08] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-white/40'
-            }`}
+ status === s ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+ }`}
           >
             <span className="capitalize">{s === 'pending' ? 'En revisión' : s === 'approved' ? 'Aprobadas' : 'Rechazadas'}</span>
             {(counts[s]?.count || 0) > 0 && (
               <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-                s === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                  : s === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                  : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
-              }`}>{counts[s].count}</span>
+ s === 'pending' ? 'bg-amber-100 text-amber-700'
+ : s === 'approved' ? 'bg-emerald-100 text-emerald-700'
+ : 'bg-rose-100 text-rose-700'
+ }`}>{counts[s].count}</span>
             )}
           </button>
         ))}
@@ -326,7 +326,7 @@ function RechargesQueue({ setToast }) {
 
       {loading ? (
         <div className="grid sm:grid-cols-2 gap-2 animate-pulse">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl border border-slate-200 dark:border-white/[0.06]" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl border border-slate-200" />)}
         </div>
       ) : items.length === 0 ? (
         <SAEmptyState title="Sin solicitudes" description={status === 'pending' ? 'Cuando un negocio recargue saldo, aparecerá acá para tu aprobación.' : 'Sin registros en este estado.'} />
@@ -336,17 +336,17 @@ function RechargesQueue({ setToast }) {
             <button
               key={r._id}
               onClick={() => { setTarget(r); setRejecting(false); setReason(''); }}
-              className="text-left p-3 rounded-xl border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] bg-white dark:bg-white/[0.03] transition flex items-center gap-3"
+              className="text-left p-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition flex items-center gap-3"
             >
-              <img src={r.proofUrl} alt="" className="w-14 h-14 rounded-lg object-cover border border-slate-200 dark:border-white/[0.06] shrink-0" />
+              <img src={r.proofUrl} alt="" className="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                <p className="text-sm font-semibold text-slate-900 truncate">
                   {r.businessId?.businessName || 'Negocio'}
                 </p>
-                <p className="text-[18px] font-extrabold text-slate-900 dark:text-white tabular-nums">
+                <p className="text-[18px] font-extrabold text-slate-900 tabular-nums">
                   {formatCOP(r.amount)}
                 </p>
-                <p className="text-[10px] text-slate-500 dark:text-white/40">
+                <p className="text-[10px] text-slate-500">
                   {r.paymentMethod} · {formatRelative(r.createdAt)}
                 </p>
               </div>
@@ -372,28 +372,28 @@ function RechargesQueue({ setToast }) {
             </div>
 
             <div>
-              <p className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-2">Comprobante</p>
-              <a href={target.proofUrl} target="_blank" rel="noreferrer" className="block rounded-xl overflow-hidden border border-slate-200 dark:border-white/[0.08] bg-slate-100 dark:bg-white/[0.04]">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Comprobante</p>
+              <a href={target.proofUrl} target="_blank" rel="noreferrer" className="block rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                 <img src={target.proofUrl} alt="Comprobante" className="w-full max-h-[460px] object-contain" />
               </a>
             </div>
 
-            <div className="text-xs text-slate-500 dark:text-white/40 space-y-0.5">
+            <div className="text-xs text-slate-500 space-y-0.5">
               <p>Enviado: {new Date(target.createdAt).toLocaleString('es-CO')}</p>
               {target.notes && <p>Nota del negocio: {target.notes}</p>}
               {target.reviewedAt && <p>Revisado: {new Date(target.reviewedAt).toLocaleString('es-CO')} {target.reviewedBy?.email && `por ${target.reviewedBy.email}`}</p>}
-              {target.rejectionReason && <p className="text-rose-600 dark:text-rose-400">Motivo del rechazo: {target.rejectionReason}</p>}
+              {target.rejectionReason && <p className="text-rose-600">Motivo del rechazo: {target.rejectionReason}</p>}
             </div>
 
             {rejecting && (
-              <div className="bg-rose-50 dark:bg-rose-500/[0.08] border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Motivo del rechazo</p>
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-bold text-rose-700">Motivo del rechazo</p>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value.slice(0, 300))}
                   placeholder="Ej: El comprobante no es legible, el monto no coincide, transferencia no recibida…"
                   rows={3}
-                  className="w-full px-3 py-2 text-xs bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-lg focus:outline-none focus:border-rose-500 resize-none"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 resize-none"
                 />
               </div>
             )}
@@ -478,22 +478,22 @@ function WithdrawalsQueue({ setToast }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-1 p-1 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+      <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-fit">
         {['pending', 'paid', 'rejected'].map((s) => (
           <button
             key={s}
             onClick={() => setStatus(s)}
             className={`px-3 py-1 rounded-md text-xs font-medium transition flex items-center gap-1.5 ${
-              status === s ? 'bg-white dark:bg-white/[0.08] text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-white/40'
-            }`}
+ status === s ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+ }`}
           >
             {s === 'pending' ? 'Por pagar' : s === 'paid' ? 'Pagados' : 'Rechazados'}
             {(counts[s]?.count || 0) > 0 && (
               <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-                s === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                  : s === 'paid' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                  : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
-              }`}>{counts[s].count}</span>
+ s === 'pending' ? 'bg-amber-100 text-amber-700'
+ : s === 'paid' ? 'bg-emerald-100 text-emerald-700'
+ : 'bg-rose-100 text-rose-700'
+ }`}>{counts[s].count}</span>
             )}
           </button>
         ))}
@@ -501,7 +501,7 @@ function WithdrawalsQueue({ setToast }) {
 
       {loading ? (
         <div className="grid sm:grid-cols-2 gap-2 animate-pulse">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl border border-slate-200 dark:border-white/[0.06]" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-24 rounded-xl border border-slate-200" />)}
         </div>
       ) : items.length === 0 ? (
         <SAEmptyState title="Sin retiros" description={status === 'pending' ? 'Cuando un worker pida retirar saldo, aparecerá acá.' : 'Sin registros en este estado.'} />
@@ -511,19 +511,19 @@ function WithdrawalsQueue({ setToast }) {
             <button
               key={w._id}
               onClick={() => { setTarget(w); setExternalRef(''); setRejecting(false); setReason(''); }}
-              className="text-left p-3 rounded-xl border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] bg-white dark:bg-white/[0.03] transition flex items-center gap-3"
+              className="text-left p-3 rounded-xl border border-slate-200 hover:border-slate-300 bg-white transition flex items-center gap-3"
             >
               {w.workerId?.photo ? (
-                <img src={w.workerId.photo} alt="" className="w-12 h-12 rounded-full object-cover border border-slate-200 dark:border-white/[0.06] shrink-0" />
+                <img src={w.workerId.photo} alt="" className="w-12 h-12 rounded-full object-cover border border-slate-200 shrink-0" />
               ) : (
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-white/[0.06] dark:to-white/[0.03] flex items-center justify-center text-[14px] font-bold text-slate-700 dark:text-white/70 shrink-0">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[14px] font-bold text-slate-700 shrink-0">
                   {(w.workerId?.name || '?').slice(0, 1).toUpperCase()}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{w.workerId?.name}</p>
-                <p className="text-[18px] font-extrabold text-slate-900 dark:text-white tabular-nums leading-none mt-0.5">{formatCOP(w.amount)}</p>
-                <p className="text-[10px] text-slate-500 dark:text-white/40 capitalize">{w.payoutMethod?.type} · {w.payoutMethod?.accountInfo}</p>
+                <p className="text-sm font-semibold text-slate-900 truncate">{w.workerId?.name}</p>
+                <p className="text-[18px] font-extrabold text-slate-900 tabular-nums leading-none mt-0.5">{formatCOP(w.amount)}</p>
+                <p className="text-[10px] text-slate-500 capitalize">{w.payoutMethod?.type} · {w.payoutMethod?.accountInfo}</p>
               </div>
               <StatusBadge status={w.status} />
             </button>
@@ -540,9 +540,9 @@ function WithdrawalsQueue({ setToast }) {
       >
         {target && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.03] p-4 text-center">
-              <p className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider">Monto a pagar</p>
-              <p className="text-[28px] font-extrabold text-slate-900 dark:text-white tabular-nums">{formatCOP(target.amount)}</p>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-center">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Monto a pagar</p>
+              <p className="text-[28px] font-extrabold text-slate-900 tabular-nums">{formatCOP(target.amount)}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -552,34 +552,34 @@ function WithdrawalsQueue({ setToast }) {
               <DetailStat label="KYC del worker" value={target.workerId?.kyc?.status || 'none'} />
             </div>
 
-            <div className="text-xs text-slate-500 dark:text-white/40 space-y-0.5">
+            <div className="text-xs text-slate-500 space-y-0.5">
               <p>Solicitado: {new Date(target.createdAt).toLocaleString('es-CO')}</p>
               {target.paidAt && <p>Pagado: {new Date(target.paidAt).toLocaleString('es-CO')} {target.paidBy?.email && `por ${target.paidBy.email}`}</p>}
               {target.externalReference && <p>Referencia externa: {target.externalReference}</p>}
-              {target.rejectionReason && <p className="text-rose-600 dark:text-rose-400">Motivo del rechazo: {target.rejectionReason}</p>}
+              {target.rejectionReason && <p className="text-rose-600">Motivo del rechazo: {target.rejectionReason}</p>}
             </div>
 
             {target.status === 'pending' && !rejecting && (
               <div>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1.5">Referencia del comprobante (opcional)</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Referencia del comprobante (opcional)</p>
                 <input
                   value={externalRef}
                   onChange={(e) => setExternalRef(e.target.value)}
                   placeholder="Ej: M0123456 (id transacción Nequi)"
-                  className="w-full px-3 py-2 rounded-lg bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] text-sm focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 text-sm focus:outline-none focus:border-emerald-500"
                 />
               </div>
             )}
 
             {target.status === 'pending' && rejecting && (
-              <div className="bg-rose-50 dark:bg-rose-500/[0.08] border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Motivo del rechazo</p>
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-bold text-rose-700">Motivo del rechazo</p>
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value.slice(0, 300))}
                   placeholder="Ej: Cuenta destino inválida, datos no coinciden con el titular…"
                   rows={3}
-                  className="w-full px-3 py-2 text-xs bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-lg focus:outline-none focus:border-rose-500 resize-none"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 resize-none"
                 />
               </div>
             )}
@@ -621,9 +621,9 @@ function StatusBadge({ status }) {
 
 function DetailStat({ label, value }) {
   return (
-    <div className="rounded-lg border border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.03] px-3 py-2">
-      <p className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider">{label}</p>
-      <p className="text-sm font-semibold text-slate-900 dark:text-white truncate tabular-nums">{value || '—'}</p>
+    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <p className="text-sm font-semibold text-slate-900 truncate tabular-nums">{value || '—'}</p>
     </div>
   );
 }

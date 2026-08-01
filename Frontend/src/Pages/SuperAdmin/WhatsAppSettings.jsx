@@ -2,11 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import superadminApi from '../../services/superadminApi';
 
 const STATE_CONFIG = {
-  disabled: { label: 'Desactivado', color: 'text-slate-400', bg: 'bg-slate-100 dark:bg-white/[0.04]', dot: 'bg-slate-400' },
-  connecting: { label: 'Conectando...', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10', dot: 'bg-amber-400 animate-pulse' },
-  qr: { label: 'Esperando escaneo', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10', dot: 'bg-blue-400 animate-pulse' },
-  open: { label: 'Conectado', color: 'text-green-600 dark:text-green-400', bg: 'bg-green-50 dark:bg-green-500/10', dot: 'bg-green-400' },
-  closed: { label: 'Desconectado', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-500/10', dot: 'bg-red-400' },
+  disabled: { label: 'Desactivado', color: 'text-slate-400', bg: 'bg-slate-100', dot: 'bg-slate-400' },
+  connecting: { label: 'Conectando...', color: 'text-amber-600', bg: 'bg-amber-50', dot: 'bg-amber-400 animate-pulse' },
+  qr: { label: 'Esperando escaneo', color: 'text-blue-600', bg: 'bg-blue-50', dot: 'bg-blue-400 animate-pulse' },
+  open: { label: 'Conectado', color: 'text-green-600', bg: 'bg-green-50', dot: 'bg-green-400' },
+  closed: { label: 'Desconectado', color: 'text-red-600', bg: 'bg-red-50', dot: 'bg-red-400' },
 };
 
 export default function WhatsAppSettings() {
@@ -57,7 +57,7 @@ export default function WhatsAppSettings() {
         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${cfg.dot}`} />
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-semibold ${cfg.color}`}>{cfg.label}</p>
-          <p className="text-xs text-slate-500 dark:text-white/30 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             {data.state === 'open' && 'El número de MenuBy está activo y enviando notificaciones.'}
             {data.state === 'qr' && 'Escanea el código QR con WhatsApp del número de MenuBy.'}
             {data.state === 'connecting' && 'Conectando con WhatsApp...'}
@@ -67,7 +67,7 @@ export default function WhatsAppSettings() {
         </div>
         <button
           onClick={fetchStatus}
-          className="text-xs text-slate-400 dark:text-white/20 hover:text-slate-600 dark:hover:text-white/40 transition-colors"
+          className="text-xs text-slate-400 hover:text-slate-600 transition-colors"
           title="Actualizar"
         >
           ↻
@@ -76,27 +76,27 @@ export default function WhatsAppSettings() {
 
       {/* QR para escanear */}
       {data.state === 'qr' && data.qrDataUrl && (
-        <div className="flex flex-col items-center gap-4 p-6 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">Escanea con WhatsApp</p>
+        <div className="flex flex-col items-center gap-4 p-6 bg-white border border-slate-200 rounded-xl">
+          <p className="text-sm font-semibold text-slate-900">Escanea con WhatsApp</p>
           <img
             src={data.qrDataUrl}
             alt="WhatsApp QR"
-            className="w-64 h-64 rounded-xl border border-slate-200 dark:border-white/10"
+            className="w-64 h-64 rounded-xl border border-slate-200"
           />
-          <ol className="text-xs text-slate-500 dark:text-white/40 space-y-1 text-left list-decimal list-inside">
+          <ol className="text-xs text-slate-500 space-y-1 text-left list-decimal list-inside">
             <li>Abre WhatsApp en el teléfono del número de MenuBy</li>
             <li>Ve a <strong>Configuración → Dispositivos vinculados</strong></li>
             <li>Toca <strong>Vincular dispositivo</strong> y escanea este código</li>
           </ol>
-          <p className="text-[11px] text-slate-400 dark:text-white/20">El QR se actualiza automáticamente cada 5 segundos</p>
+          <p className="text-[11px] text-slate-400">El QR se actualiza automáticamente cada 5 segundos</p>
         </div>
       )}
 
       {/* Conectado — info */}
       {data.state === 'open' && (
-        <div className="p-5 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl space-y-3">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">Notificaciones activas</p>
-          <div className="space-y-2 text-xs text-slate-500 dark:text-white/40">
+        <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
+          <p className="text-sm font-semibold text-slate-900">Notificaciones activas</p>
+          <div className="space-y-2 text-xs text-slate-500">
             <div className="flex items-center gap-2">
               <span className="text-green-500">✓</span> Cambios de estado de pedidos → WhatsApp al cliente
             </div>
@@ -112,22 +112,22 @@ export default function WhatsAppSettings() {
 
       {/* Instrucciones para activar */}
       {data.state === 'disabled' && (
-        <div className="p-5 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl space-y-3">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">Cómo activar</p>
-          <div className="bg-slate-50 dark:bg-black/20 rounded-lg p-3 font-mono text-xs text-slate-600 dark:text-white/50 space-y-1">
-            <p className="text-slate-400 dark:text-white/20"># En el servidor:</p>
+        <div className="p-5 bg-white border border-slate-200 rounded-xl space-y-3">
+          <p className="text-sm font-semibold text-slate-900">Cómo activar</p>
+          <div className="bg-slate-50 rounded-lg p-3 font-mono text-xs text-slate-600 space-y-1">
+            <p className="text-slate-400"># En el servidor:</p>
             <p>echo "WHATSAPP_ENABLED=true" &gt;&gt; /opt/sisrestaurantes/Backend/.env</p>
-            <p className="text-slate-400 dark:text-white/20"># Luego reiniciar el contenedor:</p>
+            <p className="text-slate-400"># Luego reiniciar el contenedor:</p>
             <p>docker compose restart backend</p>
           </div>
-          <p className="text-xs text-slate-400 dark:text-white/25">
+          <p className="text-xs text-slate-400">
             Usa el número de teléfono de MenuBy para evitar que los restaurantes tengan riesgo de baneo.
           </p>
         </div>
       )}
 
       {msg && (
-        <div className="text-sm text-center text-slate-500 dark:text-white/30 py-2">{msg}</div>
+        <div className="text-sm text-center text-slate-500 py-2">{msg}</div>
       )}
 
       {/* Cerrar sesión */}
@@ -136,7 +136,7 @@ export default function WhatsAppSettings() {
           <button
             onClick={handleLogout}
             disabled={logoutLoading}
-            className="text-xs text-red-500 hover:text-red-700 dark:text-red-400/50 dark:hover:text-red-400 hover:underline disabled:opacity-50 transition-colors"
+            className="text-xs text-red-500 hover:text-red-700 hover:underline disabled:opacity-50 transition-colors"
           >
             {logoutLoading ? 'Cerrando...' : 'Cerrar sesión de WhatsApp'}
           </button>

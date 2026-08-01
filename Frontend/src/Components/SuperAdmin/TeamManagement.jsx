@@ -8,25 +8,25 @@ const ROLE_INFO = {
     label: 'Owner',
     badge: 'warning',
     desc: 'Control total. Puede gestionar el equipo.',
-    color: 'text-amber-700 dark:text-amber-400',
+    color: 'text-amber-700',
   },
   admin: {
     label: 'Admin',
     badge: 'purple',
     desc: 'Operaciones del día a día. No puede gestionar equipo.',
-    color: 'text-purple-700 dark:text-purple-400',
+    color: 'text-purple-700',
   },
   support: {
     label: 'Soporte',
     badge: 'info',
     desc: 'Aprobaciones y atención. No toca suscripciones ni borra.',
-    color: 'text-cyan-700 dark:text-cyan-400',
+    color: 'text-cyan-700',
   },
   auditor: {
     label: 'Auditor',
     badge: 'neutral',
     desc: 'Solo lectura. No puede modificar nada.',
-    color: 'text-slate-700 dark:text-white/60',
+    color: 'text-slate-700',
   },
 };
 
@@ -103,9 +103,9 @@ export default function TeamManagement() {
   if (loading) {
     return (
       <div className="space-y-3 animate-pulse">
-        <div className="bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl h-16" />
+        <div className="bg-slate-100 border border-slate-200 rounded-xl h-16" />
         {[...Array(4)].map((_, i) => (
-          <div key={i} className="bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl h-20" />
+          <div key={i} className="bg-slate-100 border border-slate-200 rounded-xl h-20" />
         ))}
       </div>
     );
@@ -113,8 +113,8 @@ export default function TeamManagement() {
 
   if (error) {
     return (
-      <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl p-6 text-center">
-        <p className="text-sm text-red-700 dark:text-red-400 font-medium">{error}</p>
+      <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <p className="text-sm text-red-700 font-medium">{error}</p>
         <SAButton variant="filled" onClick={load} className="mt-3">Reintentar</SAButton>
       </div>
     );
@@ -125,11 +125,11 @@ export default function TeamManagement() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <p className="text-sm text-slate-600 dark:text-white/60">
+          <p className="text-sm text-slate-600">
             {team.length} {team.length === 1 ? 'miembro' : 'miembros'} en el panel SuperAdmin
           </p>
           {!canManage && (
-            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-1">
+            <p className="text-[11px] text-amber-700 mt-1">
               Necesitas rol <strong>owner</strong> para invitar o modificar miembros.
             </p>
           )}
@@ -150,13 +150,13 @@ export default function TeamManagement() {
       </div>
 
       {/* Role legend */}
-      <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl p-4">
-        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 dark:text-white/35 mb-2.5">Roles disponibles</p>
+      <div className="bg-white border border-slate-200 rounded-xl p-4">
+        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500 mb-2.5">Roles disponibles</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           {Object.entries(ROLE_INFO).map(([k, v]) => (
             <div key={k} className="flex items-start gap-2">
               <SABadge variant={v.badge}>{v.label}</SABadge>
-              <p className="text-[11px] text-slate-600 dark:text-white/50 leading-snug">{v.desc}</p>
+              <p className="text-[11px] text-slate-600 leading-snug">{v.desc}</p>
             </div>
           ))}
         </div>
@@ -169,7 +169,7 @@ export default function TeamManagement() {
           subtitle={canManage ? 'Invita al primer miembro.' : 'Tu rol no te permite ver la lista del equipo.'}
         />
       ) : (
-        <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
           {teamSorted.map((m, i) => (
             <TeamRow
               key={m._id}
@@ -260,28 +260,28 @@ function TeamRow({ member, isLast, isMe, canManage, onEdit, onToggleActive, onRe
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 ${!isLast ? 'border-b border-slate-100 dark:border-white/[0.04]' : ''} ${!member.active ? 'opacity-60' : ''}`}>
+    <div className={`flex items-center gap-3 px-4 py-3 ${!isLast ? 'border-b border-slate-100' : ''} ${!member.active ? 'opacity-60' : ''}`}>
       {/* Avatar */}
       <div className={`flex-shrink-0 w-9 h-9 rounded-full bg-gradient-to-br ${
-        member.role === 'owner' ? 'from-amber-400 to-orange-500' :
-        member.role === 'admin' ? 'from-purple-400 to-violet-500' :
-        member.role === 'support' ? 'from-cyan-400 to-blue-500' :
-        'from-slate-400 to-slate-500'
-      } flex items-center justify-center text-[11px] font-bold text-white shadow-sm`}>
+ member.role === 'owner' ? 'from-amber-400 to-orange-500' :
+ member.role === 'admin' ? 'from-purple-400 to-violet-500' :
+ member.role === 'support' ? 'from-cyan-400 to-blue-500' :
+ 'from-slate-400 to-slate-500'
+ } flex items-center justify-center text-[11px] font-bold text-white shadow-sm`}>
         {initials(member.name, member.email)}
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+          <p className="text-sm font-semibold text-slate-900 truncate">
             {member.name || member.email.split('@')[0]}
-            {isMe && <span className="ml-2 text-[10px] font-bold text-cyan-700 dark:text-cyan-400">(tú)</span>}
+            {isMe && <span className="ml-2 text-[10px] font-bold text-cyan-700">(tú)</span>}
           </p>
           <SABadge variant={info.badge}>{info.label}</SABadge>
           {!member.active && <SABadge variant="danger">Desactivado</SABadge>}
         </div>
-        <p className="text-[12px] text-slate-500 dark:text-white/40 truncate">
+        <p className="text-[12px] text-slate-500 truncate">
           {member.email} · último ingreso: {formatRelative(member.lastLoginAt)}
         </p>
       </div>
@@ -292,7 +292,7 @@ function TeamRow({ member, isLast, isMe, canManage, onEdit, onToggleActive, onRe
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
-            className="p-1.5 rounded-lg text-slate-500 dark:text-white/40 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             aria-label="Acciones"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -308,7 +308,7 @@ function TeamRow({ member, isLast, isMe, canManage, onEdit, onToggleActive, onRe
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4, scale: 0.98 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-full mt-1 z-20 w-48 bg-white dark:bg-[#141419] border border-slate-200 dark:border-white/[0.08] rounded-xl shadow-xl shadow-slate-900/10 dark:shadow-black/40 overflow-hidden"
+                  className="absolute right-0 top-full mt-1 z-20 w-48 bg-white border border-slate-200 rounded-xl shadow-xl shadow-slate-900/10 overflow-hidden"
                 >
                   <MenuItem onClick={() => { onEdit(); setMenuOpen(false); }} label="Editar rol / nombre" />
                   <MenuItem onClick={() => { onToggleActive(); setMenuOpen(false); }} label={member.active ? 'Desactivar' : 'Activar'} />
@@ -330,10 +330,10 @@ function MenuItem({ onClick, label, danger }) {
       type="button"
       onClick={onClick}
       className={`w-full text-left px-3 py-2 text-[13px] font-medium transition-colors ${
-        danger
-          ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'
-          : 'text-slate-700 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.06]'
-      }`}
+ danger
+ ? 'text-red-600 hover:bg-red-50'
+ : 'text-slate-700 hover:bg-slate-100'
+ }`}
     >
       {label}
     </button>
@@ -389,7 +389,7 @@ function CreateMemberModal({ onClose, onCreated, onError }) {
           <option value="owner">Owner — control total</option>
         </SASelect>
         <SAInput label="Contraseña inicial (mínimo 8)" type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" />
-        <p className="text-[11px] text-slate-500 dark:text-white/40">El miembro podrá cambiar su contraseña desde su propio panel.</p>
+        <p className="text-[11px] text-slate-500">El miembro podrá cambiar su contraseña desde su propio panel.</p>
       </div>
     </SAModal>
   );
@@ -434,7 +434,7 @@ function EditMemberModal({ member, isMe, onClose, onSaved, onError }) {
           <option value="owner">Owner</option>
         </SASelect>
         {isMe && form.role !== 'owner' && (
-          <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-snug">
+          <p className="text-[11px] text-amber-700 leading-snug">
             ⚠️ Estás cambiando tu propio rol. Si te bajas de owner, no podrás volver a subirte tú mismo.
           </p>
         )}
@@ -485,7 +485,7 @@ function ResetPasswordModal({ member, onClose, onDone, onError }) {
         onChange={(e) => setPwd(e.target.value)}
         placeholder="••••••••"
       />
-      <p className="text-[11px] text-slate-500 dark:text-white/40 mt-2">
+      <p className="text-[11px] text-slate-500 mt-2">
         Comparte la nueva contraseña al miembro por un canal seguro. Pídele que la cambie al ingresar.
       </p>
     </SAModal>
@@ -527,7 +527,7 @@ function DeleteMemberModal({ member, onClose, onDeleted, onError }) {
         </>
       }
     >
-      <p className="text-sm text-slate-700 dark:text-white/70 mb-3">
+      <p className="text-sm text-slate-700 mb-3">
         Vas a eliminar a <strong>{member.email}</strong> ({ROLE_INFO[member.role]?.label}).
       </p>
       <SAInput

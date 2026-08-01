@@ -75,26 +75,26 @@ export default function LoginSuperAdmin({ onLogin }) {
         {/* Brand */}
         <div className="text-center mb-8">
           <div className="mx-auto w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center mb-4">
-            <span className="text-sm font-bold text-slate-900 dark:text-white">M</span>
+            <span className="text-sm font-bold text-slate-900">M</span>
           </div>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-white tracking-tight">
+          <h1 className="text-xl font-semibold text-slate-900 tracking-tight">
             MenuBy Admin
           </h1>
-          <p className="mt-1 text-[13px] text-slate-500 dark:text-white/30">
+          <p className="mt-1 text-[13px] text-slate-500">
             Inicia sesión para continuar
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl p-6">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
           {/* Error */}
           {error && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-5 px-3.5 py-2.5 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20"
+              className="mb-5 px-3.5 py-2.5 rounded-lg bg-red-50 border border-red-200"
             >
-              <p className="text-[13px] text-red-600 dark:text-red-400 leading-snug">{error}</p>
+              <p className="text-[13px] text-red-600 leading-snug">{error}</p>
             </motion.div>
           )}
 
@@ -122,31 +122,30 @@ export default function LoginSuperAdmin({ onLogin }) {
           {/* Divider */}
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200 dark:border-white/[0.06]" />
+              <div className="w-full border-t border-slate-200" />
             </div>
             <div className="relative flex justify-center">
-              <span className="px-3 text-[11px] text-slate-400 dark:text-white/20 bg-white dark:bg-[#0c0c0f]">o con email</span>
+              <span className="px-3 text-[11px] text-slate-400 bg-white">o con email</span>
             </div>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-3.5">
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-medium text-slate-500 dark:text-white/40">Email</label>
+              <label className="block text-[11px] font-medium text-slate-500">Email</label>
               <input
                 type="email"
                 autoComplete="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-lg text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20
-                  focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/40 transition-colors"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 transition-colors"
                 placeholder="admin@menuby.tech"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[11px] font-medium text-slate-500 dark:text-white/40">Contraseña</label>
+              <label className="block text-[11px] font-medium text-slate-500">Contraseña</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -154,14 +153,13 @@ export default function LoginSuperAdmin({ onLogin }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2.5 pr-10 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-lg text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20
-                    focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-500/40 transition-colors"
+                  className="w-full px-3 py-2.5 pr-10 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-cyan-500 transition-colors"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20 hover:text-slate-600 dark:hover:text-white/50 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                 >
                   {showPassword ? (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -181,10 +179,10 @@ export default function LoginSuperAdmin({ onLogin }) {
               type="submit"
               disabled={loading || googleLoading}
               className={`w-full py-2.5 rounded-lg text-sm font-medium transition-all ${
-                loading || googleLoading
-                  ? 'bg-slate-100 dark:bg-white/[0.04] text-slate-400 dark:text-white/25 cursor-not-allowed'
-                  : 'bg-white text-black hover:bg-white/90 active:scale-[0.98]'
-              }`}
+ loading || googleLoading
+ ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+ : 'bg-white text-black hover:bg-white/90 active:scale-[0.98]'
+ }`}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -200,7 +198,7 @@ export default function LoginSuperAdmin({ onLogin }) {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); onLogin('forgot'); }}
-              className="text-xs text-slate-400 dark:text-white/25 hover:text-cyan-700 dark:hover:text-cyan-400/70 transition-colors"
+              className="text-xs text-slate-400 hover:text-cyan-700 transition-colors"
             >
               ¿Olvidaste tu contraseña?
             </button>

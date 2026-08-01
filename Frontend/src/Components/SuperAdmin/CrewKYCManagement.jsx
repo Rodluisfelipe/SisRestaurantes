@@ -75,31 +75,31 @@ export default function CrewKYCManagement() {
     <div className="space-y-4">
       {/* Stats + tabs */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-1 p-1 bg-slate-100 dark:bg-white/[0.04] rounded-lg">
+        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
           {STATUS_TABS.map((t) => (
             <button
               key={t.key}
               onClick={() => setStatus(t.key)}
               className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
-                status === t.key
-                  ? 'bg-white dark:bg-white/[0.08] text-slate-900 dark:text-white shadow-sm'
-                  : 'text-slate-500 dark:text-white/40 hover:text-slate-700 dark:hover:text-white/60'
-              }`}
+ status === t.key
+ ? 'bg-white text-slate-900 shadow-sm'
+ : 'text-slate-500 hover:text-slate-700'
+ }`}
             >
               {t.label}
               {(counts[t.key] || 0) > 0 && (
                 <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full ${
-                  t.key === 'pending' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300'
-                    : t.key === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300'
-                    : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300'
-                }`}>{counts[t.key]}</span>
+ t.key === 'pending' ? 'bg-amber-100 text-amber-700'
+ : t.key === 'approved' ? 'bg-emerald-100 text-emerald-700'
+ : 'bg-rose-100 text-rose-700'
+ }`}>{counts[t.key]}</span>
               )}
             </button>
           ))}
         </div>
         <button
           onClick={load}
-          className="text-xs font-medium text-slate-500 dark:text-white/40 hover:text-slate-900 dark:hover:text-white/80 transition flex items-center gap-1"
+          className="text-xs font-medium text-slate-500 hover:text-slate-900 transition flex items-center gap-1"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -112,7 +112,7 @@ export default function CrewKYCManagement() {
       {loading ? (
         <div className="grid sm:grid-cols-2 gap-2 animate-pulse">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-xl" />
+            <div key={i} className="h-24 bg-white border border-slate-200 rounded-xl" />
           ))}
         </div>
       ) : workers.length === 0 ? (
@@ -126,21 +126,21 @@ export default function CrewKYCManagement() {
             <button
               key={w._id}
               onClick={() => setTarget(w)}
-              className="text-left p-3 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/[0.12] rounded-xl transition flex items-start gap-3"
+              className="text-left p-3 bg-white border border-slate-200 hover:border-slate-300 rounded-xl transition flex items-start gap-3"
             >
               {w.photo ? (
-                <img src={w.photo} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-200 dark:border-white/[0.06] shrink-0" />
+                <img src={w.photo} alt="" className="w-12 h-12 rounded-lg object-cover border border-slate-200 shrink-0" />
               ) : (
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 dark:from-white/[0.06] dark:to-white/[0.03] flex items-center justify-center text-[14px] font-bold text-slate-700 dark:text-white/70 shrink-0">
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-[14px] font-bold text-slate-700 shrink-0">
                   {(w.name || '?').slice(0, 1).toUpperCase()}
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{w.name}</p>
-                <p className="text-[11px] text-slate-500 dark:text-white/40 truncate">{w.phone}{w.university ? ` · ${w.university}` : ''}</p>
+                <p className="text-sm font-semibold text-slate-900 truncate">{w.name}</p>
+                <p className="text-[11px] text-slate-500 truncate">{w.phone}{w.university ? ` · ${w.university}` : ''}</p>
                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                   <StatusPill status={w.kyc?.status} />
-                  <span className="text-[10px] text-slate-400 dark:text-white/30">{formatRelative(w.kyc?.submittedAt)}</span>
+                  <span className="text-[10px] text-slate-400">{formatRelative(w.kyc?.submittedAt)}</span>
                 </div>
               </div>
             </button>
@@ -170,7 +170,7 @@ export default function CrewKYCManagement() {
 
             {/* Documents */}
             <div>
-              <h3 className="text-[11px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-2">Documentos cargados</h3>
+              <h3 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Documentos cargados</h3>
               <div className="grid grid-cols-3 gap-2">
                 <DocCard label="Cédula (frente)" src={target.kyc?.cedulaFrontUrl} onZoom={setLightbox} />
                 <DocCard label="Cédula (reverso)" src={target.kyc?.cedulaBackUrl} onZoom={setLightbox} />
@@ -179,30 +179,30 @@ export default function CrewKYCManagement() {
             </div>
 
             {/* Submission meta */}
-            <div className="text-xs text-slate-500 dark:text-white/40 space-y-0.5">
+            <div className="text-xs text-slate-500 space-y-0.5">
               <p>Enviado: {target.kyc?.submittedAt ? new Date(target.kyc.submittedAt).toLocaleString('es-CO') : '—'}</p>
               {target.kyc?.reviewedAt && (
                 <p>Revisado: {new Date(target.kyc.reviewedAt).toLocaleString('es-CO')}{target.kyc.reviewedBy?.email ? ` por ${target.kyc.reviewedBy.email}` : ''}</p>
               )}
               {target.kyc?.rejectionReason && (
-                <p className="text-rose-600 dark:text-rose-400">Motivo del rechazo: {target.kyc.rejectionReason}</p>
+                <p className="text-rose-600">Motivo del rechazo: {target.kyc.rejectionReason}</p>
               )}
             </div>
 
             {/* Reject reason form */}
             {rejecting === target._id && (
-              <div className="bg-rose-50 dark:bg-rose-500/[0.08] border border-rose-200 dark:border-rose-500/30 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-bold text-rose-700 dark:text-rose-300">Motivo del rechazo</p>
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-bold text-rose-700">Motivo del rechazo</p>
                 <div className="flex flex-wrap gap-1.5">
                   {REJECT_REASONS.map((r) => (
                     <button
                       key={r}
                       onClick={() => setReason(r)}
                       className={`px-2.5 py-1 text-[11px] font-medium rounded-full border transition ${
-                        reason === r
-                          ? 'bg-rose-600 text-white border-rose-600'
-                          : 'bg-white dark:bg-white/[0.04] text-slate-700 dark:text-white/70 border-slate-200 dark:border-white/[0.08] hover:border-slate-300'
-                      }`}
+ reason === r
+ ? 'bg-rose-600 text-white border-rose-600'
+ : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+ }`}
                     >{r}</button>
                   ))}
                 </div>
@@ -211,7 +211,7 @@ export default function CrewKYCManagement() {
                   onChange={(e) => setReason(e.target.value.slice(0, 300))}
                   placeholder="Detalles para que el trabajador entienda qué corregir…"
                   rows={2}
-                  className="w-full px-3 py-2 text-xs bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.08] rounded-lg focus:outline-none focus:border-rose-500 resize-none"
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:border-rose-500 resize-none"
                 />
               </div>
             )}
@@ -274,9 +274,9 @@ function StatusPill({ status }) {
 
 function DetailStat({ label, value, children }) {
   return (
-    <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.06] rounded-lg px-3 py-2">
-      <p className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider">{label}</p>
-      <div className="text-sm font-semibold text-slate-900 dark:text-white mt-0.5">{children || value}</div>
+    <div className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+      <div className="text-sm font-semibold text-slate-900 mt-0.5">{children || value}</div>
     </div>
   );
 }
@@ -284,7 +284,7 @@ function DetailStat({ label, value, children }) {
 function DocCard({ label, src, onZoom }) {
   if (!src) {
     return (
-      <div className="aspect-[4/3] rounded-lg border border-dashed border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02] flex items-center justify-center text-[10px] text-slate-400 dark:text-white/30 text-center px-2">
+      <div className="aspect-[4/3] rounded-lg border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] text-slate-400 text-center px-2">
         Sin {label.toLowerCase()}
       </div>
     );
@@ -292,7 +292,7 @@ function DocCard({ label, src, onZoom }) {
   return (
     <button
       onClick={() => onZoom({ src, label })}
-      className="group relative aspect-[4/3] rounded-lg overflow-hidden border border-slate-200 dark:border-white/[0.06] bg-slate-100 dark:bg-white/[0.04]"
+      className="group relative aspect-[4/3] rounded-lg overflow-hidden border border-slate-200 bg-slate-100"
     >
       <img src={src} alt={label} className="absolute inset-0 w-full h-full object-cover transition group-hover:scale-[1.04]" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-90" />

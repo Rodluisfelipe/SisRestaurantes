@@ -1,11 +1,11 @@
 import { motion } from 'framer-motion';
 
 const VARIANTS = {
-  ghost: 'bg-transparent text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.06] border border-transparent',
-  filled: 'bg-cyan-100 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 hover:bg-cyan-200 dark:hover:bg-cyan-500/25 border border-cyan-200 dark:border-cyan-500/20',
-  danger: 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400/80 hover:bg-red-100 dark:hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-400 border border-red-200 dark:border-red-500/15',
-  outline: 'bg-transparent text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.04] border border-slate-300 dark:border-white/[0.1]',
-  primary: 'bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-white/90 border border-transparent font-medium',
+  ghost: 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-transparent',
+  filled: 'bg-cyan-100 text-cyan-700 hover:bg-cyan-200 border border-cyan-200',
+  danger: 'bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 border border-red-200',
+  outline: 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-300',
+  primary: 'bg-slate-900 text-white hover:bg-slate-800 border border-transparent font-medium',
 };
 
 const SIZES = {
@@ -27,9 +27,9 @@ export default function SAButton({
       onClick={onClick}
       disabled={disabled || loading}
       className={`inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150
-        ${VARIANTS[variant]} ${SIZES[size]}
-        ${disabled || loading ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-        ${className}`}
+ ${VARIANTS[variant]} ${SIZES[size]}
+ ${disabled || loading ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+ ${className}`}
       {...props}
     >
       {loading && (

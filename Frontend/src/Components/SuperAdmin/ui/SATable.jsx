@@ -16,7 +16,7 @@ export default function SATable({ columns, data = [], onRowClick, rowKey = '_id'
     return (
       <div className="space-y-2">
         {[...Array(5)].map((_, i) => (
-          <div key={i} className="h-14 bg-slate-100 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.04] rounded-lg animate-pulse" />
+          <div key={i} className="h-14 bg-slate-100 border border-slate-200 rounded-lg animate-pulse" />
         ))}
       </div>
     );
@@ -25,7 +25,7 @@ export default function SATable({ columns, data = [], onRowClick, rowKey = '_id'
   return (
     <div className="w-full">
       {/* Desktop header */}
-      <div className="hidden md:grid items-center gap-3 px-4 py-2 text-[11px] font-medium text-slate-500 dark:text-white/30 uppercase tracking-wider"
+      <div className="hidden md:grid items-center gap-3 px-4 py-2 text-[11px] font-medium text-slate-500 uppercase tracking-wider"
         style={{ gridTemplateColumns: columns.map(c => c.width || '1fr').join(' ') }}>
         {columns.map(col => (
           <span key={col.key} className={col.className || ''}>{col.label}</span>
@@ -41,14 +41,14 @@ export default function SATable({ columns, data = [], onRowClick, rowKey = '_id'
             animate={{ opacity: 1, y: 0 }}
             transition={stagger ? { delay: i * 0.03, duration: 0.25 } : undefined}
             onClick={onRowClick ? () => onRowClick(row) : undefined}
-            className={`grid items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 dark:border-white/[0.04] bg-white dark:bg-white/[0.015]
-              hover:bg-slate-50 dark:hover:bg-white/[0.04] hover:border-slate-300 dark:hover:border-white/[0.08] transition-all duration-150
-              ${onRowClick ? 'cursor-pointer' : ''}`}
+            className={`grid items-center gap-3 px-4 py-3 rounded-lg border border-slate-200 bg-white
+ hover:bg-slate-50 hover:border-slate-300 transition-all duration-150
+ ${onRowClick ? 'cursor-pointer' : ''}`}
             style={{ gridTemplateColumns: columns.map(c => c.width || '1fr').join(' ') }}
           >
             {columns.map(col => (
               <div key={col.key} className={`text-sm ${col.hideOnMobile ? 'hidden md:block' : ''} ${col.className || ''}`}>
-                {col.render ? col.render(row) : <span className="text-slate-700 dark:text-white/70 truncate">{row[col.key]}</span>}
+                {col.render ? col.render(row) : <span className="text-slate-700 truncate">{row[col.key]}</span>}
               </div>
             ))}
           </motion.div>

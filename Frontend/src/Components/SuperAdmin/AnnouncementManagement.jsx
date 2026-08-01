@@ -192,10 +192,10 @@ function AnnouncementManagement() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-red-200 dark:bg-red-500/20 border border-red-200 dark:border-red-500/50 text-red-200 px-4 py-3 rounded-xl flex items-center justify-between"
+            className="bg-red-200 border border-red-200 text-red-200 px-4 py-3 rounded-xl flex items-center justify-between"
           >
             <span>{error}</span>
-            <button onClick={() => setError('')} className="text-red-300 hover:text-slate-900 dark:hover:text-slate-900 dark:text-white ml-2">&times;</button>
+            <button onClick={() => setError('')} className="text-red-300 hover:text-slate-900 ml-2">&times;</button>
           </motion.div>
         )}
         {success && (
@@ -213,7 +213,7 @@ function AnnouncementManagement() {
       {/* Header + Create Button */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <p className="text-slate-600 dark:text-white/60 text-sm">
+          <p className="text-slate-600 text-sm">
             Crea anuncios que se mostrarán como popup en los dashboards de los negocios
           </p>
         </div>
@@ -240,18 +240,18 @@ function AnnouncementManagement() {
             className="overflow-hidden"
           >
             <form onSubmit={handleSubmit} className="bg-[#2A3544] rounded-2xl p-5 sm:p-6 border border-[#333F50] space-y-5">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 {editingId ? '✏️ Editar Anuncio' : '📝 Nuevo Anuncio'}
               </h3>
 
               {/* Title */}
               <div>
-                <label className="block text-slate-800 dark:text-white/80 text-sm font-medium mb-1.5">Título *</label>
+                <label className="block text-slate-800 text-sm font-medium mb-1.5">Título *</label>
                 <input
                   type="text"
                   value={form.title}
                   onChange={e => setForm(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full bg-[#1A2433] border border-[#333F50] text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#5FF9B4] focus:border-transparent outline-none transition-all text-sm"
+                  className="w-full bg-[#1A2433] border border-[#333F50] text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#5FF9B4] focus:border-transparent outline-none transition-all text-sm"
                   placeholder="Ej: Cambio de precio en la suscripción"
                   maxLength={150}
                   required
@@ -260,21 +260,21 @@ function AnnouncementManagement() {
 
               {/* Body */}
               <div>
-                <label className="block text-slate-800 dark:text-white/80 text-sm font-medium mb-1.5">Contenido *</label>
+                <label className="block text-slate-800 text-sm font-medium mb-1.5">Contenido *</label>
                 <textarea
                   value={form.body}
                   onChange={e => setForm(prev => ({ ...prev, body: e.target.value }))}
-                  className="w-full bg-[#1A2433] border border-[#333F50] text-slate-900 dark:text-white rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#5FF9B4] focus:border-transparent outline-none transition-all text-sm min-h-[120px] resize-y"
+                  className="w-full bg-[#1A2433] border border-[#333F50] text-slate-900 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#5FF9B4] focus:border-transparent outline-none transition-all text-sm min-h-[120px] resize-y"
                   placeholder="Escribe el contenido del anuncio..."
                   maxLength={2000}
                   required
                 />
-                <p className="text-slate-500 dark:text-white/40 text-xs mt-1">{form.body.length}/2000</p>
+                <p className="text-slate-500 text-xs mt-1">{form.body.length}/2000</p>
               </div>
 
               {/* Priority */}
               <div>
-                <label className="block text-slate-800 dark:text-white/80 text-sm font-medium mb-1.5">Prioridad</label>
+                <label className="block text-slate-800 text-sm font-medium mb-1.5">Prioridad</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {priorityOptions.map(opt => (
                     <button
@@ -283,8 +283,8 @@ function AnnouncementManagement() {
                       onClick={() => setForm(prev => ({ ...prev, priority: opt.value }))}
                       className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all border-2 flex items-center justify-center gap-1.5 ${
                         form.priority === opt.value
-                          ? `${opt.color} text-slate-900 dark:text-white border-transparent shadow-lg`
-                          : 'bg-[#1A2433] text-slate-700 dark:text-white/70 border-[#333F50] hover:border-white/30'
+                          ? `${opt.color} text-slate-900 border-transparent shadow-lg`
+                          : 'bg-[#1A2433] text-slate-700 border-[#333F50] hover:border-white/30'
                       }`}
                     >
                       <span>{opt.icon}</span>
@@ -296,15 +296,15 @@ function AnnouncementManagement() {
 
               {/* Image */}
               <div>
-                <label className="block text-slate-800 dark:text-white/80 text-sm font-medium mb-1.5">Imagen (opcional)</label>
+                <label className="block text-slate-800 text-sm font-medium mb-1.5">Imagen (opcional)</label>
                 <div className="flex items-start gap-4">
                   <label className="flex-1 cursor-pointer">
                     <div className="bg-[#1A2433] border-2 border-dashed border-[#333F50] rounded-xl p-4 text-center hover:border-[#5FF9B4]/50 transition-colors">
-                      <svg className="w-8 h-8 mx-auto text-slate-500 dark:text-white/40 mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <svg className="w-8 h-8 mx-auto text-slate-500 mb-2" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
                       </svg>
-                      <p className="text-slate-600 dark:text-white/50 text-xs">Clic para subir imagen</p>
-                      <p className="text-slate-500 dark:text-white/30 text-xs mt-1">JPG, PNG, WEBP (máx 5MB)</p>
+                      <p className="text-slate-600 text-xs">Clic para subir imagen</p>
+                      <p className="text-slate-500 text-xs mt-1">JPG, PNG, WEBP (máx 5MB)</p>
                     </div>
                     <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" onChange={handleImageChange} className="hidden" />
                   </label>
@@ -314,7 +314,7 @@ function AnnouncementManagement() {
                       <button
                         type="button"
                         onClick={() => { setForm(prev => ({ ...prev, image: null })); setImagePreview(null); }}
-                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-slate-900 dark:text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                        className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-slate-900 rounded-full flex items-center justify-center text-xs hover:bg-red-600"
                       >
                         ✕
                       </button>
@@ -337,7 +337,7 @@ function AnnouncementManagement() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="px-6 py-3 bg-[#333F50] text-slate-900 dark:text-white rounded-xl hover:bg-[#333F50]/80 transition-colors text-sm font-medium"
+                  className="px-6 py-3 bg-[#333F50] text-slate-900 rounded-xl hover:bg-[#333F50]/80 transition-colors text-sm font-medium"
                 >
                   Cancelar
                 </button>
@@ -351,13 +351,13 @@ function AnnouncementManagement() {
       {loading ? (
         <div className="text-center py-12">
           <div className="w-10 h-10 border-3 border-[#5FF9B4] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-600 dark:text-white/50 text-sm">Cargando anuncios...</p>
+          <p className="text-slate-600 text-sm">Cargando anuncios...</p>
         </div>
       ) : announcements.length === 0 ? (
         <div className="text-center py-16">
           <span className="text-5xl mb-4 block">📭</span>
-          <p className="text-slate-600 dark:text-white/60 text-lg font-medium">No hay anuncios creados</p>
-          <p className="text-slate-500 dark:text-white/40 text-sm mt-1">Crea tu primer anuncio para notificar a los negocios</p>
+          <p className="text-slate-600 text-lg font-medium">No hay anuncios creados</p>
+          <p className="text-slate-500 text-sm mt-1">Crea tu primer anuncio para notificar a los negocios</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -376,7 +376,7 @@ function AnnouncementManagement() {
                     {/* Left: Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${pConfig.color} text-slate-900 dark:text-white`}>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${pConfig.color} text-slate-900`}>
                           {pConfig.icon} {pConfig.label}
                         </span>
                         {!ann.isActive && (
@@ -385,9 +385,9 @@ function AnnouncementManagement() {
                           </span>
                         )}
                       </div>
-                      <h4 className="text-slate-900 dark:text-white font-bold text-base truncate">{ann.title}</h4>
-                      <p className="text-slate-600 dark:text-white/50 text-sm mt-1 line-clamp-2">{ann.body}</p>
-                      <p className="text-slate-500 dark:text-white/30 text-xs mt-2">
+                      <h4 className="text-slate-900 font-bold text-base truncate">{ann.title}</h4>
+                      <p className="text-slate-600 text-sm mt-1 line-clamp-2">{ann.body}</p>
+                      <p className="text-slate-500 text-xs mt-2">
                         {new Date(ann.createdAt).toLocaleDateString('es-CO', { year: 'numeric', month: 'short', day: 'numeric' })}
                       </p>
                     </div>
@@ -407,18 +407,18 @@ function AnnouncementManagement() {
                         className="flex items-center gap-1.5 text-xs group"
                         title="Ver quién lo ha visto"
                       >
-                        <svg className="w-4 h-4 text-slate-500 dark:text-white/40 group-hover:text-[#5FF9B4] transition-colors" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 text-slate-500 group-hover:text-[#5FF9B4] transition-colors" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
-                        <span className="text-slate-600 dark:text-white/50 group-hover:text-[#5FF9B4] transition-colors font-medium">
+                        <span className="text-slate-600 group-hover:text-[#5FF9B4] transition-colors font-medium">
                           {ann.seenCount}/{ann.totalBusinesses}
                         </span>
                         <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
-                          ann.seenPercentage >= 80 ? 'bg-green-500/20 text-green-400' :
-                          ann.seenPercentage >= 40 ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-red-200 dark:bg-red-500/20 text-red-600 dark:text-red-400'
-                        }`}>
+ ann.seenPercentage >= 80 ? 'bg-green-500/20 text-green-400' :
+ ann.seenPercentage >= 40 ? 'bg-yellow-500/20 text-yellow-400' :
+ 'bg-red-200 text-red-600'
+ }`}>
                           {ann.seenPercentage}%
                         </span>
                       </button>
@@ -429,17 +429,17 @@ function AnnouncementManagement() {
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[#333F50]">
                     <button
                       onClick={() => handleEdit(ann)}
-                      className="px-3 py-1.5 bg-cyan-200 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 rounded-lg text-xs font-medium hover:bg-cyan-200 dark:hover:bg-cyan-500/30 transition-colors"
+                      className="px-3 py-1.5 bg-cyan-200 text-cyan-600 rounded-lg text-xs font-medium hover:bg-cyan-200 transition-colors"
                     >
                       ✏️ Editar
                     </button>
                     <button
                       onClick={() => handleToggleActive(ann._id, ann.isActive)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                        ann.isActive
-                          ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
-                          : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                      }`}
+ ann.isActive
+ ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+ : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+ }`}
                     >
                       {ann.isActive ? '⏸ Desactivar' : '▶️ Activar'}
                     </button>
@@ -452,7 +452,7 @@ function AnnouncementManagement() {
                     <div className="flex-1" />
                     <button
                       onClick={() => handleDelete(ann._id)}
-                      className="px-3 py-1.5 bg-red-200 dark:bg-red-500/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors"
+                      className="px-3 py-1.5 bg-red-200 text-red-600 rounded-lg text-xs font-medium hover:bg-red-200 transition-colors"
                     >
                       🗑 Eliminar
                     </button>
@@ -485,8 +485,8 @@ function AnnouncementManagement() {
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{selectedAnnouncement.title}</h3>
-                    <p className="text-slate-500 dark:text-white/40 text-xs mt-1">
+                    <h3 className="text-xl font-bold text-slate-900">{selectedAnnouncement.title}</h3>
+                    <p className="text-slate-500 text-xs mt-1">
                       {new Date(selectedAnnouncement.createdAt).toLocaleDateString('es-CO', {
                         year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}
@@ -494,7 +494,7 @@ function AnnouncementManagement() {
                   </div>
                   <button
                     onClick={() => setShowDetail(false)}
-                    className="w-8 h-8 rounded-full bg-[#333F50] text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-slate-900 dark:text-white flex items-center justify-center transition-colors"
+                    className="w-8 h-8 rounded-full bg-[#333F50] text-slate-600 hover:text-slate-900 flex items-center justify-center transition-colors"
                   >
                     ✕
                   </button>
@@ -510,17 +510,17 @@ function AnnouncementManagement() {
                 )}
 
                 {/* Body */}
-                <p className="text-slate-700 dark:text-white/70 text-sm whitespace-pre-line mb-6">{selectedAnnouncement.body}</p>
+                <p className="text-slate-700 text-sm whitespace-pre-line mb-6">{selectedAnnouncement.body}</p>
 
                 {/* Seen Stats */}
                 <div className="bg-[#2A3544] rounded-xl p-4 border border-[#333F50]">
                   <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-slate-900 dark:text-white font-bold text-sm">Lectura por negocios</h4>
+                    <h4 className="text-slate-900 font-bold text-sm">Lectura por negocios</h4>
                     <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
-                      selectedAnnouncement.seenPercentage >= 80 ? 'bg-green-500/20 text-green-400' :
-                      selectedAnnouncement.seenPercentage >= 40 ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-red-200 dark:bg-red-500/20 text-red-600 dark:text-red-400'
-                    }`}>
+ selectedAnnouncement.seenPercentage >= 80 ? 'bg-green-500/20 text-green-400' :
+ selectedAnnouncement.seenPercentage >= 40 ? 'bg-yellow-500/20 text-yellow-400' :
+ 'bg-red-200 text-red-600'
+ }`}>
                       {selectedAnnouncement.seenCount}/{selectedAnnouncement.totalBusinesses} ({selectedAnnouncement.seenPercentage}%)
                     </span>
                   </div>
@@ -529,10 +529,10 @@ function AnnouncementManagement() {
                   <div className="w-full bg-[#333F50] rounded-full h-2 mb-4">
                     <div
                       className={`h-2 rounded-full transition-all duration-500 ${
-                        selectedAnnouncement.seenPercentage >= 80 ? 'bg-green-400' :
-                        selectedAnnouncement.seenPercentage >= 40 ? 'bg-yellow-400' :
-                        'bg-red-400'
-                      }`}
+ selectedAnnouncement.seenPercentage >= 80 ? 'bg-green-400' :
+ selectedAnnouncement.seenPercentage >= 40 ? 'bg-yellow-400' :
+ 'bg-red-400'
+ }`}
                       style={{ width: `${selectedAnnouncement.seenPercentage}%` }}
                     />
                   </div>
@@ -545,15 +545,15 @@ function AnnouncementManagement() {
                           <div className="flex items-center gap-2">
                             <span className="text-green-400 text-sm">✓</span>
                             <div>
-                              <p className="text-slate-900 dark:text-white text-sm font-medium">
+                              <p className="text-slate-900 text-sm font-medium">
                                 {seen.businessId?.restaurantName || 'Negocio'}
                               </p>
-                              <p className="text-slate-500 dark:text-white/40 text-xs">
+                              <p className="text-slate-500 text-xs">
                                 {seen.adminId?.name || seen.adminId?.email || ''}
                               </p>
                             </div>
                           </div>
-                          <p className="text-slate-500 dark:text-white/40 text-xs">
+                          <p className="text-slate-500 text-xs">
                             {new Date(seen.seenAt).toLocaleDateString('es-CO', {
                               month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                             })}
@@ -562,7 +562,7 @@ function AnnouncementManagement() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-slate-500 dark:text-white/40 text-sm text-center py-4">
+                    <p className="text-slate-500 text-sm text-center py-4">
                       Ningún negocio ha visto este anuncio aún
                     </p>
                   )}
