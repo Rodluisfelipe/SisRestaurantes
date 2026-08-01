@@ -6,6 +6,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const Admin = require('../Models/Admin');
 const CompletedOrder = require('../Models/CompletedOrder');
 const { sendWeeklyReportEmail } = require('./emailService');
+const { trackRun } = require('./cronRegistry');
 
 const WD = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -85,7 +86,7 @@ async function runWeeklyReports() {
 function startWeeklyReportCron() {
   // Lunes 8:00 AM Colombia
   cron.schedule('0 8 * * 1', () => {
-    runWeeklyReports().catch(e => logger.error('Weekly report cron error', e));
+    trackRun('weeklyReport', runWeeklyReports).catch(e => logger.error('Weekly report cron error', e));
   }, { timezone: 'America/Bogota' });
   logger.info('Weekly report cron started (Mondays 8am COL)');
 }

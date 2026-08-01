@@ -73,6 +73,75 @@ router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => 
 });
 
 /**
+ * GET /system-status — si la maquinaria está corriendo.
+ *
+ * Tareas programadas (con su última corrida), agentes de impresión conectados
+ * y trabajo pendiente. Antes esto solo se sabía cuando un cliente reclamaba.
+ */
+router.get('/system-status', requireRole('support'), async (req, res) => {
+  try {
+    const CronRun = require('../Models/CronRun');
+    const { TASKS } = require('../services/cronRegistry');
+    const now = Date.now();
+
+    const runs = await CronRun.find({}).lean();
+    const byTask = new Map(runs.map((r) => [r.task, r]));
+
+    const crons = Object.entries(TASKS).map(([key, meta]) => {
+      const r = byTask.get(key);
+      const ageH = r?.lastRunAt ? (now - new Date(r.lastRunAt)) / 36e5 : null;
+      let status = 'unknown';           // nunca ha corrido desde que se instrumentó
+      if (r?.lastStatus === 'error') status = 'error';
+      else if (ageH !== null) status = ageH > meta.maxAgeHours ? 'late' : 'ok';
+      return {
+        key,
+        label: meta.label,
+        schedule: meta.schedule,
+        status,
+        lastRunAt: r?.lastRunAt || null,
+        lastError: r?.lastError || null,
+        lastResult: r?.lastResult || null,
+        lastDurationMs: r?.lastDurationMs ?? null,
+        runs: r?.runs || 0,
+        failures: r?.failures || 0,
+      };
+    });
+
+    /* Agentes de impresión: se cuentan las conexiones SSE vivas, que es la
+       única fuente real (no hay latido guardado en la base). Ojo: es por
+       proceso, así que con varias instancias habría que sumarlas. */
+    let printAgents = { configured: 0, businessesOnline: 0, agentsOnline: 0 };
+    try {
+      const printAgentRouter = require('./printAgent');
+      const configured = await BusinessConfig.countDocuments({ printAgentKey: { $nin: [null, ''] } });
+      const live = typeof printAgentRouter.getPrintAgentStats === 'function'
+        ? printAgentRouter.getPrintAgentStats()
+        : { businessesOnline: 0, agentsOnline: 0 };
+      printAgents = { configured, ...live };
+    } catch { /* si falla, se reporta en cero en vez de romper el panel */ }
+
+    const [pendingProofs, activeOrders] = await Promise.all([
+      PaymentRequest.countDocuments({ status: 'pending' }),
+      Order.countDocuments({ status: { $nin: ['completed', 'cancelled', 'delivered'] } }),
+    ]);
+
+    res.json({
+      generatedAt: new Date(),
+      crons,
+      printAgents,
+      queues: { pendingPaymentRequests: pendingProofs, openOrders: activeOrders },
+      health: {
+        cronsLate: crons.filter((c) => c.status === 'late').length,
+        cronsError: crons.filter((c) => c.status === 'error').length,
+      },
+    });
+  } catch (error) {
+    logger.error('Error computing system status', error);
+    res.status(500).json({ message: 'Error al obtener el estado del sistema' });
+  }
+});
+
+/**
  * GET /activation-funnel — dónde se atascan los negocios nuevos.
  *
  * No usa onboarding.level (que solo cuenta guías vistas, no actividad real):

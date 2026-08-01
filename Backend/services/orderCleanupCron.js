@@ -5,6 +5,7 @@ const Order = require('../Models/Order');
 const socketService = require('../services/socketService');
 const logger = require('../utils/logger');
 const { ORDER_STATUS } = require('../utils/constants');
+const { trackRun } = require('./cronRegistry');
 
 /**
  * Servicio de cierre automático de pedidos a medianoche (hora Colombia).
@@ -169,7 +170,7 @@ function startOrderCleanupCron() {
     _cleanupRunning = true;
     try {
       logger.info('[OrderCleanup] Cierre automático de medianoche (Colombia)');
-      await runCleanup();
+      await trackRun('orderCleanup', runCleanup);
     } finally {
       _cleanupRunning = false;
     }

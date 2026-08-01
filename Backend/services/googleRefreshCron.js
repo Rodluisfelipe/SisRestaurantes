@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const logger = require('../utils/logger');
 const BusinessConfig = require('../Models/BusinessConfig');
 const places = require('./googlePlaces');
+const { trackRun } = require('./cronRegistry');
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -55,7 +56,7 @@ async function runGoogleRefresh() {
 function startGoogleRefreshCron() {
   // Todos los días a las 4:00 AM Colombia
   cron.schedule('0 4 * * *', () => {
-    runGoogleRefresh().catch(e => logger.error('Google refresh cron error', e));
+    trackRun('googleRefresh', runGoogleRefresh).catch(e => logger.error('Google refresh cron error', e));
   }, { timezone: 'America/Bogota' });
   logger.info('Google refresh cron started (diario 4am COL)');
 }

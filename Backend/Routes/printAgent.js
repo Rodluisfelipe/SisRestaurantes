@@ -310,4 +310,13 @@ router.post('/print-comanda/:orderId', authenticateToken, async (req, res) => {
   }
 });
 
+/* Resumen de agentes conectados ahora mismo, para el estado del sistema.
+   Se lee del registro en memoria de conexiones SSE, que es la única fuente
+   real: no hay latido persistido en la base. */
+router.getPrintAgentStats = function getPrintAgentStats() {
+  let agents = 0;
+  for (const set of activePrintAgentConnections.values()) agents += set.size;
+  return { businessesOnline: activePrintAgentConnections.size, agentsOnline: agents };
+};
+
 module.exports = router;

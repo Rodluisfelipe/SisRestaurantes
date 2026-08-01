@@ -4,6 +4,7 @@ const BusinessConfig = require('../Models/BusinessConfig');
 const { sendPushToBusinessId, sendPushToCustomer } = require('./pushService');
 const logger = require('../utils/logger');
 const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
+const { trackRun } = require('./cronRegistry');
 
 /**
  * Booking Reminder Cron
@@ -148,7 +149,7 @@ function startBookingReminderCron() {
     }
     _bookingCronRunning = true;
     try {
-      await checkBookingReminders();
+      await trackRun('bookingReminder', checkBookingReminders);
     } finally {
       _bookingCronRunning = false;
     }

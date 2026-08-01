@@ -179,6 +179,12 @@ export const globalSearch = async (q) => {
   return response.data;
 };
 
+// Estado del sistema: tareas programadas, impresión y pendientes
+export const fetchSystemStatus = async () => {
+  const response = await superadminApi.get('/system-status');
+  return response.data;
+};
+
 // Embudo de activación: en qué escalón se caen los negocios nuevos
 export const fetchActivationFunnel = async (days = 90) => {
   const response = await superadminApi.get(`/activation-funnel?days=${days}`);

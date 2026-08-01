@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const CustomerLoyalty = require('../Models/CustomerLoyalty');
 const LoyaltyProgram = require('../Models/LoyaltyProgram');
 const logger = require('../utils/logger');
+const { trackRun } = require('./cronRegistry');
 
 /**
  * Expire loyalty points whose expiresAt has passed.
@@ -84,7 +85,7 @@ function startLoyaltyExpiryCron() {
     _loyaltyCronRunning = true;
     try {
       logger.info('[LoyaltyExpiry] Ejecutando expiración diaria de puntos...');
-      await expirePoints();
+      await trackRun('loyaltyExpiry', expirePoints);
     } finally {
       _loyaltyCronRunning = false;
     }

@@ -3,6 +3,7 @@ const Subscription = require('../Models/Subscription');
 const { sendPushToBusinessId } = require('./pushService');
 const logger = require('../utils/logger');
 const { startOfDayCOL } = require('../utils/timezone');
+const { trackRun } = require('./cronRegistry');
 
 /**
  * Servicio de recordatorios automáticos de suscripción.
@@ -224,7 +225,7 @@ function startSubscriptionCron() {
     _subCronRunning = true;
     try {
       logger.info('[SubscriptionCron] Ejecutando verificación diaria de suscripciones...');
-      await checkSubscriptionReminders();
+      await trackRun('subscriptions', checkSubscriptionReminders);
     } finally {
       _subCronRunning = false;
     }
