@@ -157,7 +157,7 @@ export default function BusinessHealth({ onOpenBusiness }) {
                       <p className={`text-[13px] font-bold tabular-nums ${up ? 'text-emerald-600' : b.trendPct < 0 ? 'text-red-600' : 'text-slate-400'}`}>
                         {up ? '+' : ''}{b.trendPct}%
                       </p>
-                    ) : <p className="text-[13px] text-slate-300">—</p>}
+                    ) : <p className="text-[13px] text-slate-500">—</p>}
                     <p className="text-[10px] text-slate-400">vs 7d</p>
                   </div>
 

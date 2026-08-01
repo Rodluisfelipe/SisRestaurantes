@@ -251,7 +251,7 @@ export default function CrewKYCManagement() {
           className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
         >
           <img src={lightbox.src} alt={lightbox.label} className="max-h-[92vh] max-w-full rounded-lg shadow-2xl" />
-          <p className="absolute top-4 left-1/2 -translate-x-1/2 text-xs font-medium text-white/80 bg-black/40 px-3 py-1.5 rounded-full">{lightbox.label}</p>
+          <p className="absolute top-4 left-1/2 -translate-x-1/2 text-xs font-medium text-slate-500 bg-black/40 px-3 py-1.5 rounded-full">{lightbox.label}</p>
         </motion.div>
       )}
 
@@ -297,7 +297,7 @@ function DocCard({ label, src, onZoom }) {
       <img src={src} alt={label} className="absolute inset-0 w-full h-full object-cover transition group-hover:scale-[1.04]" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-90" />
       <p className="absolute bottom-1.5 left-2 right-2 text-[10px] font-bold text-white truncate">{label}</p>
-      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-white/90 text-slate-700 rounded backdrop-blur-sm">
+      <span className="absolute top-1.5 right-1.5 px-1.5 py-0.5 text-[9px] font-bold bg-slate-100 text-slate-700 rounded backdrop-blur-sm">
         Ampliar
       </span>
     </button>

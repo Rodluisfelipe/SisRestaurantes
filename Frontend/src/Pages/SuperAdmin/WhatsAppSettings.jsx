@@ -104,7 +104,7 @@ export default function WhatsAppSettings() {
               <span className="text-green-500">✓</span> Recordatorios de reservas 24h y 1h antes
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-slate-300">○</span> Mensajes de proveedores B2B (próximamente)
+              <span className="text-slate-500">○</span> Mensajes de proveedores B2B (próximamente)
             </div>
           </div>
         </div>

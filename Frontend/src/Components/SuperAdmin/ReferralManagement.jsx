@@ -12,11 +12,11 @@ const STATUS_LABELS = {
 };
 
 const STATUS_COLORS = {
-  pending: 'bg-yellow-100/80 text-yellow-300 border-yellow-500/20',
-  qualified: 'bg-cyan-100/80 text-cyan-300 border-cyan-200',
-  approved: 'bg-indigo-100/80 text-indigo-300 border-indigo-200',
-  credited: 'bg-emerald-100/80 text-emerald-300 border-emerald-200',
-  rejected: 'bg-red-100/80 text-red-300 border-red-200',
+  pending: 'bg-yellow-100 text-yellow-700 border-yellow-500/20',
+  qualified: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  approved: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+  credited: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  rejected: 'bg-red-100 text-red-700 border-red-200',
 };
 
 function formatCurrency(amount) {
@@ -138,7 +138,7 @@ export default function ReferralManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="w-8 h-8 border-3 border-white/10 border-t-cyan-400 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-slate-200 border-t-cyan-400 rounded-full animate-spin" />
       </div>
     );
   }
@@ -149,7 +149,7 @@ export default function ReferralManagement() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
           { label: 'Total', value: kpis.total || 0, color: 'text-slate-900' },
-          { label: 'Pendientes', value: kpis.pending || 0, color: 'text-yellow-400' },
+          { label: 'Pendientes', value: kpis.pending || 0, color: 'text-yellow-600' },
           { label: 'Calificados', value: kpis.qualified || 0, color: 'text-cyan-600' },
           { label: 'Acreditados', value: kpis.credited || 0, color: 'text-emerald-600' },
           { label: 'Rechazados', value: kpis.rejected || 0, color: 'text-red-600' },
@@ -195,7 +195,7 @@ export default function ReferralManagement() {
                   onClick={() => handleFilterChange(s)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
  statusFilter === s
- ? 'bg-white/10 text-slate-900 border border-white/20'
+ ? 'bg-slate-100 text-slate-900 border border-slate-200'
  : 'text-slate-500 hover:text-slate-900 border border-transparent'
  }`}
                 >
@@ -306,7 +306,7 @@ export default function ReferralManagement() {
                 </div>
                 <button
                   onClick={() => setConfigDraft(d => ({ ...d, isActive: !d.isActive }))}
-                  className={`w-12 h-7 rounded-full transition-colors relative ${configDraft.isActive ? 'bg-emerald-500' : 'bg-white/10'}`}
+                  className={`w-12 h-7 rounded-full transition-colors relative ${configDraft.isActive ? 'bg-emerald-500' : 'bg-slate-100'}`}
                 >
                   <div className={`w-5 h-5 rounded-full bg-white shadow absolute top-1 transition-transform ${configDraft.isActive ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
@@ -320,7 +320,7 @@ export default function ReferralManagement() {
                 </div>
                 <button
                   onClick={() => setConfigDraft(d => ({ ...d, requireApproval: !d.requireApproval }))}
-                  className={`w-12 h-7 rounded-full transition-colors relative ${configDraft.requireApproval ? 'bg-cyan-500' : 'bg-white/10'}`}
+                  className={`w-12 h-7 rounded-full transition-colors relative ${configDraft.requireApproval ? 'bg-cyan-500' : 'bg-slate-100'}`}
                 >
                   <div className={`w-5 h-5 rounded-full bg-white shadow absolute top-1 transition-transform ${configDraft.requireApproval ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
@@ -434,7 +434,7 @@ export default function ReferralManagement() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-[#1a1a2e] border border-white/10 rounded-2xl p-6 max-w-sm w-full space-y-4"
+              className="bg-[#1a1a2e] border border-slate-200 rounded-2xl p-6 max-w-sm w-full space-y-4"
             >
               <h3 className="text-lg font-bold text-slate-900">Rechazar referido</h3>
               <div>

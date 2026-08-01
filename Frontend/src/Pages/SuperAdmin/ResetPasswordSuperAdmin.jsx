@@ -63,7 +63,7 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
           <div className="relative backdrop-blur-xl bg-slate-100 border border-slate-200 rounded-2xl shadow-2xl overflow-hidden">
             <div className="h-[2px] bg-gradient-to-r from-transparent via-red-400/60 to-transparent" />
             <div className="p-8 sm:p-10 text-center">
-              <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500/20 to-rose-600/20 border border-white/10 flex items-center justify-center mb-5 shadow-lg shadow-red-500/10">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500/20 to-rose-600/20 border border-slate-200 flex items-center justify-center mb-5 shadow-lg shadow-red-500/10">
                 <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
@@ -79,7 +79,7 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
               </button>
             </div>
           </div>
-          <p className="text-center mt-6 text-xs text-slate-300">MenuBy — Panel de Administración</p>
+          <p className="text-center mt-6 text-xs text-slate-500">MenuBy — Panel de Administración</p>
         </motion.div>
       </div>
     );
@@ -101,7 +101,7 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
           <div className="h-[2px] bg-gradient-to-r from-transparent via-cyan-400/60 to-transparent" />
           <div className="p-8 sm:p-10">
             <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.5 }} className="text-center mb-8">
-              <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-white/10 flex items-center justify-center mb-4">
+              <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-slate-200 flex items-center justify-center mb-4">
                 <svg className="w-8 h-8 text-cyan-600" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
                 </svg>
@@ -114,7 +114,7 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
               <motion.div initial={{ opacity: 0, y: -8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="mb-6 px-4 py-3 rounded-xl bg-red-50 border border-red-200 backdrop-blur-sm">
                 <div className="flex items-start gap-2.5">
                   <svg className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
-                  <p className="text-sm text-red-300/90 leading-snug">{error}</p>
+                  <p className="text-sm text-red-700/90 leading-snug">{error}</p>
                 </div>
               </motion.div>
             )}
@@ -122,7 +122,7 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
               <motion.div initial={{ opacity: 0, y: -8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="mb-6 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 backdrop-blur-sm">
                 <div className="flex items-start gap-2.5">
                   <svg className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <p className="text-sm text-emerald-300/90 leading-snug">{message}</p>
+                  <p className="text-sm text-emerald-700/90 leading-snug">{message}</p>
                 </div>
               </motion.div>
             )}
@@ -133,7 +133,7 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
                   <label className="block text-xs font-medium text-slate-600 mb-1.5 ml-1">Nueva contraseña</label>
                   <div className="relative group">
                     <input type={showNew ? 'text' : 'password'} required value={newPassword} onChange={e => setNewPassword(e.target.value)}
-                      className="w-full px-4 py-3 pl-11 pr-11 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10"
+                      className="w-full px-4 py-3 pl-11 pr-11 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10"
                       placeholder="Mínimo 8 caracteres"
                     />
                     <svg className="w-[18px] h-[18px] absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-400/60 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -150,7 +150,7 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
                   <label className="block text-xs font-medium text-slate-600 mb-1.5 ml-1">Confirmar contraseña</label>
                   <div className="relative group">
                     <input type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
-                      className="w-full px-4 py-3 pl-11 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10"
+                      className="w-full px-4 py-3 pl-11 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10"
                       placeholder="Repite la nueva contraseña"
                     />
                     <svg className="w-[18px] h-[18px] absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-400/60 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -164,11 +164,11 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
 
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45, duration: 0.4 }} className="pt-2">
                   <button type="submit" disabled={loading}
-                    className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-300 ${loading ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-black hover:bg-white/90 active:scale-[0.98]'}`}
+                    className={`w-full py-3 px-4 rounded-xl font-medium text-sm transition-all duration-300 ${loading ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-black hover:bg-slate-100 active:scale-[0.98]'}`}
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-slate-200 border-t-white rounded-full animate-spin" />
                         Restableciendo...
                       </span>
                     ) : 'Restablecer contraseña'}
@@ -184,7 +184,7 @@ export default function ResetPasswordSuperAdmin({ token, onSuccess, onBack }) {
             </motion.div>
           </div>
         </div>
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 0.5 }} className="text-center mt-6 text-xs text-slate-300">
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7, duration: 0.5 }} className="text-center mt-6 text-xs text-slate-500">
           MenuBy — Panel de Administración
         </motion.p>
       </motion.div>

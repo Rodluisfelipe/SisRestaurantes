@@ -199,7 +199,7 @@ function ResetCredentialsModal({ business, onClose, onSuccess }) {
                   className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-[13px] font-bold hover:bg-amber-600 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
                 >
                   {saving ? (
-                    <><div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Guardando...</>
+                    <><div className="w-3.5 h-3.5 border-2 border-slate-200 border-t-white rounded-full animate-spin" /> Guardando...</>
                   ) : 'Guardar cambios'}
                 </button>
               </div>
@@ -400,7 +400,7 @@ export default function BusinessTable({ refreshTrigger }) {
             aria-label="Buscar negocio"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-white/20 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/10 transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/10 transition-all"
           />
         </div>
         <div className="flex gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-1">
@@ -431,7 +431,7 @@ export default function BusinessTable({ refreshTrigger }) {
       {!loading && filtered.length === 0 && (
         <div className="text-center py-16">
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center">
-            <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" strokeWidth={1} viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" strokeWidth={1} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
             </svg>
           </div>
@@ -468,9 +468,9 @@ export default function BusinessTable({ refreshTrigger }) {
                   <td className="py-3.5 px-4">
                     <div className="flex items-center gap-3">
                       {b.logo ? (
-                        <img src={b.logo} alt="" className="w-9 h-9 rounded-xl object-cover border border-white/10" />
+                        <img src={b.logo} alt="" className="w-9 h-9 rounded-xl object-cover border border-slate-200" />
                       ) : (
-                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-white/10 flex items-center justify-center">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-slate-200 flex items-center justify-center">
                           <span className="text-sm font-bold text-cyan-600">{b.businessName?.charAt(0)?.toUpperCase()}</span>
                         </div>
                       )}
@@ -478,7 +478,7 @@ export default function BusinessTable({ refreshTrigger }) {
                     </div>
                   </td>
                   <td className="py-3.5 px-4">
-                    <button onClick={() => copySlug(b.slug)} className="inline-flex items-center gap-1.5 font-mono text-xs px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 hover:border-white/10 transition-all group/slug">
+                    <button onClick={() => copySlug(b.slug)} className="inline-flex items-center gap-1.5 font-mono text-xs px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-600 hover:text-slate-800 hover:border-slate-300 transition-all group/slug">
                       {b.slug}
                       <svg className="w-3 h-3 opacity-0 group-hover/slug:opacity-100 transition-opacity" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
@@ -492,7 +492,7 @@ export default function BusinessTable({ refreshTrigger }) {
  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
  : 'bg-slate-100 text-slate-500 border border-slate-200'
  }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${b.isActive ? 'bg-emerald-400' : 'bg-white/20'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${b.isActive ? 'bg-emerald-400' : 'bg-slate-300'}`} />
                       {b.isActive ? 'Activo' : 'Inactivo'}
                     </span>
                   </td>
@@ -503,10 +503,10 @@ export default function BusinessTable({ refreshTrigger }) {
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
  b.features?.posBetaEnabled
  ? 'bg-purple-100 text-purple-600 border border-purple-200 hover:bg-purple-200'
- : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-900 hover:border-white/10'
+ : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-900 hover:border-slate-300'
  }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${b.features?.posBetaEnabled ? 'bg-purple-400' : 'bg-white/20'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${b.features?.posBetaEnabled ? 'bg-purple-400' : 'bg-slate-300'}`} />
                       {b.features?.posBetaEnabled ? 'POS ✓' : 'POS'}
                     </button>
                     {/* Menú V2 (perfil + historias) — beta por negocio */}
@@ -519,7 +519,7 @@ export default function BusinessTable({ refreshTrigger }) {
  : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-900'
  }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${b.features?.menuV2 ? 'bg-sky-400' : 'bg-white/20'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${b.features?.menuV2 ? 'bg-sky-400' : 'bg-slate-300'}`} />
                       {b.features?.menuV2 ? 'V2 ✓' : 'V2'}
                     </button>
                   </td>
@@ -530,10 +530,10 @@ export default function BusinessTable({ refreshTrigger }) {
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all cursor-pointer ${
  b.isSupplier
  ? 'bg-orange-100 text-orange-600 border border-orange-200 hover:bg-orange-200'
- : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-900 hover:border-white/10'
+ : 'bg-slate-100 text-slate-400 border border-slate-200 hover:text-slate-900 hover:border-slate-300'
  }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${b.isSupplier ? 'bg-orange-400' : 'bg-white/20'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${b.isSupplier ? 'bg-orange-400' : 'bg-slate-300'}`} />
                       {b.isSupplier ? '🏭 Proveedor ✓' : 'Proveedor'}
                     </button>
                   </td>
@@ -618,9 +618,9 @@ export default function BusinessTable({ refreshTrigger }) {
               {/* Header */}
               <div className="flex items-center gap-3 mb-3">
                 {b.logo ? (
-                  <img src={b.logo} alt="" className="w-11 h-11 rounded-xl object-cover border border-white/10" />
+                  <img src={b.logo} alt="" className="w-11 h-11 rounded-xl object-cover border border-slate-200" />
                 ) : (
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-white/10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/20 border border-slate-200 flex items-center justify-center flex-shrink-0">
                     <span className="text-base font-bold text-cyan-600">{b.businessName?.charAt(0)?.toUpperCase()}</span>
                   </div>
                 )}
@@ -632,7 +632,7 @@ export default function BusinessTable({ refreshTrigger }) {
  ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
  : 'bg-slate-100 text-slate-500 border border-slate-200'
  }`}>
-                      <span className={`w-1 h-1 rounded-full ${b.isActive ? 'bg-emerald-400' : 'bg-white/20'}`} />
+                      <span className={`w-1 h-1 rounded-full ${b.isActive ? 'bg-emerald-400' : 'bg-slate-300'}`} />
                       {b.isActive ? 'Activo' : 'Inactivo'}
                     </span>
                     <button onClick={() => copySlug(b.slug)} className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 hover:text-slate-600 transition-colors">
@@ -643,11 +643,14 @@ export default function BusinessTable({ refreshTrigger }) {
               </div>
 
               {b.whatsappNumber && (
-                <p className="text-xs text-slate-400 mb-3 ml-14">WhatsApp: {b.whatsappNumber}</p>
+                <p className="text-xs text-slate-400 mb-3">WhatsApp: {b.whatsappNumber}</p>
               )}
 
-              {/* Actions */}
-              <div className="flex items-center gap-1.5 ml-14">
+              {/* Acciones — en dos filas y con etiqueta. Antes iban los ocho
+                  controles en una sola línea sangrada 56px: en móvil se
+                  amontonaban y cuatro quedaban como iconos mudos. */}
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Funciones</p>
+              <div className="flex flex-wrap items-center gap-1.5 mb-3">
                 <button
                   onClick={() => handleTogglePos(b)}
                   className={`flex items-center justify-center gap-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-all ${
@@ -685,54 +688,58 @@ export default function BusinessTable({ refreshTrigger }) {
  }`}
                   title={b.isSupplier ? 'Quitar de marketplace' : 'Activar como proveedor'}
                 >
-                  🏭
+                  Proveedor
+                </button>
+              </div>
+
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Acciones</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  onClick={() => handleOpenMenu(b)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Ver menú
+                </button>
+                <button
+                  onClick={() => handleOpenAdmin(b)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  </svg>
+                  Su panel
+                </button>
+                <button
+                  onClick={() => setResetModal(b)}
+                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200"
+                >
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                  </svg>
+                  Credenciales
                 </button>
                 <button
                   onClick={() => handleActivate(b)}
-                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
- b.isActive
- ? 'bg-amber-50 text-amber-600 border border-amber-200'
- : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
- }`}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold ${
+                    b.isActive
+                      ? 'bg-slate-100 text-slate-600 border border-slate-200'
+                      : 'bg-emerald-600 text-white border border-emerald-600'
+                  }`}
                 >
                   {b.isActive ? 'Desactivar' : 'Activar'}
                 </button>
                 <button
-                  onClick={() => handleOpenAdmin(b)}
-                  className="p-2 rounded-lg text-cyan-600 hover:text-cyan-700 bg-cyan-50 border border-cyan-200 transition-all"
-                  title="Panel"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => handleOpenMenu(b)}
-                  className="p-2 rounded-lg text-emerald-600 hover:text-emerald-700 bg-emerald-50 border border-emerald-200 transition-all"
-                  title="Menú"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => setResetModal(b)}
-                  className="p-2 rounded-lg text-amber-600 hover:text-amber-700 bg-amber-50 border border-amber-200 transition-all"
-                  title="Resetear credenciales"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
-                  </svg>
-                </button>
-                <button
                   onClick={() => handleDelete(b)}
-                  className="p-2 rounded-lg text-red-600 hover:text-red-700 bg-red-50 border border-red-200 transition-all"
-                  title="Eliminar"
+                  className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-red-700 bg-red-50 border border-red-200"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                   </svg>
+                  Eliminar negocio
                 </button>
               </div>
             </motion.div>

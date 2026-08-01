@@ -195,7 +195,7 @@ function AnnouncementManagement() {
             className="bg-red-200 border border-red-200 text-red-200 px-4 py-3 rounded-xl flex items-center justify-between"
           >
             <span>{error}</span>
-            <button onClick={() => setError('')} className="text-red-300 hover:text-slate-900 ml-2">&times;</button>
+            <button onClick={() => setError('')} className="text-red-700 hover:text-slate-900 ml-2">&times;</button>
           </motion.div>
         )}
         {success && (
@@ -284,7 +284,7 @@ function AnnouncementManagement() {
                       className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all border-2 flex items-center justify-center gap-1.5 ${
                         form.priority === opt.value
                           ? `${opt.color} text-slate-900 border-transparent shadow-lg`
-                          : 'bg-[#1A2433] text-slate-700 border-[#333F50] hover:border-white/30'
+                          : 'bg-[#1A2433] text-slate-700 border-[#333F50] hover:border-slate-300'
                       }`}
                     >
                       <span>{opt.icon}</span>
@@ -416,7 +416,7 @@ function AnnouncementManagement() {
                         </span>
                         <span className={`px-1.5 py-0.5 rounded text-xs font-bold ${
  ann.seenPercentage >= 80 ? 'bg-green-500/20 text-green-400' :
- ann.seenPercentage >= 40 ? 'bg-yellow-500/20 text-yellow-400' :
+ ann.seenPercentage >= 40 ? 'bg-yellow-500/20 text-yellow-600' :
  'bg-red-200 text-red-600'
  }`}>
                           {ann.seenPercentage}%
@@ -437,7 +437,7 @@ function AnnouncementManagement() {
                       onClick={() => handleToggleActive(ann._id, ann.isActive)}
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
  ann.isActive
- ? 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+ ? 'bg-yellow-500/20 text-yellow-600 hover:bg-yellow-500/30'
  : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
  }`}
                     >
@@ -518,7 +518,7 @@ function AnnouncementManagement() {
                     <h4 className="text-slate-900 font-bold text-sm">Lectura por negocios</h4>
                     <span className={`px-2 py-1 rounded-lg text-xs font-bold ${
  selectedAnnouncement.seenPercentage >= 80 ? 'bg-green-500/20 text-green-400' :
- selectedAnnouncement.seenPercentage >= 40 ? 'bg-yellow-500/20 text-yellow-400' :
+ selectedAnnouncement.seenPercentage >= 40 ? 'bg-yellow-500/20 text-yellow-600' :
  'bg-red-200 text-red-600'
  }`}>
                       {selectedAnnouncement.seenCount}/{selectedAnnouncement.totalBusinesses} ({selectedAnnouncement.seenPercentage}%)

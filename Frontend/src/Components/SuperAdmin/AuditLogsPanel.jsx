@@ -81,11 +81,11 @@ function DiffView({ before, after, action }) {
             <div className="mt-1 flex flex-col gap-1">
               <div className="flex items-start gap-2">
                 <span className="text-red-600 font-mono shrink-0">−</span>
-                <span className="text-red-300/70 break-all">{typeof before[key] === 'object' ? JSON.stringify(before[key]) : String(before[key] ?? '')}</span>
+                <span className="text-red-700/70 break-all">{typeof before[key] === 'object' ? JSON.stringify(before[key]) : String(before[key] ?? '')}</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-emerald-600 font-mono shrink-0">+</span>
-                <span className="text-emerald-300/70 break-all">{typeof after[key] === 'object' ? JSON.stringify(after[key]) : String(after[key] ?? '')}</span>
+                <span className="text-emerald-700/70 break-all">{typeof after[key] === 'object' ? JSON.stringify(after[key]) : String(after[key] ?? '')}</span>
               </div>
             </div>
           </div>
@@ -215,29 +215,29 @@ export default function AuditLogsPanel() {
       {/* Stats cards */}
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <div className="bg-slate-100 border border-slate-200 rounded-xl p-4">
             <p className="text-slate-500 text-xs uppercase tracking-wider">Total Logs</p>
             <p className="text-2xl font-bold text-slate-900 mt-1">{stats.total.toLocaleString()}</p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <div className="bg-slate-100 border border-slate-200 rounded-xl p-4">
             <p className="text-slate-500 text-xs uppercase tracking-wider">Hoy</p>
             <p className="text-2xl font-bold text-cyan-600 mt-1">{stats.today}</p>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <div className="bg-slate-100 border border-slate-200 rounded-xl p-4">
             <p className="text-slate-500 text-xs uppercase tracking-wider">Por Acción</p>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {stats.byAction?.map(a => (
-                <span key={a._id} className={`text-xs px-2 py-0.5 rounded-full ${ACTION_LABELS[a._id]?.color || 'bg-white/10 text-slate-600'}`}>
+                <span key={a._id} className={`text-xs px-2 py-0.5 rounded-full ${ACTION_LABELS[a._id]?.color || 'bg-slate-100 text-slate-600'}`}>
                   {ACTION_LABELS[a._id]?.label || a._id}: {a.count}
                 </span>
               ))}
             </div>
           </div>
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+          <div className="bg-slate-100 border border-slate-200 rounded-xl p-4">
             <p className="text-slate-500 text-xs uppercase tracking-wider">Por Recurso</p>
             <div className="flex flex-wrap gap-1.5 mt-2">
               {stats.byResource?.map(r => (
-                <span key={r._id} className="text-xs px-2 py-0.5 rounded-full bg-white/10 text-slate-600">
+                <span key={r._id} className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
                   {RESOURCE_LABELS[r._id] || r._id}: {r.count}
                 </span>
               ))}
@@ -247,14 +247,14 @@ export default function AuditLogsPanel() {
       )}
 
       {/* Filters */}
-      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+      <div className="bg-slate-100 border border-slate-200 rounded-xl p-4">
         <div className="flex items-center gap-3 mb-3">
           <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 01-.659 1.591l-5.432 5.432a2.25 2.25 0 00-.659 1.591v2.927a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L3.659 7.409A2.25 2.25 0 013 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0112 3z" />
           </svg>
           <span className="text-slate-600 text-sm font-medium">Filtros</span>
           {hasFilters && (
-            <button onClick={clearFilters} className="ml-auto text-xs text-cyan-600 hover:text-cyan-300 transition">
+            <button onClick={clearFilters} className="ml-auto text-xs text-cyan-600 hover:text-cyan-700 transition">
               Limpiar filtros
             </button>
           )}
@@ -327,14 +327,14 @@ export default function AuditLogsPanel() {
       ) : (
         <div className="space-y-2">
           {logs.map(log => {
-            const actionInfo = ACTION_LABELS[log.action] || { label: log.action, color: 'bg-white/10 text-slate-600', icon: '?' };
+            const actionInfo = ACTION_LABELS[log.action] || { label: log.action, color: 'bg-slate-100 text-slate-600', icon: '?' };
             const isExpanded = expandedId === log._id;
             return (
               <motion.div
                 key={log._id}
                 layout
-                className={`bg-white/5 border rounded-xl overflow-hidden transition-colors ${
- log.reverted ? 'border-yellow-500/30 opacity-60' : 'border-white/10 hover:border-white/20'
+                className={`bg-slate-100 border rounded-xl overflow-hidden transition-colors ${
+ log.reverted ? 'border-yellow-500/30 opacity-60' : 'border-slate-200 hover:border-slate-300'
  }`}
               >
                 {/* Row header */}
@@ -367,7 +367,7 @@ export default function AuditLogsPanel() {
 
                   {/* Reverted badge */}
                   {log.reverted && (
-                    <span className="text-xs bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded-full shrink-0">
+                    <span className="text-xs bg-yellow-500/20 text-yellow-600 px-2 py-0.5 rounded-full shrink-0">
                       Revertido
                     </span>
                   )}
@@ -398,7 +398,7 @@ export default function AuditLogsPanel() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      <div className="px-4 pb-4 border-t border-white/5 pt-3 space-y-3">
+                      <div className="px-4 pb-4 border-t border-slate-200 pt-3 space-y-3">
                         {/* Metadata */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
                           <div>
@@ -429,11 +429,11 @@ export default function AuditLogsPanel() {
                             <>
                               <div>
                                 <span className="text-slate-500">Revertido por:</span>
-                                <span className="text-yellow-400/70 ml-1">{log.revertedBy}</span>
+                                <span className="text-yellow-600/70 ml-1">{log.revertedBy}</span>
                               </div>
                               <div>
                                 <span className="text-slate-500">Fecha revert:</span>
-                                <span className="text-yellow-400/70 ml-1">{log.revertedAt ? formatDate(log.revertedAt) : '—'}</span>
+                                <span className="text-yellow-600/70 ml-1">{log.revertedAt ? formatDate(log.revertedAt) : '—'}</span>
                               </div>
                             </>
                           )}
@@ -465,7 +465,7 @@ export default function AuditLogsPanel() {
                             ) : (
                               <button
                                 onClick={() => setRevertConfirm(log._id)}
-                                className="text-xs bg-white/5 text-slate-600 hover:bg-white/10 hover:text-slate-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
+                                className="text-xs bg-slate-100 text-slate-600 hover:bg-slate-100 hover:text-slate-700 px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
@@ -491,7 +491,7 @@ export default function AuditLogsPanel() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="px-3 py-1.5 text-xs text-slate-600 bg-white/5 rounded-lg hover:bg-white/10 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-100 transition disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Anterior
           </button>
@@ -513,7 +513,7 @@ export default function AuditLogsPanel() {
                 className={`w-8 h-8 text-xs rounded-lg transition ${
  pageNum === page
  ? 'bg-cyan-500/30 text-cyan-600 font-medium'
- : 'text-slate-500 hover:bg-white/10'
+ : 'text-slate-500 hover:bg-slate-100'
  }`}
               >
                 {pageNum}
@@ -523,7 +523,7 @@ export default function AuditLogsPanel() {
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="px-3 py-1.5 text-xs text-slate-600 bg-white/5 rounded-lg hover:bg-white/10 transition disabled:opacity-30 disabled:cursor-not-allowed"
+            className="px-3 py-1.5 text-xs text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-100 transition disabled:opacity-30 disabled:cursor-not-allowed"
           >
             Siguiente
           </button>

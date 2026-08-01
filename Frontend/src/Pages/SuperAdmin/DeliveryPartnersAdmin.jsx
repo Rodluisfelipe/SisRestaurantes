@@ -183,7 +183,7 @@ export default function DeliveryPartnersAdmin() {
                   <button onClick={() => setEditing(editing?._id === p._id ? null : { _id: p._id, password: '' })} className="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-50 px-3 py-1.5 rounded-lg transition-colors">
                     Cambiar contraseña
                   </button>
-                  <button onClick={() => toggleActive(p)} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${p.active ? 'text-rose-300 bg-rose-500/10 hover:bg-rose-500/20' : 'text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20'}`}>
+                  <button onClick={() => toggleActive(p)} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${p.active ? 'text-rose-300 bg-rose-500/10 hover:bg-rose-500/20' : 'text-emerald-700 bg-emerald-500/10 hover:bg-emerald-500/20'}`}>
                     {p.active ? 'Desactivar' : 'Activar'}
                   </button>
                 </div>

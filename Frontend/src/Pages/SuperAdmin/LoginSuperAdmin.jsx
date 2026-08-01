@@ -181,7 +181,7 @@ export default function LoginSuperAdmin({ onLogin }) {
               className={`w-full py-2.5 rounded-lg text-sm font-medium transition-all ${
  loading || googleLoading
  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
- : 'bg-white text-black hover:bg-white/90 active:scale-[0.98]'
+ : 'bg-white text-black hover:bg-slate-100 active:scale-[0.98]'
  }`}
             >
               {loading ? (
@@ -206,7 +206,7 @@ export default function LoginSuperAdmin({ onLogin }) {
         </div>
 
         {/* Footer */}
-        <p className="text-center mt-6 text-[11px] text-white/10 tracking-wide">
+        <p className="text-center mt-6 text-[11px] text-slate-500 tracking-wide">
           MenuBy &middot; Super Admin
         </p>
       </motion.div>

@@ -136,7 +136,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                           onChange={handleChange}
                           required={field.required}
                           placeholder={field.placeholder}
-                          className="w-full px-4 py-2.5 pl-10 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10"
+                          className="w-full px-4 py-2.5 pl-10 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10"
                         />
                         <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                           {field.icon}
@@ -146,7 +146,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                         <img
                           src={form.logo}
                           alt="Preview"
-                          className="w-10 h-10 rounded-xl object-cover border border-white/10 flex-shrink-0"
+                          className="w-10 h-10 rounded-xl object-cover border border-slate-200 flex-shrink-0"
                           onError={e => e.target.style.display = 'none'}
                         />
                       )}
@@ -171,7 +171,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                         onChange={handleChange}
                         required
                         placeholder="mi-negocio"
-                        className="w-full px-4 py-2.5 pl-10 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-white/20 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10 font-mono"
+                        className="w-full px-4 py-2.5 pl-10 bg-slate-100 border border-slate-200 rounded-xl text-slate-900 text-sm placeholder-slate-400 outline-none transition-all duration-200 focus:border-cyan-500 focus:bg-slate-100 focus:ring-1 focus:ring-cyan-500/10 font-mono"
                       />
                       <svg className="w-[16px] h-[16px] absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-400/50 transition-colors" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-3.828a4.5 4.5 0 010 6.364l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757" />
@@ -200,7 +200,7 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                   animate={{ opacity: 1, y: 0 }}
                   className="mt-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200"
                 >
-                  <p className="text-sm text-red-300/90">{error}</p>
+                  <p className="text-sm text-red-700/90">{error}</p>
                 </motion.div>
               )}
 
@@ -219,12 +219,12 @@ export default function CreateBusinessModal({ isOpen, onClose, onCreated }) {
                   className={`flex-1 py-2.5 px-4 rounded-xl text-sm font-medium transition-all duration-300 ${
  loading
  ? 'bg-slate-100 text-slate-500 cursor-not-allowed'
- : 'bg-white text-black hover:bg-white/90 active:scale-[0.98]'
+ : 'bg-white text-black hover:bg-slate-100 active:scale-[0.98]'
  }`}
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-slate-200 border-t-white rounded-full animate-spin" />
                       Creando...
                     </span>
                   ) : 'Crear negocio'}

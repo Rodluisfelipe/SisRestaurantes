@@ -393,7 +393,7 @@ function SuperAdminDashboard() {
       <div className="flex-1 flex flex-col min-h-screen min-w-0">
         {/* Top bar — safe area aware */}
         <header
-          className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200 transition-colors"
+          className="sticky top-0 z-30 bg-slate-100 backdrop-blur-xl border-b border-slate-200 transition-colors"
           style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
         >
           <div className="flex items-center gap-3 px-4 sm:px-6 h-14">
