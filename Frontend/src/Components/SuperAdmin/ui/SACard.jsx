@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
 
 export default function SACard({ children, className = '', hover = false, padding = 'p-5', onClick, as = 'div' }) {
-  const base = `bg-white border border-slate-200 rounded-xl ${padding} ${
+  const base = `bg-white border border-slate-200 rounded-xl shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${padding} ${
     hover ? 'hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 cursor-pointer' : ''
   } ${className}`;
 

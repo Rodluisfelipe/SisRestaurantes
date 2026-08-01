@@ -26,7 +26,7 @@ export default function SAButton({
       type={type}
       onClick={onClick}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150
+      className={`inline-flex items-center justify-center rounded-lg font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20 focus-visible:ring-offset-1 min-h-[36px] sm:min-h-0
  ${VARIANTS[variant]} ${SIZES[size]}
  ${disabled || loading ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
  ${className}`}
