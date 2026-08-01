@@ -173,10 +173,23 @@ const PaymentRequestsReview = () => {
     
     // Construir URL completa del comprobante
     const apiUrl = import.meta.env.VITE_API_URL || (await import('../../config')).BACKEND_URL;
-    const fullUrl = proofUrl.startsWith('http') 
-      ? proofUrl 
-      : `${apiUrl}${proofUrl.startsWith('/') ? proofUrl : '/' + proofUrl}`;
-    
+
+    // Comprobante alojado fuera (ej. Spaces): se abre tal cual
+    if (proofUrl.startsWith('http')) {
+      window.open(proofUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    /* /uploads/proofs está protegido: sin credenciales el backend responde
+       "No token" y no se veía nada. Al abrirse en una pestaña nueva no se
+       pueden mandar cabeceras, así que se usa el ?token= que el propio
+       middleware admite para este caso. */
+    const path = proofUrl.startsWith('/') ? proofUrl : `/${proofUrl}`;
+    const token = localStorage.getItem('superadmin_token');
+    const fullUrl = token
+      ? `${apiUrl}${path}${path.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
+      : `${apiUrl}${path}`;
+
     window.open(fullUrl, '_blank', 'noopener,noreferrer');
   };
 
