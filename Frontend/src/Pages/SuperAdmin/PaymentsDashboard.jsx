@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { subscriptionApi } from '../../services/superadminApi';
-import { SABadge } from '../../Components/SuperAdmin/ui';
+import { SABadge, SATable } from '../../Components/SuperAdmin/ui';
 
 const PaymentsDashboard = () => {
   const [kpis, setKpis] = useState(null);
@@ -153,69 +153,59 @@ const PaymentsDashboard = () => {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-3 px-4 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Negocio</th>
-                <th className="text-left py-3 px-4 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Estado</th>
-                <th className="text-left py-3 px-4 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Plan</th>
-                <th className="text-left py-3 px-4 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Vence</th>
-                <th className="text-left py-3 px-4 text-[11px] font-medium text-slate-500 uppercase tracking-wider">Último pago</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {businesses.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="px-4 py-12 text-center">
-                    <p className="text-sm text-slate-500">No hay resultados</p>
-                    <p className="text-xs text-slate-400 mt-1">Ajusta los filtros</p>
-                  </td>
-                </tr>
-              ) : (
-                businesses.map((business, idx) => {
-                  const badge = getStatusBadge(business.status);
-                  return (
-                    <motion.tr
-                      key={idx}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: idx * 0.03 }}
-                      className="hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-slate-900">{business.name}</p>
-                        <p className="text-[11px] text-slate-500 font-mono">{business.slug}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <SABadge variant={badge.variant} dot>{badge.text}</SABadge>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {business.plan === 'annual' ? '👑 Anual' : '📅 Mensual'}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-500">
-                        {new Date(business.periodEnd).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </td>
-                      <td className="px-4 py-3">
-                        {business.lastPayment ? (
-                          <div>
-                            <p className="text-sm text-slate-600">{formatCurrency(business.lastPayment.amount)}</p>
-                            <p className="text-[11px] text-slate-400">{new Date(business.lastPayment.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}</p>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 text-sm">—</span>
-                        )}
-                      </td>
-                    </motion.tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* Tabla — en móvil SATable la convierte en tarjetas apiladas, en vez
+          del scroll lateral que había antes */}
+      <SATable
+        rowKey="slug"
+        data={businesses}
+        emptyMessage="No hay resultados. Ajusta los filtros."
+        columns={[
+          {
+            key: 'name',
+            label: 'Negocio',
+            width: '1.6fr',
+            primary: true,
+            render: (b) => (
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900 truncate">{b.name}</p>
+                <p className="text-[11px] text-slate-500 font-mono truncate">{b.slug}</p>
+              </div>
+            ),
+          },
+          {
+            key: 'status',
+            label: 'Estado',
+            render: (b) => {
+              const badge = getStatusBadge(b.status);
+              return <SABadge variant={badge.variant} dot>{badge.text}</SABadge>;
+            },
+          },
+          {
+            key: 'plan',
+            label: 'Plan',
+            render: (b) => <span className="text-sm text-slate-600">{b.plan === 'annual' ? '👑 Anual' : '📅 Mensual'}</span>,
+          },
+          {
+            key: 'periodEnd',
+            label: 'Vence',
+            render: (b) => (
+              <span className="text-sm text-slate-500">
+                {new Date(b.periodEnd).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </span>
+            ),
+          },
+          {
+            key: 'lastPayment',
+            label: 'Último pago',
+            render: (b) => (b.lastPayment ? (
+              <div>
+                <p className="text-sm text-slate-600 tabular-nums">{formatCurrency(b.lastPayment.amount)}</p>
+                <p className="text-[11px] text-slate-400">{new Date(b.lastPayment.date).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}</p>
+              </div>
+            ) : <span className="text-slate-400 text-sm">—</span>),
+          },
+        ]}
+      />
 
       {/* Pagination */}
       {pagination && pagination.totalPages > 1 && (

@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { subscriptionApi as adminApi } from '../../services/superadminApi';
+import { SATable } from './ui';
 
 const STATUS_LABELS = {
   pending: 'Pendiente',
@@ -379,35 +380,39 @@ export default function ReferralManagement() {
                   <p className="text-sm text-slate-500">No hay referentes acreditados a\u00fan</p>
                 </div>
               ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">#</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Negocio</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Referidos</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Cr\u00e9ditos ganados</th>
-                      <th className="text-left px-4 py-3 text-[11px] text-slate-500 uppercase tracking-wider font-semibold">Saldo actual</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {topReferrers.map((r, i) => (
-                      <tr key={r.businessId} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-4 py-3">
-                          <span className={`w-6 h-6 rounded-full inline-flex items-center justify-center text-xs font-bold ${
- i === 0 ? 'bg-yellow-500/20 text-yellow-400' :
- i === 1 ? 'bg-slate-400/20 text-slate-300' :
- i === 2 ? 'bg-orange-200 text-orange-600' :
- 'bg-white/5 text-slate-500'
- }`}>{i + 1}</span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-800 font-medium">{r.businessName || '\u2014'}</td>
-                        <td className="px-4 py-3 text-slate-600">{r.totalReferrals}</td>
-                        <td className="px-4 py-3 text-emerald-600 font-medium">{formatCurrency(r.totalCredits)}</td>
-                        <td className="px-4 py-3 text-cyan-600">{formatCurrency(r.currentCredits)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <SATable
+                  rowKey="businessId"
+                  data={topReferrers}
+                  columns={[
+                    {
+                      key: 'businessName',
+                      label: 'Negocio',
+                      width: '1.6fr',
+                      primary: true,
+                      render: (r) => {
+                        const i = topReferrers.indexOf(r);
+                        /* Los tonos de medalla estaban pensados para fondo
+                           oscuro (yellow-400, slate-300): sobre blanco no se
+                           le\u00edan. Se ajustan a variantes con contraste. */
+                        const medal = i === 0 ? 'bg-amber-100 text-amber-700'
+                          : i === 1 ? 'bg-slate-200 text-slate-600'
+                          : i === 2 ? 'bg-orange-100 text-orange-700'
+                          : 'bg-slate-100 text-slate-500';
+                        return (
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className={`w-6 h-6 shrink-0 rounded-full inline-flex items-center justify-center text-xs font-bold ${medal}`}>
+                              {i + 1}
+                            </span>
+                            <span className="text-slate-800 font-medium truncate">{r.businessName || '\u2014'}</span>
+                          </div>
+                        );
+                      },
+                    },
+                    { key: 'totalReferrals', label: 'Referidos', render: (r) => <span className="text-slate-600 tabular-nums">{r.totalReferrals}</span> },
+                    { key: 'totalCredits', label: 'Cr\u00e9ditos ganados', render: (r) => <span className="text-emerald-600 font-medium tabular-nums">{formatCurrency(r.totalCredits)}</span> },
+                    { key: 'currentCredits', label: 'Saldo actual', render: (r) => <span className="text-slate-700 tabular-nums">{formatCurrency(r.currentCredits)}</span> },
+                  ]}
+                />
               )}
             </div>
           </motion.div>

@@ -464,13 +464,13 @@ function SuperAdminDashboard() {
             {currentView === 'subscriptions' && (
               <motion.div key="subscriptions" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 {/* Sub-tabs */}
-                <div className="flex gap-1 mb-6 p-1 bg-white/[0.03] border border-white/[0.06] rounded-lg w-fit">
+                <div className="flex gap-1 mb-6 p-1 bg-slate-100 border border-slate-200 rounded-lg w-fit">
                   <button
                     onClick={() => setSubscriptionSubTab('payments')}
                     className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all ${
  subscriptionSubTab === 'payments'
- ? 'bg-white/[0.08] text-white shadow-sm'
- : 'text-white/40 hover:text-white/60'
+ ? 'bg-white text-slate-800 shadow-sm'
+ : 'text-slate-500 hover:text-slate-700'
  }`}
                   >
                     Solicitudes de Pago
@@ -479,8 +479,8 @@ function SuperAdminDashboard() {
                     onClick={() => setSubscriptionSubTab('management')}
                     className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all ${
  subscriptionSubTab === 'management'
- ? 'bg-white/[0.08] text-white shadow-sm'
- : 'text-white/40 hover:text-white/60'
+ ? 'bg-white text-slate-800 shadow-sm'
+ : 'text-slate-500 hover:text-slate-700'
  }`}
                   >
                     Gestión

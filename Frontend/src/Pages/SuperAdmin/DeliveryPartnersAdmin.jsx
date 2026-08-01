@@ -79,19 +79,19 @@ export default function DeliveryPartnersAdmin() {
     } catch (err) { toast.error(err.response?.data?.message || 'Error'); }
   };
 
-  const input = 'w-full bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2.5 text-sm text-white placeholder-white/30 outline-none focus:border-white/25 transition-colors';
+  const input = 'w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 transition-colors';
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-bold text-white">Empresas de reparto</h2>
-          <p className="text-sm text-white/40 mt-0.5">Crea las cuentas que entran al portal <span className="text-white/60 font-mono">/partner</span></p>
+          <h2 className="text-lg font-bold text-slate-800">Empresas de reparto</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Crea las cuentas que entran al portal <span className="text-slate-600 font-mono">/partner</span></p>
         </div>
         <button
           onClick={() => setShowCreate(v => !v)}
-          className="flex items-center gap-2 bg-white text-slate-900 font-semibold text-sm px-4 py-2 rounded-lg hover:bg-white/90 transition-colors"
+          className="flex items-center gap-2 bg-white text-slate-900 font-semibold text-sm px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
         >
           {showCreate ? 'Cerrar' : '+ Nueva empresa'}
         </button>
@@ -112,25 +112,25 @@ export default function DeliveryPartnersAdmin() {
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden mb-6"
           >
-            <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Nombre de la empresa</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre de la empresa</label>
                 <input className={`${input} mt-1.5`} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Rappi, Picap, Domi Express…" required />
               </div>
               <div>
-                <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Teléfono</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Teléfono</label>
                 <input className={`${input} mt-1.5`} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="3001234567" />
               </div>
               <div>
-                <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Email (ingreso)</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email (ingreso)</label>
                 <input type="email" className={`${input} mt-1.5`} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="empresa@reparto.com" required />
               </div>
               <div>
-                <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Contraseña</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Contraseña</label>
                 <input type="text" className={`${input} mt-1.5`} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} placeholder="mín. 6 caracteres" required />
               </div>
               <div>
-                <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Comisión</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Comisión</label>
                 <div className="flex gap-2 mt-1.5">
                   <select className={`${input} w-28`} value={form.commissionType} onChange={e => setForm(f => ({ ...f, commissionType: e.target.value }))}>
                     <option value="percent">%</option>
@@ -140,11 +140,11 @@ export default function DeliveryPartnersAdmin() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-semibold text-white/50 uppercase tracking-wider">Zonas de cobertura</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Zonas de cobertura</label>
                 <input className={`${input} mt-1.5`} value={form.coverageAreas} onChange={e => setForm(f => ({ ...f, coverageAreas: e.target.value }))} placeholder="Bogotá, Chapinero (separadas por coma)" />
               </div>
               <div className="sm:col-span-2 flex justify-end">
-                <button type="submit" disabled={saving} className="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors disabled:opacity-60">
+                <button type="submit" disabled={saving} className="bg-emerald-500 hover:bg-emerald-600 text-slate-800 font-semibold text-sm px-5 py-2.5 rounded-lg transition-colors disabled:opacity-60">
                   {saving ? 'Creando…' : 'Crear empresa'}
                 </button>
               </div>
@@ -155,32 +155,32 @@ export default function DeliveryPartnersAdmin() {
 
       {/* List */}
       {loading ? (
-        <div className="flex justify-center py-16"><div className="w-7 h-7 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-16"><div className="w-7 h-7 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" /></div>
       ) : partners.length === 0 ? (
-        <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl py-14 text-center text-white/40 text-sm">
+        <div className="bg-slate-50 border border-slate-200 rounded-xl py-14 text-center text-slate-500 text-sm">
           Aún no hay empresas de reparto. Crea la primera con "+ Nueva empresa".
         </div>
       ) : (
         <div className="space-y-3">
           {partners.map(p => (
-            <div key={p._id} className={`bg-white/[0.03] border rounded-xl p-4 ${p.active ? 'border-white/[0.08]' : 'border-white/[0.04] opacity-60'}`}>
+            <div key={p._id} className={`bg-slate-50 border rounded-xl p-4 ${p.active ? 'border-slate-200' : 'border-slate-200 opacity-60'}`}>
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex-1 min-w-[200px]">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-white">{p.name}</h3>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.active ? 'bg-emerald-500/15 text-emerald-300' : 'bg-white/10 text-white/40'}`}>
+                    <h3 className="font-bold text-slate-800">{p.name}</h3>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                       {p.active ? 'Activa' : 'Inactiva'}
                     </span>
                   </div>
-                  <p className="text-sm text-white/50 mt-1">{p.email}{p.phone ? ` · ${p.phone}` : ''}</p>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-white/40">
+                  <p className="text-sm text-slate-500 mt-1">{p.email}{p.phone ? ` · ${p.phone}` : ''}</p>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
                     <span>{p.totalDeliveries || 0} entregas</span>
                     <span>Comisión: {p.commissionType === 'fixed' ? `$${(p.commissionValue||0).toLocaleString('es-CO')}` : `${p.commissionValue||0}%`}</span>
                     {p.coverageAreas?.length > 0 && <span>{p.coverageAreas.join(', ')}</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => setEditing(editing?._id === p._id ? null : { _id: p._id, password: '' })} className="text-xs font-semibold text-white/60 hover:text-white bg-white/[0.05] px-3 py-1.5 rounded-lg transition-colors">
+                  <button onClick={() => setEditing(editing?._id === p._id ? null : { _id: p._id, password: '' })} className="text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-50 px-3 py-1.5 rounded-lg transition-colors">
                     Cambiar contraseña
                   </button>
                   <button onClick={() => toggleActive(p)} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${p.active ? 'text-rose-300 bg-rose-500/10 hover:bg-rose-500/20' : 'text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20'}`}>
@@ -190,7 +190,7 @@ export default function DeliveryPartnersAdmin() {
               </div>
 
               {editing?._id === p._id && (
-                <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center gap-2">
+                <div className="mt-3 pt-3 border-t border-slate-200 flex items-center gap-2">
                   <input
                     type="text"
                     className={input}
