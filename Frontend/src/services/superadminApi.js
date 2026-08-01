@@ -179,6 +179,12 @@ export const globalSearch = async (q) => {
   return response.data;
 };
 
+// Embudo de activación: en qué escalón se caen los negocios nuevos
+export const fetchActivationFunnel = async (days = 90) => {
+  const response = await superadminApi.get(`/activation-funnel?days=${days}`);
+  return response.data;
+};
+
 // Salud de los negocios: quiénes están en riesgo de irse
 export const fetchBusinessHealth = async () => {
   const response = await superadminApi.get('/business-health');

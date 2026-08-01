@@ -73,6 +73,102 @@ router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => 
 });
 
 /**
+ * GET /activation-funnel — dónde se atascan los negocios nuevos.
+ *
+ * No usa onboarding.level (que solo cuenta guías vistas, no actividad real):
+ * mide hitos verificables — subió productos, recibió su primer pedido y sigue
+ * pidiendo. Así se ve en qué escalón se cae la gente.
+ */
+router.get('/activation-funnel', requireRole('support'), async (req, res) => {
+  try {
+    const Product = require('../Models/Product');
+    const days = Math.min(365, Math.max(7, parseInt(req.query.days) || 90));
+    const since = new Date(Date.now() - days * 864e5);
+    const d30 = new Date(Date.now() - 30 * 864e5);
+
+    const businesses = await BusinessConfig.find({ createdAt: { $gte: since } })
+      .select('_id businessName slug createdAt logo').lean();
+    const ids = businesses.map((b) => b._id);
+    if (!ids.length) {
+      return res.json({ days, steps: [], stalled: [], total: 0 });
+    }
+
+    const [withProducts, firstOrders, recentOrders] = await Promise.all([
+      Product.aggregate([
+        { $match: { businessId: { $in: ids }, active: { $ne: false } } },
+        { $group: { _id: '$businessId', n: { $sum: 1 } } },
+      ]),
+      // Un pedido puede estar en cualquiera de las dos colecciones
+      Promise.all([
+        Order.aggregate([{ $match: { businessId: { $in: ids } } }, { $group: { _id: '$businessId', first: { $min: '$createdAt' } } }]),
+        CompletedOrder.aggregate([{ $match: { businessId: { $in: ids } } }, { $group: { _id: '$businessId', first: { $min: '$createdAt' } } }]),
+      ]).then(([a, b]) => [...a, ...b]),
+      Promise.all([
+        Order.aggregate([{ $match: { businessId: { $in: ids }, createdAt: { $gte: d30 } } }, { $group: { _id: '$businessId', n: { $sum: 1 } } }]),
+        CompletedOrder.aggregate([{ $match: { businessId: { $in: ids }, createdAt: { $gte: d30 } } }, { $group: { _id: '$businessId', n: { $sum: 1 } } }]),
+      ]).then(([a, b]) => [...a, ...b]),
+    ]);
+
+    const productsBy = new Map(withProducts.map((r) => [String(r._id), r.n]));
+    const firstBy = new Map();
+    for (const r of firstOrders) {
+      const k = String(r._id);
+      const cur = firstBy.get(k);
+      if (!cur || (r.first && r.first < cur)) firstBy.set(k, r.first);
+    }
+    const recentBy = new Map();
+    for (const r of recentOrders) {
+      const k = String(r._id);
+      recentBy.set(k, (recentBy.get(k) || 0) + r.n);
+    }
+
+    const rows = businesses.map((b) => {
+      const k = String(b._id);
+      return {
+        _id: b._id,
+        businessName: b.businessName,
+        slug: b.slug,
+        createdAt: b.createdAt,
+        daysOld: Math.floor((Date.now() - new Date(b.createdAt)) / 864e5),
+        products: productsBy.get(k) || 0,
+        hasLogo: !!b.logo,
+        firstOrderAt: firstBy.get(k) || null,
+        orders30d: recentBy.get(k) || 0,
+      };
+    });
+
+    const total = rows.length;
+    const conProductos = rows.filter((r) => r.products > 0);
+    const conMenu = conProductos.filter((r) => r.hasLogo);
+    const conPedido = rows.filter((r) => r.firstOrderAt);
+    const recurrentes = rows.filter((r) => r.orders30d >= 2);
+
+    const steps = [
+      { key: 'registered', label: 'Se registraron', count: total },
+      { key: 'products', label: 'Subieron productos', count: conProductos.length },
+      { key: 'menu', label: 'Menú presentable (con logo)', count: conMenu.length },
+      { key: 'first_order', label: 'Recibieron su primer pedido', count: conPedido.length },
+      { key: 'recurring', label: 'Siguen pidiendo (2+ en 30d)', count: recurrentes.length },
+    ].map((s) => ({ ...s, pct: total ? Math.round((s.count / total) * 100) : 0 }));
+
+    // Los que llevan más de 3 días atascados en algún escalón
+    const stalled = rows
+      .filter((r) => r.daysOld >= 3 && (!r.products || !r.firstOrderAt))
+      .map((r) => ({
+        ...r,
+        stuckAt: !r.products ? 'Sin productos' : !r.hasLogo ? 'Sin logo' : 'Sin el primer pedido',
+      }))
+      .sort((a, b) => b.daysOld - a.daysOld)
+      .slice(0, 40);
+
+    res.json({ days, total, steps, stalled });
+  } catch (error) {
+    logger.error('Error computing activation funnel', error);
+    res.status(500).json({ message: 'Error al calcular el embudo de activación' });
+  }
+});
+
+/**
  * GET /search?q= — buscador único para soporte.
  *
  * Un solo campo donde pegar lo que sea (nombre de negocio, slug, teléfono,

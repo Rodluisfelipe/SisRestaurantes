@@ -16,6 +16,7 @@ import ReferralManagement from "../../Components/SuperAdmin/ReferralManagement";
 import AuditLogsPanel from "../../Components/SuperAdmin/AuditLogsPanel";
 import BusinessHealth from "../../Components/SuperAdmin/BusinessHealth";
 import GlobalSearch from "../../Components/SuperAdmin/GlobalSearch";
+import ActivationFunnel from "../../Components/SuperAdmin/ActivationFunnel";
 import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
 import CrewKYCManagement from "../../Components/SuperAdmin/CrewKYCManagement";
 import CrewFinanceManagement from "../../Components/SuperAdmin/CrewFinanceManagement";
@@ -48,6 +49,11 @@ const NAV_SECTIONS = [
       { id: 'health', label: 'Salud', desc: 'Negocios en riesgo de irse', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h3.5l2-6 4 12 2-6h4.5" />
+        </svg>
+      )},
+      { id: 'activation', label: 'Activación', desc: 'Dónde se atascan los nuevos', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 4.5h18l-7 8v6l-4 2v-8z" />
         </svg>
       )},
       { id: 'brands', label: 'Marcas', desc: 'Multi-sucursal y brand admins', icon: (
@@ -540,6 +546,12 @@ function SuperAdminDashboard() {
             {currentView === 'team' && (
               <motion.div key="team" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <TeamManagement />
+              </motion.div>
+            )}
+
+            {currentView === 'activation' && (
+              <motion.div key="activation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <ActivationFunnel />
               </motion.div>
             )}
 
