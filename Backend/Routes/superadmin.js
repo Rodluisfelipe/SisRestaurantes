@@ -72,6 +72,71 @@ router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => 
   }
 });
 
+/* ── Notas de soporte por negocio ───────────────────────────────────
+   Memoria de lo que se hizo con cada negocio: llamadas, acuerdos y
+   pendientes. Lectura y escritura desde support: es su herramienta. */
+
+router.get('/business/:id/notes', requireRole('support'), async (req, res) => {
+  try {
+    const BusinessNote = require('../Models/BusinessNote');
+    const notes = await BusinessNote.find({ businessId: req.params.id })
+      .sort({ pinned: -1, createdAt: -1 })
+      .limit(200)
+      .lean();
+    res.json({ notes });
+  } catch (error) {
+    logger.error('Error fetching business notes', error);
+    res.status(500).json({ message: 'Error al cargar las notas' });
+  }
+});
+
+router.post('/business/:id/notes', requireRole('support'), async (req, res) => {
+  try {
+    const BusinessNote = require('../Models/BusinessNote');
+    const text = String(req.body?.text || '').trim();
+    if (!text) return res.status(400).json({ message: 'La nota no puede estar vacía' });
+
+    const kind = ['note', 'call', 'email', 'whatsapp'].includes(req.body?.kind) ? req.body.kind : 'note';
+    const note = await BusinessNote.create({
+      businessId: req.params.id,
+      text: text.slice(0, 2000),
+      kind,
+      authorId: req.user?.id || null,
+      authorEmail: req.user?.email || '',
+    });
+    res.status(201).json(note);
+  } catch (error) {
+    logger.error('Error creating business note', error);
+    res.status(500).json({ message: 'Error al guardar la nota' });
+  }
+});
+
+router.patch('/business/:id/notes/:noteId', requireRole('support'), async (req, res) => {
+  try {
+    const BusinessNote = require('../Models/BusinessNote');
+    const note = await BusinessNote.findOneAndUpdate(
+      { _id: req.params.noteId, businessId: req.params.id },
+      { pinned: !!req.body?.pinned },
+      { new: true }
+    );
+    if (!note) return res.status(404).json({ message: 'Nota no encontrada' });
+    res.json(note);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar la nota' });
+  }
+});
+
+router.delete('/business/:id/notes/:noteId', requireRole('admin'), async (req, res) => {
+  try {
+    const BusinessNote = require('../Models/BusinessNote');
+    const r = await BusinessNote.deleteOne({ _id: req.params.noteId, businessId: req.params.id });
+    if (!r.deletedCount) return res.status(404).json({ message: 'Nota no encontrada' });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al eliminar la nota' });
+  }
+});
+
 /**
  * GET /system-status — si la maquinaria está corriendo.
  *

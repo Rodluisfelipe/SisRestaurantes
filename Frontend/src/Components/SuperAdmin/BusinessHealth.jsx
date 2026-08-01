@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { fetchBusinessHealth } from '../../services/superadminApi';
+import BusinessNotes from './BusinessNotes';
 
 const RISK = {
   high:   { label: 'Riesgo alto', dot: 'bg-red-500',     chip: 'bg-red-100 text-red-700' },
@@ -28,6 +29,7 @@ export default function BusinessHealth({ onOpenBusiness }) {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('attention');
   const [q, setQ] = useState('');
+  const [notesFor, setNotesFor] = useState(null); // negocio cuyo historial se abre
 
   const load = () => {
     setLoading(true);
@@ -162,6 +164,13 @@ export default function BusinessHealth({ onOpenBusiness }) {
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => setNotesFor(b)}
+                      className="px-2.5 py-1.5 rounded-lg text-[12px] font-medium bg-slate-100 text-slate-600"
+                      title="Historial de contacto"
+                    >
+                      Notas
+                    </button>
                     {b.slug && (
                       <a
                         href={`/${b.slug}`}
@@ -187,6 +196,8 @@ export default function BusinessHealth({ onOpenBusiness }) {
           </div>
         )}
       </div>
+
+      {notesFor && <BusinessNotes business={notesFor} onClose={() => setNotesFor(null)} />}
     </div>
   );
 }

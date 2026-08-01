@@ -179,6 +179,27 @@ export const globalSearch = async (q) => {
   return response.data;
 };
 
+// Notas de soporte por negocio: qué se hizo con cada uno
+export const fetchBusinessNotes = async (id) => {
+  const response = await superadminApi.get(`/business/${id}/notes`);
+  return response.data;
+};
+
+export const createBusinessNote = async (id, data) => {
+  const response = await superadminApi.post(`/business/${id}/notes`, data);
+  return response.data;
+};
+
+export const pinBusinessNote = async (id, noteId, pinned) => {
+  const response = await superadminApi.patch(`/business/${id}/notes/${noteId}`, { pinned });
+  return response.data;
+};
+
+export const deleteBusinessNote = async (id, noteId) => {
+  const response = await superadminApi.delete(`/business/${id}/notes/${noteId}`);
+  return response.data;
+};
+
 // Estado del sistema: tareas programadas, impresión y pendientes
 export const fetchSystemStatus = async () => {
   const response = await superadminApi.get('/system-status');
