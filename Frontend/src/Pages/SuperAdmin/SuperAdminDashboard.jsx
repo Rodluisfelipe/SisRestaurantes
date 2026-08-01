@@ -15,6 +15,7 @@ import DeliveryPartnersAdmin from "./DeliveryPartnersAdmin";
 import ReferralManagement from "../../Components/SuperAdmin/ReferralManagement";
 import AuditLogsPanel from "../../Components/SuperAdmin/AuditLogsPanel";
 import BusinessHealth from "../../Components/SuperAdmin/BusinessHealth";
+import GlobalSearch from "../../Components/SuperAdmin/GlobalSearch";
 import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
 import CrewKYCManagement from "../../Components/SuperAdmin/CrewKYCManagement";
 import CrewFinanceManagement from "../../Components/SuperAdmin/CrewFinanceManagement";
@@ -286,6 +287,11 @@ function SuperAdminDashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
+        </div>
+
+        {/* Buscador único de soporte (⌘K) */}
+        <div className="px-2.5 pt-3">
+          <GlobalSearch onOpenBusiness={() => setCurrentView('businesses')} />
         </div>
 
         {/* Nav sections */}

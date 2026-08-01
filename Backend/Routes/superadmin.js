@@ -73,6 +73,71 @@ router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => 
 });
 
 /**
+ * GET /search?q= — buscador único para soporte.
+ *
+ * Un solo campo donde pegar lo que sea (nombre de negocio, slug, teléfono,
+ * número de pedido o nombre de cliente) sin tener que adivinar antes en qué
+ * sección buscar.
+ */
+router.get('/search', requireRole('support'), async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) return res.json({ businesses: [], orders: [] });
+
+    // Escapar para que un punto o paréntesis no se interprete como regex
+    const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const rx = new RegExp(safe, 'i');
+    const digits = q.replace(/\D/g, '');
+
+    const orderOr = [{ orderNumber: rx }, { customerName: rx }];
+    if (digits.length >= 6) orderOr.push({ phone: new RegExp(digits) });
+
+    const [businesses, activeOrders, completedOrders] = await Promise.all([
+      BusinessConfig.find({
+        $or: [{ businessName: rx }, { slug: rx }, ...(digits.length >= 6 ? [{ whatsappNumber: new RegExp(digits) }] : [])],
+      }).select('_id businessName slug city isActive').limit(8).lean(),
+
+      Order.find({ $or: orderOr })
+        .select('_id orderNumber customerName phone status finalAmount totalAmount businessId createdAt')
+        .sort({ createdAt: -1 }).limit(8).lean(),
+
+      CompletedOrder.find({ $or: orderOr })
+        .select('_id orderNumber customerName phone status finalAmount totalAmount businessId createdAt')
+        .sort({ createdAt: -1 }).limit(8).lean(),
+    ]);
+
+    const orders = [...activeOrders, ...completedOrders]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 10);
+
+    // Resolver el nombre del negocio de cada pedido en una sola consulta
+    const bizIds = [...new Set(orders.map((o) => String(o.businessId)).filter(Boolean))];
+    const bizMap = new Map();
+    if (bizIds.length) {
+      const bizs = await BusinessConfig.find({ _id: { $in: bizIds } }).select('_id businessName slug').lean();
+      bizs.forEach((b) => bizMap.set(String(b._id), b));
+    }
+
+    res.json({
+      businesses,
+      orders: orders.map((o) => ({
+        _id: o._id,
+        orderNumber: o.orderNumber,
+        customerName: o.customerName,
+        phone: o.phone,
+        status: o.status,
+        amount: o.finalAmount || o.totalAmount || 0,
+        createdAt: o.createdAt,
+        business: bizMap.get(String(o.businessId)) || null,
+      })),
+    });
+  } catch (error) {
+    logger.error('Error in superadmin search', error);
+    res.status(500).json({ message: 'Error al buscar' });
+  }
+});
+
+/**
  * GET /business-health — qué negocios se están apagando.
  *
  * El churn agregado dice cuántos se fueron; esto dice CUÁLES están en riesgo

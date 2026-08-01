@@ -173,6 +173,12 @@ export const resetBusinessCredentials = async (id, data) => {
   }
 };
 
+// Buscador único de soporte: negocio, slug, teléfono, pedido o cliente
+export const globalSearch = async (q) => {
+  const response = await superadminApi.get(`/search?q=${encodeURIComponent(q)}`);
+  return response.data;
+};
+
 // Salud de los negocios: quiénes están en riesgo de irse
 export const fetchBusinessHealth = async () => {
   const response = await superadminApi.get('/business-health');
