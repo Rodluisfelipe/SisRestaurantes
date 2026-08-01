@@ -29,6 +29,22 @@ const announcementSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+
+  /**
+   * A quién va dirigido. Por defecto a todos, como se comportaba antes.
+   * Los anuncios ya creados no tienen este campo y siguen llegando a todos.
+   */
+  segment: {
+    type: {
+      type: String,
+      enum: ['all', 'at_risk', 'never_activated', 'without_pos', 'with_pos', 'without_menu_v2', 'by_plan'],
+      default: 'all'
+    },
+    // Solo para by_plan: qué planes comerciales reciben el anuncio
+    plans: [{ type: String }],
+    // Solo para at_risk: días sin pedidos a partir de los cuales cuenta
+    daysWithoutOrders: { type: Number, default: 14, min: 1, max: 365 },
+  },
   
   // Seguimiento de lectura por negocio
   seenBy: [{

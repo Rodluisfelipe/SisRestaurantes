@@ -65,6 +65,20 @@ router.post('/', protectSuperAdmin, upload.single('image'), sanitizeUpload({ max
       createdBy: req.user.id,
       isActive: true
     };
+
+    /* Segmento: llega como campos sueltos porque el formulario usa multipart
+       (va con imagen), no JSON. */
+    const { SEGMENTS } = require('../services/announcementSegments');
+    const segType = req.body.segmentType;
+    if (segType && SEGMENTS[segType]) {
+      announcementData.segment = {
+        type: segType,
+        plans: req.body.segmentPlans
+          ? String(req.body.segmentPlans).split(',').map((p) => p.trim()).filter(Boolean)
+          : [],
+        daysWithoutOrders: Math.min(365, Math.max(1, parseInt(req.body.segmentDays) || 14)),
+      };
+    }
     
     if (req.file) {
       announcementData.image = `/uploads/announcements/${req.file.filename}`;
@@ -117,6 +131,28 @@ router.get('/', protectSuperAdmin, async (req, res) => {
 // ═══════════════════════════════════════════════════
 
 // GET /api/announcements/pending/me — Obtener anuncios no leídos para el negocio actual
+/* Catálogo de segmentos y cuántos negocios recibiría uno.
+   Sirve para ver el alcance ANTES de publicar. */
+router.get('/segments', protectSuperAdmin, async (req, res) => {
+  try {
+    const { SEGMENTS, countSegment } = require('../services/announcementSegments');
+    const list = Object.entries(SEGMENTS).map(([id, meta]) => ({ id, ...meta }));
+
+    if (req.query.preview) {
+      const count = await countSegment({
+        type: req.query.preview,
+        plans: req.query.plans ? String(req.query.plans).split(',') : [],
+        daysWithoutOrders: parseInt(req.query.days) || 14,
+      });
+      return res.json({ segments: list, count });
+    }
+    res.json({ segments: list });
+  } catch (error) {
+    logger.error('Error al obtener segmentos', error);
+    res.status(500).json({ message: 'Error al obtener segmentos' });
+  }
+});
+
 router.get('/pending/me', authMiddleware, async (req, res) => {
   try {
     // Solo para dueños de negocio, no superadmins
@@ -135,10 +171,23 @@ router.get('/pending/me', authMiddleware, async (req, res) => {
       'seenBy.businessId': { $ne: businessId }
     })
     .sort({ priority: -1, createdAt: -1 })
-    .select('title body image priority createdAt')
+    .select('title body image priority createdAt segment')
     .lean();
-    
-    res.json(announcements);
+
+    /* Se filtra por segmento: un aviso sobre el POS no tiene por qué llegarle
+       a quien no lo tiene. Los anuncios viejos no traen `segment` y siguen
+       llegando a todos, como antes. */
+    const { businessMatchesSegment } = require('../services/announcementSegments');
+    const visibles = [];
+    for (const a of announcements) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await businessMatchesSegment(businessId, a.segment)) {
+        const { segment, ...rest } = a;
+        visibles.push(rest);
+      }
+    }
+
+    res.json(visibles);
   } catch (error) {
     logger.error('Error al obtener anuncios pendientes', error);
     res.status(500).json({ message: 'Error al obtener anuncios pendientes' });

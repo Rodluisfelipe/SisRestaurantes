@@ -17,7 +17,9 @@ function AnnouncementManagement() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState({ title: '', body: '', priority: 'medium', image: null });
+  const [form, setForm] = useState({ title: '', body: '', priority: 'medium', image: null, segmentType: 'all', segmentDays: 14, segmentPlans: [] });
+  const [segments, setSegments] = useState([]);
+  const [reach, setReach] = useState(null);   // a cuántos negocios llegaría
   const [imagePreview, setImagePreview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -47,8 +49,30 @@ function AnnouncementManagement() {
     fetchAnnouncements();
   }, [fetchAnnouncements]);
 
+  /* Alcance del segmento elegido. Se recalcula al cambiarlo para poder ver a
+     cuántos les llegaría ANTES de publicar. */
+  useEffect(() => {
+    if (!showForm) return undefined;
+    let alive = true;
+    setReach(null);
+    const params = new URLSearchParams({
+      preview: form.segmentType || 'all',
+      days: String(form.segmentDays || 14),
+      plans: (form.segmentPlans || []).join(','),
+    });
+    const t = setTimeout(() => {
+      fetch(`${API_BASE}/announcements/segments?${params}`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+        .then((r) => r.json())
+        .then((d) => { if (alive) { setSegments(d.segments || []); setReach(d.count ?? null); } })
+        .catch(() => { if (alive) setReach(null); });
+    }, 250);
+    return () => { alive = false; clearTimeout(t); };
+  }, [showForm, form.segmentType, form.segmentDays, form.segmentPlans]);
+
   const resetForm = () => {
-    setForm({ title: '', body: '', priority: 'medium', image: null });
+    setForm({ title: '', body: '', priority: 'medium', image: null, segmentType: 'all', segmentDays: 14, segmentPlans: [] });
     setImagePreview(null);
     setEditingId(null);
     setShowForm(false);
@@ -81,6 +105,9 @@ function AnnouncementManagement() {
       formData.append('title', form.title.trim());
       formData.append('body', form.body.trim());
       formData.append('priority', form.priority);
+      formData.append('segmentType', form.segmentType || 'all');
+      formData.append('segmentDays', String(form.segmentDays || 14));
+      formData.append('segmentPlans', (form.segmentPlans || []).join(','));
       if (form.image instanceof File) {
         formData.append('image', form.image);
       }
@@ -116,7 +143,10 @@ function AnnouncementManagement() {
       title: announcement.title,
       body: announcement.body,
       priority: announcement.priority,
-      image: null
+      image: null,
+      segmentType: announcement.segment?.type || 'all',
+      segmentDays: announcement.segment?.daysWithoutOrders || 14,
+      segmentPlans: announcement.segment?.plans || [],
     });
     if (announcement.image) {
       setImagePreview(`${IMG_BASE}${announcement.image}`);
@@ -192,10 +222,10 @@ function AnnouncementManagement() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-red-200 border border-red-200 text-red-200 px-4 py-3 rounded-xl flex items-center justify-between"
+            className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center justify-between"
           >
             <span>{error}</span>
-            <button onClick={() => setError('')} className="text-red-700 hover:text-slate-900 ml-2">&times;</button>
+            <button onClick={() => setError('')} className="text-red-500 hover:text-red-700 ml-2">&times;</button>
           </motion.div>
         )}
         {success && (
@@ -203,7 +233,7 @@ function AnnouncementManagement() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="bg-green-500/20 border border-green-500/50 text-green-200 px-4 py-3 rounded-xl"
+            className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl"
           >
             ✅ {success}
           </motion.div>
@@ -283,8 +313,8 @@ function AnnouncementManagement() {
                       onClick={() => setForm(prev => ({ ...prev, priority: opt.value }))}
                       className={`px-3 py-2.5 rounded-xl text-sm font-medium transition-all border-2 flex items-center justify-center gap-1.5 ${
                         form.priority === opt.value
-                          ? `${opt.color} text-slate-900 border-transparent shadow-lg`
-                          : 'bg-[#1A2433] text-slate-700 border-[#333F50] hover:border-slate-300'
+                          ? `${opt.color} text-white border-transparent shadow-md`
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                       }`}
                     >
                       <span>{opt.icon}</span>
@@ -292,6 +322,70 @@ function AnnouncementManagement() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Segmento — a quién le llega */}
+              <div>
+                <label className="block text-slate-800 text-sm font-medium mb-1.5">¿A quién le llega?</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {segments.map(s => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setForm(prev => ({ ...prev, segmentType: s.id }))}
+                      className={`px-3 py-2.5 rounded-xl text-left transition-all border-2 ${
+                        (form.segmentType || 'all') === s.id
+                          ? 'bg-slate-800 text-white border-transparent'
+                          : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold">{s.label}</span>
+                      <span className={`block text-[11.5px] ${(form.segmentType || 'all') === s.id ? 'text-white/60' : 'text-slate-400'}`}>{s.desc}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {form.segmentType === 'at_risk' && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="text-[13px] text-slate-500">Sin pedidos desde hace</label>
+                    <input
+                      type="number" min={1} max={365}
+                      value={form.segmentDays}
+                      onChange={e => setForm(prev => ({ ...prev, segmentDays: e.target.value }))}
+                      className="w-20 px-2 py-1.5 rounded-lg border border-slate-200 text-sm"
+                    />
+                    <span className="text-[13px] text-slate-500">días</span>
+                  </div>
+                )}
+
+                {form.segmentType === 'by_plan' && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {['free', 'starter', 'pro', 'pro_max'].map(p => {
+                      const on = (form.segmentPlans || []).includes(p);
+                      return (
+                        <button
+                          key={p} type="button"
+                          onClick={() => setForm(prev => ({
+                            ...prev,
+                            segmentPlans: on
+                              ? (prev.segmentPlans || []).filter(x => x !== p)
+                              : [...(prev.segmentPlans || []), p],
+                          }))}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${on ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-500'}`}
+                        >
+                          {p === 'pro_max' ? 'Pro Max' : p.charAt(0).toUpperCase() + p.slice(1)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Alcance real antes de publicar */}
+                <p className="mt-2 text-[12.5px] text-slate-500">
+                  {reach === null ? 'Calculando alcance…' : (
+                    <>Le llegaría a <strong className="text-slate-800">{reach}</strong> negocio{reach === 1 ? '' : 's'}.</>
+                  )}
+                </p>
               </div>
 
               {/* Image */}
