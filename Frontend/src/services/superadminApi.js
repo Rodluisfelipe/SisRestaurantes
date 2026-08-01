@@ -173,6 +173,12 @@ export const resetBusinessCredentials = async (id, data) => {
   }
 };
 
+// Salud de los negocios: quiénes están en riesgo de irse
+export const fetchBusinessHealth = async () => {
+  const response = await superadminApi.get('/business-health');
+  return response.data;
+};
+
 // Crear instancia separada para suscripciones
 const subscriptionApi = axios.create({
   baseURL: `${BACKEND_URL}/api`,

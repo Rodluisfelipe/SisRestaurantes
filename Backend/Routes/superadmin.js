@@ -72,6 +72,117 @@ router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => 
   }
 });
 
+/**
+ * GET /business-health — qué negocios se están apagando.
+ *
+ * El churn agregado dice cuántos se fueron; esto dice CUÁLES están en riesgo
+ * ahora, que es lo único sobre lo que todavía se puede actuar. Se apoya en los
+ * pedidos (activos + completados), sin campos nuevos.
+ */
+router.get('/business-health', requireRole('support'), async (req, res) => {
+  try {
+    const now = new Date();
+    const d7 = new Date(now.getTime() - 7 * 864e5);
+    const d14 = new Date(now.getTime() - 14 * 864e5);
+
+    // Un pedido vive en Order o en CompletedOrder, así que se agregan ambos
+    const pipeline = (dateField) => ([
+      { $match: { [dateField]: { $gte: d14 } } },
+      {
+        $group: {
+          _id: '$businessId',
+          last7: { $sum: { $cond: [{ $gte: [`$${dateField}`, d7] }, 1, 0] } },
+          prev7: { $sum: { $cond: [{ $lt: [`$${dateField}`, d7] }, 1, 0] } },
+        },
+      },
+    ]);
+
+    const [actives, completed, lastActive, lastCompleted, businesses] = await Promise.all([
+      Order.aggregate(pipeline('createdAt')),
+      CompletedOrder.aggregate(pipeline('createdAt')),
+      Order.aggregate([{ $group: { _id: '$businessId', last: { $max: '$createdAt' } } }]),
+      CompletedOrder.aggregate([{ $group: { _id: '$businessId', last: { $max: '$createdAt' } } }]),
+      BusinessConfig.find({ isActive: true })
+        .select('_id businessName slug city createdAt subscriptionStatus')
+        .lean(),
+    ]);
+
+    const counts = new Map();
+    for (const row of [...actives, ...completed]) {
+      const k = String(row._id);
+      const cur = counts.get(k) || { last7: 0, prev7: 0 };
+      counts.set(k, { last7: cur.last7 + row.last7, prev7: cur.prev7 + row.prev7 });
+    }
+
+    const lastSeen = new Map();
+    for (const row of [...lastActive, ...lastCompleted]) {
+      const k = String(row._id);
+      const prev = lastSeen.get(k);
+      if (!prev || (row.last && row.last > prev)) lastSeen.set(k, row.last);
+    }
+
+    const items = businesses.map((b) => {
+      const k = String(b._id);
+      const c = counts.get(k) || { last7: 0, prev7: 0 };
+      const last = lastSeen.get(k) || null;
+      const daysSince = last ? Math.floor((now - new Date(last)) / 864e5) : null;
+      const trend = c.prev7 > 0 ? Math.round(((c.last7 - c.prev7) / c.prev7) * 100) : (c.last7 > 0 ? 100 : 0);
+      const daysOld = Math.floor((now - new Date(b.createdAt)) / 864e5);
+
+      // Nunca pidió y ya lleva más de una semana registrado: no activó
+      let risk = 'ok';
+      let reason = 'Operando con normalidad';
+      if (last === null) {
+        risk = daysOld >= 7 ? 'never' : 'new';
+        reason = daysOld >= 7 ? 'Nunca ha recibido un pedido' : 'Recién registrado';
+      } else if (daysSince >= 14) {
+        risk = 'high';
+        reason = `Sin pedidos hace ${daysSince} días`;
+      } else if (daysSince >= 7) {
+        risk = 'medium';
+        reason = `Sin pedidos hace ${daysSince} días`;
+      } else if (c.prev7 >= 5 && trend <= -50) {
+        risk = 'medium';
+        reason = `Cayó ${Math.abs(trend)}% esta semana`;
+      }
+
+      return {
+        _id: b._id,
+        businessName: b.businessName,
+        slug: b.slug,
+        city: b.city || null,
+        subscriptionStatus: b.subscriptionStatus || null,
+        lastOrderAt: last,
+        daysSinceLastOrder: daysSince,
+        ordersLast7: c.last7,
+        ordersPrev7: c.prev7,
+        trendPct: trend,
+        daysRegistered: daysOld,
+        risk,
+        reason,
+      };
+    });
+
+    const order = { high: 0, never: 1, medium: 2, new: 3, ok: 4 };
+    items.sort((a, b) => (order[a.risk] - order[b.risk]) || ((b.daysSinceLastOrder ?? 0) - (a.daysSinceLastOrder ?? 0)));
+
+    res.json({
+      generatedAt: now,
+      summary: {
+        total: items.length,
+        high: items.filter((i) => i.risk === 'high').length,
+        medium: items.filter((i) => i.risk === 'medium').length,
+        never: items.filter((i) => i.risk === 'never').length,
+        ok: items.filter((i) => i.risk === 'ok').length,
+      },
+      items,
+    });
+  } catch (error) {
+    logger.error('Error computing business health', error);
+    res.status(500).json({ message: 'Error al calcular la salud de los negocios' });
+  }
+});
+
 // Obtener credenciales del admin del negocio — solo admin+
 router.get('/business/:id/credentials', requireRole('admin'), superadmin.getBusinessCredentials);
 

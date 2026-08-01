@@ -14,6 +14,7 @@ import OrderManagement from "./OrderManagement";
 import DeliveryPartnersAdmin from "./DeliveryPartnersAdmin";
 import ReferralManagement from "../../Components/SuperAdmin/ReferralManagement";
 import AuditLogsPanel from "../../Components/SuperAdmin/AuditLogsPanel";
+import BusinessHealth from "../../Components/SuperAdmin/BusinessHealth";
 import TeamManagement from "../../Components/SuperAdmin/TeamManagement";
 import CrewKYCManagement from "../../Components/SuperAdmin/CrewKYCManagement";
 import CrewFinanceManagement from "../../Components/SuperAdmin/CrewFinanceManagement";
@@ -42,6 +43,11 @@ const NAV_SECTIONS = [
       { id: 'businesses', label: 'Negocios', desc: 'Gestionar restaurantes registrados', icon: (
         <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.19 1.189a3 3 0 01-.621 4.72" />
+        </svg>
+      )},
+      { id: 'health', label: 'Salud', desc: 'Negocios en riesgo de irse', icon: (
+        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 12h3.5l2-6 4 12 2-6h4.5" />
         </svg>
       )},
       { id: 'brands', label: 'Marcas', desc: 'Multi-sucursal y brand admins', icon: (
@@ -546,6 +552,12 @@ function SuperAdminDashboard() {
             {currentView === 'team' && (
               <motion.div key="team" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
                 <TeamManagement />
+              </motion.div>
+            )}
+
+            {currentView === 'health' && (
+              <motion.div key="health" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+                <BusinessHealth onOpenBusiness={() => setCurrentView('businesses')} />
               </motion.div>
             )}
 
