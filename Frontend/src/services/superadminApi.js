@@ -179,6 +179,12 @@ export const globalSearch = async (q) => {
   return response.data;
 };
 
+// Enviar el resumen diario ahora (para probarlo sin esperar a las 7am)
+export const sendDigestNow = async (to) => {
+  const response = await superadminApi.post('/digest/send-now', to ? { to } : {});
+  return response.data;
+};
+
 // Notas de soporte por negocio: qué se hizo con cada uno
 export const fetchBusinessNotes = async (id) => {
   const response = await superadminApi.get(`/business/${id}/notes`);

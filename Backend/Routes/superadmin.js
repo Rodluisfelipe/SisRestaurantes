@@ -72,6 +72,40 @@ router.patch('/business/:id/menu-v2', requireRole('admin'), async (req, res) => 
   }
 });
 
+/* Enviar el resumen diario ahora, para probarlo sin esperar a las 7am.
+   Omite la regla de "solo si hay novedades": si lo pides, llega. */
+router.post('/digest/send-now', requireRole('admin'), async (req, res) => {
+  try {
+    const { buildDigest } = require('../services/dailyDigestCron');
+    const to = req.body?.to || process.env.DIGEST_EMAIL || process.env.SUPERADMIN_EMAIL;
+    if (!to) return res.status(400).json({ message: 'No hay destinatario. Define DIGEST_EMAIL o envía "to".' });
+
+    const data = await buildDigest();
+    const { runDailyDigest } = require('../services/dailyDigestCron');
+    // Reutiliza el render del cron enviando siempre
+    const digestModule = require('../services/dailyDigestCron');
+    const { sendSystemEmail } = require('../services/emailService');
+    const attention = data.atRisk.length + data.pendingProofs + data.cronIssues.length;
+    const html = digestModule.renderHtml
+      ? digestModule.renderHtml(data)
+      : null;
+    if (!html) {
+      // Si el render no está expuesto, se cae al flujo normal del cron
+      const r = await runDailyDigest();
+      return res.json({ ok: true, result: r, data });
+    }
+    const result = await sendSystemEmail({
+      to,
+      subject: `MenuBy · ${attention} cosa${attention === 1 ? '' : 's'} por revisar (prueba)`,
+      html,
+    });
+    res.json({ ok: result.sent, result, preview: data });
+  } catch (error) {
+    logger.error('Error sending digest now', error);
+    res.status(500).json({ message: 'Error al enviar el resumen' });
+  }
+});
+
 /* ── Notas de soporte por negocio ───────────────────────────────────
    Memoria de lo que se hizo con cada negocio: llamadas, acuerdos y
    pendientes. Lectura y escritura desde support: es su herramienta. */

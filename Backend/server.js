@@ -360,6 +360,14 @@ mongoose.connect(MONGO_URI, {
       logger.warn('Error iniciando cron de refresco de Google:', error.message);
     }
 
+    // Resumen diario de operación al correo del dueño (7am COL)
+    try {
+      const { startDailyDigestCron } = require('./services/dailyDigestCron');
+      startDailyDigestCron();
+    } catch (error) {
+      logger.warn('Error iniciando cron de resumen diario:', error.message);
+    }
+
     // Cron de expiración de puntos de lealtad
     try {
       const { startLoyaltyExpiryCron } = require('./services/loyaltyExpiryCron');

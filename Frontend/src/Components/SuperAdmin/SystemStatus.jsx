@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchSystemStatus } from '../../services/superadminApi';
+import { fetchSystemStatus, sendDigestNow } from '../../services/superadminApi';
 
 const STATUS = {
   ok:      { label: 'Al día',      dot: 'bg-emerald-500', chip: 'bg-emerald-100 text-emerald-700' },
@@ -20,6 +20,7 @@ const when = (d) => {
 export default function SystemStatus() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [digest, setDigest] = useState(null); // estado del envío de prueba
 
   const load = () => {
     setLoading(true);
@@ -68,13 +69,37 @@ export default function SystemStatus() {
           <h1 className="text-xl font-bold text-slate-800">Estado del sistema</h1>
           <p className="text-sm text-slate-500">Si la maquinaria está corriendo, sin esperar a que alguien reclame.</p>
         </div>
-        <button
-          onClick={load}
-          className="shrink-0 px-3 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 text-slate-600"
-        >
-          Actualizar
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={async () => {
+              setDigest({ sending: true });
+              try {
+                const r = await sendDigestNow();
+                setDigest({ msg: r?.ok ? 'Resumen enviado a tu correo' : `No se envió: ${r?.result?.reason || 'revisa DIGEST_EMAIL'}`, ok: !!r?.ok });
+              } catch (e) {
+                setDigest({ msg: e?.response?.data?.message || 'Error al enviar', ok: false });
+              }
+              setTimeout(() => setDigest(null), 5000);
+            }}
+            disabled={digest?.sending}
+            className="px-3 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 text-slate-600 disabled:opacity-50"
+          >
+            {digest?.sending ? 'Enviando…' : 'Enviarme el resumen'}
+          </button>
+          <button
+            onClick={load}
+            className="px-3 py-2 rounded-lg text-sm font-medium bg-white border border-slate-200 text-slate-600"
+          >
+            Actualizar
+          </button>
+        </div>
       </div>
+
+      {digest?.msg && (
+        <div className={`px-4 py-2.5 rounded-lg text-sm font-medium ${digest.ok ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-800'}`}>
+          {digest.msg}
+        </div>
+      )}
 
       {loading && !data ? (
         <p className="py-16 text-center text-sm text-slate-400">Consultando…</p>
