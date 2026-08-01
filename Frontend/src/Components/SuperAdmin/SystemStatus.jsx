@@ -32,7 +32,34 @@ export default function SystemStatus() {
     return () => clearInterval(t);
   }, []);
 
-  const bad = (data?.health?.cronsLate || 0) + (data?.health?.cronsError || 0);
+  const infra = data?.health?.infraIssues || [];
+  const bad = (data?.health?.cronsLate || 0) + (data?.health?.cronsError || 0) + infra.length;
+
+  const dur = (s) => {
+    if (!s && s !== 0) return '—';
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
+  /* Barra de uso: pasa a ámbar sobre 75% y a rojo sobre 90%, que es cuando de
+     verdad hay que hacer algo. */
+  const Meter = ({ label, pct, detail }) => (
+    <div>
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <span className="text-[12.5px] text-slate-500">{label}</span>
+        <span className="text-[12.5px] font-bold text-slate-800 tabular-nums">{pct}%</span>
+      </div>
+      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+        <div
+          className={`h-full rounded-full ${pct >= 90 ? 'bg-red-500' : pct >= 75 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+          style={{ width: `${Math.min(100, pct)}%` }}
+        />
+      </div>
+      {detail && <p className="text-[11px] text-slate-400 mt-0.5">{detail}</p>}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -60,13 +87,93 @@ export default function SystemStatus() {
           {/* Titular */}
           <div className={`rounded-xl border p-4 ${bad > 0 ? 'border-amber-200 bg-amber-50' : 'border-emerald-200 bg-emerald-50'}`}>
             <p className={`text-[15px] font-bold ${bad > 0 ? 'text-amber-800' : 'text-emerald-800'}`}>
-              {bad > 0
-                ? `${bad} tarea${bad > 1 ? 's' : ''} necesita${bad > 1 ? 'n' : ''} atención`
-                : 'Todo corriendo con normalidad'}
+              {infra.length > 0
+                ? `Revisar: ${infra.join(', ')}`
+                : bad > 0
+                  ? `${bad} tarea${bad > 1 ? 's' : ''} necesita${bad > 1 ? 'n' : ''} atención`
+                  : 'Todo corriendo con normalidad'}
             </p>
             <p className={`text-[12.5px] mt-0.5 ${bad > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
               Actualizado {when(data.generatedAt)}
             </p>
+          </div>
+
+          {/* Infraestructura */}
+          <div className="grid sm:grid-cols-3 gap-3">
+            {/* Servidor */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-[13.5px] font-bold text-slate-800">Servidor</h2>
+                <span className="text-[11px] text-slate-400">{data.server?.nodeVersion}</span>
+              </div>
+              {data.server ? (
+                <div className="space-y-2.5">
+                  <Meter
+                    label="Memoria"
+                    pct={data.server.memory.usedPct}
+                    detail={`${(data.server.memory.totalGB - data.server.memory.freeGB).toFixed(1)} de ${data.server.memory.totalGB} GB · app ${data.server.memory.processMB} MB`}
+                  />
+                  {data.server.disk && (
+                    <Meter
+                      label="Disco"
+                      pct={data.server.disk.usedPct}
+                      detail={`${data.server.disk.freeGB} GB libres de ${data.server.disk.totalGB} GB`}
+                    />
+                  )}
+                  <div className="flex justify-between text-[12.5px] pt-1">
+                    <span className="text-slate-500">Carga por núcleo</span>
+                    <strong className={`tabular-nums ${data.server.loadPerCpu >= 1.5 ? 'text-red-600' : data.server.loadPerCpu >= 1 ? 'text-amber-600' : 'text-slate-800'}`}>
+                      {data.server.loadPerCpu} <span className="font-normal text-slate-400">({data.server.cpus} núcleos)</span>
+                    </strong>
+                  </div>
+                  <div className="flex justify-between text-[12.5px]">
+                    <span className="text-slate-500">Backend encendido</span>
+                    <strong className="text-slate-800">{dur(data.server.uptimeSec)}</strong>
+                  </div>
+                </div>
+              ) : <p className="text-[12.5px] text-slate-400">Sin datos</p>}
+            </div>
+
+            {/* Base de datos */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <h2 className="text-[13.5px] font-bold text-slate-800 mb-3">Base de datos</h2>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`w-2 h-2 rounded-full ${data.database?.status === 'ok' ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                <span className={`text-[13px] font-semibold ${data.database?.status === 'ok' ? 'text-emerald-700' : 'text-red-700'}`}>
+                  {data.database?.status === 'ok' ? 'Conectada' : 'Sin conexión'}
+                </span>
+              </div>
+              <p className="text-[12px] text-slate-400">
+                {data.database?.name ? `Base: ${data.database.name}` : `Estado: ${data.database?.state || '—'}`}
+              </p>
+            </div>
+
+            {/* Spaces */}
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <h2 className="text-[13.5px] font-bold text-slate-800 mb-3">Almacenamiento</h2>
+              {(() => {
+                const st = data.spaces?.status;
+                const tone = st === 'ok' ? ['bg-emerald-500', 'text-emerald-700', 'Operativo']
+                  : st === 'missing_config' ? ['bg-slate-300', 'text-slate-500', 'Sin configurar']
+                  : st === 'error' ? ['bg-red-500', 'text-red-700', 'Con error']
+                  : ['bg-slate-300', 'text-slate-500', 'Sin datos'];
+                return (
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`w-2 h-2 rounded-full ${tone[0]}`} />
+                      <span className={`text-[13px] font-semibold ${tone[1]}`}>{tone[2]}</span>
+                      {data.spaces?.latencyMs != null && (
+                        <span className="text-[11px] text-slate-400 ml-auto tabular-nums">{data.spaces.latencyMs} ms</span>
+                      )}
+                    </div>
+                    <p className="text-[12px] text-slate-400 truncate">Bucket: {data.spaces?.bucket || '—'}</p>
+                    {data.spaces?.error && (
+                      <p className="text-[11.5px] text-red-600 mt-1 break-words">{data.spaces.error}</p>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
           </div>
 
           {/* Tareas programadas */}

@@ -125,14 +125,93 @@ router.get('/system-status', requireRole('support'), async (req, res) => {
       Order.countDocuments({ status: { $nin: ['completed', 'cancelled', 'delivered'] } }),
     ]);
 
+    /* ── Servidor (droplet) ──
+       Corre en contenedor, así que la memoria y el disco son los que el
+       contenedor ve, no necesariamente los del droplet completo. */
+    const os = require('os');
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const cpus = os.cpus()?.length || 1;
+    const load1 = os.loadavg()[0];
+
+    let disk = null;
+    try {
+      const { statfsSync } = require('fs');
+      const st = statfsSync('/');
+      const totalB = st.blocks * st.bsize;
+      const freeB = st.bavail * st.bsize;
+      disk = { totalGB: +(totalB / 1073741824).toFixed(1), freeGB: +(freeB / 1073741824).toFixed(1), usedPct: Math.round(((totalB - freeB) / totalB) * 100) };
+    } catch { /* statfs no disponible en este runtime */ }
+
+    const server = {
+      uptimeSec: Math.round(process.uptime()),
+      hostUptimeSec: Math.round(os.uptime()),
+      nodeVersion: process.version,
+      cpus,
+      loadAvg1: +load1.toFixed(2),
+      loadPerCpu: +(load1 / cpus).toFixed(2),   // >1 significa saturación
+      memory: {
+        totalGB: +(totalMem / 1073741824).toFixed(2),
+        freeGB: +(freeMem / 1073741824).toFixed(2),
+        usedPct: Math.round(((totalMem - freeMem) / totalMem) * 100),
+        processMB: Math.round(process.memoryUsage().rss / 1048576),
+      },
+      disk,
+    };
+
+    // ── Base de datos ──
+    const mongoStates = ['desconectada', 'conectada', 'conectando', 'desconectando'];
+    const database = {
+      status: mongoose.connection?.readyState === 1 ? 'ok' : 'error',
+      state: mongoStates[mongoose.connection?.readyState] || 'desconocida',
+      name: mongoose.connection?.name || null,
+    };
+
+    /* ── Spaces (almacenamiento de imágenes) ──
+       Se comprueba de verdad contra el bucket, con un tope de 3s para que el
+       panel no se quede colgado si Spaces no responde. */
+    let spaces = { configured: false, status: 'unknown', bucket: null };
+    try {
+      const bucket = process.env.DO_SPACES_BUCKET || 'menuby';
+      const configured = !!(process.env.DO_SPACES_KEY && process.env.DO_SPACES_SECRET);
+      spaces = { configured, status: configured ? 'unknown' : 'missing_config', bucket };
+      if (configured) {
+        const { S3Client, HeadBucketCommand } = require('@aws-sdk/client-s3');
+        const region = process.env.DO_SPACES_REGION || 'nyc3';
+        const client = new S3Client({
+          endpoint: `https://${region}.digitaloceanspaces.com`,
+          region,
+          credentials: { accessKeyId: process.env.DO_SPACES_KEY, secretAccessKey: process.env.DO_SPACES_SECRET },
+          requestHandler: { requestTimeout: 3000, connectionTimeout: 3000 },
+        });
+        const t0 = Date.now();
+        await client.send(new HeadBucketCommand({ Bucket: bucket }));
+        spaces.status = 'ok';
+        spaces.latencyMs = Date.now() - t0;
+      }
+    } catch (e) {
+      spaces.status = 'error';
+      spaces.error = String(e?.name || e?.message || e).slice(0, 120);
+    }
+
     res.json({
       generatedAt: new Date(),
       crons,
       printAgents,
+      server,
+      database,
+      spaces,
       queues: { pendingPaymentRequests: pendingProofs, openOrders: activeOrders },
       health: {
         cronsLate: crons.filter((c) => c.status === 'late').length,
         cronsError: crons.filter((c) => c.status === 'error').length,
+        infraIssues: [
+          database.status !== 'ok' ? 'base de datos' : null,
+          spaces.status === 'error' ? 'almacenamiento' : null,
+          server.memory.usedPct >= 90 ? 'memoria' : null,
+          disk && disk.usedPct >= 90 ? 'disco' : null,
+          server.loadPerCpu >= 1.5 ? 'carga del servidor' : null,
+        ].filter(Boolean),
       },
     });
   } catch (error) {
