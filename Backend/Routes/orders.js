@@ -485,6 +485,15 @@ router.post("/", (req, res, next) => {
       finalAmount = finalAmount + tipAmount;
     }
 
+    /* El domicilio se suma AL FINAL, después de cupones y descuentos: no se
+       descuenta sobre el envío. Va aparte de totalAmount, que por convención
+       (y porque así lo valida orderPricing) contiene solo los productos.
+       Antes no se sumaba nunca, así que en los pedidos a domicilio finalAmount
+       —y con él la caja y el cobro— se quedaba corto por el valor del envío. */
+    if (orderType === 'delivery') {
+      finalAmount += Math.max(0, parseFloat(deliveryFee) || 0);
+    }
+
     // Validate delivery fee server-side to prevent fee tampering
     if (orderType === 'delivery' && deliveryCalculated && !deliveryNeedsConfirmation && deliveryZoneInfo?.coordinates) {
       const { validateDeliveryForOrder } = require('../services/deliveryZoneService');

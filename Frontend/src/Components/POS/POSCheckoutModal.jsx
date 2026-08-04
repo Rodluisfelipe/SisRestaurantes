@@ -127,7 +127,10 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
         phone: customerPhone.trim(),
         address: orderType === 'delivery' ? deliveryAddress.trim() : '',
         items,
-        totalAmount: String(subtotal + deliveryFee),
+        /* Solo los productos: el domicilio viaja aparte en deliveryFee y el
+           servidor lo suma al final. Enviarlo aquí hacía que la validación de
+           precios lo leyera como un sobreprecio y rechazara el pedido. */
+        totalAmount: String(subtotal),
         discountAmount: discountAmount || undefined,
         tipAmount: tipAmount || undefined,
         paymentMethod,
