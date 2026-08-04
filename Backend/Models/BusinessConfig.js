@@ -250,9 +250,10 @@ const businessConfigSchema = new mongoose.Schema({
     favoritesEnabled: { type: Boolean, default: true },
     orderHistoryEnabled: { type: Boolean, default: true },
     posBetaEnabled: { type: Boolean, default: false },
-    // Menú V2 ("perfil + historias"). Beta por negocio: apagado = menú actual
-    // sin ningún cambio visible. Mismo patrón que posBetaEnabled.
-    menuV2: { type: Boolean, default: false }
+    /* Menú V2 ("perfil + historias"). Ya no es beta: es el menú por defecto.
+       Se conserva el flag —y el botón del superadmin— para poder devolver un
+       negocio puntual al menú anterior si algo no le funciona. */
+    menuV2: { type: Boolean, default: true }
   },
   // "Los más pedidos" — sección premium de recomendados en el menú
   popularSection: {
