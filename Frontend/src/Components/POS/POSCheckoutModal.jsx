@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import api from '../../services/api';
 import { queueOfflineOrder } from '../../services/posOfflineStore';
 
@@ -41,6 +41,13 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Cliente frecuente: el mismo buscador del pedido rápido
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerResults, setCustomerResults] = useState([]);
+  const [searchingCustomer, setSearchingCustomer] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const searchTimerRef = useRef(null);
+
   const themeColor = businessConfig?.theme?.buttonColor || '#3B82F6';
   const businessId = businessConfig?._id;
 
@@ -52,6 +59,52 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
         .catch(() => {});
     }
   }, [businessId]);
+
+  /* Búsqueda de clientes con rebote: en el POS se teclea rápido y una consulta
+     por letra satura. Sin conexión no se busca —los clientes viven en el
+     servidor— y el cajero escribe a mano como siempre. */
+  const searchCustomers = useCallback((query) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (!businessId || !isOnline || !query || query.trim().length < 2) {
+      setCustomerResults([]);
+      return;
+    }
+    searchTimerRef.current = setTimeout(async () => {
+      setSearchingCustomer(true);
+      try {
+        const res = await api.get(`/customers?businessId=${businessId}&search=${encodeURIComponent(query.trim())}&limit=5`);
+        setCustomerResults(res.data?.customers || (Array.isArray(res.data) ? res.data : []));
+      } catch {
+        setCustomerResults([]);
+      } finally {
+        setSearchingCustomer(false);
+      }
+    }, 300);
+  }, [businessId, isOnline]);
+
+  useEffect(() => {
+    searchCustomers(customerSearch);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [customerSearch, searchCustomers]);
+
+  /* Al elegir un cliente se llenan nombre y teléfono, y la dirección solo si
+     la tiene guardada: pisar con vacío la que el cajero ya escribió sería
+     peor que no autocompletar nada. */
+  const selectCustomer = (c) => {
+    setSelectedCustomer(c);
+    setCustomerName(c.name || '');
+    setCustomerPhone(c.phone || '');
+    if (c.address) setDeliveryAddress(c.address);
+    setCustomerResults([]);
+    setCustomerSearch('');
+  };
+
+  const clearCustomer = () => {
+    setSelectedCustomer(null);
+    setCustomerName('');
+    setCustomerPhone('');
+    setDeliveryAddress('');
+  };
 
   const subtotal = useMemo(() => {
     if (isTab) return tabOrder.totalAmount || 0; // total autoritativo de la cuenta
@@ -246,6 +299,67 @@ export default function POSCheckoutModal({ cart, businessConfig, onClose, onOrde
               <div className="rounded-xl bg-slate-50 border border-slate-200 p-3">
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Cuenta de {isHotel ? 'Hab.' : 'Mesa'} {tabOrder.tableNumber}</p>
                 <p className="text-sm text-slate-600 mt-1">{cart.reduce((s, i) => s + i.quantity, 0)} artículo(s) acumulado(s) · Orden #{tabOrder.orderNumber}</p>
+              </div>
+            )}
+
+            {/* Cliente frecuente: evita volver a teclear nombre, teléfono y
+                dirección de quien ya pidió antes. En una cuenta de mesa no
+                aplica: esos datos se tomaron al abrirla. */}
+            {!isTab && (
+              <div>
+                <label className="text-xs font-semibold text-slate-500 block mb-1">Cliente frecuente</label>
+                {selectedCustomer ? (
+                  <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl lg:rounded-lg bg-emerald-50 border border-emerald-200">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">{selectedCustomer.name}</p>
+                      <p className="text-[11px] text-slate-500 truncate">
+                        {selectedCustomer.phone}
+                        {selectedCustomer.totalOrders ? ` · ${selectedCustomer.totalOrders} pedidos` : ''}
+                        {selectedCustomer.address ? ` · ${selectedCustomer.address}` : ''}
+                      </p>
+                    </div>
+                    <button onClick={clearCustomer} className="shrink-0 p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-white transition-colors" title="Quitar cliente">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5">
+                    <div className="relative">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+                    <input
+                      type="text"
+                      value={customerSearch}
+                      onChange={e => setCustomerSearch(e.target.value)}
+                      placeholder={isOnline ? 'Buscar por nombre o teléfono...' : 'Sin conexión: escribe los datos abajo'}
+                      disabled={!isOnline}
+                      className="w-full pl-9 pr-9 py-2.5 lg:py-2 rounded-xl lg:rounded-lg border border-slate-200 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:border-transparent disabled:bg-slate-50 disabled:text-slate-400"
+                      style={{ '--tw-ring-color': `${themeColor}40` }}
+                    />
+                    {searchingCustomer && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-slate-200 border-t-slate-500 rounded-full animate-spin" />
+                    )}
+                    </div>
+                    {/* La lista va en flujo, no flotando: dentro del área con
+                        scroll del modal un desplegable absoluto se recorta. */}
+                    {customerResults.length > 0 && (
+                      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                        {customerResults.map(c => (
+                          <button
+                            key={c._id}
+                            onClick={() => selectCustomer(c)}
+                            className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-slate-800 truncate">{c.name}</p>
+                              <p className="text-[11px] text-slate-500 truncate">{c.phone}{c.address ? ` · ${c.address}` : ''}</p>
+                            </div>
+                            <span className="shrink-0 text-[10px] font-bold text-slate-400">{c.totalOrders || 0} ped.</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
