@@ -108,6 +108,25 @@ router.get('/mode', authenticateToken, async (req, res) => {
   }
 });
 
+/* GET /api/print-agent/status — ¿hay un agente conectado ahora mismo?
+   El POS lo consulta para saber si el ticket ya va a salir solo: si hay agente,
+   no tiene sentido pedirle al cajero que confirme una impresión que ya ocurrió.
+   La única fuente real es el registro en memoria de conexiones SSE. */
+router.get('/status', authenticateToken, async (req, res) => {
+  try {
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) return res.status(400).json({ error: 'No business associated' });
+
+    const config = await BusinessConfig.findById(businessId).select('printAgentMode').lean();
+    const agents = getActiveAgentCount(businessId);
+
+    res.json({ connected: agents > 0, agents, mode: config?.printAgentMode || 'both' });
+  } catch (error) {
+    logger.error('Error getting print agent status', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // GET /api/print-agent/stream?key=<key> — SSE stream of new orders
 router.get('/stream', async (req, res) => {
   const key = req.query.key;

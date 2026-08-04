@@ -45,6 +45,11 @@ export default function POS() {
   const [payingTab, setPayingTab] = useState(null); // orden de cuenta abierta que se está cobrando
   const [tabBusy, setTabBusy] = useState(false);
 
+  /* Agente de impresión: si hay uno conectado el ticket sale solo y el modal
+     sobra. Si no lo hay, el modal sigue siendo la única forma de imprimir. */
+  const [printAgent, setPrintAgent] = useState({ connected: false, mode: 'both' });
+  const [printToast, setPrintToast] = useState(null);
+
   // Order notifications (web orders arriving)
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [newOrderNotification, setNewOrderNotification] = useState(null);
@@ -87,6 +92,28 @@ export default function POS() {
     const interval = setInterval(refreshActiveOrders, 15000);
     return () => clearInterval(interval);
   }, [resolvedBusinessId, refreshActiveOrders]);
+
+  /* Estado del agente de impresión. Se revisa cada minuto porque el agente
+     puede caerse (o encenderse) en mitad del turno, y de eso depende si el
+     cajero ve el modal o no. Ante un error se asume que no hay agente: es
+     preferible mostrar el modal de más que dejar al cajero sin ticket. */
+  useEffect(() => {
+    if (!resolvedBusinessId) return;
+    let alive = true;
+    const check = () => api.get('/print-agent/status')
+      .then(res => { if (alive) setPrintAgent(res.data || { connected: false }); })
+      .catch(() => { if (alive) setPrintAgent({ connected: false, mode: 'both' }); });
+    check();
+    const interval = setInterval(check, 60000);
+    return () => { alive = false; clearInterval(interval); };
+  }, [resolvedBusinessId]);
+
+  // El aviso de "ticket enviado" se va solo: no es algo que haya que cerrar
+  useEffect(() => {
+    if (!printToast) return;
+    const t = setTimeout(() => setPrintToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [printToast]);
 
   // Fetch products, categories, and cash register (with offline fallback)
   useEffect(() => {
@@ -267,17 +294,28 @@ export default function POS() {
 
   // After order created
   const handleOrderComplete = useCallback((order) => {
-    setLastOrder(order);
     setShowCheckout(false);
     clearCart();
     setSelectedTable(null);
+
+    /* Con el agente conectado el ticket ya está saliendo: al crear la orden el
+       servidor emite order_created y el agente imprime según su modo. Pedirle
+       al cajero que confirme una impresión que ya ocurrió solo lo demora.
+       Sin agente —o con la orden en cola offline, que aún no llegó al
+       servidor— el modal es la única salida y se muestra igual que antes. */
+    if (printAgent.connected && !order._offline) {
+      setPrintToast({ text: `Ticket #${order.orderNumber || ''} enviado a la impresora`, order });
+    } else {
+      setLastOrder(order);
+    }
+
     // Only refresh cash register if order was created online
     if (!order._offline) {
       api.get(`/cash-register/current?businessId=${resolvedBusinessId}`)
         .then(res => setCashRegister(res.data))
         .catch(() => {});
     }
-  }, [clearCart, resolvedBusinessId]);
+  }, [clearCart, resolvedBusinessId, printAgent.connected]);
 
   // Enviar el carrito a la cuenta abierta de la mesa (crear o acumular). No cobra.
   const handleSendToTab = useCallback(async () => {
@@ -335,14 +373,26 @@ export default function POS() {
   // Tras cobrar la cuenta
   const handleTabPaid = useCallback((order) => {
     setPayingTab(null);
-    setLastOrder(order);
     setSelectedTable(null);
     setCart([]);
+
+    /* La cuenta abierta ya emitió order_created cuando se abrió (ahí salió la
+       comanda), así que al cobrar no se dispara nada: hay que pedir el recibo
+       a mano. Si falla el envío se cae al modal para no dejar al cliente
+       esperando un ticket que nunca salió. */
+    if (printAgent.connected && order?._id) {
+      api.post(`/print-agent/print-receipt/${order._id}`)
+        .then(() => setPrintToast({ text: `Ticket #${order.orderNumber || ''} enviado a la impresora`, order }))
+        .catch(() => setLastOrder(order));
+    } else {
+      setLastOrder(order);
+    }
+
     refreshActiveOrders();
     api.get(`/cash-register/current?businessId=${resolvedBusinessId}`)
       .then(res => setCashRegister(res.data))
       .catch(() => {});
-  }, [refreshActiveOrders, resolvedBusinessId]);
+  }, [refreshActiveOrders, resolvedBusinessId, printAgent.connected]);
 
   // Cash register opened
   const handleCashOpened = useCallback((register) => {
@@ -640,6 +690,34 @@ export default function POS() {
           onClose={() => setLastOrder(null)}
         />
       )}
+
+      {/* Confirmación de que el ticket salió por el agente. No bloquea: el
+          cajero sigue vendiendo mientras la impresora trabaja. */}
+      <AnimatePresence>
+        {printToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 24 }}
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2.5 px-4 py-3 rounded-xl bg-slate-900 text-white shadow-2xl text-sm font-semibold"
+          >
+            <svg className="w-5 h-5 shrink-0 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
+            </svg>
+            <span>{printToast.text}</span>
+            {/* Salida manual: si la impresora se atascó o faltó papel, el
+                cajero abre el ticket y lo reimprime sin buscar el pedido */}
+            {printToast.order && (
+              <button
+                onClick={() => { setLastOrder(printToast.order); setPrintToast(null); }}
+                className="ml-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 transition-colors text-xs font-bold"
+              >
+                Ver ticket
+              </button>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
