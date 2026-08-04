@@ -116,6 +116,13 @@ const completedOrderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  /* La propina va incluida en finalAmount pero no se estaba copiando al
+     completar el pedido, así que en el historial el desglose no cuadraba con
+     el total y no había forma de saber cuánto se repartió al personal. */
+  tipAmount: {
+    type: Number,
+    default: 0
+  },
   couponCode: {
     type: String,
     trim: true,

@@ -836,17 +836,46 @@ function EnhancedCompletedOrders() {
                         </div>
                       )}
                     </div>
-                    <span className="text-sm font-medium text-slate-700">
-                      ${(item.price * item.quantity).toFixed(2)}
+                    <span className="text-sm font-medium text-slate-700 tabular-nums">
+                      ${(item.price * item.quantity).toLocaleString('es-CO')}
                     </span>
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex justify-between items-center pt-3 border-t border-slate-200">
-                <span className="text-sm font-semibold text-slate-900">Total</span>
-                <span className="text-base font-bold text-slate-900">
-                  ${selectedOrder.totalAmount.toFixed(2)}
-                </span>
+              {/* Desglose: antes el "Total" mostraba totalAmount, que son solo
+                  los productos, así que en los domicilios no cuadraba con el
+                  cobro real de la tabla. El total es finalAmount. */}
+              <div className="mt-3 pt-3 border-t border-slate-200 space-y-1.5">
+                {(selectedOrder.deliveryFee > 0 || selectedOrder.discountAmount > 0 || selectedOrder.tipAmount > 0) && (
+                  <div className="flex justify-between items-center text-sm text-slate-600">
+                    <span>Subtotal</span>
+                    <span className="tabular-nums">${(selectedOrder.totalAmount || 0).toLocaleString('es-CO')}</span>
+                  </div>
+                )}
+                {selectedOrder.deliveryFee > 0 && (
+                  <div className="flex justify-between items-center text-sm text-slate-600">
+                    <span>Domicilio{selectedOrder.deliveryZoneName ? ` (${selectedOrder.deliveryZoneName})` : ''}</span>
+                    <span className="tabular-nums">${selectedOrder.deliveryFee.toLocaleString('es-CO')}</span>
+                  </div>
+                )}
+                {selectedOrder.discountAmount > 0 && (
+                  <div className="flex justify-between items-center text-sm text-emerald-600">
+                    <span>Descuento{selectedOrder.couponCode ? ` (${selectedOrder.couponCode})` : ''}</span>
+                    <span className="tabular-nums">-${selectedOrder.discountAmount.toLocaleString('es-CO')}</span>
+                  </div>
+                )}
+                {selectedOrder.tipAmount > 0 && (
+                  <div className="flex justify-between items-center text-sm text-slate-600">
+                    <span>Propina</span>
+                    <span className="tabular-nums">${selectedOrder.tipAmount.toLocaleString('es-CO')}</span>
+                  </div>
+                )}
+                <div className="flex justify-between items-center pt-1.5 border-t border-slate-100">
+                  <span className="text-sm font-semibold text-slate-900">Total</span>
+                  <span className="text-base font-bold text-slate-900 tabular-nums">
+                    ${(selectedOrder.finalAmount || selectedOrder.totalAmount || 0).toLocaleString('es-CO')}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
