@@ -1,27 +1,10 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import * as Sentry from "@sentry/react";
 
-// Inicializar Sentry - Monitoreo de errores en producción
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN || "",
-  environment: import.meta.env.MODE,
-  enabled: import.meta.env.PROD && !!import.meta.env.VITE_SENTRY_DSN,
-  integrations: [
-    Sentry.browserTracingIntegration(),
-    Sentry.replayIntegration({
-      maskAllText: true,
-      blockAllMedia: true,
-    }),
-  ],
-  // Performance monitoring - captura 20% de transacciones
-  tracesSampleRate: 0.2,
-  // Session Replay - captura 10% normal, 100% en errores
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
-  // Do NOT send PII (IP, user agent)
-  sendDefaultPii: false,
-});
+/* Sentry se retiró del frontend: eran 85 KB comprimidos —el 23% de todo lo
+   que descargaba un comensal— cargados antes de pintar nada, más el Session
+   Replay grabando el 10% de las sesiones. Un costo fijo en cada visita a un
+   menú para un dato que casi nunca se miraba. */
 
 // PRODUCTION CONSOLE FILTER — strip ALL console.log/info in production, keep warn/error for debugging
 if (typeof window !== 'undefined') {

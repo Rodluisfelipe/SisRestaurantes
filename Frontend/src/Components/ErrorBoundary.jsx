@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import * as Sentry from '@sentry/react';
 import { isChunkLoadError, recoverFromChunkError, chunkReloadAlreadyAttempted } from '../utils/chunkReload';
 
 class ErrorBoundary extends Component {
@@ -23,10 +22,11 @@ class ErrorBoundary extends Component {
     if (isChunkLoadError(error)) {
       // Intentar recuperarse (no-op si ya se intentó en esta sesión).
       const triggered = recoverFromChunkError('errorboundary');
-      if (triggered) return; // reload en camino; no ensuciar Sentry con ruido de deploy
+      if (triggered) return; // reload en camino; no es un fallo real de la app
     }
-    // Reportar el error a Sentry
-    Sentry.captureException(error, { extra: { componentStack: errorInfo?.componentStack } });
+    /* Sin Sentry, el error solo queda en la consola del navegador: si un
+       usuario reporta la pantalla de "¡Oops!", hay que pedirle la consola
+       porque ya no llega a ningún panel. */
     console.error("Error capturado por ErrorBoundary:", error, errorInfo);
     this.setState({ errorInfo });
   }
