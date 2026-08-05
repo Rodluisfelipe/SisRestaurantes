@@ -175,27 +175,12 @@ app.use('/uploads/products', express.static('uploads/products'));
 app.use('/uploads/print-agent', express.static('uploads/print-agent'));
 app.use('/downloads', express.static('uploads/downloads'));
 
-// Authenticated access to payment proofs and order proofs
-// Accepts token via Authorization header OR ?token= query param (for <img> tags)
-const jwt = require('jsonwebtoken');
-const proofAuth = (req, res, next) => {
-  let token = null;
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  } else if (req.query.token) {
-    token = req.query.token;
-  }
-  if (!token) return res.status(401).json({ message: 'No token' });
-  try {
-    jwt.verify(token, process.env.JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ message: 'Invalid token' });
-  }
-};
-app.use('/uploads/proofs', proofAuth, express.static('uploads/proofs'));
-app.use('/uploads/order-proofs', proofAuth, express.static('uploads/order-proofs'));
+/* Comprobantes de pago: no basta un token válido, hay que ser el dueño.
+   Antes solo se verificaba la firma del JWT, así que cualquier usuario
+   registrado podía descargar los comprobantes de otro negocio. */
+const proofAuth = require('./middleware/proofAuth');
+app.use('/uploads/proofs', proofAuth('subscription'), express.static('uploads/proofs'));
+app.use('/uploads/order-proofs', proofAuth('order'), express.static('uploads/order-proofs'));
 
 // Rutas API original
 app.use("/api/products", require("./Routes/products"));
