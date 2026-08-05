@@ -734,11 +734,11 @@ router.get('/stats/overview', async (req, res) => {
       CompletedOrder.countDocuments({ completedAt: { $gte: startOfMonth } }),
       CompletedOrder.aggregate([
         { $match: { status: { $ne: 'cancelled' } } },
-        { $group: { _id: null, sum: { $sum: '$totalAmount' } } },
+        { $group: { _id: null, sum: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } } } },
       ]),
       CompletedOrder.aggregate([
         { $match: { completedAt: { $gte: startOfMonth }, status: { $ne: 'cancelled' } } },
-        { $group: { _id: null, sum: { $sum: '$totalAmount' } } },
+        { $group: { _id: null, sum: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } } } },
       ]),
       Banner.countDocuments({ status: 'pending' }),
       PaymentRequest.countDocuments({ status: 'pending' }),
@@ -749,7 +749,7 @@ router.get('/stats/overview', async (req, res) => {
       }),
       CompletedOrder.aggregate([
         { $match: { status: { $ne: 'cancelled' } } },
-        { $group: { _id: '$businessId', count: { $sum: 1 }, gmv: { $sum: '$totalAmount' } } },
+        { $group: { _id: '$businessId', count: { $sum: 1 }, gmv: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } } } },
         { $sort: { count: -1 } },
         { $limit: 5 },
         { $lookup: { from: 'businessconfigs', localField: '_id', foreignField: '_id', as: 'business' } },

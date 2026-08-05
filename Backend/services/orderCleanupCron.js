@@ -161,8 +161,11 @@ function cleanupOrphanedProofDirs() {
  */
 let _cleanupRunning = false;
 function startOrderCleanupCron() {
-  // Cron: todos los días a las 00:00 hora Colombia (05:00 UTC)
-  cron.schedule('0 5 * * *', async () => {
+  /* Medianoche en Colombia, declarada por zona horaria y no como "05:00 UTC".
+     Antes dependía de que el contenedor corriera en UTC: fijarle un TZ para
+     cualquier otra cosa habría movido el cierre del día cinco horas sin que
+     nada lo avisara. */
+  cron.schedule('0 0 * * *', async () => {
     if (_cleanupRunning) {
       logger.warn('[OrderCleanup] Previous run still in progress — skipping');
       return;
@@ -174,9 +177,9 @@ function startOrderCleanupCron() {
     } finally {
       _cleanupRunning = false;
     }
-  });
+  }, { timezone: 'America/Bogota' });
 
-  logger.info('🧹 Order cleanup cron iniciado (medianoche Colombia / 05:00 UTC)');
+  logger.info('🧹 Order cleanup cron iniciado (medianoche Colombia)');
 }
 
 module.exports = { startOrderCleanupCron, runCleanup, expireStaleOrders, cleanupCancelledOrders };

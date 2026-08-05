@@ -73,11 +73,15 @@ async function expirePoints() {
 }
 
 /**
- * Start cron: runs daily at 3:00 AM Colombia (08:00 UTC)
+ * Start cron: runs daily at 3:00 AM Colombia.
+ *
+ * La hora se declara por zona horaria y no como "08:00 UTC": antes dependía
+ * de que el contenedor corriera en UTC, así que fijarle un TZ para cualquier
+ * otra cosa habría movido la expiración de puntos cinco horas en silencio.
  */
 let _loyaltyCronRunning = false;
 function startLoyaltyExpiryCron() {
-  cron.schedule('0 8 * * *', async () => {
+  cron.schedule('0 3 * * *', async () => {
     if (_loyaltyCronRunning) {
       logger.warn('[LoyaltyExpiry] Previous run still in progress — skipping');
       return;
@@ -89,9 +93,9 @@ function startLoyaltyExpiryCron() {
     } finally {
       _loyaltyCronRunning = false;
     }
-  });
+  }, { timezone: 'America/Bogota' });
 
-  logger.info('🏆 Loyalty points expiry cron iniciado (3:00 AM Colombia / 08:00 UTC)');
+  logger.info('🏆 Loyalty points expiry cron iniciado (3:00 AM Colombia)');
 }
 
 module.exports = { startLoyaltyExpiryCron, expirePoints };

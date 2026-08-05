@@ -100,7 +100,7 @@ const getBatchBusinessInfo = async (businessIds) => {
             _id: '$businessId',
             orderCount: { $sum: 1 },
             avgOrderValue: { $avg: '$totalAmount' },
-            totalRevenue: { $sum: '$totalAmount' }
+            totalRevenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } }
           }
         }
       ])

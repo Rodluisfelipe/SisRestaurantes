@@ -84,10 +84,10 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: null,
           totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: '$totalAmount' },
-          avgTicket: { $avg: '$totalAmount' },
-          minOrder: { $min: '$totalAmount' },
-          maxOrder: { $max: '$totalAmount' },
+          totalRevenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          avgTicket: { $avg: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          minOrder: { $min: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          maxOrder: { $max: { $ifNull: ['$finalAmount', '$totalAmount'] } },
         }},
       ]),
 
@@ -97,7 +97,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: null,
           totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: '$totalAmount' },
+          totalRevenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
         }},
       ]),
 
@@ -122,7 +122,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
             },
           },
           orders: { $sum: 1 },
-          revenue: { $sum: '$totalAmount' },
+          revenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
         }},
         { $sort: { _id: 1 } },
       ]),
@@ -147,7 +147,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: '$orderChannel',
           count: { $sum: 1 },
-          revenue: { $sum: '$totalAmount' },
+          revenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
         }},
       ]),
 
@@ -157,7 +157,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: '$paymentMethod',
           count: { $sum: 1 },
-          revenue: { $sum: '$totalAmount' },
+          revenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
         }},
       ]),
 
@@ -167,7 +167,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: '$orderType',
           count: { $sum: 1 },
-          revenue: { $sum: '$totalAmount' },
+          revenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
         }},
       ]),
 
