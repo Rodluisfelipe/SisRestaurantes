@@ -61,6 +61,22 @@ router.post('/generate-key', authenticateToken, async (req, res) => {
   }
 });
 
+/* GET /api/print-agent/key — la clave del negocio, solo para su panel.
+   Antes se leía de /api/business-config, que es público: cualquiera que
+   abriera el menú podía sacarla y conectarse al flujo de pedidos en vivo. */
+router.get('/key', authenticateToken, async (req, res) => {
+  try {
+    const businessId = await resolveBusinessId(req);
+    if (!businessId) return res.status(400).json({ error: 'No business associated' });
+
+    const config = await BusinessConfig.findById(businessId).select('printAgentKey').lean();
+    res.json({ key: config?.printAgentKey || null });
+  } catch (error) {
+    logger.error('Error getting print agent key', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // DELETE /api/print-agent/revoke-key — Revoke the print agent key
 router.delete('/revoke-key', authenticateToken, async (req, res) => {
   try {

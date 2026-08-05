@@ -14,19 +14,23 @@ export default function PrintAgentConfig() {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState('');
 
+  /* La clave se pide a un endpoint con sesión. Antes venía dentro de
+     businessConfig, que es público: cualquiera que abriera el menú del
+     negocio podía leerla y conectarse a su flujo de pedidos en vivo. */
   useEffect(() => {
-    if (businessConfig?.printAgentKey) {
-      setPrintKey(businessConfig.printAgentKey);
-    }
-  }, [businessConfig]);
+    if (!businessId) return;
+    api.get('/print-agent/key')
+      .then(res => setPrintKey(res.data.key || ''))
+      .catch(() => {});
+  }, [businessId]);
 
   // Load current print mode
   useEffect(() => {
-    if (!businessConfig?.printAgentKey || !businessId) return;
+    if (!printKey || !businessId) return;
     api.get(`/print-agent/mode?businessId=${businessId}`)
       .then(res => setPrintMode(res.data.mode || 'both'))
       .catch(() => {});
-  }, [businessConfig?.printAgentKey, businessId]);
+  }, [printKey, businessId]);
 
   const handleGenerateKey = async () => {
     setLoading(true);

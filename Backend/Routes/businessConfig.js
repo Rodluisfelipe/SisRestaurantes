@@ -37,7 +37,15 @@ router.get("/", async (req, res) => {
         });
       }
       
-      res.json(config);
+      /* Este endpoint es público: lo consulta cualquiera que abra un menú.
+         printAgentKey es la credencial del stream de impresión — con ella se
+         puede abrir el flujo de pedidos en vivo de un negocio y leer nombres,
+         teléfonos y direcciones de sus clientes. No puede salir de aquí.
+         El panel la obtiene por GET /api/print-agent/key, que sí exige sesión. */
+      const publico = config?.toObject ? config.toObject() : { ...config };
+      delete publico.printAgentKey;
+
+      res.json(publico);
     } catch (error) {
       logger.error(`Error obteniendo configuración del negocio`, error, req);
       res.status(500).json(formatHttpError(req, 'Error al obtener la configuración del negocio', 500));
