@@ -187,7 +187,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
           {hasToppings && !promoActive && (
             <div className="absolute top-2 left-2">
               <span 
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-semibold backdrop-blur-md shadow-sm bg-white/90 border border-white/50"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-semibold shadow-sm bg-white/90 border border-white/50"
                 style={{ color: buttonColor }}
               >
                 {PCI.sliders('w-2.5 h-2.5 sm:w-3 sm:h-3')}
@@ -199,7 +199,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
           {/* "Favorito" — se oculta si ya hay otro badge, para no pasar de 2 */}
           {isFavorite && !isOutOfStock && !promoActive && (
             <div className="absolute top-2 right-2">
-              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm backdrop-blur-md">
+              <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg text-[10px] sm:text-[11px] font-bold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">
                 {PCI.flame('w-2.5 h-2.5')}
                 <span className="hidden sm:inline ml-0.5">Favorito</span>
               </span>
@@ -210,7 +210,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
               ni desaparece — evita la sensación de menú vacío. */}
           {isOutOfStock && (
             <div className="absolute top-2 right-2 z-[3]">
-              <span className="bg-slate-900/85 text-white text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wide backdrop-blur-sm">
+              <span className="bg-slate-900/85 text-white text-[10px] font-bold px-2.5 py-1 rounded-full tracking-wide">
                 Agotado hoy
               </span>
             </div>
@@ -240,7 +240,11 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
             </span>
           </div>
 
-          {/* Glassmorphism Add Button — floating on image (oculto en modo solo-vista) */}
+          {/* Botón de agregar, flotando sobre la foto (oculto en modo solo-vista).
+              Sin backdrop-blur: su fondo es opaco, así que el desenfoque no se
+              veía y aun así obligaba al compositor a desenfocar la región bajo
+              cada botón. Repetido en una rejilla de 29 tarjetas, era lo que
+              hacía sentir pesado el menú en Android de gama media. */}
           {!isViewOnly && (
             <motion.button
               onClick={(e) => {
@@ -258,7 +262,7 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
               }}
               whileTap={!isDisabled ? { scale: 0.85 } : {}}
               transition={{ type: "spring", stiffness: 400, damping: 15 }}
-              className={`absolute bottom-2 right-2.5 z-[2] flex items-center justify-center shadow-lg backdrop-blur-md transition-all duration-200 ${
+              className={`absolute bottom-2 right-2.5 z-[2] flex items-center justify-center shadow-lg transition-all duration-200 ${
                 isDisabled ? 'opacity-40 cursor-not-allowed' : 'active:shadow-xl'
               }`}
               style={{

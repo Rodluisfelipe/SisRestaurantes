@@ -621,7 +621,7 @@ const FilterableMenu = ({
         ref={pillBarRef}
         className={`z-40 py-2.5 mb-4 sm:mb-5 ${
           isSticky
-            ? 'sticky bg-white/95 backdrop-blur-md shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6'
+            ? 'sticky bg-white/95 shadow-sm -mx-3 px-3 sm:-mx-4 sm:px-4 lg:-mx-6 lg:px-6'
             : ''
         }`}
         /* Se pega justo debajo del header compacto del negocio. BusinessHeader

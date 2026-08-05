@@ -218,7 +218,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                     </span>
                   ) : pop.isTopSeller ? (
                     <span
-                      className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-sm backdrop-blur-sm"
+                      className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold shadow-sm"
                       style={{ backgroundColor: `${buttonColor}d0`, color: buttonTextColor }}
                     >
                       {PI.flame('w-2.5 h-2.5')} Top
@@ -227,7 +227,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
 
                   {/* Favorite badge — top right */}
                   {showBadges && pop.isFavorite && (
-                    <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold shadow-sm backdrop-blur-sm bg-rose-500/90 text-white">
+                    <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-lg text-[9px] font-bold shadow-sm bg-rose-500/90 text-white">
                       {PI.heart('w-2.5 h-2.5')} Favorito
                     </span>
                   )}
@@ -254,7 +254,7 @@ const PopularProducts = ({ businessId, products: allMenuProducts, onAddToCart, t
                       }
                       handleProductClick(product);
                     }}
-                    className="absolute bottom-2 right-2.5 z-[2] flex items-center justify-center shadow-lg backdrop-blur-md transition-all active:scale-90"
+                    className="absolute bottom-2 right-2.5 z-[2] flex items-center justify-center shadow-lg transition-all active:scale-90"
                     style={{ width: TOUCH_TARGET, height: TOUCH_TARGET, borderRadius: radii.button, backgroundColor: `${buttonColor}e0`, color: buttonTextColor, boxShadow: `0 4px 16px ${alpha(buttonColor, 0.25)}` }}
                     aria-label={hasToppings ? `Personalizar ${product.name}` : `Agregar ${product.name} al carrito`}
                   >
