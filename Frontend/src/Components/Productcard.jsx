@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { imageAt, imageSrcSet, CARD_SIZES, HERO_SIZES } from '../utils/imageCdn';
 import ProductToppingsSelector from './ProductToppingsSelector';
 import { isPromoActive, getEffectivePrice, promoMsLeft, formatCountdown } from '../utils/promo';
 import ErrorBoundary from './ErrorBoundary';
@@ -18,7 +19,9 @@ const PCI = {
   image: (cls = 'w-8 h-8') => <svg className={cls} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,
 };
 
-function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus, isHero = false, isViewOnly = false }) {
+/* `priority` lo ponen las primeras tarjetas de la rejilla: esas se ven sin
+   desplazar, así que cargarlas en diferido solo retrasa el primer pintado. */
+function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subscriptionStatus, isHero = false, isViewOnly = false, priority = false }) {
   const [showToppings, setShowToppings] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [showClosedModal, setShowClosedModal] = useState(false);
@@ -120,10 +123,13 @@ function ProductCard({ product, addToCart, onToppingsOpen, onToppingsClose, subs
         {/* Product Image — ratio 4:3 (hero en panorámico) */}
         <div className={`relative overflow-hidden bg-slate-50 ${isHero ? 'aspect-[2/1]' : 'aspect-[4/3]'}`}>
           {product.image ? (
-            <motion.img 
-              src={product.image} 
+            <motion.img
+              src={imageAt(product.image, isHero ? 800 : 400)}
+              srcSet={imageSrcSet(product.image) || undefined}
+              sizes={imageSrcSet(product.image) ? (isHero ? HERO_SIZES : CARD_SIZES) : undefined}
               alt={product.name}
-              loading="lazy"
+              loading={priority ? 'eager' : 'lazy'}
+              fetchpriority={priority ? 'high' : undefined}
               decoding="async"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => { e.target.style.display = 'none'; }}

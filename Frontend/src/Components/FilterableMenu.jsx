@@ -890,6 +890,7 @@ const FilterableMenu = ({
                               onToppingsOpen={onToppingsOpen}
                               onToppingsClose={onToppingsClose}
                               subscriptionStatus={subscriptionStatus}
+                              priority={productIndex < 3}
                               isHero
                               isViewOnly={isViewOnly}
                             />
@@ -902,6 +903,7 @@ const FilterableMenu = ({
                             onToppingsOpen={onToppingsOpen}
                             onToppingsClose={onToppingsClose}
                             subscriptionStatus={subscriptionStatus}
+                            priority={productIndex < 3}
                             isViewOnly={isViewOnly}
                           />
                         );
@@ -977,6 +979,7 @@ const FilterableMenu = ({
                           onToppingsOpen={onToppingsOpen}
                           onToppingsClose={onToppingsClose}
                           subscriptionStatus={subscriptionStatus}
+                          priority={productIndex < 3}
                           isHero
                           isViewOnly={isViewOnly}
                         />
@@ -989,6 +992,7 @@ const FilterableMenu = ({
                         onToppingsOpen={onToppingsOpen}
                         onToppingsClose={onToppingsClose}
                         subscriptionStatus={subscriptionStatus}
+                        priority={productIndex < 3}
                         isViewOnly={isViewOnly}
                       />
                     );
