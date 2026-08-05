@@ -512,7 +512,7 @@ export default function BusinessTable({ refreshTrigger }) {
                     {/* Menú V2 (perfil + historias) — beta por negocio */}
                     <button
                       onClick={() => handleToggleMenuV2(b)}
-                      title={b.features?.menuV2 ? 'Volver al menú actual' : 'Activar Menú V2 (perfil + historias)'}
+                      title={b.features?.menuV2 ? 'Devolver este negocio al menú anterior' : 'Reactivar el Menú V2 (es el menú por defecto)'}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 ml-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
  b.features?.menuV2
  ? 'bg-sky-100 text-sky-600 border border-sky-200 hover:bg-sky-200'
@@ -672,7 +672,7 @@ export default function BusinessTable({ refreshTrigger }) {
  ? 'bg-sky-100 text-sky-600 border border-sky-200'
  : 'bg-slate-50 text-slate-400 border border-slate-200'
  }`}
-                  title={b.features?.menuV2 ? 'Volver al menú actual' : 'Activar Menú V2 (perfil + historias)'}
+                  title={b.features?.menuV2 ? 'Devolver este negocio al menú anterior' : 'Reactivar el Menú V2 (es el menú por defecto)'}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
