@@ -7,7 +7,7 @@ const Customer = require('../Models/Customer');
 const Product = require('../Models/Product');
 const BusinessConfig = require('../Models/BusinessConfig');
 const { tenantAuth } = require('../middleware/tenantAuth');
-const { startOfDayCOL, endOfDayCOL } = require('../utils/timezone');
+const { startOfDayCOL, endOfDayCOL, startOfMonthCOL, endOfMonthCOL } = require('../utils/timezone');
 const logger = require('../utils/logger');
 const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
@@ -368,9 +368,188 @@ router.get('/stats', tenantAuth, async (req, res) => {
   }
 });
 
+/* ══════════════════════════════════════════════════════════════════
+   CIERRE MENSUAL — estadísticas por mes calendario
+
+   El resto del panel usa ventanas rodantes ("últimos 30 días"), que nunca
+   se reinician: el 1° de agosto sigue mezclando julio. Aquí el periodo es
+   el mes calendario en hora Colombia, que es como el negocio cierra sus
+   cuentas y contra lo que compara con el mes anterior.
+   ══════════════════════════════════════════════════════════════════ */
+
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+/* "2026-08" → los límites UTC del mes en hora Colombia. Se ancla al mediodía
+   para que el corrimiento de 5h no caiga en el mes vecino. */
+function monthBounds(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  const anchor = new Date(Date.UTC(y, m - 1, 1, 12, 0, 0));
+  return { start: startOfMonthCOL(anchor), end: endOfMonthCOL(anchor) };
+}
+
+function prevMonthKey(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, '0')}`;
+}
+
+function monthLabel(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return `${MESES[m - 1]} ${y}`;
+}
+
+// Variación porcentual contra el mes anterior. Sin base previa no hay
+// porcentaje que calcular: null se dibuja como "—", no como +100%.
+function delta(now, before) {
+  if (!before) return now > 0 ? null : 0;
+  return Math.round(((now - before) / before) * 100);
+}
+
+const REVENUE = { $ifNull: ['$finalAmount', '$totalAmount'] };
+
+async function monthTotals(bid, start, end) {
+  const rows = await CompletedOrder.aggregate([
+    { $match: { businessId: bid, completedAt: { $gte: start, $lt: end } } },
+    { $group: {
+      _id: null,
+      orders: { $sum: 1 },
+      revenue: { $sum: REVENUE },
+      products: { $sum: { $reduce: {
+        input: { $ifNull: ['$items', []] }, initialValue: 0,
+        in: { $add: ['$$value', { $ifNull: ['$$this.quantity', 0] }] },
+      } } },
+      delivery: { $sum: { $ifNull: ['$deliveryFee', 0] } },
+      discounts: { $sum: { $ifNull: ['$discountAmount', 0] } },
+      tips: { $sum: { $ifNull: ['$tipAmount', 0] } },
+    } },
+  ]);
+  const t = rows[0] || {};
+  const orders = t.orders || 0;
+  const revenue = t.revenue || 0;
+  return {
+    orders,
+    revenue: Math.round(revenue),
+    products: t.products || 0,
+    deliveryFees: Math.round(t.delivery || 0),
+    discounts: Math.round(t.discounts || 0),
+    tips: Math.round(t.tips || 0),
+    avgTicket: orders > 0 ? Math.round(revenue / orders) : 0,
+  };
+}
+
+/**
+ * GET /api/dashboard/monthly?month=YYYY-MM
+ *
+ * Cierre del mes calendario: totales, comparación con el mes anterior,
+ * desgloses y serie diaria. Sin `month` devuelve el mes en curso.
+ */
+router.get('/monthly', tenantAuth, async (req, res) => {
+  try {
+    let businessId = req.query.businessId || req.user?.businessId || req.resolvedBusinessId;
+    if (!businessId && req.user?.id) {
+      const Admin = require('../Models/Admin');
+      const admin = await Admin.findById(req.user.id).select('businessId').lean();
+      if (admin?.businessId) businessId = admin.businessId;
+    }
+    if (!businessId) return res.status(400).json({ message: 'businessId requerido' });
+
+    const bid = new mongoose.Types.ObjectId(businessId);
+
+    /* Mes en curso según Colombia, no según el reloj UTC del servidor: el 1°
+       a las 2am de Bogotá en UTC ya es el día 1 a las 7am, pero el 31 a las
+       10pm de Bogotá en UTC ya es el mes siguiente. */
+    const colNow = new Date(Date.now() - 5 * 3600e3);
+    const curKey = `${colNow.getUTCFullYear()}-${String(colNow.getUTCMonth() + 1).padStart(2, '0')}`;
+
+    const month = /^\d{4}-\d{2}$/.test(req.query.month || '') ? req.query.month : curKey;
+    const { start, end } = monthBounds(month);
+    const prevKey = prevMonthKey(month);
+    const prevRange = monthBounds(prevKey);
+
+    const [current, previous, byChannel, byPayment, byType, topProducts, daily, firstOrder] = await Promise.all([
+      monthTotals(bid, start, end),
+      monthTotals(bid, prevRange.start, prevRange.end),
+      CompletedOrder.aggregate([
+        { $match: { businessId: bid, completedAt: { $gte: start, $lt: end } } },
+        { $group: { _id: { $ifNull: ['$orderChannel', 'inapp'] }, orders: { $sum: 1 }, revenue: { $sum: REVENUE } } },
+        { $sort: { revenue: -1 } },
+      ]),
+      CompletedOrder.aggregate([
+        { $match: { businessId: bid, completedAt: { $gte: start, $lt: end } } },
+        { $group: { _id: { $ifNull: ['$paymentMethod', 'cash'] }, orders: { $sum: 1 }, revenue: { $sum: REVENUE } } },
+        { $sort: { revenue: -1 } },
+      ]),
+      CompletedOrder.aggregate([
+        { $match: { businessId: bid, completedAt: { $gte: start, $lt: end } } },
+        { $group: { _id: { $ifNull: ['$orderType', 'inSite'] }, orders: { $sum: 1 }, revenue: { $sum: REVENUE } } },
+        { $sort: { revenue: -1 } },
+      ]),
+      CompletedOrder.aggregate([
+        { $match: { businessId: bid, completedAt: { $gte: start, $lt: end } } },
+        { $unwind: '$items' },
+        { $group: { _id: '$items.name', qty: { $sum: { $ifNull: ['$items.quantity', 0] } } } },
+        { $sort: { qty: -1 } }, { $limit: 10 },
+      ]),
+      CompletedOrder.aggregate([
+        { $match: { businessId: bid, completedAt: { $gte: start, $lt: end } } },
+        { $group: {
+          _id: { $dayOfMonth: { date: '$completedAt', timezone: 'America/Bogota' } },
+          orders: { $sum: 1 }, revenue: { $sum: REVENUE },
+        } },
+        { $sort: { _id: 1 } },
+      ]),
+      // El primer pedido marca desde qué mes tiene sentido ofrecer el selector
+      CompletedOrder.findOne({ businessId: bid }).sort({ completedAt: 1 }).select('completedAt').lean(),
+    ]);
+
+    // Meses con historia, del más reciente al más antiguo
+    const available = [];
+    if (firstOrder?.completedAt) {
+      const f = new Date(new Date(firstOrder.completedAt).getTime() - 5 * 3600e3);
+      let y = f.getUTCFullYear();
+      let m = f.getUTCMonth() + 1;
+      const [cy, cm] = curKey.split('-').map(Number);
+      while (y < cy || (y === cy && m <= cm)) {
+        available.push(`${y}-${String(m).padStart(2, '0')}`);
+        m += 1;
+        if (m > 12) { m = 1; y += 1; }
+      }
+      available.reverse();
+    }
+    if (!available.includes(curKey)) available.unshift(curKey);
+
+    const bestDay = daily.reduce((best, d) => (!best || d.revenue > best.revenue ? d : best), null);
+
+    res.json({
+      month,
+      label: monthLabel(month),
+      isCurrent: month === curKey,
+      range: { from: start, to: end },
+      current,
+      previous: { month: prevKey, label: monthLabel(prevKey), ...previous },
+      deltas: {
+        orders: delta(current.orders, previous.orders),
+        revenue: delta(current.revenue, previous.revenue),
+        avgTicket: delta(current.avgTicket, previous.avgTicket),
+        products: delta(current.products, previous.products),
+      },
+      byChannel: byChannel.map(r => ({ id: r._id, orders: r.orders, revenue: Math.round(r.revenue) })),
+      byPayment: byPayment.map(r => ({ id: r._id, orders: r.orders, revenue: Math.round(r.revenue) })),
+      byOrderType: byType.map(r => ({ id: r._id, orders: r.orders, revenue: Math.round(r.revenue) })),
+      topProducts: topProducts.map(r => ({ name: r._id, qty: r.qty })),
+      daily: daily.map(d => ({ day: d._id, orders: d.orders, revenue: Math.round(d.revenue) })),
+      bestDay: bestDay ? { day: bestDay._id, revenue: Math.round(bestDay.revenue), orders: bestDay.orders } : null,
+      availableMonths: available,
+    });
+  } catch (error) {
+    logger.error('Monthly closing error', error);
+    res.status(500).json({ message: 'Error al obtener el cierre mensual' });
+  }
+});
+
 /**
  * GET /api/dashboard/viewers
- * 
+ *
  * Returns current live viewers for the business menu.
  * Protected by tenantAuth.
  */

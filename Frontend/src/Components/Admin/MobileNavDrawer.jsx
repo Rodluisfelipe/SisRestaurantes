@@ -85,6 +85,7 @@ export default function MobileNavDrawer({ isOpen, onClose, activeTab, setActiveT
       items: [
         { id: 'reports',        label: 'Analítica',           icon: I.reports,    bg: 'bg-indigo-500' },
         { id: 'completed_orders', label: 'Completados',       icon: I.completed,  bg: 'bg-emerald-500' },
+        { id: 'monthly-closing', label: 'Cierre mensual', icon: I.calendar, bg: 'bg-violet-500' },
         ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de caja', icon: I.cash, bg: 'bg-amber-500' }] : []),
         ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda de citas', icon: I.calendar, bg: 'bg-indigo-500' }] : []),
         ...(!isService && !isHotel ? [{ id: 'delivery', label: 'Domicilios', icon: I.delivery, bg: 'bg-cyan-500' }] : []),

@@ -50,6 +50,9 @@ const ModernAdminSidebar = ({ activeTab, setActiveTab, businessConfig, handleLog
       items: [
         { id: 'orders', label: isService ? 'Citas' : 'Pedidos', Icon: isService ? FaCalendarAlt : FaClipboardList, badge: pendingOrdersCount },
         { id: 'completed_orders', label: 'Completados', Icon: FaCheckCircle, badge: null },
+        /* El cierre mensual no depende del POS: todo negocio cierra su mes,
+           tenga o no punto de venta. */
+        { id: 'monthly-closing', label: 'Cierre Mensual', Icon: FaCalendarAlt, badge: null },
         ...(businessConfig?.features?.posBetaEnabled ? [{ id: 'cash-closings', label: 'Cierres de Caja', Icon: FaCashRegister, badge: null }] : []),
         ...(businessConfig?.enableBookings ? [{ id: 'bookings', label: 'Agenda', Icon: FaCalendarAlt, badge: null }] : []),
       ]

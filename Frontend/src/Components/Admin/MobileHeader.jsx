@@ -31,6 +31,7 @@ const TAB_TITLES = {
   'team':             'Equipo',
   'bookings':         'Agenda',
   'cash-closings':    'Cierres',
+  'monthly-closing':  'Cierre mensual',
   'referrals':        'Referidos',
   'loyalty':          'Fidelidad',
 };

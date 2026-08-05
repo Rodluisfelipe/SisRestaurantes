@@ -52,6 +52,7 @@ const AdminPopups = lazy(() => import("../Components/Admin/AdminPopups"));
 const StaffManager = lazy(() => import("../Components/Admin/StaffManager"));
 const BookingsManager = lazy(() => import("../Components/Admin/BookingsManager"));
 const CashClosings = lazy(() => import("../Components/Admin/CashClosings"));
+const MonthlyClosing = lazy(() => import("../Components/Admin/MonthlyClosing"));
 const ReferralsPanel = lazy(() => import("../Components/Admin/ReferralsPanel"));
 const CrewPanel = lazy(() => import("../Components/Admin/CrewPanel"));
 const DashboardMetrics = lazy(() => import("../Components/Admin/DashboardMetrics"));
@@ -451,6 +452,13 @@ function Admin() {
                   <AdminTabWrapper setActiveTab={setActiveTab}>
                     <AdminSectionErrorBoundary sectionName="Pedidos Completados" onGoBack={() => setActiveTab('dashboard')}>
                       <EnhancedCompletedOrders />
+                    </AdminSectionErrorBoundary>
+                  </AdminTabWrapper>
+                )}
+                {activeTab === 'monthly-closing' && (
+                  <AdminTabWrapper setActiveTab={setActiveTab}>
+                    <AdminSectionErrorBoundary sectionName="Cierre Mensual" onGoBack={() => setActiveTab('dashboard')}>
+                      <MonthlyClosing />
                     </AdminSectionErrorBoundary>
                   </AdminTabWrapper>
                 )}

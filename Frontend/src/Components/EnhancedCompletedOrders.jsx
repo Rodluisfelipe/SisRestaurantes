@@ -175,17 +175,35 @@ function EnhancedCompletedOrders() {
       if (viewMode === 'today') {
         orders = completedOrders;
       } else {
-        // Fetch ALL matching orders with current filters (high limit, no pagination)
-        const params = new URLSearchParams({ businessId, limit: '10000' });
-        if (dateFrom) params.append('from', dateFrom);
-        if (dateTo) params.append('to', dateTo);
-        if (filterOrderType) params.append('orderType', filterOrderType);
-        if (filterChannel) params.append('orderChannel', filterChannel);
-        if (filterPayment) params.append('paymentMethod', filterPayment);
-        if (searchTerm.trim()) params.append('search', searchTerm.trim());
+        /* Se pide por lotes de 1.000, que es el tope real del servidor. Antes
+           se pedía limit=10000 de una: el backend lo recortaba en silencio a
+           1.000 y el Excel salía incompleto —con los totales de las hojas de
+           resumen mal, porque se calculan sumando las filas exportadas— sin
+           que nada lo advirtiera. */
+        const BATCH = 1000;
+        const MAX_BATCHES = 50; // 50.000 pedidos: tope de cordura, no se cuelga
+        orders = [];
+        for (let page = 1; page <= MAX_BATCHES; page++) {
+          const params = new URLSearchParams({ businessId, limit: String(BATCH), page: String(page) });
+          if (dateFrom) params.append('from', dateFrom);
+          if (dateTo) params.append('to', dateTo);
+          if (filterOrderType) params.append('orderType', filterOrderType);
+          if (filterChannel) params.append('orderChannel', filterChannel);
+          if (filterPayment) params.append('paymentMethod', filterPayment);
+          if (searchTerm.trim()) params.append('search', searchTerm.trim());
 
-        const response = await api.get(`/orders/completed?${params.toString()}`, { timeout: 30000 });
-        orders = response.data?.orders || (Array.isArray(response.data) ? response.data : []);
+          // eslint-disable-next-line no-await-in-loop
+          const response = await api.get(`/orders/completed?${params.toString()}`, { timeout: 60000 });
+          const batch = response.data?.orders || (Array.isArray(response.data) ? response.data : []);
+          orders.push(...batch);
+
+          const totalPagesResp = response.data?.pagination?.total;
+          if (batch.length < BATCH || (totalPagesResp && page >= totalPagesResp)) break;
+
+          if (page === MAX_BATCHES) {
+            alert(`El rango supera los ${MAX_BATCHES * BATCH} pedidos. Se exportaron los ${orders.length} más recientes; acota las fechas para el resto.`);
+          }
+        }
       }
 
       if (!orders || orders.length === 0) {
