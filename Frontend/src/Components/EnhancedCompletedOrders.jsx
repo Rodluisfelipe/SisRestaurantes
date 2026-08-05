@@ -5,7 +5,9 @@ import { useBusinessConfig } from '../Context/BusinessContext';
 import { socket } from '../services/socket';
 import AI from './Admin/AdminIcons';
 import { logSystem } from '../utils/systemLogger';
-import ExcelJS from 'exceljs';
+/* ExcelJS NO se importa arriba: son ~275 KB comprimidos que se descargaban al
+   abrir esta pantalla aunque nunca se exportara nada. Se carga dentro de
+   exportExcel, o sea solo cuando se pulsa Exportar. */
 import {
   FaClipboardList, FaDollarSign, FaChartBar, FaHamburger,
   FaCalendarDay, FaHistory, FaSync, FaSearch,
@@ -170,6 +172,14 @@ function EnhancedCompletedOrders() {
   const exportExcel = async () => {
     setExportingExcel(true);
     try {
+      /* Se arranca la descarga de la librería ya, sin esperarla: mientras
+         llega, abajo se traen los pedidos por lotes. Así los ~275 KB no se
+         suman al tiempo de espera, se solapan con la consulta. */
+      const excelPromise = import('exceljs');
+      /* Si no hay pedidos se sale antes de usarla y nadie la esperaría: sin
+         esto, un fallo de red al traerla saldría como promesa no manejada.
+         El await de más abajo sigue propagando el error normalmente. */
+      excelPromise.catch(() => {});
       // Use loaded data directly when in 'today' mode
       let orders;
       if (viewMode === 'today') {
@@ -217,6 +227,8 @@ function EnhancedCompletedOrders() {
         const map = { cash: 'Efectivo', efectivo: 'Efectivo', nequi: 'Nequi', daviplata: 'Daviplata', transfer: 'Transferencia', transferencia: 'Transferencia', other: 'Otro' };
         return map[p] || p || 'N/A';
       };
+
+      const { default: ExcelJS } = await excelPromise;
 
       const wb = new ExcelJS.Workbook();
       wb.creator = businessConfig?.businessName || 'MenuBy';
