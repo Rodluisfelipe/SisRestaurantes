@@ -41,15 +41,15 @@
     }
   ],
   "env": {
-    "VITE_API_URL": "https://159-203-136-199.nip.io",
-    "VITE_SOCKET_URL": "https://159-203-136-199.nip.io",
+    "VITE_API_URL": "https://api.menuby.tech",
+    "VITE_SOCKET_URL": "https://api.menuby.tech",
     "VITE_APP_NAME": "MenuBy",
     "VITE_APP_VERSION": "1.0.0"
   },
   "build": {
     "env": {
-      "VITE_API_URL": "https://159-203-136-199.nip.io",
-      "VITE_SOCKET_URL": "https://159-203-136-199.nip.io"
+      "VITE_API_URL": "https://api.menuby.tech",
+      "VITE_SOCKET_URL": "https://api.menuby.tech"
     }
   }
 }

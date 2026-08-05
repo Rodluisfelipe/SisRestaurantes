@@ -14,7 +14,7 @@ export default function HealthCheck() {
     // Intentar conectar al backend para verificar disponibilidad
     const checkBackendHealth = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://159-203-136-199.nip.io'}/api/health`);
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://api.menuby.tech'}/api/health`);
         const data = await response.json();
         
         setHealthInfo({

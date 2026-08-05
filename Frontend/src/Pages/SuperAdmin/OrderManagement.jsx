@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { SAToast } from "../../Components/SuperAdmin/ui";
 
-const API_URL = (import.meta.env.VITE_API_URL || "https://159-203-136-199.nip.io") + "/api";
+const API_URL = (import.meta.env.VITE_API_URL || "https://api.menuby.tech") + "/api";
 
 const STATUS_CONFIG = {
   pending:           { label: "Pendiente",        color: "bg-amber-100 text-amber-600 border-amber-200" },

@@ -13,7 +13,7 @@
 
 // NOTE: Cloudflare Pages Functions cannot use Vite imports.
 // If the backend URL changes, update this fallback AND the VITE_API_URL env var.
-const API_BASE = (typeof process !== 'undefined' && process.env?.API_BASE_URL) || 'https://159-203-136-199.nip.io/api';
+const API_BASE = (typeof process !== 'undefined' && process.env?.API_BASE_URL) || 'https://api.menuby.tech/api';
 const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
 const SITE_ORIGIN = 'https://menuby.tech';
 

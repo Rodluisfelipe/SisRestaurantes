@@ -13,7 +13,7 @@
 const isProd = import.meta.env.PROD || import.meta.env.VITE_ENVIRONMENT === 'production';
 
 // Production backend base URL (without /api) — single source of truth
-const PROD_BACKEND_URL = 'https://159-203-136-199.nip.io';
+const PROD_BACKEND_URL = 'https://api.menuby.tech';
 
 // Función para obtener la URL base del backend (sin /api)
 const getBackendUrl = () => {
