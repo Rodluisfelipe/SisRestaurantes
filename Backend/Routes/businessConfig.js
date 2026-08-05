@@ -521,4 +521,70 @@ router.get("/catalog", async (req, res) => {
   }
 });
 
+// GET /api/business-config/discover — red de descubrimiento MenuBy
+// Params: lat, lng (opcional, para ordenar por cercanía), exclude (slug a omitir), limit
+const haversineKm = (lat1, lng1, lat2, lng2) => {
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+router.get("/discover", async (req, res) => {
+  try {
+    const { lat, lng, exclude } = req.query;
+    const limit = Math.min(parseInt(req.query.limit) || 12, 30);
+    const hasGeo = lat != null && lng != null && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lng));
+
+    const businesses = await BusinessConfig.find(
+      { isActive: true, menuStatus: { $ne: 'paused' } },
+      'slug businessName logo coverImage description businessType city department location.coordinates google.rating google.reviewCount businessHours updatedAt'
+    ).lean();
+
+    const cLat = hasGeo ? parseFloat(lat) : null;
+    const cLng = hasGeo ? parseFloat(lng) : null;
+
+    let list = businesses
+      .filter(b => b.slug && b.slug !== exclude)
+      .map(b => {
+        const coords = b.location?.coordinates;
+        let distanceKm = null;
+        if (hasGeo && coords && typeof coords.lat === 'number' && typeof coords.lng === 'number') {
+          distanceKm = Math.round(haversineKm(cLat, cLng, coords.lat, coords.lng) * 10) / 10;
+        }
+        return {
+          slug: b.slug,
+          businessName: b.businessName,
+          logo: b.logo || null,
+          coverImage: b.coverImage || null,
+          businessType: b.businessType || null,
+          city: b.city || '',
+          rating: b.google?.rating ?? null,
+          reviewCount: b.google?.reviewCount ?? 0,
+          distanceKm,
+          businessHours: b.businessHours || null,
+        };
+      });
+
+    // Orden: por cercanía si hay geo (los sin distancia al final), luego por rating
+    list.sort((a, b) => {
+      if (hasGeo) {
+        if (a.distanceKm == null && b.distanceKm == null) return (b.rating || 0) - (a.rating || 0);
+        if (a.distanceKm == null) return 1;
+        if (b.distanceKm == null) return -1;
+        return a.distanceKm - b.distanceKm;
+      }
+      return (b.rating || 0) - (a.rating || 0);
+    });
+
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ businesses: list.slice(0, limit) });
+  } catch (error) {
+    logger.error('Error en descubrimiento MenuBy', error, req);
+    res.status(500).json({ businesses: [] });
+  }
+});
+
 module.exports = router;
