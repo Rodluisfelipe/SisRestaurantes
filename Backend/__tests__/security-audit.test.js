@@ -1144,14 +1144,17 @@ describe('M1 — Loyalty points expiry cron', () => {
     expect(src).toContain('startLoyaltyExpiryCron');
   });
 
-  test('cron runs at 3 AM Colombia (08:00 UTC)', () => {
+  test('cron runs at 3 AM Colombia, declared by timezone', () => {
     const fs = require('fs');
     const path = require('path');
     const src = fs.readFileSync(
       path.join(__dirname, '..', 'services', 'loyaltyExpiryCron.js'), 'utf8'
     );
-    // 08:00 UTC = 3:00 AM Colombia
-    expect(src).toContain("'0 8 * * *'");
+    /* Antes se declaraba como '0 8' asumiendo que el contenedor corría en UTC.
+       Se comprueba la zona explícita para que fijarle un TZ al contenedor no
+       mueva la expiración de puntos cinco horas en silencio. */
+    expect(src).toContain("'0 3 * * *'");
+    expect(src).toContain("timezone: 'America/Bogota'");
   });
 });
 
@@ -1923,12 +1926,16 @@ describe('SRE-S14 — Public businesses endpoints rate limited', () => {
     }
   });
 
-  test('debug/all endpoint is gated by NODE_ENV', () => {
+  test('debug/all endpoint requires superadmin', () => {
     const fs = require('fs');
     const path = require('path');
     const src = fs.readFileSync(path.join(__dirname, '..', 'Routes', 'businesses.js'), 'utf8');
-    expect(src).toContain("process.env.NODE_ENV !== 'production'");
+    /* El endpoint pasó de estar limitado a entornos no productivos a exigir
+       autenticación de superadmin, que es más estricto: ya no queda expuesto
+       ni siquiera en desarrollo. El test seguía comprobando el gate viejo y
+       llevaba tiempo fallando. */
     expect(src).toContain('/debug/all');
+    expect(src).toContain("router.get('/debug/all', authSuperAdmin");
   });
 });
 
