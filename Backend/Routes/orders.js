@@ -9,6 +9,7 @@ const { ObjectId } = require("mongoose").Types;
 const socketService = require("../services/socketService");
 const { validateAndResolveBusinessId, createBusinessFilter } = require("../utils/businessValidator");
 const { isValidObjectId } = require("../utils/validators");
+const { SALES, DELIVERY, TIPS } = require('../utils/revenue');
 const logger = require("../utils/logger");
 const { getSubscriptionForBusiness, getPlanLimitStatus, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 const LoyaltyProgram = require('../Models/LoyaltyProgram');
@@ -766,7 +767,7 @@ router.get("/completed", tenantAuth, async (req, res) => {
           $group: {
             _id: null,
             totalOrders: { $sum: 1 },
-            totalRevenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+            totalRevenue: { $sum: SALES },
             totalProducts: {
               $sum: {
                 $reduce: {

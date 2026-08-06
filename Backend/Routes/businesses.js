@@ -8,6 +8,7 @@ const DeliveryZone = require('../Models/DeliveryZone');
 const Order = require('../Models/Order');
 const { validateAndResolveBusinessId } = require('../utils/businessValidator');
 const { ORDER_STATUS } = require('../utils/constants');
+const { SALES, DELIVERY, TIPS } = require('../utils/revenue');
 const logger = require('../utils/logger');
 const { formatHttpError } = require('../utils/errorFormatter');
 const { pointInPolygon, pointInRadius } = require('../utils/geospatial');
@@ -100,7 +101,7 @@ const getBatchBusinessInfo = async (businessIds) => {
             _id: '$businessId',
             orderCount: { $sum: 1 },
             avgOrderValue: { $avg: '$totalAmount' },
-            totalRevenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } }
+            totalRevenue: { $sum: SALES }
           }
         }
       ])

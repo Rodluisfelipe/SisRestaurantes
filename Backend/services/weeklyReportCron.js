@@ -7,6 +7,7 @@ const Admin = require('../Models/Admin');
 const CompletedOrder = require('../Models/CompletedOrder');
 const { sendWeeklyReportEmail } = require('./emailService');
 const { trackRun } = require('./cronRegistry');
+const { SALES } = require('../utils/revenue');
 
 const WD = ['', 'Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -14,7 +15,8 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // Stats de un negocio en [start, end) — hora Colombia via completedAt en UTC.
 async function statsFor(bizId, start, end) {
-  const rev = { $ifNull: ['$finalAmount', '$totalAmount'] };
+  // Ventas del negocio: productos menos descuentos, sin domicilios ni propinas
+  const rev = SALES;
   const rows = await CompletedOrder.aggregate([
     { $match: { businessId: bizId, completedAt: { $gte: start, $lt: end } } },
     { $facet: {

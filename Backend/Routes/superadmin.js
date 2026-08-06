@@ -16,6 +16,7 @@ const CrewRechargeRequest = require('../Models/CrewRechargeRequest');
 const CrewEmployer = require('../Models/CrewEmployer');
 const crewLedger = require('../services/crewLedger');
 const mongoose = require('mongoose');
+const { SALES, DELIVERY, TIPS } = require('../utils/revenue');
 const logger = require('../utils/logger');
 
 // Rutas protegidas (requieren autenticación de superadmin)
@@ -734,11 +735,11 @@ router.get('/stats/overview', async (req, res) => {
       CompletedOrder.countDocuments({ completedAt: { $gte: startOfMonth } }),
       CompletedOrder.aggregate([
         { $match: { status: { $ne: 'cancelled' } } },
-        { $group: { _id: null, sum: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } } } },
+        { $group: { _id: null, sum: { $sum: SALES } } },
       ]),
       CompletedOrder.aggregate([
         { $match: { completedAt: { $gte: startOfMonth }, status: { $ne: 'cancelled' } } },
-        { $group: { _id: null, sum: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } } } },
+        { $group: { _id: null, sum: { $sum: SALES } } },
       ]),
       Banner.countDocuments({ status: 'pending' }),
       PaymentRequest.countDocuments({ status: 'pending' }),
@@ -749,7 +750,7 @@ router.get('/stats/overview', async (req, res) => {
       }),
       CompletedOrder.aggregate([
         { $match: { status: { $ne: 'cancelled' } } },
-        { $group: { _id: '$businessId', count: { $sum: 1 }, gmv: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } } } },
+        { $group: { _id: '$businessId', count: { $sum: 1 }, gmv: { $sum: SALES } } },
         { $sort: { count: -1 } },
         { $limit: 5 },
         { $lookup: { from: 'businessconfigs', localField: '_id', foreignField: '_id', as: 'business' } },

@@ -197,23 +197,39 @@ export default function MonthlyClosing() {
             <Kpi label="Productos vendidos" value={num(data.current.products)} delta={data.deltas.products} hint={`vs ${num(data.previous.products)}`} />
           </div>
 
-          {/* Conceptos que se suman o restan dentro de las ventas */}
-          {(data.current.deliveryFees > 0 || data.current.discounts > 0 || data.current.tips > 0) && (
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white rounded-2xl border border-slate-200 p-3">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Domicilios</p>
-                <p className="text-lg font-black text-slate-800 tabular-nums">{money(data.current.deliveryFees)}</p>
+          {/* Lo que se cobró además de las ventas. Va aparte porque el
+              domicilio suele ser del domiciliario y la propina del personal:
+              sumarlos a "Ventas" infla la cifra con la que se toman decisiones. */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4">
+            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">De ventas a caja</h3>
+            <div className="space-y-2">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[13px] font-semibold text-slate-700">Ventas <span className="font-normal text-slate-400">(productos − descuentos)</span></span>
+                <span className="text-[13px] font-bold text-slate-800 tabular-nums">{money(data.current.revenue)}</span>
               </div>
-              <div className="bg-white rounded-2xl border border-slate-200 p-3">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Descuentos</p>
-                <p className="text-lg font-black text-emerald-600 tabular-nums">−{money(data.current.discounts)}</p>
-              </div>
-              <div className="bg-white rounded-2xl border border-slate-200 p-3">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Propinas</p>
-                <p className="text-lg font-black text-slate-800 tabular-nums">{money(data.current.tips)}</p>
+              {data.current.deliveryFees > 0 && (
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[13px] text-slate-600">+ Domicilios <span className="text-slate-400">(suelen ir al domiciliario)</span></span>
+                  <span className="text-[13px] font-semibold text-slate-700 tabular-nums">{money(data.current.deliveryFees)}</span>
+                </div>
+              )}
+              {data.current.tips > 0 && (
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-[13px] text-slate-600">+ Propinas <span className="text-slate-400">(del personal)</span></span>
+                  <span className="text-[13px] font-semibold text-slate-700 tabular-nums">{money(data.current.tips)}</span>
+                </div>
+              )}
+              <div className="flex items-baseline justify-between gap-2 pt-2 border-t border-slate-100">
+                <span className="text-sm font-bold text-slate-900">Total cobrado</span>
+                <span className="text-base font-black text-slate-900 tabular-nums">{money(data.current.charged ?? data.current.revenue)}</span>
               </div>
             </div>
-          )}
+            {data.current.discounts > 0 && (
+              <p className="text-[11px] text-slate-400 mt-2.5">
+                Se descontaron {money(data.current.discounts)} en cupones y promociones, ya restados de Ventas.
+              </p>
+            )}
+          </div>
 
           {/* Serie diaria */}
           <div className="bg-white rounded-2xl border border-slate-200 p-4">

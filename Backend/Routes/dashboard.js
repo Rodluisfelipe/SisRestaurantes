@@ -8,6 +8,7 @@ const Product = require('../Models/Product');
 const BusinessConfig = require('../Models/BusinessConfig');
 const { tenantAuth } = require('../middleware/tenantAuth');
 const { startOfDayCOL, endOfDayCOL, startOfMonthCOL, endOfMonthCOL } = require('../utils/timezone');
+const { SALES, DELIVERY, TIPS } = require('../utils/revenue');
 const logger = require('../utils/logger');
 const { getSubscriptionForBusiness, isFeatureEnabledForPlan } = require('../utils/subscriptionHelper');
 
@@ -84,10 +85,10 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: null,
           totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
-          avgTicket: { $avg: { $ifNull: ['$finalAmount', '$totalAmount'] } },
-          minOrder: { $min: { $ifNull: ['$finalAmount', '$totalAmount'] } },
-          maxOrder: { $max: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          totalRevenue: { $sum: SALES },
+          avgTicket: { $avg: SALES },
+          minOrder: { $min: SALES },
+          maxOrder: { $max: SALES },
         }},
       ]),
 
@@ -97,7 +98,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: null,
           totalOrders: { $sum: 1 },
-          totalRevenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          totalRevenue: { $sum: SALES },
         }},
       ]),
 
@@ -122,7 +123,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
             },
           },
           orders: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          revenue: { $sum: SALES },
         }},
         { $sort: { _id: 1 } },
       ]),
@@ -147,7 +148,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: '$orderChannel',
           count: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          revenue: { $sum: SALES },
         }},
       ]),
 
@@ -157,7 +158,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: '$paymentMethod',
           count: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          revenue: { $sum: SALES },
         }},
       ]),
 
@@ -167,7 +168,7 @@ router.get('/stats', tenantAuth, async (req, res) => {
         { $group: {
           _id: '$orderType',
           count: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ['$finalAmount', '$totalAmount'] } },
+          revenue: { $sum: SALES },
         }},
       ]),
 
@@ -405,7 +406,7 @@ function delta(now, before) {
   return Math.round(((now - before) / before) * 100);
 }
 
-const REVENUE = { $ifNull: ['$finalAmount', '$totalAmount'] };
+const REVENUE = SALES;
 
 async function monthTotals(bid, start, end) {
   const rows = await CompletedOrder.aggregate([
@@ -413,26 +414,31 @@ async function monthTotals(bid, start, end) {
     { $group: {
       _id: null,
       orders: { $sum: 1 },
-      revenue: { $sum: REVENUE },
+      revenue: { $sum: SALES },
       products: { $sum: { $reduce: {
         input: { $ifNull: ['$items', []] }, initialValue: 0,
         in: { $add: ['$$value', { $ifNull: ['$$this.quantity', 0] }] },
       } } },
-      delivery: { $sum: { $ifNull: ['$deliveryFee', 0] } },
+      delivery: { $sum: DELIVERY },
       discounts: { $sum: { $ifNull: ['$discountAmount', 0] } },
-      tips: { $sum: { $ifNull: ['$tipAmount', 0] } },
+      tips: { $sum: TIPS },
     } },
   ]);
   const t = rows[0] || {};
   const orders = t.orders || 0;
   const revenue = t.revenue || 0;
+  const deliveryFees = Math.round(t.delivery || 0);
+  const tips = Math.round(t.tips || 0);
   return {
     orders,
-    revenue: Math.round(revenue),
+    revenue: Math.round(revenue),          // ventas: productos menos descuentos
     products: t.products || 0,
-    deliveryFees: Math.round(t.delivery || 0),
+    deliveryFees,
     discounts: Math.round(t.discounts || 0),
-    tips: Math.round(t.tips || 0),
+    tips,
+    // Lo que entró en caja: ventas + domicilios + propinas. Se manda aparte
+    // para poder mostrar ambas cifras sin que nadie las vuelva a mezclar.
+    charged: Math.round(revenue) + deliveryFees + tips,
     avgTicket: orders > 0 ? Math.round(revenue / orders) : 0,
   };
 }

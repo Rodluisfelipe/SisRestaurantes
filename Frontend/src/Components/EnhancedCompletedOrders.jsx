@@ -221,6 +221,13 @@ function EnhancedCompletedOrders() {
         return;
       }
 
+      /* Ventas = productos - descuentos. Domicilio y propina van en sus
+         propias columnas y solo se suman en 'Cobrado'. Se calcula desde las
+         piezas y no desde finalAmount, que durante meses se guardo sin el
+         domicilio. */
+      const xlSales = (o) => (Number(o.totalAmount) || 0) - (Number(o.discountAmount) || 0);
+      const xlCharged = (o) => xlSales(o) + (Number(o.deliveryFee) || 0) + (Number(o.tipAmount) || 0);
+
       const orderTypeLabel = (t) => t === 'delivery' ? 'Domicilio' : t === 'takeaway' ? 'Para llevar' : 'En sitio';
       const channelLabel = (c) => c === 'pos' ? 'POS' : c === 'inapp' ? 'In-App' : 'WhatsApp';
       const paymentLabel = (p) => {
@@ -269,7 +276,7 @@ function EnhancedCompletedOrders() {
       ws.getRow(2).height = 20;
 
       // Headers
-      const headers = ['# Pedido', 'Fecha', 'Hora', 'Cliente', 'Teléfono', 'Tipo', 'Canal', 'Método de Pago', 'Mesa/Hab', 'Dirección', 'Domiciliario', 'Productos', 'Cant. Items', 'Subtotal', 'Descuento', 'Envío', 'Total'];
+      const headers = ['# Pedido', 'Fecha', 'Hora', 'Cliente', 'Teléfono', 'Tipo', 'Canal', 'Método de Pago', 'Mesa/Hab', 'Dirección', 'Domiciliario', 'Productos', 'Cant. Items', 'Subtotal', 'Descuento', 'Envío', 'Propina', 'Cobrado'];
       const headerRow = ws.addRow(headers);
       headerRow.eachCell((cell) => {
         cell.fill = headerFill;
@@ -282,7 +289,7 @@ function EnhancedCompletedOrders() {
       ws.columns = [
         { width: 10 }, { width: 13 }, { width: 8 }, { width: 22 }, { width: 15 },
         { width: 13 }, { width: 11 }, { width: 15 }, { width: 10 }, { width: 25 },
-        { width: 18 }, { width: 40 }, { width: 10 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 14 },
+        { width: 18 }, { width: 40 }, { width: 10 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 12 }, { width: 14 },
       ];
 
       const typeColors = { 'En sitio': 'FFDBEAFE', 'Para llevar': 'FFFEF3C7', 'Domicilio': 'FFF3E8FF' };
@@ -303,7 +310,7 @@ function EnhancedCompletedOrders() {
           paymentLabel(o.paymentMethod), o.tableNumber || '', o.address || '',
           domiName,
           itemsSummary, totalItems,
-          o.totalAmount || 0, o.discountAmount || 0, o.deliveryFee || 0, o.finalAmount || o.totalAmount || 0,
+          o.totalAmount || 0, o.discountAmount || 0, o.deliveryFee || 0, o.tipAmount || 0, xlCharged(o),
         ]);
 
         const rowFill = idx % 2 === 0
@@ -314,7 +321,7 @@ function EnhancedCompletedOrders() {
           cell.border = allBorders;
           cell.fill = rowFill;
           cell.alignment = { vertical: 'middle', wrapText: colNumber === 12 };
-          if ([14, 15, 16, 17].includes(colNumber)) {
+          if ([14, 15, 16, 17, 18].includes(colNumber)) {
             cell.numFmt = currencyFormat;
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
           }
@@ -332,7 +339,9 @@ function EnhancedCompletedOrders() {
 
       // Summary
       ws.addRow([]);
-      const totalRevenue = orders.reduce((s, o) => s + (o.finalAmount || o.totalAmount || 0), 0);
+      const totalRevenue = orders.reduce((s, o) => s + xlSales(o), 0);
+      const totalCharged = orders.reduce((s, o) => s + xlCharged(o), 0);
+      const totalTips = orders.reduce((s, o) => s + (Number(o.tipAmount) || 0), 0);
       const totalDiscount = orders.reduce((s, o) => s + (o.discountAmount || 0), 0);
       const totalDeliveryFees = orders.reduce((s, o) => s + (o.deliveryFee || 0), 0);
       const avgTicket = totalRevenue / (orders.length || 1);
@@ -351,7 +360,7 @@ function EnhancedCompletedOrders() {
       ws.getRow(sRow).height = 24;
 
       const summaryLabelFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEFF6FF' } };
-      [['Total Pedidos', orders.length], ['Ventas Totales', totalRevenue], ['Ticket Promedio', avgTicket], ['Total Descuentos', totalDiscount], ['Total Envíos', totalDeliveryFees]].forEach(([label, value]) => {
+      [['Total Pedidos', orders.length], ['Ventas (productos - descuentos)', totalRevenue], ['Ticket Promedio', avgTicket], ['Total Descuentos', totalDiscount], ['Total Envíos', totalDeliveryFees], ['Total Propinas', totalTips], ['TOTAL COBRADO', totalCharged]].forEach(([label, value]) => {
         const r = ws.addRow([label, '', '', value]);
         ws.mergeCells(`A${r.number}:C${r.number}`);
         r.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF1E3A5F' } };
@@ -395,7 +404,7 @@ function EnhancedCompletedOrders() {
 
       // Sheet 2: Por Tipo
       const typeCounts = { 'En sitio': { count: 0, total: 0 }, 'Para llevar': { count: 0, total: 0 }, 'Domicilio': { count: 0, total: 0 } };
-      orders.forEach(o => { const l = orderTypeLabel(o.orderType); if (typeCounts[l]) { typeCounts[l].count++; typeCounts[l].total += (o.finalAmount || o.totalAmount || 0); } });
+      orders.forEach(o => { const l = orderTypeLabel(o.orderType); if (typeCounts[l]) { typeCounts[l].count++; typeCounts[l].total += xlSales(o); } });
       addBreakdownSheet('Por Tipo', 'Tipo de Pedido', Object.entries(typeCounts).map(([k, v]) => [k, v.count, v.total]));
 
       // Sheet 3: Por Canal
@@ -404,7 +413,7 @@ function EnhancedCompletedOrders() {
         const ch = channelLabel(o.orderChannel);
         if (!channelCounts[ch]) channelCounts[ch] = { count: 0, total: 0 };
         channelCounts[ch].count++;
-        channelCounts[ch].total += (o.finalAmount || o.totalAmount || 0);
+        channelCounts[ch].total += xlSales(o);
       });
       addBreakdownSheet('Por Canal', 'Canal', Object.entries(channelCounts).map(([k, v]) => [k, v.count, v.total]));
 
@@ -414,7 +423,7 @@ function EnhancedCompletedOrders() {
         const pm = paymentLabel(o.paymentMethod);
         if (!payCounts[pm]) payCounts[pm] = { count: 0, total: 0 };
         payCounts[pm].count++;
-        payCounts[pm].total += (o.finalAmount || o.totalAmount || 0);
+        payCounts[pm].total += xlSales(o);
       });
       addBreakdownSheet('Por Pago', 'Método de Pago', Object.entries(payCounts).map(([k, v]) => [k, v.count, v.total]));
 
@@ -1007,7 +1016,11 @@ function EnhancedCompletedOrders() {
   // del backend sobre TODO el rango filtrado (no solo la página cargada); en
   // 'today' se calculan sobre los pedidos del día. "Ventas" usa finalAmount
   // (incluye descuentos/envíos) igual que el Excel; cae a totalAmount si es null.
-  const revenueOf = (o) => (o.finalAmount || o.totalAmount || 0);
+  /* Ventas del negocio: productos menos descuentos. El domicilio y la propina
+     no entran aquí, se muestran aparte. */
+  const salesOf = (o) => (Number(o.totalAmount) || 0) - (Number(o.discountAmount) || 0);
+  const chargedOf = (o) => salesOf(o) + (Number(o.deliveryFee) || 0) + (Number(o.tipAmount) || 0);
+  const revenueOf = salesOf;
   const localMetrics = (orderCount) => {
     const orders = orderCount != null ? orderCount : filteredOrders.length;
     const revenue = filteredOrders.reduce((s, o) => s + revenueOf(o), 0);
@@ -1455,7 +1468,7 @@ function EnhancedCompletedOrders() {
                         : '—'}
                     </td>
                     <td className="px-4 py-2.5 text-sm font-bold text-emerald-600 tabular-nums">
-                      ${(order.finalAmount || order.totalAmount || 0).toLocaleString()}
+                      ${chargedOf(order).toLocaleString()}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-500 hidden sm:table-cell tabular-nums">
                       {new Date(order.completedAt || order.createdAt).toLocaleString('es-ES', {
@@ -1509,7 +1522,7 @@ function EnhancedCompletedOrders() {
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-[13px] font-bold text-emerald-600 tabular-nums">${(order.finalAmount || order.totalAmount || 0).toLocaleString()}</p>
+                  <p className="text-[13px] font-bold text-emerald-600 tabular-nums">${chargedOf(order).toLocaleString()}</p>
                   <p className="text-[10px] text-slate-400">{order.items?.length || 0} items</p>
                 </div>
                 <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
