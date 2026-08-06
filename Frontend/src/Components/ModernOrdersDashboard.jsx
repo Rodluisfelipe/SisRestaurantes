@@ -243,6 +243,22 @@ function ModernOrdersDashboard() {
 
   // Un pedido ya cerrado no se toca; para esos el detalle es solo de lectura.
   const puedeEditarItems = (o) => !!o && !['completed', 'cancelled', 'delivered'].includes(o.status);
+
+  /* Los cambios se acumulan y se imprimen de una sola vez: una comanda por
+     cada clic sería imposible de seguir en la cocina. */
+  const [printingChanges, setPrintingChanges] = useState(false);
+  const printPendingChanges = useCallback(async (order) => {
+    if (!order?._id || printingChanges) return;
+    setPrintingChanges(true);
+    try {
+      const res = await api.post(`/orders/${order._id}/print-changes`, { businessId: order.businessId });
+      setOrderDetails(res.data.order);
+    } catch (err) {
+      alert(err.response?.data?.message || 'No se pudo enviar la comanda');
+    } finally {
+      setPrintingChanges(false);
+    }
+  }, [printingChanges, setOrderDetails]);
   const closeQuickOrder = useCallback(() => setShowQuickOrder(false), []);
   const onQuickOrderCreated = useCallback(() => {}, []);
 
@@ -851,6 +867,32 @@ function ModernOrdersDashboard() {
                 </div>
 
                 {/* ── Chat removed from body — now floating ── */}
+
+                {/* Cambios que cocina todavía no tiene en papel. Se acumulan
+                    para no sacar una comanda por cada ajuste. */}
+                {orderDetails.pendingKitchenChanges?.length > 0 && (
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-amber-200 flex items-center gap-2">
+                      <FaExclamationTriangle className="text-amber-500 text-[11px] shrink-0" />
+                      <span className="text-[12px] font-bold text-amber-900">
+                        Cocina aún no sabe {orderDetails.pendingKitchenChanges.length === 1 ? 'de 1 cambio' : `de ${orderDetails.pendingKitchenChanges.length} cambios`}
+                      </span>
+                    </div>
+                    <div className="px-3 py-2 space-y-1">
+                      {orderDetails.pendingKitchenChanges.map((c, i) => (
+                        <p key={i} className="text-[11px] font-mono text-amber-900 leading-snug"><span className="font-bold">{c.qty || 1}x</span> {c.text}</p>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => printPendingChanges(orderDetails)}
+                      disabled={printingChanges}
+                      className="w-full flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-60 text-white py-2.5 text-xs font-bold transition-colors active:scale-[0.98]"
+                    >
+                      <FaPrint className="text-[10px]" />
+                      {printingChanges ? 'Enviando...' : 'Imprimir comanda de cambios'}
+                    </button>
+                  </div>
+                )}
 
                 {/* ── Products ── */}
                 <div>

@@ -1444,6 +1444,12 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
       return sum + (item.price + toppingsPrice) * item.quantity;
     }, 0);
 
+    /* Se acumula para la comanda de cambios en vez de imprimir aquí: el admin
+       suele agregar varias cosas seguidas y saldría un papel por cada una. */
+    for (const it of newItems) {
+      order.pendingKitchenChanges.push({ text: `AGREGAR: ${it.name}`, qty: it.quantity, at: new Date() });
+    }
+
     // Push new items and update totals
     order.items.push(...newItems);
     order.totalAmount = (order.totalAmount || 0) + addedTotal;
@@ -1465,29 +1471,6 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
       addedItems: newItems,
       addedTotal
     });
-
-    /* Comanda con lo agregado. El evento de arriba solo refresca pantallas:
-       hasta ahora, si el cliente pedía algo más, a cocina no le llegaba nada
-       impreso y había que avisarle de palabra.
-
-       Se manda como comanda normal para que funcione con los agentes ya
-       instalados, sin recompilarlos. */
-    try {
-      const { printEmitter } = require('../services/socketService');
-      printEmitter.emit(`print:${order.businessId.toString()}`, {
-        _id: order._id,
-        orderNumber: `${order.orderNumber} AGREGADO`,
-        customerName: '*** PRODUCTOS AGREGADOS ***',
-        orderType: order.orderType,
-        tableNumber: order.tableNumber,
-        createdAt: new Date().toISOString(),
-        items: newItems.map(i => ({ name: i.name, quantity: i.quantity, selectedToppings: i.selectedToppings })),
-        totalAmount: order.totalAmount,
-        isCorrection: true,
-      });
-    } catch (e) {
-      logger.warn('No se pudo emitir la comanda de agregados', { error: e.message, orderId: order._id.toString() });
-    }
 
     res.json(order);
   } catch (error) {
@@ -1596,6 +1579,22 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
       : `${antes.name}: ${antes.quantity} → ${quantity}`;
     order.statusHistory.push({ status: order.status, timestamp: new Date(), note: nota });
 
+    /* No se imprime aquí: si el admin ajusta tres líneas saldrían tres
+       comandas y en cocina serían imposibles de seguir. Se acumula y él
+       imprime una sola cuando termina. */
+    let linea, unidades;
+    if (quantity === 0) {
+      linea = `ANULAR: ${antes.name}`;
+      unidades = antes.quantity;
+    } else if (quantity > antes.quantity) {
+      linea = `AGREGAR: ${antes.name} (queda en ${quantity})`;
+      unidades = quantity - antes.quantity;
+    } else {
+      linea = `QUITAR: ${antes.name} (queda en ${quantity})`;
+      unidades = antes.quantity - quantity;
+    }
+    order.pendingKitchenChanges.push({ text: linea, qty: unidades, at: new Date() });
+
     await order.save();
 
     logger.info('Pedido modificado', { orderId: order._id.toString(), orderNumber: order.orderNumber, cambio: nota });
@@ -1603,43 +1602,65 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
     socketService.emitToBusiness(order.businessId.toString(), "order_updated", order);
     socketService.emitToOrder(order._id, 'order_status_changed', { orderId: order._id, status: order.status, order });
 
-    /* Comanda de corrección: cocina ya tiene impreso el pedido viejo y seguiría
-       preparando lo que el cliente acaba de quitar. Se manda solo el cambio, no
-       el pedido entero, para que se lea de un vistazo junto a la comanda
-       original.
-
-       Va como una comanda normal a propósito: el agente ya instalado sabe
-       imprimirla y no hay que recompilarlo ni actualizarlo en cada negocio. */
-    try {
-      const { printEmitter } = require('../services/socketService');
-      let linea;
-      if (quantity === 0) {
-        linea = `** ANULAR ** ${antes.name}`;
-      } else if (quantity > antes.quantity) {
-        linea = `** AGREGAR ${quantity - antes.quantity} ** ${antes.name}  (queda en ${quantity})`;
-      } else {
-        linea = `** QUITAR ${antes.quantity - quantity} ** ${antes.name}  (queda en ${quantity})`;
-      }
-
-      printEmitter.emit(`print:${order.businessId.toString()}`, {
-        _id: order._id,
-        orderNumber: `${order.orderNumber} CORRECCION`,
-        customerName: '*** CAMBIO EN EL PEDIDO ***',
-        orderType: order.orderType,
-        tableNumber: order.tableNumber,
-        createdAt: new Date().toISOString(),
-        items: [{ name: linea, quantity: quantity === 0 ? antes.quantity : Math.abs(quantity - antes.quantity), selectedToppings: [] }],
-        totalAmount: order.totalAmount,
-        isCorrection: true,
-      });
-    } catch (e) {
-      // Que falle la impresión no puede tumbar el cambio, que ya está guardado
-      logger.warn('No se pudo emitir la comanda de corrección', { error: e.message, orderId: order._id.toString() });
-    }
-
     res.json(order);
   } catch (error) {
     logger.error('Error modificando productos del pedido', { error: error.message, orderId: req.params.id });
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
+/**
+ * POST /orders/:id/print-changes — comanda con los cambios acumulados.
+ *
+ * Se imprime cuando el admin termina de ajustar, no en cada clic: quitar tres
+ * productos sacaría tres papeles y en cocina serían imposibles de seguir.
+ *
+ * Sale como comanda normal a propósito, para que funcione con los agentes ya
+ * instalados sin recompilar el binario ni actualizarlo en cada negocio.
+ */
+router.post("/:id/print-changes", tenantAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
+    const order = await Order.findOne({
+      _id: id,
+      ...(tenantBizId ? { businessId: tenantBizId } : {})
+    });
+
+    if (!order) return res.status(404).json({ message: "Pedido no encontrado" });
+
+    const cambios = order.pendingKitchenChanges || [];
+    if (cambios.length === 0) {
+      return res.status(400).json({ message: 'No hay cambios pendientes de avisar a cocina', code: 'NO_CHANGES' });
+    }
+
+    const { printEmitter } = require('../services/socketService');
+    printEmitter.emit(`print:${order.businessId.toString()}`, {
+      _id: order._id,
+      orderNumber: `${order.orderNumber} CAMBIOS`,
+      customerName: '*** CAMBIOS EN EL PEDIDO ***',
+      orderType: order.orderType,
+      tableNumber: order.tableNumber,
+      createdAt: new Date().toISOString(),
+      items: cambios.map(c => ({ name: c.text, quantity: c.qty || 1, selectedToppings: [] })),
+      totalAmount: order.totalAmount,
+      isCorrection: true,
+    });
+
+    order.pendingKitchenChanges = [];
+    order.updatedAt = new Date();
+    await order.save();
+
+    logger.info('Comanda de cambios enviada', { orderId: order._id.toString(), orderNumber: order.orderNumber, cambios: cambios.length });
+    socketService.emitToBusiness(order.businessId.toString(), "order_updated", order);
+
+    res.json({ message: 'Comanda enviada a la impresora', printed: cambios.length, order });
+  } catch (error) {
+    logger.error('Error imprimiendo cambios del pedido', { error: error.message, orderId: req.params.id });
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });

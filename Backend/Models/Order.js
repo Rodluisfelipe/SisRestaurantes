@@ -91,7 +91,20 @@ const orderSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now },
     note: { type: String, default: '' }
   }],
-  
+
+  /* Cambios hechos al pedido que cocina todavía no tiene en papel.
+     Se acumulan en vez de imprimir uno por clic: quitar tres productos
+     sacaría tres comandas y sería imposible de seguir en la cocina. El
+     admin imprime cuando termina de ajustar y esto se vacía. */
+  pendingKitchenChanges: [{
+    text: { type: String, required: true },
+    // Unidades afectadas. Va aparte del texto porque la plantilla de la
+    // comanda ya imprime "Nx" delante de cada línea.
+    qty: { type: Number, default: 1 },
+    at: { type: Date, default: Date.now }
+  }],
+
+
   // Coupon information
   couponCode: {
     type: String,
