@@ -218,6 +218,31 @@ function ModernOrdersDashboard() {
   // Stable callbacks for memoized modals — prevents re-renders from socket updates
   const closeAddItems = useCallback(() => setAddItemsOrder(null), []);
   const onItemsAdded = useCallback((updatedOrder) => setOrderDetails(updatedOrder), [setOrderDetails]);
+
+  /* Cambiar cantidad o quitar una línea con el pedido ya tomado, para cuando
+     el cliente cambia de opinión. Antes solo se podía agregar: quitar algo
+     obligaba a cancelar el pedido entero y volver a montarlo. */
+  const [itemBusy, setItemBusy] = useState(null);
+  const changeItemQty = useCallback(async (order, item, nuevaCantidad) => {
+    if (!order?._id || !item?._id || itemBusy) return;
+    if (nuevaCantidad === 0 && !window.confirm(`¿Quitar "${item.name}" del pedido?`)) return;
+    setItemBusy(item._id);
+    try {
+      const res = await api.patch(`/orders/${order._id}/items`, {
+        businessId: order.businessId,
+        itemId: item._id,
+        quantity: nuevaCantidad,
+      });
+      setOrderDetails(res.data);
+    } catch (err) {
+      alert(err.response?.data?.message || 'No se pudo modificar el pedido');
+    } finally {
+      setItemBusy(null);
+    }
+  }, [itemBusy, setOrderDetails]);
+
+  // Un pedido ya cerrado no se toca; para esos el detalle es solo de lectura.
+  const puedeEditarItems = (o) => !!o && !['completed', 'cancelled', 'delivered'].includes(o.status);
   const closeQuickOrder = useCallback(() => setShowQuickOrder(false), []);
   const onQuickOrderCreated = useCallback(() => {}, []);
 
@@ -832,7 +857,7 @@ function ModernOrdersDashboard() {
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Productos</h3>
                   <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
                     {orderDetails.items?.map((item, index) => (
-                      <div key={index} className="flex justify-between items-start px-3 py-2 bg-white">
+                      <div key={item._id || index} className="flex justify-between items-start px-3 py-2 bg-white">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-[13px] font-medium text-slate-800">{item.name}</span>
@@ -869,6 +894,38 @@ function ModernOrdersDashboard() {
                         <div className="text-right shrink-0 ml-3">
                           <p className="text-[13px] font-semibold text-slate-800">${(item.price * item.quantity).toLocaleString()}</p>
                           {item.quantity > 1 && <p className="text-[10px] text-slate-400">${item.price.toLocaleString()} c/u</p>}
+
+                          {puedeEditarItems(orderDetails) && item._id && (
+                            <div className="flex items-center justify-end gap-1 mt-1.5">
+                              <button
+                                onClick={() => changeItemQty(orderDetails, item, item.quantity - 1)}
+                                disabled={itemBusy === item._id || item.quantity <= 1}
+                                className="w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                                title="Quitar una unidad"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M5 12h14" /></svg>
+                              </button>
+                              <span className="w-6 text-center text-[12px] font-bold text-slate-700 tabular-nums">
+                                {itemBusy === item._id ? '·' : item.quantity}
+                              </span>
+                              <button
+                                onClick={() => changeItemQty(orderDetails, item, item.quantity + 1)}
+                                disabled={itemBusy === item._id}
+                                className="w-7 h-7 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition-colors flex items-center justify-center"
+                                title="Agregar una unidad"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
+                              </button>
+                              <button
+                                onClick={() => changeItemQty(orderDetails, item, 0)}
+                                disabled={itemBusy === item._id}
+                                className="w-7 h-7 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 disabled:opacity-30 transition-colors flex items-center justify-center ml-0.5"
+                                title="Quitar del pedido"
+                              >
+                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" /></svg>
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}

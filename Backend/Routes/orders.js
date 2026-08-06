@@ -1473,6 +1473,120 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
   }
 });
 
+/* Precio de una línea con sus adiciones incluidas. Mismo criterio que usa
+   add-items para no separarse con el tiempo. */
+function lineTotal(item) {
+  const toppings = (item.selectedToppings || []).reduce((ts, t) => {
+    let tp = Number(t.price) || 0;
+    if (Array.isArray(t.subGroups)) {
+      tp += t.subGroups.reduce((ss, sg) => ss + (Number(sg.price) || 0), 0);
+    }
+    return ts + tp;
+  }, 0);
+  return ((Number(item.price) || 0) + toppings) * (Number(item.quantity) || 0);
+}
+
+/**
+ * PATCH /orders/:id/items — cambiar la cantidad de una línea o quitarla.
+ *
+ * Para cuando el cliente cambia de opinión con el pedido ya tomado. Hasta
+ * ahora solo se podían agregar productos: quitar obligaba a cancelar el
+ * pedido entero y volver a montarlo.
+ *
+ * body: { businessId, itemId, quantity }  — quantity 0 quita la línea.
+ */
+router.patch("/:id/items", tenantAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { itemId } = req.body;
+    const quantity = Number(req.body.quantity);
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+    if (!itemId) {
+      return res.status(400).json({ message: "itemId es requerido" });
+    }
+    if (!Number.isInteger(quantity) || quantity < 0 || quantity > 999) {
+      return res.status(400).json({ message: "La cantidad debe ser un entero entre 0 y 999" });
+    }
+
+    const tenantBizId = req.user.businessId || req.body.businessId || req.query.businessId;
+    const order = await Order.findOne({
+      _id: id,
+      ...(tenantBizId ? { businessId: tenantBizId } : {})
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Pedido no encontrado" });
+    }
+    if (['completed', 'cancelled', 'delivered'].includes(order.status)) {
+      return res.status(400).json({ message: "No se puede modificar un pedido completado, entregado o cancelado" });
+    }
+
+    /* Si el pedido ya entró a la caja, cambiar su valor descuadraría el conteo
+       del turno sin que el cajero se entere. Se bloquea aquí en vez de dejar
+       que la diferencia aparezca al cerrar. */
+    const CashRegister = require('../Models/CashRegister');
+    const yaEnCaja = await CashRegister.findOne({
+      businessId: order.businessId,
+      status: 'open',
+      'movements.orderId': order._id,
+    }).select('_id').lean();
+    if (yaEnCaja) {
+      return res.status(409).json({
+        message: 'Este pedido ya fue cobrado y registrado en la caja. Para cambiarlo, registra un reembolso o un movimiento de ajuste.',
+        code: 'ORDER_IN_CASH_REGISTER',
+      });
+    }
+
+    const item = order.items.id(itemId);
+    if (!item) {
+      return res.status(404).json({ message: "Ese producto no está en el pedido" });
+    }
+
+    const antes = { name: item.name, quantity: item.quantity };
+
+    if (quantity === 0) {
+      if (order.items.length === 1) {
+        return res.status(400).json({
+          message: 'Es el único producto del pedido. Si el cliente ya no quiere nada, cancela el pedido.',
+          code: 'LAST_ITEM',
+        });
+      }
+      order.items.pull(itemId);
+    } else {
+      item.quantity = quantity;
+    }
+
+    // Se recalcula sobre todas las líneas, no se ajusta la diferencia: así el
+    // total no puede quedar arrastrando un error de un cambio anterior.
+    order.totalAmount = order.items.reduce((sum, it) => sum + lineTotal(it), 0);
+    order.finalAmount = order.totalAmount
+      + (order.deliveryFee || 0)
+      - (order.discountAmount || 0)
+      + (order.tipAmount || 0);
+    order.updatedAt = new Date();
+
+    const nota = quantity === 0
+      ? `Se quitó ${antes.name} (x${antes.quantity})`
+      : `${antes.name}: ${antes.quantity} → ${quantity}`;
+    order.statusHistory.push({ status: order.status, timestamp: new Date(), note: nota });
+
+    await order.save();
+
+    logger.info('Pedido modificado', { orderId: order._id.toString(), orderNumber: order.orderNumber, cambio: nota });
+
+    socketService.emitToBusiness(order.businessId.toString(), "order_updated", order);
+    socketService.emitToOrder(order._id, 'order_status_changed', { orderId: order._id, status: order.status, order });
+
+    res.json(order);
+  } catch (error) {
+    logger.error('Error modificando productos del pedido', { error: error.message, orderId: req.params.id });
+    res.status(500).json({ message: 'Error interno del servidor' });
+  }
+});
+
 // Cobrar una cuenta abierta de mesa (POS): aplica pago + propina + descuento,
 // registra la venta en la caja (canal 'pos', una sola vez) y completa la orden.
 router.patch("/:id/pay-tab", tenantAuth, async (req, res) => {
