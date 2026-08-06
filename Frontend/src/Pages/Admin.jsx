@@ -18,7 +18,6 @@ import OrderNotificationBanner from "../Components/Admin/OrderNotificationBanner
 import AdminSectionErrorBoundary from "../Components/Admin/AdminSectionErrorBoundary";
 import AnnouncementPopup from "../Components/Admin/AnnouncementPopup";
 import WelcomeWizard from "../Components/Admin/WelcomeWizard";
-import FloatingHelpChat from "../Components/Admin/FloatingHelpChat";
 import MobileBottomNav from "../Components/Admin/MobileBottomNav";
 import ModoOperacion from "../Components/Admin/ModoOperacion";
 import MobileHeader from "../Components/Admin/MobileHeader";
@@ -682,7 +681,6 @@ function Admin() {
       />
 
       {/* Floating AI Help Chat (Groq) */}
-      <FloatingHelpChat />
 
       {/* Modo Operación full-screen overlay */}
       <ModoOperacion isOpen={modoOpOpen} onClose={() => setModoOpOpen(false)} />
