@@ -22,6 +22,7 @@ import FloatingHelpChat from "../Components/Admin/FloatingHelpChat";
 import MobileBottomNav from "../Components/Admin/MobileBottomNav";
 import ModoOperacion from "../Components/Admin/ModoOperacion";
 import MobileHeader from "../Components/Admin/MobileHeader";
+import { CalculatorLauncher } from "../Components/Admin/Calculator";
 
 // ── LAZY: cada pestaña carga su código bajo demanda (code-split del Admin) ──
 const BusinessSettings = lazy(() => import("../Components/BusinessSettings"));
@@ -696,6 +697,10 @@ function Admin() {
         userRole={user?.role}
         onOpenModoOp={() => setModoOpOpen(true)}
       />
+
+      {/* Varios negocios estaban usando la calculadora de Windows encima del
+          panel. Esta vive dentro y responde al teclado (Alt+C para abrirla). */}
+      <CalculatorLauncher />
     </div>
   );
 }

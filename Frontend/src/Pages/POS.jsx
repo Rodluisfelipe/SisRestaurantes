@@ -17,6 +17,7 @@ import POSTicket from '../Components/POS/POSTicket';
 import POSTableMap from '../Components/POS/POSTableMap';
 import POSActiveOrders from '../Components/POS/POSActiveOrders';
 import ProductToppingsSelector from '../Components/ProductToppingsSelector';
+import { CalculatorLauncher } from '../Components/Admin/Calculator';
 
 export default function POS() {
   const { businessConfig } = useBusinessConfig();
@@ -690,6 +691,10 @@ export default function POS() {
           onClose={() => setLastOrder(null)}
         />
       )}
+
+      {/* La misma calculadora del panel: el cajero es quien más cuentas
+          hace y no deberia salir del POS para hacerlas. */}
+      <CalculatorLauncher />
 
       {/* Confirmación de que el ticket salió por el agente. No bloquea: el
           cajero sigue vendiendo mientras la impresora trabaja. */}
