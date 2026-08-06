@@ -1466,6 +1466,29 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
       addedTotal
     });
 
+    /* Comanda con lo agregado. El evento de arriba solo refresca pantallas:
+       hasta ahora, si el cliente pedía algo más, a cocina no le llegaba nada
+       impreso y había que avisarle de palabra.
+
+       Se manda como comanda normal para que funcione con los agentes ya
+       instalados, sin recompilarlos. */
+    try {
+      const { printEmitter } = require('../services/socketService');
+      printEmitter.emit(`print:${order.businessId.toString()}`, {
+        _id: order._id,
+        orderNumber: `${order.orderNumber} AGREGADO`,
+        customerName: '*** PRODUCTOS AGREGADOS ***',
+        orderType: order.orderType,
+        tableNumber: order.tableNumber,
+        createdAt: new Date().toISOString(),
+        items: newItems.map(i => ({ name: i.name, quantity: i.quantity, selectedToppings: i.selectedToppings })),
+        totalAmount: order.totalAmount,
+        isCorrection: true,
+      });
+    } catch (e) {
+      logger.warn('No se pudo emitir la comanda de agregados', { error: e.message, orderId: order._id.toString() });
+    }
+
     res.json(order);
   } catch (error) {
     logger.error('Error adding items to order', { error: error.message, orderId: req.params.id });
@@ -1579,6 +1602,40 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
 
     socketService.emitToBusiness(order.businessId.toString(), "order_updated", order);
     socketService.emitToOrder(order._id, 'order_status_changed', { orderId: order._id, status: order.status, order });
+
+    /* Comanda de corrección: cocina ya tiene impreso el pedido viejo y seguiría
+       preparando lo que el cliente acaba de quitar. Se manda solo el cambio, no
+       el pedido entero, para que se lea de un vistazo junto a la comanda
+       original.
+
+       Va como una comanda normal a propósito: el agente ya instalado sabe
+       imprimirla y no hay que recompilarlo ni actualizarlo en cada negocio. */
+    try {
+      const { printEmitter } = require('../services/socketService');
+      let linea;
+      if (quantity === 0) {
+        linea = `** ANULAR ** ${antes.name}`;
+      } else if (quantity > antes.quantity) {
+        linea = `** AGREGAR ${quantity - antes.quantity} ** ${antes.name}  (queda en ${quantity})`;
+      } else {
+        linea = `** QUITAR ${antes.quantity - quantity} ** ${antes.name}  (queda en ${quantity})`;
+      }
+
+      printEmitter.emit(`print:${order.businessId.toString()}`, {
+        _id: order._id,
+        orderNumber: `${order.orderNumber} CORRECCION`,
+        customerName: '*** CAMBIO EN EL PEDIDO ***',
+        orderType: order.orderType,
+        tableNumber: order.tableNumber,
+        createdAt: new Date().toISOString(),
+        items: [{ name: linea, quantity: quantity === 0 ? antes.quantity : Math.abs(quantity - antes.quantity), selectedToppings: [] }],
+        totalAmount: order.totalAmount,
+        isCorrection: true,
+      });
+    } catch (e) {
+      // Que falle la impresión no puede tumbar el cambio, que ya está guardado
+      logger.warn('No se pudo emitir la comanda de corrección', { error: e.message, orderId: order._id.toString() });
+    }
 
     res.json(order);
   } catch (error) {
