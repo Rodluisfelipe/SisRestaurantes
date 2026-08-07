@@ -12,6 +12,12 @@ import api from '../../services/api';
 
 const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('es-CO');
 
+const NIVELES = [
+  { id: 'off', label: 'Sin control', desc: 'No se lleva inventario.' },
+  { id: 'basic', label: 'Básico', desc: 'Cantidad por producto, historial de movimientos, costo y aviso cuando algo se agota.' },
+  { id: 'advanced', label: 'Avanzado', desc: 'Además insumos y recetas: vender un plato descuenta pan, carne y queso.' },
+];
+
 const FILTROS = [
   { id: 'urgente', label: 'Requieren atención' },
   { id: 'control', label: 'Con control' },
@@ -146,8 +152,56 @@ export default function InventoryManager() {
 
   const r = datos?.resumen;
 
+  const cambiarModo = async (nuevo) => {
+    const antes = modo;
+    setModo(nuevo);   // respuesta inmediata; se revierte si falla
+    try {
+      await api.patch('/products/inventory/mode', { businessId, mode: nuevo });
+    } catch (err) {
+      setModo(antes);
+      alert(err.response?.data?.message || 'No se pudo cambiar el nivel');
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Nivel de inventario */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4">
+        <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">Nivel de inventario</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {NIVELES.map((n) => (
+            <button
+              key={n.id}
+              onClick={() => cambiarModo(n.id)}
+              className={`text-left p-3 rounded-xl border-2 transition-all ${
+                modo === n.id ? 'border-transparent' : 'border-slate-200 hover:border-slate-300'
+              }`}
+              style={modo === n.id ? { backgroundColor: `${themeColor}14`, borderColor: themeColor } : undefined}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${modo === n.id ? '' : 'bg-slate-300'}`}
+                  style={modo === n.id ? { backgroundColor: themeColor } : undefined} />
+                <span className="text-[13px] font-bold text-slate-800">{n.label}</span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-snug mt-1">{n.desc}</p>
+            </button>
+          ))}
+        </div>
+        {modo === 'advanced' && (
+          <p className="text-[11px] text-slate-400 mt-2.5 leading-relaxed">
+            Con receta, vender un plato descuenta sus insumos y no un contador del plato.
+            Los productos sin receta siguen controlándose por unidad, como una gaseosa.
+          </p>
+        )}
+      </div>
+
+      {modo === 'off' && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-[12px] text-slate-500">
+          El inventario está desactivado. Puedes seguir ajustando cantidades abajo, pero no se
+          descontará al vender ni recibirás avisos cuando algo se agote.
+        </div>
+      )}
+
       {/* Resumen */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Tarjeta label="Agotados" valor={r?.agotados ?? '—'} tono="red" />

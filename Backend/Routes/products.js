@@ -421,6 +421,39 @@ router.get("/inventory", tenantAuth, async (req, res) => {
 });
 
 /**
+ * PATCH /api/products/inventory/mode — nivel de inventario del negocio.
+ *
+ * off      sin control
+ * basic    contador por producto, historial, costo y aviso de agotados
+ * advanced además insumos y recetas: vender una hamburguesa descuenta pan,
+ *          carne y queso en vez de "hamburguesas"
+ */
+router.patch("/inventory/mode", tenantAuth, async (req, res) => {
+  try {
+    const businessId = req.user?.businessId || req.body.businessId;
+    if (!businessId) return res.status(400).json({ message: "businessId es requerido" });
+
+    const { mode } = req.body;
+    if (!['off', 'basic', 'advanced'].includes(mode)) {
+      return res.status(400).json({ message: 'Nivel inválido. Debe ser off, basic o advanced' });
+    }
+
+    const negocio = await BusinessConfig.findByIdAndUpdate(
+      businessId,
+      { 'inventory.mode': mode },
+      { new: true }
+    ).select('inventory').lean();
+    if (!negocio) return res.status(404).json({ message: 'Negocio no encontrado' });
+
+    logger.info('Nivel de inventario cambiado', { businessId, mode });
+    res.json({ mode: negocio.inventory?.mode || 'off' });
+  } catch (error) {
+    logger.error('Error cambiando el nivel de inventario', error, req);
+    res.status(500).json({ message: 'Error al cambiar el nivel' });
+  }
+});
+
+/**
  * GET /api/products/inventory/movements — historial de movimientos.
  *
  * Sin esto, cuando un conteo no cuadraba no había forma de saber por qué.

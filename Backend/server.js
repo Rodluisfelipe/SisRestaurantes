@@ -184,6 +184,7 @@ app.use('/uploads/order-proofs', proofAuth('order'), express.static('uploads/ord
 
 // Rutas API original
 app.use("/api/products", require("./Routes/products"));
+app.use("/api/supplies", require("./Routes/supplies"));   // insumos y recetas (inventario avanzado)
 app.use("/api/business-config", require("./Routes/businessConfig"));
 app.use("/api/businesses", require("./Routes/businesses")); // Catálogo de restaurantes
 app.use("/api/banners", require("./Routes/banners")); // Gestión de banners promocionales

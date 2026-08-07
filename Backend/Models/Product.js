@@ -85,6 +85,13 @@ const ProductSchema = new mongoose.Schema({
     type: Number,
     default: 5
   },
+  /* Receta: qué insumos consume una unidad de este producto. Solo aplica en el
+     inventario avanzado. Con receta, vender descuenta los insumos en vez del
+     contador del producto — es lo que de verdad se agota en la cocina. */
+  recipe: [{
+    supplyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supply', required: true },
+    quantity: { type: Number, required: true, min: 0 },
+  }],
   // Promo / Producto del día con cuenta regresiva
   promo: {
     active: { type: Boolean, default: false },

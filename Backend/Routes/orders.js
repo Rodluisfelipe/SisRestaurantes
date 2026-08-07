@@ -1562,6 +1562,56 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
  * igual se guarda y queda el aviso en el log. Un pedido perdido es peor que
  * un conteo desajustado.
  */
+/**
+ * Mueve los insumos que consume un producto con receta.
+ *
+ * En el inventario avanzado, vender una hamburguesa no descuenta
+ * "hamburguesas": descuenta pan, carne y queso, que es lo que de verdad se
+ * agota en la cocina. Si el producto no tiene receta, no hace nada y el
+ * control sigue siendo por producto.
+ */
+async function moverInsumos(producto, unidadesVendidas, signo, contexto) {
+  if (!producto?.recipe?.length) return false;
+
+  const Supply = require('../Models/Supply');
+  const StockMovement = require('../Models/StockMovement');
+
+  await Promise.all(producto.recipe.map(async (linea) => {
+    if (!linea.supplyId || !linea.quantity) return;
+    const consumo = linea.quantity * unidadesVendidas * signo;
+    if (!consumo) return;
+
+    const antes = await Supply.findOneAndUpdate(
+      { _id: linea.supplyId },
+      [{ $set: { stock: { $max: [0, { $add: [{ $ifNull: ['$stock', 0] }, consumo] }] } } }],
+      { new: false }
+    ).select('name stock unit businessId').lean();
+    if (!antes) return;
+
+    const a = antes.stock ?? 0;
+    const d = Math.max(0, a + consumo);
+
+    await StockMovement.create({
+      businessId: antes.businessId,
+      supplyId: linea.supplyId,
+      productName: antes.name,
+      unit: antes.unit || '',
+      type: contexto.type || (signo < 0 ? 'sale' : 'return'),
+      quantity: d - a,
+      stockBefore: a,
+      stockAfter: d,
+      orderId: contexto.orderId || null,
+      orderNumber: contexto.orderNumber || '',
+      userId: contexto.userId || null,
+      // Se deja dicho qué plato lo consumió: sin eso, ver "-150 g de carne"
+      // en el historial no explica nada.
+      note: `${producto.name} x${unidadesVendidas}`,
+    }).catch(() => {});
+  }));
+
+  return true;
+}
+
 async function moverStock(items, signo, contexto = {}) {
   if (!Array.isArray(items) || !items.length) return;
   try {
@@ -1572,6 +1622,15 @@ async function moverStock(items, signo, contexto = {}) {
       if (!item.productId) return;
       const cantidad = (Number(item.quantity) || 1) * signo;
       if (!cantidad) return;
+
+      /* Si el producto tiene receta, lo que se mueve son sus insumos. El
+         contador del producto se deja quieto: llevar los dos a la vez daría
+         un doble descuento del mismo consumo. */
+      const conReceta = await Product.findById(item.productId).select('name recipe').lean();
+      if (conReceta?.recipe?.length) {
+        await moverInsumos(conReceta, Math.abs(Number(item.quantity) || 1), signo, contexto);
+        return;
+      }
 
       /* findOneAndUpdate en vez de updateOne para conocer el saldo anterior:
          sin eso el historial no podría decir "de 12 pasó a 9", que es lo que
