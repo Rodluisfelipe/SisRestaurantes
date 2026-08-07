@@ -1196,6 +1196,13 @@ router.patch("/:id/status", tenantAuth, validateUpdateOrderStatus, async (req, r
       return res.status(404).json({ message: "Order not found" });
     }
     
+    /* Al cancelar se devuelve lo que se había descontado al crear el pedido.
+       Antes no se devolvía nunca: cada cancelación restaba del inventario
+       unidades que en realidad seguían en la nevera. */
+    if (status === ORDER_STATUS.CANCELLED) {
+      await moverStock(updatedOrder.items, +1);
+    }
+
     // Emit socket event
     socketService.emitToBusiness(updatedOrder.businessId.toString(), "order_updated", updatedOrder);
     // Emit to per-order tracking room for customer real-time updates
@@ -1502,6 +1509,9 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
       order.pendingKitchenChanges.push({ text: `AGREGAR: ${it.name}`, qty: it.quantity, at: new Date() });
     }
 
+    // Lo agregado también sale del inventario: antes solo descontaba al crear
+    await moverStock(newItems, -1);
+
     // Push new items and update totals
     order.items.push(...newItems);
     order.totalAmount = (order.totalAmount || 0) + addedTotal;
@@ -1530,6 +1540,44 @@ router.patch("/:id/add-items", tenantAuth, async (req, res) => {
     res.status(500).json({ message: 'Error interno del servidor' });
   }
 });
+
+/**
+ * Mueve el inventario de una lista de líneas de pedido.
+ *
+ * @param {Array} items  líneas con productId y quantity
+ * @param {number} signo -1 descuenta (se vendió), +1 devuelve (se canceló o
+ *                       se quitó del pedido)
+ *
+ * Existe porque el descuento solo ocurría al crear el pedido. Cancelarlo no
+ * devolvía nada, agregarle productos no descontaba, y quitarle tampoco
+ * devolvía: el inventario se iba desviando de la realidad en cada operación
+ * que no fuera "crear y despachar".
+ *
+ * Nunca tumba la operación que la llama: si el inventario falla, el pedido
+ * igual se guarda y queda el aviso en el log. Un pedido perdido es peor que
+ * un conteo desajustado.
+ */
+async function moverStock(items, signo) {
+  if (!Array.isArray(items) || !items.length) return;
+  try {
+    const Product = require('../Models/Product');
+    await Promise.all(items.map((item) => {
+      if (!item.productId) return null;
+      const cantidad = (Number(item.quantity) || 1) * signo;
+      if (!cantidad) return null;
+      return Product.updateOne(
+        { _id: item.productId, trackStock: true },
+        /* $max con 0 para que no quede negativo al descontar. Al devolver,
+           puede quedar por encima de lo que había si en su momento se vendió
+           más de lo disponible: se prefiere eso a perder unidades, y el conteo
+           se corrige a mano desde Inventario. */
+        [{ $set: { stock: { $max: [0, { $add: [{ $ifNull: ['$stock', 0] }, cantidad] }] } } }]
+      );
+    }));
+  } catch (err) {
+    logger.warn('No se pudo mover el inventario', { error: err.message, signo });
+  }
+}
 
 /* Precio de una línea con sus adiciones incluidas. Mismo criterio que usa
    add-items para no separarse con el tiempo. */
@@ -1603,7 +1651,9 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
       return res.status(404).json({ message: "Ese producto no está en el pedido" });
     }
 
-    const antes = { name: item.name, quantity: item.quantity };
+    /* Se guarda también el productId: al quitar la línea con .pull() el
+       subdocumento queda desasociado y ya no se le puede leer. */
+    const antes = { name: item.name, quantity: item.quantity, productId: item.productId };
 
     if (quantity === 0) {
       if (order.items.length === 1) {
@@ -1615,6 +1665,17 @@ router.patch("/:id/items", tenantAuth, async (req, res) => {
       order.items.pull(itemId);
     } else {
       item.quantity = quantity;
+    }
+
+    /* El inventario sigue al cambio: quitar una línea devuelve todas sus
+       unidades, bajar la cantidad devuelve la diferencia, y subirla descuenta.
+       Sin esto, editar un pedido dejaba el conteo desviado. */
+    const diferencia = antes.quantity - quantity;   // >0 sobran, <0 faltan
+    if (diferencia !== 0 && antes.productId) {
+      await moverStock(
+        [{ productId: antes.productId, quantity: Math.abs(diferencia) }],
+        diferencia > 0 ? +1 : -1
+      );
     }
 
     // Se recalcula sobre todas las líneas, no se ajusta la diferencia: así el
