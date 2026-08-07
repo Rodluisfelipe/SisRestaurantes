@@ -370,7 +370,9 @@ function ModernOrdersDashboard() {
     all: filteredOrders.length,
     [ORDER_STATUS.PENDING]: orders.filter(o => o?.status === ORDER_STATUS.PENDING || o?.status === ORDER_STATUS.PENDING_PAYMENT).length,
     [ORDER_STATUS.PAYMENT_UPLOADED]: orders.filter(o => o?.status === ORDER_STATUS.PAYMENT_UPLOADED || o?.status === ORDER_STATUS.PAYMENT_CONFIRMED).length,
-    [ORDER_STATUS.IN_PROGRESS]: orders.filter(o => o?.status === ORDER_STATUS.IN_PROGRESS || o?.status === ORDER_STATUS.PREPARING).length,
+    /* `confirmed` cuenta acá porque el filtro de esta pestaña ya lo incluía:
+       el badge decía 9 mientras la lista mostraba 13. */
+    [ORDER_STATUS.IN_PROGRESS]: orders.filter(o => o?.status === ORDER_STATUS.IN_PROGRESS || o?.status === ORDER_STATUS.PREPARING || o?.status === ORDER_STATUS.CONFIRMED).length,
     [ORDER_STATUS.COMPLETED]: orders.filter(o => o?.status === ORDER_STATUS.COMPLETED || o?.status === ORDER_STATUS.READY).length,
   };
 

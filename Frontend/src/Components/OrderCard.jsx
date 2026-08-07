@@ -28,6 +28,34 @@ function OrderCard({
   const hasChat = order.orderChannel === 'inapp';
   const isTerminal = ['completed', 'delivered', 'cancelled'].includes(order.status);
 
+  /* Los pasos siguientes se definen una sola vez para las dos vistas (tarjeta y
+     fila). Antes cada layout repetía las mismas condiciones y solo cubría
+     cuatro de los once estados, así que los pedidos en `confirmed` —todo lo que
+     entra por POS y por pedido rápido— se quedaban sin botón para avanzar en
+     ambas: solo se podían cancelar. Igual pasaba con `preparing` y `ready`.
+
+     Los saltos son los que acepta VALID_TRANSITIONS en el backend; ofrecer otro
+     solo devolvería 400. */
+  const S = ORDER_STATUS;
+  const START = { to: S.IN_PROGRESS, label: 'Iniciar preparación', Icon: FaPlay, primary: false };
+  const FINISH = { to: S.COMPLETED, label: 'Completar pedido', Icon: FaCheck, primary: true };
+  const NEXT_STEPS = {
+    [S.PENDING]: [START],
+    [S.PAYMENT_CONFIRMED]: [START],
+    [S.CONFIRMED]: [START, FINISH],
+    [S.PREPARING]: [{ to: S.READY, label: 'Marcar como listo', Icon: FaCheck, primary: false }, FINISH],
+    [S.IN_PROGRESS]: [FINISH],
+    [S.READY]: [FINISH],
+  };
+  const nextSteps = NEXT_STEPS[order.status] || [];
+
+  /* Un domicilio también necesita repartidor mientras está confirmado o en
+     preparación, no solo en `inProgress`, que era el único estado que lo
+     mostraba. */
+  const needsDelivery = order.orderType === 'delivery'
+    && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode
+    && [S.CONFIRMED, S.PREPARING, S.IN_PROGRESS].includes(order.status);
+
   return (
     <motion.div
       key={order._id}
@@ -224,30 +252,23 @@ function OrderCard({
                   </div>
                 )}
 
-                {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
-                    <FaPlay className="text-[9px]" /> Iniciar preparación
+                {needsDelivery && (
+                  <button onClick={() => onAssignDelivery(order)} className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
+                    <FaMotorcycle className="text-sm" /> Asignar domiciliario
                   </button>
                 )}
 
-                {order.status === ORDER_STATUS.PENDING && (
-                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
-                    <FaPlay className="text-[9px]" /> Iniciar preparación
+                {nextSteps.map(({ to, label, Icon, primary }) => (
+                  <button
+                    key={to}
+                    onClick={() => onUpdateStatus(order._id, to)}
+                    className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold text-white transition-colors active:scale-[0.97] ${
+                      primary ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-800 hover:bg-slate-900'
+                    }`}
+                  >
+                    <Icon className="text-[10px]" /> {label}
                   </button>
-                )}
-
-                {order.status === ORDER_STATUS.IN_PROGRESS && (
-                  <div className="space-y-1.5">
-                    {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
-                      <button onClick={() => onAssignDelivery(order)} className="w-full flex items-center justify-center gap-2 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
-                        <FaMotorcycle className="text-sm" /> Asignar domiciliario
-                      </button>
-                    )}
-                    <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.COMPLETED)} className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white py-3 rounded-xl text-xs font-bold transition-colors active:scale-[0.97]">
-                      <FaCheck className="text-[10px]" /> Completar pedido
-                    </button>
-                  </div>
-                )}
+                ))}
 
                 {!isTerminal && (
                   <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); }} className="w-full flex items-center justify-center gap-1.5 bg-red-50 hover:bg-red-100 text-red-500 py-2.5 rounded-xl text-xs font-semibold border border-red-200/60 transition-colors active:scale-[0.97]">
@@ -321,30 +342,24 @@ function OrderCard({
                 </>
               )}
 
-              {order.status === ORDER_STATUS.PAYMENT_CONFIRMED && (
-                <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white transition-colors" title="Iniciar preparación">
-                  <FaPlay className="text-xs" />
+              {needsDelivery && (
+                <button onClick={() => onAssignDelivery(order)} className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors" title="Asignar domiciliario">
+                  <FaMotorcycle className="text-xs" />
                 </button>
               )}
 
-              {order.status === ORDER_STATUS.PENDING && (
-                <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.IN_PROGRESS)} className="p-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white transition-colors" title="Iniciar preparación">
-                  <FaPlay className="text-xs" />
+              {nextSteps.map(({ to, label, Icon, primary }) => (
+                <button
+                  key={to}
+                  onClick={() => onUpdateStatus(order._id, to)}
+                  className={`p-2 rounded-lg text-white transition-colors ${
+                    primary ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-slate-800 hover:bg-slate-900'
+                  }`}
+                  title={label}
+                >
+                  <Icon className="text-xs" />
                 </button>
-              )}
-
-              {order.status === ORDER_STATUS.IN_PROGRESS && (
-                <>
-                  {order.orderType === 'delivery' && !order.deliveryToken && !order.deliveryPersonId && !order.confirmationCode && (
-                    <button onClick={() => onAssignDelivery(order)} className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white transition-colors" title="Asignar domiciliario">
-                      <FaMotorcycle className="text-xs" />
-                    </button>
-                  )}
-                  <button onClick={() => onUpdateStatus(order._id, ORDER_STATUS.COMPLETED)} className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition-colors" title="Completar pedido">
-                    <FaCheck className="text-xs" />
-                  </button>
-                </>
-              )}
+              ))}
 
               {!isTerminal && (
                 <button onClick={() => { if (window.confirm('¿Cancelar pedido #' + order.orderNumber + '?')) onUpdateStatus(order._id, ORDER_STATUS.CANCELLED); }} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors border border-red-200" title="Cancelar pedido">
